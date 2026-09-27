@@ -101,6 +101,11 @@ raid_night_lineups,Officers read raid_night_lineups,public,SELECT,PERMISSIVE,((t
 raid_night_lineups,Team raiders read raid_night_lineups,public,SELECT,PERMISSIVE,"(team_id IN ( SELECT p.team_id
    FROM players p
   WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))))",
+raid_night_participation,Claude readers read raid_night_participation,claude_readers,SELECT,PERMISSIVE,true,
+raid_night_participation,Officers read raid_night_participation,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_guild_officer() AS is_guild_officer) OR ( SELECT is_site_admin() AS is_site_admin)),
+raid_night_participation,Team raiders read raid_night_participation,public,SELECT,PERMISSIVE,"(team_id IN ( SELECT p.team_id
+   FROM players p
+  WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))))",
 raid_rsvp_reminders_sent,Claude readers read raid_rsvp_reminders_sent,claude_readers,SELECT,PERMISSIVE,true,
 raid_rsvps,Claude readers read raid_rsvps,claude_readers,SELECT,PERMISSIVE,true,
 raid_rsvps,Officers read raid_rsvps,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_guild_officer() AS is_guild_officer) OR ( SELECT is_site_admin() AS is_site_admin)),

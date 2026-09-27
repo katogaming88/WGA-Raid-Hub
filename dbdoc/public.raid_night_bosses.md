@@ -9,9 +9,9 @@ The bosses on one raid night's list for a team (#1216), in pull order. skipped k
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | integer |  | false |  |  |  |
-| team_id | integer |  | false | [public.raid_night_lineups](public.raid_night_lineups.md) | [public.teams](public.teams.md) |  |
-| raid_date | date |  | false | [public.raid_night_lineups](public.raid_night_lineups.md) |  |  |
-| encounter_id | integer |  | false | [public.raid_night_lineups](public.raid_night_lineups.md) | [public.raid_encounters](public.raid_encounters.md) |  |
+| team_id | integer |  | false | [public.raid_night_lineups](public.raid_night_lineups.md) [public.raid_night_participation](public.raid_night_participation.md) | [public.teams](public.teams.md) |  |
+| raid_date | date |  | false | [public.raid_night_lineups](public.raid_night_lineups.md) [public.raid_night_participation](public.raid_night_participation.md) |  |  |
+| encounter_id | integer |  | false | [public.raid_night_lineups](public.raid_night_lineups.md) [public.raid_night_participation](public.raid_night_participation.md) | [public.raid_encounters](public.raid_encounters.md) |  |
 | position | integer |  | false |  |  |  |
 | skipped | boolean | false | false |  |  |  |
 | confirmed_at | timestamp with time zone |  | true |  |  | When an officer last saved this boss's lineup for the night. Null while the lineup is the automatic copy of the standing group. |
@@ -44,6 +44,7 @@ erDiagram
 
 "public.raid_night_bosses" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.raid_night_lineups" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
+"public.raid_night_participation" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
 "public.raid_night_bosses" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.raid_night_bosses" }o--o| "public.people" : "FOREIGN KEY (confirmed_by) REFERENCES people(id) ON DELETE SET NULL"
 
@@ -67,6 +68,14 @@ erDiagram
   integer guild_id FK
 }
 "public.raid_night_lineups" {
+  integer id
+  integer team_id FK
+  date raid_date FK
+  integer encounter_id FK
+  integer player_id FK
+  timestamp_with_time_zone created_at
+}
+"public.raid_night_participation" {
   integer id
   integer team_id FK
   date raid_date FK
