@@ -1,0 +1,151 @@
+/* Attendance Manage and Scores (#1354, #1103 row 1). */
+
+.attend-manage-panel {
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.attend-manage-header {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.attend-manage-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.attend-night-row {
+  display: flex;
+}
+
+.attend-night-select {
+  max-width: 320px;
+}
+
+.attend-grid-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.attend-excluded-tag {
+  color: var(--bad);
+}
+
+.attend-exclude-btn {
+  margin-left: auto;
+  font-size: 0.92rem;
+  padding: 0.2rem 0.65rem;
+}
+
+.attend-grid-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attend-grid-row {
+  display: grid;
+  grid-template-columns: 1fr auto minmax(180px, 220px);
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.attend-grid-name {
+  font-weight: 600;
+}
+
+.attend-grid-source {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.attend-late-flag {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.attend-status-select {
+  width: 100%;
+}
+
+.attend-threshold-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.attend-threshold-label {
+  white-space: nowrap;
+}
+
+.attend-slider {
+  flex: 1;
+  max-width: 320px;
+}
+
+.attend-scores-count {
+  margin-bottom: var(--space-2);
+}
+
+.attend-player-row {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.attend-player-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.attend-player-name {
+  font-weight: 600;
+}
+
+.attend-player-pct {
+  font-weight: 700;
+}
+
+.attend-bar-wrap {
+  height: 6px;
+  background: var(--raised);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.attend-bar {
+  height: 100%;
+}
+
+.attend-penalty-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--space-2);
+}
+
+.attend-penalty-entry {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.92rem;
+}
+
+.attend-penalty-noshow {
+  color: var(--bad);
+  font-weight: 600;
+}
+
+.attend-penalty-other {
+  color: var(--warn);
+  font-weight: 600;
+}

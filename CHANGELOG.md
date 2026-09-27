@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.158.0] - 2026-09-27
+
+### Frontend
+
+- New app: the officer dashboard's Attendance Manage and Scores pages (#1354, #1103 row 1), at `/officer/attendance` and `/officer/attendance/scores`. Same behavior as `tab-attendance.js`'s Manage and Attendance Scores sub-tabs: a per-night editable status grid, refresh from WCL, commit attendance scores to Scoring, exclude a report, and the below-threshold list with each raider's recent Late/Excused/No Show history. Bench Fairness stays on the current site for now; it moves to Reports (row 5) when that's built. Behavior recorded as browser tests first, per #1103's process.
+
+### Project
+
+- `tests/browser-app/attendance.test.js` records the current Attendance tab's behavior against the new Manage and Scores pages, and seven new states cover both pages in `app.test.js`'s WCAG 2.1 AA sweep. `#1103` updated: row 1 filed as `#1354` and built.
+
 ## [3.157.0] - 2026-09-27
 
 ### Backend

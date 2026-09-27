@@ -6,6 +6,8 @@ import { AppShell } from './layout/AppShell';
 import { HomePage } from './home/HomePage';
 import { CalendarPage } from './calendar/CalendarPage';
 import { BossGroupsPage } from './calendar/BossGroupsPage';
+import { AttendanceManagePage } from './attendance/AttendanceManagePage';
+import { AttendanceScoresPage } from './attendance/AttendanceScoresPage';
 import { GuildHomePage } from './guild/GuildHomePage';
 import { BoePage } from './boe/BoePage';
 import { NewsPage } from './news/NewsPage';
@@ -34,6 +36,8 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   calendar: <CalendarPage />,
   me: <MyProfilePage />,
   'officer/groups': <BossGroupsPage />,
+  'officer/attendance': <AttendanceManagePage />,
+  'officer/attendance/scores': <AttendanceScoresPage />,
   history: <HistoryPage />,
   officers: <TeamOfficersPage />,
   signup: <SignUpPage />,

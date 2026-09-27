@@ -405,6 +405,82 @@ const GUILD_OFFICER_PERSON = {
 };
 const BOSS_GROUPS_GUILD_OFFICER = { ...BOSS_GROUPS, person: GUILD_OFFICER_PERSON };
 
+// Attendance Manage and Scores (#1354, #1103 row 1): two raid nights, a
+// below-threshold raider, a WCL late flag with no status yet, and an excluded
+// night, so every grid and Scores state is on the page axe measures.
+const ATTENDANCE_TABLES = {
+  players: SCENARIO.players,
+  seasons: [{ code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-01-01', ends_at: null }],
+  attendance: [
+    {
+      id: 1,
+      player_id: 1,
+      raid_date: '2026-05-07',
+      status: 'Present',
+      report_excluded: false,
+      report_title: 'Raid - May 7',
+      source: 'WCL'
+    },
+    {
+      id: 2,
+      player_id: 2,
+      raid_date: '2026-05-07',
+      status: 'Late (no notice)',
+      report_excluded: false,
+      report_title: 'Raid - May 7',
+      source: 'Officer'
+    },
+    {
+      id: 3,
+      player_id: 3,
+      raid_date: '2026-05-07',
+      status: 'No Show',
+      report_excluded: false,
+      report_title: 'Raid - May 7',
+      source: 'WCL'
+    },
+    {
+      id: 4,
+      player_id: 1,
+      raid_date: '2026-05-14',
+      status: 'Present',
+      report_excluded: false,
+      report_title: 'Raid - May 14',
+      source: 'WCL'
+    },
+    {
+      id: 5,
+      player_id: 2,
+      raid_date: '2026-05-14',
+      status: null,
+      report_excluded: false,
+      report_title: 'Raid - May 14',
+      source: 'WCL (Late?)'
+    },
+    {
+      id: 6,
+      player_id: 3,
+      raid_date: '2026-05-14',
+      status: 'Present',
+      report_excluded: false,
+      report_title: 'Raid - May 14',
+      source: 'WCL'
+    }
+  ]
+};
+const ATTENDANCE_MANAGE = {
+  session: OFFICER,
+  who: 'officer',
+  path: '/g/wga/t/phoenix/officer/attendance',
+  sentinel: 'main:has(.attend-grid-rows)',
+  tables: ATTENDANCE_TABLES
+};
+const ATTENDANCE_SCORES = {
+  ...ATTENDANCE_MANAGE,
+  path: '/g/wga/t/phoenix/officer/attendance/scores',
+  sentinel: 'main:has(.attend-player-row)'
+};
+
 const GUILD = { path: '/g/wga', sentinel: 'main:has(.guild-officer)', teams: GUILD_TEAMS, tables: GUILD_TABLES };
 const GUILD_OFFICER = {
   ...GUILD,
@@ -582,6 +658,21 @@ const STATES = [
     ...BOSS_GROUPS_GUILD_OFFICER,
     click: 'role=button[name="Edit cap"]'
   },
+  { label: 'attendance manage, officer', ...ATTENDANCE_MANAGE },
+  { label: 'attendance manage, officer, light', ...ATTENDANCE_MANAGE, colorScheme: 'light' },
+  {
+    label: 'attendance manage, officer, no nights recorded yet',
+    ...ATTENDANCE_MANAGE,
+    sentinel: 'text=No raid nights recorded yet',
+    tables: { ...ATTENDANCE_TABLES, attendance: [] }
+  },
+  {
+    label: 'attendance manage, officer, committing scores',
+    ...ATTENDANCE_MANAGE,
+    click: 'role=button[name="Commit Attendance Scores"]'
+  },
+  { label: 'attendance scores, officer', ...ATTENDANCE_SCORES },
+  { label: 'attendance scores, officer, light', ...ATTENDANCE_SCORES, colorScheme: 'light' },
   {
     label: 'calendar night, officer changing an answer',
     ...CAL_NIGHT_PAGE,

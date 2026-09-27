@@ -177,6 +177,10 @@ export async function openApp(browser, port, state) {
     self_received_requests: [],
     season_signups: [],
     boe_items: [],
+    // Attendance Manage and Scores (#1354): per-night status rows and the
+    // Scoring table Commit writes to.
+    attendance: [],
+    scoring: [],
     ...state.tables
   };
 
