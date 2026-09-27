@@ -169,8 +169,37 @@ var CATALYST_ELIGIBLE_SLOTS = WISHLIST_TIER_SET_SLOTS.concat(CATALYST_SOURCE_SLO
 // The tier the page plans for, as the column holds it (#936): a season code,
 // or null when no tier resolves at all, which is what a row with no season
 // looks like and what the insert below stamps.
+//
+// It is a season the team opened, not the officer's Season View (decision 13
+// on #1189): the live tier while the raider can edit it, else the newest
+// season open to them, else the live tier to read. The new app lets a raider
+// pick among the open seasons; this page has no picker and takes that
+// default. With no live tier the seasons read failed, so the order of the
+// open seasons is unknown too, and the page stays on no season.
 function wishlistSeasonCode() {
-  return (typeof resolveSeasonViewCode === 'function' && resolveSeasonViewCode()) || null;
+  var live = currentSeasonCode();
+  if (!live) return null;
+  var open = openWishlistSeasonCodes();
+  if (open.indexOf(live) !== -1 || wishlistAllowedForMe()) return live;
+  return open[0] || live;
+}
+
+// Whether the season the page is on has the team's wishlist switch on.
+function wishlistSeasonOpen() {
+  var season = wishlistSeasonCode();
+  return !!season && openWishlistSeasonCodes().indexOf(season) !== -1;
+}
+
+// The per-raider override (players.wishlist_allowed) for the raider whose
+// wishlist this is.
+function wishlistAllowedForMe() {
+  return !!_wishlistPlayerNameRealm && wishlistAllowedFor(_wishlistPlayerNameRealm);
+}
+
+// isItemInSeasonScope() against the season this page is on rather than the
+// officer's screen, for every catalog and row check on the raider's own page.
+function wishlistItemInScope(name, rowSeason) {
+  return itemInSeasonScopeFor(name, rowSeason, wishlistSeasonCode(), false);
 }
 
 // Every query for the raider's own picks says which tier it is about, because
@@ -268,7 +297,7 @@ function ownWishlistSectionHTML(player, backTo) {
 // own loading-placeholder-then-rerender pattern.
 function wishlistBisItems(player) {
   if (_wishlistPlayerId !== player.id || _wishlistPrefs === null) return [];
-  return bisItemsFromWishlistPrefs(_wishlistPrefs, player.id);
+  return bisItemsFromWishlistPrefs(_wishlistPrefs, player.id, wishlistItemInScope);
 }
 
 function wishlistPrefFor(itemId, slot) {
@@ -348,7 +377,7 @@ function wishlistBucketRealItems(playerArmorType, playerMainStat, playerRole, pl
     // substituted token row, once as its own real catalog row).
     if (tierResolvedItemNames[name]) return;
     if (itemPlaceholders[name]) return;
-    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name)) return;
+    if (!wishlistItemInScope(name)) return;
     var catalogSlot = itemSlots[name] || '';
     var rows = WISHLIST_CATALOG_SLOT_TO_ROWS[catalogSlot] || [];
     // Dual-wield classes (DUAL_WIELD_CLASSES, js/common.js) can put a second
@@ -545,21 +574,20 @@ function wishlistSlotSummaryDotsHTML(items) {
 }
 
 // Whether the raider currently viewing their own Wishlist can edit it --
-// the team's wishlistOpen() switch for this tier (#939), OR their own
+// the team's switch for the season the page is on (#939, #936), OR their own
 // wishlist_allowed per-raider exception (same shape as bis_allowed's "Allow
 // BiS Submit", #610/#611 follow-up: there was no way to reopen just one
 // raider's Wishlist while it's closed for the team). Every editing gate in
-// this file should check this instead of wishlistOpen() directly --
-// tab-bis.js's own wishlistOpen() calls are the team's toggle's own display
-// and deliberately stay as-is.
+// this file should check this instead of wishlistOpen(), which is the
+// officer toggle's reading of the season on their screen.
 function wishlistEditableNow() {
   // Nothing is editable until the page knows which tier it is planning, since
   // that tier is what a row is stamped with and what the write gate reads back
-  // (#936). The team switch already reads closed without one, so this is only
-  // reachable through the per-raider allowance, and their write would land in
-  // no tier at all beside the pick they already hold.
+  // (#936). With no tier the per-raider allowance is the only way to reach
+  // this, and their write would land in no tier at all beside the pick they
+  // already hold.
   if (!wishlistSeasonCode()) return false;
-  return wishlistOpen() || (!!_wishlistPlayerNameRealm && wishlistAllowedFor(_wishlistPlayerNameRealm));
+  return wishlistSeasonOpen() || wishlistAllowedForMe();
 }
 
 // lockOnceSet (Other Sources rows only, #515 follow-up): once a status is
@@ -815,7 +843,7 @@ function wishlistOtherSourceHTML(name, globallyTaggedSlots) {
   var taggedSlots = [];
   _wishlistPrefs.forEach(function (p) {
     if (p.item_id !== itemId || !p.slot) return;
-    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name, p.season)) return;
+    if (!wishlistItemInScope(name, p.season)) return;
     taggedSlots.push(p.slot);
   });
   var shownSlots = candidateSlots.filter(function (s) {
@@ -897,7 +925,7 @@ function wishlistOtherSourcesTaggedSlots() {
   _wishlistPrefs.forEach(function (p) {
     if (!placeholderItemIds[p.item_id] || !p.slot) return;
     var name = placeholderNameById[p.item_id];
-    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name, p.season)) return;
+    if (!wishlistItemInScope(name, p.season)) return;
     taggedSlots[p.slot] = name;
   });
   return taggedSlots;
@@ -916,8 +944,7 @@ function wishlistOtherSourcesSectionHTML() {
   var summaryItems = _wishlistPrefs
     .filter(function (p) {
       if (!placeholderItemIds[p.item_id]) return false;
-      if (typeof isItemInSeasonScope !== 'function') return true;
-      return isItemInSeasonScope(placeholderNameById[p.item_id], p.season);
+      return wishlistItemInScope(placeholderNameById[p.item_id], p.season);
     })
     .map(function (p) {
       return { itemId: p.item_id, slot: p.slot };
