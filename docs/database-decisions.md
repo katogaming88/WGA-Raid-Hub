@@ -2261,3 +2261,17 @@ The preview at `wga-raid-hub-app.pages.dev` reads and writes the production data
 **Why not read-only.** Revamp 3 is officer tools that write. A preview that cannot write cannot be used to review them.
 
 [Full discussion -> #1185](https://github.com/katogaming88/WGA-Raid-Hub/issues/1185).
+
+## #1243 -- rotator is retired app-wide; bench stays
+
+not yet, #1352 will ship it
+
+Decided 2026-09-27. Once Phoenix plans by boss (#1216) nobody on the team is bench or rotator, which raised the question for every team: do the two statuses still earn their keep, and what happens to the tools built on them (`players.is_bench`/`is_rotator`, `officer_set_rotator_week()`, the priority-order tier, the optional-night reminder skip, the attendance sync's bench write).
+
+**Chosen: Option 2 -- retire rotator, keep bench.** Rotator (`players.is_rotator`, #924) was built ten days before the per-boss lineup for the same need, an officer choosing who plays for a stretch of time; the lineup replaces it directly, boss by boss. Bench keeps every tool built on it -- it serves any team that keeps a standby list, and #1216 doesn't replace it.
+
+**Not Option 1 (keep both, clear on Phoenix).** Would have left two statuses in the roster editor Phoenix officers must never use, for a feature nothing else needs.
+
+**Not Option 3 (retire both, everywhere).** Assumes every team adopts the per-boss lineup; no other team has asked for it.
+
+[Full discussion -> #1243](https://github.com/katogaming88/WGA-Raid-Hub/issues/1243). Removal tracked on [#1352](https://github.com/katogaming88/WGA-Raid-Hub/issues/1352).
