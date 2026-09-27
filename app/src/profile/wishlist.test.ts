@@ -304,10 +304,10 @@ describe('wishlistSummary counts one season', () => {
   ];
 
   it('counts a pick stamped with the season it is asked about', () => {
-    expect(wishlistSummary([pick(1, 'bis', null)], catalog, zones, season).bis).toBe(1);
+    expect(wishlistSummary([pick(1, 'bis', null)], catalog, zones, season.code).bis).toBe(1);
   });
 
   it('does not count the same pick stamped with another season', () => {
-    expect(wishlistSummary([pick(1, 'bis', null, { season: 'MID1' })], catalog, zones, season).bis).toBe(0);
+    expect(wishlistSummary([pick(1, 'bis', null, { season: 'MID1' })], catalog, zones, season.code).bis).toBe(0);
   });
 });

@@ -15,7 +15,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
 const WISHLIST_JS = readFileSync(path.join(HERE, '../../js/wishlist.js'), 'utf8');
 
-function makeSandbox({ itemIds, itemPlaceholders, seasonView, prefs }) {
+function makeSandbox({ itemIds, itemPlaceholders, prefs }) {
   const sandbox = {
     window: {},
     location: { search: '', pathname: '/' },
@@ -36,10 +36,16 @@ function makeSandbox({ itemIds, itemPlaceholders, seasonView, prefs }) {
   vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
   vm.runInContext(WISHLIST_JS, sandbox, { filename: 'wishlist.js' });
 
-  sandbox.DATA = { itemIds, itemPlaceholders, itemSlots: {}, seasonView };
+  // The raider's wishlist is on the live tier, here MID2 (#936), and no team
+  // switch is open, so the rows render read-only.
+  sandbox.DATA = {
+    itemIds,
+    itemPlaceholders,
+    itemSlots: {},
+    seasons: [{ code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-08-11', ends_at: null }]
+  };
   sandbox._wishlistPrefs = prefs;
   sandbox._wishlistPlayerFirstName = 'Kat';
-  sandbox.wishlistOpen = () => false;
   return sandbox;
 }
 
@@ -48,7 +54,6 @@ describe('wishlistOtherSourceHTML -- season scoping', () => {
     const sandbox = makeSandbox({
       itemIds: { 'M+': 1 },
       itemPlaceholders: { 'M+': true },
-      seasonView: 'Midnight Season 2',
       prefs: [{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Head', season: 'MID2' }]
     });
 
@@ -60,7 +65,6 @@ describe('wishlistOtherSourceHTML -- season scoping', () => {
     const sandbox = makeSandbox({
       itemIds: { 'M+': 1 },
       itemPlaceholders: { 'M+': true },
-      seasonView: 'Midnight Season 2',
       prefs: [{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Head', season: 'MID1' }]
     });
 
@@ -73,7 +77,6 @@ describe('wishlistOtherSourceHTML -- season scoping', () => {
     const sandbox = makeSandbox({
       itemIds: { 'M+': 1 },
       itemPlaceholders: { 'M+': true },
-      seasonView: 'Midnight Season 2',
       prefs: [{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Head', season: null }]
     });
 
@@ -87,7 +90,6 @@ describe('wishlistOtherSourcesSectionHTML -- season scoping', () => {
     const sandbox = makeSandbox({
       itemIds: { 'M+': 1, Crafted: 2, Catalyst: 3 },
       itemPlaceholders: { 'M+': true, Crafted: true, Catalyst: true },
-      seasonView: 'Midnight Season 2',
       prefs: [{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Head', season: 'MID1' }]
     });
 
@@ -105,7 +107,6 @@ describe('wishlistOtherSourcesTaggedSlots', () => {
     const sandbox = makeSandbox({
       itemIds: { Crafted: 2 },
       itemPlaceholders: { Crafted: true },
-      seasonView: 'Midnight Season 2',
       prefs: [{ id: 1, item_id: 2, status: 'bis', note: null, slot: 'Head', season: 'MID2' }]
     });
 
@@ -116,7 +117,6 @@ describe('wishlistOtherSourcesTaggedSlots', () => {
     const sandbox = makeSandbox({
       itemIds: { Crafted: 2 },
       itemPlaceholders: { Crafted: true },
-      seasonView: 'Midnight Season 2',
       prefs: [{ id: 1, item_id: 2, status: 'bis', note: null, slot: 'Head', season: 'MID1' }]
     });
 
@@ -127,7 +127,6 @@ describe('wishlistOtherSourcesTaggedSlots', () => {
     const sandbox = makeSandbox({
       itemIds: { 'M+': 1 },
       itemPlaceholders: { 'M+': true },
-      seasonView: 'Midnight Season 2',
       prefs: []
     });
 
