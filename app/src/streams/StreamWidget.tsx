@@ -23,6 +23,7 @@ function initiallyOpen(): boolean {
 // A handful of rows per guild.
 export function useGuildStreamers(teamIds: number[]) {
   return useSupabaseQuery<StreamerRow[]>(['streamers', teamIds], (client) =>
+    // team-read-guard: a handful of rows per guild
     client
       .from('streamers')
       .select('id, team_id, twitch_channel, schedule_note, guild_wide_opt_out, is_live, players(name_realm, nickname)')

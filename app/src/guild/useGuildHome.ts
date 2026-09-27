@@ -17,23 +17,27 @@ export function useTeamCardData(teamIds: number[], today: Date) {
     ['guild-team-cards', teamIds, from],
     async (client) => {
       const [settings, seasons, progress, schedule, changes] = await Promise.all([
+        // team-read-guard: one row per team
         client
           .from('team_settings')
           .select('team_id, logs:config->externalLinks->>warcraftLogsUrl, raids:config->raidProgression')
           .in('team_id', teamIds),
-        // One row per team and tier an officer has touched (#939).
+        // team-read-guard: one row per team and tier an officer has touched (#939)
         client.from('team_seasons').select('team_id, season_code, signups_open').in('team_id', teamIds),
+        // team-read-guard: one row per team
         client
           .from('team_raid_progress')
           .select(
             'team_id, mythic_date, mythic_pulls, mythic_best_pct, mythic_report_code, mythic_fight_id, heroic_date, heroic_pulls, heroic_best_pct, heroic_report_code, heroic_fight_id, raid_encounters(name, wcl_encounter_id, raid_zones(wcl_zone_id))'
           )
           .in('team_id', teamIds),
+        // team-read-guard: a handful of weekly slots per team
         client
           .from('raid_schedule')
           .select('team_id, weekday, start_time, duration_minutes, is_optional')
           .in('team_id', teamIds)
           .eq('active', true),
+        // team-read-guard: a two-week window per team
         client
           .from('raid_schedule_exceptions')
           .select('team_id, raid_date, exception_type, start_time, duration_minutes, is_optional, note')

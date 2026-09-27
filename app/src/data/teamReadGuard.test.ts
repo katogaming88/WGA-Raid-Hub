@@ -53,7 +53,18 @@ function flatten(node: ts.CallExpression): Method[] {
 }
 
 export function findUnguardedTeamWideReads(source: string, filename = 'x.ts'): Finding[] {
-  const sf = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  // TSX reads `<T>` in `const pick = <T>(x: T) => x;` as a tag rather than a
+  // type parameter, and can drop everything after it from the tree with no
+  // error raised for it. Read .tsx as TSX (it needs JSX) and everything else
+  // as plain TypeScript, and fail loudly rather than silently under-scan a
+  // file that didn't parse the way it was read.
+  const scriptKind = filename.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+  const sf = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true, scriptKind);
+  const diagnostics = (sf as unknown as { parseDiagnostics?: ts.Diagnostic[] }).parseDiagnostics ?? [];
+  if (diagnostics.length) {
+    const message = ts.flattenDiagnosticMessageText(diagnostics[0]!.messageText, '\n');
+    throw new Error(`Could not parse ${filename}: ${message}`);
+  }
   const annotated = new Set<number>();
   source.split('\n').forEach((text, i) => {
     if (ANNOTATION.test(text)) annotated.add(i + 1);
@@ -81,12 +92,14 @@ export function findUnguardedTeamWideReads(source: string, filename = 'x.ts'): F
     });
     if (headOnly) return;
 
-    const eqOn = (col: string[]) =>
-      methods.some((m) => m.name === 'eq' && col.includes(String(literal(m.call.arguments[0]))));
+    // .in('team_id', teamIds) reads every team named, same as .eq('team_id', t)
+    // reads the one team named.
+    const filteredOn = (col: string[]) =>
+      methods.some((m) => (m.name === 'eq' || m.name === 'in') && col.includes(String(literal(m.call.arguments[0]))));
     const table = literal(methods[0]!.call.arguments[0]);
     const pagedTable = typeof table === 'string' && PAGED_TABLES.includes(table);
-    if (!eqOn([TEAM_COLUMN]) && !pagedTable) return;
-    if (eqOn(PLAYER_COLUMNS)) return;
+    if (!filteredOn([TEAM_COLUMN]) && !pagedTable) return;
+    if (filteredOn(PLAYER_COLUMNS)) return;
     if (methods.some((m) => m.name === 'limit' && typeof literal(m.call.arguments[0]) === 'number')) return;
     if (insideHelper) return;
 
@@ -97,9 +110,45 @@ export function findUnguardedTeamWideReads(source: string, filename = 'x.ts'): F
     findings.push({ line: start, table: typeof table === 'string' ? table : '<computed>' });
   }
 
+  // readAll(cb) only pages if cb actually asks for the next batch: passes both
+  // of its own parameters to .range(), and sorts on a column that never
+  // repeats so a batch can't miss or repeat a row. A callback missing either
+  // reads the same 1000 rows forever, the failure readAll's own page cap is a
+  // backstop for, not a substitute for catching here. Only an inline callback
+  // can be checked this way; a named function passed by reference still needs
+  // the `// team-read-guard:` comment, same as today.
+  function checkHelperCallback(node: ts.CallExpression) {
+    const cb = node.arguments[0];
+    if (!cb || !(ts.isArrowFunction(cb) || ts.isFunctionExpression(cb))) return;
+    const params = cb.parameters.map((p) => p.name.getText(sf));
+    let hasRange = false;
+    let hasOrder = false;
+    function scan(n: ts.Node) {
+      if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression)) {
+        const name = n.expression.name.text;
+        if (name === 'range' && n.arguments.length === 2) {
+          const args = n.arguments.map((a) => a.getText(sf));
+          if (args[0] === params[0] && args[1] === params[1]) hasRange = true;
+        }
+        if (name === 'order') hasOrder = true;
+      }
+      ts.forEachChild(n, scan);
+    }
+    scan(cb.body);
+
+    const start = lineOf(node.getStart(sf));
+    if (hasRange && hasOrder) return;
+    for (let line = start - ANNOTATION_REACH; line <= start; line++) if (annotated.has(line)) return;
+    const missing = !hasRange && !hasOrder ? '.range(...) and .order(...)' : !hasRange ? '.range(...)' : '.order(...)';
+    findings.push({ line: start, table: `readAll callback missing ${missing}` });
+  }
+
   function visit(node: ts.Node, insideHelper: boolean) {
     let here = insideHelper;
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === HELPER) here = true;
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === HELPER) {
+      here = true;
+      checkHelperCallback(node);
+    }
     if (ts.isCallExpression(node) && !consumed.has(node)) {
       const methods = flatten(node);
       if (methods.length && methods[0]!.name === 'from') {
@@ -153,8 +202,49 @@ describe('team-wide read guard (#1183)', () => {
     });
 
     it('passes a read inside readAll', () => {
-      const src = `readAll((from, to) => client.from('attendance').select('id').eq('team_id', t).range(from, to));`;
+      const src = `readAll((from, to) => client.from('attendance').select('id').eq('team_id', t).order('id').range(from, to));`;
       expect(findUnguardedTeamWideReads(src)).toEqual([]);
+    });
+
+    it('passes a readAll callback built across a few lines', () => {
+      const src = `readAll((from, to) => {
+        let q = client.from('attendance').select('id').eq('team_id', t);
+        return q.order('id').range(from, to);
+      });`;
+      expect(findUnguardedTeamWideReads(src)).toEqual([]);
+    });
+
+    it('flags a readAll callback with no .range()', () => {
+      const src = `readAll((from, to) => client.from('attendance').select('id').eq('team_id', t).order('id'));`;
+      const findings = findUnguardedTeamWideReads(src);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]!.table).toContain('.range');
+    });
+
+    it('flags a readAll callback with no .order()', () => {
+      const src = `readAll((from, to) => client.from('attendance').select('id').eq('team_id', t).range(from, to));`;
+      const findings = findUnguardedTeamWideReads(src);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]!.table).toContain('.order');
+    });
+
+    it('lets a readAll callback declared as a named function use the annotation escape', () => {
+      const src = `// team-read-guard: paging handled in namedPage\nreadAll(namedPage);`;
+      expect(findUnguardedTeamWideReads(src)).toEqual([]);
+    });
+
+    it('flags a team-wide read spread across every team with .in()', () => {
+      const src = `client.from('team_settings').select('id').in('team_id', teamIds)`;
+      expect(findUnguardedTeamWideReads(src)).toHaveLength(1);
+    });
+
+    it('reads a .ts file as TypeScript, not TSX', () => {
+      const src = `const pick = <T>(x: T) => x;\nclient.from('a').select('id').eq('team_id', t);`;
+      expect(findUnguardedTeamWideReads(src, 'x.ts')).toHaveLength(1);
+    });
+
+    it('fails loudly on a file that does not parse', () => {
+      expect(() => findUnguardedTeamWideReads('const x = {', 'broken.ts')).toThrow(/Could not parse/);
     });
 
     it('passes each named exemption', () => {

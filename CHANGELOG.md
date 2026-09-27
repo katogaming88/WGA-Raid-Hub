@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.156.6] - 2026-09-27
+
+### Project
+
+- New app: the team-wide read guard (#1183) now also catches a `readAll` callback that never asks for the next batch or never sorts on a column that never repeats, and a read spread across every team with `.in('team_id', ids)`; `readAll` itself gives up after 50 pages rather than looping forever on a callback like that. The check reads a `.ts` file as TypeScript instead of TSX, so a generic function no longer risks dropping a read from view, and fails loudly instead of passing quietly if a file doesn't parse. Guild home's five per-team reads and the streamers panel's read, all bounded but written with `.in()`, now carry the note saying why. Rex's review on #1350.
+
 ## [3.156.5] - 2026-09-26
 
 ### Project
