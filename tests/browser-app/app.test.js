@@ -405,9 +405,8 @@ const GUILD_OFFICER_PERSON = {
 };
 const BOSS_GROUPS_GUILD_OFFICER = { ...BOSS_GROUPS, person: GUILD_OFFICER_PERSON };
 
-// Attendance Manage and Scores (#1354, #1103 row 1): two raid nights, a
-// below-threshold raider, a WCL late flag with no status yet, and an excluded
-// night, so every grid and Scores state is on the page axe measures.
+// Attendance Manage (#1354, #1103 row 1): two raid nights, a WCL late flag
+// with no status yet, so every grid state is on the page axe measures.
 const ATTENDANCE_TABLES = {
   players: SCENARIO.players,
   seasons: [{ code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-01-01', ends_at: null }],
@@ -474,11 +473,6 @@ const ATTENDANCE_MANAGE = {
   path: '/g/wga/t/phoenix/officer/attendance',
   sentinel: 'main:has(.attend-grid-rows)',
   tables: ATTENDANCE_TABLES
-};
-const ATTENDANCE_SCORES = {
-  ...ATTENDANCE_MANAGE,
-  path: '/g/wga/t/phoenix/officer/attendance/scores',
-  sentinel: 'main:has(.attend-player-row)'
 };
 
 const GUILD = { path: '/g/wga', sentinel: 'main:has(.guild-officer)', teams: GUILD_TEAMS, tables: GUILD_TABLES };
@@ -671,8 +665,6 @@ const STATES = [
     ...ATTENDANCE_MANAGE,
     click: 'role=button[name="Commit Attendance Scores"]'
   },
-  { label: 'attendance scores, officer', ...ATTENDANCE_SCORES },
-  { label: 'attendance scores, officer, light', ...ATTENDANCE_SCORES, colorScheme: 'light' },
   {
     label: 'calendar night, officer changing an answer',
     ...CAL_NIGHT_PAGE,

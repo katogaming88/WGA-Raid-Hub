@@ -7,7 +7,6 @@ import { HomePage } from './home/HomePage';
 import { CalendarPage } from './calendar/CalendarPage';
 import { BossGroupsPage } from './calendar/BossGroupsPage';
 import { AttendanceManagePage } from './attendance/AttendanceManagePage';
-import { AttendanceScoresPage } from './attendance/AttendanceScoresPage';
 import { GuildHomePage } from './guild/GuildHomePage';
 import { BoePage } from './boe/BoePage';
 import { NewsPage } from './news/NewsPage';
@@ -36,8 +35,10 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   calendar: <CalendarPage />,
   me: <MyProfilePage />,
   'officer/groups': <BossGroupsPage />,
+  // 'officer/attendance/scores' stays a placeholder (Kat, 2026-09-27): Profile
+  // already shows a raider's attendance pct and flagged nights, so a
+  // dedicated Scores page has nothing Roster -> Profile doesn't.
   'officer/attendance': <AttendanceManagePage />,
-  'officer/attendance/scores': <AttendanceScoresPage />,
   history: <HistoryPage />,
   officers: <TeamOfficersPage />,
   signup: <SignUpPage />,

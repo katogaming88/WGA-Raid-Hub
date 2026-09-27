@@ -1,8 +1,13 @@
-import { attendance as playerAttendance, type AttendanceRow, type SeasonWindow } from '../profile/profile';
 import { firstName, type PlayerRow } from '../roster/roster';
 
-// Manage and Scores (#1103 row 1), ported from js/tabs/tab-attendance.js and
+// Manage (#1103 row 1), ported from js/tabs/tab-attendance.js and
 // js/common.js. The current tab's rules, not new ones.
+//
+// The old tab's Attendance Scores sub-tab (a below-threshold list with each
+// raider's penalty history) isn't ported: Roster already shows attendance
+// pct per raider, and Profile shows the same pct plus flagged nights this
+// list would (Kat, 2026-09-27) -- a dedicated page had nothing those two
+// didn't already cover a click away.
 
 export const ATTENDANCE_STATUSES = [
   'Present',
@@ -25,29 +30,6 @@ export type FullAttendanceRow = {
   report_title: string | null;
   source: string | null;
 };
-
-export function attendColor(pct: number | null): string {
-  if (pct === null || Number.isNaN(pct)) return 'var(--text-muted)';
-  return pct >= 95 ? 'var(--good)' : pct >= 75 ? 'var(--warn)' : 'var(--bad)';
-}
-
-export type BelowThresholdRow = { player: PlayerRow; pct: number; flagged: { date: string; status: string }[] };
-
-// Sorted worst-first, matching the current tab's below.sort((a, b) => a.pct - b.pct).
-export function belowThreshold(
-  players: PlayerRow[],
-  rowsByPlayer: Map<number, AttendanceRow[]>,
-  season: SeasonWindow,
-  threshold: number
-): BelowThresholdRow[] {
-  return players
-    .map((player) => {
-      const { pct, flagged } = playerAttendance(rowsByPlayer.get(player.id) ?? [], season, player.join_date ?? null);
-      return { player, pct, flagged };
-    })
-    .filter((r) => r.pct <= threshold)
-    .sort((a, b) => a.pct - b.pct);
-}
 
 export type NightPlayer = { playerId: number; name: string; status: string | null; source: string | null };
 export type Night = { date: string; title: string; excluded: boolean; players: NightPlayer[] };

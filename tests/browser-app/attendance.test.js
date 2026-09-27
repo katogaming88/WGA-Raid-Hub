@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { launchBrowser, openApp, startApp, storedSession } from './harness.js';
 
-// The new app's Attendance Manage and Scores pages (#1354, #1103 row 1)
-// against tab-attendance.js's recorded behavior (js/tabs/tab-attendance.js):
-// the per-night status grid, refresh from WCL, commit attendance scores, and
-// the below-threshold list with penalty history.
+// The new app's Attendance Manage page (#1354, #1103 row 1) against
+// tab-attendance.js's recorded behavior (js/tabs/tab-attendance.js): the
+// per-night status grid, refresh from WCL, and commit attendance scores.
+// The old tab's Attendance Scores sub-tab isn't ported (Kat, 2026-09-27):
+// Roster and Profile already show a raider's attendance pct and flagged
+// nights.
 
 const TEAM_ID = 1;
 const BASE = '/g/wga/t/phoenix/officer/attendance';
@@ -282,34 +284,5 @@ describe('Attendance Manage (new app): commit attendance scores', () => {
     } finally {
       await opened.context.close();
     }
-  });
-});
-
-describe('Attendance Scores (new app): the below-threshold list', () => {
-  let opened;
-
-  beforeAll(async () => {
-    opened = await openApp(browser, server.port, state(`${BASE}/scores`, '.attend-player-row'));
-  });
-
-  afterAll(async () => {
-    if (opened) await opened.context.close();
-  });
-
-  it('lists everyone at or below 95%, worst first, with their penalty history', async () => {
-    const names = await opened.page.locator('.attend-player-name').allTextContents();
-    expect(names).toEqual(['Dawnthistle', 'Zed', 'Brightmoor']);
-    const pcts = await opened.page.locator('.attend-player-pct').allTextContents();
-    expect(pcts).toEqual(['50.0%', '75.0%', '90.0%']);
-    const dawnthistle = opened.page.locator('.attend-player-row', { hasText: 'Dawnthistle' });
-    await expect(dawnthistle.locator('.attend-penalty-entry').textContent()).resolves.toBe('2026-05-07No Show');
-    expect(opened.unexpected).toEqual([]);
-    expect(opened.pageErrors).toEqual([]);
-  });
-
-  it('moving the threshold changes who shows', async () => {
-    await opened.page.locator('#attend-threshold').fill('40');
-    await expect(opened.page.locator('.attend-player-row').count()).resolves.toBe(0);
-    await expect(opened.page.getByText('All raiders are at or above 40% attendance').count()).resolves.toBe(1);
   });
 });
