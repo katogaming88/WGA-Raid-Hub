@@ -124,6 +124,25 @@ const wishlistEditorState = (label, extra = {}) =>
     }
   });
 
+const TWO_SEASONS_OPEN = {
+  sentinel: 'main select#wishlist-season',
+  tables: {
+    seasons: [
+      { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null },
+      {
+        code: WISHLIST_EDITOR.EARLIER_SEASON.code,
+        display_name: WISHLIST_EDITOR.EARLIER_SEASON.name,
+        starts_at: WISHLIST_EDITOR.EARLIER_SEASON.start,
+        ends_at: WISHLIST_EDITOR.EARLIER_SEASON.end
+      }
+    ],
+    team_seasons: [SEASON.code, WISHLIST_EDITOR.EARLIER_SEASON.code].map((code) => ({
+      season_code: code,
+      wishlist_open: true
+    }))
+  }
+};
+
 const OFFICER = storedSession({ battlenet: 'Kato#1499', discord: 'Phoenix Officer' });
 
 // Alts (#942 step 5b): saved characters, the memberships they hang off, and
@@ -984,6 +1003,12 @@ const STATES = [
   wishlistEditorState('my profile, wishlist editor, on a phone', { touch: true, viewport: NARROW }),
   wishlistEditorState('my profile, wishlist editor, closed', {
     tables: { team_settings: [{ open: 'false', view: null }] }
+  }),
+  // The season picker (#936), there once two seasons are open.
+  wishlistEditorState('my profile, wishlist editor, two seasons open', TWO_SEASONS_OPEN),
+  wishlistEditorState('my profile, wishlist editor, two seasons open, light', {
+    ...TWO_SEASONS_OPEN,
+    colorScheme: 'light'
   }),
   // The profile's two forms, open (#868 part 4).
   profileState('my profile, Mark received dialog', 'torbjorn', 'torbjorn', {

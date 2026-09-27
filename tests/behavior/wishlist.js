@@ -168,3 +168,11 @@ export const NEW_BIS_ROW = {
   status: 'bis',
   season: 'MID2'
 };
+
+// Season View is the officer's planning control, not the raider's (#936,
+// decision 13 on #1189). With the earlier tier pinned and both tiers' wishlists
+// open, the raider's own editor is still the live tier's, EXPECTED_EDITOR, and
+// a new BiS pick still saves NEW_BIS_ROW. Before this the pin chose the
+// season, so the page offered the earlier tier's items and saved picks there.
+export const EARLIER_SEASON = { name: 'Midnight Season 1', code: 'MID1', start: '2026-03-17', end: '2026-07-31' };
+export const PINNED_ELSEWHERE = { seasonView: EARLIER_SEASON.code, open: [SEASON.code, EARLIER_SEASON.code] };
