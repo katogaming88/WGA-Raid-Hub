@@ -31,6 +31,7 @@ const PLAYER_COLUMNS =
 export function useProfilePlayer(teamId: number, by: { id: number } | { code: string }) {
   const key = 'id' in by ? ['profile-player', teamId, 'id', by.id] : ['profile-player', teamId, 'code', by.code];
   return useSupabaseQuery<ProfilePlayer | null>(key, (client) => {
+    // team-read-guard: one row: .maybeSingle() is added on the next statement
     const query = client.from('players').select(PLAYER_COLUMNS).eq('team_id', teamId).is('archived_at', null);
     return ('id' in by ? query.eq('id', by.id) : query.eq('url_code', by.code.toLowerCase())).maybeSingle();
   });
@@ -89,6 +90,7 @@ export function useEquippedGear(playerId: number) {
       const rows = (gear.data ?? []) as GearRow[];
       const ids = [...new Set(rows.map((r) => r.item_id).filter((id): id is number => id != null))];
       if (!ids.length) return { data: { rows, names: new Map() }, error: null };
+      // team-read-guard: only the item ids in one player's equipped gear, 16 at most
       const items = await client.from('items').select('wow_item_id, name').in('wow_item_id', ids);
       if (items.error) return { data: null, error: items.error };
       const names = new Map(
@@ -166,12 +168,16 @@ export function useItemRanks(teamId: number, seasonCode: string | null, itemIds:
   return useSupabaseQuery<RankRow[]>(
     ['item-ranks', teamId, seasonCode, ids],
     (client) =>
-      client
-        .from('priority_order')
-        .select('item_id, track, rank, player_id')
-        .eq('team_id', teamId)
-        .eq('season', seasonCode!)
-        .in('item_id', ids),
+      readAll<RankRow>((from, to) =>
+        client
+          .from('priority_order')
+          .select('item_id, track, rank, player_id')
+          .eq('team_id', teamId)
+          .eq('season', seasonCode!)
+          .in('item_id', ids)
+          .order('id')
+          .range(from, to)
+      ),
     { enabled: seasonCode !== null && ids.length > 0 }
   );
 }
@@ -211,6 +217,7 @@ export function useWishlistSettings(teamId: number) {
     async (client) => {
       const [settings, seasons] = await Promise.all([
         client.from('team_settings').select('view:config->>seasonView').eq('team_id', teamId).maybeSingle(),
+        // team-read-guard: one row per season the team has, a handful
         client.from('team_seasons').select('season_code, wishlist_open').eq('team_id', teamId)
       ]);
       const error = settings.error ?? seasons.error;

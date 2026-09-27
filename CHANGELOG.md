@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.156.6] - 2026-09-27
+
+### Project
+
+- New app: the team-wide read guard (#1183) now also catches a `readAll` callback that never asks for the next batch or never sorts on a column that never repeats, and a read spread across every team with `.in('team_id', ids)`; `readAll` itself gives up after 50 pages rather than looping forever on a callback like that. The check reads a `.ts` file as TypeScript instead of TSX, so a generic function no longer risks dropping a read from view, and fails loudly instead of passing quietly if a file doesn't parse. Guild home's five per-team reads and the streamers panel's read, all bounded but written with `.in()`, now carry the note saying why. Rex's review on #1350.
+
+## [3.156.5] - 2026-09-26
+
+### Project
+
+- New app: a check (`app/src/data/teamReadGuard.test.ts`) fails any team-wide read that does not go through `readAll`, with the same exemptions as the current site's check and the same `// team-read-guard: <reason>` note for a read that stays small (#1183). The BoE item catalog, officer RSVPs on the calendar and the priority-order read now page, so none of them can silently stop at 1000 rows. The other 21 team reads each carry a note saying why they stay small. Nothing changes on screen. The revamp time log gains the rows for 2026-09-26 that were missing (#1185, #869, #1184) and this one.
+
 ## [3.156.4] - 2026-09-26
 
 ### Project

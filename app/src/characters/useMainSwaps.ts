@@ -36,6 +36,7 @@ export function useTeamMainSwaps(teamId: number, enabled: boolean) {
   return useSupabaseQuery<ReviewRow[]>(
     ['team-main-swaps', teamId],
     async (client) => {
+      // team-read-guard: pending requests only, a handful at a time
       const { data, error } = await client
         .from('main_swap_requests')
         .select(

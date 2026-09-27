@@ -80,12 +80,19 @@ export function useSupabaseMutation<T, V>(
 // Every row of a read, a page at a time: the API returns at most 1000 rows per
 // request, and a team's season of attendance grows past that.
 const PAGE = 1000;
+// Runaway guard, not a data ceiling (js/common.js's fetchAllPaged has the same
+// one): 50 pages is 50k rows, far past anything this reads. A callback that
+// never advances `from` into its filter loops forever without it.
+const MAX_PAGES = 50;
 
 type Page<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
 
 export async function readAll<T>(page: (from: number, to: number) => Page<T>) {
   const rows: T[] = [];
-  for (let from = 0; ; from += PAGE) {
+  for (let from = 0, pages = 0; ; from += PAGE, pages++) {
+    if (pages >= MAX_PAGES) {
+      return { data: null, error: { message: `readAll exceeded ${MAX_PAGES} pages; giving up.` } };
+    }
     const { data, error } = await page(from, from + PAGE - 1);
     if (error) return { data: null, error };
     rows.push(...(data ?? []));
