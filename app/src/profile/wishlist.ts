@@ -177,11 +177,38 @@ export function inSeasonZone(item: CatalogItem, seasonCode: string | null, zones
   return seasonZones.length === 0 || seasonZones.includes(item.wcl_zone_id);
 }
 
-// The season the editor plans for: the Season View an officer pinned (a code
-// since #933) or the team's own. It scopes the raid items by zone and stamps
-// the row, which since #936 is the same value for both.
+// The season the editor shows someone reading another raider's wishlist: the
+// Season View an officer pinned (a code since #933) or the team's own, the
+// season on screen like every other officer view (#1351).
 export function editorSeason(view: string | null, season: SeasonWindow): string | null {
   return view || season.code;
+}
+
+// The seasons a raider may put their own wishlist on (#936, decision 13 on
+// #1189): the ones the team opened, and the live tier for a raider an officer
+// allowed, since the override is for the tier being raided. Newest first, in
+// the order of `seasons` (every season's code, newest first).
+export function wishlistCandidates(
+  openSeasons: string[],
+  live: string | null,
+  allowed: boolean,
+  seasons: string[]
+): string[] {
+  const codes = new Set(openSeasons);
+  if (allowed && live) codes.add(live);
+  const rank = (code: string) => (seasons.includes(code) ? seasons.indexOf(code) : Infinity);
+  return [...codes].sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : a > b ? 1 : 0));
+}
+
+// The season a raider's own wishlist is on, which stamps their picks: the one
+// they picked while it is still open to them, else the live tier when they can
+// edit it, else the newest season open to them, else the live tier to read.
+// No live tier is no season, as on the current site.
+export function ownWishlistSeason(picked: string | null, candidates: string[], live: string | null): string | null {
+  if (!live) return null;
+  if (picked && candidates.includes(picked)) return picked;
+  if (candidates.includes(live)) return live;
+  return candidates[0] ?? live;
 }
 
 // Only the picks filed under the tier being planned. The wishlist key carries
@@ -299,9 +326,9 @@ export type EditorInput = {
   picks: Pick[];
   catalog: CatalogItem[];
   zones: ZoneRow[];
-  // The season being planned (editorSeason()): Season View when an officer set
-  // one, else the team's season, as on the current site. It scopes the zones
-  // and stamps the row.
+  // The season shown: ownWishlistSeason() for the raider's own wishlist,
+  // editorSeason() for anyone else reading it. It scopes the zones and stamps
+  // the row.
   seasonCode: string | null;
   tokens: TokenRow[];
   wearer: Wearer;
@@ -444,23 +471,23 @@ export function planMark(
   };
 }
 
-// How many of the sixteen slots have a BiS pick this season, and how many the
+// How many of the sixteen slots have a BiS pick in the season, and how many the
 // raider passed on, read the way the editor reads them.
 export function wishlistSummary(
   rows: WishlistRow[],
   catalog: CatalogItem[],
   zones: ZoneRow[],
-  season: SeasonWindow
+  seasonCode: string | null
 ): { bis: number; pass: number; total: number } {
   const byId = new Map(catalog.map((i) => [i.id, i]));
   const picks = picksInSeason(
     rows.map((r, i) => ({ ...r, id: (r as Partial<Pick>).id ?? i, synced_bis: r.synced_bis ?? false })),
-    season.code
+    seasonCode
   );
-  const ctx = { picks, byId, seasonCode: season.code, zones };
+  const ctx = { picks, byId, seasonCode, zones };
   const raid = picks.filter((p) => {
     const item = byId.get(p.item_id);
-    return !!item && !item.is_placeholder && inSeasonZone(item, season.code, zones);
+    return !!item && !item.is_placeholder && inSeasonZone(item, seasonCode, zones);
   });
   const marks = (slot: string, status: string) =>
     raid.some((p) => p.status === status && picksFor(picks, byId, slot, p.item_id).includes(p));

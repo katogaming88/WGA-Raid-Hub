@@ -3,7 +3,7 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { DataState } from '../components/DataState';
 import { useTouchScreen } from '../lib/device';
 import { bothQueries } from '../data/query';
-import type { SeasonWindow } from './profile';
+import { seasonName, type SeasonWindow } from './profile';
 import {
   useCatalog,
   useMarkWishlist,
@@ -14,12 +14,23 @@ import {
   type ProfilePlayer
 } from './useProfile';
 import { sourceTag } from './lootPriority';
-import { editorSeason, editorSlots, planMark, type EditorInput, type EditorSlot, type Mark } from './wishlist';
+import { WishlistSummaryCard } from './LootPriorityCard';
+import {
+  editorSeason,
+  editorSlots,
+  ownWishlistSeason,
+  planMark,
+  wishlistCandidates,
+  type EditorInput,
+  type EditorSlot,
+  type Mark
+} from './wishlist';
 
-// The wishlist editor (#868 part 3): each slot's raid items, marked BiS or Pass.
-// The raider edits their own while the team's wishlist is open, or when an
-// officer allowed them; everyone else who can open the profile reads it.
-export function WishlistEditor({
+// The Wishlist tab: the summary and the editor read one season. A raider's own
+// is the season they pick from the ones the team opened (#936, decision 13 on
+// #1189), starting on the live tier; anyone else reads the season on the
+// officer's screen, as every officer view does (#1351).
+export function WishlistTab({
   player,
   teamId,
   season,
@@ -31,10 +42,61 @@ export function WishlistEditor({
   own: boolean;
 }) {
   const settings = useWishlistSettings(teamId);
+  const [picked, setPicked] = useState<string | null>(null);
+  const live = season.isSuccess ? season.data.code : null;
+  const candidates =
+    own && settings.isSuccess
+      ? wishlistCandidates(settings.data.openSeasons, live, player.wishlist_allowed, settings.data.seasons)
+      : [];
+  const planned =
+    season.isSuccess && settings.isSuccess
+      ? own
+        ? ownWishlistSeason(picked, candidates, live)
+        : editorSeason(settings.data.view, season.data)
+      : null;
+
+  return (
+    <div className="profile-wishlist">
+      {planned && candidates.length > 1 && (
+        <div className="field wishlist-season-picker">
+          <label className="field-label" htmlFor="wishlist-season">
+            Wishlist for
+          </label>
+          <select id="wishlist-season" className="select" value={planned} onChange={(e) => setPicked(e.target.value)}>
+            {candidates.map((code) => (
+              <option key={code} value={code}>
+                {seasonName(code)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      <WishlistSummaryCard player={player} season={season} seasonCode={settings.isSuccess ? planned : undefined} />
+      <WishlistEditor player={player} teamId={teamId} season={season} planned={planned} own={own} />
+    </div>
+  );
+}
+
+// The wishlist editor (#868 part 3): each slot's raid items, marked BiS or Pass.
+// The raider edits their own while the team's wishlist is open, or when an
+// officer allowed them; everyone else who can open the profile reads it.
+function WishlistEditor({
+  player,
+  teamId,
+  season,
+  planned,
+  own
+}: {
+  player: ProfilePlayer;
+  teamId: number;
+  season: UseQueryResult<SeasonWindow>;
+  planned: string | null;
+  own: boolean;
+}) {
+  const settings = useWishlistSettings(teamId);
   const picks = useWishlist(player.id);
   const catalog = useCatalog();
   const zones = useRaidZones();
-  const planned = season.isSuccess && settings.isSuccess ? editorSeason(settings.data.view, season.data) : null;
   // Editing is open per tier (#939): the switch for the tier the editor is
   // scoped to, which is the tier a pick is stamped with.
   const open = planned != null && settings.isSuccess && settings.data.openSeasons.includes(planned);

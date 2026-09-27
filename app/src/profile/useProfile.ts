@@ -4,6 +4,7 @@ import type { AttendanceRow, GearRow, LootRow, SeasonWindow } from './profile';
 import { currentSeason } from './profile';
 import type { CatalogItem, RankRow, SelfReceivedRow, TierTokenRow, ZoneRow } from './lootPriority';
 import type { NewPick, Pick, TokenRow, WritePlan } from './wishlist';
+import { wishlistCandidates } from './wishlist';
 
 export type ProfilePlayer = {
   id: number;
@@ -209,25 +210,33 @@ export function useSelfReceived(playerId: number) {
 // Wishlist editor reads and writes (#868 part 3).
 
 // The season an officer is planning for, if they set one (a season code, the
-// form raid_zones.season holds, #933), and the tiers the team has wishlist
-// editing open for (#939: one team_seasons row per tier; no row means closed).
+// form raid_zones.season holds, #933), the tiers the team has wishlist editing
+// open for (#939: one team_seasons row per tier; no row means closed), and
+// every tier's code, all newest first, which is the order a raider's season
+// picker lists them in (#936).
 export function useWishlistSettings(teamId: number) {
-  return useSupabaseQuery<{ view: string | null; openSeasons: string[] }>(
+  return useSupabaseQuery<{ view: string | null; openSeasons: string[]; seasons: string[] }>(
     ['wishlist-settings', teamId],
     async (client) => {
-      const [settings, seasons] = await Promise.all([
+      const [settings, switches, tiers] = await Promise.all([
         client.from('team_settings').select('view:config->>seasonView').eq('team_id', teamId).maybeSingle(),
         // team-read-guard: one row per season the team has, a handful
-        client.from('team_seasons').select('season_code, wishlist_open').eq('team_id', teamId)
+        client.from('team_seasons').select('season_code, wishlist_open').eq('team_id', teamId),
+        client.from('seasons').select('code, starts_at')
       ]);
-      const error = settings.error ?? seasons.error;
+      const error = settings.error ?? switches.error ?? tiers.error;
       if (error) return { data: null, error };
       const row = (settings.data ?? {}) as { view?: string | null };
-      const rows = (seasons.data ?? []) as { season_code: string; wishlist_open: boolean }[];
+      const rows = (switches.data ?? []) as { season_code: string; wishlist_open: boolean }[];
+      const seasons = [...((tiers.data ?? []) as { code: string; starts_at: string }[])]
+        .sort((a, b) => (a.starts_at < b.starts_at ? 1 : a.starts_at > b.starts_at ? -1 : 0))
+        .map((t) => t.code);
+      const open = rows.filter((r) => r.wishlist_open === true).map((r) => r.season_code);
       return {
         data: {
           view: row.view?.trim() || null,
-          openSeasons: rows.filter((r) => r.wishlist_open === true).map((r) => r.season_code)
+          openSeasons: wishlistCandidates(open, null, false, seasons),
+          seasons
         },
         error: null
       };

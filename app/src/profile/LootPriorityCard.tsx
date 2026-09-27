@@ -182,12 +182,16 @@ function PriorityTable({
   );
 }
 
+// Counts the live tier, or on the Wishlist tab the season the editor below it
+// shows (`seasonCode`), so the two never disagree.
 export function WishlistSummaryCard({
   player,
-  season
+  season,
+  seasonCode
 }: {
   player: ProfilePlayer;
   season: UseQueryResult<SeasonWindow>;
+  seasonCode?: string | null | undefined;
 }) {
   const reads = bothQueries(bothQueries(season, useWishlist(player.id)), bothQueries(useCatalog(), useRaidZones()));
   return (
@@ -197,7 +201,7 @@ export function WishlistSummaryCard({
       </h2>
       <DataState query={reads} label="the wishlist">
         {([[s, w], [c, z]]) => {
-          const summary = wishlistSummary(w, c, z, s);
+          const summary = wishlistSummary(w, c, z, seasonCode === undefined ? s.code : seasonCode);
           return (
             <p className="wishlist-summary">
               <span className="num wishlist-bis">{summary.bis}</span> of {summary.total} slots have a BiS pick
