@@ -396,7 +396,7 @@ describe('Wishlist (new app), the season picker', () => {
       await expect.poll(() => writes.filter((w) => w.method === 'POST').length).toBe(1);
       expect(writes.find((w) => w.method === 'POST').body).toMatchObject({
         item_id: 1003,
-        slot: 'Head',
+        slot: null,
         status: 'bis',
         season: EARLIER_SEASON.code
       });
