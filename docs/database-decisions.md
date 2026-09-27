@@ -12,7 +12,7 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ## 2026-09-26 -- the priority readers answer for one season (#936)
 
-Shipped: 20260926143632_priority_readers_season.sql
+Shipped: 20260927174243_priority_readers_season.sql
 
 `generate_priority_order()`'s candidate pool and `build_rclc_export()`'s two reads of `item_preferences` filter on the season they are given. The current site's own two officer-side reads do the same, through `scopeToSeasonView()` in `js/common.js`.
 

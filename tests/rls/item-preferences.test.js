@@ -560,7 +560,7 @@ describe('the wishlist key carries the season (#936)', () => {
 // raider could hold one row per item and slot, so a read of "their rows for
 // this item" could only ever be the tier in play. Widening the key ended that.
 //
-// 20260926143632 put the season on the two priority readers, so what is left
+// 20260927174243 put the season on the two priority readers, so what is left
 // here is the demand side:
 //
 //   wishlist_setup_status() counts every row, so a slot filled in another tier
