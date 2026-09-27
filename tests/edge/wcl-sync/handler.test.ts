@@ -16,7 +16,8 @@ import {
   handle,
   type LineupBossRow,
   orderedLineupBosses,
-  tierStartTimeMs
+  tierStartTimeMs,
+  uniqueFirstNameIndex
 } from '../../../supabase/functions/wcl-sync/handler.ts';
 import { VERSION } from '../../../supabase/functions/wcl-sync/version.ts';
 
@@ -264,4 +265,18 @@ Deno.test('decideLineupStatus: assigned to boss 1 and absent from it is still fl
 
 Deno.test('decideLineupStatus: assigned to nothing scores Present, the same 1.0 as anyone on time', () => {
   assertEquals(decideLineupStatus(null, false), { status: 'Present', source: 'WCL' });
+});
+
+Deno.test('uniqueFirstNameIndex: maps a name to its one player', () => {
+  const roster = [{ firstName: 'coty', playerId: 1 }];
+  assertEquals(uniqueFirstNameIndex(roster), new Map([['coty', 1]]));
+});
+
+Deno.test('uniqueFirstNameIndex: two roster players sharing a first name resolve to neither, not a guess', () => {
+  const roster = [
+    { firstName: 'kate', playerId: 1 },
+    { firstName: 'kate', playerId: 2 },
+    { firstName: 'coty', playerId: 3 }
+  ];
+  assertEquals(uniqueFirstNameIndex(roster), new Map([['coty', 3]]));
 });

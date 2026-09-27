@@ -584,6 +584,19 @@ export function decideLineupStatus(
   return { status: null, source: 'WCL (Late?)' };
 }
 
+// Two roster raiders sharing a first name can't be told apart in WCL data by
+// name alone -- excluded here rather than guessed at, so a real match never
+// gets written to the wrong player_id in raid_night_participation. (#1242;
+// attendance status itself doesn't use this index, each roster row checks
+// its own name independently, and is unaffected by a name collision here.)
+export function uniqueFirstNameIndex<T extends { firstName: string; playerId: number }>(
+  roster: readonly T[]
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const p of roster) counts.set(p.firstName, (counts.get(p.firstName) ?? 0) + 1);
+  return new Map(roster.filter((p) => counts.get(p.firstName) === 1).map((p) => [p.firstName, p.playerId]));
+}
+
 // Who was actually in for a real pull of each boss (#1242): one query, keyed
 // by WCL encounter id. friendlyPlayers lists the actor ids in a fight;
 // masterData.actors resolves them to names, the same combatant dump
@@ -591,11 +604,15 @@ export function decideLineupStatus(
 // (difficulty != null, same as getFirstPullParticipants), restricted to the
 // encounter ids asked for so a fight for a boss nobody planned that night
 // doesn't get counted.
+// null (not an empty Map) means the fetch itself failed -- a WCL hiccup, not
+// "queried fine, this boss had nobody" -- so a caller can fail open on it the
+// same way getFirstPullParticipants' null already does, instead of reading a
+// failure as "absent from every boss" and flagging the whole roster.
 async function getReportParticipationByEncounter(
   token: string,
   reportCode: string,
   wclEncounterIds: ReadonlySet<number>
-): Promise<Map<number, Set<string>>> {
+): Promise<Map<number, Set<string>> | null> {
   const byEncounter = new Map<number, Set<string>>();
   if (wclEncounterIds.size === 0) return byEncounter;
 
@@ -611,7 +628,7 @@ async function getReportParticipationByEncounter(
   `;
   const result = await wclQuery(token, query);
   const report = result?.data?.reportData?.report;
-  if (!report) return byEncounter;
+  if (!report) return null;
 
   const nameByActorId = new Map<number, string>();
   for (const actor of report.masterData?.actors || []) {
@@ -868,7 +885,41 @@ async function refreshAttendance(token: string, guildId: number, teamId: number,
   // landing on the same date (rare, but the same case rowsToUpsert's own Map
   // is keyed against) would otherwise re-fetch it.
   const lineupByDate = new Map<string, { bosses: LineupBossRow[]; lineupPlayerIds: Map<number, Set<number>> }>();
-  const playerIdByFirstName = new Map(roster.map((p) => [p.firstName, p.playerId]));
+  const playerIdByFirstName = uniqueFirstNameIndex(roster);
+
+  // #1242: who was seen at which boss, per date, unioned across every report
+  // on that date this run touches -- written once per date after the whole
+  // report loop, rather than report by report. A raid night split across two
+  // WCL reports (a relog, a disconnect) would otherwise have whichever
+  // report is processed second silently erase the first one's real data for
+  // any boss its own fight list doesn't mention: getReportParticipationByEncounter
+  // only returns entries for encounters it actually saw a real fight for, so
+  // merging (rather than replacing) is what keeps a boss neither report
+  // touches this run untouched, instead of overwritten with an empty guess.
+  const participationByDate = new Map<string, Map<number, Set<string>>>();
+  const datesTouchedThisRun = new Set<string>();
+
+  function mergeParticipation(date: string, byEncounter: Map<number, Set<string>>) {
+    datesTouchedThisRun.add(date);
+    if (!participationByDate.has(date)) participationByDate.set(date, new Map());
+    const forDate = participationByDate.get(date)!;
+    for (const [encounterId, names] of byEncounter) {
+      if (!forDate.has(encounterId)) forDate.set(encounterId, new Set());
+      for (const name of names) forDate.get(encounterId)!.add(name);
+    }
+  }
+
+  // A date this team has never recorded any boss-by-boss "actual" for yet,
+  // so a lineup added or edited after a report already synced still gets
+  // caught up. Re-deriving this for every cached report on every run would
+  // re-fetch a full season's WCL data for nothing the cache below already
+  // exists to avoid -- this bounds the catch-up to once per date.
+  const { data: participationDateRows, error: participationDatesError } = await supabase
+    .from('raid_night_participation')
+    .select('raid_date')
+    .eq('team_id', teamId);
+  if (participationDatesError) throw new Error(participationDatesError.message);
+  const datesWithParticipation = new Set((participationDateRows || []).map((r: any) => r.raid_date));
 
   const sorted = [...reports].sort((a: any, b: any) => b.startTime - a.startTime);
 
@@ -877,6 +928,22 @@ async function refreshAttendance(token: string, guildId: number, teamId: number,
 
     if (cachedReportIds.has(report.code)) {
       mainNights++;
+      // #1242: this report's attendance status is trusted and not
+      // recomputed (see the comment on cachedReportIds), but its per-boss
+      // participation may genuinely never have been recorded, if a lineup
+      // was set or edited after this report first synced. Catch that up
+      // alone, without touching the status this report already has.
+      if (!datesWithParticipation.has(date)) {
+        if (!lineupByDate.has(date)) lineupByDate.set(date, await getNightLineup(supabase, teamId, date));
+        const { bosses: nightBosses } = lineupByDate.get(date)!;
+        if (nightBosses.length > 0) {
+          const wclIds = new Set(
+            nightBosses.map((b) => b.wclEncounterId).filter((id): id is number => typeof id === 'number')
+          );
+          const byEncounter = await getReportParticipationByEncounter(token, report.code, wclIds);
+          if (byEncounter) mergeParticipation(date, byEncounter);
+        }
+      }
       continue;
     }
 
@@ -931,12 +998,13 @@ async function refreshAttendance(token: string, guildId: number, teamId: number,
     // never both, so a lineup night costs no extra WCL round trip over what
     // this already made.
     let firstPullParticipants: Set<string> | null = null;
-    let perEncounterParticipants = new Map<number, Set<string>>();
+    let perEncounterParticipants: Map<number, Set<string>> | null = null;
     if (lineupExists) {
       const wclIds = new Set(
         nightBosses.map((b) => b.wclEncounterId).filter((id): id is number => typeof id === 'number')
       );
       perEncounterParticipants = await getReportParticipationByEncounter(token, report.code, wclIds);
+      if (perEncounterParticipants) mergeParticipation(date, perEncounterParticipants);
     } else {
       // null (not an empty set) means detection failed/found no real pulls --
       // fail open to the normal Present/WCL path rather than flagging anyone,
@@ -959,7 +1027,12 @@ async function refreshAttendance(token: string, guildId: number, teamId: number,
 
       const key = `${player.playerId}|${date}`;
       if (participants.has(player.firstName)) {
-        if (lineupExists) {
+        if (lineupExists && perEncounterParticipants === null) {
+          // The per-boss fetch itself failed -- fail open exactly like the
+          // no-lineup path does on a detection gap, rather than reading "no
+          // data" as "absent from every boss" and flagging the whole roster.
+          rowsToUpsert.set(key, { ...base, status: 'Present', source: 'WCL' });
+        } else if (lineupExists) {
           const firstAssigned = firstAssignedWclEncounter(orderedBosses, lineupPlayerIds, player.playerId);
           const presentAtAssigned =
             firstAssigned !== null && (perEncounterParticipants.get(firstAssigned)?.has(player.firstName) ?? false);
@@ -984,23 +1057,36 @@ async function refreshAttendance(token: string, guildId: number, teamId: number,
       }
       // else: left unset -- officer fills the status in manually via the grid.
     }
+  }
 
-    // The "actual" record next to raid_night_lineups' plan (#1242), one boss
-    // at a time -- including a skipped boss, so a stale row from before it
-    // was skipped gets cleared rather than left behind.
-    for (const boss of nightBosses) {
-      if (typeof boss.wclEncounterId !== 'number') continue;
-      const names = perEncounterParticipants.get(boss.wclEncounterId) ?? new Set<string>();
+  // #1242: the actual record next to raid_night_lineups' plan, one date and
+  // boss at a time -- only for a (date, boss) pair some report processed
+  // this run actually reported on (mergeParticipation only adds keys for
+  // encounters a report's own fight list mentions), so a boss neither this
+  // run's reports nor an already-recorded prior run touched is left alone
+  // rather than overwritten with an empty guess. Best-effort: this table
+  // documents itself as sync-derived, not authoritative (raid_night_participation's
+  // own comment), so one boss's write failing is logged and skipped rather
+  // than discarding every attendance row this whole run already computed.
+  for (const date of datesTouchedThisRun) {
+    const { bosses: nightBosses } = lineupByDate.get(date) ?? { bosses: [] as LineupBossRow[] };
+    const wclToLocalEncounterId = new Map(nightBosses.map((b) => [b.wclEncounterId, b.encounterId]));
+    const forDate = participationByDate.get(date) ?? new Map<number, Set<string>>();
+    for (const [wclEncounterId, names] of forDate) {
+      const encounterId = wclToLocalEncounterId.get(wclEncounterId);
+      if (encounterId === undefined) continue;
       const playerIds = [...names]
         .map((name) => playerIdByFirstName.get(name))
         .filter((id): id is number => typeof id === 'number');
       const { error: participationError } = await supabase.rpc('record_raid_night_participation', {
         p_team_id: teamId,
         p_raid_date: date,
-        p_encounter_id: boss.encounterId,
+        p_encounter_id: encounterId,
         p_player_ids: playerIds
       });
-      if (participationError) throw new Error(participationError.message);
+      if (participationError) {
+        console.error('record_raid_night_participation failed:', date, encounterId, participationError.message);
+      }
     }
   }
 
