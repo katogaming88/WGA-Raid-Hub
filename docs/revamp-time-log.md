@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |      7 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     35 h 06 m |
-| Revamp 3: officer dashboard        |      3 h 15 m |
+| Revamp 3: officer dashboard        |      5 h 00 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **55 h 41 m** |
+| **All revamp work**                | **57 h 26 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -190,6 +190,19 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2:32-3:46 PM | Officer menu built in the new app (#869): menu code, tests, PR #1348, screenshots, red Danger zone, #1103 rewritten to rows 1-18 | Revamp 3 (#869, #1103) | 15 m | ~15 m build counted | 108,600 | Ran at the same time as the #1185 row above, so only 3:31-3:46 PM is counted here; about 65 m of build overlapped. PR #1348 merged 3:42 PM. |
 | 4:33-5:09 PM | One date helper and a check for bare date formatters in the app (#1184), zone note on BoE, invite link and calendar times | Revamp 3 (#1184) | 35 m | ~25 m build, ~10 m Kat | 146,100 | PR #1349 merged 5:09 PM. The guard turned up date formatters in ten files, not the two the issue named. Kat's questions about where the time zone comes from are inside this row. |
 | 5:10-5:25 PM | Row-cap check for the app's team-wide reads (#1183) | Revamp 3 (#1183) | 15 m | ~15 m build | 80,000 | Through opening the PR only; review and merge time goes in the next row. Three reads now page (BoE catalog, officer RSVPs, priority order); 21 others carry a reason note. |
+
+### 2026-09-27
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 12:38-12:49 PM | Rex's three review findings on #1350 fixed (#1183): readAll's page cap, `.in('team_id', ids)` counted as a team filter, `.ts` read as TypeScript instead of TSX; merged, branches cleaned up | Revamp 3 (#1183, #1350) | 10 m | ~10 m build | 43,900 | PR #1350 merged 12:47 PM. |
+| 12:49-12:58 PM | #1243 decided: rotator retires app-wide, bench stays | Revamp 3 (#1243) | 10 m | ~4 m build, ~6 m Kat deciding | 32,800 | #1352 filed for the removal itself, logged in `docs/database-decisions.md`, #1103 rows 1-3 cleared (#1184, #1183, #1243 all closed). |
+| 12:58-1:04 PM | #642 (New Expansion safety toggle) verified superseded by Rex's Season milestone work, closed | Revamp 3 (#642) | 5 m | ~5 m build | 18,800 | Season codes/dates now come from the `seasons` table, added only by migration; #1189 decision 13 made season dates app-wide with no per-team rollover. #1103 updated. |
+| 1:04-1:08 PM | Danger zone's button renamed Archive Season in #1103's spec | Revamp 3 (#1103) | 5 m | ~2 m build, ~3 m Kat correcting the framing | 17,300 | Kat's correction: the button archives this team's own record of a tier that already ended, it doesn't end the season for anyone. Spec-only; the live site's "Close Season" label is untouched. |
+| 1:08-1:27 PM | #1242 built: attendance's on-time reference moves to a raider's own first assigned boss once a night has a lineup | Revamp 3 (#1242) | 20 m | ~19 m build, ~1 m Kat (no new status, reuse Present) | 141,300 | New `raid_night_participation` table, `record_raid_night_participation()`, `wcl-sync` changes, RLS and edge tests, migration/RLS/decisions docs. PR #1353 opened. |
+| 1:27-1:47 PM | Self-review of #1353 with Rex out: 4 background review agents, 4 correctness bugs found and fixed | Revamp 3 (#1242) | 20 m | ~20 m build | 90,000 | A participation-write failure that discarded a whole sync run's attendance, the already-synced-report cache silently blocking the new logic forever, a two-report night clobbering its own data, a failed WCL fetch flagging the whole roster late. Re-verified, pushed, PR comment posted. |
+| 1:47-2:13 PM | `a11y-browser` CI failure on #1353 investigated and PR merged | Revamp 3 (#1242) | 25 m | ~10 m build, ~15 m waiting on CI | 21,800 | `index-streams` render flake, unrelated to this PR (no frontend touched); passed locally and clean on rerun. Merged 2:13 PM. |
+| 2:13-2:22 PM | Post-merge cleanup, #1103's row 1 unblocked, today's time log rows | Revamp 3 (#1103) | 10 m | ~10 m build | 34,500 | Branch deleted, #1103 row 1 no longer waits on #1242. |
 
 ## Not counted (same sessions, not revamp)
 
