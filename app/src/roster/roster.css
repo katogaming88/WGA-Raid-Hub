@@ -322,3 +322,11 @@ a.raider-name:hover {
 .unclaimed-row .raider-name {
   color: var(--text-muted);
 }
+
+.create-name-form {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}

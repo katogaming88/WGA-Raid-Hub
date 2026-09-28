@@ -8,12 +8,12 @@ import { toNames, type NameRow } from './names';
 describe('toNames', () => {
   it('sorts by label and derives bare/claimed from team_member_id', () => {
     const rows: NameRow[] = [
-      { id: 1, label: 'Zeta', team_member_id: null },
-      { id: 2, label: 'Anders', team_member_id: 5 }
+      { id: 1, label: 'Zeta', team_member_id: null, role: null },
+      { id: 2, label: 'Anders', team_member_id: 5, role: null }
     ];
     expect(toNames(rows)).toEqual([
-      { id: 2, label: 'Anders', team_member_id: 5, status: 'claimed' },
-      { id: 1, label: 'Zeta', team_member_id: null, status: 'bare' }
+      { id: 2, label: 'Anders', team_member_id: 5, role: null, status: 'claimed' },
+      { id: 1, label: 'Zeta', team_member_id: null, role: null, status: 'bare' }
     ]);
   });
 });
@@ -36,8 +36,9 @@ const TORBJORN = {
 };
 
 const NAMES: NameRow[] = [
-  { id: 1, label: 'Bare Raider', team_member_id: null },
-  { id: 2, label: 'Raz', team_member_id: 9 }
+  { id: 1, label: 'Bare Raider', team_member_id: null, role: null },
+  { id: 2, label: 'Raz', team_member_id: 9, role: null },
+  { id: 3, label: 'Needs A Tank', team_member_id: null, role: 'Tank' }
 ];
 
 function namesHandlers(
@@ -110,6 +111,17 @@ describe('Names on the Roster page', () => {
     expect(within(table).getByText('Raz')).toBeInTheDocument();
   });
 
+  it('a bare Name with a role guess sits in that role group, on that tab', async () => {
+    const user = userEvent.setup();
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers());
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    expect(within(table).getByRole('rowheader', { name: 'Needs A Tank' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Tanks' }));
+    expect(within(table).getByRole('rowheader', { name: 'Needs A Tank' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Melee' }));
+    expect(within(table).queryByRole('rowheader', { name: 'Needs A Tank' })).not.toBeInTheDocument();
+  });
+
   it('does not offer Claim to a signed-out visitor', async () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: null }));
     const table = await screen.findByRole('table', { name: 'Current roster' });
@@ -151,6 +163,20 @@ describe('Names on the Roster page', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Delete Member' }));
     expect(await screen.findByText('Raz removed.')).toBeInTheDocument();
     expect(seen[0]).toEqual({ p_team_id: 1, p_team_member_id: 9 });
+  });
+
+  it('an officer sees the Add a Name form, with a role picker', async () => {
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
+    await screen.findByRole('table', { name: 'Current roster' });
+    expect(screen.getByLabelText('Add a Name')).toBeInTheDocument();
+    expect(screen.getByLabelText('Role')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add Name' })).toBeInTheDocument();
+  });
+
+  it('a raider does not see the Add a Name form', async () => {
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'raider' }));
+    await screen.findByRole('table', { name: 'Current roster' });
+    expect(screen.queryByLabelText('Add a Name')).not.toBeInTheDocument();
   });
 
   it('a raider sees no officer actions on either row', async () => {

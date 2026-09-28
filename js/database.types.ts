@@ -984,6 +984,7 @@ export type Database = {
           created_at: string
           id: number
           label: string
+          role: string | null
           team_id: number
           team_member_id: number | null
         }
@@ -991,6 +992,7 @@ export type Database = {
           created_at?: string
           id?: never
           label: string
+          role?: string | null
           team_id: number
           team_member_id?: number | null
         }
@@ -998,6 +1000,7 @@ export type Database = {
           created_at?: string
           id?: never
           label?: string
+          role?: string | null
           team_id?: number
           team_member_id?: number | null
         }

@@ -521,6 +521,7 @@ erDiagram
   integer team_id FK
   text label
   integer team_member_id FK
+  text role
   timestamp_with_time_zone created_at
 }
 "public.guilds" {

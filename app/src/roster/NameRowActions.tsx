@@ -2,6 +2,7 @@ import { useId, useRef, useState, type FormEvent } from 'react';
 import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
 import { useSession } from '../auth/session';
+import { ROLE_LABELS, ROLE_ORDER } from './roster';
 import { useClaimName, useDeleteName, useDeleteTeamMember, useRemoveNameClaim, useRenameName } from './useNames';
 
 // A Name's actions (#1355), embedded in its own roster row rather than a
@@ -13,12 +14,15 @@ export function NameRowActions({
   officer,
   nameId,
   label,
+  role,
   teamMemberId
 }: {
   teamId: number;
   officer: boolean;
   nameId: number;
   label: string;
+  // The raid role guess a bare Name carries; meaningless once claimed.
+  role?: string | null;
   teamMemberId: number | null;
 }) {
   const { user } = useSession();
@@ -86,7 +90,16 @@ export function NameRowActions({
           That did not save: {removeClaim.error.message}
         </p>
       )}
-      {editing && <RenameDialog teamId={teamId} nameId={nameId} label={label} onClose={() => setEditing(false)} />}
+      {editing && (
+        <RenameDialog
+          teamId={teamId}
+          nameId={nameId}
+          label={label}
+          role={role ?? null}
+          bare={teamMemberId === null}
+          onClose={() => setEditing(false)}
+        />
+      )}
       {confirmDelete && (
         <Dialog title={`Delete ${label}?`} onClose={() => setConfirmDelete(false)} busy={deleting.isPending}>
           <p className="text-muted">
@@ -123,15 +136,22 @@ function RenameDialog({
   teamId,
   nameId,
   label,
+  role,
+  bare,
   onClose
 }: {
   teamId: number;
   nameId: number;
   label: string;
+  role: string | null;
+  // Role only means anything while the Name has no claimed membership --
+  // once claimed, a character's own class_spec_id decides it instead.
+  bare: boolean;
   onClose: () => void;
 }) {
   const id = useId();
   const [value, setValue] = useState(label);
+  const [roleValue, setRoleValue] = useState(role ?? '');
   const rename = useRenameName(teamId);
   const { announce } = useStatus();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -141,7 +161,7 @@ function RenameDialog({
     const trimmed = value.trim();
     if (!trimmed) return;
     rename.mutate(
-      { nameId, label: trimmed },
+      { nameId, label: trimmed, role: bare && roleValue ? roleValue : null },
       {
         onSuccess: () => {
           announce('success', 'Name updated.');
@@ -167,6 +187,26 @@ function RenameDialog({
             onChange={(e) => setValue(e.target.value)}
           />
         </div>
+        {bare && (
+          <div className="field">
+            <label className="field-label" htmlFor={`${id}-role`}>
+              Role (optional, until they have a character)
+            </label>
+            <select
+              id={`${id}-role`}
+              className="input"
+              value={roleValue}
+              onChange={(e) => setRoleValue(e.target.value)}
+            >
+              <option value="">Not sure yet</option>
+              {ROLE_ORDER.map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABELS[r]}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         {rename.isError && (
           <p className="form-error" role="alert">
             That did not save: {rename.error.message}

@@ -12,12 +12,14 @@ A team roster row's display label (#1355), independent of team_members: bare (te
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | label | text |  | false |  |  | The display name shown until claimed. Survives Remove claim (the label goes back to bare); does not survive Delete Member (the row is deleted with the membership). |
 | team_member_id | integer |  | true |  | [public.team_members](public.team_members.md) | Null for a bare, unclaimed Name. Set by self-service claim (claim_name) or an officer's direct assign/remove-claim table write. |
+| role | text |  | true |  |  | The raid role (Tank/Heal/Melee/Ranged) an officer expects this bare Name to fill, so it can sit on the roster under that tab before it has a character. Meaningless once claimed -- a claimed row's role comes from its character's class_spec_id instead, never from here. |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| names_role_check | CHECK | CHECK ((role = ANY (ARRAY['Tank'::text, 'Heal'::text, 'Melee'::text, 'Ranged'::text]))) |
 | names_team_member_id_fkey | FOREIGN KEY | FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL |
 | names_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | names_pkey | PRIMARY KEY | PRIMARY KEY (id) |
@@ -49,6 +51,7 @@ erDiagram
   integer team_id FK
   text label
   integer team_member_id FK
+  text role
   timestamp_with_time_zone created_at
 }
 "public.teams" {

@@ -73,7 +73,7 @@
 | [public.team_invite_links](public.team_invite_links.md) | 5 | One active invite code per team (#1264). Resetting overwrites the row, so the old code stops resolving immediately. | BASE TABLE |
 | [public.item_seasons](public.item_seasons.md) | 2 | The seasons a dungeon or crafted item is offered in (#1166). A raid item has no row: its season comes from raid_zones. Filled by scripts/dungeon-items-sql.js, never by a client. | BASE TABLE |
 | [public.raid_night_participation](public.raid_night_participation.md) | 6 | Who was actually in for a real pull of one boss on one raid night (#1242), one row per raider present. Written only by record_raid_night_participation(), called from the attendance sync once a night has a lineup (raid_night_bosses). Compare against raid_night_lineups for planned-vs-actual. | BASE TABLE |
-| [public.names](public.names.md) | 5 | A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming/assigning/unclaiming only ever updates this row -- team_members is never created, merged or deleted as part of it. | BASE TABLE |
+| [public.names](public.names.md) | 6 | A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming/assigning/unclaiming only ever updates this row -- team_members is never created, merged or deleted as part of it. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -1061,6 +1061,7 @@ erDiagram
   integer team_id FK
   text label
   integer team_member_id FK
+  text role
   timestamp_with_time_zone created_at
 }
 ```

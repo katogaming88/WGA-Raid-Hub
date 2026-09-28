@@ -2,7 +2,10 @@
 // (no team_member_id, officer-created) or claimed. Kept apart from the
 // component so sorting/status are tested without rendering.
 
-export type NameRow = { id: number; label: string; team_member_id: number | null };
+// role is an officer's guess at a bare Name's raid role (Tank/Heal/Melee/
+// Ranged), so it can sit under that tab before it has a character. Ignored
+// once claimed -- the real role comes from the claimed character's spec.
+export type NameRow = { id: number; label: string; team_member_id: number | null; role: string | null };
 
 export type NameStatus = 'bare' | 'claimed';
 

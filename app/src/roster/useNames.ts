@@ -28,30 +28,34 @@ async function writeAuditLog(
 export function useNames(teamId: number) {
   return useSupabaseQuery<NameRow[]>(key(teamId), (client) =>
     readAll<NameRow>((from, to) =>
-      client.from('names').select('id, label, team_member_id').eq('team_id', teamId).order('id').range(from, to)
+      client.from('names').select('id, label, team_member_id, role').eq('team_id', teamId).order('id').range(from, to)
     )
   );
 }
 
 // Officer: a bare Name, unclaimed until someone claims or is assigned it.
+// role is the raid role it's expected to fill, so it can sit under that tab
+// before it has a character; null when the officer doesn't know yet.
 export function useCreateName(teamId: number) {
-  return useSupabaseMutation<null, { label: string }>(
-    async (client, { label }) => {
-      const result = await client.from('names').insert({ team_id: teamId, label });
+  return useSupabaseMutation<null, { label: string; role: string | null }>(
+    async (client, { label, role }) => {
+      const result = await client.from('names').insert({ team_id: teamId, label, role });
       if (result.error) return result;
-      await writeAuditLog(client, teamId, 'Name Created', null, label);
+      await writeAuditLog(client, teamId, 'Name Created', null, role ? `${label} (${role})` : label);
       return { data: null, error: null };
     },
     { key: ['create-name', teamId], refreshes: [key(teamId)] }
   );
 }
 
+// role is only meaningful while the Name is still bare -- ignored by the
+// database once claimed, but the caller only offers the field then too.
 export function useRenameName(teamId: number) {
-  return useSupabaseMutation<null, { nameId: number; label: string }>(
-    async (client, { nameId, label }) => {
-      const result = await client.from('names').update({ label }).eq('id', nameId);
+  return useSupabaseMutation<null, { nameId: number; label: string; role: string | null }>(
+    async (client, { nameId, label, role }) => {
+      const result = await client.from('names').update({ label, role }).eq('id', nameId);
       if (result.error) return result;
-      await writeAuditLog(client, teamId, 'Name Renamed', nameId, label);
+      await writeAuditLog(client, teamId, 'Name Renamed', nameId, role ? `${label} (${role})` : label);
       return { data: null, error: null };
     },
     { key: ['rename-name', teamId], refreshes: [key(teamId)] }

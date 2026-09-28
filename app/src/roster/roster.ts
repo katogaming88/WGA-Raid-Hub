@@ -102,11 +102,12 @@ function claimedNameByMember(names: NameRow[]): Map<number, { id: number; label:
   return map;
 }
 
-// Bare Names (#1355): no team_member_id yet, so no character or role -- the
-// roster page lists them in their own "Unclaimed" group. Sorted by label,
-// like every other roster grouping.
+// Bare Names with no role guess (#1355): nothing places them on the roster,
+// so the page lists them as plain rows with no group of their own, only in
+// the unfiltered Everyone view. Sorted by label, like every other grouping.
+// A bare Name with a role folds into that role's group in toRoster() instead.
 export function bareNames(names: NameRow[]): NameRow[] {
-  return names.filter((n) => n.team_member_id === null).sort((a, b) => a.label.localeCompare(b.label));
+  return names.filter((n) => n.team_member_id === null && !n.role).sort((a, b) => a.label.localeCompare(b.label));
 }
 
 // A player with no role is not a roster entry yet, the same rule the current
@@ -144,6 +145,26 @@ export function toRoster(players: PlayerRow[], gear: GearRow[], names: NameRow[]
       statuses,
       nameId: claim?.id ?? null,
       teamMemberId: p.team_member_id ?? null
+    });
+  }
+  // A bare Name an officer gave a role guess: no character, so it takes its
+  // role's group directly rather than waiting for one (#1355).
+  for (const n of names) {
+    if (n.team_member_id !== null || !isRole(n.role)) continue;
+    raiders.push({
+      key: `name-${n.id}`,
+      playerId: null,
+      urlCode: null,
+      name: n.label,
+      character: null,
+      className: '',
+      spec: '',
+      role: n.role,
+      itemLevel: null,
+      tierPieces: null,
+      statuses: [],
+      nameId: n.id,
+      teamMemberId: null
     });
   }
   return groupByRole(raiders);

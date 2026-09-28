@@ -51,6 +51,19 @@ describe('names table RLS', () => {
     });
   });
 
+  it('an officer can set a bare Name to a raid role; an invalid one is rejected', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const nameId = await insertName(q, team.teamId, 'Needs A Tank');
+      await asUser(team.officer.uid, "update public.names set role = 'Tank' where id = $1", [nameId]);
+      expect((await q('select role from public.names where id = $1', [nameId])).rows[0].role).toBe('Tank');
+
+      await expect(
+        asUser(team.officer.uid, "update public.names set role = 'DPS' where id = $1", [nameId])
+      ).rejects.toThrow();
+    });
+  });
+
   it("a names row cannot point at another team's membership (cross-team trigger)", async () => {
     await withTxn(async ({ q, asUser }) => {
       const teamA = await seedTeam(q);

@@ -8231,6 +8231,12 @@
           "comment": "Null for a bare, unclaimed Name. Set by self-service claim (claim_name) or an officer's direct assign/remove-claim table write."
         },
         {
+          "name": "role",
+          "type": "text",
+          "nullable": true,
+          "comment": "The raid role (Tank/Heal/Melee/Ranged) an officer expects this bare Name to fill, so it can sit on the roster under that tab before it has a character. Meaningless once claimed -- a claimed row's role comes from its character's class_spec_id instead, never from here."
+        },
+        {
           "name": "created_at",
           "type": "timestamp with time zone",
           "nullable": false,
@@ -8264,6 +8270,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "names_role_check",
+          "type": "CHECK",
+          "def": "CHECK ((role = ANY (ARRAY['Tank'::text, 'Heal'::text, 'Melee'::text, 'Ranged'::text])))",
+          "table": "public.names",
+          "referenced_table": "",
+          "columns": [
+            "role"
+          ]
+        },
         {
           "name": "names_team_member_id_fkey",
           "type": "FOREIGN KEY",

@@ -20,6 +20,10 @@ create table public.names (
   team_id integer not null references public.teams (id) on delete cascade,
   label text not null,
   team_member_id integer references public.team_members (id) on delete set null,
+  -- The raid role an officer expects this Name to fill, so a bare row can sit
+  -- on the roster under the right tab before anyone has a character. Ignored
+  -- once claimed: the real role comes from the claimed character's spec.
+  role text check (role in ('Tank', 'Heal', 'Melee', 'Ranged')),
   created_at timestamptz not null default now()
 );
 
@@ -35,6 +39,8 @@ comment on column public.names.label is
   'The display name shown until claimed. Survives Remove claim (the label goes back to bare); does not survive Delete Member (the row is deleted with the membership).';
 comment on column public.names.team_member_id is
   'Null for a bare, unclaimed Name. Set by self-service claim (claim_name) or an officer''s direct assign/remove-claim table write.';
+comment on column public.names.role is
+  'The raid role (Tank/Heal/Melee/Ranged) an officer expects this bare Name to fill, so it can sit on the roster under that tab before it has a character. Meaningless once claimed -- a claimed row''s role comes from its character''s class_spec_id instead, never from here.';
 
 -- A names row has to point at a membership on its own team; nothing else
 -- enforced that, and an officer's client picking from the wrong team's

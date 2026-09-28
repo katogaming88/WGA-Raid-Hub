@@ -1,8 +1,9 @@
-import { Fragment, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { Fragment, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Link } from 'react-router';
 import { can, charactersOn, useAccess } from '../auth/access';
 import { useSession } from '../auth/session';
 import { DataState } from '../components/DataState';
+import { useStatus } from '../components/Status';
 import { useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
 import { seasonName } from '../profile/profile';
@@ -30,7 +31,7 @@ import { altCountLabel, altsOf, earlierOwners, type SavedCharacter } from '../ch
 import { useEarlierLoot, useTeamAlts } from '../characters/useCharacters';
 import { MainSwapReviews } from '../characters/MainSwapReviews';
 import { NameRowActions } from './NameRowActions';
-import { useNames } from './useNames';
+import { useCreateName, useNames } from './useNames';
 import type { NameRow } from './names';
 import {
   useIncomingRoster,
@@ -260,6 +261,9 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
           {() => null}
         </DataState>
       )}
+      {/* Bare Names (#1355): officers add one ahead of a raider having an
+          account, optionally with a role guess so it sits under that tab. */}
+      {officer && <CreateNameForm teamId={team.id} />}
       {groups.length === 0 && unclaimed.length === 0 ? (
         <div className="card placeholder">
           <p>No one is on this team’s roster yet.</p>
@@ -332,6 +336,71 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
         </>
       )}
     </div>
+  );
+}
+
+// Officer: a bare Name, with an optional raid role guess so it can sit under
+// that tab before it has a character (#1355).
+function CreateNameForm({ teamId }: { teamId: number }) {
+  const id = useId();
+  const [label, setLabel] = useState('');
+  const [role, setRole] = useState('');
+  const create = useCreateName(teamId);
+  const { announce } = useStatus();
+
+  const onSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    create.mutate(
+      { label: trimmed, role: role || null },
+      {
+        onSuccess: () => {
+          announce('success', `${trimmed} added.`);
+          setLabel('');
+          setRole('');
+        }
+      }
+    );
+  };
+
+  return (
+    <form onSubmit={onSubmit} noValidate className="create-name-form">
+      <div className="field">
+        <label className="field-label" htmlFor={`${id}-label`}>
+          Add a Name
+        </label>
+        <input
+          id={`${id}-label`}
+          className="input"
+          type="text"
+          placeholder="Raider's display name"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+        />
+      </div>
+      <div className="field">
+        <label className="field-label" htmlFor={`${id}-role`}>
+          Role
+        </label>
+        <select id={`${id}-role`} className="input" value={role} onChange={(e) => setRole(e.target.value)}>
+          <option value="">Not sure yet</option>
+          {ROLE_ORDER.map((r) => (
+            <option key={r} value={r}>
+              {ROLE_LABELS[r]}
+            </option>
+          ))}
+        </select>
+      </div>
+      {create.isError && (
+        <p className="form-error" role="alert">
+          That did not save: {create.error.message}
+        </p>
+      )}
+      <button type="submit" className="button" disabled={create.isPending || !label.trim()}>
+        {create.isPending ? 'Adding…' : 'Add Name'}
+      </button>
+    </form>
   );
 }
 
@@ -496,9 +565,12 @@ function RosterRow({
         )}
         {raider.character && <span className="raider-character">{raider.character}</span>}
         {altCount > 0 && <span className="alt-count">{altCountLabel(altCount)}</span>}
-        <span className="raider-spec">
-          {raider.spec} {raider.className}
-        </span>
+        {/* A bare Name with only a role guess has no class/spec yet (#1355). */}
+        {(raider.spec || raider.className) && (
+          <span className="raider-spec">
+            {raider.spec} {raider.className}
+          </span>
+        )}
       </th>
       {details && (
         <>
@@ -527,12 +599,13 @@ function RosterRow({
                 {s}
               </span>
             ))}
-            {officer && teamId !== undefined && raider.nameId != null && (
+            {teamId !== undefined && raider.nameId != null && (
               <NameRowActions
                 teamId={teamId}
                 officer={officer}
                 nameId={raider.nameId}
                 label={raider.name}
+                role={raider.role}
                 teamMemberId={raider.teamMemberId ?? null}
               />
             )}
@@ -580,7 +653,14 @@ function UnclaimedRow({
             </>
           )}
           <td className="status-cell">
-            <NameRowActions teamId={teamId} officer={officer} nameId={name.id} label={name.label} teamMemberId={null} />
+            <NameRowActions
+              teamId={teamId}
+              officer={officer}
+              nameId={name.id}
+              label={name.label}
+              role={name.role}
+              teamMemberId={null}
+            />
           </td>
         </>
       )}
