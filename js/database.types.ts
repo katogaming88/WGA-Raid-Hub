@@ -979,6 +979,45 @@ export type Database = {
           },
         ]
       }
+      names: {
+        Row: {
+          created_at: string
+          id: number
+          label: string
+          team_id: number
+          team_member_id: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          label: string
+          team_id: number
+          team_member_id?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          label?: string
+          team_id?: number
+          team_member_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "names_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "names_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -3755,6 +3794,10 @@ export type Database = {
           role: string
         }[]
       }
+      claim_name: {
+        Args: { p_name_id: number; p_team_id: number }
+        Returns: undefined
+      }
       claim_raid_signup_sheet: {
         Args: { p_channel_id: string; p_raid_date: string; p_team_id: number }
         Returns: {
@@ -3801,6 +3844,10 @@ export type Database = {
       }
       delete_self_received_request: {
         Args: { p_id: number }
+        Returns: undefined
+      }
+      delete_team_member: {
+        Args: { p_team_id: number; p_team_member_id: number }
         Returns: undefined
       }
       direct_mark_received: {

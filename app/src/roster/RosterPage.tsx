@@ -27,6 +27,7 @@ import { CharacterIcon } from '../characters/CharacterIcon';
 import { altCountLabel, altsOf, earlierOwners, type SavedCharacter } from '../characters/characters';
 import { useEarlierLoot, useTeamAlts } from '../characters/useCharacters';
 import { MainSwapReviews } from '../characters/MainSwapReviews';
+import { NamesSection } from './NamesSection';
 import {
   useIncomingRoster,
   useRosterGear,
@@ -234,80 +235,84 @@ function CurrentRoster({ groups, players }: { groups: RoleGroup[]; players: Rost
   const summary = summarize(groups);
   const shown = filter === 'All' ? groups : groups.filter((g) => g.role === filter);
 
-  if (groups.length === 0) {
-    return (
-      <div className="card placeholder">
-        <p>No one is on this team’s roster yet.</p>
-      </div>
-    );
-  }
-
   // The filter sits above both columns, so the summary panel starts level with
   // the table rather than with the filter (Kat, 2026-09-14).
   return (
     <div className="roster-current">
       {/* Main swaps waiting for an officer (#631), above the team they change. */}
       <MainSwapReviews teamId={team.id} officer={officer} />
-      <div className="role-filter" role="group" aria-label="Show role">
-        {(['All', ...ROLE_ORDER] as Filter[]).map((f) => (
-          <button
-            key={f}
-            type="button"
-            className="role-filter-option"
-            aria-pressed={filter === f}
-            onClick={() => setFilter(f)}
-          >
-            {f === 'All' ? 'Everyone' : ROLE_LABELS[f]}
-          </button>
-        ))}
-      </div>
-      {officer && (
-        <div className="alts-toggle">
-          <div className="role-filter" role="group" aria-label="Alts">
-            <button
-              type="button"
-              className="role-filter-option"
-              aria-pressed={showAlts}
-              onClick={() => setShowAlts(true)}
-            >
-              Show alts
-            </button>
-            <button
-              type="button"
-              className="role-filter-option"
-              aria-pressed={!showAlts}
-              onClick={() => setShowAlts(false)}
-            >
-              Hide alts
-            </button>
+      {/* Bare and claimed Names (#1355): self-service Claim, officer manage. Shown
+          even with no characters on the roster yet -- that is exactly the state
+          an all-bare-Names team starts in. */}
+      <NamesSection teamId={team.id} officer={officer} />
+      {groups.length === 0 ? (
+        <div className="card placeholder">
+          <p>No one is on this team’s roster yet.</p>
+        </div>
+      ) : (
+        <>
+          <div className="role-filter" role="group" aria-label="Show role">
+            {(['All', ...ROLE_ORDER] as Filter[]).map((f) => (
+              <button
+                key={f}
+                type="button"
+                className="role-filter-option"
+                aria-pressed={filter === f}
+                onClick={() => setFilter(f)}
+              >
+                {f === 'All' ? 'Everyone' : ROLE_LABELS[f]}
+              </button>
+            ))}
           </div>
-          <span>Only officers see this switch and the rows under a raider.</span>
-        </div>
+          {officer && (
+            <div className="alts-toggle">
+              <div className="role-filter" role="group" aria-label="Alts">
+                <button
+                  type="button"
+                  className="role-filter-option"
+                  aria-pressed={showAlts}
+                  onClick={() => setShowAlts(true)}
+                >
+                  Show alts
+                </button>
+                <button
+                  type="button"
+                  className="role-filter-option"
+                  aria-pressed={!showAlts}
+                  onClick={() => setShowAlts(false)}
+                >
+                  Hide alts
+                </button>
+              </div>
+              <span>Only officers see this switch and the rows under a raider.</span>
+            </div>
+          )}
+          {officer && officerData.isError && (
+            <DataState query={officerData} label="attendance and items">
+              {() => null}
+            </DataState>
+          )}
+          {officer && teamAlts.isError && (
+            <DataState query={teamAlts} label="alts">
+              {() => null}
+            </DataState>
+          )}
+          <div className="roster-layout">
+            <div className="roster-main">
+              <RosterTable
+                groups={shown}
+                caption="Current roster"
+                details
+                profileLink={profileLink}
+                stats={stats}
+                alts={alts}
+                showAlts={showAlts}
+              />
+            </div>
+            <RosterSummaryPanel summary={summary} />
+          </div>
+        </>
       )}
-      {officer && officerData.isError && (
-        <DataState query={officerData} label="attendance and items">
-          {() => null}
-        </DataState>
-      )}
-      {officer && teamAlts.isError && (
-        <DataState query={teamAlts} label="alts">
-          {() => null}
-        </DataState>
-      )}
-      <div className="roster-layout">
-        <div className="roster-main">
-          <RosterTable
-            groups={shown}
-            caption="Current roster"
-            details
-            profileLink={profileLink}
-            stats={stats}
-            alts={alts}
-            showAlts={showAlts}
-          />
-        </div>
-        <RosterSummaryPanel summary={summary} />
-      </div>
     </div>
   );
 }

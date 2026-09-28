@@ -8202,6 +8202,111 @@
           "def": "CREATE TRIGGER trg_raid_night_participation_team_id_check BEFORE INSERT OR UPDATE ON public.raid_night_participation FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
+    },
+    {
+      "name": "public.names",
+      "type": "BASE TABLE",
+      "comment": "A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming/assigning/unclaiming only ever updates this row -- team_members is never created, merged or deleted as part of it.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "label",
+          "type": "text",
+          "nullable": false,
+          "comment": "The display name shown until claimed. Survives Remove claim (the label goes back to bare); does not survive Delete Member (the row is deleted with the membership)."
+        },
+        {
+          "name": "team_member_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "Null for a bare, unclaimed Name. Set by self-service claim (claim_name) or an officer's direct assign/remove-claim table write."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "names_pkey",
+          "def": "CREATE UNIQUE INDEX names_pkey ON public.names USING btree (id)",
+          "table": "public.names",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "names_team_id_idx",
+          "def": "CREATE INDEX names_team_id_idx ON public.names USING btree (team_id)",
+          "table": "public.names",
+          "columns": [
+            "team_id"
+          ]
+        },
+        {
+          "name": "names_team_member_id_key",
+          "def": "CREATE UNIQUE INDEX names_team_member_id_key ON public.names USING btree (team_member_id) WHERE (team_member_id IS NOT NULL)",
+          "table": "public.names",
+          "columns": [
+            "team_member_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "names_team_member_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL",
+          "table": "public.names",
+          "referenced_table": "public.team_members",
+          "columns": [
+            "team_member_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "names_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.names",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "names_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.names",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "names_check_team_member_same_team",
+          "def": "CREATE TRIGGER names_check_team_member_same_team BEFORE INSERT OR UPDATE OF team_member_id ON public.names FOR EACH ROW EXECUTE FUNCTION names_team_member_same_team()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -9681,6 +9786,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.names",
+      "columns": [
+        "team_member_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_members",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.names",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -10498,6 +10629,24 @@
       "name": "public.wishlist_setup_status",
       "return_type": "record",
       "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.names_team_member_same_team",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.claim_name",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_name_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.delete_team_member",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_team_member_id integer",
       "type": "FUNCTION"
     }
   ],

@@ -73,6 +73,7 @@
 | [public.team_invite_links](public.team_invite_links.md) | 5 | One active invite code per team (#1264). Resetting overwrites the row, so the old code stops resolving immediately. | BASE TABLE |
 | [public.item_seasons](public.item_seasons.md) | 2 | The seasons a dungeon or crafted item is offered in (#1166). A raid item has no row: its season comes from raid_zones. Filled by scripts/dungeon-items-sql.js, never by a client. | BASE TABLE |
 | [public.raid_night_participation](public.raid_night_participation.md) | 6 | Who was actually in for a real pull of one boss on one raid night (#1242), one row per raider present. Written only by record_raid_night_participation(), called from the attendance sync once a night has a lineup (raid_night_bosses). Compare against raid_night_lineups for planned-vs-actual. | BASE TABLE |
+| [public.names](public.names.md) | 5 | A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming/assigning/unclaiming only ever updates this row -- team_members is never created, merged or deleted as part of it. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -214,6 +215,9 @@
 | public.also_on_teams | record | p_team_id integer | FUNCTION |
 | public.record_raid_night_participation | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[] | FUNCTION |
 | public.wishlist_setup_status | record | p_team_id integer | FUNCTION |
+| public.names_team_member_same_team | trigger |  | FUNCTION |
+| public.claim_name | void | p_team_id integer, p_name_id integer | FUNCTION |
+| public.delete_team_member | void | p_team_id integer, p_team_member_id integer | FUNCTION |
 
 ## Enums
 
@@ -351,6 +355,8 @@ erDiagram
 "public.item_seasons" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.raid_night_participation" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.raid_night_participation" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
+"public.names" }o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL"
+"public.names" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -1048,6 +1054,13 @@ erDiagram
   date raid_date FK
   integer encounter_id FK
   integer player_id FK
+  timestamp_with_time_zone created_at
+}
+"public.names" {
+  integer id
+  integer team_id FK
+  text label
+  integer team_member_id FK
   timestamp_with_time_zone created_at
 }
 ```

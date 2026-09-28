@@ -10,6 +10,24 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-28 -- a roster row's label is a `names` table, separate from `team_members` (#1355)
+
+Shipped: 20260928110812_names_table.sql
+
+Person-first onboarding (#1342/#1355) needs a roster row to exist as a bare label before anyone has signed in for it -- `team_members.person_id` is `not null`, so it can never represent that state. `names` bridges it: `team_id`, `label`, a nullable `team_member_id`. A row is bare (no `team_member_id`), claimed (linked), or the label doesn't exist at all yet and the membership is joined-unclaimed (a `team_members` row with no `names` row pointing at it -- not a stored state, just the left-join).
+
+- **`team_members` never churns.** Earlier drafts had it created speculatively and merged/deleted once a bare Name and a joined account matched up; Kat's read was that churn on the table everything else (attendance, loot, priority, notifications) hangs off is the kind of thing that causes problems later. Every write here only ever updates `names.team_member_id` -- claim, assign, and remove-claim are all the same one-column update, from three different callers.
+- **Only two things needed to be RPCs.** `claim_name(team_id, name_id)` (self-service) may need to create the caller's own `team_members` row first (generalizing `claim_character()`'s pattern), which the table policy can't authorize for someone with no role yet. `delete_team_member(team_id, team_member_id)` ("Delete Member," someone who left) deletes across two tables. Create/rename/assign/remove-claim are all plain client-side `names` table writes under the existing officer-write shape (`players`' own convention: no RPC exists for a plain roster-row edit either).
+- **Delete Member's bar is officer, not team_leader.** `team_members`' own table policy is team-leader-write-only, but the decision on #1355 was explicit that officers get this tool directly from the row menu, so `delete_team_member()` checks the same officer bar `players`' write policy does (`my_officer_team_ids()`/`is_guild_officer()`/`is_site_admin()`) rather than reusing the stricter table policy.
+- **A left Name does not survive; a wrong-claim Name does.** Remove claim (an officer fixing a bad self-service pick) sets `team_member_id = null` and leaves the label bare, reusable. Delete Member deletes the `names` row along with the membership -- a label for someone who left isn't worth keeping around bare (clarified on #1355 after an initial pass at the comment left this ambiguous). `players.team_member_id` needed no new handling either way; its existing `ON DELETE SET NULL` already covers a deleted membership.
+- **Two DB-level guards do the validation an RPC would otherwise have to.** A partial unique index on `team_member_id` (`where team_member_id is not null`) stops a membership from being claimed by two Names at once -- covers both the self-service race and an officer assign. A trigger (`names_check_team_member_same_team`) stops a `names` row from ever pointing at a membership on a different team, since nothing else ties the two `team_id` columns together for a plain table write.
+- **`team_invite_link_join()` is unchanged.** It still writes `team_members` (and `players`) immediately and in full, per the last #1355 comment -- the "joined, unclaimed" pool this feeds is read, not written.
+- **Built without waiting on Rex's database-side review** (Kat, 2026-09-28), which #1355 had left as an open question before implementation.
+
+[Full discussion -> #1355](https://github.com/katogaming88/WGA-Raid-Hub/issues/1355).
+
+---
+
 ## 2026-09-28 -- the setup status and the demand report count one season (#1268)
 
 Shipped: 20260928020820_demand_and_setup_status_season.sql

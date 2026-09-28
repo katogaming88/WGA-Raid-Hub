@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.160.0] - 2026-09-28
+
+### Backend
+
+- A `names` table (#1355): a team roster row's display label, separate from `team_members`. A row is bare (officer-created, no account yet), claimed (linked to a `team_members` row), or, with no `names` row at all, joined-unclaimed (an account signed in via invite link but not yet claimed). Officers create, rename, assign and remove a claim as plain writes; `claim_name(team_id, name_id)` is the self-service claim (generalizing `claim_character()` to a row with no character or BattleTag needed); `delete_team_member(team_id, team_member_id)` is "Delete Member," which deletes the membership and the Name that claimed it together. `team_members` itself is never created, merged or deleted as part of claiming.
+
+### Frontend
+
+- New app: a Names section on the Roster page (#1355). Anyone signed in can Claim a bare Name; officers can add a bare Name, edit its label, remove a wrong claim, or delete a member who left. No display name is shown yet for who holds a claimed row -- that needs a way to read another team member's identity that doesn't exist yet.
+
 ## [3.159.1] - 2026-09-28
 
 ### Frontend
