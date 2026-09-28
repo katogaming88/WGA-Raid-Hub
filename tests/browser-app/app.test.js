@@ -475,6 +475,121 @@ const ATTENDANCE_MANAGE = {
   tables: ATTENDANCE_TABLES
 };
 
+// Officer Settings (#1357, #1103 row 1): General, Season, Raid progression and
+// Danger zone, so every card state (a saved value, a closed tier's WCL
+// Performance Baseline row, a raid/boss row, and the Archive season control)
+// is on the page axe measures.
+const SETTINGS_GENERAL_TABLES = {
+  team_settings: [
+    {
+      team_id: 1,
+      seasonView: null,
+      trialWeeks: 6,
+      trialAttend: 80,
+      targetTankCount: 2,
+      targetHealCount: 5,
+      warcraftLogsUrl: 'https://www.warcraftlogs.com/guild/id/12345',
+      discordSignupChannelId: '999',
+      signupSheetLeadHours: 48
+    }
+  ],
+  raid_zones: [{ season: 'MID1' }, { season: 'MID2' }]
+};
+const SETTINGS_GENERAL = {
+  session: OFFICER,
+  who: 'officer',
+  path: '/g/wga/t/phoenix/officer/settings',
+  sentinel: 'main:has(.settings-cards)',
+  tables: SETTINGS_GENERAL_TABLES
+};
+
+const SETTINGS_HISTORY = [
+  {
+    code: 'MID1',
+    name: 'Midnight Season 1',
+    start: '2026-01-01',
+    end: '2026-03-31',
+    raids: [{ name: 'Old Raid', wclZoneId: 40, isMiniRaid: false, bosses: [{ name: 'A', mythicDate: '2026-03-01' }] }],
+    roster: [
+      {
+        nameRealm: 'Aurelith-Illidan',
+        role: 'Tank',
+        isTrial: false,
+        isBench: false,
+        joinDate: '2025-01-01',
+        attendance: '90.0%'
+      }
+    ]
+  }
+];
+const SETTINGS_SEASON = {
+  session: OFFICER,
+  who: 'officer',
+  path: '/g/wga/t/phoenix/officer/settings/season',
+  sentinel: 'main:has(.settings-history-list)',
+  tables: { team_settings: [{ team_id: 1, history: SETTINGS_HISTORY }], player_wcl_season_perf: [] }
+};
+
+const SETTINGS_PROGRESSION = {
+  session: OFFICER,
+  who: 'officer',
+  path: '/g/wga/t/phoenix/officer/settings/progression',
+  sentinel: 'main:has(.settings-raid-list)',
+  tables: {
+    team_settings: [
+      {
+        team_id: 1,
+        raidProgression: [
+          {
+            name: 'Test Raid',
+            isMiniRaid: false,
+            aotcDate: '2026-05-01',
+            bosses: [{ name: 'First Boss', mythicDate: '2026-04-20' }]
+          }
+        ]
+      }
+    ]
+  }
+};
+
+const SETTINGS_DANGER = {
+  session: OFFICER,
+  who: 'officer',
+  path: '/g/wga/t/phoenix/officer/settings/danger',
+  sentinel: 'main:has(.settings-danger-card)',
+  tables: {
+    seasons: [
+      { code: 'MID1', display_name: 'Midnight Season 1', starts_at: '2026-01-01', ends_at: '2026-03-31' },
+      { code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-04-01', ends_at: null }
+    ],
+    team_settings: [{ team_id: 1 }],
+    players: [
+      {
+        id: 1,
+        name_realm: 'Aurelith-Illidan',
+        nickname: null,
+        is_trial: false,
+        is_bench: false,
+        is_rotator: false,
+        tier_pieces_equipped: null,
+        join_date: '2025-01-01',
+        classes_specs: { class: 'Warrior', spec: 'Protection', role: 'Tank' }
+      }
+    ],
+    attendance: [
+      {
+        id: 1,
+        player_id: 1,
+        raid_date: '2026-01-05',
+        status: 'Present',
+        report_excluded: false,
+        report_title: null,
+        source: null
+      }
+    ]
+  }
+};
+
 const GUILD = { path: '/g/wga', sentinel: 'main:has(.guild-officer)', teams: GUILD_TEAMS, tables: GUILD_TABLES };
 const GUILD_OFFICER = {
   ...GUILD,
@@ -664,6 +779,24 @@ const STATES = [
     label: 'attendance manage, officer, committing scores',
     ...ATTENDANCE_MANAGE,
     click: 'role=button[name="Commit Attendance Scores"]'
+  },
+  { label: 'settings general, officer', ...SETTINGS_GENERAL },
+  { label: 'settings general, officer, light', ...SETTINGS_GENERAL, colorScheme: 'light' },
+  { label: 'settings season, officer', ...SETTINGS_SEASON },
+  { label: 'settings season, officer, light', ...SETTINGS_SEASON, colorScheme: 'light' },
+  {
+    label: 'settings season, officer, roster shown',
+    ...SETTINGS_SEASON,
+    click: 'role=button[name="View Roster"]'
+  },
+  { label: 'settings progression, officer', ...SETTINGS_PROGRESSION },
+  { label: 'settings progression, officer, light', ...SETTINGS_PROGRESSION, colorScheme: 'light' },
+  { label: 'settings danger zone, officer', ...SETTINGS_DANGER },
+  { label: 'settings danger zone, officer, light', ...SETTINGS_DANGER, colorScheme: 'light' },
+  {
+    label: 'settings danger zone, officer, confirming archive',
+    ...SETTINGS_DANGER,
+    click: 'role=button[name="Archive season"]'
   },
   {
     label: 'calendar night, officer changing an answer',

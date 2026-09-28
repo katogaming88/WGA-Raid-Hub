@@ -1,0 +1,186 @@
+/* Officer Settings: General, Season, Raid progression, Danger zone (#1357, #1103 row 1). */
+
+.settings-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.settings-card {
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.settings-number {
+  max-width: 80px;
+}
+
+.settings-url,
+.settings-channel {
+  max-width: 320px;
+}
+
+.settings-verify-ok {
+  color: var(--good, var(--text));
+}
+
+.settings-verify-error {
+  color: var(--bad);
+}
+
+/* Season History */
+
+.settings-history-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-history-row {
+  padding: 0.45rem 0 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-history-row:last-child {
+  border-bottom: none;
+}
+
+.settings-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.settings-history-raids {
+  margin-left: var(--space-2);
+}
+
+.settings-roster-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--space-2);
+  font-size: 0.95rem;
+}
+
+.settings-roster-table th {
+  text-align: left;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  padding: 2px var(--space-2) 2px 0;
+}
+
+.settings-roster-table td {
+  padding: 2px var(--space-2) 2px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-perf-fetch-row {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--border);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.settings-perf-select {
+  max-width: 260px;
+}
+
+/* Raid progression */
+
+.settings-raid-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.settings-raid-block {
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.settings-raid-name {
+  flex: 1;
+  min-width: 200px;
+}
+
+.settings-mini-check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.settings-date {
+  max-width: 170px;
+}
+
+.settings-boss-label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.settings-boss-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.settings-boss-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.2rem 0;
+}
+
+.settings-boss-row.is-drag-over {
+  outline: 2px dashed var(--border-strong);
+  outline-offset: 2px;
+}
+
+.settings-boss-name {
+  flex: 1;
+  min-width: 140px;
+}
+
+.settings-drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+}
+
+/* Danger zone */
+
+.settings-danger-card {
+  border-color: var(--bad);
+}
+
+.button-danger {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.button-danger:hover {
+  background: var(--bad);
+  color: var(--button-text, #fff);
+}
