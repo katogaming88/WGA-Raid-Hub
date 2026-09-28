@@ -12,6 +12,37 @@ answers to.
 
 ---
 
+## [Unreleased]
+
+### Frontend
+
+- The Reports tab's BiS demand table is about the season picked. Its Demand
+  column counted every BiS pick a raider had ever made, whatever season it was
+  for, beside awards for the season picked, so picking last season showed this
+  season's demand next to last season's awards. Both columns now come from the
+  season picked, and a season nobody on the roster has a BiS pick in says so
+  (#1268).
+
+### Backend
+
+- The wishlist check behind the Discord reminder is per season. It counted a
+  slot filled in one season as filled in every season, so a raider whose list
+  was complete for last season was not reminded about this one. It now answers
+  for the seasons a raider can edit on their own page: the ones the team opened
+  from the season being raided on, and the season being raided for a raider an
+  officer gave Allow Wishlist Edit. A finished season left open is not chased,
+  and a team that has not opened wishlist editing gets no reminders (#1268).
+- The BiS demand report counts demand per season and matches awards only within
+  their own season. An item handed out in a season nobody wants it in is not
+  listed.
+
+### Bot
+
+- `/nudge-missing` sends each raider one message however many seasons it
+  reminds them about, and names the season on each line once the team has more
+  than one open. With one season open, which is every team today, the message
+  reads as before.
+
 ## [3.159.0] - 2026-09-27
 
 ### Frontend
