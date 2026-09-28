@@ -23,22 +23,16 @@ declare
   missing text[];
 begin
   for prec in
-    with tiers as (
-      -- The tiers a raider's own page lets them edit (#936): the team's open
-      -- switches from the live tier on, and the live tier for a raider with
-      -- the per-raider override. A union, so the two meet as one row.
-      select tp.id as tier_player_id, s.code, s.display_name, s.starts_at
-      from players tp
-      join team_seasons ts on ts.team_id = tp.team_id and ts.wishlist_open
+    with live as (
+      select s.code, s.display_name, s.starts_at from seasons s where s.code = live_code
+    ),
+    opened as (
+      select s.code, s.display_name, s.starts_at
+      from team_seasons ts
       join seasons s on s.code = ts.season_code
-      where tp.team_id = p_team_id
-        and s.starts_at >= (select ls.starts_at from seasons ls where ls.code = live_code)
-      union
-      select tp.id, s.code, s.display_name, s.starts_at
-      from players tp
-      join seasons s on s.code = live_code
-      where tp.team_id = p_team_id
-        and tp.wishlist_allowed
+      join live l on s.starts_at >= l.starts_at
+      where ts.team_id = p_team_id
+        and ts.wishlist_open
     )
     select p.id, p.name_realm, p.bis_link, pe.discord_id,
       t.code as tier_code, t.display_name as tier_name,
@@ -47,7 +41,14 @@ begin
     from players p
     join team_members tm on tm.id = p.team_member_id
     join people pe on pe.id = tm.person_id
-    join tiers t on t.tier_player_id = p.id
+    -- The tiers a raider's own page lets them edit (#936): the team's open
+    -- tiers from the live one on, and the live tier for a raider with the
+    -- per-raider override. A union, so the two meet as one row.
+    cross join lateral (
+      select o.code, o.display_name, o.starts_at from opened o
+      union
+      select l.code, l.display_name, l.starts_at from live l where p.wishlist_allowed
+    ) t
     where p.team_id = p_team_id
       and p.archived_at is null
     order by p.id, t.starts_at
