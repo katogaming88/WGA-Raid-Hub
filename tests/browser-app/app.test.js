@@ -590,6 +590,40 @@ const SETTINGS_DANGER = {
   }
 };
 
+// Audit log (#1358, #1103 row 1): one entry with no target (Trial Thresholds
+// Set) and one naming a player (Roster Targets Set), so both the actor-name
+// and target-name resolution are on the page axe measures.
+const SETTINGS_AUDIT_LOG = {
+  session: OFFICER,
+  who: 'officer',
+  path: '/g/wga/t/phoenix/officer/settings/audit-log',
+  sentinel: 'main:has(.settings-audit-time)',
+  rpc: { resolve_actor_name: 'Aurelith' },
+  tables: {
+    audit_log: [
+      {
+        id: 1,
+        actor_id: 'actor-1',
+        action: 'Trial Thresholds Set',
+        target_type: null,
+        target_id: null,
+        detail: '6 wk / 80%',
+        created_at: '2026-09-01T12:00:00Z'
+      },
+      {
+        id: 2,
+        actor_id: 'actor-1',
+        action: 'Roster Targets Set',
+        target_type: 'players',
+        target_id: 5,
+        detail: { targetTankCount: 2, targetHealCount: 5 },
+        created_at: '2026-09-02T12:00:00Z'
+      }
+    ],
+    players: [{ id: 5, name_realm: 'Torbjorn-Illidan' }]
+  }
+};
+
 const GUILD = { path: '/g/wga', sentinel: 'main:has(.guild-officer)', teams: GUILD_TEAMS, tables: GUILD_TABLES };
 const GUILD_OFFICER = {
   ...GUILD,
@@ -793,6 +827,8 @@ const STATES = [
   { label: 'settings progression, officer, light', ...SETTINGS_PROGRESSION, colorScheme: 'light' },
   { label: 'settings danger zone, officer', ...SETTINGS_DANGER },
   { label: 'settings danger zone, officer, light', ...SETTINGS_DANGER, colorScheme: 'light' },
+  { label: 'settings audit log, officer', ...SETTINGS_AUDIT_LOG },
+  { label: 'settings audit log, officer, light', ...SETTINGS_AUDIT_LOG, colorScheme: 'light' },
   {
     label: 'settings danger zone, officer, confirming archive',
     ...SETTINGS_DANGER,
