@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.158.4] - 2026-09-27
+
+### Frontend
+
+- New app: the officer dashboard's Settings > Audit log page (#1358, #1103 row 1), ported from `js/tabs/tab-audit.js`. Every action any officer feature has logged for the team, newest first, searchable across officer/action/target/detail, and paged 50 rows at a time (First/Previous/Next/Last, both above and below the table). Same detail-string humanizing (nested jsonb flattened to `Key: Value`, arrays as an item count) and the same `resolve_actor_name()`/`players` lookups for Changed By and Target.
+
+### Project
+
+- `app/src/settings/audit.test.ts` covers the detail-formatting, search and pagination rules; `settings-pages.test.tsx` and a new `tests/browser-app/app.test.js` state cover the page itself, actor/target resolution included, plus the WCAG sweep.
+
 ## [3.158.3] - 2026-09-27
 
 ### Project

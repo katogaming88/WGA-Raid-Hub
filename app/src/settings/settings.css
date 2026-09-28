@@ -169,6 +169,16 @@
   color: var(--text-muted);
 }
 
+/* Audit log */
+
+.settings-audit-search {
+  max-width: 320px;
+}
+
+.settings-audit-time {
+  white-space: nowrap;
+}
+
 /* Danger zone */
 
 .settings-danger-card {

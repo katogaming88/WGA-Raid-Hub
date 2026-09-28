@@ -10,6 +10,7 @@ import { AttendanceManagePage } from './attendance/AttendanceManagePage';
 import { GeneralSettingsPage } from './settings/GeneralSettingsPage';
 import { SeasonSettingsPage } from './settings/SeasonSettingsPage';
 import { ProgressionSettingsPage } from './settings/ProgressionSettingsPage';
+import { AuditLogPage } from './settings/AuditLogPage';
 import { DangerZonePage } from './settings/DangerZonePage';
 import { GuildHomePage } from './guild/GuildHomePage';
 import { BoePage } from './boe/BoePage';
@@ -50,6 +51,7 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   'officer/settings': <GeneralSettingsPage />,
   'officer/settings/season': <SeasonSettingsPage />,
   'officer/settings/progression': <ProgressionSettingsPage />,
+  'officer/settings/audit-log': <AuditLogPage />,
   'officer/settings/danger': <DangerZonePage />
 };
 

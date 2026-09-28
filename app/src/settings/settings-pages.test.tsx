@@ -252,6 +252,124 @@ describe('Raid progression', () => {
   });
 });
 
+// -- Audit log ----------------------------------------------------------------
+
+describe('Audit log', () => {
+  const ROWS = [
+    {
+      id: 1,
+      actor_id: 'actor-1',
+      action: 'Trial Thresholds Set',
+      target_type: null,
+      target_id: null,
+      detail: '6 wk / 80%',
+      created_at: '2026-09-01T12:00:00Z'
+    },
+    {
+      id: 2,
+      actor_id: 'actor-2',
+      action: 'Roster Targets Set',
+      target_type: 'players',
+      target_id: 5,
+      detail: { targetTankCount: 2, targetHealCount: 5 },
+      created_at: '2026-09-02T12:00:00Z'
+    }
+  ];
+
+  function auditHandlers() {
+    return officerHandlers({
+      from: (read) => {
+        if (read.table === 'audit_log') return { data: ROWS };
+        if (read.table === 'players') return { data: [{ id: 5, name_realm: 'Torbjorn-Illidan' }] };
+        return undefined;
+      },
+      rpc: (name, args) => {
+        if (name === 'resolve_actor_name') {
+          return { data: args['p_actor_id'] === 'actor-1' ? 'Aur' : 'Kat' };
+        }
+        return undefined;
+      }
+    });
+  }
+
+  it('shows every entry, newest first, with names and detail resolved', async () => {
+    renderApp('/g/wga/t/phoenix/officer/settings/audit-log', auditHandlers());
+    await screen.findByRole('heading', { name: 'Audit log' });
+    const rows = await screen.findAllByRole('row');
+    // rows[0] is the header row.
+    expect(within(rows[1]!).getByText('Kat')).toBeInTheDocument();
+    expect(within(rows[1]!).getByText('Torbjorn-Illidan')).toBeInTheDocument();
+    expect(within(rows[1]!).getByText('Target Tank Count: 2, Target Heal Count: 5')).toBeInTheDocument();
+    expect(within(rows[2]!).getByText('Aur')).toBeInTheDocument();
+  });
+
+  it('filters as you search, across every column', async () => {
+    renderApp('/g/wga/t/phoenix/officer/settings/audit-log', auditHandlers());
+    const table = (await screen.findByRole('table')).closest('.settings-card') as HTMLElement;
+    await within(table).findByText('Aur');
+    await userEvent.type(screen.getByRole('searchbox'), 'torbjorn');
+    expect(within(table).queryByText('Aur')).not.toBeInTheDocument();
+    expect(within(table).getByText('Kat')).toBeInTheDocument();
+  });
+
+  it('says so when a search matches nothing', async () => {
+    renderApp('/g/wga/t/phoenix/officer/settings/audit-log', auditHandlers());
+    await screen.findByRole('heading', { name: 'Audit log' });
+    await screen.findByText('Kat');
+    await userEvent.type(screen.getByRole('searchbox'), 'nothing matches this');
+    expect(await screen.findByText('No entries match your search.')).toBeInTheDocument();
+  });
+
+  it('pages a long log 50 at a time, resetting to page 1 on a new search', async () => {
+    const rows = Array.from({ length: 60 }, (_, i) => ({
+      id: i + 1,
+      actor_id: 'actor-1',
+      action: `Action ${i + 1}`,
+      target_type: null,
+      target_id: null,
+      detail: null,
+      created_at: `2026-09-01T${String(i % 24).padStart(2, '0')}:00:00Z`
+    }));
+    renderApp(
+      '/g/wga/t/phoenix/officer/settings/audit-log',
+      officerHandlers({
+        from: (read) => (read.table === 'audit_log' ? { data: rows } : undefined),
+        rpc: (name) => (name === 'resolve_actor_name' ? { data: 'Aur' } : undefined)
+      })
+    );
+    await screen.findByRole('heading', { name: 'Audit log' });
+    expect(await screen.findByText('60 entries.')).toBeInTheDocument();
+    expect(screen.getAllByText('Page 1 of 2')).toHaveLength(2); // top and bottom pagers
+    expect(screen.getAllByRole('row')).toHaveLength(51); // header + 50 entries
+
+    for (const button of screen.getAllByRole('button', { name: 'Previous' })) expect(button).toBeDisabled();
+    for (const button of screen.getAllByRole('button', { name: 'First' })) expect(button).toBeDisabled();
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Last' })[0]!);
+    expect(screen.getAllByText('Page 2 of 2')).toHaveLength(2);
+    for (const button of screen.getAllByRole('button', { name: 'Next' })) expect(button).toBeDisabled();
+    for (const button of screen.getAllByRole('button', { name: 'Last' })) expect(button).toBeDisabled();
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'First' })[0]!);
+    expect(screen.getAllByText('Page 1 of 2')).toHaveLength(2);
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Next' })[0]!);
+    expect(screen.getAllByText('Page 2 of 2')).toHaveLength(2);
+
+    await userEvent.type(screen.getByRole('searchbox'), 'Action'); // still matches all 60
+    await expect.poll(() => screen.getAllByText('Page 1 of 2').length).toBe(2);
+  });
+
+  it('says so when the log is empty', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/officer/settings/audit-log',
+      officerHandlers({ from: (read) => (read.table === 'audit_log' ? { data: [] } : undefined) })
+    );
+    await screen.findByRole('heading', { name: 'Audit log' });
+    expect(await screen.findByText('No audit log entries yet.')).toBeInTheDocument();
+  });
+});
+
 // -- Danger zone --------------------------------------------------------------
 
 describe('Danger zone', () => {
