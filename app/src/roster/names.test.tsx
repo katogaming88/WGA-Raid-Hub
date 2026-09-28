@@ -134,13 +134,13 @@ describe('Names on the Roster page', () => {
     const table = await screen.findByRole('table', { name: 'Current roster' });
     const claimedRow = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
     expect(within(claimedRow).getByRole('button', { name: 'Remove claim' })).toBeInTheDocument();
-    expect(within(claimedRow).getByRole('button', { name: 'Delete Member' })).toBeInTheDocument();
+    expect(within(claimedRow).getByRole('button', { name: 'Archive Member' })).toBeInTheDocument();
     const bareRow = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
     expect(within(bareRow).getByRole('button', { name: 'Edit' })).toBeInTheDocument();
     expect(within(bareRow).getByRole('button', { name: 'Delete Name' })).toBeInTheDocument();
   });
 
-  it('deletes a member after confirming, via delete_team_member', async () => {
+  it('archives a member after confirming, via archive_team_member', async () => {
     const user = userEvent.setup();
     const seen: Record<string, unknown>[] = [];
     renderApp(
@@ -148,7 +148,7 @@ describe('Names on the Roster page', () => {
       namesHandlers({
         role: 'officer',
         rpc(name, args) {
-          if (name === 'delete_team_member') {
+          if (name === 'archive_team_member') {
             seen.push(args);
             return { data: null };
           }
@@ -158,10 +158,10 @@ describe('Names on the Roster page', () => {
     );
     const table = await screen.findByRole('table', { name: 'Current roster' });
     const claimedRow = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
-    await user.click(within(claimedRow).getByRole('button', { name: 'Delete Member' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Delete Raz?' });
-    await user.click(within(dialog).getByRole('button', { name: 'Delete Member' }));
-    expect(await screen.findByText('Raz removed.')).toBeInTheDocument();
+    await user.click(within(claimedRow).getByRole('button', { name: 'Archive Member' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Archive Raz?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Archive Member' }));
+    expect(await screen.findByText('Raz archived.')).toBeInTheDocument();
     expect(seen[0]).toEqual({ p_team_id: 1, p_team_member_id: 9 });
   });
 
@@ -184,7 +184,7 @@ describe('Names on the Roster page', () => {
     const table = await screen.findByRole('table', { name: 'Current roster' });
     const claimedRow = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
     expect(within(claimedRow).queryByRole('button', { name: 'Remove claim' })).not.toBeInTheDocument();
-    expect(within(claimedRow).queryByRole('button', { name: 'Delete Member' })).not.toBeInTheDocument();
+    expect(within(claimedRow).queryByRole('button', { name: 'Archive Member' })).not.toBeInTheDocument();
     const bareRow = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
     expect(within(bareRow).queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
     expect(within(bareRow).queryByRole('button', { name: 'Delete Name' })).not.toBeInTheDocument();

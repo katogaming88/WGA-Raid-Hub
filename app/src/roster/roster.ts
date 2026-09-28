@@ -54,7 +54,7 @@ export type Raider = {
   tierPieces: number | null;
   statuses: Status[];
   // The names row claiming this row's membership, if any (#1355) -- lets the
-  // row carry its own officer actions (Edit/Remove claim/Delete Member).
+  // row carry its own officer actions (Edit/Remove claim/Archive Member).
   nameId?: number | null;
   teamMemberId?: number | null;
 };

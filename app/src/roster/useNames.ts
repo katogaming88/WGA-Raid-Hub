@@ -86,16 +86,16 @@ export function useClaimName(teamId: number) {
   );
 }
 
-// Officer: someone left. Takes the names row down with the membership, and
-// the character row that pointed at it loses its claim (players.team_member_id
-// goes to null on its own), so the roster read needs refreshing too.
-export function useDeleteTeamMember(teamId: number) {
+// Officer: someone left. Archives the membership and their active
+// characters (never deletes either -- Rex's review, #1355), so the roster
+// read needs refreshing too, alongside this team's Names.
+export function useArchiveTeamMember(teamId: number) {
   return useSupabaseMutation<null, { teamMemberId: number }>(
     async (client, { teamMemberId }) => {
-      const result = await client.rpc('delete_team_member', { p_team_id: teamId, p_team_member_id: teamMemberId });
+      const result = await client.rpc('archive_team_member', { p_team_id: teamId, p_team_member_id: teamMemberId });
       return { data: null, error: result.error };
     },
-    { key: ['delete-team-member', teamId], refreshes: [key(teamId), ['roster', teamId]] }
+    { key: ['archive-team-member', teamId], refreshes: [key(teamId), ['roster', teamId]] }
   );
 }
 

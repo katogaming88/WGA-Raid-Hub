@@ -12,5 +12,6 @@ AS $function$
   from team_members
   where team_id = p_team_id
     and person_id = my_person_id()
+    and archived_at is null
   limit 1;
 $function$;

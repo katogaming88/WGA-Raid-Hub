@@ -3,11 +3,11 @@ import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
 import { useSession } from '../auth/session';
 import { ROLE_LABELS, ROLE_ORDER } from './roster';
-import { useClaimName, useDeleteName, useDeleteTeamMember, useRemoveNameClaim, useRenameName } from './useNames';
+import { useArchiveTeamMember, useClaimName, useDeleteName, useRemoveNameClaim, useRenameName } from './useNames';
 
 // A Name's actions (#1355), embedded in its own roster row rather than a
 // separate list: Claim on a bare row (anyone signed in), Edit/Remove
-// claim/Delete Member once claimed, Edit/Delete Name while still bare.
+// claim/Archive Member once claimed, Edit/Delete Name while still bare.
 // Everything but Claim is officer-only.
 export function NameRowActions({
   teamId,
@@ -31,19 +31,19 @@ export function NameRowActions({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const claim = useClaimName(teamId);
   const removeClaim = useRemoveNameClaim(teamId);
-  const deleteMember = useDeleteTeamMember(teamId);
+  const archiveMember = useArchiveTeamMember(teamId);
   const deleteName = useDeleteName(teamId);
-  const deleting = teamMemberId !== null ? deleteMember : deleteName;
+  const deleting = teamMemberId !== null ? archiveMember : deleteName;
 
   if (!officer && teamMemberId !== null) return null;
 
   const onDeleted = () => {
     setConfirmDelete(false);
-    announce('success', `${label} removed.`);
+    announce('success', teamMemberId !== null ? `${label} archived.` : `${label} removed.`);
   };
   const onDelete = () =>
     teamMemberId !== null
-      ? deleteMember.mutate({ teamMemberId }, { onSuccess: onDeleted })
+      ? archiveMember.mutate({ teamMemberId }, { onSuccess: onDeleted })
       : deleteName.mutate({ nameId }, { onSuccess: onDeleted });
 
   return (
@@ -76,7 +76,7 @@ export function NameRowActions({
             </button>
           )}
           <button type="button" className="link-button" onClick={() => setConfirmDelete(true)}>
-            {teamMemberId !== null ? 'Delete Member' : 'Delete Name'}
+            {teamMemberId !== null ? 'Archive Member' : 'Delete Name'}
           </button>
         </>
       )}
@@ -101,10 +101,14 @@ export function NameRowActions({
         />
       )}
       {confirmDelete && (
-        <Dialog title={`Delete ${label}?`} onClose={() => setConfirmDelete(false)} busy={deleting.isPending}>
+        <Dialog
+          title={teamMemberId !== null ? `Archive ${label}?` : `Delete ${label}?`}
+          onClose={() => setConfirmDelete(false)}
+          busy={deleting.isPending}
+        >
           <p className="text-muted">
             {teamMemberId !== null
-              ? `This removes ${label} from the team outright, for someone who left. This cannot be undone from here.`
+              ? `${label} and their characters leave the active roster, for someone who left. Their history stays -- this Name, their loot and attendance are not deleted, and they can come back if they rejoin.`
               : `This deletes the bare Name "${label}". This cannot be undone from here.`}
           </p>
           {deleting.isError && (
@@ -123,7 +127,7 @@ export function NameRowActions({
               Cancel
             </button>
             <button type="button" className="button" disabled={deleting.isPending} onClick={onDelete}>
-              {deleting.isPending ? 'Deleting…' : teamMemberId !== null ? 'Delete Member' : 'Delete Name'}
+              {deleting.isPending ? 'Saving…' : teamMemberId !== null ? 'Archive Member' : 'Delete Name'}
             </button>
           </div>
         </Dialog>

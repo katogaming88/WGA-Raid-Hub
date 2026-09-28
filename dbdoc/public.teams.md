@@ -245,6 +245,7 @@ erDiagram
   text name_realm
   timestamp_with_time_zone updated_at
   integer person_id FK
+  timestamp_with_time_zone archived_at
 }
 "public.team_settings" {
   integer team_id FK

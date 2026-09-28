@@ -29,6 +29,8 @@ begin
     insert into public.team_members (team_id, discord_id, role)
     values (p_team_id, v_discord_id, 'raider')
     returning id into v_member_id;
+  else
+    update public.team_members set archived_at = null where id = v_member_id and archived_at is not null;
   end if;
 
   update public.names

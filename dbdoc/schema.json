@@ -2207,6 +2207,12 @@
           "name": "person_id",
           "type": "integer",
           "nullable": false
+        },
+        {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "Set when an officer archives this membership (archive_team_member, #1355) for someone who left -- never deleted, so a Name and the account's history keep pointing at something. Cleared by team_invite_link_join() if they come back. Every \"what is this person on this team\" predicate (my_team_role, my_officer_team_ids, my_leader_team_ids, is_any_team_officer, is_team_leader_anywhere) skips an archived row; my_player_ids() and earlier_characters() still read it, since that is the history."
         }
       ],
       "indexes": [
@@ -8206,7 +8212,7 @@
     {
       "name": "public.names",
       "type": "BASE TABLE",
-      "comment": "A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming/assigning/unclaiming only ever updates this row -- team_members is never created, merged or deleted as part of it.",
+      "comment": "A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming/assigning/unclaiming only ever updates this row -- team_members is never created or merged as part of it, and a names row outlives its membership being archived.",
       "columns": [
         {
           "name": "id",
@@ -8222,13 +8228,13 @@
           "name": "label",
           "type": "text",
           "nullable": false,
-          "comment": "The display name shown until claimed. Survives Remove claim (the label goes back to bare); does not survive Delete Member (the row is deleted with the membership)."
+          "comment": "The display name shown until claimed. Survives Remove claim (the label goes back to bare) and the membership being archived (archive_team_member) -- unique per team, case- and whitespace-insensitive, since claiming is picking one off a list."
         },
         {
           "name": "team_member_id",
           "type": "integer",
           "nullable": true,
-          "comment": "Null for a bare, unclaimed Name. Set by self-service claim (claim_name) or an officer's direct assign/remove-claim table write."
+          "comment": "Null for a bare, unclaimed Name. Set by self-service claim (claim_name) or an officer's direct assign/remove-claim table write. Unique: one Name per membership."
         },
         {
           "name": "role",
@@ -8253,23 +8259,34 @@
           ]
         },
         {
-          "name": "names_team_id_idx",
-          "def": "CREATE INDEX names_team_id_idx ON public.names USING btree (team_id)",
-          "table": "public.names",
-          "columns": [
-            "team_id"
-          ]
-        },
-        {
           "name": "names_team_member_id_key",
-          "def": "CREATE UNIQUE INDEX names_team_member_id_key ON public.names USING btree (team_member_id) WHERE (team_member_id IS NOT NULL)",
+          "def": "CREATE UNIQUE INDEX names_team_member_id_key ON public.names USING btree (team_member_id)",
           "table": "public.names",
           "columns": [
             "team_member_id"
           ]
+        },
+        {
+          "name": "names_team_id_label_key",
+          "def": "CREATE UNIQUE INDEX names_team_id_label_key ON public.names USING btree (team_id, lower(btrim(label)))",
+          "table": "public.names",
+          "columns": [
+            "team_id",
+            "lower"
+          ]
         }
       ],
       "constraints": [
+        {
+          "name": "names_label_check",
+          "type": "CHECK",
+          "def": "CHECK ((btrim(label) \u003c\u003e ''::text))",
+          "table": "public.names",
+          "referenced_table": "",
+          "columns": [
+            "label"
+          ]
+        },
         {
           "name": "names_role_check",
           "type": "CHECK",
@@ -8283,7 +8300,7 @@
         {
           "name": "names_team_member_id_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL",
+          "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE",
           "table": "public.names",
           "referenced_table": "public.team_members",
           "columns": [
@@ -8314,6 +8331,16 @@
           "referenced_table": "",
           "columns": [
             "id"
+          ]
+        },
+        {
+          "name": "names_team_member_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_member_id)",
+          "table": "public.names",
+          "referenced_table": "",
+          "columns": [
+            "team_member_id"
           ]
         }
       ],
@@ -9808,13 +9835,13 @@
       "columns": [
         "team_member_id"
       ],
-      "cardinality": "zero_or_more",
+      "cardinality": "zero_or_one",
       "parent_table": "public.team_members",
       "parent_columns": [
         "id"
       ],
       "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL"
+      "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE"
     },
     {
       "table": "public.names",
@@ -10660,7 +10687,7 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.delete_team_member",
+      "name": "public.archive_team_member",
       "return_type": "void",
       "arguments": "p_team_id integer, p_team_member_id integer",
       "type": "FUNCTION"

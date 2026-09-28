@@ -1,8 +1,8 @@
 // Behavior tests for the names table (#1355): bare/claimed roster labels,
-// claim_name() (self-service) and delete_team_member() (officer, "Delete
-// Member"). Lives in the RLS suite because both functions are SECURITY
-// DEFINER and the table's officer-write policy and the cross-team trigger
-// are RLS-shaped.
+// claim_name() (self-service) and archive_team_member() (officer, "Delete
+// Member" -- archives, does not delete, per Rex's review). Lives in the RLS
+// suite because both functions are SECURITY DEFINER and the table's
+// officer-write policy and the cross-team trigger are RLS-shaped.
 import { describe, it, expect, afterAll } from 'vitest';
 import { pool, withTxn, insertDiscordUser, seedTeam, seedPlayer } from './helpers.js';
 
@@ -15,8 +15,8 @@ const insertName = (q, teamId, label, memberId = null) =>
 
 const claimName = (asUser, uid, teamId, nameId) => asUser(uid, 'select public.claim_name($1, $2)', [teamId, nameId]);
 
-const deleteMember = (asUser, uid, teamId, memberId) =>
-  asUser(uid, 'select public.delete_team_member($1, $2)', [teamId, memberId]);
+const archiveMember = (asUser, uid, teamId, memberId) =>
+  asUser(uid, 'select public.archive_team_member($1, $2)', [teamId, memberId]);
 
 describe('names table RLS', () => {
   it('anon reads names (public)', async () => {
@@ -78,7 +78,26 @@ describe('names table RLS', () => {
     });
   });
 
-  it('a membership can be claimed by only one Name (partial unique index)', async () => {
+  it('a label cannot repeat on a team, case- and whitespace-insensitively', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await insertName(q, team.teamId, 'Alex');
+      await expect(
+        asUser(team.officer.uid, "insert into public.names (team_id, label) values ($1, '  alex ')", [team.teamId])
+      ).rejects.toThrow();
+    });
+  });
+
+  it('a blank label is refused', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await expect(
+        asUser(team.officer.uid, "insert into public.names (team_id, label) values ($1, '   ')", [team.teamId])
+      ).rejects.toThrow();
+    });
+  });
+
+  it('a membership can be claimed by only one Name (unique index)', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       await insertName(q, team.teamId, 'First Claimant', team.raider.memberId);
@@ -154,13 +173,27 @@ describe('claim_name', () => {
       await expect(claimName(asUser, uid, team.teamId, nameId)).rejects.toThrow(/no Discord identity/);
     });
   });
+
+  it("un-archives the caller's own membership when reusing it to claim", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await q('update public.team_members set archived_at = now() where id = $1', [team.raider.memberId]);
+      const nameId = await insertName(q, team.teamId, 'Returning Raider');
+
+      await claimName(asUser, team.raider.uid, team.teamId, nameId);
+
+      const member = (await q('select archived_at from public.team_members where id = $1', [team.raider.memberId]))
+        .rows[0];
+      expect(member.archived_at).toBeNull();
+    });
+  });
 });
 
-describe('delete_team_member', () => {
+describe('archive_team_member ("Delete Member")', () => {
   it('a raider cannot call it', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
-      await expect(deleteMember(asUser, team.raider.uid, team.teamId, team.leader.memberId)).rejects.toThrow(
+      await expect(archiveMember(asUser, team.raider.uid, team.teamId, team.leader.memberId)).rejects.toThrow(
         /Not authorized/
       );
     });
@@ -170,36 +203,89 @@ describe('delete_team_member', () => {
     await withTxn(async ({ q, asUser }) => {
       const teamA = await seedTeam(q);
       const teamB = await seedTeam(q);
-      await expect(deleteMember(asUser, teamA.officer.uid, teamA.teamId, teamB.raider.memberId)).rejects.toThrow(
+      await expect(archiveMember(asUser, teamA.officer.uid, teamA.teamId, teamB.raider.memberId)).rejects.toThrow(
         /not on this team/
       );
     });
   });
 
-  it('an officer deletes a claimed member: the names row goes with it, players.team_member_id survives as null', async () => {
+  it('archives a claimed member and their active characters, without deleting anything', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const nameId = await insertName(q, team.teamId, 'Leaving Raider', team.raider.memberId);
       const playerId = await seedPlayer(q, { memberId: team.raider.memberId, nameRealm: 'Leaving-Illidan' });
+      const archivedPlayerId = await seedPlayer(q, {
+        memberId: team.raider.memberId,
+        nameRealm: 'AlreadyGone-Illidan',
+        archivedAt: '2026-01-01T00:00:00Z'
+      });
 
-      await deleteMember(asUser, team.officer.uid, team.teamId, team.raider.memberId);
+      await archiveMember(asUser, team.officer.uid, team.teamId, team.raider.memberId);
 
-      expect((await q('select id from public.names where id = $1', [nameId])).rows).toHaveLength(0);
-      expect((await q('select id from public.team_members where id = $1', [team.raider.memberId])).rows).toHaveLength(
-        0
-      );
-      const player = (await q('select team_member_id from public.players where id = $1', [playerId])).rows[0];
-      expect(player.team_member_id).toBeNull();
+      const member = (await q('select archived_at from public.team_members where id = $1', [team.raider.memberId]))
+        .rows[0];
+      expect(member.archived_at).not.toBeNull();
+
+      // The names row and the team_member_id link both survive -- archiving
+      // is not deleting, so a departed raider's history keeps its label.
+      const name = (await q('select team_member_id from public.names where id = $1', [nameId])).rows[0];
+      expect(name.team_member_id).toBe(team.raider.memberId);
+      const player = (await q('select team_member_id, archived_at from public.players where id = $1', [playerId]))
+        .rows[0];
+      expect(player.team_member_id).toBe(team.raider.memberId);
+      expect(player.archived_at).not.toBeNull();
+
+      // An already-archived character keeps its original archive date.
+      const already = (await q('select archived_at from public.players where id = $1', [archivedPlayerId])).rows[0];
+      expect(already.archived_at.toISOString()).toBe('2026-01-01T00:00:00.000Z');
     });
   });
 
-  it('an officer deletes a joined-unclaimed member (no names row) without error', async () => {
+  it('archives a joined-unclaimed member (no names row) without error', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
-      await deleteMember(asUser, team.officer.uid, team.teamId, team.raider.memberId);
-      expect((await q('select id from public.team_members where id = $1', [team.raider.memberId])).rows).toHaveLength(
-        0
+      await archiveMember(asUser, team.officer.uid, team.teamId, team.raider.memberId);
+      const member = (await q('select archived_at from public.team_members where id = $1', [team.raider.memberId]))
+        .rows[0];
+      expect(member.archived_at).not.toBeNull();
+    });
+  });
+
+  it('an archived officer no longer counts as an officer', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await archiveMember(asUser, team.officer.uid, team.teamId, team.officer.memberId);
+      await expect(archiveMember(asUser, team.officer.uid, team.teamId, team.raider.memberId)).rejects.toThrow(
+        /Not authorized/
       );
+    });
+  });
+});
+
+describe('team_members RLS after the archive change', () => {
+  it('a team leader can no longer delete a membership directly', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      // No policy grants DELETE any more, so RLS filters the row out of the
+      // statement rather than raising -- it "succeeds" at deleting nothing.
+      const result = await asUser(team.leader.uid, 'delete from public.team_members where id = $1', [
+        team.raider.memberId
+      ]);
+      expect(result.rowCount).toBe(0);
+      const still = (await q('select id from public.team_members where id = $1', [team.raider.memberId])).rows;
+      expect(still).toHaveLength(1);
+    });
+  });
+
+  it('a team leader can still update a membership (role changes)', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await asUser(team.leader.uid, "update public.team_members set role = 'officer' where id = $1", [
+        team.raider.memberId
+      ]);
+      const role = (await q('select role from public.team_members where id = $1', [team.raider.memberId])).rows[0]
+        .role;
+      expect(role).toBe('officer');
     });
   });
 });
