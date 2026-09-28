@@ -81,6 +81,17 @@ describe('wishlist_setup_status', () => {
     });
   });
 
+  // The catalog's note that the function is the bot's, which a drop and
+  // create loses unless the migration writes it again.
+  it('keeps its note that it is for the bot on the service role', async () => {
+    await withTxn(async ({ q }) => {
+      const res = await q(
+        "select obj_description('public.wishlist_setup_status(integer)'::regprocedure, 'pg_proc') as note"
+      );
+      expect(res.rows[0].note).toMatch(/Service-role only/);
+    });
+  });
+
   it('a player whose membership resolves to no person is not listed', async () => {
     await withTxn(async ({ q, asUser }) => {
       await openWishlist(q);
