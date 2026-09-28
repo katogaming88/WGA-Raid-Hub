@@ -37,7 +37,7 @@ function setBisSubmissionsOpen(open) {
 // paused) and from bisSubmissionsOpen (that gates the BiS Source submit form,
 // this gates the wishlist's own status buttons/notes). The switch is per tier
 // (#939): this toggle controls the tier the Season View shows, else the live
-// season, the same tier a wishlist row is stamped with.
+// season. A raider's wishlist is on the tiers with the switch on (#936).
 function renderWishlistToggle() {
   var badge = document.getElementById('wishlistStatusBadge');
   var btn = document.getElementById('wishlistToggleBtn');

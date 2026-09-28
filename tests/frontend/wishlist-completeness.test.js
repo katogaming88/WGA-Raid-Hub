@@ -178,14 +178,17 @@ describe('wishlistCompleteness (item-level)', () => {
     expect(result.missingCounts.Head).toBe(1);
   });
 
-  it('an item outside the current season view never appears as required', () => {
+  it('an item outside the season the wishlist is on never appears as required', () => {
     const itemSlots = { Helm: 'Head', Necklace: 'Neck' };
     const itemIds = { Helm: 1, Necklace: 2 };
     const prefs = [];
     const sandbox = makeSandbox(itemSlots, itemIds, prefs);
-    sandbox.DATA.seasonView = 'S2';
+    sandbox.DATA.seasons = [{ code: 'S2', display_name: 'Season 2', starts_at: '2026-01-01', ends_at: null }];
     sandbox.DATA.itemZones = { Helm: 1 };
-    sandbox.DATA.raidZones = [{ wclZoneId: '1', season: 'S1' }];
+    sandbox.DATA.raidZones = [
+      { wclZoneId: '1', season: 'S1' },
+      { wclZoneId: '2', season: 'S2' }
+    ];
 
     const result = completenessFor(sandbox);
     expect(result.missingRows).not.toContain('Head'); // Helm is out of scope, not shown at all

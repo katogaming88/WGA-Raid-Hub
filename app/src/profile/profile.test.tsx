@@ -535,7 +535,7 @@ describe('lootPriority', () => {
         [pick(2, 'Finger 1'), pick(1, 'Hands'), pick(5, 'Waist', 'pass'), pick(4, 'Back'), pick(5, 'Hands', 'pass')],
         catalog,
         zones,
-        season
+        season.code
       )
       // The ring fills Finger 1 only (#1032: two picks for paired slots).
     ).toEqual({ bis: 2, pass: 1, total: 16 });
@@ -543,7 +543,7 @@ describe('lootPriority', () => {
 
   it('counts a pick saved without a slot by its item, a ring in the first ring slot', () => {
     const legacy = (item_id: number, status = 'bis') => ({ item_id, status, slot: null, season: SEASON.code });
-    expect(wishlistSummary([legacy(2), legacy(1), legacy(5, 'pass')], catalog, zones, season)).toEqual({
+    expect(wishlistSummary([legacy(2), legacy(1), legacy(5, 'pass')], catalog, zones, season.code)).toEqual({
       bis: 2,
       pass: 1,
       total: 16
@@ -552,12 +552,12 @@ describe('lootPriority', () => {
 
   it('does not count the current site’s copy of a ring BiS, and counts a ring Pass in both slots', () => {
     const copy = { ...pick(2, 'Finger 2'), synced_bis: true };
-    expect(wishlistSummary([pick(2, 'Finger 1'), copy], catalog, zones, season)).toEqual({
+    expect(wishlistSummary([pick(2, 'Finger 1'), copy], catalog, zones, season.code)).toEqual({
       bis: 1,
       pass: 0,
       total: 16
     });
-    expect(wishlistSummary([pick(2, 'Finger 2', 'pass')], catalog, zones, season)).toEqual({
+    expect(wishlistSummary([pick(2, 'Finger 2', 'pass')], catalog, zones, season.code)).toEqual({
       bis: 0,
       pass: 2,
       total: 16

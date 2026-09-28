@@ -428,6 +428,17 @@
   gap: 18px;
 }
 
+/* The season picker (#936), above the two cards it scopes, or the season's
+   name when there is nothing to pick. */
+.wishlist-season-picker {
+  max-width: 20rem;
+  margin-bottom: 0;
+}
+
+.wishlist-season-name {
+  margin: 0;
+}
+
 /* Equipped gear like the character pane: two columns, weapons across the
    bottom. One column on a narrow screen. */
 .gear-columns {

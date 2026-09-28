@@ -27,7 +27,7 @@ import {
   type ProfilePlayer
 } from './useProfile';
 import { LootPriorityCard, WishlistSummaryCard } from './LootPriorityCard';
-import { WishlistEditor } from './WishlistEditor';
+import { WishlistTab } from './WishlistEditor';
 import { MplusRequestButton } from './ProfileForms';
 import { CharactersCard } from '../characters/CharactersCard';
 import { withEarlierLoot } from '../characters/characters';
@@ -398,12 +398,7 @@ function Profile({
           </section>
         )}
 
-        {tab === 'wishlist' && (
-          <div className="profile-wishlist">
-            <WishlistSummaryCard player={player} season={season} />
-            <WishlistEditor player={player} teamId={teamId} season={season} own={own} />
-          </div>
-        )}
+        {tab === 'wishlist' && <WishlistTab player={player} teamId={teamId} season={season} own={own} />}
       </div>
     </section>
   );

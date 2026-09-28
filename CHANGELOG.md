@@ -12,6 +12,15 @@ answers to.
 
 ---
 
+## [3.159.0] - 2026-09-27
+
+### Frontend
+
+- New app: a raider picks the season their wishlist is for. Once the next season's wishlist is open alongside this one's, the Wishlist tab shows a Wishlist for picker, starting on the season being raided and remembering the raider's choice, and both the BiS or Pass marks and the slot count above them follow it (#936).
+- A raider's own wishlist no longer follows the Season View an officer set. It is on the season being raided while the raider can edit it, otherwise the next season if the team opened it early, and never last season, even while last season's wishlist is still open. Before this, an officer who set Season View to last season and opened its wishlist moved every raider's new picks into last season, and setting it to a closed season closed every raider's wishlist. Officers' own views of raiders' wishlists still follow Season View, and its help text on the Season tab now says so.
+- The wishlist says which season it is for, on both sites, and the new app's slot count says which season it counts.
+- With Season View on another season, a raider's own BiS List and completion badge no longer leave out their M+ and crafted picks.
+
 ## [3.158.4] - 2026-09-27
 
 ### Frontend

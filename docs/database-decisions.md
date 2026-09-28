@@ -10,6 +10,27 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-27 -- a raider's own wishlist is on the seasons the team opened, not the officer's pin (#936)
+
+Shipped: no migration
+
+The last of what decision 13 on #1189 gave #936. Season View is the officer's planning control, and it also chose the season a raider's own wishlist was on: an officer who pinned MID1 and opened its switch moved every raider's new picks into MID1, and a pin on a closed season closed every raider's wishlist. A raider's own wishlist is now on a season the team opened; in the new app the raider picks it.
+
+- **The pin stays for everyone reading someone else's wishlist.** #1351 put every officer-side reading of the wishlist on the season on screen, and an officer opening a raider's profile is one of them. Both sites already split on ownership, the owner's own read (`fetchMyItemPreferences()`, the app's editor for its owner) against the officer's (`fetchTeamItemPreferences()`, `fetchPlayerItemPreferences()`, `editorSeason()`), so only the owner's side moved.
+- **The default is the live tier while the raider can edit it**, else the newest season open to them after it, else the live tier to read. Newest first is the signup picker's default and is not used here: a team opening the next tier's wishlist before launch would otherwise move every raider off the tier being raided. The per-raider override counts as being able to edit the live tier, since it is for the tier being raided, and on the current site, which has no picker, sending an allowed raider to another open season would leave them no way back.
+- **Never a season before the live tier, on either site.** Nothing turns a finished tier's switch off, so on the day a tier starts the one before it is usually still open (on 2026-09-27 one team had MID2's switch on and the other had it off). Falling back to it would have sent that team's raiders to editing the finished tier's wishlist, where before this they sat on the new tier, read-only, until an officer opened it.
+- **The app has the picker; the current site has the default and no control.** The picker offers the live tier and the open seasons after it, and keeps the raider's pick in their browser, so leaving the tab or reloading does not move them back. The profile page was already rebuilt (#1102), so nothing would carry a second picker over, and #936 was dated to cutover. On the current site the pin chose the catalog as well as the stamp, through `isItemInSeasonScope()`, so moving the stamp alone would have shown one season's items and saved picks into another. Its body moved to `itemInSeasonScopeFor()`, which takes the season; every officer caller is unchanged, and the raider's page scopes against its own season through `wishlistItemInScope()`.
+- **Both sites name the season.** A raider's wishlist is no longer always on the live tier, so the page says which season it is on ("Wishlist for Midnight Season 3"), and the app's count says which season it counts, on the Overview as well as the Wishlist tab. An officer reading a raider's wishlist in the app is told the season too.
+- **The raider's page reads a season with no raid zones the way it always did with no pin**, as every seeded item. The pinned-season strictness (a season with no zones shows nothing, the honest state for an officer checking an import) belongs to the officer's screen. A switch opened before a tier's zones exist offers the whole catalog, which was already true at every tier boundary.
+- **No live tier is still no season.** An empty `DATA.seasons` means the seasons read failed, so the order of the open seasons is unknown too; the page stays on no season and read-only (2026-09-24 below) rather than guessing from the switches.
+- **Two readers of the raider's own rows took the pin through a shared helper.** `bisItemsFromWishlistPrefs()` builds the raider's own BiS List and live completion badge as well as the officer's profile view, and it scoped each row by the pin. Since #1351 the raider's rows arrive already narrowed to their season, so a pin on another season hid every M+ and crafted BiS pick from their own list. It takes the season rule as an argument now, and the raider's two callers pass theirs.
+- **The app's Wishlist tab reads one season.** Its summary card counted the live tier while its editor showed the pinned one, so under a pin the two numbers on one screen disagreed. Both read the tab's season, and the count waits for the read that decides it, so it never shows the live tier's count first or in place of that read failing; the Overview keeps the live tier.
+- **Not moved with this.** #1268: the demand report and the setup status still count picks from every season, and an officer opening a second season's switch now makes that ordinary rather than a pin away. A read-only look back at a closed season: the picker offers only the live tier and the open seasons after it, so a raider still cannot see last tier's picks, which neither site has shown.
+
+[Full discussion -> #936](https://github.com/katogaming88/WGA-Raid-Hub/issues/936).
+
+---
+
 ## 2026-09-26 -- the priority readers answer for one season (#936)
 
 Shipped: 20260927174243_priority_readers_season.sql

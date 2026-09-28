@@ -2,9 +2,14 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { launchBrowser, openApp, startApp, storedSession } from './harness.js';
 import { VIEWERS } from '../behavior/profile.js';
 import {
+  EARLIER_SEASON,
   EXPECTED_EDITOR,
   ITEMS,
   NEW_BIS_ROW,
+  NEXT_RAID_ZONE,
+  NEXT_SEASON,
+  NEXT_SEASON_HELM,
+  PINNED_ELSEWHERE,
   RAID_ZONES,
   SEASON,
   TIER_TOKEN_MAP,
@@ -45,7 +50,9 @@ function open({
   open = true,
   allowed = false,
   viewport,
-  touch = false
+  touch = false,
+  view = null,
+  openSeasons = [SEASON.code]
 } = {}) {
   return openApp(browser, server.port, {
     path,
@@ -57,12 +64,19 @@ function open({
       // One row answers both of the page's team_settings reads; the editing
       // switch is the team_seasons row for the season (#939).
       seasons: [
-        { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }
+        { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null },
+        {
+          code: EARLIER_SEASON.code,
+          display_name: EARLIER_SEASON.name,
+          starts_at: EARLIER_SEASON.start,
+          ends_at: EARLIER_SEASON.end
+        },
+        { code: NEXT_SEASON.code, display_name: NEXT_SEASON.name, starts_at: NEXT_SEASON.start, ends_at: null }
       ],
-      team_settings: [{ view: null }],
-      team_seasons: [{ season_code: SEASON.code, wishlist_open: open }],
-      items: ITEMS,
-      raid_zones: RAID_ZONES,
+      team_settings: [{ view }],
+      team_seasons: openSeasons.map((code) => ({ season_code: code, wishlist_open: open })),
+      items: [...ITEMS, NEXT_SEASON_HELM],
+      raid_zones: [...RAID_ZONES, NEXT_RAID_ZONE],
       item_preferences: WISHLIST,
       tier_token_map: TIER_TOKEN_MAP,
       // The profile's own reads, which the Wishlist tab makes too.
@@ -302,6 +316,213 @@ describe('Wishlist (new app), marking, checked against the current site', () => 
       await bis.click();
       await expect.poll(() => writes.length).toBe(1);
       expect(writes[0]).toMatchObject({ method: 'DELETE', query: { id: 'in.(1)' } });
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
+// PINNED_ELSEWHERE in tests/behavior/wishlist.js, checked against the current
+// site. The earlier tier's switch is on too, and the raider is not offered it.
+describe('Wishlist (new app), with an officer’s Season View on another season, checked against the current site', () => {
+  it('is the live tier’s editor, and saves a new BiS pick there', async () => {
+    const opened = await open({ view: PINNED_ELSEWHERE.seasonView, openSeasons: PINNED_ELSEWHERE.open });
+    try {
+      await showEditor(opened.page);
+      expect(await readEditor(opened.page)).toEqual(EXPECTED_EDITOR);
+      expect(await opened.page.locator('main select#wishlist-season').count()).toBe(0);
+      await expect(opened.page.locator('main .wishlist-season-name').textContent()).resolves.toBe(
+        `Wishlist for ${SEASON.name}`
+      );
+      const writes = recordWrites(opened.page);
+      await (
+        await itemRow(opened.page, 'Finger 1', 'Signet of Coiled Ash')
+      )
+        .getByRole('button', { name: 'BiS' })
+        .click();
+      await expect.poll(() => writes.filter((w) => w.method === 'POST').length).toBe(1);
+      expect(writes.find((w) => w.method === 'POST').body).toMatchObject(NEW_BIS_ROW);
+      expect(opened.pageErrors).toEqual([]);
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
+// A raider picks the season their own wishlist is on, from the seasons the
+// team opened (#936, decision 13 on #1189).
+describe('Wishlist (new app), the season picker', () => {
+  const picker = (page) => page.locator('main select#wishlist-season');
+  const bisCount = (page) => page.locator('main .wishlist-summary .wishlist-bis').textContent();
+
+  const seasonName = (page) => page.locator('main .wishlist-season-name').textContent();
+
+  it('is not there with one season open, and the page names that season', async () => {
+    const opened = await open();
+    try {
+      await showEditor(opened.page);
+      expect(await picker(opened.page).count()).toBe(0);
+      await expect(seasonName(opened.page)).resolves.toBe(`Wishlist for ${SEASON.name}`);
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  // A switch left on for a finished tier, which nothing turns off.
+  it('does not offer a season before the live tier, even while it is open', async () => {
+    const opened = await open({ openSeasons: [SEASON.code, EARLIER_SEASON.code] });
+    try {
+      await showEditor(opened.page);
+      expect(await picker(opened.page).count()).toBe(0);
+      await expect(seasonName(opened.page)).resolves.toBe(`Wishlist for ${SEASON.name}`);
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  it('stays on the live tier, read-only, when only a season before it is open', async () => {
+    const opened = await open({ openSeasons: [EARLIER_SEASON.code] });
+    try {
+      await showEditor(opened.page);
+      await expect(seasonName(opened.page)).resolves.toBe(`Wishlist for ${SEASON.name}`);
+      expect(await readEditor(opened.page)).toEqual(EXPECTED_EDITOR);
+      await opened.page.waitForSelector('main .wishlist-closed');
+      expect(await enabledMarks(opened.page)).toBe(0);
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  it('names the next season when it is the only one open', async () => {
+    const opened = await open({ openSeasons: [NEXT_SEASON.code] });
+    try {
+      await showEditor(opened.page);
+      expect(await picker(opened.page).count()).toBe(0);
+      await expect(seasonName(opened.page)).resolves.toBe(`Wishlist for ${NEXT_SEASON.name}`);
+      await expect(opened.page.locator('main .wishlist-summary').textContent()).resolves.toMatch(
+        new RegExp(`^${NEXT_SEASON.name}: 0 of 16 slots`)
+      );
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  it('lists the open seasons newest first, starting on the live tier', async () => {
+    const opened = await open({ openSeasons: [SEASON.code, NEXT_SEASON.code] });
+    try {
+      await showEditor(opened.page);
+      const options = await picker(opened.page)
+        .locator('option')
+        .evaluateAll((els) => els.map((o) => [o.value, o.textContent]));
+      expect(options).toEqual([
+        [NEXT_SEASON.code, NEXT_SEASON.name],
+        [SEASON.code, SEASON.name]
+      ]);
+      await expect(picker(opened.page).inputValue()).resolves.toBe(SEASON.code);
+      await expect(opened.page.getByRole('combobox', { name: 'Wishlist for' }).evaluate((el) => el.id)).resolves.toBe(
+        'wishlist-season'
+      );
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  it('moves the editor and the count to the season picked, and saves picks there', async () => {
+    const opened = await open({ openSeasons: [SEASON.code, NEXT_SEASON.code] });
+    try {
+      await showEditor(opened.page);
+      expect(Number(await bisCount(opened.page))).toBeGreaterThan(0);
+
+      await picker(opened.page).selectOption(NEXT_SEASON.code);
+      // Next season's raid, and none of this season's picks.
+      await expect.poll(() => bisCount(opened.page)).toBe('0');
+      const helm = await itemRow(opened.page, 'Head', NEXT_SEASON_HELM.name);
+      await expect(helm.count()).resolves.toBe(1);
+      expect(await (await itemRow(opened.page, 'Head', 'Venom-Etched Greathelm')).count()).toBe(0);
+
+      const writes = recordWrites(opened.page);
+      await helm.getByRole('button', { name: 'BiS' }).click();
+      await expect.poll(() => writes.filter((w) => w.method === 'POST').length).toBe(1);
+      expect(writes.find((w) => w.method === 'POST').body).toMatchObject({
+        item_id: NEXT_SEASON_HELM.id,
+        slot: null,
+        status: 'bis',
+        season: NEXT_SEASON.code
+      });
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  it('keeps the season picked across the profile’s tabs and a reload', async () => {
+    const opened = await open({ openSeasons: [SEASON.code, NEXT_SEASON.code] });
+    try {
+      await showEditor(opened.page);
+      await picker(opened.page).selectOption(NEXT_SEASON.code);
+
+      await opened.page.click('#profile-tab-overview');
+      await opened.page.waitForSelector('main .wishlist-summary');
+      await opened.page.click('#profile-tab-wishlist');
+      await showEditor(opened.page);
+      await expect(picker(opened.page).inputValue()).resolves.toBe(NEXT_SEASON.code);
+
+      await opened.page.reload();
+      await showEditor(opened.page);
+      await expect(picker(opened.page).inputValue()).resolves.toBe(NEXT_SEASON.code);
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  // An officer reading someone else's wishlist reads the season on screen,
+  // like every other officer view since #1351, and is told which it is.
+  it('is not offered to an officer, who reads the season they pinned', async () => {
+    const opened = await open({
+      path: `/g/wga/t/phoenix/p/${TORBJORN.url_code}/wishlist`,
+      viewer: 'officer',
+      view: EARLIER_SEASON.code,
+      openSeasons: [SEASON.code, EARLIER_SEASON.code]
+    });
+    try {
+      await showEditor(opened.page);
+      expect(await picker(opened.page).count()).toBe(0);
+      await expect(seasonName(opened.page)).resolves.toBe(`Wishlist for ${EARLIER_SEASON.name}`);
+      expect(await (await itemRow(opened.page, 'Head', 'Helm of the Fallen Sun')).count()).toBe(1);
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
+// The Wishlist tab's count is for the season its editor shows, so it waits for
+// the read that decides that season, and a failed read shows as one rather than
+// as another season's count.
+describe('Wishlist (new app), the count', () => {
+  const summary = (page) => page.locator('main .wishlist-summary');
+
+  it('names the live tier on the Overview', async () => {
+    const opened = await open({ path: '/g/wga/t/phoenix/me', openSeasons: [NEXT_SEASON.code] });
+    try {
+      await opened.page.waitForSelector('main .wishlist-summary');
+      await expect(summary(opened.page).textContent()).resolves.toMatch(
+        new RegExp(`^${SEASON.name}: \\d+ of 16 slots`)
+      );
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  it('shows the season read failing on the Wishlist tab, not the live tier’s count', async () => {
+    const opened = await open({ path: '/g/wga/t/phoenix/me', openSeasons: [NEXT_SEASON.code] });
+    try {
+      await opened.page.waitForSelector('main .wishlist-summary');
+      await opened.page.route('**/rest/v1/team_seasons*', (route) =>
+        route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'down' }) })
+      );
+      await opened.page.click('#profile-tab-wishlist');
+      await opened.page.waitForSelector('main .profile-wishlist .data-error', { timeout: 20000 });
+      await expect.poll(() => opened.page.locator('main .profile-wishlist .data-error').count()).toBe(2);
+      expect(await summary(opened.page).count()).toBe(0);
     } finally {
       await opened.context.close();
     }

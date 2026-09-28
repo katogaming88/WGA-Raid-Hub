@@ -71,3 +71,42 @@ describe('isItemInSeasonScope -- placeholder rowSeason scoping', () => {
     expect(sandbox.isItemInSeasonScope('Helm', 'MID2')).toBe(false);
   });
 });
+
+// #936: the same rule against a season the caller names, so the raider's own
+// wishlist can scope by the season it is on while every officer-side caller
+// keeps the season on screen. `explicit` is the pinned-season strictness: a
+// season with no raid zones set up shows nothing when an officer pinned it and
+// everything otherwise.
+describe('itemInSeasonScopeFor -- the rule against a named season', () => {
+  const DATA = {
+    itemPlaceholders: { 'M+': true },
+    itemZones: { Helm: 1 },
+    raidZones: [{ wclZoneId: '1', season: 'MID2' }],
+    seasonView: 'MID1'
+  };
+
+  it('scopes a placeholder by the season named, not the pin', () => {
+    const sandbox = makeSandbox(DATA);
+    expect(sandbox.itemInSeasonScopeFor('M+', 'MID2', 'MID2', false)).toBe(true);
+    expect(sandbox.itemInSeasonScopeFor('M+', 'MID1', 'MID2', false)).toBe(false);
+    expect(sandbox.isItemInSeasonScope('M+', 'MID2')).toBe(false);
+  });
+
+  it('scopes a raid item by the zones of the season named', () => {
+    const sandbox = makeSandbox(DATA);
+    expect(sandbox.itemInSeasonScopeFor('Helm', null, 'MID2', false)).toBe(true);
+    expect(sandbox.itemInSeasonScopeFor('Helm', null, 'MID1', true)).toBe(false);
+  });
+
+  it('shows every raid item for a season with no zones unless it is explicit', () => {
+    const sandbox = makeSandbox(DATA);
+    expect(sandbox.itemInSeasonScopeFor('Helm', null, 'MID3', false)).toBe(true);
+    expect(sandbox.itemInSeasonScopeFor('Helm', null, 'MID3', true)).toBe(false);
+  });
+
+  it('fails open on both branches with no season named', () => {
+    const sandbox = makeSandbox(DATA);
+    expect(sandbox.itemInSeasonScopeFor('M+', 'MID1', null, false)).toBe(true);
+    expect(sandbox.itemInSeasonScopeFor('Helm', null, null, false)).toBe(true);
+  });
+});

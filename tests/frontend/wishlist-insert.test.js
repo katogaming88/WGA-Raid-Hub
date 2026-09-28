@@ -118,6 +118,26 @@ describe('wishlistUpsert insert payload', () => {
     expect(inserts[0].row.season).toBe('MID2');
   });
 
+  // Decision 13 on #1189: the pin stops choosing the season a raider's pick is
+  // saved under. An officer who pinned MID1 and opened its switch used to move
+  // every raider's new picks into MID1.
+  it('stamps the raider’s season, not the season an officer pinned', () => {
+    const { sandbox, inserts } = makeSandbox();
+    sandbox.DATA.seasonView = 'MID1';
+    sandbox.DATA.seasons.push({
+      code: 'MID1',
+      display_name: 'Midnight Season 1',
+      starts_at: '2026-02-01',
+      ends_at: '2026-08-10'
+    });
+    sandbox.DATA.teamSeasons = [
+      { season_code: 'MID2', wishlist_open: true },
+      { season_code: 'MID1', wishlist_open: true }
+    ];
+    sandbox.wishlistSetStatus(42, null, 'bis');
+    expect(inserts[0].row.season).toBe('MID2');
+  });
+
   // This used to assert the insert stamped null rather than the empty string,
   // which is not a seasons row and fails the foreign key with an error a raider
   // could not act on. That insert can no longer happen: with no tier resolving

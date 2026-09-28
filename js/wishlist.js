@@ -169,8 +169,55 @@ var CATALYST_ELIGIBLE_SLOTS = WISHLIST_TIER_SET_SLOTS.concat(CATALYST_SOURCE_SLO
 // The tier the page plans for, as the column holds it (#936): a season code,
 // or null when no tier resolves at all, which is what a row with no season
 // looks like and what the insert below stamps.
+//
+// It is a season the team opened, not the officer's Season View (decision 13
+// on #1189): the live tier while the raider can edit it, else the newest
+// season open to them after it, else the live tier to read. Never one before
+// the live tier: nothing turns a finished tier's switch off, so on the day a
+// tier starts the one before it is usually still open. The new app lets a
+// raider pick among the same seasons; this page has no picker and takes that
+// default. With no live tier the seasons read failed, so the order of the
+// open seasons is unknown too, and the page stays on no season.
 function wishlistSeasonCode() {
-  return (typeof resolveSeasonViewCode === 'function' && resolveSeasonViewCode()) || null;
+  var live = currentSeasonCode();
+  if (!live) return null;
+  var open = openWishlistSeasonCodes();
+  if (open.indexOf(live) !== -1 || wishlistAllowedForMe()) return live;
+  var liveStart = seasonRow(live).starts_at;
+  var ahead = open.filter(function (code) {
+    var tier = seasonRow(code);
+    return !!tier && tier.starts_at > liveStart;
+  });
+  return ahead[0] || live;
+}
+
+// Which season the page is on, by name, since it is not always the live tier.
+function wishlistSeasonNameHTML() {
+  var season = wishlistSeasonCode();
+  if (!season) return '';
+  return (
+    '<p class="wishlist-season-name" style="font-size:1.02rem;margin:0.25rem 0 0.75rem;">Wishlist for <strong>' +
+    _esc(seasonDisplayName(season)) +
+    '</strong></p>'
+  );
+}
+
+// Whether the season the page is on has the team's wishlist switch on.
+function wishlistSeasonOpen() {
+  var season = wishlistSeasonCode();
+  return !!season && openWishlistSeasonCodes().indexOf(season) !== -1;
+}
+
+// The per-raider override (players.wishlist_allowed) for the raider whose
+// wishlist this is.
+function wishlistAllowedForMe() {
+  return !!_wishlistPlayerNameRealm && wishlistAllowedFor(_wishlistPlayerNameRealm);
+}
+
+// isItemInSeasonScope() against the season this page is on rather than the
+// officer's screen, for every catalog and row check on the raider's own page.
+function wishlistItemInScope(name, rowSeason) {
+  return itemInSeasonScopeFor(name, rowSeason, wishlistSeasonCode(), false);
 }
 
 // Every query for the raider's own picks says which tier it is about, because
@@ -268,7 +315,7 @@ function ownWishlistSectionHTML(player, backTo) {
 // own loading-placeholder-then-rerender pattern.
 function wishlistBisItems(player) {
   if (_wishlistPlayerId !== player.id || _wishlistPrefs === null) return [];
-  return bisItemsFromWishlistPrefs(_wishlistPrefs, player.id);
+  return bisItemsFromWishlistPrefs(_wishlistPrefs, player.id, wishlistItemInScope);
 }
 
 function wishlistPrefFor(itemId, slot) {
@@ -348,7 +395,7 @@ function wishlistBucketRealItems(playerArmorType, playerMainStat, playerRole, pl
     // substituted token row, once as its own real catalog row).
     if (tierResolvedItemNames[name]) return;
     if (itemPlaceholders[name]) return;
-    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name)) return;
+    if (!wishlistItemInScope(name)) return;
     var catalogSlot = itemSlots[name] || '';
     var rows = WISHLIST_CATALOG_SLOT_TO_ROWS[catalogSlot] || [];
     // Dual-wield classes (DUAL_WIELD_CLASSES, js/common.js) can put a second
@@ -545,21 +592,20 @@ function wishlistSlotSummaryDotsHTML(items) {
 }
 
 // Whether the raider currently viewing their own Wishlist can edit it --
-// the team's wishlistOpen() switch for this tier (#939), OR their own
+// the team's switch for the season the page is on (#939, #936), OR their own
 // wishlist_allowed per-raider exception (same shape as bis_allowed's "Allow
 // BiS Submit", #610/#611 follow-up: there was no way to reopen just one
 // raider's Wishlist while it's closed for the team). Every editing gate in
-// this file should check this instead of wishlistOpen() directly --
-// tab-bis.js's own wishlistOpen() calls are the team's toggle's own display
-// and deliberately stay as-is.
+// this file should check this instead of wishlistOpen(), which is the
+// officer toggle's reading of the season on their screen.
 function wishlistEditableNow() {
   // Nothing is editable until the page knows which tier it is planning, since
   // that tier is what a row is stamped with and what the write gate reads back
-  // (#936). The team switch already reads closed without one, so this is only
-  // reachable through the per-raider allowance, and their write would land in
-  // no tier at all beside the pick they already hold.
+  // (#936). With no tier the per-raider allowance is the only way to reach
+  // this, and their write would land in no tier at all beside the pick they
+  // already hold.
   if (!wishlistSeasonCode()) return false;
-  return wishlistOpen() || (!!_wishlistPlayerNameRealm && wishlistAllowedFor(_wishlistPlayerNameRealm));
+  return wishlistSeasonOpen() || wishlistAllowedForMe();
 }
 
 // lockOnceSet (Other Sources rows only, #515 follow-up): once a status is
@@ -815,7 +861,7 @@ function wishlistOtherSourceHTML(name, globallyTaggedSlots) {
   var taggedSlots = [];
   _wishlistPrefs.forEach(function (p) {
     if (p.item_id !== itemId || !p.slot) return;
-    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name, p.season)) return;
+    if (!wishlistItemInScope(name, p.season)) return;
     taggedSlots.push(p.slot);
   });
   var shownSlots = candidateSlots.filter(function (s) {
@@ -897,7 +943,7 @@ function wishlistOtherSourcesTaggedSlots() {
   _wishlistPrefs.forEach(function (p) {
     if (!placeholderItemIds[p.item_id] || !p.slot) return;
     var name = placeholderNameById[p.item_id];
-    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name, p.season)) return;
+    if (!wishlistItemInScope(name, p.season)) return;
     taggedSlots[p.slot] = name;
   });
   return taggedSlots;
@@ -916,8 +962,7 @@ function wishlistOtherSourcesSectionHTML() {
   var summaryItems = _wishlistPrefs
     .filter(function (p) {
       if (!placeholderItemIds[p.item_id]) return false;
-      if (typeof isItemInSeasonScope !== 'function') return true;
-      return isItemInSeasonScope(placeholderNameById[p.item_id], p.season);
+      return wishlistItemInScope(placeholderNameById[p.item_id], p.season);
     })
     .map(function (p) {
       return { itemId: p.item_id, slot: p.slot };
@@ -959,6 +1004,8 @@ function wishlistSectionBodyHTML(player) {
     player.firstName +
     '" class="help-tip">Tag every item you\'d want per slot, not just one pick: backups, sidegrades, or drops to pass on. BiS choices marked here save to your BiS List. Slots below are raid drops; use Other Sources for gear you\'ll get elsewhere.' +
     '<br><br>Swap specs per boss fight (e.g. a warlock alternating Aff/Demo/Destro -- not an off-spec you only play in M+ or a different role)? Only one item per slot can be BiS. Tag your other spec\'s item with whichever tier actually fits (2nd Choice/Sidegrade/Catalyst Only), and use the note to say it\'s really BiS for that spec, e.g. "BiS for Destro". Officers can see wishlist notes.</div>';
+
+  html += wishlistSeasonNameHTML();
 
   html +=
     '<p style="font-size:1.02rem;color:var(--text-muted);margin:0.25rem 0 0.75rem;">Want to see your Priority rank in-game as items drop? Install the ' +

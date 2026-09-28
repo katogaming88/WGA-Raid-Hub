@@ -4,8 +4,10 @@ import type { SeasonWindow } from './profile';
 import {
   editorSeason,
   editorSlots,
+  ownWishlistSeason,
   picksInSeason,
   planMark,
+  wishlistCandidates,
   wishlistSummary,
   type EditorInput,
   type Pick,
@@ -81,6 +83,65 @@ describe('editorSeason', () => {
 
   it('falls back to the team’s season', () => {
     expect(editorSeason(null, team)).toBe('MID1');
+  });
+});
+
+// A raider's own wishlist is on a season they pick from the ones the team
+// opened, not the one an officer pinned (#936, decision 13 on #1189).
+describe('wishlistCandidates', () => {
+  const order = ['MID3', 'MID2', 'MID1'];
+
+  it('lists the open seasons from the live tier on, newest first', () => {
+    expect(wishlistCandidates(['MID2', 'MID3'], 'MID2', false, order)).toEqual(['MID3', 'MID2']);
+  });
+
+  // A switch left on for a finished tier, which nothing turns off.
+  it('leaves out a season before the live tier, even while it is open', () => {
+    expect(wishlistCandidates(['MID1', 'MID3'], 'MID2', false, order)).toEqual(['MID3']);
+    expect(wishlistCandidates(['MID1'], 'MID2', false, order)).toEqual([]);
+  });
+
+  it('adds the live tier for a raider an officer allowed, in its place', () => {
+    expect(wishlistCandidates(['MID1', 'MID3'], 'MID2', true, order)).toEqual(['MID3', 'MID2']);
+  });
+
+  // useWishlistSettings() sorts the open seasons with no live tier to hand.
+  it('keeps every open season, newest first, with no live tier to measure from', () => {
+    expect(wishlistCandidates(['MID1', 'MID3'], null, false, order)).toEqual(['MID3', 'MID1']);
+  });
+
+  it('lists the live tier once when it is open as well', () => {
+    expect(wishlistCandidates(['MID2'], 'MID2', true, order)).toEqual(['MID2']);
+  });
+
+  it('lists nothing with nothing open', () => {
+    expect(wishlistCandidates([], 'MID2', false, order)).toEqual([]);
+  });
+});
+
+describe('ownWishlistSeason', () => {
+  it('keeps the season the raider picked while it is still open to them', () => {
+    expect(ownWishlistSeason('MID3', ['MID3', 'MID2'], 'MID2')).toBe('MID3');
+  });
+
+  it('starts on the live tier when the raider can edit it', () => {
+    expect(ownWishlistSeason(null, ['MID3', 'MID2'], 'MID2')).toBe('MID2');
+  });
+
+  it('goes back to the live tier when the season picked is closed', () => {
+    expect(ownWishlistSeason('MID1', ['MID3', 'MID2'], 'MID2')).toBe('MID2');
+  });
+
+  it('is the newest open season when the live tier is not one', () => {
+    expect(ownWishlistSeason(null, ['MID3'], 'MID2')).toBe('MID3');
+  });
+
+  it('is the live tier, to read, with nothing open', () => {
+    expect(ownWishlistSeason(null, [], 'MID2')).toBe('MID2');
+  });
+
+  it('is no season before any tier has started', () => {
+    expect(ownWishlistSeason(null, ['MID1'], null)).toBeNull();
   });
 });
 
@@ -304,10 +365,10 @@ describe('wishlistSummary counts one season', () => {
   ];
 
   it('counts a pick stamped with the season it is asked about', () => {
-    expect(wishlistSummary([pick(1, 'bis', null)], catalog, zones, season).bis).toBe(1);
+    expect(wishlistSummary([pick(1, 'bis', null)], catalog, zones, season.code).bis).toBe(1);
   });
 
   it('does not count the same pick stamped with another season', () => {
-    expect(wishlistSummary([pick(1, 'bis', null, { season: 'MID1' })], catalog, zones, season).bis).toBe(0);
+    expect(wishlistSummary([pick(1, 'bis', null, { season: 'MID1' })], catalog, zones, season.code).bis).toBe(0);
   });
 });

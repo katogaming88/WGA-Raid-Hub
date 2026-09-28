@@ -3,9 +3,11 @@ import { startServer } from './static-server.js';
 import { launchBrowser, openState, fixture, storedDiscordSession, REPO_ROOT } from './harness.js';
 import { VIEWERS } from '../behavior/profile.js';
 import {
+  EARLIER_SEASON,
   EXPECTED_EDITOR,
   ITEMS,
   NEW_BIS_ROW,
+  PINNED_ELSEWHERE,
   RAID_ZONES,
   SEASON,
   TIER_TOKEN_MAP,
@@ -17,12 +19,12 @@ import {
 // app's wishlist editor can be checked against the same expectations
 // (tests/behavior/wishlist.js).
 
-const settings = () =>
+const settings = (seasonView) =>
   fixture('team_settings', []).map((row) => ({
     ...row,
     config: {
       ...row.config,
-      seasonView: null
+      seasonView
     }
   }));
 
@@ -31,9 +33,15 @@ const SEASONS = [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEAS
 
 // Wishlist editing is a switch per tier (#939): the team_seasons row for the
 // tier the wishlist is stamped with, here the live season.
-const teamSeasons = (open) => [{ team_id: 1, season_code: SEASON.code, wishlist_open: open }];
+const teamSeasons = (open, codes) => codes.map((code) => ({ team_id: 1, season_code: code, wishlist_open: open }));
 
-function openWishlist({ open = true, allowed = false, seasons = SEASONS } = {}) {
+function openWishlist({
+  open = true,
+  allowed = false,
+  seasons = SEASONS,
+  seasonView = null,
+  openSeasons = [SEASON.code]
+} = {}) {
   const viewer = VIEWERS.torbjorn;
   const own = { ...TORBJORN, wishlist_allowed: allowed };
   return openState(
@@ -48,9 +56,9 @@ function openWishlist({ open = true, allowed = false, seasons = SEASONS } = {}) 
     {
       players: [own],
       team_members: [{ id: viewer.teamMember, role: viewer.role, name_realm: own.name_realm }],
-      team_settings: settings(),
+      team_settings: settings(seasonView),
       seasons,
-      team_seasons: teamSeasons(open),
+      team_seasons: teamSeasons(open, openSeasons),
       attendance: [],
       rclc_loot: [],
       items: ITEMS,
@@ -257,6 +265,87 @@ describe('Wishlist (current site), when the season did not load', () => {
     try {
       await showEditor(opened.page);
       expect(await sectionLabels(opened.page)).toEqual(expected);
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
+// PINNED_ELSEWHERE in tests/behavior/wishlist.js. This page has no season
+// picker (the new app does): it drops the pin and stays on the live tier.
+describe('Wishlist (current site), with an officer’s Season View on another season', () => {
+  const pinned = () =>
+    openWishlist({
+      seasonView: PINNED_ELSEWHERE.seasonView,
+      openSeasons: PINNED_ELSEWHERE.open,
+      seasons: [
+        ...SEASONS,
+        {
+          code: EARLIER_SEASON.code,
+          display_name: EARLIER_SEASON.name,
+          starts_at: EARLIER_SEASON.start,
+          ends_at: EARLIER_SEASON.end
+        }
+      ]
+    });
+
+  it('is the live tier’s editor, and saves a new BiS pick there', async () => {
+    const opened = await pinned();
+    try {
+      await showEditor(opened.page);
+      expect(await readEditor(opened.page)).toEqual(EXPECTED_EDITOR);
+
+      const writes = recordWrites(opened.page);
+      await rowFor(opened.page, 'Finger 1', 'Signet of Coiled Ash').getByRole('button', { name: 'BiS' }).click();
+      await expect.poll(() => writes.filter((w) => w.method === 'POST').length).toBe(1);
+      expect(writes.find((w) => w.method === 'POST').body).toMatchObject(NEW_BIS_ROW);
+      expect(opened.pageErrors).toEqual([]);
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
+// The page names the season it is on (#936), and a switch left on for the
+// tier before the live one, which nothing turns off, does not send the raider
+// back to it.
+describe('Wishlist (current site), the season it is on', () => {
+  const named = (page) => page.locator('#profileTabWishlist .wishlist-season-name').textContent();
+
+  it('is named', async () => {
+    const opened = await openWishlist();
+    try {
+      await showEditor(opened.page);
+      await expect(named(opened.page)).resolves.toBe(`Wishlist for ${SEASON.name}`);
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  it('stays the live tier, read-only, when only the season before it is open', async () => {
+    const opened = await openWishlist({
+      openSeasons: [EARLIER_SEASON.code],
+      seasons: [
+        ...SEASONS,
+        {
+          code: EARLIER_SEASON.code,
+          display_name: EARLIER_SEASON.name,
+          starts_at: EARLIER_SEASON.start,
+          ends_at: EARLIER_SEASON.end
+        }
+      ]
+    });
+    try {
+      await showEditor(opened.page);
+      await expect(named(opened.page)).resolves.toBe(`Wishlist for ${SEASON.name}`);
+      expect(await readEditor(opened.page)).toEqual(EXPECTED_EDITOR);
+      const enabled = await opened.page.evaluate(
+        () =>
+          [...document.querySelectorAll('#profileTabWishlist [onclick^="wishlistSetStatus"]')].filter(
+            (b) => !b.disabled
+          ).length
+      );
+      expect(enabled).toBe(0);
     } finally {
       await opened.context.close();
     }

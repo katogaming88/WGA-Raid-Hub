@@ -137,13 +137,20 @@ describe('the page reads one season of its own picks', () => {
     expect(filterOn(read, 'player_id')).toEqual([['eq', 'player_id', 11]]);
   });
 
-  it('reads the season an officer pinned rather than the live tier', async () => {
+  // Season View is the officer's planning control (decision 13 on #1189). It
+  // used to choose the raider's season too, so an officer who pinned MID1 and
+  // opened its switch moved every raider's new picks into MID1.
+  it('reads the live tier rather than the season an officer pinned', async () => {
     const { sandbox, calls } = makeSandbox();
     sandbox.DATA.seasonView = 'MID1';
+    sandbox.DATA.teamSeasons = [
+      { season_code: 'MID2', wishlist_open: true },
+      { season_code: 'MID1', wishlist_open: true }
+    ];
     await sandbox.fetchMyItemPreferences(11);
 
     const read = calls.find((c) => c.op === 'select');
-    expect(filterOn(read, 'season')).toEqual([['eq', 'season', 'MID1']]);
+    expect(filterOn(read, 'season')).toEqual([['eq', 'season', 'MID2']]);
   });
 });
 

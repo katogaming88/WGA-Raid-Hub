@@ -109,7 +109,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.158.4';
+var VERSION = '3.159.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
@@ -2955,7 +2955,8 @@ var SEASON_CONFIG_KEYS = [
   // meant opening next-season signups also flipped every raider's Priority
   // tab/BiS/Wishlist to next season's still-incomplete catalog mid-raid --
   // corrected same day, see docs/database-decisions.md). Nullable, resolved
-  // via resolveSeasonViewCode() below.
+  // via resolveSeasonViewCode() below. A raider's own wishlist is not on it
+  // since #936: that is on the seasons the team opened.
   'seasonView',
   // Officer-set target roster sizes, shown as a signup-time advisory
   // (js/signup.js's buildSignupRoleAdvisoryHtml()) once the confirmed
@@ -4255,14 +4256,19 @@ function currentZoneIdsForSeason(season) {
 // rather than all of it, which is the one answer no one wants; the page is
 // read-only in that state, so showing everything costs nothing.
 function isItemInSeasonScope(name, rowSeason) {
+  return itemInSeasonScopeFor(name, rowSeason, resolveSeasonViewCode(), !!(DATA && DATA.seasonView));
+}
+
+// The rule above against a season the caller names, for the raider's own
+// wishlist, which is on the season the team opened rather than the one on the
+// officer's screen (#936). `explicit` is the pinned-season strictness.
+function itemInSeasonScopeFor(name, rowSeason, season, explicit) {
   if ((DATA.itemPlaceholders || {})[name]) {
-    var view = resolveSeasonViewCode();
-    return !view || !rowSeason || rowSeason === view;
+    return !season || !rowSeason || rowSeason === season;
   }
   var zone = (DATA.itemZones || {})[name];
   if (!zone) return true;
-  var explicit = !!(DATA && DATA.seasonView);
-  var ids = currentZoneIdsForSeason(resolveSeasonViewCode());
+  var ids = currentZoneIdsForSeason(season);
   if (!Object.keys(ids).length) return !explicit;
   return !!ids[zone];
 }
@@ -4316,8 +4322,10 @@ var DEDUPE_SIBLING_SLOTS = { 'Finger 1': true, 'Finger 2': true, 'Trinket 1': tr
 // (officer's read view of any raider's profile, `prefs` filtered from
 // tab-priority.js's _teamItemPreferences) -- kept here rather than in
 // wishlist.js since only index.html loads that file, and this needs to run
-// from both pages.
-function bisItemsFromWishlistPrefs(prefs, playerId) {
+// from both pages. `inScope` is the season rule for each row: the officer's
+// screen by default, the raider's own season for their own rows (#936).
+function bisItemsFromWishlistPrefs(prefs, playerId, inScope) {
+  var inSeason = inScope || isItemInSeasonScope;
   var idToName = (DATA && DATA.itemNamesById) || {};
   var itemPlaceholders = (DATA && DATA.itemPlaceholders) || {};
 
@@ -4340,7 +4348,7 @@ function bisItemsFromWishlistPrefs(prefs, playerId) {
     // placeholders by the row's own season, and a row with no season at all
     // predates the column, so it still counts. Without this an out-of-season
     // row would render as a current BiS pick.
-    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name, p.season)) return;
+    if (!inSeason(name, p.season)) return;
     var isPlaceholder = !!itemPlaceholders[name];
     if (!isPlaceholder && DEDUPE_SIBLING_SLOTS[p.slot]) {
       if (seenRealItemIds[p.item_id]) return;
@@ -4383,8 +4391,10 @@ function mergedBisItemsForNameRealm(nameRealm) {
   var isOwn = !!(session && session.nameRealm && normalise(session.nameRealm) === normalise(player.nameRealm));
 
   var prefs = null;
+  var inScope;
   if (isOwn && typeof _wishlistPrefs !== 'undefined' && _wishlistPrefs) {
     prefs = _wishlistPrefs;
+    inScope = wishlistItemInScope;
   } else if (typeof _profileWishlistPrefsCache !== 'undefined' && _profileWishlistPrefsCache[player.id]) {
     prefs = _profileWishlistPrefsCache[player.id];
   } else if (typeof _teamItemPreferences !== 'undefined' && _teamItemPreferences) {
@@ -4399,7 +4409,7 @@ function mergedBisItemsForNameRealm(nameRealm) {
   }
   if (!prefs) return [];
 
-  return bisItemsFromWishlistPrefs(prefs, player.id);
+  return bisItemsFromWishlistPrefs(prefs, player.id, inScope);
 }
 
 // Canonical row order for the BiS List display (renderProfile below) --
@@ -5531,6 +5541,16 @@ function historyEntryCode(entry) {
 // already in that order; a code the read did not return sorts last). There
 // is no separate key naming one of them any more.
 function openSignupSeasonCodes() {
+  return teamSeasonCodesWith('signups_open');
+}
+
+// The tiers a team has wishlist editing open for, in the same order. A
+// raider's own wishlist is on one of these (#936), not on the Season View.
+function openWishlistSeasonCodes() {
+  return teamSeasonCodesWith('wishlist_open');
+}
+
+function teamSeasonCodesWith(flag) {
   var rows = (DATA && DATA.teamSeasons) || [];
   var order = {};
   ((DATA && DATA.seasons) || []).forEach(function (season, i) {
@@ -5538,7 +5558,7 @@ function openSignupSeasonCodes() {
   });
   return rows
     .filter(function (row) {
-      return row.signups_open === true;
+      return row[flag] === true;
     })
     .map(function (row) {
       return row.season_code;
@@ -5558,11 +5578,10 @@ function signupsOpen(seasonCode) {
   return !!(row && row.signups_open);
 }
 
-// Same "editing gate, not visibility gate" shape as bisSubmissionsOpen() --
-// when closed, the raider's own tags stay visible/read-only rather than the
-// whole Wishlist tab disappearing (that's the 'bis' feature flag's job). The
-// tier is the one a wishlist row gets stamped with (resolveSeasonViewCode()),
-// so the gate and the stamp always agree.
+// The switch for the tier on the officer's screen (resolveSeasonViewCode()),
+// which is what the BiS tab's Open/Close Wishlist Editing toggle shows and
+// flips. A raider's own editing gate is wishlistEditableNow() in
+// js/wishlist.js, on the season their wishlist is on (#936).
 function wishlistOpen() {
   var row = teamSeasonRow(resolveSeasonViewCode());
   return !!(row && row.wishlist_open);
