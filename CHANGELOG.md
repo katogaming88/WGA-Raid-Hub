@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.158.3] - 2026-09-27
+
+### Project
+
+- `docs/revamp-time-log.md`: the missing row for #1357/#1367 (Settings General/Season/Raid progression/Danger zone build).
+
 ## [3.158.2] - 2026-09-27
 
 ### Frontend
