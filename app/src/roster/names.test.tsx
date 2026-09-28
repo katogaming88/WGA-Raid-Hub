@@ -25,10 +25,12 @@ const NAMES: NameRow[] = [
   { id: 2, label: 'Claimed Raider', team_member_id: 9 }
 ];
 
-function namesHandlers(overrides: {
-  rpc?: FakeHandlers['rpc'];
-  role?: 'officer' | 'raider' | null;
-} = {}): FakeHandlers {
+function namesHandlers(
+  overrides: {
+    rpc?: FakeHandlers['rpc'];
+    role?: 'officer' | 'raider' | null;
+  } = {}
+): FakeHandlers {
   const base = seededHandlers();
   const person = (role: string) => ({
     site_admin: false,
