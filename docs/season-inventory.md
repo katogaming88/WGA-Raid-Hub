@@ -24,6 +24,8 @@ On the site, `scopeToSeasonView()` (`js/common.js`) narrows `fetchTeamItemPrefer
 
 Saving a Season View pin drops both caches and the in-flight read, and refreshes the Incomplete Wishlists banner and the Roster tab's Wishlists Completed card, which read the same rows and are otherwise only built at boot. `wishlist_setup_status()` and `bis_demand_vs_awards` still count every season (#1268), and the tripwire in `tests/rls/item-preferences.test.js` holds that order.
 
+**Since #936 (2026-09-27, no migration) a raider's own wishlist is on a season the team opened, and in the new app the raider picks it.** `seasonView` still decides every officer-side reading and the BiS tab's wishlist toggle, and no longer decides a raider's stamp. On the site `wishlistSeasonCode()` (`js/wishlist.js`) is the live tier while the raider can edit it, else the newest of `openWishlistSeasonCodes()` (`js/common.js`), else the live tier to read; every scope check on the raider's own page goes through `wishlistItemInScope()`, which is `isItemInSeasonScope()`'s rule against that season (`itemInSeasonScopeFor()`), and the raider's own BiS List and completion badge pass it to `bisItemsFromWishlistPrefs()`. In the app `WishlistTab` (`app/src/profile/WishlistEditor.tsx`) holds the raider's pick among `wishlistCandidates()` and resolves it with `ownWishlistSeason()` (`app/src/profile/wishlist.ts`); `editorSeason()` is the reading for anyone else.
+
 Season lives in three places today and none of them is a table.
 
 - **The guild's raid tier.** Which tier is current is `CURRENT_SEASON` in `js/common.js`, a constant edited by hand once per tier. The database holds no guild-level season: `to_regclass('public.seasons')` and `('public.team_seasons')` are both null.
