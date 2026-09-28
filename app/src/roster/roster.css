@@ -308,48 +308,17 @@ a.raider-name:hover {
   }
 }
 
-/* Bare and claimed Names (#1355): self-service Claim, officer manage. */
-.names-section {
-  margin-top: var(--space-4);
-}
-
-.names-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: var(--space-2) 0;
-  padding: 0;
-  list-style: none;
-}
-
-.names-row {
+/* A row's Name actions (#1355): Claim on a bare row, officer actions on a
+   claimed or bare one, inline in the status cell rather than a separate
+   section. */
+.name-actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2);
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--border);
+  margin-top: var(--space-1);
 }
 
-.names-label {
-  font-weight: 600;
-}
-
-.status-claimed {
-  color: var(--success, var(--text-muted));
-}
-
-.names-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-left: auto;
-}
-
-.names-rename-form,
-.names-create-form {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
+.unclaimed-row .raider-name {
+  color: var(--text-muted);
 }

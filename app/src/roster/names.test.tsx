@@ -18,11 +18,25 @@ describe('toNames', () => {
   });
 });
 
-// The Roster page's Names section (#1355): self-service Claim, officer manage.
+// The Roster page's Names (#1355): a claimed Name overrides its character
+// row's display name; a bare one gets its own row in an "Unclaimed" group.
+// No separate Names section -- a roster row starts with the Name.
+
+const TORBJORN = {
+  id: 1,
+  name_realm: 'Torbjorn-Illidan',
+  nickname: null,
+  is_trial: false,
+  is_bench: false,
+  is_rotator: false,
+  tier_pieces_equipped: null,
+  team_member_id: 9,
+  classes_specs: { class: 'Death Knight', spec: 'Frost', role: 'Melee' }
+};
 
 const NAMES: NameRow[] = [
   { id: 1, label: 'Bare Raider', team_member_id: null },
-  { id: 2, label: 'Claimed Raider', team_member_id: 9 }
+  { id: 2, label: 'Raz', team_member_id: 9 }
 ];
 
 function namesHandlers(
@@ -48,12 +62,20 @@ function namesHandlers(
     },
     from(read: Read) {
       if (read.table === 'names') return { data: NAMES };
+      if (read.table === 'players') return { data: [TORBJORN] };
       return base.from!(read);
     }
   });
 }
 
-describe('the Names section on the Roster page', () => {
+describe('Names on the Roster page', () => {
+  it('shows the claimed Name as the row, not the character name', async () => {
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers());
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    expect(within(table).getByRole('rowheader', { name: /Raz/ })).toBeInTheDocument();
+    expect(within(table).getByText('Torbjorn')).toBeInTheDocument();
+  });
+
   it('offers Claim on a bare Name to a signed-in raider, and calls claim_name', async () => {
     const user = userEvent.setup();
     const seen: Record<string, unknown>[] = [];
@@ -69,8 +91,9 @@ describe('the Names section on the Roster page', () => {
         }
       })
     );
-    await screen.findByText('Bare Raider');
-    const bareRow = screen.getByText('Bare Raider').closest('li')!;
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    expect(within(table).getByText('Unclaimed')).toBeInTheDocument();
+    const bareRow = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
     await user.click(within(bareRow).getByRole('button', { name: 'Claim' }));
     expect(await screen.findByText('Claimed Bare Raider.')).toBeInTheDocument();
     expect(seen[0]).toEqual({ p_team_id: 1, p_name_id: 1 });
@@ -79,18 +102,20 @@ describe('the Names section on the Roster page', () => {
 
   it('does not offer Claim to a signed-out visitor', async () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: null }));
-    await screen.findByText('Bare Raider');
-    const bareRow = screen.getByText('Bare Raider').closest('li')!;
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const bareRow = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
     expect(within(bareRow).queryByRole('button', { name: 'Claim' })).not.toBeInTheDocument();
   });
 
-  it('shows officer-only actions to an officer, not a raider', async () => {
+  it('shows officer-only actions on both a claimed row and a bare one', async () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
-    await screen.findByText('Claimed Raider');
-    expect(screen.getByRole('button', { name: 'Add Name' })).toBeInTheDocument();
-    const claimedRow = screen.getByText('Claimed Raider').closest('li')!;
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const claimedRow = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
     expect(within(claimedRow).getByRole('button', { name: 'Remove claim' })).toBeInTheDocument();
     expect(within(claimedRow).getByRole('button', { name: 'Delete Member' })).toBeInTheDocument();
+    const bareRow = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
+    expect(within(bareRow).getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    expect(within(bareRow).getByRole('button', { name: 'Delete Name' })).toBeInTheDocument();
   });
 
   it('deletes a member after confirming, via delete_team_member', async () => {
@@ -109,21 +134,23 @@ describe('the Names section on the Roster page', () => {
         }
       })
     );
-    await screen.findByText('Claimed Raider');
-    const claimedRow = screen.getByText('Claimed Raider').closest('li')!;
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const claimedRow = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
     await user.click(within(claimedRow).getByRole('button', { name: 'Delete Member' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Delete Claimed Raider?' });
+    const dialog = await screen.findByRole('dialog', { name: 'Delete Raz?' });
     await user.click(within(dialog).getByRole('button', { name: 'Delete Member' }));
-    expect(await screen.findByText('Claimed Raider removed from the team.')).toBeInTheDocument();
+    expect(await screen.findByText('Raz removed.')).toBeInTheDocument();
     expect(seen[0]).toEqual({ p_team_id: 1, p_team_member_id: 9 });
   });
 
-  it('a raider sees no officer actions and no Add Name form', async () => {
+  it('a raider sees no officer actions on either row', async () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'raider' }));
-    await screen.findByText('Claimed Raider');
-    expect(screen.queryByRole('button', { name: 'Add Name' })).not.toBeInTheDocument();
-    const claimedRow = screen.getByText('Claimed Raider').closest('li')!;
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const claimedRow = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
     expect(within(claimedRow).queryByRole('button', { name: 'Remove claim' })).not.toBeInTheDocument();
     expect(within(claimedRow).queryByRole('button', { name: 'Delete Member' })).not.toBeInTheDocument();
+    const bareRow = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
+    expect(within(bareRow).queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(within(bareRow).queryByRole('button', { name: 'Delete Name' })).not.toBeInTheDocument();
   });
 });

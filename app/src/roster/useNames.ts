@@ -82,13 +82,29 @@ export function useClaimName(teamId: number) {
   );
 }
 
-// Officer: someone left. Takes the names row down with the membership.
+// Officer: someone left. Takes the names row down with the membership, and
+// the character row that pointed at it loses its claim (players.team_member_id
+// goes to null on its own), so the roster read needs refreshing too.
 export function useDeleteTeamMember(teamId: number) {
   return useSupabaseMutation<null, { teamMemberId: number }>(
     async (client, { teamMemberId }) => {
       const result = await client.rpc('delete_team_member', { p_team_id: teamId, p_team_member_id: teamMemberId });
       return { data: null, error: result.error };
     },
-    { key: ['delete-team-member', teamId], refreshes: [key(teamId)] }
+    { key: ['delete-team-member', teamId], refreshes: [key(teamId), ['roster', teamId]] }
+  );
+}
+
+// Officer: removes a bare Name outright (never claimed), a plain table
+// delete under the same officer-write policy create/rename/assign use.
+export function useDeleteName(teamId: number) {
+  return useSupabaseMutation<null, { nameId: number }>(
+    async (client, { nameId }) => {
+      const result = await client.from('names').delete().eq('id', nameId);
+      if (result.error) return result;
+      await writeAuditLog(client, teamId, 'Name Deleted', nameId, null);
+      return { data: null, error: null };
+    },
+    { key: ['delete-name', teamId], refreshes: [key(teamId)] }
   );
 }
