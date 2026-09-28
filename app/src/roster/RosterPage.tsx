@@ -245,6 +245,9 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
   const [filter, setFilter] = useState<Filter>('All');
   const summary = summarize(groups);
   const shown = filter === 'All' ? groups : groups.filter((g) => g.role === filter);
+  // Bare Names have no role, so a role tab (Tanks/Healers/...) has nothing to
+  // show them under; they only fold into the unfiltered Everyone view.
+  const shownUnclaimed = filter === 'All' ? unclaimed : [];
 
   // The filter sits above both columns, so the summary panel starts level with
   // the table rather than with the filter (Kat, 2026-09-14).
@@ -321,7 +324,7 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
                 showAlts={showAlts}
                 teamId={team.id}
                 officer={officer}
-                unclaimed={unclaimed}
+                unclaimed={shownUnclaimed}
               />
             </div>
             <RosterSummaryPanel summary={summary} />
@@ -438,11 +441,6 @@ function RosterTable({
         ))}
         {unclaimed.length > 0 && teamId !== undefined && (
           <tbody>
-            <tr className="role-row">
-              <th scope="rowgroup" colSpan={columns}>
-                <span className="role-name">Unclaimed</span> <span className="role-count num">{unclaimed.length}</span>
-              </th>
-            </tr>
             {unclaimed.map((n) => (
               <UnclaimedRow
                 key={`name-${n.id}`}

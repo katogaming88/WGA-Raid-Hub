@@ -20,7 +20,7 @@ answers to.
 
 ### Frontend
 
-- New app: Names on the Roster page (#1355), a roster row's display label. A claimed Name is what its row shows instead of the character's own name; a bare one (created by an officer, not yet claimed) gets its own row in an "Unclaimed" group below the role groups, with a Claim button for anyone signed in. Officers can add a bare Name, edit its label, remove a wrong claim, delete a bare Name outright, or delete a member who left.
+- New app: Names on the Roster page (#1355), a roster row's display label. A claimed Name is what its row shows instead of the character's own name; a bare one (created by an officer, not yet claimed) is a plain row with no role group of its own, shown only in the unfiltered Everyone view, with a Claim button for anyone signed in. Officers can add a bare Name, edit its label, remove a wrong claim, delete a bare Name outright, or delete a member who left.
 
 ## [3.159.1] - 2026-09-28
 

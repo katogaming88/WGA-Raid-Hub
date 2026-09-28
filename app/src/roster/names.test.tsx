@@ -19,8 +19,9 @@ describe('toNames', () => {
 });
 
 // The Roster page's Names (#1355): a claimed Name overrides its character
-// row's display name; a bare one gets its own row in an "Unclaimed" group.
-// No separate Names section -- a roster row starts with the Name.
+// row's display name; a bare one is a plain row with no role group of its
+// own, only shown under the unfiltered Everyone view. No separate Names
+// section -- a roster row starts with the Name.
 
 const TORBJORN = {
   id: 1,
@@ -92,12 +93,21 @@ describe('Names on the Roster page', () => {
       })
     );
     const table = await screen.findByRole('table', { name: 'Current roster' });
-    expect(within(table).getByText('Unclaimed')).toBeInTheDocument();
     const bareRow = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
     await user.click(within(bareRow).getByRole('button', { name: 'Claim' }));
     expect(await screen.findByText('Claimed Bare Raider.')).toBeInTheDocument();
     expect(seen[0]).toEqual({ p_team_id: 1, p_name_id: 1 });
     expect(client.rpcs.some(([n]) => n === 'claim_name')).toBe(true);
+  });
+
+  it('hides a bare Name once a specific role tab is picked, since it has none', async () => {
+    const user = userEvent.setup();
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers());
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    expect(within(table).getByText('Bare Raider')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Melee' }));
+    expect(within(table).queryByText('Bare Raider')).not.toBeInTheDocument();
+    expect(within(table).getByText('Raz')).toBeInTheDocument();
   });
 
   it('does not offer Claim to a signed-out visitor', async () => {
