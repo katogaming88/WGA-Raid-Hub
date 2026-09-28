@@ -10,6 +10,23 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-28 -- the setup status and the demand report count one season (#1268)
+
+Shipped: 20260928020820_demand_and_setup_status_season.sql
+
+The last two readers of `item_preferences` that counted a raider's picks across every season. `wishlist_setup_status()`, which the bot's `/nudge-missing` reads, counted a slot filled in one tier as filled in another, in both of its reads: the wishlist count and the loop that fills `missing_bis_rows`, the list the DM prints. `bis_demand_vs_awards` counted demand across every season beside awards counted per season. Since #936's picker a raider holds picks in two tiers as a matter of course, so both read wrong from the first day that happens.
+
+- **The nudge chases what a raider's own page lets them edit.** The comment of 2026-09-24 on #1268 set the team's open switches as the tiers the nudge asks about. #936's rule (2026-09-27, below) came after it: a raider never edits a tier before the live one, and the per-raider override is for the live tier. Measured on 2026-09-28 the two readings differ by a whole team: Phoenix has MID2's switch off and 9 raiders on the override, so the switches alone would have sent Phoenix no nudge at all, the missing BiS link included, since the link has no switch of its own. The status answers for the team's open tiers from the live one on, plus the live tier for a raider with the override, and a finished tier left open is not chased.
+- **One row per raider per tier, and one DM per raider.** The function names the tier on each row (`season`, `season_name`), so its return type changed and it was dropped and created, with the `service_role` grant its first migration gave it. The bot folds a raider's rows into one DM, because its 24-hour log is keyed by Discord id and category and a second DM in one run would land in the Skipped list; the missing BiS link belongs to the raider and is raised once. The DM names each tier only once the team's rows span more than one, so every team today reads as before.
+- **The demand report stays driven by demand, per season.** Demand is grouped by the pick's season and an award meets it only in its own season. An item handed out in a season nobody on the roster wants it in is not listed, the way an award nobody ever wanted never has been: the report answers how much of what raiders want has been handed out. Listing them would have added 37 rows to Phoenix's MID2 table, 15 to Hellfire's and 91 to Phoenix's MID1 (measured 2026-09-28), which now shows its empty state because nobody on the roster holds a MID1 pick. The middle reading, listing such an item only when someone wants it in another season, matched no row on production.
+- **A pick with no season fills no tier and is demand in no season**, as the write gate and the priority readers already read it.
+- **Tested against a real second tier.** No tier can start after MID2 while it is open-ended, so the test that needs one closes MID2 inside its transaction and starts the next tier a month out, which is what the migration that adds a tier will do; `tests/rls/seasons.test.js` already closed MID2 the same way.
+- **Not moved with this.** The bot's DM change reaches raiders when the bot is next deployed (#997 moves it off the VM). Until then the running bot reads the new rows correctly: it ignores the two new columns, and no raider can have two tiers before a tier after MID2 exists. #1368, the picker reading the app's shared season list, follows separately.
+
+[Full discussion -> #1268](https://github.com/katogaming88/WGA-Raid-Hub/issues/1268).
+
+---
+
 ## 2026-09-27 -- a raider's own wishlist is on the seasons the team opened, not the officer's pin (#936)
 
 Shipped: no migration

@@ -10,12 +10,13 @@ CREATE VIEW bis_demand_vs_awards AS (
  WITH demand AS (
          SELECT p.team_id,
             ip.item_id,
+            ip.season,
             count(DISTINCT ip.player_id) AS demand_count
            FROM ((item_preferences ip
              JOIN players p ON ((p.id = ip.player_id)))
              JOIN items i_1 ON ((i_1.id = ip.item_id)))
-          WHERE ((p.archived_at IS NULL) AND (ip.status = 'bis'::text) AND (NOT i_1.is_placeholder) AND (i_1.source = 'raid'::text))
-          GROUP BY p.team_id, ip.item_id
+          WHERE ((p.archived_at IS NULL) AND (ip.status = 'bis'::text) AND (ip.season IS NOT NULL) AND (NOT i_1.is_placeholder) AND (i_1.source = 'raid'::text))
+          GROUP BY p.team_id, ip.item_id, ip.season
         ), awards AS (
          SELECT rclc_loot.team_id,
             rclc_loot.item_id,
@@ -30,11 +31,11 @@ CREATE VIEW bis_demand_vs_awards AS (
     i.name AS item_name,
     i.slot,
     d.demand_count,
-    a.season,
+    d.season,
     COALESCE(a.awarded_count, (0)::bigint) AS awarded_count
    FROM ((demand d
      JOIN items i ON ((i.id = d.item_id)))
-     LEFT JOIN awards a ON (((a.team_id = d.team_id) AND (a.item_id = d.item_id))))
+     LEFT JOIN awards a ON (((a.team_id = d.team_id) AND (a.item_id = d.item_id) AND (a.season = d.season))))
   ORDER BY d.team_id, d.demand_count DESC, COALESCE(a.awarded_count, (0)::bigint)
 )
 ```

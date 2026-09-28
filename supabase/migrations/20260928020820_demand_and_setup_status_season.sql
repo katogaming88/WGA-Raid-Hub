@@ -1,13 +1,57 @@
--- Function public.wishlist_setup_status: current definition, generated from the database.
--- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): public
+-- #1268: the wishlist setup status and the BiS demand report count one tier,
+-- not every tier a raider has ever filed a pick under.
+--
+-- These are the last two readers of item_preferences that took every season;
+-- the priority readers took theirs in 20260927174243. Until the unique key
+-- carried the season (20260924145125) a raider held one pick per item and
+-- slot, so neither had to name a tier. Since #936's picker a raider holds
+-- picks in two tiers as a matter of course, and both count wrong from then:
+--
+--   wishlist_setup_status(), which the bot's /nudge-missing reads, read the
+--   table twice, for the wishlist count and in the loop that fills
+--   missing_bis_rows, the list the DM prints. A slot filled in one tier read
+--   as filled in the other, and the raider was not chased for it.
+--
+--   bis_demand_vs_awards counted demand across every season while its awards
+--   were per season, and the join carried an award's season onto a demand
+--   count that had none.
+--
+-- The status answers for the tiers a raider's own page lets them edit,
+-- decided on #1268 from #936's rule: the tiers the team opened from the live
+-- one on, plus the live tier for a raider with the per-raider override. One
+-- row per raider per tier, naming it, so the return type changes and the
+-- function is dropped and created, with the service_role grant and the
+-- catalog comment its first migration gave it. A team with nothing open gets
+-- no rows, and a finished tier left open is not chased, since neither site
+-- lets a raider back into it.
+--
+-- The view groups demand by the pick's season and meets an award only in its
+-- own season. An item handed out in a season nobody wants it in is not listed,
+-- decided on #1268: the report answers how much of what raiders want has been
+-- handed out, and an award nobody ever wanted has never been listed. Its
+-- columns are unchanged, and season is now the demand's.
+--
+-- A pick with no season belongs to no tier, as the write gate and the
+-- priority readers already read it: 9 rows on production, all on archived
+-- characters, which both reads leave out anyway.
 
-CREATE OR REPLACE FUNCTION public.wishlist_setup_status(p_team_id integer)
- RETURNS TABLE(player_id integer, name_realm text, discord_id text, wishlist_count integer, bis_link text, missing_bis_rows text[], season text, season_name text)
- LANGUAGE plpgsql
- STABLE
- SET search_path TO 'public'
-AS $function$
+drop function public.wishlist_setup_status(integer);
+
+create function public.wishlist_setup_status(p_team_id integer)
+returns table (
+  player_id integer,
+  name_realm text,
+  discord_id text,
+  wishlist_count integer,
+  bis_link text,
+  missing_bis_rows text[],
+  season text,
+  season_name text
+)
+language plpgsql
+stable
+set search_path = public
+as $$
 declare
   wishlist_slots text[] := array[
     'Head','Neck','Shoulder','Back','Chest','Wrist','Hands','Waist','Legs','Feet',
@@ -119,4 +163,43 @@ begin
     return next;
   end loop;
 end;
-$function$;
+$$;
+
+grant execute on function public.wishlist_setup_status(integer) to service_role;
+
+comment on function public.wishlist_setup_status(integer) is
+  'Per-team raider wishlist/BiS-source setup status for the Discord bot''s missing-data nudge (#8, wga-raid-bot), one row per raider per tier they can edit (#1268). Service-role only.';
+
+create or replace view public.bis_demand_vs_awards
+with (security_invoker = on)
+as
+with demand as (
+  select p.team_id, ip.item_id, ip.season, count(distinct ip.player_id) as demand_count
+  from public.item_preferences ip
+  join public.players p on p.id = ip.player_id
+  join public.items i on i.id = ip.item_id
+  where p.archived_at is null
+    and ip.status = 'bis'
+    and ip.season is not null
+    and not i.is_placeholder
+    and i.source = 'raid'
+  group by p.team_id, ip.item_id, ip.season
+),
+awards as (
+  select team_id, item_id, season, count(*) as awarded_count
+  from public.rclc_loot
+  where item_id is not null
+  group by team_id, item_id, season
+)
+select
+  d.team_id,
+  d.item_id,
+  i.name as item_name,
+  i.slot,
+  d.demand_count,
+  d.season,
+  coalesce(a.awarded_count, 0) as awarded_count
+from demand d
+join public.items i on i.id = d.item_id
+left join awards a on a.team_id = d.team_id and a.item_id = d.item_id and a.season = d.season
+order by d.team_id, d.demand_count desc, coalesce(a.awarded_count, 0) asc;

@@ -3078,18 +3078,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "item_preferences_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+          {
             foreignKeyName: "players_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rclc_loot_season_fkey"
-            columns: ["season"]
-            isOneToOne: false
-            referencedRelation: "seasons"
-            referencedColumns: ["code"]
           },
         ]
       }
@@ -4243,6 +4243,8 @@ export type Database = {
           missing_bis_rows: string[]
           name_realm: string
           player_id: number
+          season: string
+          season_name: string
           wishlist_count: number
         }[]
       }
