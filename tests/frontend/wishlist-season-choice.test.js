@@ -7,9 +7,10 @@ import { fileURLToPath } from 'node:url';
 // #936, decision 13 on #1189: Season View is the officer's planning control,
 // and it used to choose the season a raider's own wishlist was on as well.
 // The raider's page is on the seasons the team opened instead: the live tier
-// while the raider can edit it, else the newest season open to them, else the
-// live tier to read. An officer's pin no longer moves where a raider's picks
-// land.
+// while the raider can edit it, else the newest season open to them after it,
+// else the live tier to read. An officer's pin no longer moves where a raider's
+// picks land, and a switch left on for a finished tier does not send a raider
+// back to it.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
@@ -100,6 +101,15 @@ describe('the season a raider’s own wishlist is on', () => {
     expect(sandbox.wishlistSeasonCode()).toBe('MID2');
   });
 
+  // The day a new tier starts, the finished tier's switch is usually still on,
+  // since nothing turns it off. Its raiders stay on the new tier, read-only,
+  // until an officer opens it, rather than editing a finished tier's wishlist.
+  it('is the live tier, to read, when only a season before it is open', () => {
+    const sandbox = makeSandbox({ teamSeasons: open('MID1') });
+    expect(sandbox.wishlistSeasonCode()).toBe('MID2');
+    expect(sandbox.wishlistEditableNow()).toBe(false);
+  });
+
   // The seasons read failing is what an empty DATA.seasons means, since the
   // table is filled by migration. The page cannot tell the live tier or the
   // order of the open ones then, so it stays on no season and read-only, as
@@ -117,9 +127,9 @@ describe('whether a raider can edit their own wishlist', () => {
     expect(sandbox.wishlistEditableNow()).toBe(true);
   });
 
-  it('is open on a season the team opened that is not the live tier', () => {
-    const sandbox = makeSandbox({ teamSeasons: open('MID1') });
-    expect(sandbox.wishlistSeasonCode()).toBe('MID1');
+  it('is open on the next season when the team opened it before it starts', () => {
+    const sandbox = makeSandbox({ teamSeasons: open('MID3') });
+    expect(sandbox.wishlistSeasonCode()).toBe('MID3');
     expect(sandbox.wishlistEditableNow()).toBe(true);
   });
 
@@ -129,6 +139,35 @@ describe('whether a raider can edit their own wishlist', () => {
 
   it('is open on the live tier for a raider an officer allowed', () => {
     expect(makeSandbox({ allowed: true }).wishlistEditableNow()).toBe(true);
+  });
+});
+
+// The page says which season it is on, since that is no longer always the live
+// tier, and a raider editing the next tier's wishlist has to be able to tell.
+describe('the season a raider’s own wishlist names', () => {
+  const body = (sandbox) =>
+    sandbox.wishlistSectionBodyHTML({ id: 11, firstName: 'Kat', class: 'Death Knight', spec: 'Frost' });
+
+  it('is the live tier while it is open', () => {
+    expect(body(makeSandbox({ teamSeasons: open('MID2') }))).toContain(
+      'Wishlist for <strong>Midnight Season 2</strong>'
+    );
+  });
+
+  it('is the next season when that is the one the page is on', () => {
+    expect(body(makeSandbox({ teamSeasons: open('MID3') }))).toContain(
+      'Wishlist for <strong>Midnight Season 3</strong>'
+    );
+  });
+
+  it('is the live tier, read-only, when nothing is open', () => {
+    expect(body(makeSandbox())).toContain('Wishlist for <strong>Midnight Season 2</strong>');
+  });
+
+  it('is left out when no season resolves', () => {
+    const sandbox = makeSandbox({ teamSeasons: open('MID2') });
+    sandbox.DATA.seasons = [];
+    expect(body(sandbox)).not.toContain('Wishlist for');
   });
 });
 

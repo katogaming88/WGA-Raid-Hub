@@ -130,13 +130,13 @@ const TWO_SEASONS_OPEN = {
     seasons: [
       { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null },
       {
-        code: WISHLIST_EDITOR.EARLIER_SEASON.code,
-        display_name: WISHLIST_EDITOR.EARLIER_SEASON.name,
-        starts_at: WISHLIST_EDITOR.EARLIER_SEASON.start,
-        ends_at: WISHLIST_EDITOR.EARLIER_SEASON.end
+        code: WISHLIST_EDITOR.NEXT_SEASON.code,
+        display_name: WISHLIST_EDITOR.NEXT_SEASON.name,
+        starts_at: WISHLIST_EDITOR.NEXT_SEASON.start,
+        ends_at: WISHLIST_EDITOR.NEXT_SEASON.end
       }
     ],
-    team_seasons: [SEASON.code, WISHLIST_EDITOR.EARLIER_SEASON.code].map((code) => ({
+    team_seasons: [SEASON.code, WISHLIST_EDITOR.NEXT_SEASON.code].map((code) => ({
       season_code: code,
       wishlist_open: true
     }))

@@ -306,6 +306,52 @@ describe('Wishlist (current site), with an officer’s Season View on another se
   });
 });
 
+// The page names the season it is on (#936), and a switch left on for the
+// tier before the live one, which nothing turns off, does not send the raider
+// back to it.
+describe('Wishlist (current site), the season it is on', () => {
+  const named = (page) => page.locator('#profileTabWishlist .wishlist-season-name').textContent();
+
+  it('is named', async () => {
+    const opened = await openWishlist();
+    try {
+      await showEditor(opened.page);
+      await expect(named(opened.page)).resolves.toBe(`Wishlist for ${SEASON.name}`);
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  it('stays the live tier, read-only, when only the season before it is open', async () => {
+    const opened = await openWishlist({
+      openSeasons: [EARLIER_SEASON.code],
+      seasons: [
+        ...SEASONS,
+        {
+          code: EARLIER_SEASON.code,
+          display_name: EARLIER_SEASON.name,
+          starts_at: EARLIER_SEASON.start,
+          ends_at: EARLIER_SEASON.end
+        }
+      ]
+    });
+    try {
+      await showEditor(opened.page);
+      await expect(named(opened.page)).resolves.toBe(`Wishlist for ${SEASON.name}`);
+      expect(await readEditor(opened.page)).toEqual(EXPECTED_EDITOR);
+      const enabled = await opened.page.evaluate(
+        () =>
+          [...document.querySelectorAll('#profileTabWishlist [onclick^="wishlistSetStatus"]')].filter(
+            (b) => !b.disabled
+          ).length
+      );
+      expect(enabled).toBe(0);
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
 describe('Wishlist (current site), marking a new BiS pick', () => {
   it('saves the pick and keeps the ring it replaces as 2nd Choice', async () => {
     const opened = await openWishlist();

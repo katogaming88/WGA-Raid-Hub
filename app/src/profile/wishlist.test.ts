@@ -91,12 +91,23 @@ describe('editorSeason', () => {
 describe('wishlistCandidates', () => {
   const order = ['MID3', 'MID2', 'MID1'];
 
-  it('lists the open seasons newest first', () => {
-    expect(wishlistCandidates(['MID1', 'MID3'], 'MID2', false, order)).toEqual(['MID3', 'MID1']);
+  it('lists the open seasons from the live tier on, newest first', () => {
+    expect(wishlistCandidates(['MID2', 'MID3'], 'MID2', false, order)).toEqual(['MID3', 'MID2']);
+  });
+
+  // A switch left on for a finished tier, which nothing turns off.
+  it('leaves out a season before the live tier, even while it is open', () => {
+    expect(wishlistCandidates(['MID1', 'MID3'], 'MID2', false, order)).toEqual(['MID3']);
+    expect(wishlistCandidates(['MID1'], 'MID2', false, order)).toEqual([]);
   });
 
   it('adds the live tier for a raider an officer allowed, in its place', () => {
-    expect(wishlistCandidates(['MID1', 'MID3'], 'MID2', true, order)).toEqual(['MID3', 'MID2', 'MID1']);
+    expect(wishlistCandidates(['MID1', 'MID3'], 'MID2', true, order)).toEqual(['MID3', 'MID2']);
+  });
+
+  // useWishlistSettings() sorts the open seasons with no live tier to hand.
+  it('keeps every open season, newest first, with no live tier to measure from', () => {
+    expect(wishlistCandidates(['MID1', 'MID3'], null, false, order)).toEqual(['MID3', 'MID1']);
   });
 
   it('lists the live tier once when it is open as well', () => {
@@ -110,7 +121,7 @@ describe('wishlistCandidates', () => {
 
 describe('ownWishlistSeason', () => {
   it('keeps the season the raider picked while it is still open to them', () => {
-    expect(ownWishlistSeason('MID1', ['MID3', 'MID2', 'MID1'], 'MID2')).toBe('MID1');
+    expect(ownWishlistSeason('MID3', ['MID3', 'MID2'], 'MID2')).toBe('MID3');
   });
 
   it('starts on the live tier when the raider can edit it', () => {
@@ -122,7 +133,7 @@ describe('ownWishlistSeason', () => {
   });
 
   it('is the newest open season when the live tier is not one', () => {
-    expect(ownWishlistSeason(null, ['MID3', 'MID1'], 'MID2')).toBe('MID3');
+    expect(ownWishlistSeason(null, ['MID3'], 'MID2')).toBe('MID3');
   });
 
   it('is the live tier, to read, with nothing open', () => {

@@ -176,3 +176,13 @@ export const NEW_BIS_ROW = {
 // season, so the page offered the earlier tier's items and saved picks there.
 export const EARLIER_SEASON = { name: 'Midnight Season 1', code: 'MID1', start: '2026-03-17', end: '2026-07-31' };
 export const PINNED_ELSEWHERE = { seasonView: EARLIER_SEASON.code, open: [SEASON.code, EARLIER_SEASON.code] };
+
+// The tier after SEASON, which a team can open before it starts: its raid and
+// one Plate helm from it. A raider's own wishlist can move forward to it, never
+// back to EARLIER_SEASON, whose switch a team may simply have left on.
+export const NEXT_SEASON = { name: 'Midnight Season 3', code: 'MID3', start: '2099-01-06', end: null };
+export const NEXT_RAID_ZONE = { wcl_zone_id: 60, season: 'MID3', name: 'The Drowned Spire', sort_index: 2 };
+export const NEXT_SEASON_HELM = item(1030, 'Crown of the Rising Tide', 'Head', {
+  armor_type: 'Plate',
+  wcl_zone_id: 60
+});
