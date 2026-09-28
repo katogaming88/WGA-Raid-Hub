@@ -7,6 +7,10 @@ import { HomePage } from './home/HomePage';
 import { CalendarPage } from './calendar/CalendarPage';
 import { BossGroupsPage } from './calendar/BossGroupsPage';
 import { AttendanceManagePage } from './attendance/AttendanceManagePage';
+import { GeneralSettingsPage } from './settings/GeneralSettingsPage';
+import { SeasonSettingsPage } from './settings/SeasonSettingsPage';
+import { ProgressionSettingsPage } from './settings/ProgressionSettingsPage';
+import { DangerZonePage } from './settings/DangerZonePage';
 import { GuildHomePage } from './guild/GuildHomePage';
 import { BoePage } from './boe/BoePage';
 import { NewsPage } from './news/NewsPage';
@@ -42,7 +46,11 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   history: <HistoryPage />,
   officers: <TeamOfficersPage />,
   signup: <SignUpPage />,
-  'officer/invite': <InviteLinkPage />
+  'officer/invite': <InviteLinkPage />,
+  'officer/settings': <GeneralSettingsPage />,
+  'officer/settings/season': <SeasonSettingsPage />,
+  'officer/settings/progression': <ProgressionSettingsPage />,
+  'officer/settings/danger': <DangerZonePage />
 };
 
 // Guild pages rebuilt so far (#1102), beside Guild home itself.

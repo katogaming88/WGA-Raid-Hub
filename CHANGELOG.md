@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.158.2] - 2026-09-27
+
+### Frontend
+
+- New app: the officer dashboard's Settings pages (#1357, #1103 row 1) -- General (`/officer/settings`: Season View, Trial Promotion Thresholds, Target Roster Sizes, WarcraftLogs Guild URL, Discord Signup Sheet), Season (`/officer/settings/season`: the Season History list and its WCL Performance Baseline fetch), Raid progression (`/officer/settings/progression`: add/remove a raid or boss, drag-to-reorder bosses, kill/AOTC dates, a mini-raid flag), and Danger zone (`/officer/settings/danger`: the season-close control). Same behavior as `tab-season.js`'s Season Settings tab throughout; the WCL zone/encounter lookup tools on the Raid progression card stay on the current site for now (not part of #1357), and each raid/boss's `wclZoneId`/`wclEncounterId` still round-trips untouched on save. The one deliberate change: Close Season is renamed **Archive season**, to say what the button does -- it files this team's own record of a tier that already ended, it doesn't end anything (#1103's decision). Behavior recorded as browser tests first, per #1103's process.
+
+### Project
+
+- `tests/browser-app/settings.test.js` records the current Season Settings tab's behavior (General/Season/Progression saves, and Archive season's `team_season_start` -> `close_season` call) against the four new pages, and ten new states cover them in `app.test.js`'s WCAG 2.1 AA sweep. `#1103` updated: row 1's second half filed as `#1357` and built.
+
 ## [3.158.1] - 2026-09-27
 
 ### Frontend
