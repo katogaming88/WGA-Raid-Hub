@@ -108,15 +108,24 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_member_id integer;
+  v_archived_at timestamptz;
   v_discord_id text;
 begin
   if v_uid is null then
     raise exception 'Not signed in';
   end if;
 
-  select tm.id into v_member_id
+  select tm.id, tm.archived_at into v_member_id, v_archived_at
     from public.team_members tm
    where tm.team_id = p_team_id and tm.person_id = public.my_person_id();
+
+  -- An archived membership does not un-archive itself by claiming a Name --
+  -- rejoining an ended membership only ever happens through a fresh invite
+  -- link (team_invite_link_join), which an officer controls. Self-service
+  -- Claim is not that door.
+  if v_member_id is not null and v_archived_at is not null then
+    raise exception 'Your membership on this team has ended; ask an officer for a new invite link to rejoin';
+  end if;
 
   if v_member_id is null then
     v_discord_id := public.current_discord_id();
@@ -126,8 +135,6 @@ begin
     insert into public.team_members (team_id, discord_id, role)
     values (p_team_id, v_discord_id, 'raider')
     returning id into v_member_id;
-  else
-    update public.team_members set archived_at = null where id = v_member_id and archived_at is not null;
   end if;
 
   update public.names
@@ -141,7 +148,7 @@ end;
 $$;
 
 comment on function public.claim_name(integer, integer) is
-  'Self-service claim of a bare or joined-unclaimed Name (#1355): links the caller''s own team_members row (creating it from their Discord identity if this is their first claim on the team, the same as claim_character(); un-archiving it if they''d left) to the picked names row. Refuses a Name that is already claimed.';
+  'Self-service claim of a bare or joined-unclaimed Name (#1355): links the caller''s own team_members row (creating it from their Discord identity if this is their first claim on the team, the same as claim_character()) to the picked names row. Refuses a Name that is already claimed, and refuses to un-archive an ended membership -- that only happens through a fresh invite link, which an officer controls, not self-service Claim.';
 
 revoke all on function public.claim_name(integer, integer) from public;
 revoke execute on function public.claim_name(integer, integer) from anon;

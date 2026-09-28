@@ -174,17 +174,19 @@ describe('claim_name', () => {
     });
   });
 
-  it("un-archives the caller's own membership when reusing it to claim", async () => {
+  it("refuses to un-archive the caller's own ended membership -- only a fresh invite link does that", async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       await q('update public.team_members set archived_at = now() where id = $1', [team.raider.memberId]);
       const nameId = await insertName(q, team.teamId, 'Returning Raider');
 
-      await claimName(asUser, team.raider.uid, team.teamId, nameId);
+      await expect(claimName(asUser, team.raider.uid, team.teamId, nameId)).rejects.toThrow(/has ended/);
 
       const member = (await q('select archived_at from public.team_members where id = $1', [team.raider.memberId]))
         .rows[0];
-      expect(member.archived_at).toBeNull();
+      expect(member.archived_at).not.toBeNull();
+      const name = (await q('select team_member_id from public.names where id = $1', [nameId])).rows[0];
+      expect(name.team_member_id).toBeNull();
     });
   });
 });
