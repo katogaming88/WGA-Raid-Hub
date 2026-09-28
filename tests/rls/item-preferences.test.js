@@ -555,49 +555,4 @@ describe('the wishlist key carries the season (#936)', () => {
   });
 });
 
-// A tripwire, not a behaviour. The key used to be what kept every officer-side
-// reader of item_preferences correct without any of them naming a season: a
-// raider could hold one row per item and slot, so a read of "their rows for
-// this item" could only ever be the tier in play. Widening the key ended that.
-//
-// 20260927174243 put the season on the two priority readers, so what is left
-// here is the demand side:
-//
-//   wishlist_setup_status() counts every row, so a slot filled in another tier
-//   reads as filled here and the raider is not chased for it.
-//
-// Reaching that no longer needs a tier after MID2: an officer can pin Season
-// View to MID1 and open that tier's wishlist switch, which set_team_season()
-// still allows for an ended tier. The seasons check below is the coarse half of
-// the guard, kept because a new tier is how this arrives in the ordinary course.
-// #1268 puts the season on this reader and on bis_demand_vs_awards, and deletes
-// both cases.
-//
-// The needle is only as good as the spelling the fixed code happens to use: it
-// is matchable here because this function aliases the table, and it never could
-// have matched build_rclc_export(), which reads it unaliased and had the same
-// bug. A guard over the text of one function says nothing about its siblings.
-describe('the setup status still ignores the season (#1268)', () => {
-  it('wishlist_setup_status() counts picks from every season', async () => {
-    await withTxn(async ({ q }) => {
-      const def = await q("select pg_get_functiondef(oid) as def from pg_proc where proname = 'wishlist_setup_status'");
-      expect(def.rows[0].def, 'wishlist_setup_status() filters picks by season now: delete this tripwire').not.toMatch(
-        /ip\.season/
-      );
-    });
-  });
-
-  it('no tier starts after MID2 while they do', async () => {
-    await withTxn(async ({ q }) => {
-      const later = await q(
-        "select code from public.seasons where starts_at > (select starts_at from public.seasons where code = 'MID2')"
-      );
-      expect(
-        later.rows.map((r) => r.code),
-        "a tier after MID2 needs #1268's season filter on the setup status first"
-      ).toEqual([]);
-    });
-  });
-});
-
 afterAll(() => pool.end());

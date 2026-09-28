@@ -192,7 +192,7 @@ function loadBisDemandReport() {
     return;
   }
   container.innerHTML = '<p style="color:var(--text-muted);">Loading...</p>';
-  // team-read-guard: a view aggregated to one row per item wishlisted 'bis'.
+  // team-read-guard: a view aggregated to one row per item and season wishlisted 'bis'.
   supabaseClient
     .from('bis_demand_vs_awards')
     .select('*')
@@ -225,18 +225,15 @@ function renderBisDemandTable() {
   var select = document.getElementById('reportsBisSeasonFilter');
   var season = select.value;
 
-  var byItem = {};
-  REPORTS_STATE.bisDemandRows.forEach(function (r) {
-    if (!byItem[r.item_id]) {
-      byItem[r.item_id] = { item_name: r.item_name, slot: r.slot, demand_count: r.demand_count, awarded_count: 0 };
-    }
-    if (r.season === season) byItem[r.item_id].awarded_count = r.awarded_count;
-  });
-  var list = Object.keys(byItem).map(function (id) {
-    return byItem[id];
+  // One row per item and season (#1268), demand and awards both from it.
+  var list = REPORTS_STATE.bisDemandRows.filter(function (r) {
+    return r.season === season;
   });
   if (!list.length) {
-    container.innerHTML = '<p style="color:var(--text-muted);">No BiS demand recorded for the active roster.</p>';
+    container.innerHTML =
+      '<p style="color:var(--text-muted);">No BiS demand recorded for ' +
+      (season ? reportsSeasonLabel(season) + ' on ' : '') +
+      'the active roster.</p>';
     return;
   }
   list.sort(function (a, b) {

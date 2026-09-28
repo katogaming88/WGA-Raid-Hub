@@ -22,7 +22,7 @@ import {
   PermissionFlagsBits
 } from 'discord.js';
 import express, { Request, Response } from 'express';
-import { fetchNudgeCandidates, NudgeCategory, profileDeepLink } from './wishlistStatus';
+import { fetchNudgeCandidates, NudgeCandidate, NudgeCategory, nudgeLines, profileDeepLink } from './wishlistStatus';
 import { filterAndRecordNudges } from './nudgeLog';
 import { runSignupSheetSweep, syncSignupSheet, SignupSheetContext } from './signupSheet';
 import {
@@ -304,33 +304,16 @@ function truncateLines(lines: string[], limit = 3800): string {
   return out;
 }
 
-const NUDGE_MESSAGES: Record<NudgeCategory, string> = {
-  'no-wishlist': "You haven't submitted a wishlist yet.",
-  'no-bis-link': "You haven't submitted a BiS source link yet.",
-  'incomplete-wishlist': 'Your wishlist is missing a real BiS pick for one or more slots.'
-};
-
-function buildNudgeEmbed(
-  teamName: string,
-  nameRealm: string,
-  firstName: string,
-  categories: NudgeCategory[],
-  missingBisRows: string[]
-): EmbedBuilder {
-  const lines = categories.map((cat) => {
-    if (cat === 'incomplete-wishlist' && missingBisRows.length) {
-      return `- ${NUDGE_MESSAGES[cat]} Missing: **${missingBisRows.join(', ')}**`;
-    }
-    return `- ${NUDGE_MESSAGES[cat]}`;
-  });
+function buildNudgeEmbed(teamName: string, candidate: NudgeCandidate, due: NudgeCategory[]): EmbedBuilder {
+  const lines = nudgeLines(candidate, due);
   const embed = new EmbedBuilder()
     .setColor(0xe74c3c)
     .setTitle(`${teamName} -- Setup Reminder`)
     .setDescription(
-      `Hey ${nameRealm}! A quick check found your loot setup is missing something:\n\n${lines.join('\n')}`
+      `Hey ${candidate.nameRealm}! A quick check found your loot setup is missing something:\n\n${lines.join('\n')}`
     )
     .setFooter({ text: 'This helps officers award loot correctly -- please take a moment to update it.' });
-  const link = SITE_URL ? profileDeepLink(SITE_URL, firstName, categories) : null;
+  const link = SITE_URL ? profileDeepLink(SITE_URL, candidate.firstName, due) : null;
   if (link) embed.addFields({ name: 'Update it here', value: link });
   return embed;
 }
@@ -443,7 +426,7 @@ client.on('interactionCreate', async (interaction) => {
         try {
           const user = await interaction.client.users.fetch(candidate.discordId);
           await user.send({
-            embeds: [buildNudgeEmbed(cfg.name, candidate.nameRealm, candidate.firstName, due, candidate.missingBisRows)]
+            embeds: [buildNudgeEmbed(cfg.name, candidate, due)]
           });
           nudged.push(candidate.nameRealm);
         } catch {

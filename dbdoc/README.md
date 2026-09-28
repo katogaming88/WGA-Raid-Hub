@@ -121,7 +121,6 @@
 | public.restrict_players_self_update_to_bonus_roll | trigger |  | FUNCTION |
 | public.restrict_item_preferences_officer_update_to_note_clear | trigger |  | FUNCTION |
 | public.generate_priority_order | record | p_team_id integer, p_season text, p_item_id integer, p_track text | FUNCTION |
-| public.wishlist_setup_status | record | p_team_id integer | FUNCTION |
 | public.check_team_id_matches_boe_item | trigger |  | FUNCTION |
 | public.check_boe_status_transition | trigger |  | FUNCTION |
 | public.boe_record_listing | void | p_id integer, p_price bigint, p_listed_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_note text DEFAULT NULL::text | FUNCTION |
@@ -214,6 +213,7 @@
 | public.restrict_item_preferences_to_open_wishlist | trigger |  | FUNCTION |
 | public.also_on_teams | record | p_team_id integer | FUNCTION |
 | public.record_raid_night_participation | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[] | FUNCTION |
+| public.wishlist_setup_status | record | p_team_id integer | FUNCTION |
 
 ## Enums
 
