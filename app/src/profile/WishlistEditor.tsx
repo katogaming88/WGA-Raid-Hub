@@ -26,10 +26,23 @@ import {
   type Mark
 } from './wishlist';
 
-// The Wishlist tab: the summary and the editor read one season. A raider's own
-// is the season they pick from the ones the team opened (#936, decision 13 on
-// #1189), starting on the live tier; anyone else reads the season on the
-// officer's screen, as every officer view does (#1351).
+// The season a raider picked for their own wishlist, kept in this browser so
+// leaving the tab or reloading does not move them back to the default.
+const seasonKey = (playerId: number) => `wga-wishlist-season-${playerId}`;
+
+function savedSeason(playerId: number): string | null {
+  try {
+    return localStorage.getItem(seasonKey(playerId));
+  } catch {
+    // Storage can be blocked; the default applies.
+    return null;
+  }
+}
+
+// The Wishlist tab: the summary and the editor read one season, and the page
+// names it. A raider's own is the season they pick from the ones the team
+// opened (#936, decision 13 on #1189), starting on the live tier; anyone else
+// reads the season on the officer's screen, as every officer view does (#1351).
 export function WishlistTab({
   player,
   teamId,
@@ -42,7 +55,17 @@ export function WishlistTab({
   own: boolean;
 }) {
   const settings = useWishlistSettings(teamId);
-  const [picked, setPicked] = useState<string | null>(null);
+  // This visit's picks win over the saved one, which covers blocked storage.
+  const [chosen, setChosen] = useState<Record<number, string>>({});
+  const picked = own ? (chosen[player.id] ?? savedSeason(player.id)) : null;
+  const pick = (code: string) => {
+    setChosen({ ...chosen, [player.id]: code });
+    try {
+      localStorage.setItem(seasonKey(player.id), code);
+    } catch {
+      // Not saved; the pick still applies for this visit.
+    }
+  };
   const live = season.isSuccess ? season.data.code : null;
   const candidates =
     own && settings.isSuccess
@@ -57,21 +80,26 @@ export function WishlistTab({
 
   return (
     <div className="profile-wishlist">
-      {planned && candidates.length > 1 && (
-        <div className="field wishlist-season-picker">
-          <label className="field-label" htmlFor="wishlist-season">
-            Wishlist for
-          </label>
-          <select id="wishlist-season" className="select" value={planned} onChange={(e) => setPicked(e.target.value)}>
-            {candidates.map((code) => (
-              <option key={code} value={code}>
-                {seasonName(code)}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-      <WishlistSummaryCard player={player} season={season} seasonCode={settings.isSuccess ? planned : undefined} />
+      {planned &&
+        (candidates.length > 1 ? (
+          <div className="field wishlist-season-picker">
+            <label className="field-label" htmlFor="wishlist-season">
+              Wishlist for
+            </label>
+            <select id="wishlist-season" className="select" value={planned} onChange={(e) => pick(e.target.value)}>
+              {candidates.map((code) => (
+                <option key={code} value={code}>
+                  {seasonName(code)}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <p className="wishlist-season-name">
+            Wishlist for <strong>{seasonName(planned)}</strong>
+          </p>
+        ))}
+      <WishlistSummaryCard player={player} season={season} seasonOf={{ settings, code: planned }} />
       <WishlistEditor player={player} teamId={teamId} season={season} planned={planned} own={own} />
     </div>
   );

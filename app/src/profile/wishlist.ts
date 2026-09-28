@@ -185,25 +185,26 @@ export function editorSeason(view: string | null, season: SeasonWindow): string 
 }
 
 // The seasons a raider may put their own wishlist on (#936, decision 13 on
-// #1189): the ones the team opened, and the live tier for a raider an officer
-// allowed, since the override is for the tier being raided. Newest first, in
-// the order of `seasons` (every season's code, newest first).
+// #1189): the ones the team opened from the live tier on, and the live tier for
+// a raider an officer allowed, since the override is for the tier being raided.
+// Never one before the live tier, whose switch nothing turns off. Newest first,
+// in the order of `seasons` (every season's code, newest first).
 export function wishlistCandidates(
   openSeasons: string[],
   live: string | null,
   allowed: boolean,
   seasons: string[]
 ): string[] {
-  const codes = new Set(openSeasons);
-  if (allowed && live) codes.add(live);
   const rank = (code: string) => (seasons.includes(code) ? seasons.indexOf(code) : Infinity);
+  const codes = new Set(live ? openSeasons.filter((code) => rank(code) <= rank(live)) : openSeasons);
+  if (allowed && live) codes.add(live);
   return [...codes].sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : a > b ? 1 : 0));
 }
 
 // The season a raider's own wishlist is on, which stamps their picks: the one
 // they picked while it is still open to them, else the live tier when they can
-// edit it, else the newest season open to them, else the live tier to read.
-// No live tier is no season, as on the current site.
+// edit it, else the newest candidate, else the live tier to read. No live tier
+// is no season, as on the current site.
 export function ownWishlistSeason(picked: string | null, candidates: string[], live: string | null): string | null {
   if (!live) return null;
   if (picked && candidates.includes(picked)) return picked;

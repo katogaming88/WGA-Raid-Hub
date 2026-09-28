@@ -172,8 +172,10 @@ var CATALYST_ELIGIBLE_SLOTS = WISHLIST_TIER_SET_SLOTS.concat(CATALYST_SOURCE_SLO
 //
 // It is a season the team opened, not the officer's Season View (decision 13
 // on #1189): the live tier while the raider can edit it, else the newest
-// season open to them, else the live tier to read. The new app lets a raider
-// pick among the open seasons; this page has no picker and takes that
+// season open to them after it, else the live tier to read. Never one before
+// the live tier: nothing turns a finished tier's switch off, so on the day a
+// tier starts the one before it is usually still open. The new app lets a
+// raider pick among the same seasons; this page has no picker and takes that
 // default. With no live tier the seasons read failed, so the order of the
 // open seasons is unknown too, and the page stays on no season.
 function wishlistSeasonCode() {
@@ -181,7 +183,23 @@ function wishlistSeasonCode() {
   if (!live) return null;
   var open = openWishlistSeasonCodes();
   if (open.indexOf(live) !== -1 || wishlistAllowedForMe()) return live;
-  return open[0] || live;
+  var liveStart = seasonRow(live).starts_at;
+  var ahead = open.filter(function (code) {
+    var tier = seasonRow(code);
+    return !!tier && tier.starts_at > liveStart;
+  });
+  return ahead[0] || live;
+}
+
+// Which season the page is on, by name, since it is not always the live tier.
+function wishlistSeasonNameHTML() {
+  var season = wishlistSeasonCode();
+  if (!season) return '';
+  return (
+    '<p class="wishlist-season-name" style="font-size:1.02rem;margin:0.25rem 0 0.75rem;">Wishlist for <strong>' +
+    _esc(seasonDisplayName(season)) +
+    '</strong></p>'
+  );
 }
 
 // Whether the season the page is on has the team's wishlist switch on.
@@ -986,6 +1004,8 @@ function wishlistSectionBodyHTML(player) {
     player.firstName +
     '" class="help-tip">Tag every item you\'d want per slot, not just one pick: backups, sidegrades, or drops to pass on. BiS choices marked here save to your BiS List. Slots below are raid drops; use Other Sources for gear you\'ll get elsewhere.' +
     '<br><br>Swap specs per boss fight (e.g. a warlock alternating Aff/Demo/Destro -- not an off-spec you only play in M+ or a different role)? Only one item per slot can be BiS. Tag your other spec\'s item with whichever tier actually fits (2nd Choice/Sidegrade/Catalyst Only), and use the note to say it\'s really BiS for that spec, e.g. "BiS for Destro". Officers can see wishlist notes.</div>';
+
+  html += wishlistSeasonNameHTML();
 
   html +=
     '<p style="font-size:1.02rem;color:var(--text-muted);margin:0.25rem 0 0.75rem;">Want to see your Priority rank in-game as items drop? Install the ' +
