@@ -99,9 +99,7 @@ export function removeBoss(raids: Raid[], raidIdx: number, bossIdx: number): Rai
 
 export function updateBoss(raids: Raid[], raidIdx: number, bossIdx: number, patch: Partial<RaidBoss>): Raid[] {
   return raids.map((r, i) =>
-    i === raidIdx
-      ? { ...r, bosses: (r.bosses ?? []).map((b, j) => (j === bossIdx ? { ...b, ...patch } : b)) }
-      : r
+    i === raidIdx ? { ...r, bosses: (r.bosses ?? []).map((b, j) => (j === bossIdx ? { ...b, ...patch } : b)) } : r
   );
 }
 
@@ -245,8 +243,9 @@ export function rosterSnapshot(
     );
     const attendance = eligible.length
       ? `${(
-          Math.round((eligible.reduce((sum, r) => sum + (ATTENDANCE_WEIGHTS[r.status!] ?? 0), 0) / eligible.length) * 1000) /
-          10
+          Math.round(
+            (eligible.reduce((sum, r) => sum + (ATTENDANCE_WEIGHTS[r.status!] ?? 0), 0) / eligible.length) * 1000
+          ) / 10
         ).toFixed(1)}%`
       : '';
     return {

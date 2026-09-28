@@ -54,13 +54,18 @@ function ProgressionEditor({ teamId, initial }: { teamId: number; initial: Raid[
     <div className="card settings-card">
       <h2>Raid Progression</h2>
       <p className="text-muted">
-        Add one block per raid in the current season. Boss kill dates are shown publicly. Mini-raids have no AOTC
-        date.
+        Add one block per raid in the current season. Boss kill dates are shown publicly. Mini-raids have no AOTC date.
       </p>
       <div className="settings-raid-list">
         {raids.length === 0 && <p className="text-muted">No raids added yet. Click "+ Add Raid" to start.</p>}
         {raids.map((raid, i) => (
-          <RaidBlock key={i} raid={raid} raidIdx={i} onChange={setRaids} onRemove={() => setRaids((r) => removeRaid(r, i))} />
+          <RaidBlock
+            key={i}
+            raid={raid}
+            raidIdx={i}
+            onChange={setRaids}
+            onRemove={() => setRaids((r) => removeRaid(r, i))}
+          />
         ))}
       </div>
       <div className="settings-row">

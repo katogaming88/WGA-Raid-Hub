@@ -87,9 +87,9 @@ function ArchiveSeasonCard({
     <div className="card settings-card settings-danger-card">
       <h2>Archive Season</h2>
       <p className="text-muted">
-        Files this team's own record of a tier that has ended: the roster with its attendance and the raids with
-        their progress are recorded in Season History, and every player's submitted BiS source, M+ exclusion and
-        Bench status reset. Nothing about the current tier changes -- it's Blizzard's, and starts on its own.
+        Files this team's own record of a tier that has ended: the roster with its attendance and the raids with their
+        progress are recorded in Season History, and every player's submitted BiS source, M+ exclusion and Bench status
+        reset. Nothing about the current tier changes -- it's Blizzard's, and starts on its own.
       </p>
       <div className="settings-row">
         {codes.length > 1 && (
@@ -134,9 +134,9 @@ function ArchiveSeasonCard({
         <Dialog title="Archive season" onClose={() => setConfirming(false)} busy={close.isPending}>
           <p>
             File "{targetSeason.display_name}" into Season History? The roster with its attendance and the raids with
-            their progress are recorded. Every player's submitted BiS source will be cleared, and M+ exclusion and
-            Bench status will reset for the whole roster (Trial status is left alone). Nothing else changes: the
-            tier everyone is on stays where it is.
+            their progress are recorded. Every player's submitted BiS source will be cleared, and M+ exclusion and Bench
+            status will reset for the whole roster (Trial status is left alone). Nothing else changes: the tier everyone
+            is on stays where it is.
           </p>
           <div className="dialog-actions">
             <span className="grow" />

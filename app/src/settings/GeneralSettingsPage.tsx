@@ -67,8 +67,8 @@ function SeasonViewCard({
     <div className="card settings-card">
       <h2>Season View</h2>
       <p className="text-muted">
-        The season your team is planning items/BiS/Wishlist for. Leave on Live season and the Priority tab, BiS
-        Lists, and Wishlist reflect the current raiding season automatically. This does not affect signups.
+        The season your team is planning items/BiS/Wishlist for. Leave on Live season and the Priority tab, BiS Lists,
+        and Wishlist reflect the current raiding season automatically. This does not affect signups.
       </p>
       <div className="settings-row">
         <label className="visually-hidden" htmlFor="season-view-select">
@@ -166,8 +166,8 @@ function RosterTargetsCard({ teamId, settings }: { teamId: number; settings: Gen
     <div className="card settings-card">
       <h2>Target Roster Sizes</h2>
       <p className="text-muted">
-        Shown to raiders signing up as Tank or Healer: once the roster meets or exceeds a target, they see a nudge
-        to consider DPS/backup instead. Leave a field blank to skip the nudge for that role.
+        Shown to raiders signing up as Tank or Healer: once the roster meets or exceeds a target, they see a nudge to
+        consider DPS/backup instead. Leave a field blank to skip the nudge for that role.
       </p>
       <div className="settings-row">
         <label className="text-muted" htmlFor="target-tank-input">
@@ -220,8 +220,7 @@ function WclUrlCard({ teamId, settings }: { teamId: number; settings: GeneralSet
     <div className="card settings-card">
       <h2>WarcraftLogs Guild URL</h2>
       <p className="text-muted">
-        This team's own WarcraftLogs guild page. Shown as the WCL icon in the header once set. Leave blank to hide
-        it.
+        This team's own WarcraftLogs guild page. Shown as the WCL icon in the header once set. Leave blank to hide it.
       </p>
       <div className="settings-row">
         <label className="visually-hidden" htmlFor="wcl-url-input">
@@ -287,9 +286,9 @@ function DiscordSignupSheetCard({
     <div className="card settings-card">
       <h2>Discord Signup Sheet</h2>
       <p className="text-muted">
-        The bot posts one message per raid night showing the whole roster's RSVP status. Channel ID: leave blank to
-        use the bot's default attendance channel. Lead Time: how many hours before the raid the sheet gets posted
-        (default 48). Use Verify to confirm a channel ID resolves to the channel you expect.
+        The bot posts one message per raid night showing the whole roster's RSVP status. Channel ID: leave blank to use
+        the bot's default attendance channel. Lead Time: how many hours before the raid the sheet gets posted (default
+        48). Use Verify to confirm a channel ID resolves to the channel you expect.
       </p>
       <div className="settings-row">
         <label className="visually-hidden" htmlFor="discord-channel-input">

@@ -11,12 +11,7 @@ import { normalizeRaids, rosterSnapshot, type Raid, type SettingsHistoryEntry } 
 // plain officer's save surfaces that rejection as this mutation's own error,
 // same as the current site.
 
-async function writeAuditLog(
-  client: Client,
-  teamId: number,
-  action: string,
-  detail: string | null
-) {
+async function writeAuditLog(client: Client, teamId: number, action: string, detail: string | null) {
   // Best-effort like every other page's writeAuditLog(): a failed audit log
   // entry does not undo the write it was describing.
   try {
@@ -155,7 +150,12 @@ export function useSaveDiscordSignupSheet(teamId: number) {
         true
       );
       if (result.error) return { data: null, error: result.error };
-      await writeAuditLog(client, teamId, 'Discord Signup Sheet Settings Set', `${channelId ?? ''} / ${leadHours ?? 48}h`);
+      await writeAuditLog(
+        client,
+        teamId,
+        'Discord Signup Sheet Settings Set',
+        `${channelId ?? ''} / ${leadHours ?? 48}h`
+      );
       return { data: null, error: null };
     },
     { key: ['save-discord-signup-sheet', teamId], refreshes: [generalKey(teamId)] }
@@ -174,7 +174,10 @@ export function useVerifyDiscordChannel(teamSlug: string) {
       });
       if (res.error) return { data: null, error: { message: res.error.message } };
       const body = res.data as ChannelVerifyResult | null;
-      return { data: body?.ok ? body : { ok: false, error: (body as { error?: string })?.error ?? 'Channel not found.' }, error: null };
+      return {
+        data: body?.ok ? body : { ok: false, error: (body as { error?: string })?.error ?? 'Channel not found.' },
+        error: null
+      };
     },
     { key: ['verify-discord-channel', teamSlug], refreshes: [] }
   );
@@ -260,7 +263,9 @@ export function useSeasonPerfFetch(teamId: number) {
         body: { action: 'fetchSeasonPerf', teamId, season, zoneId }
       });
       if (res.error) return { data: null, error: { message: res.error.message } };
-      const result = res.data as (SeasonPerfResult & { success: true; players: { playerId: number; bestPerfAvg: number }[] }) | { success: false; error: string };
+      const result = res.data as
+        | (SeasonPerfResult & { success: true; players: { playerId: number; bestPerfAvg: number }[] })
+        | { success: false; error: string };
       if (!result.success) return { data: null, error: { message: result.error || 'Unknown error' } };
 
       if (liveSeasonCode && result.players?.length) {
@@ -292,7 +297,10 @@ export function useCloseSeason(teamId: number) {
     async (client, { code, tierEnd, players, attendanceRows }) => {
       const night = await client.rpc('team_season_start', { p_team_id: teamId, p_season: code });
       if (night.error) return { data: null, error: night.error };
-      const snapshot = rosterSnapshot(players, attendanceRows, { start: (night.data as string | null) ?? null, end: tierEnd });
+      const snapshot = rosterSnapshot(players, attendanceRows, {
+        start: (night.data as string | null) ?? null,
+        end: tierEnd
+      });
       const result = await client.rpc('close_season', {
         p_team_id: teamId,
         p_season: code,

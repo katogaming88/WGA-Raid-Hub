@@ -21,11 +21,13 @@ const OFFICER_PERSON = {
   ]
 };
 
-function officerHandlers(overrides: {
-  from?: (read: Read) => unknown;
-  rpc?: (name: string, args: Record<string, unknown>) => unknown;
-  invoke?: (name: string, args: unknown) => unknown;
-} = {}): FakeHandlers {
+function officerHandlers(
+  overrides: {
+    from?: (read: Read) => unknown;
+    rpc?: (name: string, args: Record<string, unknown>) => unknown;
+    invoke?: (name: string, args: unknown) => unknown;
+  } = {}
+): FakeHandlers {
   const base = seededHandlers();
   return seededHandlers({
     session: fakeSession({ battlenet: 'Aur#1', discord: { id: 'd', name: 'Aur' } }),
@@ -67,7 +69,11 @@ describe('General settings', () => {
       '/g/wga/t/phoenix/officer/settings',
       officerHandlers({
         from: (read) =>
-          read.table === 'team_settings' ? { data: GENERAL_ROW } : read.table === 'raid_zones' ? { data: [] } : undefined
+          read.table === 'team_settings'
+            ? { data: GENERAL_ROW }
+            : read.table === 'raid_zones'
+              ? { data: [] }
+              : undefined
       })
     );
     await screen.findByRole('heading', { name: 'Season View' });
@@ -82,7 +88,11 @@ describe('General settings', () => {
       '/g/wga/t/phoenix/officer/settings',
       officerHandlers({
         from: (read) =>
-          read.table === 'team_settings' ? { data: GENERAL_ROW } : read.table === 'raid_zones' ? { data: [] } : undefined,
+          read.table === 'team_settings'
+            ? { data: GENERAL_ROW }
+            : read.table === 'raid_zones'
+              ? { data: [] }
+              : undefined,
         rpc: (name, args) => {
           if (name === 'set_team_setting') {
             calls.push(args);
@@ -110,7 +120,11 @@ describe('General settings', () => {
       '/g/wga/t/phoenix/officer/settings',
       officerHandlers({
         from: (read) =>
-          read.table === 'team_settings' ? { data: GENERAL_ROW } : read.table === 'raid_zones' ? { data: [] } : undefined,
+          read.table === 'team_settings'
+            ? { data: GENERAL_ROW }
+            : read.table === 'raid_zones'
+              ? { data: [] }
+              : undefined,
         invoke: (name) => (name === 'discord-bot-webhook' ? { data: { ok: true, name: 'raid-attendance' } } : undefined)
       })
     );
@@ -129,9 +143,18 @@ describe('Season settings', () => {
       name: 'Midnight Season 1',
       start: '2026-01-01',
       end: '2026-03-31',
-      raids: [{ name: 'Old Raid', wclZoneId: 40, isMiniRaid: false, bosses: [{ name: 'A', mythicDate: '2026-03-01' }] }],
+      raids: [
+        { name: 'Old Raid', wclZoneId: 40, isMiniRaid: false, bosses: [{ name: 'A', mythicDate: '2026-03-01' }] }
+      ],
       roster: [
-        { nameRealm: 'Aur-Illidan', role: 'Tank', isTrial: false, isBench: false, joinDate: '2025-01-01', attendance: '90.0%' }
+        {
+          nameRealm: 'Aur-Illidan',
+          role: 'Tank',
+          isTrial: false,
+          isBench: false,
+          joinDate: '2025-01-01',
+          attendance: '90.0%'
+        }
       ]
     }
   ];
@@ -209,7 +232,9 @@ describe('Raid progression', () => {
     expect(calls[0]).toMatchObject({
       p_team_id: 1,
       p_updates: {
-        raidProgression: [{ name: 'Test Raid', isMiniRaid: false, aotcDate: '', bosses: [{ name: 'First Boss', mythicDate: '' }] }]
+        raidProgression: [
+          { name: 'Test Raid', isMiniRaid: false, aotcDate: '', bosses: [{ name: 'First Boss', mythicDate: '' }] }
+        ]
       }
     });
   });
@@ -280,7 +305,17 @@ describe('Danger zone', () => {
           }
           if (read.table === 'attendance') {
             return {
-              data: [{ id: 1, player_id: 1, raid_date: '2026-01-05', status: 'Present', report_excluded: false, report_title: null, source: null }]
+              data: [
+                {
+                  id: 1,
+                  player_id: 1,
+                  raid_date: '2026-01-05',
+                  status: 'Present',
+                  report_excluded: false,
+                  report_title: null,
+                  source: null
+                }
+              ]
             };
           }
           return undefined;

@@ -36,7 +36,13 @@ describe('normalizeRaids', () => {
     const raw = [{ wclZoneId: 46, bosses: [{ wclEncounterId: 12 }] }];
     const raids = normalizeRaids(raw);
     expect(raids).toEqual([
-      { wclZoneId: 46, name: '', isMiniRaid: false, aotcDate: '', bosses: [{ wclEncounterId: 12, name: '', mythicDate: '' }] }
+      {
+        wclZoneId: 46,
+        name: '',
+        isMiniRaid: false,
+        aotcDate: '',
+        bosses: [{ wclEncounterId: 12, name: '', mythicDate: '' }]
+      }
     ]);
   });
 
@@ -55,7 +61,10 @@ describe('raid progression editing', () => {
   });
 
   it('adds and removes a boss, keeping other raids untouched', () => {
-    const raids = normalizeRaids([{ name: 'A', bosses: [] }, { name: 'B', bosses: [] }]);
+    const raids = normalizeRaids([
+      { name: 'A', bosses: [] },
+      { name: 'B', bosses: [] }
+    ]);
     const withBoss = addBoss(raids, 0);
     expect(withBoss[0]!.bosses).toEqual([{ name: '', mythicDate: '' }]);
     expect(withBoss[1]).toEqual(raids[1]);
@@ -77,9 +86,7 @@ describe('raid progression editing', () => {
   });
 
   it('reorders a boss within its own raid', () => {
-    const raids = normalizeRaids([
-      { name: 'A', bosses: [{ name: 'One' }, { name: 'Two' }, { name: 'Three' }] }
-    ]);
+    const raids = normalizeRaids([{ name: 'A', bosses: [{ name: 'One' }, { name: 'Two' }, { name: 'Three' }] }]);
     const reordered = reorderBoss(raids, 0, 0, 2);
     expect(reordered[0]!.bosses!.map((b) => b.name)).toEqual(['Two', 'Three', 'One']);
     // A no-op move (same index) changes nothing.
@@ -196,10 +203,42 @@ describe('rosterSnapshot', () => {
   ];
 
   const rows: FullAttendanceRow[] = [
-    { id: 1, player_id: 1, raid_date: '2026-01-05', status: 'Present', report_excluded: false, report_title: null, source: null },
-    { id: 2, player_id: 1, raid_date: '2026-01-12', status: 'No Show', report_excluded: false, report_title: null, source: null },
-    { id: 3, player_id: 1, raid_date: '2025-11-01', status: 'Present', report_excluded: false, report_title: null, source: null },
-    { id: 4, player_id: 1, raid_date: '2026-01-19', status: 'Present', report_excluded: true, report_title: null, source: null }
+    {
+      id: 1,
+      player_id: 1,
+      raid_date: '2026-01-05',
+      status: 'Present',
+      report_excluded: false,
+      report_title: null,
+      source: null
+    },
+    {
+      id: 2,
+      player_id: 1,
+      raid_date: '2026-01-12',
+      status: 'No Show',
+      report_excluded: false,
+      report_title: null,
+      source: null
+    },
+    {
+      id: 3,
+      player_id: 1,
+      raid_date: '2025-11-01',
+      status: 'Present',
+      report_excluded: false,
+      report_title: null,
+      source: null
+    },
+    {
+      id: 4,
+      player_id: 1,
+      raid_date: '2026-01-19',
+      status: 'Present',
+      report_excluded: true,
+      report_title: null,
+      source: null
+    }
   ];
 
   it('averages weighted attendance over the window, ignoring nights before the tier or a join date, and excluded reports', () => {
