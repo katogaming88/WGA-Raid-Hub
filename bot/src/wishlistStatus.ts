@@ -67,9 +67,9 @@ export function profileDeepLink(siteUrl: string, firstName: string, categories: 
   return `${siteUrl.replace(/\/$/, '')}/#profile/${encodeURIComponent(firstName)}/${subtab}`;
 }
 
-// One candidate per raider, whatever the number of tiers, since the nudge log
-// keys a raider's cooldown by Discord id and category: a second DM in one run
-// would land in the Skipped list.
+// One candidate per character, whatever the number of tiers. The nudge log
+// keys its cooldown by Discord id and category, so a second DM for the same
+// character in one run would land in the Skipped list.
 export function nudgeCandidatesFromRows(rows: WishlistSetupStatusRow[]): NudgeCandidate[] {
   const nameTiers = new Set(rows.map((row) => row.season)).size > 1;
   const byPlayer = new Map<number, { candidate: NudgeCandidate; raised: Set<NudgeCategory> }>();
