@@ -2,21 +2,24 @@
 // from it, one row per active player on the team whose membership resolves to
 // a person. Since #935 the raider's own tags are the only coverage. Uses the
 // shared withTxn from helpers.js; every player is minted here, linked to the
-// seeded team 1 raider membership so the people join finds them.
+// seeded team 1 raider membership so the people join finds them. Picks are
+// stamped with the live tier, MID2, and a case opens its switch itself.
 import { describe, it, expect, afterAll } from 'vitest';
 import { pool, withTxn, seedPlayer, OFFICER_T1 } from './helpers.js';
 
 const RAIDER_T1_MEMBER = 3;
 const STAFF = 1; // Seed Test Staff, Two-Hand
 const ROBE = 2; // Seed Test Robe, Chest
+const LIVE = 'MID2';
 
-const tag = (q, playerId, itemId, status, slot = null) =>
-  q('insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, $1, $2, $3, $4)', [
-    playerId,
-    itemId,
-    status,
-    slot
-  ]);
+const tag = (q, playerId, itemId, status, slot = null, season = LIVE) =>
+  q(
+    'insert into public.item_preferences (team_id, player_id, item_id, status, slot, season) values (1, $1, $2, $3, $4, $5)',
+    [playerId, itemId, status, slot, season]
+  );
+
+const openWishlist = (q, season = LIVE) =>
+  q('insert into public.team_seasons (team_id, season_code, wishlist_open) values (1, $1, true)', [season]);
 
 async function statusFor(asUser, playerId) {
   const res = await asUser(OFFICER_T1, 'select * from public.wishlist_setup_status(1)');
@@ -26,6 +29,7 @@ async function statusFor(asUser, playerId) {
 describe('wishlist_setup_status', () => {
   it('a BiS tag covers its row and any other tag leaves the row missing', async () => {
     await withTxn(async ({ q, asUser }) => {
+      await openWishlist(q);
       const player = await seedPlayer(q, { teamId: 1, memberId: RAIDER_T1_MEMBER });
       await tag(q, player, STAFF, 'bis');
       await tag(q, player, ROBE, 'good');
@@ -41,6 +45,7 @@ describe('wishlist_setup_status', () => {
 
   it('a One-Hand BiS makes Off Hand a required row', async () => {
     await withTxn(async ({ q, asUser }) => {
+      await openWishlist(q);
       const player = await seedPlayer(q, { teamId: 1, memberId: RAIDER_T1_MEMBER });
       const dagger = (
         await q(
@@ -56,6 +61,7 @@ describe('wishlist_setup_status', () => {
 
   it('a player whose membership resolves to no person is not listed', async () => {
     await withTxn(async ({ q, asUser }) => {
+      await openWishlist(q);
       const player = await seedPlayer(q, { teamId: 1 });
       await tag(q, player, STAFF, 'bis');
       expect(await statusFor(asUser, player)).toBeUndefined();
