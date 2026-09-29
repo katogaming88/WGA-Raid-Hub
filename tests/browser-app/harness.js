@@ -185,6 +185,9 @@ export async function openApp(browser, port, state) {
     // performance-baseline count, empty unless a state lists them.
     raid_zones: [],
     player_wcl_season_perf: [],
+    // Bare and claimed Names on the Roster page (#1355), empty unless a
+    // state lists them.
+    names: [],
     ...state.tables
   };
 
