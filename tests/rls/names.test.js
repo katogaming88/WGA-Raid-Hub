@@ -285,8 +285,7 @@ describe('team_members RLS after the archive change', () => {
       await asUser(team.leader.uid, "update public.team_members set role = 'officer' where id = $1", [
         team.raider.memberId
       ]);
-      const role = (await q('select role from public.team_members where id = $1', [team.raider.memberId])).rows[0]
-        .role;
+      const role = (await q('select role from public.team_members where id = $1', [team.raider.memberId])).rows[0].role;
       expect(role).toBe('officer');
     });
   });
