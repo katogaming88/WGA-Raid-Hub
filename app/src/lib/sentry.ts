@@ -42,7 +42,17 @@ export function initSentry(dsn: unknown, environment: string): boolean {
   Sentry.init({
     dsn,
     environment,
-    sendDefaultPii: false,
+    // sendDefaultPii's replacement in v11 (#1375): unlike the option it
+    // replaces, dataCollection's own defaults collect cookies, headers,
+    // query params and user info (which can include the visitor's IP)
+    // unless turned off here. Set to match sendDefaultPii: false's old
+    // behavior, the baseline this file's own scrubbers (below) assume.
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: false,
+      urlQueryParams: false
+    },
     beforeSend: scrubEvent,
     beforeBreadcrumb: scrubBreadcrumb
   });

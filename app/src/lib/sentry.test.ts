@@ -22,7 +22,10 @@ describe('Sentry reporting', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(initSentry('https://key@o0.ingest.sentry.io/1', 'preview')).toBe(true);
     expect(Sentry.init).toHaveBeenCalledWith(
-      expect.objectContaining({ environment: 'preview', sendDefaultPii: false })
+      expect.objectContaining({
+        environment: 'preview',
+        dataCollection: { userInfo: false, cookies: false, httpHeaders: false, urlQueryParams: false }
+      })
     );
     reportError({ message: 'statement timeout' }, { where: 'query', key: ['streamers', [1, 2]] });
     const [sent, options] = vi.mocked(Sentry.captureException).mock.calls[0]!;
