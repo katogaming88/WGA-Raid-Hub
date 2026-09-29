@@ -95,7 +95,9 @@ describe('Names on the Roster page', () => {
     );
     const table = await screen.findByRole('table', { name: 'Current roster' });
     const bareRow = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
-    await user.click(within(bareRow).getByRole('button', { name: 'Claim' }));
+    await user.click(within(bareRow).getByRole('button', { name: 'More actions for Bare Raider' }));
+    const menu = await screen.findByRole('menu', { name: 'More actions for Bare Raider' });
+    await user.click(within(menu).getByRole('menuitem', { name: 'Claim' }));
     expect(await screen.findByText('Claimed Bare Raider.')).toBeInTheDocument();
     expect(seen[0]).toEqual({ p_team_id: 1, p_name_id: 1 });
     expect(client.rpcs.some(([n]) => n === 'claim_name')).toBe(true);
@@ -122,22 +124,28 @@ describe('Names on the Roster page', () => {
     expect(within(table).queryByRole('rowheader', { name: 'Needs A Tank' })).not.toBeInTheDocument();
   });
 
-  it('does not offer Claim to a signed-out visitor', async () => {
+  it('shows no "..." menu at all for a signed-out visitor on a bare row', async () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: null }));
     const table = await screen.findByRole('table', { name: 'Current roster' });
     const bareRow = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
-    expect(within(bareRow).queryByRole('button', { name: 'Claim' })).not.toBeInTheDocument();
+    expect(within(bareRow).queryByRole('button', { name: 'More actions for Bare Raider' })).not.toBeInTheDocument();
   });
 
-  it('shows officer-only actions on both a claimed row and a bare one', async () => {
+  it('shows officer-only actions on both a claimed row and a bare one, in the "..." menu', async () => {
+    const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
     const table = await screen.findByRole('table', { name: 'Current roster' });
     const claimedRow = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
-    expect(within(claimedRow).getByRole('button', { name: 'Remove claim' })).toBeInTheDocument();
-    expect(within(claimedRow).getByRole('button', { name: 'Archive Member' })).toBeInTheDocument();
+    await user.click(within(claimedRow).getByRole('button', { name: 'More actions for Raz' }));
+    const claimedMenu = await screen.findByRole('menu', { name: 'More actions for Raz' });
+    expect(within(claimedMenu).getByRole('menuitem', { name: 'Remove claim' })).toBeInTheDocument();
+    expect(within(claimedMenu).getByRole('menuitem', { name: 'Archive Member' })).toBeInTheDocument();
+
     const bareRow = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
-    expect(within(bareRow).getByRole('button', { name: 'Edit' })).toBeInTheDocument();
-    expect(within(bareRow).getByRole('button', { name: 'Delete Name' })).toBeInTheDocument();
+    await user.click(within(bareRow).getByRole('button', { name: 'More actions for Bare Raider' }));
+    const bareMenu = await screen.findByRole('menu', { name: 'More actions for Bare Raider' });
+    expect(within(bareMenu).getByRole('menuitem', { name: 'Edit' })).toBeInTheDocument();
+    expect(within(bareMenu).getByRole('menuitem', { name: 'Delete Name' })).toBeInTheDocument();
   });
 
   it('archives a member after confirming, via archive_team_member', async () => {
@@ -158,7 +166,9 @@ describe('Names on the Roster page', () => {
     );
     const table = await screen.findByRole('table', { name: 'Current roster' });
     const claimedRow = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
-    await user.click(within(claimedRow).getByRole('button', { name: 'Archive Member' }));
+    await user.click(within(claimedRow).getByRole('button', { name: 'More actions for Raz' }));
+    const menu = await screen.findByRole('menu', { name: 'More actions for Raz' });
+    await user.click(within(menu).getByRole('menuitem', { name: 'Archive Member' }));
     const dialog = await screen.findByRole('dialog', { name: 'Archive Raz?' });
     await user.click(within(dialog).getByRole('button', { name: 'Archive Member' }));
     expect(await screen.findByText('Raz archived.')).toBeInTheDocument();
@@ -179,14 +189,17 @@ describe('Names on the Roster page', () => {
     expect(screen.queryByLabelText('Add a Name')).not.toBeInTheDocument();
   });
 
-  it('a raider sees no officer actions on either row', async () => {
+  it('a raider sees no "..." menu on an already-claimed row, but gets Claim-only on a bare one', async () => {
+    const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'raider' }));
     const table = await screen.findByRole('table', { name: 'Current roster' });
     const claimedRow = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
-    expect(within(claimedRow).queryByRole('button', { name: 'Remove claim' })).not.toBeInTheDocument();
-    expect(within(claimedRow).queryByRole('button', { name: 'Archive Member' })).not.toBeInTheDocument();
+    expect(within(claimedRow).queryByRole('button', { name: 'More actions for Raz' })).not.toBeInTheDocument();
+
     const bareRow = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
-    expect(within(bareRow).queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
-    expect(within(bareRow).queryByRole('button', { name: 'Delete Name' })).not.toBeInTheDocument();
+    await user.click(within(bareRow).getByRole('button', { name: 'More actions for Bare Raider' }));
+    const menu = await screen.findByRole('menu', { name: 'More actions for Bare Raider' });
+    expect(within(menu).getAllByRole('menuitem')).toHaveLength(1);
+    expect(within(menu).getByRole('menuitem', { name: 'Claim' })).toBeInTheDocument();
   });
 });

@@ -1,14 +1,16 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { Dialog } from '../components/Dialog';
+import { Menu, type MenuAction } from '../components/Menu';
 import { useStatus } from '../components/Status';
 import { useSession } from '../auth/session';
 import { ROLE_LABELS, ROLE_ORDER } from './roster';
 import { useArchiveTeamMember, useClaimName, useDeleteName, useRemoveNameClaim, useRenameName } from './useNames';
 
-// A Name's actions (#1355), embedded in its own roster row rather than a
-// separate list: Claim on a bare row (anyone signed in), Edit/Remove
-// claim/Archive Member once claimed, Edit/Delete Name while still bare.
-// Everything but Claim is officer-only.
+// A Name's actions (#1355), all behind one "..." menu (Kat, 2026-09-29):
+// Claim on a bare row (anyone signed in), Edit/Remove claim/Archive Member
+// once claimed, Edit/Delete Name while still bare. Everything but Claim is
+// officer-only. No menu at all when nothing in it applies (a raider looking
+// at an already-claimed row).
 export function NameRowActions({
   teamId,
   officer,
@@ -35,8 +37,6 @@ export function NameRowActions({
   const deleteName = useDeleteName(teamId);
   const deleting = teamMemberId !== null ? archiveMember : deleteName;
 
-  if (!officer && teamMemberId !== null) return null;
-
   const onDeleted = () => {
     setConfirmDelete(false);
     announce('success', teamMemberId !== null ? `${label} archived.` : `${label} removed.`);
@@ -46,40 +46,35 @@ export function NameRowActions({
       ? archiveMember.mutate({ teamMemberId }, { onSuccess: onDeleted })
       : deleteName.mutate({ nameId }, { onSuccess: onDeleted });
 
+  const menuActions: MenuAction[] = [];
+  if (teamMemberId === null && user) {
+    menuActions.push({
+      label: claim.isPending ? 'Claiming…' : 'Claim',
+      disabled: claim.isPending,
+      onSelect: () => claim.mutate({ nameId }, { onSuccess: () => announce('success', `Claimed ${label}.`) })
+    });
+  }
+  if (officer) {
+    menuActions.push({ label: 'Edit', onSelect: () => setEditing(true) });
+    if (teamMemberId !== null) {
+      menuActions.push({
+        label: 'Remove claim',
+        disabled: removeClaim.isPending,
+        onSelect: () =>
+          removeClaim.mutate({ nameId }, { onSuccess: () => announce('success', `${label} is unclaimed again.`) })
+      });
+    }
+    menuActions.push({
+      label: teamMemberId !== null ? 'Archive Member' : 'Delete Name',
+      onSelect: () => setConfirmDelete(true)
+    });
+  }
+
+  if (menuActions.length === 0) return null;
+
   return (
     <span className="name-actions">
-      {teamMemberId === null && user && (
-        <button
-          type="button"
-          className="button"
-          disabled={claim.isPending}
-          onClick={() => claim.mutate({ nameId }, { onSuccess: () => announce('success', `Claimed ${label}.`) })}
-        >
-          {claim.isPending ? 'Claiming…' : 'Claim'}
-        </button>
-      )}
-      {officer && (
-        <>
-          <button type="button" className="link-button" onClick={() => setEditing(true)}>
-            Edit
-          </button>
-          {teamMemberId !== null && (
-            <button
-              type="button"
-              className="link-button"
-              disabled={removeClaim.isPending}
-              onClick={() =>
-                removeClaim.mutate({ nameId }, { onSuccess: () => announce('success', `${label} is unclaimed again.`) })
-              }
-            >
-              Remove claim
-            </button>
-          )}
-          <button type="button" className="link-button" onClick={() => setConfirmDelete(true)}>
-            {teamMemberId !== null ? 'Archive Member' : 'Delete Name'}
-          </button>
-        </>
-      )}
+      <Menu label={`More actions for ${label}`} actions={menuActions} />
       {claim.isError && (
         <p className="form-error" role="alert">
           That did not save: {claim.error.message}
