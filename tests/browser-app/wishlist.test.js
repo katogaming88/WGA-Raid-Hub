@@ -44,6 +44,24 @@ function signedIn(viewerKey) {
   };
 }
 
+// A season whose code does not look like MIDn, as a later expansion's will
+// not (#1368). On file, and open only where a test opens it.
+const ODD_SEASON = { name: 'The Last Titan Season 1', code: 'TLT1', start: '2099-07-01', end: null };
+
+// In start order, the order the app's read asks the database for: the harness
+// answers every read whatever its order says.
+const SEASONS = [
+  {
+    code: EARLIER_SEASON.code,
+    display_name: EARLIER_SEASON.name,
+    starts_at: EARLIER_SEASON.start,
+    ends_at: EARLIER_SEASON.end
+  },
+  { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null },
+  { code: NEXT_SEASON.code, display_name: NEXT_SEASON.name, starts_at: NEXT_SEASON.start, ends_at: null },
+  { code: ODD_SEASON.code, display_name: ODD_SEASON.name, starts_at: ODD_SEASON.start, ends_at: null }
+];
+
 function open({
   path = '/g/wga/t/phoenix/me/wishlist',
   viewer = 'torbjorn',
@@ -52,7 +70,8 @@ function open({
   viewport,
   touch = false,
   view = null,
-  openSeasons = [SEASON.code]
+  openSeasons = [SEASON.code],
+  seasons = SEASONS
 } = {}) {
   return openApp(browser, server.port, {
     path,
@@ -63,16 +82,7 @@ function open({
       players: [{ ...TORBJORN, wishlist_allowed: allowed }],
       // One row answers both of the page's team_settings reads; the editing
       // switch is the team_seasons row for the season (#939).
-      seasons: [
-        { code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null },
-        {
-          code: EARLIER_SEASON.code,
-          display_name: EARLIER_SEASON.name,
-          starts_at: EARLIER_SEASON.start,
-          ends_at: EARLIER_SEASON.end
-        },
-        { code: NEXT_SEASON.code, display_name: NEXT_SEASON.name, starts_at: NEXT_SEASON.start, ends_at: null }
-      ],
+      seasons,
       team_settings: [{ view }],
       team_seasons: openSeasons.map((code) => ({ season_code: code, wishlist_open: open })),
       items: [...ITEMS, NEXT_SEASON_HELM],
