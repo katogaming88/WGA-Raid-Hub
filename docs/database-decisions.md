@@ -20,7 +20,7 @@ The gear sync takes an equipped item's track from its bonus ids and falls back t
 - **A table keyed by tier and track, not six columns on `seasons` or a JSON object** (Russell, 2026-09-30). The track is a CHECK over the six names, so a mistyped track is refused where a JSON key would silently never match, which is the trap the settings key has. Public read and `claude_readers`, no write policy, the `track_bonus_ids` trust model: the rows arrive with the migration that adds the tier, the way its dates do (`docs/updating-fetch-items-for-new-tier.md`).
 - **The sync reads the current tier's floors once per run, for every team.** No current tier, or a tier with no rows, means no floors, which leaves that gear without a track as before. A failed read stops the run before it writes, as a failed bonus-id read already did.
 - **MID2 carries the six values both teams held; MID1 carries none.** The floors were first entered on 2026-08-31, after MID1 ended, and nothing reads an ended tier's. Phoenix's 111 and Hellfire's 131 gear rows with no track bonus id grade identically against the tier's floors.
-- **Tripwire.** `tests/rls/season-track-floors.test.js` goes red when the current tier has fewer than six floors, which is what a tier migration that forgot them would look like.
+- **Tripwire.** `tests/rls/season-track-floors.test.js` goes red when any tier from MID2 on has fewer than six floors, so the pull request that adds a tier without them fails, whatever date the tier starts on.
 - **Not moved with this.** The settings key and its Admin card stay until the second pull request on #1267 removes both; nothing reads the key after this one.
 
 [Full discussion -> #1267](https://github.com/katogaming88/WGA-Raid-Hub/issues/1267).

@@ -60,7 +60,8 @@ import {
   type Tally,
   type Trigger
 } from './outcome.ts';
-import { buildRows, floorsFromRows } from './rows.ts';
+import { buildRows } from './rows.ts';
+import { loadTierFloors } from './floors.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -88,18 +89,6 @@ async function loadBonusTrackMap(supabase: SupabaseClient<any>): Promise<Map<num
   const { data, error } = await supabase.from('track_bonus_ids').select('bonus_id, track');
   if (error) throw new Error('Failed to load track_bonus_ids: ' + error.message);
   return new Map((data || []).map((r: any) => [r.bonus_id as number, r.track as string]));
-}
-
-// The current tier's floor per track, for gear with no track bonus id. No
-// current tier means no floors, which leaves that gear without a track. A
-// failed read stops the run for the same reason as the bonus ids above.
-async function loadTierFloors(supabase: SupabaseClient<any>): Promise<Record<string, number> | null> {
-  const { data: season, error: seasonError } = await supabase.rpc('current_season');
-  if (seasonError) throw new Error('Failed to read current_season(): ' + seasonError.message);
-  if (!season) return null;
-  const { data, error } = await supabase.from('season_track_floors').select('track, item_level').eq('season', season);
-  if (error) throw new Error('Failed to load season_track_floors: ' + error.message);
-  return floorsFromRows(data || []);
 }
 
 // Same realm-slug conversion as wcl-sync's realmToServerSlug (ported from
