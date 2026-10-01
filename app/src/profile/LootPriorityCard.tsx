@@ -4,7 +4,7 @@ import { bothQueries } from '../data/query';
 import { latestSelfReceivedUpdate, lootPriority, sourceTag, type PriorityRow, type Standing } from './lootPriority';
 import { MarkReceivedButton } from './ProfileForms';
 import { wishlistSummary } from './wishlist';
-import { seasonName, timeAgoLabel, type LootRow, type SeasonWindow } from './profile';
+import { timeAgoLabel, type LootRow, type SeasonWindow } from './profile';
 import {
   useCatalog,
   useItemRanks,
@@ -183,9 +183,9 @@ function PriorityTable({
 }
 
 // Counts the live tier, or on the Wishlist tab the season the editor below it
-// shows (`seasonOf`), and names the season it counts. On the Wishlist tab it
-// waits for the read that decides that season, so it never shows another
-// season's count first, or in place of that read failing.
+// shows (`seasonOf`), and names the season it counts by its stored name. On
+// the Wishlist tab it waits for the reads that decide that season, so it never
+// shows another season's count first, or in place of those reads failing.
 export function WishlistSummaryCard({
   player,
   season,
@@ -193,12 +193,12 @@ export function WishlistSummaryCard({
 }: {
   player: ProfilePlayer;
   season: UseQueryResult<SeasonWindow>;
-  seasonOf?: { settings: UseQueryResult<unknown>; code: string | null };
+  seasonOf?: { reads: UseQueryResult<unknown>; code: string | null; name: string | null };
 }) {
   const reads = bothQueries(
     bothQueries(bothQueries(season, useWishlist(player.id)), bothQueries(useCatalog(), useRaidZones())),
     // The Overview has nothing more to wait for.
-    seasonOf ? seasonOf.settings : season
+    seasonOf ? seasonOf.reads : season
   );
   return (
     <section className="card profile-card" aria-labelledby="wishlist-title">
@@ -208,10 +208,11 @@ export function WishlistSummaryCard({
       <DataState query={reads} label="the wishlist">
         {([[[s, w], [c, z]]]) => {
           const code = seasonOf ? seasonOf.code : s.code;
+          const name = seasonOf ? seasonOf.name : s.name;
           const summary = wishlistSummary(w, c, z, code);
           return (
             <p className="wishlist-summary">
-              {code && <>{seasonName(code)}: </>}
+              {code && <>{name}: </>}
               <span className="num wishlist-bis">{summary.bis}</span> of {summary.total} slots have a BiS pick
               {summary.pass > 0 && (
                 <>

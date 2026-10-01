@@ -3,7 +3,8 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { DataState } from '../components/DataState';
 import { useTouchScreen } from '../lib/device';
 import { bothQueries } from '../data/query';
-import { seasonName, type SeasonWindow } from './profile';
+import { useSeasons } from '../calendar/useCalendar';
+import type { SeasonRow, SeasonWindow } from './profile';
 import {
   useCatalog,
   useMarkWishlist,
@@ -11,7 +12,8 @@ import {
   useSeasonTierTokens,
   useWishlist,
   useWishlistSettings,
-  type ProfilePlayer
+  type ProfilePlayer,
+  type WishlistSettings
 } from './useProfile';
 import { sourceTag } from './lootPriority';
 import { WishlistSummaryCard } from './LootPriorityCard';
@@ -54,7 +56,9 @@ export function WishlistTab({
   season: UseQueryResult<SeasonWindow>;
   own: boolean;
 }) {
-  const settings = useWishlistSettings(teamId);
+  // What decides the season: the team's switches and the officer's pin, and
+  // the shared season list, which orders and names the seasons (#1368).
+  const tiers = bothQueries(useWishlistSettings(teamId), useSeasons());
   // This visit's picks win over the saved one, which covers blocked storage.
   const [chosen, setChosen] = useState<Record<number, string>>({});
   const picked = own ? (chosen[player.id] ?? savedSeason(player.id)) : null;
@@ -67,15 +71,23 @@ export function WishlistTab({
     }
   };
   const live = season.isSuccess ? season.data.code : null;
+  // The shared list comes in start order.
+  const newestFirst = tiers.isSuccess ? [...tiers.data[1]].reverse() : [];
+  const nameOf = (code: string) => newestFirst.find((t) => t.code === code)?.display_name ?? code;
   const candidates =
-    own && settings.isSuccess
-      ? wishlistCandidates(settings.data.openSeasons, live, player.wishlist_allowed, settings.data.seasons)
+    own && tiers.isSuccess
+      ? wishlistCandidates(
+          tiers.data[0].openSeasons,
+          live,
+          player.wishlist_allowed,
+          newestFirst.map((t) => t.code)
+        )
       : [];
   const planned =
-    season.isSuccess && settings.isSuccess
+    season.isSuccess && tiers.isSuccess
       ? own
         ? ownWishlistSeason(picked, candidates, live)
-        : editorSeason(settings.data.view, season.data)
+        : editorSeason(tiers.data[0].view, season.data)
       : null;
 
   return (
@@ -89,18 +101,22 @@ export function WishlistTab({
             <select id="wishlist-season" className="select" value={planned} onChange={(e) => pick(e.target.value)}>
               {candidates.map((code) => (
                 <option key={code} value={code}>
-                  {seasonName(code)}
+                  {nameOf(code)}
                 </option>
               ))}
             </select>
           </div>
         ) : (
           <p className="wishlist-season-name">
-            Wishlist for <strong>{seasonName(planned)}</strong>
+            Wishlist for <strong>{nameOf(planned)}</strong>
           </p>
         ))}
-      <WishlistSummaryCard player={player} season={season} seasonOf={{ settings, code: planned }} />
-      <WishlistEditor player={player} teamId={teamId} season={season} planned={planned} own={own} />
+      <WishlistSummaryCard
+        player={player}
+        season={season}
+        seasonOf={{ reads: tiers, code: planned, name: planned && nameOf(planned) }}
+      />
+      <WishlistEditor player={player} teamId={teamId} season={season} tiers={tiers} planned={planned} own={own} />
     </div>
   );
 }
@@ -112,22 +128,23 @@ function WishlistEditor({
   player,
   teamId,
   season,
+  tiers,
   planned,
   own
 }: {
   player: ProfilePlayer;
   teamId: number;
   season: UseQueryResult<SeasonWindow>;
+  tiers: UseQueryResult<[WishlistSettings, SeasonRow[]]>;
   planned: string | null;
   own: boolean;
 }) {
-  const settings = useWishlistSettings(teamId);
   const picks = useWishlist(player.id);
   const catalog = useCatalog();
   const zones = useRaidZones();
   // Editing is open per tier (#939): the switch for the tier the editor is
   // scoped to, which is the tier a pick is stamped with.
-  const open = planned != null && settings.isSuccess && settings.data.openSeasons.includes(planned);
+  const open = planned != null && tiers.isSuccess && tiers.data[0].openSeasons.includes(planned);
   const tokens = useSeasonTierTokens(planned);
   // Not on a phone or tablet, where a stray tap marks the wrong item.
   const touch = useTouchScreen();
@@ -137,7 +154,7 @@ function WishlistEditor({
       <h2 id="wishlist-editor-title" className="card-title">
         BiS or Pass by slot
       </h2>
-      <DataState query={bothQueries(bothQueries(season, settings), bothQueries(picks, catalog))} label="the wishlist">
+      <DataState query={bothQueries(bothQueries(season, tiers), bothQueries(picks, catalog))} label="the wishlist">
         {([, [p, c]]) => (
           <DataState query={bothQueries(zones, tokens)} label="the wishlist">
             {([z, t]) => (

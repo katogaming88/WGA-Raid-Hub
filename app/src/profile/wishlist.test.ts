@@ -105,7 +105,7 @@ describe('wishlistCandidates', () => {
     expect(wishlistCandidates(['MID1', 'MID3'], 'MID2', true, order)).toEqual(['MID3', 'MID2']);
   });
 
-  // useWishlistSettings() sorts the open seasons with no live tier to hand.
+  // The Wishlist tab before any tier is on file has no live tier to hand.
   it('keeps every open season, newest first, with no live tier to measure from', () => {
     expect(wishlistCandidates(['MID1', 'MID3'], null, false, order)).toEqual(['MID3', 'MID1']);
   });
