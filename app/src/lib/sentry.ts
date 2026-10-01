@@ -42,7 +42,16 @@ export function initSentry(dsn: unknown, environment: string): boolean {
   Sentry.init({
     dsn,
     environment,
-    sendDefaultPii: false,
+    // Sentry 11 collects each of these unless told not to (#1381).
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: false,
+      httpBodies: [],
+      urlQueryParams: false,
+      databaseQueryData: false,
+      genAI: { inputs: false, outputs: false }
+    },
     beforeSend: scrubEvent,
     beforeBreadcrumb: scrubBreadcrumb
   });
