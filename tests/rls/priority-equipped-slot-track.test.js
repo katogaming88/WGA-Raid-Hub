@@ -10,7 +10,7 @@
 //
 // The factor now grades on the gear's real upgrade TRACK, in three steps
 // (Myth 0.92 / Hero 0.96 / Champion-or-lower and empty 1.00), not on item
-// level against a per-tier floor. Item level cannot
+// level against the per-team floors it first read. Item level cannot
 // answer the question: the tracks overlap by design (Hero 6/6 and Myth 2/6
 // are both ilvl 321), so an ilvl threshold reads every fully-upgraded Hero
 // item as Myth -- measured at 286 such items across this guild's roster.
