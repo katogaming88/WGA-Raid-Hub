@@ -42,21 +42,29 @@ export function useIncomingRoster(teamId: number) {
   );
 }
 
+export type SignupSeason = { code: string; name: string };
+
 // The tiers the team has signups open for (#934): its team_seasons rows with
-// the switch on, newest first, as codes. No row means closed (#939).
+// the switch on, newest first, each with the name stored on the season (#1388).
+// No row means closed (#939).
 export function useSignupSeasons(teamId: number) {
-  return useSupabaseQuery<string[]>(['signup-seasons', teamId], async (client) => {
+  return useSupabaseQuery<SignupSeason[]>(['signup-seasons', teamId], async (client) => {
     // team-read-guard: one row per season the team has, a handful
     const { data, error } = await client
       .from('team_seasons')
-      .select('season_code, seasons(starts_at)')
+      .select('season_code, seasons(starts_at, display_name)')
       .eq('team_id', teamId)
       .eq('signups_open', true);
     if (error) return { data: null, error };
-    const rows = (data ?? []) as { season_code: string; seasons: { starts_at: string } | null }[];
+    const rows = (data ?? []) as {
+      season_code: string;
+      seasons: { starts_at: string; display_name: string } | null;
+    }[];
     const startOf = (r: (typeof rows)[number]) => r.seasons?.starts_at ?? '';
     return {
-      data: [...rows].sort((a, b) => (startOf(a) < startOf(b) ? 1 : -1)).map((r) => r.season_code),
+      data: [...rows]
+        .sort((a, b) => (startOf(a) < startOf(b) ? 1 : -1))
+        .map((r) => ({ code: r.season_code, name: r.seasons?.display_name ?? r.season_code })),
       error: null
     };
   });

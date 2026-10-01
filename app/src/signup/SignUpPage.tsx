@@ -4,9 +4,8 @@ import { charactersOn, useAccess } from '../auth/access';
 import { useSession } from '../auth/session';
 import { useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
-import { seasonName } from '../profile/profile';
 import { useCurrentSeason } from '../profile/useProfile';
-import { useRosterPlayers, useSignupSeasons } from '../roster/useRoster';
+import { useRosterPlayers, useSignupSeasons, type SignupSeason } from '../roster/useRoster';
 import { SignUpWizard, type WizardEdit } from './SignUpWizard';
 import { SignupSummary } from './SignupSummary';
 import { classmatesPool, type ClassmateRow } from './signup';
@@ -32,9 +31,9 @@ export function SignUpPage() {
         </div>
       ) : (
         <DataState query={seasons} label="the open seasons">
-          {(codes) =>
-            codes.length ? (
-              <SignUpForTier teamId={team.id} codes={codes} />
+          {(open) =>
+            open.length ? (
+              <SignUpForTier teamId={team.id} seasons={open} />
             ) : (
               <div className="card signup-card">
                 <p className="text-muted">Signups are not open for this team right now.</p>
@@ -47,9 +46,10 @@ export function SignUpPage() {
   );
 }
 
-function SignUpForTier({ teamId, codes }: { teamId: number; codes: string[] }) {
+function SignUpForTier({ teamId, seasons }: { teamId: number; seasons: SignupSeason[] }) {
   const [tierOverride, setTierOverride] = useState<string | null>(null);
-  const tier = tierOverride && codes.includes(tierOverride) ? tierOverride : codes[0]!;
+  const picked = seasons.find((s) => s.code === tierOverride) ?? seasons[0]!;
+  const tier = picked.code;
   const [editing, setEditing] = useState(false);
   // Where the wizard's Back/Next/Submit box portals to (#1162): its own card
   // beside the step content, not appended under it, so it never scrolls off
@@ -61,8 +61,9 @@ function SignUpForTier({ teamId, codes }: { teamId: number; codes: string[] }) {
   const ownSignup = useOwnSignup(teamId, tier);
   const roster = useRosterPlayers(teamId);
   const incoming = useIncomingWithSwap(teamId);
-  // The site's live tier (#938: seasonName retired), for classmatesPool()'s
-  // roster-inclusion rule. Same cache entry the profile page reads.
+  // The site's live tier (#938 retired the team's seasonName setting), for
+  // classmatesPool()'s roster-inclusion rule. Same cache entry the profile
+  // page reads.
   const liveSeason = useCurrentSeason(teamId);
   const targets = useRoleTargets(teamId);
 
@@ -71,7 +72,7 @@ function SignUpForTier({ teamId, codes }: { teamId: number; codes: string[] }) {
     bothQueries(liveSeason, targets)
   );
 
-  const tierPicker = codes.length > 1 && (
+  const tierPicker = seasons.length > 1 && (
     <div className="field signup-tier-picker">
       <label className="field-label" htmlFor="signup-tier">
         Signing up for
@@ -85,9 +86,9 @@ function SignUpForTier({ teamId, codes }: { teamId: number; codes: string[] }) {
           setEditing(false);
         }}
       >
-        {codes.map((code) => (
-          <option key={code} value={code}>
-            {seasonName(code)}
+        {seasons.map((s) => (
+          <option key={s.code} value={s.code}>
+            {s.name}
           </option>
         ))}
       </select>
@@ -112,7 +113,7 @@ function SignUpForTier({ teamId, codes }: { teamId: number; codes: string[] }) {
           return (
             <div className="card signup-card">
               {tierPicker}
-              <SignupSummary row={own} tier={tier} onEdit={() => setEditing(true)} />
+              <SignupSummary row={own} seasonName={picked.name} onEdit={() => setEditing(true)} />
             </div>
           );
         }

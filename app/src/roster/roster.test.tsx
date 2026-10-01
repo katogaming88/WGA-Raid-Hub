@@ -216,7 +216,13 @@ describe('Roster page', () => {
           { signup_id: 1, signup_name_realm: 'Gloamwing-Illidan', class: 'Shaman', spec: 'Elemental', role: 'Ranged' }
         ],
         // One tier open names the tab (#934).
-        team_seasons: [{ season_code: 'MID3', signups_open: true, seasons: { starts_at: '2099-01-01' } }]
+        team_seasons: [
+          {
+            season_code: 'MID3',
+            signups_open: true,
+            seasons: { starts_at: '2099-01-01', display_name: 'Midnight Season 3' }
+          }
+        ]
       })
     );
     const current = await screen.findByRole('tab', { name: 'Current Roster' });
@@ -228,6 +234,26 @@ describe('Roster page', () => {
     expect(next).toHaveFocus();
     expect(screen.getByRole('heading', { name: '1 Pending Raider' })).toBeInTheDocument();
     expect(screen.getByRole('table', { name: 'Next season’s tentative roster' })).toHaveTextContent('Gloamwing');
+  });
+
+  it('names the tentative tab by the season name on file, whatever its code (#1388)', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/roster',
+      rosterHandlers({
+        players: [player(1, 'Zuggz-Illidan', 'Warrior', 'Arms', 'Melee')],
+        incoming_roster: [
+          { signup_id: 1, signup_name_realm: 'Gloamwing-Illidan', class: 'Shaman', spec: 'Elemental', role: 'Ranged' }
+        ],
+        team_seasons: [
+          {
+            season_code: 'TLT1',
+            signups_open: true,
+            seasons: { starts_at: '2099-06-01', display_name: 'The Last Titan Season 1' }
+          }
+        ]
+      })
+    );
+    expect(await screen.findByRole('tab', { name: 'The Last Titan Season 1 Roster (Tentative)' })).toBeInTheDocument();
   });
 
   it('reads the team’s gear on its own team column, a page at a time', async () => {

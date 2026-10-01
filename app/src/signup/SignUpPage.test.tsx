@@ -6,7 +6,11 @@ import { fakeSession, seededHandlers, type Read } from '../test/fakeSupabase';
 
 // The Sign Up page (#1102), ported from js/signup.js.
 
-const OPEN_SEASON = { season_code: 'MID3', signups_open: true, seasons: { starts_at: '2099-01-01' } };
+const OPEN_SEASON = {
+  season_code: 'MID3',
+  signups_open: true,
+  seasons: { starts_at: '2099-01-01', display_name: 'Midnight Season 3' }
+};
 
 const person = (nameRealm: string | null) => ({
   site_admin: false,
@@ -241,5 +245,51 @@ describe('Sign Up, an existing signup', () => {
     expect(screen.getByText('Pending')).toBeInTheDocument();
     expect(screen.getByText(/Katorri-Stormrage/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit signup' })).toBeInTheDocument();
+  });
+});
+
+// A season coded outside the MIDn pattern (#1388): it shows by the name stored
+// on the season, never one worked out from the code.
+const TLT1_SEASON = {
+  season_code: 'TLT1',
+  signups_open: true,
+  seasons: { starts_at: '2099-06-01', display_name: 'The Last Titan Season 1' }
+};
+
+describe('Sign Up, a season not coded like MIDn', () => {
+  it('offers it in the season picker by its stored name', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/signup',
+      handlers(person(null), { tables: { team_seasons: () => ({ data: [OPEN_SEASON, TLT1_SEASON] }) } })
+    );
+    const picker = await screen.findByRole('combobox', { name: 'Signing up for' });
+    expect(within(picker).getByRole('option', { name: 'The Last Titan Season 1' })).toBeInTheDocument();
+    expect(within(picker).getByRole('option', { name: 'Midnight Season 3' })).toBeInTheDocument();
+  });
+
+  it('names it under Your signup', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/signup',
+      handlers(person(null), {
+        tables: { team_seasons: () => ({ data: [TLT1_SEASON] }) },
+        ownSignup: [{ ...ownFields, season: 'TLT1' }]
+      })
+    );
+    const heading = await screen.findByRole('heading', { level: 2, name: 'Your signup' });
+    const summary = heading.closest('.signup-summary') as HTMLElement;
+    expect(within(summary).getByText('The Last Titan Season 1')).toBeInTheDocument();
+  });
+
+  it('names the season picked under Your signup, not the newest one', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/signup',
+      handlers(person(null), {
+        tables: { team_seasons: () => ({ data: [OPEN_SEASON, TLT1_SEASON] }) },
+        ownSignup: [ownFields]
+      })
+    );
+    expect(await screen.findByText('The Last Titan Season 1', { selector: '.signup-summary p' })).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Signing up for' }), 'MID3');
+    expect(await screen.findByText('Midnight Season 3', { selector: '.signup-summary p' })).toBeInTheDocument();
   });
 });

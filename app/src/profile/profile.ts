@@ -16,23 +16,6 @@ export function currentSeason(seasons: SeasonRow[], today = easternToday()): Sea
   );
 }
 
-// Season codes are the stable key (MID2) and the tier's display name is for
-// people (Midnight Season 2). Same conversion as the current site's
-// seasonCodeForDisplay(), and like it, updated at an expansion boundary; the
-// fallback for a value stored before the seasons table carried both (#938).
-const SEASON_CODE_PREFIX = 'MID';
-const SEASON_DISPLAY_PREFIX = 'Midnight Season';
-
-export function seasonCode(displayName: string): string | null {
-  const m = new RegExp(`^${SEASON_DISPLAY_PREFIX} (\\d+)$`).exec(displayName.trim());
-  return m ? `${SEASON_CODE_PREFIX}${m[1]}` : null;
-}
-
-export function seasonName(code: string | null): string {
-  const m = new RegExp(`^${SEASON_CODE_PREFIX}(\\d+)$`).exec(code ?? '');
-  return m ? `${SEASON_DISPLAY_PREFIX} ${m[1]}` : (code ?? '');
-}
-
 // Attendance
 
 export type AttendanceRow = { raid_date: string; status: string | null; report_excluded: boolean };

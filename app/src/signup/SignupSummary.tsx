@@ -1,4 +1,3 @@
-import { seasonName } from '../profile/profile';
 import type { OwnSignupRow } from './useSignup';
 
 const STATUS_LABEL: Record<OwnSignupRow['status'], string> = {
@@ -10,7 +9,15 @@ const STATUS_LABEL: Record<OwnSignupRow['status'], string> = {
 
 // The raider's own signup (#500): shown instead of a fresh form once one
 // exists for the tier. Ported from js/signup.js's renderSignupSummary().
-export function SignupSummary({ row, tier, onEdit }: { row: OwnSignupRow; tier: string; onEdit: () => void }) {
+export function SignupSummary({
+  row,
+  seasonName,
+  onEdit
+}: {
+  row: OwnSignupRow;
+  seasonName: string;
+  onEdit: () => void;
+}) {
   const statusClass =
     row.status === 'pending' || row.status === 'approved' ? 'signup-status-open' : 'signup-status-closed';
   const displayClass = row.main_swap ? row.swap_class : row.class;
@@ -19,7 +26,7 @@ export function SignupSummary({ row, tier, onEdit }: { row: OwnSignupRow; tier: 
   return (
     <div className="signup-summary">
       <h2>Your signup</h2>
-      <p className="text-muted">{seasonName(tier)}</p>
+      <p className="text-muted">{seasonName}</p>
       <p>
         <span className={`status-tag ${statusClass}`}>{STATUS_LABEL[row.status]}</span>
       </p>

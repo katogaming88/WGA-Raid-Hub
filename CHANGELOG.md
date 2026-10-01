@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.159.6] - 2026-10-01
+
+### Project
+
+- The new app's Sign up page and Roster tab show the name each season has
+  stored: the "Signing up for" season picker, the line under "Your signup",
+  and the tentative roster tab named after next season. Each worked the name
+  out from the season's code, which shows a bare code for any season not coded
+  like MID2, so the app now names a season the same way everywhere. Nothing
+  looks different today: both seasons on file are named that way (#1388).
+
 ## [3.159.5] - 2026-10-01
 
 ### Project
