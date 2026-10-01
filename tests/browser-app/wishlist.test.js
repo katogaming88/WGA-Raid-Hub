@@ -403,6 +403,40 @@ describe('Wishlist (new app), the season picker', () => {
     }
   });
 
+  // The name on file, whatever the code looks like (#1368).
+  it('names a season by its stored name, not one worked out from its code', async () => {
+    const opened = await open({ openSeasons: [ODD_SEASON.code] });
+    try {
+      await expect(seasonName(opened.page)).resolves.toBe(`Wishlist for ${ODD_SEASON.name}`);
+      await expect(opened.page.locator('main .wishlist-summary').textContent()).resolves.toMatch(
+        new RegExp(`^${ODD_SEASON.name}: 0 of \\d+ slots`)
+      );
+      expect(opened.pageErrors).toEqual([]);
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  it('lists a season by its stored name, and the count follows the pick', async () => {
+    const opened = await open({ openSeasons: [SEASON.code, ODD_SEASON.code] });
+    try {
+      await showEditor(opened.page);
+      const options = await picker(opened.page)
+        .locator('option')
+        .evaluateAll((els) => els.map((o) => [o.value, o.textContent]));
+      expect(options).toEqual([
+        [ODD_SEASON.code, ODD_SEASON.name],
+        [SEASON.code, SEASON.name]
+      ]);
+      await picker(opened.page).selectOption(ODD_SEASON.code);
+      await expect
+        .poll(() => opened.page.locator('main .wishlist-summary').textContent())
+        .toMatch(new RegExp(`^${ODD_SEASON.name}: 0 of \\d+ slots`));
+    } finally {
+      await opened.context.close();
+    }
+  });
+
   it('names the next season when it is the only one open', async () => {
     const opened = await open({ openSeasons: [NEXT_SEASON.code] });
     try {
@@ -517,6 +551,40 @@ describe('Wishlist (new app), the count', () => {
       await expect(summary(opened.page).textContent()).resolves.toMatch(
         new RegExp(`^${SEASON.name}: \\d+ of 16 slots`)
       );
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  it('names a live tier by its stored name on the Overview', async () => {
+    // The TLT1 season, started: the tier being raided.
+    const seasons = SEASONS.map((s) => (s.code === ODD_SEASON.code ? { ...s, starts_at: '2026-09-01' } : s)).sort(
+      (a, b) => (a.starts_at < b.starts_at ? -1 : 1)
+    );
+    const opened = await open({ path: '/g/wga/t/phoenix/me', seasons });
+    try {
+      await opened.page.waitForSelector('main .wishlist-summary');
+      await expect(summary(opened.page).textContent()).resolves.toMatch(
+        new RegExp(`^${ODD_SEASON.name}: \\d+ of \\d+ slots`)
+      );
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  // The season list decides the tab's season and its name, so its failure
+  // shows the same way.
+  it('shows the season list failing on the Wishlist tab, not a count', async () => {
+    const opened = await open({ path: '/g/wga/t/phoenix/me', openSeasons: [NEXT_SEASON.code] });
+    try {
+      await opened.page.waitForSelector('main .wishlist-summary');
+      await opened.page.route('**/rest/v1/seasons*', (route) =>
+        route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'down' }) })
+      );
+      await opened.page.click('#profile-tab-wishlist');
+      await opened.page.waitForSelector('main .profile-wishlist .data-error', { timeout: 20000 });
+      await expect.poll(() => opened.page.locator('main .profile-wishlist .data-error').count()).toBe(2);
+      expect(await summary(opened.page).count()).toBe(0);
     } finally {
       await opened.context.close();
     }
