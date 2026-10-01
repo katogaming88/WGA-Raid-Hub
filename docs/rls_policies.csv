@@ -134,6 +134,8 @@ scoring,Public read scoring,public,SELECT,PERMISSIVE,true,
 season_signups,Claude readers read season_signups,claude_readers,SELECT,PERMISSIVE,true,
 season_signups,Officers read signups,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 season_signups,Officers update signups,public,UPDATE,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
+season_track_floors,Claude readers read season_track_floors,claude_readers,SELECT,PERMISSIVE,true,
+season_track_floors,Public read season_track_floors,public,SELECT,PERMISSIVE,true,
 seasons,Claude readers read seasons,claude_readers,SELECT,PERMISSIVE,true,
 seasons,Public read seasons,public,SELECT,PERMISSIVE,true,
 self_received_requests,Claude readers read self_received_requests,claude_readers,SELECT,PERMISSIVE,true,

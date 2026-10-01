@@ -73,6 +73,7 @@
 | [public.team_invite_links](public.team_invite_links.md) | 5 | One active invite code per team (#1264). Resetting overwrites the row, so the old code stops resolving immediately. | BASE TABLE |
 | [public.item_seasons](public.item_seasons.md) | 2 | The seasons a dungeon or crafted item is offered in (#1166). A raid item has no row: its season comes from raid_zones. Filled by scripts/dungeon-items-sql.js, never by a client. | BASE TABLE |
 | [public.raid_night_participation](public.raid_night_participation.md) | 6 | Who was actually in for a real pull of one boss on one raid night (#1242), one row per raider present. Written only by record_raid_night_participation(), called from the attendance sync once a night has a lineup (raid_night_bosses). Compare against raid_night_lineups for planned-vs-actual. | BASE TABLE |
+| [public.season_track_floors](public.season_track_floors.md) | 4 | The lowest item level of each gear upgrade track in a tier (#1267). blizzard-gear-sync grades equipped gear that carries no track bonus id against the current tier's floors, highest track first. Added by the migration that adds the tier. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -351,6 +352,7 @@ erDiagram
 "public.item_seasons" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.raid_night_participation" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.raid_night_participation" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
+"public.season_track_floors" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 
 "public.attendance" {
   integer id
@@ -1048,6 +1050,12 @@ erDiagram
   date raid_date FK
   integer encounter_id FK
   integer player_id FK
+  timestamp_with_time_zone created_at
+}
+"public.season_track_floors" {
+  text season FK
+  text track
+  integer item_level
   timestamp_with_time_zone created_at
 }
 ```

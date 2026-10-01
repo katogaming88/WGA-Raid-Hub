@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.159.2] - 2026-09-30
+
+### Backend
+
+- Each raid tier carries its own lowest item level for every gear upgrade
+  track (Myth, Hero, Champion, Veteran, Adventurer, Explorer), added with the
+  tier. They used to be typed into each team's Admin tab by hand, and only two
+  of the four teams ever had them (#1267).
+
+### Functions
+
+- The daily gear sync gives a track to gear that carries none of its own
+  (crafted, Timewarped and the like) from the current tier's floors, for every
+  team. Immolation's gear of that kind gets a track for the first time; Phoenix
+  and Hellfire Rollers read exactly as before (#1267).
+
 ## [3.159.1] - 2026-09-28
 
 ### Frontend
