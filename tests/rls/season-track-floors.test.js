@@ -45,20 +45,23 @@ describe('season_track_floors', () => {
     });
   });
 
+  // No write policy: an insert is refused, and an update or delete matches no
+  // row, as on track_bonus_ids.
   it('an officer cannot write them; they arrive with the tier', async () => {
-    await withTxn(async ({ asUser }) => {
+    await withTxn(async ({ q, asUser }) => {
       await expect(
         asUser(
           OFFICER_T1,
           "insert into public.season_track_floors (season, track, item_level) values ('MID1', 'Hero', 1)"
         )
       ).rejects.toMatchObject({ code: RLS_DENIED });
-      await expect(
-        asUser(OFFICER_T1, "update public.season_track_floors set item_level = 1 where season = 'MID2'")
-      ).rejects.toMatchObject({ code: RLS_DENIED });
-      await expect(
-        asUser(OFFICER_T1, "delete from public.season_track_floors where season = 'MID2'")
-      ).rejects.toMatchObject({ code: RLS_DENIED });
+      const updated = await asUser(
+        OFFICER_T1,
+        "update public.season_track_floors set item_level = 1 where season = 'MID2'"
+      );
+      const deleted = await asUser(OFFICER_T1, "delete from public.season_track_floors where season = 'MID2'");
+      expect([updated.rowCount, deleted.rowCount]).toEqual([0, 0]);
+      expect((await q(FLOORS, ['MID2'])).rows).toEqual(MID2);
     });
   });
 
