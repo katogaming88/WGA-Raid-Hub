@@ -21,9 +21,7 @@ describe('Sentry reporting', () => {
   it('sends what reportError gets, and keeps the console line', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(initSentry('https://key@o0.ingest.sentry.io/1', 'preview')).toBe(true);
-    expect(Sentry.init).toHaveBeenCalledWith(
-      expect.objectContaining({ environment: 'preview', sendDefaultPii: false })
-    );
+    expect(Sentry.init).toHaveBeenCalledWith(expect.objectContaining({ environment: 'preview' }));
     reportError({ message: 'statement timeout' }, { where: 'query', key: ['streamers', [1, 2]] });
     const [sent, options] = vi.mocked(Sentry.captureException).mock.calls[0]!;
     expect(sent).toBeInstanceOf(Error);
@@ -34,6 +32,23 @@ describe('Sentry reporting', () => {
 });
 
 describe('what never leaves the browser', () => {
+  // Sentry 11 collects all of these unless told not to (#1381); off is what
+  // sendDefaultPii: false meant in 10.
+  it('tells Sentry to collect nothing about the visitor', () => {
+    initSentry('https://key@o0.ingest.sentry.io/1', 'preview');
+    const options = vi.mocked(Sentry.init).mock.calls[0]![0]!;
+    expect(options.dataCollection).toEqual({
+      userInfo: false,
+      cookies: false,
+      httpHeaders: false,
+      httpBodies: [],
+      urlQueryParams: false,
+      databaseQueryData: false,
+      genAI: { inputs: false, outputs: false }
+    });
+    expect(options).not.toHaveProperty('sendDefaultPii');
+  });
+
   it('drops the query and fragment from an address', () => {
     expect(scrubUrl('https://x.test/g/wga?code=abc#access_token=t')).toBe('https://x.test/g/wga');
   });
