@@ -103,15 +103,15 @@ describe('gearSyncStatusText (#1174)', () => {
   it('warns when no scheduled sweep has been recorded', () => {
     const { sandbox } = makeSandbox();
     expect(sandbox.gearSyncStatusText(null, null, NOW)).toEqual({
-      text: 'No scheduled sweep recorded yet.',
+      text: 'No morning read recorded yet.',
       warn: true
     });
   });
 
-  it('reads a clean recent sweep as one line with its age and counts', () => {
+  it('reads a clean recent sweep as one line with its age and count', () => {
     const { sandbox } = makeSandbox();
     expect(sandbox.gearSyncStatusText(cronRun(), null, NOW)).toEqual({
-      text: 'Last sweep: 9h ago, 55 synced, 0 skipped.',
+      text: 'Last morning read: 9h ago, 55 raiders updated.',
       warn: false
     });
   });
@@ -120,7 +120,9 @@ describe('gearSyncStatusText (#1174)', () => {
     const { sandbox } = makeSandbox();
     const status = sandbox.gearSyncStatusText(cronRun({ synced: 0, skipped: 55, error: 'Gateway Timeout' }), null, NOW);
     expect(status.warn).toBe(true);
-    expect(status.text).toBe('Last sweep: 9h ago, 0 synced, 55 skipped. Error: Gateway Timeout');
+    expect(status.text).toBe(
+      'Last morning read: 9h ago, 0 raiders updated, 55 could not be read. Error: Gateway Timeout'
+    );
   });
 
   // Same review: a sweep that reached raiders and synced none of them is not
@@ -129,13 +131,15 @@ describe('gearSyncStatusText (#1174)', () => {
     const { sandbox } = makeSandbox();
     const status = sandbox.gearSyncStatusText(cronRun({ synced: 0, skipped: 55, error: null }), null, NOW);
     expect(status.warn).toBe(true);
-    expect(status.text).toBe('Last sweep: 9h ago, 0 synced, 55 skipped. Nothing was synced.');
+    expect(status.text).toBe(
+      'Last morning read: 9h ago, 0 raiders updated, 55 could not be read. Nothing was updated.'
+    );
   });
 
   it('does not warn on an empty roster that synced nobody', () => {
     const { sandbox } = makeSandbox();
     const status = sandbox.gearSyncStatusText(cronRun({ synced: 0, skipped: 0, players: 0 }), null, NOW);
-    expect(status).toEqual({ text: 'Last sweep: 9h ago, 0 synced, 0 skipped.', warn: false });
+    expect(status).toEqual({ text: 'Last morning read: 9h ago, 0 raiders updated.', warn: false });
   });
 
   it('warns when the last sweep finished more than 36 hours ago', () => {
@@ -143,15 +147,25 @@ describe('gearSyncStatusText (#1174)', () => {
     const old = cronRun({ finished_at: new Date(NOW - 37 * HOUR).toISOString() });
     const status = sandbox.gearSyncStatusText(old, null, NOW);
     expect(status.warn).toBe(true);
-    expect(status.text).toBe('Last sweep: 37h ago, 55 synced, 0 skipped. The scheduled sweep has not run in 36 hours.');
+    expect(status.text).toBe(
+      'Last morning read: 37h ago, 55 raiders updated. The morning read has not run in 36 hours.'
+    );
   });
 
-  it('appends the last on-demand sync after the sweep line', () => {
+  it('appends the last refresh by hand after the morning read', () => {
     const { sandbox } = makeSandbox();
     const officer = { trigger: 'officer', finished_at: new Date(NOW - 2 * HOUR).toISOString(), synced: 24, skipped: 1 };
     const status = sandbox.gearSyncStatusText(cronRun(), officer, NOW);
     expect(status.warn).toBe(false);
-    expect(status.text).toBe('Last sweep: 9h ago, 55 synced, 0 skipped. Last on-demand sync: 2h ago, 24 synced.');
+    expect(status.text).toBe(
+      'Last morning read: 9h ago, 55 raiders updated. Last refresh by hand: 2h ago, 24 raiders updated.'
+    );
+  });
+
+  it('counts one raider as one raider', () => {
+    const { sandbox } = makeSandbox();
+    const status = sandbox.gearSyncStatusText(cronRun({ synced: 1, skipped: 1, players: 2 }), null, NOW);
+    expect(status.text).toBe('Last morning read: 9h ago, 1 raider updated, 1 could not be read.');
   });
 });
 
@@ -167,17 +181,49 @@ describe('renderGearSyncStatus (#1174)', () => {
     expect(els.gearSyncStatus.style.color).toBe('var(--melee)');
   });
 
-  it('runs when the Features sub-tab opens, beside the three renders already there', async () => {
+  it('runs when the Features sub-tab opens, beside the two renders already there', async () => {
     const { sandbox, els, selects } = makeSandbox({
       row: { gear_sync_last_cron_run: cronRun(), gear_sync_last_officer_run: null }
     });
     sandbox.switchAdminSubTab('features');
     await flush();
     expect(selects).toHaveLength(1);
-    expect(els.gearSyncStatus.textContent).toBe('Last sweep: 9h ago, 55 synced, 0 skipped.');
+    expect(els.gearSyncStatus.textContent).toBe('Last morning read: 9h ago, 55 raiders updated.');
     expect(els.gearSyncStatus.style.color).toBe('');
     expect(els.adminFeatureFlagsContent.innerHTML).not.toBe('');
     expect(els.adminWishlistLabelsContent.innerHTML).not.toBe('');
-    expect(els.adminTrackThresholdsContent.innerHTML).not.toBe('');
+  });
+});
+
+describe('runSyncBlizzardGearForTeam (#1267)', () => {
+  it('refreshes under its own label and reports the raiders it updated', async () => {
+    const { sandbox, els } = makeSandbox();
+    let labelWhileRunning = null;
+    sandbox.syncBlizzardGearForTeam = () => {
+      labelWhileRunning = els.syncBlizzardGearBtn.textContent;
+      return Promise.resolve({ success: true, synced: 24, skipped: 1 });
+    };
+    sandbox.runSyncBlizzardGearForTeam();
+    await flush();
+    expect(labelWhileRunning).toBe('Refreshing...');
+    expect(els.syncBlizzardGearBtn.textContent).toBe('Refresh Equipped Gear');
+    expect(els.syncBlizzardGearStatus.textContent).toBe('24 raiders updated, 1 could not be read.');
+  });
+
+  it('leaves out the could-not-read count when every raider was read', async () => {
+    const { sandbox, els } = makeSandbox();
+    sandbox.syncBlizzardGearForTeam = () => Promise.resolve({ success: true, synced: 25, skipped: 0 });
+    sandbox.runSyncBlizzardGearForTeam();
+    await flush();
+    expect(els.syncBlizzardGearStatus.textContent).toBe('25 raiders updated.');
+  });
+
+  it('puts its label back after a failed refresh', async () => {
+    const { sandbox, els } = makeSandbox();
+    sandbox.syncBlizzardGearForTeam = () => Promise.reject(new Error('Not authorized'));
+    sandbox.runSyncBlizzardGearForTeam();
+    await flush();
+    expect(els.syncBlizzardGearBtn.textContent).toBe('Refresh Equipped Gear');
+    expect(els.syncBlizzardGearStatus.textContent).toBe('Failed: Not authorized');
   });
 });

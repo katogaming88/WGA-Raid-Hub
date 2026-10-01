@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.159.2';
+var VERSION = '3.159.3';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20260930203517';
+var REQUIRED_SCHEMA = '20260930230623';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -2964,13 +2964,7 @@ var SEASON_CONFIG_KEYS = [
   // count. Unset/0 means no target configured -- the advisory just shows
   // the plain count with no "we have enough" nudge.
   'targetTankCount',
-  'targetHealCount',
-  // Officer-maintained {Hero, Myth} min item-level floors for the current
-  // season (a Champion floor is accepted too but unused today -- see the
-  // generate_priority_order() equipped-slot-track migration). Compared
-  // against public.player_equipped_gear.item_level server-side, not read
-  // client-side -- reseeded by hand each season, same as tier_token_map.
-  'trackIlvlThresholds'
+  'targetHealCount'
 ];
 
 /**
@@ -7005,7 +6999,7 @@ function renderProfile(firstName, backTo, container) {
 
   // Equipped Gear (#845) -- per-slot item level/track, synced from the
   // Blizzard API by the daily blizzard-gear-sync cron sweep or an officer's
-  // "Sync Gear Levels Now" button. Shown to anyone viewing the profile, same
+  // "Refresh Equipped Gear" button. Shown to anyone viewing the profile, same
   // as attendance/loot below -- player_equipped_gear is public-read, no
   // isOwnWishlistView gate. Slot rows this player has never synced (empty
   // player_equipped_gear altogether) render nothing at all rather than a

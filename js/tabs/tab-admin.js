@@ -41,7 +41,6 @@ function switchAdminSubTab(name, btnEl) {
   if (name === 'features') {
     renderAdminFeatureFlags();
     renderAdminWishlistLabels();
-    renderAdminTrackThresholds();
     renderGearSyncStatus();
   }
   if (name === 'danger') renderDangerZone();
@@ -695,109 +694,16 @@ function saveAdminWishlistLabels() {
     });
 }
 
-// ── Track Item Level Thresholds ──────────────────────────────────────────
-// The min item level for each track this season, stored on
-// team_settings.config.trackIlvlThresholds (DATA.trackIlvlThresholds, see
-// applyTeamSettingsToData()'s SEASON_CONFIG_KEYS pass-through in
-// js/common.js). Read server-side by the blizzard-gear-sync Edge Function
-// (deriveTrack()) when syncing player_equipped_gear, and by
-// generate_priority_order()'s equipped-item-level fairness comparison --
-// the Blizzard API returns item_level per equipped piece but no reliable
-// per-source track name, and track floors move every season, so this needs
-// a manual reseed each tier, same as tier_token_map.
-var TRACK_THRESHOLD_TRACKS = ['Myth', 'Hero', 'Champion', 'Veteran', 'Adventurer', 'Explorer'];
-
-// Starting defaults for Midnight Season 2, pulled from WoWAudit's own live
-// per-season config (confirmed directly against their page's embedded
-// track_cutoffs data, #845) -- WoWAudit uses these same single floors per
-// track for their own "Equipped items by track" columns (M/H/C/V/A/E),
-// which is exactly what this panel reproduces. Prefilled so the panel isn't
-// blank on first load; still officer-editable and reseeded each season.
-var TRACK_THRESHOLD_DEFAULTS = {
-  Myth: 318,
-  Hero: 305,
-  Champion: 292,
-  Veteran: 279,
-  Adventurer: 266,
-  Explorer: 207
-};
-
-function renderAdminTrackThresholds() {
-  var el = document.getElementById('adminTrackThresholdsContent');
-  if (!el) return;
-  var thresholds = (DATA && DATA.trackIlvlThresholds) || {};
-  el.innerHTML =
-    TRACK_THRESHOLD_TRACKS.map(function (track) {
-      var value = thresholds[track] != null ? thresholds[track] : TRACK_THRESHOLD_DEFAULTS[track];
-      return (
-        '<div style="display:flex;align-items:center;gap:0.6rem;padding:0.4rem 0;">' +
-        '<span style="width:80px;flex-shrink:0;">' +
-        escHtml(track) +
-        '</span>' +
-        '<input type="number" id="trackThresholdInput-' +
-        track +
-        '" class="add-player-input" placeholder="min ilvl" value="' +
-        (value != null ? escHtml(String(value)) : '') +
-        '" style="max-width:140px;font-size:0.95rem;padding:0.35rem 0.6rem;">' +
-        '</div>'
-      );
-    }).join('') +
-    '<div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.5rem;">' +
-    '<button class="btn btn-gold" id="trackThresholdsSaveBtn" onclick="saveAdminTrackThresholds()">Save</button>' +
-    '<span id="trackThresholdsStatus" style="font-size:0.92rem;color:var(--heal);"></span>' +
-    '</div>';
-}
-
-function saveAdminTrackThresholds() {
-  var thresholds = {};
-  TRACK_THRESHOLD_TRACKS.forEach(function (track) {
-    var input = document.getElementById('trackThresholdInput-' + track);
-    var raw = input ? input.value.trim() : '';
-    var num = raw === '' ? NaN : Number(raw);
-    if (raw !== '' && !isNaN(num)) thresholds[track] = num;
-  });
-
-  var btn = document.getElementById('trackThresholdsSaveBtn');
-  var statusEl = document.getElementById('trackThresholdsStatus');
-  if (btn) btn.disabled = true;
-  if (statusEl) statusEl.textContent = 'Saving...';
-
-  saveTeamSetting({ trackIlvlThresholds: thresholds }, true)
-    .then(function (config) {
-      DATA.trackIlvlThresholds = config.trackIlvlThresholds || {};
-      writeAuditLog(
-        'Track Item Level Thresholds Saved',
-        null,
-        null,
-        TRACK_THRESHOLD_TRACKS.map(function (t) {
-          return t + ': ' + (thresholds[t] != null ? thresholds[t] : '(unset)');
-        }).join(', ')
-      );
-      if (btn) btn.disabled = false;
-      if (statusEl) statusEl.textContent = 'Saved';
-      setTimeout(function () {
-        if (statusEl) statusEl.textContent = '';
-      }, 2000);
-    })
-    .catch(function (err) {
-      if (btn) btn.disabled = false;
-      if (statusEl) {
-        statusEl.style.color = 'var(--melee)';
-        statusEl.textContent = 'Failed: ' + err.message;
-      }
-    });
-}
-
-// On-demand roster-wide gear sync (js/common.js's syncBlizzardGearForTeam),
-// invoked on top of the daily scheduled cron sweep -- lets an officer force
-// fresh data right before generating priority rather than waiting for the
-// next cron run.
+// Refresh Equipped Gear: the roster-wide read (js/common.js's
+// syncBlizzardGearForTeam) on top of the one the cron runs early every
+// morning -- lets an officer read fresh gear right before generating priority
+// rather than waiting for the next morning.
 function runSyncBlizzardGearForTeam() {
   var btn = document.getElementById('syncBlizzardGearBtn');
   var statusEl = document.getElementById('syncBlizzardGearStatus');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'Syncing...';
+    btn.textContent = 'Refreshing...';
   }
   if (statusEl) {
     statusEl.style.color = 'var(--heal)';
@@ -808,18 +714,17 @@ function runSyncBlizzardGearForTeam() {
     .then(function (result) {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Sync Gear Levels Now';
+        btn.textContent = 'Refresh Equipped Gear';
       }
       if (statusEl) {
-        statusEl.textContent =
-          result.synced + ' synced' + (result.skipped ? ', ' + result.skipped + ' skipped' : '') + '.';
+        statusEl.textContent = gearReadCounts(result.synced, result.skipped) + '.';
       }
       renderGearSyncStatus();
     })
     .catch(function (err) {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Sync Gear Levels Now';
+        btn.textContent = 'Refresh Equipped Gear';
       }
       if (statusEl) {
         statusEl.style.color = 'var(--melee)';
@@ -828,42 +733,48 @@ function runSyncBlizzardGearForTeam() {
     });
 }
 
-// The sweep's last-run line under that button (#1174), from the two records
-// blizzard-gear-sync leaves on site_settings. The scheduled sweep's record
-// carries the warning; an officer's own sync is appended after it and never
-// resets the sweep's age.
+// "24 raiders updated, 1 could not be read" -- a raider the Armory could not
+// answer for (an unknown or renamed character) is the second count, left out
+// at zero.
+function gearReadCounts(updated, unread) {
+  var n = updated || 0;
+  return n + (n === 1 ? ' raider' : ' raiders') + ' updated' + (unread ? ', ' + unread + ' could not be read' : '');
+}
+
+// The morning read's last-run line under that button (#1174), from the two
+// records blizzard-gear-sync leaves on site_settings. The scheduled read's
+// record carries the warning; a refresh by hand is appended after it and
+// never resets the morning read's age.
 var GEAR_SYNC_STALE_MS = 36 * 60 * 60 * 1000;
 
 function gearSyncStatusText(cronRun, officerRun, nowMs) {
-  if (!cronRun) return { text: 'No scheduled sweep recorded yet.', warn: true };
+  if (!cronRun) return { text: 'No morning read recorded yet.', warn: true };
   var text =
-    'Last sweep: ' +
+    'Last morning read: ' +
     (timeAgoLabel(cronRun.finished_at) || 'unknown age') +
     ', ' +
-    (cronRun.synced || 0) +
-    ' synced, ' +
-    (cronRun.skipped || 0) +
-    ' skipped.';
+    gearReadCounts(cronRun.synced, cronRun.skipped) +
+    '.';
   var warn = false;
   if (cronRun.error) {
     text += ' Error: ' + cronRun.error;
     warn = true;
   } else if (!cronRun.synced && cronRun.players > 0) {
-    text += ' Nothing was synced.';
+    text += ' Nothing was updated.';
     warn = true;
   }
   var finished = Date.parse(cronRun.finished_at);
   if (isNaN(finished) || nowMs - finished > GEAR_SYNC_STALE_MS) {
-    text += ' The scheduled sweep has not run in 36 hours.';
+    text += ' The morning read has not run in 36 hours.';
     warn = true;
   }
   if (officerRun) {
     text +=
-      ' Last on-demand sync: ' +
+      ' Last refresh by hand: ' +
       (timeAgoLabel(officerRun.finished_at) || 'unknown age') +
       ', ' +
-      (officerRun.synced || 0) +
-      ' synced.';
+      gearReadCounts(officerRun.synced) +
+      '.';
   }
   return { text: text, warn: warn };
 }
@@ -879,7 +790,7 @@ function renderGearSyncStatus() {
     .then(function (result) {
       if (result.error) {
         el.style.color = '';
-        el.textContent = 'Could not read the last sweep: ' + result.error.message;
+        el.textContent = 'Could not load the last morning read: ' + result.error.message;
         return;
       }
       var row = result.data || {};

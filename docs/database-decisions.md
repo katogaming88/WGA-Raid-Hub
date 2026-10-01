@@ -12,7 +12,7 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ## 2026-09-30 -- a tier's track floors live on the tier (#1267)
 
-Shipped: 20260930203517_season_track_floors.sql
+Shipped: 20260930203517_season_track_floors.sql, 20260930230623_retire_track_floor_setting.sql
 
 The gear sync takes an equipped item's track from its bonus ids and falls back to item level floors only for gear that carries no track bonus id: crafted, Timewarped and the like. Those floors were `team_settings.config.trackIlvlThresholds`, typed into the Admin tab by hand on each team. Measured 2026-09-30, Phoenix and Hellfire held the same six values and Immolation and Wrathless held none, so Immolation's 84 such gear rows had no track, 56 of which clear a floor.
 
@@ -21,7 +21,7 @@ The gear sync takes an equipped item's track from its bonus ids and falls back t
 - **The sync reads the current tier's floors once per run, for every team.** No current tier, or a tier with no rows, means no floors, which leaves that gear without a track as before. A failed read stops the run before it writes, as a failed bonus-id read already did.
 - **MID2 carries the six values both teams held; MID1 carries none.** The floors were first entered on 2026-08-31, after MID1 ended, and nothing reads an ended tier's. Phoenix's 111 and Hellfire's 131 gear rows with no track bonus id grade identically against the tier's floors.
 - **Tripwire.** `tests/rls/season-track-floors.test.js` goes red when any tier from MID2 on has fewer than six floors, so the pull request that adds a tier without them fails, whatever date the tier starts on.
-- **Not moved with this.** The settings key and its Admin card stay until the second pull request on #1267 removes both; nothing reads the key after this one.
+- **The settings key and its Admin card went in a second pull request**, once the sync reading the table was live, so no deployed reader ever lost its input. `20260930230623` strips the key from every team; the Admin tab's Features section keeps the gear sync button under a heading of its own. The floors are not shown anywhere in the app: nobody acts on them, and they change only with a tier's migration.
 
 [Full discussion -> #1267](https://github.com/katogaming88/WGA-Raid-Hub/issues/1267).
 

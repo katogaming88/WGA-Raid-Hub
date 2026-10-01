@@ -194,7 +194,7 @@ Writes go through `saveTeamSetting()` (`js/common.js`), which calls the `set_tea
 | `seasonView` | string (a `raid_zones.season` name) or null | 1, 2 (null) | cycle (a planning override) | #933 |
 | `activeSignupSeason` | string, free text (a name today) | 1, 2 | cycle (the next one) | #934 (shipped 2026-09-21: the key is gone; the signup seasons are the `team_seasons` rows with `signups_open`) |
 | `raidProgression` | array of raids with bosses | 1, 2 | cycle (the team's raid list for its season) | #939 |
-| `trackIlvlThresholds` | object, a floor per track, `Myth` to `Explorer`; read by nothing since #1267 | 1, 2 | tier in meaning, per team in storage | #1267 (the floors are `season_track_floors` rows since `20260930203517_season_track_floors.sql`; the key and its Admin card go in its second pull request) |
+| `trackIlvlThresholds` | gone since #1267 (`20260930230623_retire_track_floor_setting.sql`); was an object, a floor per track, `Myth` to `Explorer` | none | tier in meaning, per team in storage | #1267 (the floors are `season_track_floors` rows since `20260930203517_season_track_floors.sql`) |
 | `signupsOpen` | boolean | 1, 2, 3 | neither (a gate) | #939 (shipped 2026-09-21: a `team_seasons` row per tier; #934 stripped the key the same day) |
 | `bisSubmissionsOpen` | boolean | 1, 2 | neither (a gate) | none |
 | `mPlusExclusionsOpen` | boolean | 1, 2 | neither (a gate) | none |
@@ -255,10 +255,10 @@ Retired by #938's fourth pull request (`20260921201717_retire_season_name.sql`, 
 
 ### `trackIlvlThresholds`
 
-- **Writers.** `saveAdminTrackThresholds()` (`js/tabs/tab-admin.js`).
-- **Readers.** `renderAdminTrackThresholds()`. Until #1267 `syncRoster()` in `blizzard-gear-sync` read it (the sweep every team's, the single-team run one) to grade equipped gear with no track bonus id into tracks.
+- **Writers.** Until #1267, `saveAdminTrackThresholds()` (`js/tabs/tab-admin.js`), the Admin tab's Track Item Level Thresholds card.
+- **Readers.** Until #1267, `syncRoster()` in `blizzard-gear-sync` (the sweep every team's, the single-team run one) to grade equipped gear with no track bonus id into tracks, and the card's `renderAdminTrackThresholds()`.
 - **Meaning.** Tier in meaning (the floors belong to the tier) and per team in storage. **Next tier, nothing changed.** Re-entered by hand on each team, like the token seed.
-- **Since #1267 (2026-09-30, `20260930203517_season_track_floors.sql`).** The floors are `season_track_floors` rows, one per tier and track, added by the migration that adds the tier; the sync reads the current tier's for every team, so a team that never typed the key gets tracks on that gear too. The key and its Admin card go in #1267's second pull request.
+- **Since #1267 (2026-09-30, `20260930203517_season_track_floors.sql`).** The floors are `season_track_floors` rows, one per tier and track, added by the migration that adds the tier; the sync reads the current tier's for every team, so a team that never typed the key gets tracks on that gear too. `20260930230623_retire_track_floor_setting.sql` stripped the key from every team the same day, and the card went with it.
 
 ### `signupsOpen`, `bisSubmissionsOpen`, `mPlusExclusionsOpen`, `wishlistOpen`
 
