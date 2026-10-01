@@ -5,7 +5,6 @@ import { useSession } from '../auth/session';
 import { DataState } from '../components/DataState';
 import { useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
-import { seasonName } from '../profile/profile';
 import { useCurrentSeason } from '../profile/useProfile';
 import {
   ROLE_LABELS,
@@ -65,7 +64,7 @@ export function RosterPage() {
             // Named after the tier when exactly one is open (#934); the
             // season-agnostic label otherwise.
             incoming.data![1].length === 1
-              ? `${seasonName(incoming.data![1][0]!)} Roster (Tentative)`
+              ? `${incoming.data![1][0]!.name} Roster (Tentative)`
               : 'Next Season Roster (Tentative)'
           }
         />

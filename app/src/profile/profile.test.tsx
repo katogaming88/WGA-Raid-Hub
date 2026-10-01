@@ -3,15 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, filterValue, seededHandlers, type Read } from '../test/fakeSupabase';
-import {
-  attendance,
-  characterLinks,
-  equippedGear,
-  formatJoinDate,
-  seasonCode,
-  seasonLoot,
-  timeAgoLabel
-} from './profile';
+import { attendance, characterLinks, equippedGear, formatJoinDate, seasonLoot, timeAgoLabel } from './profile';
 import { latestSelfReceivedUpdate, lootPriority } from './lootPriority';
 import { wishlistSummary } from './wishlist';
 
@@ -87,10 +79,8 @@ describe('header helpers', () => {
     );
   });
 
-  it('writes the join date and season code the way the current site does', () => {
+  it('writes the join date the way the current site does', () => {
     expect(formatJoinDate('2026-08-10')).toBe('Aug 10, 2026');
-    expect(seasonCode('Midnight Season 2')).toBe('MID2');
-    expect(seasonCode('Something else')).toBeNull();
   });
 
   it("labels a signal's age, blank when it has never fired (#1311)", () => {
