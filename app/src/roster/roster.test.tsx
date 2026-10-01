@@ -216,7 +216,13 @@ describe('Roster page', () => {
           { signup_id: 1, signup_name_realm: 'Gloamwing-Illidan', class: 'Shaman', spec: 'Elemental', role: 'Ranged' }
         ],
         // One tier open names the tab (#934).
-        team_seasons: [{ season_code: 'MID3', signups_open: true, seasons: { starts_at: '2099-01-01' } }]
+        team_seasons: [
+          {
+            season_code: 'MID3',
+            signups_open: true,
+            seasons: { starts_at: '2099-01-01', display_name: 'Midnight Season 3' }
+          }
+        ]
       })
     );
     const current = await screen.findByRole('tab', { name: 'Current Roster' });

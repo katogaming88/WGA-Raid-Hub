@@ -6,7 +6,11 @@ import { fakeSession, seededHandlers, type Read } from '../test/fakeSupabase';
 
 // The Sign Up page (#1102), ported from js/signup.js.
 
-const OPEN_SEASON = { season_code: 'MID3', signups_open: true, seasons: { starts_at: '2099-01-01' } };
+const OPEN_SEASON = {
+  season_code: 'MID3',
+  signups_open: true,
+  seasons: { starts_at: '2099-01-01', display_name: 'Midnight Season 3' }
+};
 
 const person = (nameRealm: string | null) => ({
   site_admin: false,

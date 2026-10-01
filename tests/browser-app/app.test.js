@@ -728,7 +728,15 @@ const SIGNUP_BASE = {
   path: '/g/wga/t/phoenix/signup',
   session: storedSession({ battlenet: 'Kato#1499', discord: 'Phoenix Raider' }),
   person: SIGNUP_PERSON,
-  tables: { team_seasons: [{ season_code: 'MID3', signups_open: true, seasons: { starts_at: '2099-01-01' } }] }
+  tables: {
+    team_seasons: [
+      {
+        season_code: 'MID3',
+        signups_open: true,
+        seasons: { starts_at: '2099-01-01', display_name: 'Midnight Season 3' }
+      }
+    ]
+  }
 };
 const SIGNUP = { ...SIGNUP_BASE, sentinel: 'main:has(.signup-card)', rpc: { get_own_signup: [] } };
 const SIGNUP_SUMMARY = {
