@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.159.4] - 2026-10-01
+
+### Project
+
+- The new app builds again, and its preview deploys again. Version 11 of
+  Sentry, the error reporting service, dropped the one setting the app used to
+  keep personal details out of error reports, and the build stopped on it. The
+  app now switches off the personal data Sentry 11 would otherwise collect,
+  such as who the visitor is, cookies, request headers and bodies, the query
+  part of an address and database query values, so a report carries no more
+  about the person than it did before (#1381).
+
 ## [3.159.3] - 2026-09-30
 
 ### Frontend
