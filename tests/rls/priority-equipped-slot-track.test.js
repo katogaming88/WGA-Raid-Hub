@@ -10,7 +10,7 @@
 //
 // The factor now grades on the gear's real upgrade TRACK, in three steps
 // (Myth 0.92 / Hero 0.96 / Champion-or-lower and empty 1.00), not on item
-// level against team_settings.config.trackIlvlThresholds. Item level cannot
+// level against a per-tier floor. Item level cannot
 // answer the question: the tracks overlap by design (Hero 6/6 and Myth 2/6
 // are both ilvl 321), so an ilvl threshold reads every fully-upgraded Hero
 // item as Myth -- measured at 286 such items across this guild's roster.
@@ -157,15 +157,14 @@ describe('generate_priority_order equipped-slot track factor', () => {
     });
   });
 
-  it('ignores trackIlvlThresholds entirely, including when the team has none configured', async () => {
+  it('follows the track, not the item level: a Myth item at item level 1 is still Myth', async () => {
     await withTxn(async ({ q, asUser }) => {
       await twoCandidates(q, BELT_ITEM_ID);
-      await q("update public.team_settings set config = config - 'trackIlvlThresholds' where team_id = 1");
       await equip(q, 1, 'WAIST', { track: 'Myth', ilvl: 1 });
 
       const res = await generate(asUser, BELT_ITEM_ID, 'Myth');
       const byId = Object.fromEntries(res.rows.map((r) => [r.player_id, r]));
-      // Absurd item_level, no thresholds at all -- the track alone decides.
+      // Absurd item_level -- the track alone decides.
       expect(byId[1].weighted_total).toBe(MYTH_GEN_MYTH_SLOT);
       expect(byId[2].weighted_total).toBe(MYTH_GEN_NO_PENALTY);
     });

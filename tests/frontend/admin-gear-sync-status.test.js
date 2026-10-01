@@ -167,7 +167,7 @@ describe('renderGearSyncStatus (#1174)', () => {
     expect(els.gearSyncStatus.style.color).toBe('var(--melee)');
   });
 
-  it('runs when the Features sub-tab opens, beside the three renders already there', async () => {
+  it('runs when the Features sub-tab opens, beside the two renders already there', async () => {
     const { sandbox, els, selects } = makeSandbox({
       row: { gear_sync_last_cron_run: cronRun(), gear_sync_last_officer_run: null }
     });
@@ -178,6 +178,5 @@ describe('renderGearSyncStatus (#1174)', () => {
     expect(els.gearSyncStatus.style.color).toBe('');
     expect(els.adminFeatureFlagsContent.innerHTML).not.toBe('');
     expect(els.adminWishlistLabelsContent.innerHTML).not.toBe('');
-    expect(els.adminTrackThresholdsContent.innerHTML).not.toBe('');
   });
 });

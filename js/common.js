@@ -2964,13 +2964,7 @@ var SEASON_CONFIG_KEYS = [
   // count. Unset/0 means no target configured -- the advisory just shows
   // the plain count with no "we have enough" nudge.
   'targetTankCount',
-  'targetHealCount',
-  // Officer-maintained {Hero, Myth} min item-level floors for the current
-  // season (a Champion floor is accepted too but unused today -- see the
-  // generate_priority_order() equipped-slot-track migration). Compared
-  // against public.player_equipped_gear.item_level server-side, not read
-  // client-side -- reseeded by hand each season, same as tier_token_map.
-  'trackIlvlThresholds'
+  'targetHealCount'
 ];
 
 /**
