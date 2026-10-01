@@ -18,8 +18,13 @@ answers to.
 
 - The Admin tab's Track Item Level Thresholds card is gone. The floors it set
   belong to the raid tier now and come with the tier, the same for every team,
-  so there is nothing for a team to set. The Sync Gear Levels Now button stays,
-  under its own Equipped Gear heading (#1267).
+  so there is nothing for a team to set (#1267).
+- The gear button left beside it says what it does. Sync Gear Levels Now is
+  now Refresh Equipped Gear, under an Equipped Gear heading, with a note that
+  each raider's gear is read from the Blizzard Armory every morning and that
+  the Priority List and profiles use it. The status line under it reads "Last
+  morning read: 17h ago, 76 raiders updated, 1 could not be read" in place of
+  sweep, synced and skipped (#1267).
 
 ### Backend
 

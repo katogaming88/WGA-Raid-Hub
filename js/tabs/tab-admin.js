@@ -694,16 +694,16 @@ function saveAdminWishlistLabels() {
     });
 }
 
-// On-demand roster-wide gear sync (js/common.js's syncBlizzardGearForTeam),
-// invoked on top of the daily scheduled cron sweep -- lets an officer force
-// fresh data right before generating priority rather than waiting for the
-// next cron run.
+// Refresh Equipped Gear: the roster-wide read (js/common.js's
+// syncBlizzardGearForTeam) on top of the one the cron runs early every
+// morning -- lets an officer read fresh gear right before generating priority
+// rather than waiting for the next morning.
 function runSyncBlizzardGearForTeam() {
   var btn = document.getElementById('syncBlizzardGearBtn');
   var statusEl = document.getElementById('syncBlizzardGearStatus');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'Syncing...';
+    btn.textContent = 'Refreshing...';
   }
   if (statusEl) {
     statusEl.style.color = 'var(--heal)';
@@ -714,18 +714,17 @@ function runSyncBlizzardGearForTeam() {
     .then(function (result) {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Sync Gear Levels Now';
+        btn.textContent = 'Refresh Equipped Gear';
       }
       if (statusEl) {
-        statusEl.textContent =
-          result.synced + ' synced' + (result.skipped ? ', ' + result.skipped + ' skipped' : '') + '.';
+        statusEl.textContent = gearReadCounts(result.synced, result.skipped) + '.';
       }
       renderGearSyncStatus();
     })
     .catch(function (err) {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Sync Gear Levels Now';
+        btn.textContent = 'Refresh Equipped Gear';
       }
       if (statusEl) {
         statusEl.style.color = 'var(--melee)';
@@ -734,42 +733,48 @@ function runSyncBlizzardGearForTeam() {
     });
 }
 
-// The sweep's last-run line under that button (#1174), from the two records
-// blizzard-gear-sync leaves on site_settings. The scheduled sweep's record
-// carries the warning; an officer's own sync is appended after it and never
-// resets the sweep's age.
+// "24 raiders updated, 1 could not be read" -- a raider the Armory could not
+// answer for (an unknown or renamed character) is the second count, left out
+// at zero.
+function gearReadCounts(updated, unread) {
+  var n = updated || 0;
+  return n + (n === 1 ? ' raider' : ' raiders') + ' updated' + (unread ? ', ' + unread + ' could not be read' : '');
+}
+
+// The morning read's last-run line under that button (#1174), from the two
+// records blizzard-gear-sync leaves on site_settings. The scheduled read's
+// record carries the warning; a refresh by hand is appended after it and
+// never resets the morning read's age.
 var GEAR_SYNC_STALE_MS = 36 * 60 * 60 * 1000;
 
 function gearSyncStatusText(cronRun, officerRun, nowMs) {
-  if (!cronRun) return { text: 'No scheduled sweep recorded yet.', warn: true };
+  if (!cronRun) return { text: 'No morning read recorded yet.', warn: true };
   var text =
-    'Last sweep: ' +
+    'Last morning read: ' +
     (timeAgoLabel(cronRun.finished_at) || 'unknown age') +
     ', ' +
-    (cronRun.synced || 0) +
-    ' synced, ' +
-    (cronRun.skipped || 0) +
-    ' skipped.';
+    gearReadCounts(cronRun.synced, cronRun.skipped) +
+    '.';
   var warn = false;
   if (cronRun.error) {
     text += ' Error: ' + cronRun.error;
     warn = true;
   } else if (!cronRun.synced && cronRun.players > 0) {
-    text += ' Nothing was synced.';
+    text += ' Nothing was updated.';
     warn = true;
   }
   var finished = Date.parse(cronRun.finished_at);
   if (isNaN(finished) || nowMs - finished > GEAR_SYNC_STALE_MS) {
-    text += ' The scheduled sweep has not run in 36 hours.';
+    text += ' The morning read has not run in 36 hours.';
     warn = true;
   }
   if (officerRun) {
     text +=
-      ' Last on-demand sync: ' +
+      ' Last refresh by hand: ' +
       (timeAgoLabel(officerRun.finished_at) || 'unknown age') +
       ', ' +
-      (officerRun.synced || 0) +
-      ' synced.';
+      gearReadCounts(officerRun.synced) +
+      '.';
   }
   return { text: text, warn: warn };
 }
@@ -785,7 +790,7 @@ function renderGearSyncStatus() {
     .then(function (result) {
       if (result.error) {
         el.style.color = '';
-        el.textContent = 'Could not read the last sweep: ' + result.error.message;
+        el.textContent = 'Could not load the last morning read: ' + result.error.message;
         return;
       }
       var row = result.data || {};

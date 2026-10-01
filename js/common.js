@@ -6999,7 +6999,7 @@ function renderProfile(firstName, backTo, container) {
 
   // Equipped Gear (#845) -- per-slot item level/track, synced from the
   // Blizzard API by the daily blizzard-gear-sync cron sweep or an officer's
-  // "Sync Gear Levels Now" button. Shown to anyone viewing the profile, same
+  // "Refresh Equipped Gear" button. Shown to anyone viewing the profile, same
   // as attendance/loot below -- player_equipped_gear is public-read, no
   // isOwnWishlistView gate. Slot rows this player has never synced (empty
   // player_equipped_gear altogether) render nothing at all rather than a
