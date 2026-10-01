@@ -36,6 +36,7 @@ const CODE_INSERTS = {
   tier_token_map:
     "insert into public.tier_token_map (season, token_item_id, class, resolved_item_id) values ($1, 1, 'TestClass', 2)",
   track_bonus_ids: "insert into public.track_bonus_ids (bonus_id, track, rank, season) values (999001, 'Hero', 1, $1)",
+  season_track_floors: "insert into public.season_track_floors (season, track, item_level) values ($1, 'Hero', 1)",
   season_signups:
     "insert into public.season_signups (team_id, signup_name_realm, season) values (1, 'Seasontest-Illidan', $1)",
   item_preferences:

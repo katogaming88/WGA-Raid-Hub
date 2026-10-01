@@ -2,7 +2,7 @@
 // now, checked against the player's team by a trigger, so every row the
 // function upserts has to name the team the roster was read for.
 import { assertEquals } from 'jsr:@std/assert@1';
-import { buildRows } from '../../../supabase/functions/blizzard-gear-sync/rows.ts';
+import { buildRows, deriveTrack, floorsFromRows } from '../../../supabase/functions/blizzard-gear-sync/rows.ts';
 
 const PLAYER = 12;
 const TEAM = 3;
@@ -68,4 +68,45 @@ Deno.test('a slot with no item id is skipped', () => {
     rows.map((r) => r.equipment_slot),
     ['HEAD']
   );
+});
+
+// The tier's floors (#1267): season_track_floors rows as the sync reads them
+// for the current tier, here Midnight Season 2's.
+const MID2_FLOORS = [
+  { track: 'Myth', item_level: 318 },
+  { track: 'Hero', item_level: 305 },
+  { track: 'Champion', item_level: 292 },
+  { track: 'Veteran', item_level: 279 },
+  { track: 'Adventurer', item_level: 266 },
+  { track: 'Explorer', item_level: 207 }
+];
+
+Deno.test("the tier's floor rows become the record deriveTrack grades against", () => {
+  assertEquals(floorsFromRows(MID2_FLOORS), {
+    Myth: 318,
+    Hero: 305,
+    Champion: 292,
+    Veteran: 279,
+    Adventurer: 266,
+    Explorer: 207
+  });
+});
+
+Deno.test('a tier with only some floors passes those through and fills nothing', () => {
+  assertEquals(floorsFromRows(MID2_FLOORS.slice(0, 2)), { Myth: 318, Hero: 305 });
+});
+
+Deno.test('a tier with no floors gives none', () => {
+  assertEquals(floorsFromRows([]), null);
+});
+
+Deno.test("gear with no track bonus id is graded by the tier's floors", () => {
+  const floors = floorsFromRows(MID2_FLOORS);
+  assertEquals(deriveTrack(310, floors, [], NO_BONUS_TRACKS), 'Hero');
+  assertEquals(deriveTrack(200, floors, [], NO_BONUS_TRACKS), null);
+});
+
+Deno.test("a track bonus id outranks the tier's floors", () => {
+  const floors = floorsFromRows(MID2_FLOORS);
+  assertEquals(deriveTrack(330, floors, [12841], new Map([[12841, 'Hero']])), 'Hero');
 });
