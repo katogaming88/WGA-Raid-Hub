@@ -194,7 +194,7 @@ Writes go through `saveTeamSetting()` (`js/common.js`), which calls the `set_tea
 | `seasonView` | string (a `raid_zones.season` name) or null | 1, 2 (null) | cycle (a planning override) | #933 |
 | `activeSignupSeason` | string, free text (a name today) | 1, 2 | cycle (the next one) | #934 (shipped 2026-09-21: the key is gone; the signup seasons are the `team_seasons` rows with `signups_open`) |
 | `raidProgression` | array of raids with bosses | 1, 2 | cycle (the team's raid list for its season) | #939 |
-| `trackIlvlThresholds` | object, `{Hero, Myth}` floors | 1, 2 | tier in meaning, per team in storage | none filed |
+| `trackIlvlThresholds` | object, a floor per track, `Myth` to `Explorer`; read by nothing since #1267 | 1, 2 | tier in meaning, per team in storage | #1267 (the floors are `season_track_floors` rows since `20260930203517_season_track_floors.sql`; the key and its Admin card go in its second pull request) |
 | `signupsOpen` | boolean | 1, 2, 3 | neither (a gate) | #939 (shipped 2026-09-21: a `team_seasons` row per tier; #934 stripped the key the same day) |
 | `bisSubmissionsOpen` | boolean | 1, 2 | neither (a gate) | none |
 | `mPlusExclusionsOpen` | boolean | 1, 2 | neither (a gate) | none |
@@ -256,8 +256,9 @@ Retired by #938's fourth pull request (`20260921201717_retire_season_name.sql`, 
 ### `trackIlvlThresholds`
 
 - **Writers.** `saveAdminTrackThresholds()` (`js/tabs/tab-admin.js`).
-- **Readers.** `syncRoster()` in `blizzard-gear-sync` (the sweep reads every team's, the single-team run reads one) to grade equipped items into tracks; `renderAdminTrackThresholds()`.
+- **Readers.** `renderAdminTrackThresholds()`. Until #1267 `syncRoster()` in `blizzard-gear-sync` read it (the sweep every team's, the single-team run one) to grade equipped gear with no track bonus id into tracks.
 - **Meaning.** Tier in meaning (the floors belong to the tier) and per team in storage. **Next tier, nothing changed.** Re-entered by hand on each team, like the token seed.
+- **Since #1267 (2026-09-30, `20260930203517_season_track_floors.sql`).** The floors are `season_track_floors` rows, one per tier and track, added by the migration that adds the tier; the sync reads the current tier's for every team, so a team that never typed the key gets tracks on that gear too. The key and its Admin card go in #1267's second pull request.
 
 ### `signupsOpen`, `bisSubmissionsOpen`, `mPlusExclusionsOpen`, `wishlistOpen`
 
@@ -296,4 +297,4 @@ Derived from the entries above, in the order the tier would hit them.
 5. `activeSignupSeason` and `seasonView` are free text and a raid-zone name; both keep working only while an officer types the same name the code derives. #934 retired the first (the tier is picked from `seasons`); #933 converted the second.
 6. `boe_items.season` is written and never read, so nothing surfaces a wrong or missing stamp until #937 gives it a reader.
 7. The wishlist rows follow each team's rollover by name; #936 stamps the tier code of the team's open cycle and closes the form when there is none.
-8. `trackIlvlThresholds` is re-entered per team by hand. No issue files it; it is the one key whose meaning is the tier and whose storage is the cycle.
+8. `trackIlvlThresholds` is re-entered per team by hand; it is the one key whose meaning is the tier and whose storage is the cycle. #1267 moved the floors onto the tier: the migration that adds a tier adds its `season_track_floors` rows.

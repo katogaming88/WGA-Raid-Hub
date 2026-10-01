@@ -16,6 +16,13 @@ export type EquippedRow = {
 
 const TRACKS_HIGH_TO_LOW = ['Myth', 'Hero', 'Champion', 'Veteran', 'Adventurer', 'Explorer'] as const;
 
+// The current tier's season_track_floors rows (#1267) as the track-to-floor
+// record deriveTrack() grades against. A tier with no rows has no floors.
+export function floorsFromRows(rows: { track: string; item_level: number }[]): Record<string, number> | null {
+  if (rows.length === 0) return null;
+  return Object.fromEntries(rows.map((r) => [r.track, r.item_level]));
+}
+
 // Item level is a fallback only, for gear that carries no track bonus ID at
 // all -- crafted, Timewarped and similar, roughly a fifth of a real roster's
 // items. It cannot distinguish overlapping tracks and will read a

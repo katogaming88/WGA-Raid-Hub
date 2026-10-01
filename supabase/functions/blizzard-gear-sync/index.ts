@@ -35,12 +35,10 @@
 // equipped item regardless of source -- that only works off a season's
 // published item-level floor per track (cross-checked live against
 // WoWAudit's own embedded per-season config), not any Blizzard API field.
-// So `track` here is the highest tier in team_settings.config's
-// trackIlvlThresholds (an object like {"Myth": 318, "Hero": 305, ...}, all
-// 6 keys optional) whose floor the item's item_level clears -- same
-// "≥ floor" shape generate_priority_order()'s fairness comparison already
-// uses, just applied to all 6 tracks instead of 2, and now the actual
-// source of the display label instead of a separate thing.
+// So for gear with no track bonus id (see loadBonusTrackMap below), `track`
+// is the highest track whose floor in the current tier's season_track_floors
+// rows the item's item_level clears. The floors are the tier's, the same for
+// every team, and arrive with the migration that adds the tier (#1267).
 //
 // Kat-confirmed live: adjacent tracks' ilvl ranges genuinely overlap within
 // a single track's own upgrade ranks (e.g. Champion's later ranks and
@@ -62,7 +60,7 @@ import {
   type Tally,
   type Trigger
 } from './outcome.ts';
-import { buildRows } from './rows.ts';
+import { buildRows, floorsFromRows } from './rows.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -90,6 +88,18 @@ async function loadBonusTrackMap(supabase: SupabaseClient<any>): Promise<Map<num
   const { data, error } = await supabase.from('track_bonus_ids').select('bonus_id, track');
   if (error) throw new Error('Failed to load track_bonus_ids: ' + error.message);
   return new Map((data || []).map((r: any) => [r.bonus_id as number, r.track as string]));
+}
+
+// The current tier's floor per track, for gear with no track bonus id. No
+// current tier means no floors, which leaves that gear without a track. A
+// failed read stops the run for the same reason as the bonus ids above.
+async function loadTierFloors(supabase: SupabaseClient<any>): Promise<Record<string, number> | null> {
+  const { data: season, error: seasonError } = await supabase.rpc('current_season');
+  if (seasonError) throw new Error('Failed to read current_season(): ' + seasonError.message);
+  if (!season) return null;
+  const { data, error } = await supabase.from('season_track_floors').select('track, item_level').eq('season', season);
+  if (error) throw new Error('Failed to load season_track_floors: ' + error.message);
+  return floorsFromRows(data || []);
 }
 
 // Same realm-slug conversion as wcl-sync's realmToServerSlug (ported from
@@ -222,22 +232,22 @@ Deno.serve(async (req) => {
   const isCronCall = !!cronSecret && req.headers.get('x-cron-secret') === cronSecret;
 
   if (isCronCall) {
-    // Full sweep, every team -- each team keeps its own trackIlvlThresholds,
-    // so this loops team-by-team rather than pulling every player at once.
+    // Full sweep, every team, team by team: every row names the team its
+    // roster was read for (rows.ts).
     const supabase = serviceClient();
     const startedAt = new Date();
     const tally = newTally();
     try {
       const token = await blizzardToken();
-      const { data: teams, error: teamsError } = await supabase.from('team_settings').select('team_id, config');
+      const { data: teams, error: teamsError } = await supabase.from('team_settings').select('team_id');
       if (teamsError) throw new Error(teamsError.message);
 
-      // Loaded once for the whole sweep, not per team -- it's global catalog
-      // data, not per-team config like the thresholds below.
+      // Loaded once for the whole sweep, not per team -- both are catalog
+      // data, the same for every team.
       const bonusTracks = await loadBonusTrackMap(supabase);
+      const thresholds = await loadTierFloors(supabase);
       for (const team of teams || []) {
         tally.teams++;
-        const thresholds = (team.config as any)?.trackIlvlThresholds || null;
         const { data: players, error: playersError } = await supabase
           .from('players')
           .select('id, name_realm')
@@ -287,19 +297,13 @@ Deno.serve(async (req) => {
     const tally = newTally();
     tally.teams = 1;
     try {
-      const { data: settingsRow } = await supabase
-        .from('team_settings')
-        .select('config')
-        .eq('team_id', teamId)
-        .maybeSingle();
-      const thresholds = (settingsRow?.config as any)?.trackIlvlThresholds || null;
-
       let query = supabase.from('players').select('id, name_realm').eq('team_id', teamId).is('archived_at', null);
       if (playerId) query = query.eq('id', playerId);
       const { data: players, error: playersError } = await query;
       if (playersError) throw new Error(playersError.message);
 
       const bonusTracks = await loadBonusTrackMap(supabase);
+      const thresholds = await loadTierFloors(supabase);
       await syncRoster(supabase, teamId, players || [], thresholds, token, bonusTracks, tally);
       return jsonResponse({ success: true, synced: tally.synced, skipped: tally.skipped });
     } catch (err) {

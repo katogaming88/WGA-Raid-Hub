@@ -4804,7 +4804,7 @@
           "name": "track",
           "type": "text",
           "nullable": true,
-          "comment": "Gear upgrade track (Explorer/Adventurer/Veteran/Champion/Hero/Myth), derived from bonus_list via track_bonus_ids. Falls back to the item_level-vs-trackIlvlThresholds guess only when no bonus ID matches (crafted, Timewarped and similar gear carries no track bonus ID) -- that fallback cannot distinguish overlapping tracks and is a last resort, not the primary source."
+          "comment": "Gear upgrade track (Explorer/Adventurer/Veteran/Champion/Hero/Myth), derived from bonus_list via track_bonus_ids. Falls back to the item level against the current tier's season_track_floors only when no bonus ID matches (crafted, Timewarped and similar gear carries no track bonus ID) -- that fallback cannot distinguish overlapping tracks and is a last resort, not the primary source."
         },
         {
           "name": "synced_at",
@@ -8202,6 +8202,91 @@
           "def": "CREATE TRIGGER trg_raid_night_participation_team_id_check BEFORE INSERT OR UPDATE ON public.raid_night_participation FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
+    },
+    {
+      "name": "public.season_track_floors",
+      "type": "BASE TABLE",
+      "comment": "The lowest item level of each gear upgrade track in a tier (#1267). blizzard-gear-sync grades equipped gear that carries no track bonus id against the current tier's floors, highest track first. Added by the migration that adds the tier.",
+      "columns": [
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "track",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "item_level",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "season_track_floors_pkey",
+          "def": "CREATE UNIQUE INDEX season_track_floors_pkey ON public.season_track_floors USING btree (season, track)",
+          "table": "public.season_track_floors",
+          "columns": [
+            "season",
+            "track"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "season_track_floors_item_level_check",
+          "type": "CHECK",
+          "def": "CHECK ((item_level \u003e 0))",
+          "table": "public.season_track_floors",
+          "referenced_table": "",
+          "columns": [
+            "item_level"
+          ]
+        },
+        {
+          "name": "season_track_floors_track_check",
+          "type": "CHECK",
+          "def": "CHECK ((track = ANY (ARRAY['Myth'::text, 'Hero'::text, 'Champion'::text, 'Veteran'::text, 'Adventurer'::text, 'Explorer'::text])))",
+          "table": "public.season_track_floors",
+          "referenced_table": "",
+          "columns": [
+            "track"
+          ]
+        },
+        {
+          "name": "season_track_floors_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.season_track_floors",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "season_track_floors_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (season, track)",
+          "table": "public.season_track_floors",
+          "referenced_table": "",
+          "columns": [
+            "season",
+            "track"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -9681,6 +9766,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.season_track_floors",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
     }
   ],
   "functions": [

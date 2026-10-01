@@ -2433,6 +2433,35 @@ export type Database = {
           },
         ]
       }
+      season_track_floors: {
+        Row: {
+          created_at: string
+          item_level: number
+          season: string
+          track: string
+        }
+        Insert: {
+          created_at?: string
+          item_level: number
+          season: string
+          track: string
+        }
+        Update: {
+          created_at?: string
+          item_level?: number
+          season?: string
+          track?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_track_floors_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       seasons: {
         Row: {
           code: string
