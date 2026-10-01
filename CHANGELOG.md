@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.159.5] - 2026-10-01
+
+### Project
+
+- The new app's Wishlist tab takes its seasons from the app's one shared
+  season list and shows the name each season has stored, in the season picker,
+  the "Wishlist for" line and the count. It kept its own sorted copy of the
+  list and worked each name out from the season's code, which shows a bare
+  code for any season not coded like MID2. Nothing looks different today: both
+  seasons on file are named that way (#1368).
+
 ## [3.159.4] - 2026-10-01
 
 ### Project
