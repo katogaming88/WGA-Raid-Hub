@@ -10,6 +10,24 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-01 -- removing a raider takes them off the live season's priority lists, whoever removes them (#1383)
+
+Shipped: 20261001194452_archive_drops_live_priority.sql
+
+The Roster tab archived a raider with `archive_player()` and then cleared their ranks with a second call, `remove_player_priority_order()`, aimed at the season the page had in view and with its result ignored. A raider removed from Hellfire on 2026-09-05 still held 26 ranks in MID2 on 2026-10-01, the only live-season ranks any archived raider held, and the RCLootCouncil export had listed them on those items since. Permissions were not why: the removal was made by a site admin, whom the cleanup admits. What the page held that day cannot be reconstructed, which leaves the season it sent as the likely cause.
+
+- **A trigger on `players.archived_at`, not a fix in the page or in `archive_player()`.** `players_drop_live_priority_on_archive` fires when `archived_at` goes from null to a value and deletes the character's ranks in the live tier, inside the archive's own transaction. Every path that archives a character gets it: `archive_player()`, an officer's direct update, the main swap, the signup promotion, and any path still to come. Reporting the failure on the page would have kept two calls and the pinned season; moving the delete into `archive_player()` would have left every other path without it.
+- **Security definer, because guild officers may remove a raider.** `archive_player()` admits `is_guild_officer()`, while the priority write rule leaves guild officers out on purpose (#607), so a guild officer's removal could never clear the ranks and a delete made with their rights would have matched nothing and said nothing. The archive is the act being authorized and the delete follows it; a guild officer still cannot edit or regenerate a list. The trigger function is executable by no site role.
+- **Only the live tier.** An earlier tier's list is history and keeps whoever was on it, as the swap and the promotion already did. No tier on file means nothing is deleted.
+- **A Priority tab opened before the removal cannot save the raider back.** `save_priority_order()` refuses a live-season list naming a raider who is no longer on the roster, and names them; the edit dialog shows the message. An earlier tier's list saves as before. A save that commits in the same moment as the removal can still keep the raider on that one item.
+- **The export leaves out an archived raider** in its ranked lists, as its BiS read already did, so that window cannot reach the addon.
+- **The 26 ranks went with the migration**, which deletes the live-tier ranks every archived raider still held. The nightly dump is the only record of them; the trigger writes no audit row of its own, since the removal's own audit row already says who left.
+- **`remove_player_priority_order()` is dropped.** Its only caller was the Roster tab's second call. A page cached from before the change still makes the call and ignores the error, and the trigger has done the work by then. `add_signup_to_roster()` and `review_main_swap_request()` keep their own deletes, which find nothing now except where the promotion archives a character already archived; the former's comment still names the dropped function until that function is next rewritten.
+
+[Full discussion -> #1383](https://github.com/katogaming88/WGA-Raid-Hub/issues/1383).
+
+---
+
 ## 2026-09-30 -- a tier's track floors live on the tier (#1267)
 
 Shipped: 20260930203517_season_track_floors.sql, 20260930230623_retire_track_floor_setting.sql

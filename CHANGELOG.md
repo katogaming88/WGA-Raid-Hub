@@ -12,6 +12,28 @@ answers to.
 
 ---
 
+## [3.159.7] - 2026-10-01
+
+### Backend
+
+- Removing a raider from the roster takes them off this season's priority
+  lists in the same step, whoever removes them. The lists were cleared by a
+  separate request after the removal, which could fail without anyone seeing
+  it and was never allowed for guild officers. A raider who left Hellfire
+  Rollers on 2026-09-05 was still ranked on 26 items and showed up in the
+  RCLootCouncil export; those ranks are gone now. Earlier seasons' lists keep
+  whoever was on them (#1383).
+- A Priority List opened before someone left the roster can no longer save
+  them back onto this season's list. Saving it says who is no longer on the
+  roster and asks for a reload (#1383).
+- The RCLootCouncil export never lists a raider who has left the roster
+  (#1383).
+
+### Frontend
+
+- The Roster tab no longer sends its own request to clear a removed raider's
+  priority ranks; the removal does it (#1383).
+
 ## [3.159.6] - 2026-10-01
 
 ### Project

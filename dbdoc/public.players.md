@@ -63,6 +63,7 @@
 | trg_players_bis_link_updated_at | CREATE TRIGGER trg_players_bis_link_updated_at BEFORE UPDATE OF bis_link ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
 | players_clear_no_character_dismissal | CREATE TRIGGER players_clear_no_character_dismissal AFTER INSERT OR UPDATE OF team_member_id ON public.players FOR EACH ROW WHEN ((new.team_member_id IS NOT NULL)) EXECUTE FUNCTION clear_no_character_dismissal_on_link() |
 | players_keep_url_code | CREATE TRIGGER players_keep_url_code BEFORE UPDATE OF url_code ON public.players FOR EACH ROW EXECUTE FUNCTION keep_player_url_code() |
+| players_drop_live_priority_on_archive | CREATE TRIGGER players_drop_live_priority_on_archive AFTER UPDATE OF archived_at ON public.players FOR EACH ROW WHEN (((old.archived_at IS NULL) AND (new.archived_at IS NOT NULL))) EXECUTE FUNCTION drop_archived_player_live_priority() |
 
 ## Relations
 

@@ -1,6 +1,130 @@
--- Function public.build_rclc_export: current definition, generated from the database.
--- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): authenticated
+-- #1383: removing a raider takes them off the live season's priority lists in
+-- the same step, whoever removes them.
+--
+-- The Roster tab archived a raider with archive_player() and then cleared their
+-- ranks with a second call, remove_player_priority_order(), aimed at the
+-- season the page had in view and with its result ignored. A raider removed
+-- from Hellfire on 2026-09-05 still held 26 ranks in MID2 three weeks later,
+-- and the RCLootCouncil export listed them on those items. A guild officer,
+-- whom archive_player() admits, could never clear them at all: the cleanup and
+-- the priority write rule both leave guild officers out (#607).
+--
+-- A trigger on players.archived_at now drops the ranks inside the archive's
+-- own transaction, for every path that archives a character: archive_player(),
+-- an officer's direct update, the main swap, the signup promotion, and the
+-- membership archive on the way. Only the live tier's ranks go; an earlier
+-- tier's list is history. Security definer because the priority write rule
+-- would silently filter a guild officer's delete; the archive is the act being
+-- authorized, so the delete follows it.
+--
+-- save_priority_order() refuses a live-season list naming a raider who is no
+-- longer on the roster, since a Priority tab opened before the removal would
+-- otherwise save them back. build_rclc_export() leaves an archived raider out
+-- of the ranked lists, as its BiS read already does.
+
+create or replace function public.drop_archived_player_live_priority() returns trigger
+language plpgsql security definer set search_path to 'public'
+as $$
+begin
+  delete from priority_order
+   where team_id = new.team_id
+     and player_id = new.id
+     and season = current_season();
+  return new;
+end;
+$$;
+
+revoke all on function public.drop_archived_player_live_priority() from public, anon, authenticated;
+
+create trigger players_drop_live_priority_on_archive
+  after update of archived_at on public.players
+  for each row
+  when (old.archived_at is null and new.archived_at is not null)
+  execute function public.drop_archived_player_live_priority();
+
+-- The ranks raiders already archived still hold in the live tier: 26 on
+-- production (2026-10-01), all one raider's.
+delete from public.priority_order po
+ using public.players p
+ where p.id = po.player_id
+   and p.archived_at is not null
+   and po.season = public.current_season();
+
+-- Its only caller was the Roster tab's second call, which this change removes.
+drop function public.remove_player_priority_order(integer, text, integer);
+
+CREATE OR REPLACE FUNCTION public.save_priority_order(p_team_id integer, p_season text, p_item_id integer, p_track text, p_player_ids jsonb)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_item_name text;
+  v_count integer;
+  v_departed text;
+begin
+  if not (coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false) or public.is_site_admin()) then
+    raise exception 'Not authorized';
+  end if;
+  if p_track not in ('Hero', 'Myth') then
+    raise exception 'Invalid track';
+  end if;
+
+  -- A page opened before a raider left still lists them. An earlier tier keeps
+  -- whoever was on its lists, so only the live tier is checked (#1383).
+  if p_season = public.current_season() then
+    select p.name_realm into v_departed
+      from jsonb_array_elements_text(coalesce(p_player_ids, '[]'::jsonb)) with ordinality as t(elem, ord)
+      join public.players p on p.id = (t.elem)::integer
+     where p.archived_at is not null
+     order by t.ord
+     limit 1;
+    if v_departed is not null then
+      raise exception '% is no longer on the roster. Reload the page to get the current list.', v_departed;
+    end if;
+  end if;
+
+  delete from public.priority_order
+   where team_id = p_team_id
+     and season = p_season
+     and item_id = p_item_id
+     and track = p_track;
+
+  insert into public.priority_order (team_id, season, item_id, track, rank, player_id, updated_at)
+  select p_team_id, p_season, p_item_id, p_track, ord::integer, (elem)::integer, now()
+  from jsonb_array_elements_text(coalesce(p_player_ids, '[]'::jsonb)) with ordinality as t(elem, ord);
+
+  get diagnostics v_count = row_count;
+
+  if v_count = 0 then
+    insert into public.priority_order_confirmed_empty (team_id, season, item_id, track, marked_at)
+    values (p_team_id, p_season, p_item_id, p_track, now())
+    on conflict (team_id, season, item_id, track) do update set marked_at = excluded.marked_at;
+  else
+    delete from public.priority_order_confirmed_empty
+     where team_id = p_team_id
+       and season = p_season
+       and item_id = p_item_id
+       and track = p_track;
+  end if;
+
+  select name into v_item_name from public.items where id = p_item_id;
+
+  perform public.write_audit_log(
+    p_team_id,
+    'Priority Order Saved',
+    'items',
+    p_item_id,
+    jsonb_build_object('item', v_item_name, 'track', p_track, 'players', v_count)
+  );
+
+  return v_count;
+end;
+$function$;
+
+revoke all on function public.save_priority_order(integer, text, integer, text, jsonb) from public;
+revoke execute on function public.save_priority_order(integer, text, integer, text, jsonb) from anon;
+grant execute on function public.save_priority_order(integer, text, integer, text, jsonb) to authenticated;
 
 CREATE OR REPLACE FUNCTION public.build_rclc_export(p_team_id integer, p_season text, p_track text)
  RETURNS jsonb
@@ -176,3 +300,7 @@ begin
   return jsonb_build_object('players', v_players, 'priority', v_priority, 'statusLabels', v_status_labels);
 end;
 $function$;
+
+revoke all on function public.build_rclc_export(integer, text, text) from public;
+revoke execute on function public.build_rclc_export(integer, text, text) from anon;
+grant execute on function public.build_rclc_export(integer, text, text) to authenticated;

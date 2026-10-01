@@ -3978,10 +3978,6 @@ export type Database = {
         }
         Returns: number
       }
-      remove_player_priority_order: {
-        Args: { p_player_id: number; p_season: string; p_team_id: number }
-        Returns: number
-      }
       request_main_swap: {
         Args: {
           p_character_id: number
