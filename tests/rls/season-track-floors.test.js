@@ -27,14 +27,21 @@ describe('season_track_floors', () => {
     });
   });
 
-  // Goes red the day a tier is added by a migration that forgot its floors:
-  // the sync would then grade no gear without a track bonus id on any team.
-  it('the current tier has a floor for every track', async () => {
+  // Goes red on the pull request that adds a tier without its floors, whatever
+  // date the tier starts on: once it became current the sync would grade no
+  // gear without a track bonus id on any team.
+  it('every tier from Midnight Season 2 on has a floor for every track', async () => {
     await withTxn(async ({ q }) => {
       const res = await q(
-        'select count(*)::int as n from public.season_track_floors where season = public.current_season()'
+        `select s.code, count(f.track)::int as floors
+           from public.seasons s
+           left join public.season_track_floors f on f.season = s.code
+          where s.starts_at >= (select starts_at from public.seasons where code = 'MID2')
+          group by s.code
+          order by s.code`
       );
-      expect(res.rows[0].n).toBe(6);
+      expect(res.rows.length).toBeGreaterThan(0);
+      for (const row of res.rows) expect(row).toEqual({ code: row.code, floors: 6 });
     });
   });
 
