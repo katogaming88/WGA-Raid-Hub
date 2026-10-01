@@ -61,8 +61,9 @@ function SignUpForTier({ teamId, seasons }: { teamId: number; seasons: SignupSea
   const ownSignup = useOwnSignup(teamId, tier);
   const roster = useRosterPlayers(teamId);
   const incoming = useIncomingWithSwap(teamId);
-  // The site's live tier (#938: seasonName retired), for classmatesPool()'s
-  // roster-inclusion rule. Same cache entry the profile page reads.
+  // The site's live tier (#938 retired the team's seasonName setting), for
+  // classmatesPool()'s roster-inclusion rule. Same cache entry the profile
+  // page reads.
   const liveSeason = useCurrentSeason(teamId);
   const targets = useRoleTargets(teamId);
 

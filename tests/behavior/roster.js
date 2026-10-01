@@ -35,6 +35,9 @@ export const SCENARIO = {
   // The tier the team has signups open for (#934): a team_seasons row with
   // the switch on, so the row both sites read is SIGNUP_SEASON_ROW below.
   signupSeason: 'MID4',
+  // The new app reads this name off the season row; the current site's
+  // recorded test has no seasons row and works it out from the code, so it
+  // stays in the Midnight Season N shape.
   signupSeasonName: 'Midnight Season 4',
   players: [
     player(1, 'Aurelith-Illidan', 'Aur', cs('Warrior', 'Protection', 'Tank')),
