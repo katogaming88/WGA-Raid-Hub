@@ -406,9 +406,7 @@ deno_version = 2
 # instead, against a cron secret, the bot's webhook secret, or a forwarded JWT. The
 # CLI reads verify_jwt from here at deploy, so a bare `supabase functions deploy`
 # keeps them as they are; with no block it resets all five to the default of true.
-# The other functions take the anon key or a real session and stay at that default.
-# tests/ci/functions-config.test.js pins these five, so adding or removing a block
-# here means editing its list too (#1128).
+# The other five take the anon key or a real session and stay at that default.
 
 [functions.discord-bot-webhook]
 verify_jwt = false

@@ -3,11 +3,11 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Five Edge Functions take no signed-in caller and are deployed with Supabase's
-// JWT gate off (#958). `supabase functions deploy` with no name deploys every
-// function and reads verify_jwt from supabase/config.toml, so with no
-// [functions.*] block there a bare deploy turns the gate back on for all five
-// and every cron curl and relay call starts answering 401.
+// Five Edge Functions are deployed with Supabase's JWT gate off (#958), because
+// some of their callers carry no login. `supabase functions deploy` with no name
+// deploys every function and reads verify_jwt from supabase/config.toml, so with
+// no [functions.*] block there a bare deploy turns the gate back on for all five
+// and every cron call and relay call starts answering 401.
 //
 // The block is the fix; this keeps it honest. A [functions.<name>] table whose
 // name is misspelt applies to nothing and reads as correct, which is the same
@@ -42,8 +42,8 @@ function readFunctionTables(toml) {
 
 const tables = readFunctionTables(readFileSync(join(ROOT, 'supabase', 'config.toml'), 'utf8'));
 
-// The functions deployed with the gate off, each checking its own caller (a
-// cron secret, the bot's webhook secret, a forwarded JWT) instead.
+// The functions deployed with the gate off: four called by pg_cron, and the
+// relay the public forms post through.
 const GATE_OFF = [
   'blizzard-gear-sync',
   'discord-bot-webhook',
