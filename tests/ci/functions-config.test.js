@@ -41,6 +41,16 @@ function readFunctionTables(toml) {
 
 const tables = readFunctionTables(readFileSync(join(ROOT, 'supabase', 'config.toml'), 'utf8'));
 
+// The functions deployed with the gate off, each checking its own caller (a
+// cron secret, the bot's webhook secret, a forwarded JWT) instead.
+const GATE_OFF = [
+  'blizzard-gear-sync',
+  'discord-bot-webhook',
+  'optional-rsvp-reminders',
+  'twitch-live-check',
+  'wcl-progression-sync'
+];
+
 // A directory is a function only when its name fits the CLI's slug rule; a
 // leading underscore (supabase/functions/_shared/) is shared code the CLI
 // neither serves nor deploys, and it has no index.ts to read.
@@ -66,6 +76,14 @@ describe('config.toml [functions.*] deploy flags (#958)', () => {
   it('names only functions that exist', () => {
     const unknown = [...tables.keys()].filter((name) => !functionDirs.includes(name));
     expect(unknown).toEqual([]);
+  });
+
+  it('turns verify_jwt off for exactly the functions pinned above (#1128)', () => {
+    const off = [...tables]
+      .filter(([, table]) => table.verify_jwt === 'false')
+      .map(([name]) => name)
+      .sort();
+    expect(off).toEqual(GATE_OFF);
   });
 
   it('turns verify_jwt off for every function whose header says to deploy without it', () => {
