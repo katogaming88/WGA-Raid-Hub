@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.159.10] - 2026-10-02
+
+### Project
+
+- The check that five Edge Functions deploy with Supabase's login check
+  turned off now covers all five. Those five take no signed-in caller and
+  check their own caller instead, and the setting lives in
+  `supabase/config.toml`. The check found the five by reading each
+  function's opening comment for a phrase that three of them no longer
+  used, so it had quietly narrowed to two. Losing the setting for any of
+  the other three (the gear sync, the progression sync, the relay the
+  public forms post through) would have passed, and the next deploy would
+  have turned the login check back on and started refusing its callers.
+  The five are now listed in the test, so a function joins or leaves by
+  an edit there and in `config.toml` together (#1128).
+
 ## [3.159.9] - 2026-10-01
 
 ### Project
