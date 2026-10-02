@@ -139,26 +139,29 @@ describe('team_raid_kills_this_week', () => {
   const WEEK = `select encounter_id, encounter_name, difficulty, raid_date::text, report_code, fight_id
                   from public.team_raid_kills_this_week order by encounter_id, difficulty`;
 
-  // This lockout's Tuesday, today's raid date and the Monday before the reset.
+  // This lockout's Tuesday, the Thursday after it and the Monday before the reset.
   async function days(q) {
     const res = await q(
       `select public.lockout_week_start(public.raid_today())::text as tue,
-              public.raid_today()::text as today,
+              (public.lockout_week_start(public.raid_today()) + 2)::text as thu,
               (public.lockout_week_start(public.raid_today()) - 1)::text as last_monday`
     );
     return res.rows[0];
   }
 
+  // First Boss goes down on Heroic and then Mythic on Tuesday, and on Mythic
+  // again on Thursday: two rows for it, each from Tuesday.
   it('lists each boss killed since the reset once per difficulty, from its first kill', async () => {
     await withTxn(async ({ q, asUser }) => {
       await seed(q);
-      const { tue, today, last_monday } = await days(q);
+      const { tue, thu, last_monday } = await days(q);
+      await kill(q, { encounter: FIRST, difficulty: 'heroic', report: 'r1', fight: 2, date: tue });
       await kill(q, { encounter: FIRST, difficulty: 'mythic', report: 'r1', fight: 3, date: tue });
-      await kill(q, { encounter: FIRST, difficulty: 'mythic', report: 'r2', fight: 5, date: today });
+      await kill(q, { encounter: FIRST, difficulty: 'mythic', report: 'r2', fight: 5, date: thu });
       await kill(q, { encounter: FIRST, difficulty: 'heroic', report: 'r0', fight: 2, date: last_monday });
       await kill(q, { encounter: SECOND, difficulty: 'heroic', report: 'r1', fight: 4, date: tue });
       await kill(q, { team: 2, encounter: SECOND, difficulty: 'mythic', report: 'r9', fight: 1, date: tue });
-      const first = { encounter_id: FIRST, encounter_name: 'First Boss', difficulty: 'mythic', raid_date: tue };
+      const first = { encounter_id: FIRST, encounter_name: 'First Boss', raid_date: tue, report_code: 'r1' };
       expect((await asUser(OFFICER_T1, WEEK)).rows).toEqual([
         {
           encounter_id: SECOND,
@@ -168,9 +171,10 @@ describe('team_raid_kills_this_week', () => {
           report_code: 'r1',
           fight_id: 4
         },
-        { ...first, report_code: 'r1', fight_id: 3 }
+        { ...first, difficulty: 'heroic', fight_id: 2 },
+        { ...first, difficulty: 'mythic', fight_id: 3 }
       ]);
-      expect((await asUser(RAIDER_T1, WEEK)).rows).toHaveLength(2);
+      expect((await asUser(RAIDER_T1, WEEK)).rows).toHaveLength(3);
     });
   });
 
