@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.159.8] - 2026-10-01
+
+### Project
+
+- The new app keeps one list of raid buffs, boss debuffs and raid utility, and
+  the boss lineup reads it instead of its own copy. The list also carries what
+  the officer Roster pages will need when they are rebuilt: the utility the
+  current Roster tab shows (Healthstone, Gateway, the grips and the rest), each
+  buff's Wowhead spell, and Mass Grip counting only for a Blood death knight.
+  The current site keeps its own copy in `js/common.js` until cutover, and a
+  test now fails whenever the two lists disagree, so a change to one has to
+  reach the other. Nothing looks different (#1244).
+
 ## [3.159.7] - 2026-10-01
 
 ### Backend

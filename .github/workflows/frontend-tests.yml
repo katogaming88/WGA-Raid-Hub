@@ -7,6 +7,8 @@ on:
     paths:
       - 'js/**'
       - 'tests/frontend/**'
+      # js/common.js's buff list is checked against the app's (#1244).
+      - 'app/src/roster/buffs.ts'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/frontend-tests.yml'
