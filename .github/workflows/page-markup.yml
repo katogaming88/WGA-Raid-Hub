@@ -1,10 +1,11 @@
 name: Page markup check
 
 # Pure node, no database -- the same cheap job shape as the asset version check.
-# The markup test is the only thing in CI that reads HTML, and it lived behind
-# the changelog-check workflow's path filter until #437, which has no *.html
-# entry: editing a page never ran it. Its own workflow, triggered by the pages
-# it judges, is what makes the landmark and heading rules hold going forward.
+# The markup test is the only thing in CI that reads HTML. Until #437 it ran
+# only in the workflow that runs tests/ci, whose path filter had no *.html
+# entry, so editing a page never ran it. That workflow (ci-guards.yml) has run
+# on every PR since #1128; this one still runs the test under its own name on
+# the pages it judges.
 on:
   pull_request:
     paths:

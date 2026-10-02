@@ -6,8 +6,9 @@ name: Edge Functions
 # so before this the first execution of a changed function was in production.
 # Formatting is Prettier's, in lint.yml, whose paths include both
 # directories. The vitest guards over the functions (tests/ci/functions-*)
-# run here too, because what they police lives under supabase/functions/
-# and js/common.js and no other workflow watches those paths for them.
+# run here as well as in ci-guards.yml, which runs every guard on every PR
+# (#1128), so a function's failure shows under this check where its author
+# looks.
 
 on:
   pull_request:

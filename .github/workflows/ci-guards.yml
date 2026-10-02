@@ -7,10 +7,17 @@ name: CI guard tests
 # a PR that edits only that file merges unguarded (#1128).
 on:
   pull_request:
+  # A merge runs them too, so a main that two green PRs turned red shows on
+  # the merge that did it rather than on the next unrelated PR.
+  push:
+    branches:
+      - main
 
-# A new push to the PR supersedes any still-running check on the old commit.
+# A PR's pushes supersede each other: the group is the PR number and the
+# newer run cancels the older. A merge's run is keyed on its commit instead,
+# so every merge runs to the end (the rule app.yml follows, #1182).
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:

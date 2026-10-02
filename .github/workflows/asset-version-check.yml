@@ -1,7 +1,7 @@
 name: Asset version check
 
-# Pure node, no database -- the same cheap job shape as the changelog-check
-# tests. Runs whenever a page's asset tags or the VERSION constant change, so a
+# Pure node, no database -- the same cheap job shape as the CI guard tests
+# (ci-guards.yml). Runs whenever a page's asset tags or the VERSION constant change, so a
 # bump that forgets to re-stamp the ?v= query strings (or a new asset tag added
 # without one) fails the PR instead of shipping a stale-cache mismatch (#431).
 on:
