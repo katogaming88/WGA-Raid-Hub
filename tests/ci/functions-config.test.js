@@ -13,9 +13,10 @@ import { listFunctions } from '../../scripts/ci/functions-to-deploy.js';
 // The block is the fix; this keeps it honest. A [functions.<name>] table whose
 // name is misspelt applies to nothing and reads as correct, which is the same
 // silent miss the block exists to prevent. The five are pinned here rather than
-// read from each function's header comment, which narrowed the check to two
-// when three headers were reworded (#1128). A function joins or leaves the list
-// by an edit here and in config.toml together.
+// read from each function's header comment: the relay's never named the flag,
+// and two more stopped naming it when they were reworded, which left the check
+// covering two (#1128). A function joins or leaves the list by an edit here and
+// in config.toml together.
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 

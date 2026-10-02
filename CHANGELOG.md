@@ -21,8 +21,9 @@ answers to.
   schedules and one is the relay the public forms post through, so some of
   their callers carry no login, and the setting lives in
   `supabase/config.toml`. The check found the five by reading each
-  function's opening comment for a phrase that three of them no longer
-  used, so it had quietly narrowed to two. Losing the setting for any of
+  function's opening comment for a phrase. The relay's comment never used
+  it, and two more stopped using it when they were reworded on 2026-09-11,
+  so the check had quietly narrowed to two. Losing the setting for any of
   the other three (the gear sync, the progression sync, the relay) would
   have passed, and the next deploy of that function would have turned the
   login check back on and started refusing those callers. The five are now
