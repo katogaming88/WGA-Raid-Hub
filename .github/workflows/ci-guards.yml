@@ -1,0 +1,34 @@
+name: CI guard tests
+
+# Every guard in tests/ci: plain node with no database, so it gets the same
+# cheap job shape as the import tests. It runs on every pull request because
+# the guards read files all over the repo (workflows, config.toml, the
+# scripts under scripts/dev), and a path list here has to name each one or
+# a PR that edits only that file merges unguarded (#1128).
+on:
+  pull_request:
+  # A merge runs them too, so a main that two green PRs turned red shows on
+  # the merge that did it rather than on the next unrelated PR.
+  push:
+    branches:
+      - main
+
+# A PR's pushes supersede each other: the group is the PR number and the
+# newer run cancels the older. A merge's run is keyed on its commit instead,
+# so every merge runs to the end (the rule app.yml follows, #1182).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  ci-guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run the tests/ci guards
+        run: npm run test:ci

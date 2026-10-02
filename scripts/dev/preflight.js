@@ -107,7 +107,7 @@ export const CHECKS = [
     ]
   },
   { name: 'import', when: (f) => starts(f, ['scripts/', 'tests/import/']), steps: ['npm run test:import'] },
-  { name: 'ci-tests', when: (f) => starts(f, ['scripts/ci/', 'tests/ci/']), steps: ['npm run test:ci'] },
+  { name: 'ci-tests', when: () => true, steps: ['npm run test:ci'] },
   { name: 'bot', when: (f) => starts(f, ['bot/']), steps: ['npm --prefix bot test'] }
 ];
 

@@ -11,7 +11,6 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const config = readFileSync(join(ROOT, '.github', 'dependabot.yml'), 'utf8');
-const testsWorkflow = readFileSync(join(ROOT, '.github', 'workflows', 'changelog-check-tests.yml'), 'utf8');
 const appLock = JSON.parse(readFileSync(join(ROOT, 'app', 'package-lock.json'), 'utf8'));
 
 const unquote = (token) => token.replace(/^['"]|['"]$/g, '');
@@ -227,16 +226,10 @@ describe('the Dependabot entry for app/ (#1180)', () => {
     expect(bot).toMatch(/^\s+bot-dev-dependencies:\n\s+dependency-type: development$/m);
   });
 
-  // The only workflow that runs this file is keyed on scripts/ci and tests/ci,
-  // so without these lines a PR that edits only dependabot.yml, or only the
-  // app's manifests (which is every Dependabot /app bump, #1240), would merge
-  // without the cases in this file ever running (the gap #1128 records for
-  // deploy.yml and config.toml).
-  it('runs on a pull request that edits only dependabot.yml, or only the app manifests', () => {
-    expect(testsWorkflow).toMatch(/^\s+- '\.github\/dependabot\.yml'$/m);
-    expect(testsWorkflow).toMatch(/^\s+- 'app\/package\.json'$/m);
-    expect(testsWorkflow).toMatch(/^\s+- 'app\/package-lock\.json'$/m);
-  });
+  // A PR that edits only dependabot.yml, or only the app's manifests (every
+  // Dependabot /app bump, #1240), runs this file because the workflow that runs
+  // tests/ci takes every pull request; ci-guards-workflow.test.js holds that
+  // (#1128).
 });
 
 // Each held major above is held because some package in app/ declares a peer

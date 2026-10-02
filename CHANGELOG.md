@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.159.9] - 2026-10-01
+
+### Project
+
+- The checks in `tests/ci` now run on every pull request and every merge to
+  `main`. Between them they read files from all over the repo (the deploy
+  workflow, `supabase/config.toml`, the other workflows, the local scripts
+  under `scripts/dev`), but they only started when a pull request touched
+  `scripts/ci`, `tests/ci` or a few named files, so a change to the deploy
+  workflow alone merged without the check written for it. Running on each
+  merge as well means a `main` broken by two pull requests that were each
+  green shows on the merge that broke it, not on the next unrelated pull
+  request. The workflow that runs them is renamed from Changelog check tests
+  to CI guard tests, and `npm run preflight` runs the same job on every
+  branch. The first of two changes for #1128.
+
 ## [3.159.8] - 2026-10-01
 
 ### Project
