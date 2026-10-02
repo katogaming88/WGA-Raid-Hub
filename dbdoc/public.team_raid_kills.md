@@ -15,6 +15,7 @@ Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), one
 | report_code | text |  | false |  |  |  |
 | fight_id | integer |  | false |  |  |  |
 | raid_date | date |  | false |  |  |  |
+| report_started_at | timestamp with time zone |  | false |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 
 ## Constraints
@@ -51,6 +52,7 @@ erDiagram
   text report_code
   integer fight_id
   date raid_date
+  timestamp_with_time_zone report_started_at
   timestamp_with_time_zone created_at
 }
 "public.teams" {

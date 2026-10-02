@@ -74,7 +74,7 @@
 | [public.item_seasons](public.item_seasons.md) | 2 | The seasons a dungeon or crafted item is offered in (#1166). A raid item has no row: its season comes from raid_zones. Filled by scripts/dungeon-items-sql.js, never by a client. | BASE TABLE |
 | [public.raid_night_participation](public.raid_night_participation.md) | 6 | Who was actually in for a real pull of one boss on one raid night (#1242), one row per raider present. Written only by record_raid_night_participation(), called from the attendance sync once a night has a lineup (raid_night_bosses). Compare against raid_night_lineups for planned-vs-actual. | BASE TABLE |
 | [public.season_track_floors](public.season_track_floors.md) | 4 | The lowest item level of each gear upgrade track in a tier (#1267). blizzard-gear-sync grades equipped gear that carries no track bonus id against the current tier's floors, highest track first. Added by the migration that adds the tier. | BASE TABLE |
-| [public.team_raid_kills](public.team_raid_kills.md) | 8 | Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. | BASE TABLE |
+| [public.team_raid_kills](public.team_raid_kills.md) | 9 | Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. | BASE TABLE |
 | [public.team_raid_kills_this_week](public.team_raid_kills_this_week.md) | 7 | Each boss a team has killed since this week's Tuesday reset, once per difficulty, with its first kill of the week (#1246). | VIEW |
 
 ## Stored procedures and functions
@@ -218,6 +218,7 @@
 | public.wishlist_setup_status | record | p_team_id integer | FUNCTION |
 | public.drop_archived_player_live_priority | trigger |  | FUNCTION |
 | public.lockout_week_start | date | p_raid_date date | FUNCTION |
+| public.lockout_start_at | date | p_at timestamp with time zone | FUNCTION |
 
 ## Enums
 
@@ -1071,6 +1072,7 @@ erDiagram
   text report_code
   integer fight_id
   date raid_date
+  timestamp_with_time_zone report_started_at
   timestamp_with_time_zone created_at
 }
 "public.team_raid_kills_this_week" {

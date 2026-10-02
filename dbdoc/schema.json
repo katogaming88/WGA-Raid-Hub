@@ -8334,6 +8334,11 @@
           "nullable": false
         },
         {
+          "name": "report_started_at",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
           "name": "created_at",
           "type": "timestamp with time zone",
           "nullable": false,
@@ -8472,7 +8477,7 @@
           "nullable": true
         }
       ],
-      "def": "CREATE VIEW team_raid_kills_this_week AS (\n SELECT DISTINCT ON (k.team_id, k.encounter_id, k.difficulty) k.team_id,\n    k.encounter_id,\n    e.name AS encounter_name,\n    k.difficulty,\n    k.raid_date,\n    k.report_code,\n    k.fight_id\n   FROM (team_raid_kills k\n     JOIN raid_encounters e ON ((e.id = k.encounter_id)))\n  WHERE (lockout_week_start(k.raid_date) = lockout_week_start(raid_today()))\n  ORDER BY k.team_id, k.encounter_id, k.difficulty, k.raid_date, k.id\n)",
+      "def": "CREATE VIEW team_raid_kills_this_week AS (\n SELECT DISTINCT ON (k.team_id, k.encounter_id, k.difficulty) k.team_id,\n    k.encounter_id,\n    e.name AS encounter_name,\n    k.difficulty,\n    k.raid_date,\n    k.report_code,\n    k.fight_id\n   FROM (team_raid_kills k\n     JOIN raid_encounters e ON ((e.id = k.encounter_id)))\n  WHERE ((k.raid_date \u003e= lockout_start_at(now())) AND (k.raid_date \u003c (lockout_start_at(now()) + 7)))\n  ORDER BY k.team_id, k.encounter_id, k.difficulty, k.report_started_at, k.fight_id\n)",
       "referenced_tables": [
         "public.team_raid_kills",
         "public.raid_encounters"
@@ -10818,6 +10823,12 @@
       "name": "public.lockout_week_start",
       "return_type": "date",
       "arguments": "p_raid_date date",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.lockout_start_at",
+      "return_type": "date",
+      "arguments": "p_at timestamp with time zone",
       "type": "FUNCTION"
     }
   ],

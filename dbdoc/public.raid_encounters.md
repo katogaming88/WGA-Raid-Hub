@@ -116,6 +116,7 @@ erDiagram
   text report_code
   integer fight_id
   date raid_date
+  timestamp_with_time_zone report_started_at
   timestamp_with_time_zone created_at
 }
 "public.raid_zones" {

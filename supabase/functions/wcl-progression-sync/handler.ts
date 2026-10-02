@@ -3,7 +3,9 @@
 // count / best % remaining on the boss they're currently working, plus total
 // pulls and kill date for already-killed bosses -- shown on the public
 // landing page's progression card, and (for Heroic) the source of the
-// automatic AOTC date.
+// automatic AOTC date. It also keeps every Heroic and Mythic kill in
+// team_raid_kills (#1246), the only writer of that table; each run re-sends
+// them all and the insert skips any already kept, so the first run backfilled.
 //
 // Unlike wcl-sync, there is no logged-in officer to forward a JWT from --
 // this runs on a pg_cron schedule (supabase/migrations/
@@ -80,6 +82,7 @@ export type KillRow = {
   report_code: string;
   fight_id: number;
   raid_date: string;
+  report_started_at: string;
 };
 
 // One method per read or write the function performs. Production implements
@@ -251,7 +254,7 @@ async function syncTeamZone(
   season: string,
   raid: RaidConfigEntry,
   sortIndex: number
-): Promise<{ zoneName: string; encounters: number } | null> {
+): Promise<{ zoneName: string; encounters: number; killsError?: string } | null> {
   const zoneId = parseInt(String(raid.wclZoneId || ''), 10);
   if (!zoneId || Number.isNaN(zoneId)) return null;
 
@@ -366,7 +369,8 @@ async function syncTeamZone(
           difficulty: fight.difficulty === MYTHIC_DIFF ? 'mythic' : 'heroic',
           report_code: report.code,
           fight_id: fight.id,
-          raid_date: formatReportDate(report.startTime)
+          raid_date: formatReportDate(report.startTime),
+          report_started_at: new Date(report.startTime).toISOString()
         });
         // Track the earliest kill across every report returned, not just
         // the last one iterated -- a farmed boss has many kill fights, and
@@ -414,8 +418,15 @@ async function syncTeamZone(
   if (rows.length > 0) {
     await deps.db.upsertProgress(rows);
   }
+  // A failed kills write is reported, not thrown, so the progress of the
+  // team's other raids still syncs.
   if (kills.length > 0) {
-    await deps.db.insertKills(kills);
+    try {
+      await deps.db.insertKills(kills);
+    } catch (err) {
+      const killsError = err instanceof Error ? err.message : 'Unknown error';
+      return { zoneName: zone.name, encounters: encounters.length, killsError };
+    }
   }
 
   return { zoneName: zone.name, encounters: encounters.length };
@@ -461,6 +472,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         for (let i = 0; i < raids.length; i++) {
           const outcome = await syncTeamZone(deps, token, team.id, team.wcl_guild_id, season, raids[i], i);
           if (outcome) synced++;
+          if (outcome?.killsError) errors.push({ teamId: team.id, error: `Kills not saved: ${outcome.killsError}` });
         }
       } catch (err) {
         errors.push({ teamId: team.id, error: err instanceof Error ? err.message : 'Unknown error' });

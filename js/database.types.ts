@@ -2845,6 +2845,7 @@ export type Database = {
           id: number
           raid_date: string
           report_code: string
+          report_started_at: string
           team_id: number
         }
         Insert: {
@@ -2855,6 +2856,7 @@ export type Database = {
           id?: never
           raid_date: string
           report_code: string
+          report_started_at: string
           team_id: number
         }
         Update: {
@@ -2865,6 +2867,7 @@ export type Database = {
           id?: never
           raid_date?: string
           report_code?: string
+          report_started_at?: string
           team_id?: number
         }
         Relationships: [
@@ -3998,6 +4001,7 @@ export type Database = {
           team_id: number
         }[]
       }
+      lockout_start_at: { Args: { p_at: string }; Returns: string }
       lockout_week_start: { Args: { p_raid_date: string }; Returns: string }
       my_active_player_ids: { Args: never; Returns: number[] }
       my_leader_team_ids: { Args: never; Returns: number[] }

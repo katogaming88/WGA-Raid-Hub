@@ -18,8 +18,8 @@ CREATE VIEW team_raid_kills_this_week AS (
     k.fight_id
    FROM (team_raid_kills k
      JOIN raid_encounters e ON ((e.id = k.encounter_id)))
-  WHERE (lockout_week_start(k.raid_date) = lockout_week_start(raid_today()))
-  ORDER BY k.team_id, k.encounter_id, k.difficulty, k.raid_date, k.id
+  WHERE ((k.raid_date >= lockout_start_at(now())) AND (k.raid_date < (lockout_start_at(now()) + 7)))
+  ORDER BY k.team_id, k.encounter_id, k.difficulty, k.report_started_at, k.fight_id
 )
 ```
 
@@ -41,7 +41,7 @@ CREATE VIEW team_raid_kills_this_week AS (
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
-| [public.team_raid_kills](public.team_raid_kills.md) | 8 | Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. | BASE TABLE |
+| [public.team_raid_kills](public.team_raid_kills.md) | 9 | Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. | BASE TABLE |
 | [public.raid_encounters](public.raid_encounters.md) | 6 |  | BASE TABLE |
 
 ## Relations

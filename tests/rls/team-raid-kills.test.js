@@ -86,8 +86,9 @@ describe('team_raid_kills', () => {
       await expect(
         asUser(
           OFFICER_T1,
-          `insert into public.team_raid_kills (team_id, encounter_id, difficulty, report_code, fight_id, raid_date)
-           values (1, $1, 'mythic', 'forged', 1, '2026-09-29')`,
+          `insert into public.team_raid_kills
+             (team_id, encounter_id, difficulty, report_code, fight_id, raid_date, report_started_at)
+           values (1, $1, 'mythic', 'forged', 1, '2026-09-29', '2026-09-30 00:00+00')`,
           [FIRST]
         )
       ).rejects.toMatchObject({ code: RLS_DENIED });
@@ -102,8 +103,9 @@ describe('team_raid_kills', () => {
   it('keeps one row per fight when the sync sends it again', async () => {
     await withTxn(async ({ q }) => {
       await seed(q);
-      const upsert = `insert into public.team_raid_kills (team_id, encounter_id, difficulty, report_code, fight_id, raid_date)
-                      values (1, $1, 'mythic', 'r1', 7, '2026-09-29')
+      const upsert = `insert into public.team_raid_kills
+                        (team_id, encounter_id, difficulty, report_code, fight_id, raid_date, report_started_at)
+                      values (1, $1, 'mythic', 'r1', 7, '2026-09-29', '2026-09-30 00:00+00')
                       on conflict (team_id, report_code, fight_id) do nothing`;
       await q(upsert, [FIRST]);
       await q(upsert, [FIRST]);
