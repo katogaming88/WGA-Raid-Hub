@@ -10,6 +10,27 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-02 -- every boss kill is kept, and this lockout's kills are one query away (#1246)
+
+Shipped: 20261002181943_team_raid_kills.sql
+
+`team_raid_progress` keeps each boss's first kill on each difficulty, so a boss on farm looks the same every week and nothing could say which bosses a team had already killed since Tuesday's reset. `wcl-progression-sync` already read every kill of every report on each run, and kept only the first.
+
+- **A table of kills, not a weekly table.** `team_raid_kills` holds one row per kill fight: the team, the boss (`raid_encounters.id`), the difficulty, the report code and fight id, and the raid date the report falls on (the 6 a.m. cutoff attendance uses). "Killed this week" is a filter over it, the view `team_raid_kills_this_week`, one row per boss and difficulty with its first kill of the week. A stored week would go stale at every reset and need a job to roll it, the cost the schedule decision (#892) refused for nights.
+- **A kill is a team fact, not a night fact.** No foreign key to `raid_night_bosses`: a kill happens whether or not the night was scheduled or planned. `raid_night_participation` keys to the plan because it only means something against one.
+- **The progression sync writes it.** `wcl-sync` runs when an officer clicks Refresh; the progression sync runs on the cron and already had every kill in hand, from the fields it fetched before, so the Warcraft Logs query's complexity budget is untouched. Its upsert skips a fight already kept, so the first run backfills every kill in the reports it reads.
+- **Heroic and Mythic only**, as `team_raid_progress`.
+- **The week starts on the Tuesday reset.** `lockout_week_start()` works from the raid date alone, since a Monday night's 1 a.m. kill already carries Monday's date. It is not the rotator's Sunday-to-Saturday week (#924). The view's own side of the boundary is `lockout_start_at(now())`, which turns over at the reset itself, Tuesday 15:00 UTC: `raid_today()` turns at midnight Eastern, which would have dropped a Monday raid's kills while it was still pulling. The filter is a date range from it, worked out once per read.
+- **The week's first kill is the earliest report's.** Each row keeps its report's start time, and the view orders by that and the fight number, because reports arrive newest first and two logs of one night share a raid date.
+- **The team's raiders and officers read it**, with guild officers and site admins, as on `raid_night_participation`. No public read until #1286 settles the rule for new tables. Only the sync's service role writes it.
+- **A failed kills write does not stop progress.** The sync reports it in the run's errors and goes on to the team's other raids, since the landing page's progression card reads `team_raid_progress`.
+- **Kept, not pruned, and dated by the report.** A kill stays when its report is later deleted on Warcraft Logs, and a report logged across two nights dates every kill to its first night, as attendance does. Each run re-sends every kill it reads; the insert skips those already kept. All three were weighed in review and left: deletions and multi-night logs are rare, and filtering what is re-sent would also stop a missed kill from ever being caught up.
+- **`team_raid_progress` gets the table comment it never had**, naming what it holds and pointing at the kills.
+
+[Full discussion -> #1246](https://github.com/katogaming88/WGA-Raid-Hub/issues/1246).
+
+---
+
 ## 2026-10-01 -- removing a raider takes them off the live season's priority lists, whoever removes them (#1383)
 
 Shipped: 20261001194452_archive_drops_live_priority.sql
@@ -2246,6 +2267,8 @@ Phoenix runs 24 raiders into 20 seats per boss, and the seats rotate boss by bos
 **The team's raiders read it.** Each raider will see "your bosses tonight" on the night page, so the read covers anyone with an active character on the team, plus officers, guild officers and site admins. No public read.
 
 **Not decided here:** whether the bot tells a raider when they are swapped out; whether bosses already killed this week grey out (that needs the progression sync to keep weekly kills, a separate change); and attendance taking the lineup as its reference, so a planned sit-out on the first boss is not flagged as late ([#1242](https://github.com/katogaming88/WGA-Raid-Hub/issues/1242)).
+
+**Kills by week are kept (2026-10-02, #1246).** The progression sync now keeps every Heroic and Mythic kill in `team_raid_kills`, and `team_raid_kills_this_week` lists the bosses down since the Tuesday reset. Taking those bosses off a team's later nights that week follows on #1246; showing them on the grid is the page's.
 
 [Full discussion -> #1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216).
 

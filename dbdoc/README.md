@@ -31,7 +31,7 @@
 | [public.notifications](public.notifications.md) | 6 |  | BASE TABLE |
 | [public.raid_zones](public.raid_zones.md) | 6 |  | BASE TABLE |
 | [public.raid_encounters](public.raid_encounters.md) | 6 |  | BASE TABLE |
-| [public.team_raid_progress](public.team_raid_progress.md) | 14 |  | BASE TABLE |
+| [public.team_raid_progress](public.team_raid_progress.md) | 14 | Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt from every report on each wcl-progression-sync run. Every kill, by week, is in team_raid_kills. | BASE TABLE |
 | [public.priority_order_live_first_prios](public.priority_order_live_first_prios.md) | 9 |  | VIEW |
 | [public.priority_order_first_prio_counts](public.priority_order_first_prio_counts.md) | 5 |  | VIEW |
 | [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
@@ -74,6 +74,8 @@
 | [public.item_seasons](public.item_seasons.md) | 2 | The seasons a dungeon or crafted item is offered in (#1166). A raid item has no row: its season comes from raid_zones. Filled by scripts/dungeon-items-sql.js, never by a client. | BASE TABLE |
 | [public.raid_night_participation](public.raid_night_participation.md) | 6 | Who was actually in for a real pull of one boss on one raid night (#1242), one row per raider present. Written only by record_raid_night_participation(), called from the attendance sync once a night has a lineup (raid_night_bosses). Compare against raid_night_lineups for planned-vs-actual. | BASE TABLE |
 | [public.season_track_floors](public.season_track_floors.md) | 4 | The lowest item level of each gear upgrade track in a tier (#1267). blizzard-gear-sync grades equipped gear that carries no track bonus id against the current tier's floors, highest track first. Added by the migration that adds the tier. | BASE TABLE |
+| [public.team_raid_kills](public.team_raid_kills.md) | 9 | Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. | BASE TABLE |
+| [public.team_raid_kills_this_week](public.team_raid_kills_this_week.md) | 7 | Each boss a team has killed since this week's Tuesday reset, once per difficulty, with its first kill of the week (#1246). | VIEW |
 
 ## Stored procedures and functions
 
@@ -215,6 +217,8 @@
 | public.record_raid_night_participation | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[] | FUNCTION |
 | public.wishlist_setup_status | record | p_team_id integer | FUNCTION |
 | public.drop_archived_player_live_priority | trigger |  | FUNCTION |
+| public.lockout_week_start | date | p_raid_date date | FUNCTION |
+| public.lockout_start_at | date | p_at timestamp with time zone | FUNCTION |
 
 ## Enums
 
@@ -353,6 +357,8 @@ erDiagram
 "public.raid_night_participation" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.raid_night_participation" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
 "public.season_track_floors" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.team_raid_kills" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_raid_kills" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -1057,6 +1063,26 @@ erDiagram
   text track
   integer item_level
   timestamp_with_time_zone created_at
+}
+"public.team_raid_kills" {
+  integer id
+  integer team_id FK
+  integer encounter_id FK
+  text difficulty
+  text report_code
+  integer fight_id
+  date raid_date
+  timestamp_with_time_zone report_started_at
+  timestamp_with_time_zone created_at
+}
+"public.team_raid_kills_this_week" {
+  integer team_id
+  integer encounter_id
+  text encounter_name
+  text difficulty
+  date raid_date
+  text report_code
+  integer fight_id
 }
 ```
 

@@ -12,6 +12,28 @@ answers to.
 
 ---
 
+## [3.159.11] - 2026-10-02
+
+### Backend
+
+- Every Heroic and Mythic boss kill in a team's Warcraft Logs reports is now
+  kept, one row per kill, in a new `team_raid_kills` table. Until now the
+  database kept only each boss's first kill, so a boss on farm looked the
+  same every week. A new view, `team_raid_kills_this_week`, lists each boss a
+  team has killed since the Tuesday reset, once per difficulty. The boss
+  lineup will use it to take a killed boss off the team's later nights that
+  week, and the lineup reports (#1247) to say who was in for a kill. The
+  team's raiders and officers can read the kills; only the progression sync
+  writes them (#1246).
+
+### Functions
+
+- The progression sync, which reads each team's reports on raid evenings,
+  now writes every kill it reads to `team_raid_kills`, beside the first-kill
+  progress it already kept. Nothing new is fetched from Warcraft Logs, and
+  its first run after this change fills the table from every report the
+  team has logged (#1246).
+
 ## [3.159.10] - 2026-10-02
 
 ### Project

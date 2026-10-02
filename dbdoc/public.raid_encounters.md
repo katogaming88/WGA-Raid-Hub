@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('raid_encounters_id_seq'::regclass) | false | [public.players](public.players.md) [public.team_raid_progress](public.team_raid_progress.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_bosses](public.raid_night_bosses.md) |  |  |
+| id | integer | nextval('raid_encounters_id_seq'::regclass) | false | [public.players](public.players.md) [public.team_raid_progress](public.team_raid_progress.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.team_raid_kills](public.team_raid_kills.md) |  |  |
 | zone_id | integer |  | false |  | [public.raid_zones](public.raid_zones.md) |  |
 | wcl_encounter_id | integer |  | false |  |  |  |
 | name | text |  | false |  |  |  |
@@ -36,6 +36,7 @@ erDiagram
 "public.team_raid_progress" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.boss_groups" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.raid_night_bosses" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+"public.team_raid_kills" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.raid_encounters" }o--|| "public.raid_zones" : "FOREIGN KEY (zone_id) REFERENCES raid_zones(id) ON DELETE CASCADE"
 
 "public.raid_encounters" {
@@ -105,6 +106,17 @@ erDiagram
   boolean skipped
   timestamp_with_time_zone confirmed_at
   integer confirmed_by FK
+  timestamp_with_time_zone created_at
+}
+"public.team_raid_kills" {
+  integer id
+  integer team_id FK
+  integer encounter_id FK
+  text difficulty
+  text report_code
+  integer fight_id
+  date raid_date
+  timestamp_with_time_zone report_started_at
   timestamp_with_time_zone created_at
 }
 "public.raid_zones" {

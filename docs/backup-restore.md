@@ -43,7 +43,7 @@ Every `public` base table appears below. That is the point of the list: a table 
 - `tier_token_map`, alongside the same catalog import.
 - `season_track_floors` (a tier's lowest item level per gear upgrade track, [#1267](https://github.com/katogaming88/WGA-Raid-Hub/issues/1267)): like `seasons`, the rows are in the migration that added each tier, so a schema rebuild brings them back.
 - `raid_zones`/`raid_encounters`, re-derivable from Warcraft Logs.
-- `player_wcl_season_perf` and `team_raid_progress`, re-fetched by the `wcl-sync` and `wcl-progression-sync` Edge Functions.
+- `player_wcl_season_perf`, `team_raid_progress` and `team_raid_kills`, re-fetched by the `wcl-sync` and `wcl-progression-sync` Edge Functions.
 - `player_equipped_gear`, re-fetched by the `blizzard-gear-sync` Edge Function (daily cron sweep, plus an officer on-demand call).
 - `priority_order`, rebuilt by `generate_priority_order()`.
 - `scoring`, recomputed from performance and attendance inputs.

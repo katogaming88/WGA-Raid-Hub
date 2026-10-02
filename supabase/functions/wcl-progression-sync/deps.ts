@@ -66,6 +66,12 @@ export function supabaseDb(): ProgressDb {
     async upsertProgress(rows) {
       const { error } = await db().from('team_raid_progress').upsert(rows, { onConflict: 'team_id,encounter_id' });
       if (error) throw new Error(error.message);
+    },
+    async insertKills(rows) {
+      const { error } = await db()
+        .from('team_raid_kills')
+        .upsert(rows, { onConflict: 'team_id,report_code,fight_id', ignoreDuplicates: true });
+      if (error) throw new Error(error.message);
     }
   };
 }

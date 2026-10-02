@@ -2836,6 +2836,57 @@ export type Database = {
           },
         ]
       }
+      team_raid_kills: {
+        Row: {
+          created_at: string
+          difficulty: string
+          encounter_id: number
+          fight_id: number
+          id: number
+          raid_date: string
+          report_code: string
+          report_started_at: string
+          team_id: number
+        }
+        Insert: {
+          created_at?: string
+          difficulty: string
+          encounter_id: number
+          fight_id: number
+          id?: never
+          raid_date: string
+          report_code: string
+          report_started_at: string
+          team_id: number
+        }
+        Update: {
+          created_at?: string
+          difficulty?: string
+          encounter_id?: number
+          fight_id?: number
+          id?: never
+          raid_date?: string
+          report_code?: string
+          report_started_at?: string
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_raid_kills_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "raid_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_raid_kills_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_raid_progress: {
         Row: {
           encounter_id: number
@@ -3588,6 +3639,33 @@ export type Database = {
           },
         ]
       }
+      team_raid_kills_this_week: {
+        Row: {
+          difficulty: string | null
+          encounter_id: number | null
+          encounter_name: string | null
+          fight_id: number | null
+          raid_date: string | null
+          report_code: string | null
+          team_id: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_raid_kills_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "raid_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_raid_kills_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       add_signup_to_roster: {
@@ -3923,6 +4001,8 @@ export type Database = {
           team_id: number
         }[]
       }
+      lockout_start_at: { Args: { p_at: string }; Returns: string }
+      lockout_week_start: { Args: { p_raid_date: string }; Returns: string }
       my_active_player_ids: { Args: never; Returns: number[] }
       my_leader_team_ids: { Args: never; Returns: number[] }
       my_officer_team_ids: { Args: never; Returns: number[] }
