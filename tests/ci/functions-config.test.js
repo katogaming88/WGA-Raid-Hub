@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { listFunctions } from '../../scripts/ci/functions-to-deploy.js';
 
 // Five Edge Functions are deployed with Supabase's JWT gate off (#958), because
 // some of their callers carry no login. `supabase functions deploy` with no name
@@ -17,7 +18,6 @@ import { fileURLToPath } from 'node:url';
 // by an edit here and in config.toml together.
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const FUNCTIONS_DIR = join(ROOT, 'supabase', 'functions');
 
 // Bare-key TOML: section headers plus `key = value` lines, which is all this
 // block uses. Anything outside a [functions.*] table is ignored.
@@ -52,14 +52,9 @@ const GATE_OFF = [
   'wcl-progression-sync'
 ];
 
-// A directory is a function only when its name fits the CLI's slug rule; a
-// leading underscore (supabase/functions/_shared/) is shared code the CLI
-// neither serves nor deploys.
-const FUNCTION_SLUG = /^[A-Za-z][A-Za-z0-9_-]*$/;
-
-const functionDirs = readdirSync(FUNCTIONS_DIR, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && FUNCTION_SLUG.test(entry.name))
-  .map((entry) => entry.name);
+// The deploy job's own list, so _shared/ and anything else the CLI's slug rule
+// excludes is not a function here either.
+const functionDirs = listFunctions(ROOT);
 
 describe('config.toml [functions.*] deploy flags (#958)', () => {
   it('declares at least one function, so the checks below cannot pass vacuously', () => {
@@ -76,6 +71,6 @@ describe('config.toml [functions.*] deploy flags (#958)', () => {
       .filter(([, table]) => table.verify_jwt === 'false')
       .map(([name]) => name)
       .sort();
-    expect(off).toEqual(GATE_OFF);
+    expect(off).toEqual([...GATE_OFF].sort());
   });
 });
