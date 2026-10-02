@@ -13,7 +13,6 @@ declare
   v_archived_team_member_id integer;
   v_archived_join_date date;
   v_today date := (now() at time zone 'America/New_York')::date;
-  v_live_season text;
   v_prior_archived_at timestamptz;
   v_prior_team_member_id integer;
   v_signer_member_id integer;
@@ -117,19 +116,6 @@ begin
             and b.raid_date = a.raid_date
        );
 
-    -- Drop the archived character's standing priority_order rows for the
-    -- live season only, same as remove_player_priority_order() -- they no
-    -- longer belong on the roster, so they shouldn't keep occupying a slot
-    -- in the Priority tab, RCLootCouncil export, or addon panel. The live
-    -- season is the tier (#938); null only on a stack with no tier row.
-    v_live_season := public.current_season();
-
-    if v_live_season is not null then
-      delete from public.priority_order
-       where team_id = v_signup.team_id
-         and season = v_live_season
-         and player_id = p_archive_player_id;
-    end if;
   end if;
 
   update public.season_signups
