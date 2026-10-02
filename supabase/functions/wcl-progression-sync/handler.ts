@@ -73,6 +73,14 @@ export type RaidZoneRow = {
 export type EncounterRow = { zone_id: number; wcl_encounter_id: number; name: string; sort_index: number };
 export type SavedEncounter = { id: number; wcl_encounter_id: number };
 export type ProgressRow = Record<string, unknown>;
+export type KillRow = {
+  team_id: number;
+  encounter_id: number;
+  difficulty: 'heroic' | 'mythic';
+  report_code: string;
+  fight_id: number;
+  raid_date: string;
+};
 
 // One method per read or write the function performs. Production implements
 // it over supabase-js in deps.ts; a test hands in a plain object. Each throws
@@ -92,6 +100,8 @@ export interface ProgressDb {
   upsertEncounters(rows: EncounterRow[]): Promise<SavedEncounter[]>;
   // Upserts on (team_id, encounter_id).
   upsertProgress(rows: ProgressRow[]): Promise<void>;
+  // Inserts into team_raid_kills, skipping a (team_id, report_code, fight_id) already stored.
+  insertKills(rows: KillRow[]): Promise<void>;
 }
 
 export type Deps = { fetch: typeof fetch; env: Env; db: ProgressDb };
