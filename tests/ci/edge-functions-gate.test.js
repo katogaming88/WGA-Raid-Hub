@@ -50,8 +50,9 @@ describe('the Edge Functions workflow', () => {
 
   // The vitest guards over the functions (#1013's literals, #1081's
   // destinations) read supabase/functions/**, js/common.js and their own
-  // lister; changelog-check-tests.yml runs them only on a tests/ci or
-  // scripts/ci change, so a PR touching only a function would skip them.
+  // lister. ci-guards.yml runs them on every PR since #1128; this workflow
+  // runs them too, so a function's failure shows under the Edge Functions
+  // check.
   it('runs the function guards on the paths they police', () => {
     expect(workflow).toMatch(/^\s+- 'js\/common\.js'$/m);
     expect(workflow).toMatch(/^\s+- 'scripts\/ci\/functions-to-deploy\.js'$/m);

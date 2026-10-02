@@ -298,7 +298,9 @@ are unsure.
   security advisor allowlist and the majors Dependabot holds back for `app/`
   (read against the peer ranges in its lockfile, so a hold whose reason has
   gone fails the bump that removed it, #1241). These read the pages and the
-  source as text, so they judge markup and never behaviour
+  source as text, so they judge markup and never behaviour. They run on every
+  pull request, whatever it changes, because between them they read files
+  all over the repo (#1128)
 - Accessibility runs in a real browser under `tests/browser/`
   (`npm run test:a11y`), which needs a one-time
   `npx playwright install chromium`. It serves the site locally and answers
