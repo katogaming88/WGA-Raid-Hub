@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,7 +11,10 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const config = readFileSync(join(ROOT, '.github', 'dependabot.yml'), 'utf8');
-const testsWorkflow = readFileSync(join(ROOT, '.github', 'workflows', 'changelog-check-tests.yml'), 'utf8');
+const WORKFLOWS = join(ROOT, '.github', 'workflows');
+const testsWorkflow = readdirSync(WORKFLOWS)
+  .map((name) => readFileSync(join(WORKFLOWS, name), 'utf8').replace(/\r\n/g, '\n'))
+  .find((text) => /^\s+run: npm run test:ci$/m.test(text));
 const appLock = JSON.parse(readFileSync(join(ROOT, 'app', 'package-lock.json'), 'utf8'));
 
 const unquote = (token) => token.replace(/^['"]|['"]$/g, '');
@@ -227,15 +230,14 @@ describe('the Dependabot entry for app/ (#1180)', () => {
     expect(bot).toMatch(/^\s+bot-dev-dependencies:\n\s+dependency-type: development$/m);
   });
 
-  // The only workflow that runs this file is keyed on scripts/ci and tests/ci,
-  // so without these lines a PR that edits only dependabot.yml, or only the
-  // app's manifests (which is every Dependabot /app bump, #1240), would merge
-  // without the cases in this file ever running (the gap #1128 records for
-  // deploy.yml and config.toml).
+  // A PR that edits only dependabot.yml, or only the app's manifests (which is
+  // every Dependabot /app bump, #1240), has to run the cases in this file. A
+  // path list on the workflow that runs it would have to name those files, so
+  // it carries none (#1128).
   it('runs on a pull request that edits only dependabot.yml, or only the app manifests', () => {
-    expect(testsWorkflow).toMatch(/^\s+- '\.github\/dependabot\.yml'$/m);
-    expect(testsWorkflow).toMatch(/^\s+- 'app\/package\.json'$/m);
-    expect(testsWorkflow).toMatch(/^\s+- 'app\/package-lock\.json'$/m);
+    const trigger = testsWorkflow?.match(/^on:\n((?:(?: .*)?\n)+)/m)?.[1] ?? '';
+    expect(trigger).toMatch(/^ {2}pull_request:/m);
+    expect(trigger).not.toMatch(/^\s+paths(-ignore)?:/m);
   });
 });
 
