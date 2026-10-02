@@ -25,10 +25,14 @@ describe('the workflow that runs every guard in tests/ci (#1128)', () => {
     expect(runners.map((workflow) => workflow.name)).toHaveLength(1);
   });
 
-  it('starts on every pull request, with no path filter', () => {
-    const trigger = onBlock(runners[0]?.text ?? '');
-    expect(trigger).toMatch(/^ {2}pull_request:/m);
-    expect(trigger).not.toMatch(/^\s+paths(-ignore)?:/m);
+  // Any key under pull_request narrows it: paths and paths-ignore by file,
+  // types to some events only (`types: [opened]` skips every later push, so a
+  // deploy.yml edit pushed after the PR opens would go unguarded).
+  it('starts on every pull request, with no paths, types or other filter', () => {
+    const trigger = onBlock(runners[0]?.text ?? '')
+      .split('\n')
+      .filter((line) => line.trim() !== '' && !line.trim().startsWith('#'));
+    expect(trigger).toEqual(['  pull_request:']);
   });
 
   it('control: test:ci runs the whole directory', () => {
