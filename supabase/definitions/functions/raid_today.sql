@@ -1,6 +1,6 @@
 -- Function public.raid_today: current definition, generated from the database.
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): none
+-- execute (site roles): anon, authenticated
 
 CREATE OR REPLACE FUNCTION public.raid_today()
  RETURNS date

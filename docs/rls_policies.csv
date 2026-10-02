@@ -157,6 +157,11 @@ team_members,Claude readers read team_members,claude_readers,SELECT,PERMISSIVE,t
 team_members,Members read own team_members,public,SELECT,PERMISSIVE,(person_id = ( SELECT my_person_id() AS my_person_id)),
 team_members,Officers read own team_members,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin) OR ( SELECT is_guild_officer() AS is_guild_officer)),
 team_members,Team leaders write team_members,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_leader_team_ids() AS my_leader_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_leader_team_ids() AS my_leader_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
+team_raid_kills,Claude readers read team_raid_kills,claude_readers,SELECT,PERMISSIVE,true,
+team_raid_kills,Officers read team_raid_kills,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_guild_officer() AS is_guild_officer) OR ( SELECT is_site_admin() AS is_site_admin)),
+team_raid_kills,Team raiders read team_raid_kills,public,SELECT,PERMISSIVE,"(team_id IN ( SELECT p.team_id
+   FROM players p
+  WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))))",
 team_raid_progress,Claude readers read team_raid_progress,claude_readers,SELECT,PERMISSIVE,true,
 team_raid_progress,Officers write team_raid_progress,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 team_raid_progress,Public read team_raid_progress,public,SELECT,PERMISSIVE,true,

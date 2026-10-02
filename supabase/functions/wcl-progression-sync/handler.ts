@@ -341,6 +341,8 @@ async function syncTeamZone(
   // here covers Heroic without a second report fetch/page loop per zone
   // (avoiding the API-usage doubling flagged when #629 was filed). LFR/
   // Normal fights come through too but are simply ignored below.
+  // Every kill is also kept as its own row (#1246), not just the first.
+  const kills: KillRow[] = [];
   for (const report of reports) {
     for (const fight of report.fights || []) {
       const encId = fight.encounterID;
@@ -358,6 +360,14 @@ async function syncTeamZone(
       }
       e.pulls++;
       if (fight.kill) {
+        kills.push({
+          team_id: teamId,
+          encounter_id: encounterIdByWcl.get(encId)!,
+          difficulty: fight.difficulty === MYTHIC_DIFF ? 'mythic' : 'heroic',
+          report_code: report.code,
+          fight_id: fight.id,
+          raid_date: formatReportDate(report.startTime)
+        });
         // Track the earliest kill across every report returned, not just
         // the last one iterated -- a farmed boss has many kill fights, and
         // the kill date should be the *first* one, matching fetchProgression's
@@ -403,6 +413,9 @@ async function syncTeamZone(
   }
   if (rows.length > 0) {
     await deps.db.upsertProgress(rows);
+  }
+  if (kills.length > 0) {
+    await deps.db.insertKills(kills);
   }
 
   return { zoneName: zone.name, encounters: encounters.length };

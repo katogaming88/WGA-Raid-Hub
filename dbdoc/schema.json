@@ -3278,6 +3278,7 @@
     {
       "name": "public.team_raid_progress",
       "type": "BASE TABLE",
+      "comment": "Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt from every report on each wcl-progression-sync run. Every kill, by week, is in team_raid_kills.",
       "columns": [
         {
           "name": "id",
@@ -8291,6 +8292,191 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.team_raid_kills",
+      "type": "BASE TABLE",
+      "comment": "Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "encounter_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "difficulty",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "report_code",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "fight_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_raid_kills_pkey",
+          "def": "CREATE UNIQUE INDEX team_raid_kills_pkey ON public.team_raid_kills USING btree (id)",
+          "table": "public.team_raid_kills",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_raid_kills_team_id_report_code_fight_id_key",
+          "def": "CREATE UNIQUE INDEX team_raid_kills_team_id_report_code_fight_id_key ON public.team_raid_kills USING btree (team_id, report_code, fight_id)",
+          "table": "public.team_raid_kills",
+          "columns": [
+            "team_id",
+            "report_code",
+            "fight_id"
+          ]
+        },
+        {
+          "name": "team_raid_kills_team_encounter_date_idx",
+          "def": "CREATE INDEX team_raid_kills_team_encounter_date_idx ON public.team_raid_kills USING btree (team_id, encounter_id, raid_date)",
+          "table": "public.team_raid_kills",
+          "columns": [
+            "team_id",
+            "encounter_id",
+            "raid_date"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_raid_kills_difficulty_check",
+          "type": "CHECK",
+          "def": "CHECK ((difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text])))",
+          "table": "public.team_raid_kills",
+          "referenced_table": "",
+          "columns": [
+            "difficulty"
+          ]
+        },
+        {
+          "name": "team_raid_kills_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_raid_kills",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_raid_kills_encounter_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE",
+          "table": "public.team_raid_kills",
+          "referenced_table": "public.raid_encounters",
+          "columns": [
+            "encounter_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_raid_kills_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.team_raid_kills",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_raid_kills_team_id_report_code_fight_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, report_code, fight_id)",
+          "table": "public.team_raid_kills",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "report_code",
+            "fight_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.team_raid_kills_this_week",
+      "type": "VIEW",
+      "comment": "Each boss a team has killed since this week's Tuesday reset, once per difficulty, with its first kill of the week (#1246).",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "encounter_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "encounter_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "difficulty",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": true
+        },
+        {
+          "name": "report_code",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "fight_id",
+          "type": "integer",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW team_raid_kills_this_week AS (\n SELECT DISTINCT ON (k.team_id, k.encounter_id, k.difficulty) k.team_id,\n    k.encounter_id,\n    e.name AS encounter_name,\n    k.difficulty,\n    k.raid_date,\n    k.report_code,\n    k.fight_id\n   FROM (team_raid_kills k\n     JOIN raid_encounters e ON ((e.id = k.encounter_id)))\n  WHERE (lockout_week_start(k.raid_date) = lockout_week_start(raid_today()))\n  ORDER BY k.team_id, k.encounter_id, k.difficulty, k.raid_date, k.id\n)",
+      "referenced_tables": [
+        "public.team_raid_kills",
+        "public.raid_encounters"
+      ]
     }
   ],
   "relations": [
@@ -9783,6 +9969,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
+      "table": "public.team_raid_kills",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_raid_kills",
+      "columns": [
+        "encounter_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.raid_encounters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -10600,6 +10812,12 @@
       "name": "public.drop_archived_player_live_priority",
       "return_type": "trigger",
       "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.lockout_week_start",
+      "return_type": "date",
+      "arguments": "p_raid_date date",
       "type": "FUNCTION"
     }
   ],
