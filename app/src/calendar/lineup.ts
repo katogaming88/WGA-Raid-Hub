@@ -6,6 +6,7 @@
 // draft, which stored only who sat out; the grid is board E of the boss lineup
 // mockups.
 
+import { LINEUP_BUFFS, brings, type Buff } from '../roster/buffs';
 import { ROLE_LABELS, ROLE_ORDER, type PlayerRow, type Role } from '../roster/roster';
 import { displayName, rosterOf, statusFor, type Answer, type NightRow, type RaidNight } from './calendar';
 
@@ -206,27 +207,6 @@ export function capStatus(count: number, cap: number): CapStatus {
   return { text: `${open} open spot${open === 1 ? '' : 's'}`, tone: 'warn' };
 }
 
-// Raid buffs, boss debuffs and the two must-haves, as the current site lists
-// them (js/common.js RAID_BUFFS, BOSS_DEBUFFS and RAID_UTILITY; #1244 is
-// about keeping one list).
-export type Buff = { name: string; classes: string[] };
-
-export const BUFFS: Buff[] = [
-  { name: 'Mark of the Wild', classes: ['Druid'] },
-  { name: 'Arcane Intellect', classes: ['Mage'] },
-  { name: 'Battle Shout', classes: ['Warrior'] },
-  { name: 'Power Word: Fortitude', classes: ['Priest'] },
-  { name: 'Blessing of the Bronze', classes: ['Evoker'] },
-  { name: 'Skyfury', classes: ['Shaman'] },
-  { name: 'Devotion Aura', classes: ['Paladin'] },
-  { name: "Hunter's Mark", classes: ['Hunter'] },
-  { name: 'Mystic Touch', classes: ['Monk'] },
-  { name: 'Chaos Brand', classes: ['Demon Hunter'] },
-  { name: 'Atrophic Poison', classes: ['Rogue'] },
-  { name: 'Heroism / Bloodlust', classes: ['Shaman', 'Mage', 'Hunter', 'Evoker'] },
-  { name: 'Combat Res', classes: ['Druid', 'Warlock', 'Paladin', 'Death Knight'] }
-];
-
 // A Mythic boss wants two tanks and four healers by default (the A2 mockup's
 // check); a team can say otherwise (#1244, team_lineup_settings).
 export type RoleTargets = { tanks: number; healers: number };
@@ -283,7 +263,9 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 type Raider = { player: PlayerRow; name: string; role: Role };
 
 const providersOf = (buff: Buff, inn: Raider[]) =>
-  inn.filter((r) => buff.classes.includes(r.player.classes_specs?.class ?? '')).map((r) => r.name);
+  inn
+    .filter((r) => brings(buff, r.player.classes_specs?.class ?? '', r.player.classes_specs?.spec ?? ''))
+    .map((r) => r.name);
 
 // One boss's count, role mix, missing buffs and warnings, for whoever is in.
 // `out` names raiders in who said they are not coming (a night only).
@@ -293,7 +275,7 @@ function totalOf(boss: LineupBoss, inn: Raider[], targets: RoleTargets, out: str
   const healers = n('Heal');
   const status = capStatus(inn.length, boss.cap);
   const full = inn.length === boss.cap;
-  const missing = BUFFS.filter((b) => !providersOf(b, inn).length).map((b) => b.name);
+  const missing = LINEUP_BUFFS.filter((b) => !providersOf(b, inn).length).map((b) => b.name);
   const problems = [
     ...(full ? [] : [status.text]),
     ...(targets.tanks === 0 ? [] : tanks === 0 ? ['no tanks'] : tanks < targets.tanks ? [plural(tanks, 'tank')] : []),
@@ -391,7 +373,7 @@ export function lineupView(
         inn.filter(saidOut).map((r) => r.name)
       );
     }),
-    buffs: BUFFS.map((buff) => ({
+    buffs: LINEUP_BUFFS.map((buff) => ({
       buff,
       cells: live.map((boss) => ({ boss, providers: providersOf(buff, inFor(boss)) }))
     })),
