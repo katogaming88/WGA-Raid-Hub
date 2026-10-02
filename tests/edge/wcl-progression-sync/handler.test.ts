@@ -344,7 +344,8 @@ Deno.test("every Heroic and Mythic kill of the zone's bosses is stored, one row 
         difficulty: 'mythic',
         report_code: 'reportA',
         fight_id: 2,
-        raid_date: '2026-09-14'
+        raid_date: '2026-09-14',
+        report_started_at: '2026-09-15T00:00:00.000Z'
       },
       {
         team_id: 1,
@@ -352,7 +353,8 @@ Deno.test("every Heroic and Mythic kill of the zone's bosses is stored, one row 
         difficulty: 'mythic',
         report_code: 'reportB',
         fight_id: 1,
-        raid_date: '2026-09-17'
+        raid_date: '2026-09-17',
+        report_started_at: '2026-09-18T00:00:00.000Z'
       }
     ]
   ]);
@@ -386,7 +388,8 @@ Deno.test('a Heroic and a Mythic kill after midnight are both stored, on the nig
         difficulty: 'mythic',
         report_code: 'reportC',
         fight_id: 4,
-        raid_date: '2026-09-15'
+        raid_date: '2026-09-15',
+        report_started_at: '2026-09-16T05:30:00.000Z'
       },
       {
         team_id: 1,
@@ -394,7 +397,8 @@ Deno.test('a Heroic and a Mythic kill after midnight are both stored, on the nig
         difficulty: 'heroic',
         report_code: 'reportC',
         fight_id: 9,
-        raid_date: '2026-09-15'
+        raid_date: '2026-09-15',
+        report_started_at: '2026-09-16T05:30:00.000Z'
       }
     ]
   ]);
@@ -421,6 +425,38 @@ Deno.test('a night of wipes writes its progress and no kills', async () => {
   await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
   assertEquals(db.calls.at(-1)?.method, 'upsertProgress');
   assertEquals(killsWritten(db), []);
+});
+
+// The kills are the newer write: when they fail, the progress the landing page
+// reads still syncs for every raid on the team's list, and the run says so.
+Deno.test("a failed kills write is reported and the team's other raids still sync", async () => {
+  const db = fakeDb({ teams: [TEAM], configs: { 1: TWO_RAIDS } });
+  db.insertKills = () => Promise.reject(new Error('team_raid_kills is read-only tonight'));
+  const { fetch } = recordingFetch([
+    tokenResponse(),
+    zoneResponse('Test Raid Zone', ENCOUNTERS),
+    reportsResponse(REPORTS),
+    zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }]),
+    reportsResponse([
+      {
+        code: 'reportE',
+        startTime: REPORT_B_START,
+        fights: [{ id: 1, encounterID: 3003, difficulty: 5, kill: false, bossPercentage: 50 }]
+      }
+    ])
+  ]);
+  const deps: Deps = { fetch, env: fullEnv(), db };
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, {
+    status: 200,
+    body: {
+      success: true,
+      teams: 1,
+      synced: 2,
+      errors: [{ teamId: 1, error: 'Kills not saved: team_raid_kills is read-only tonight' }]
+    }
+  });
+  assertEquals(db.calls.filter((c) => c.method === 'upsertProgress').length, 2);
 });
 
 Deno.test('a zone WarcraftLogs does not know is skipped and counted as not synced', async () => {

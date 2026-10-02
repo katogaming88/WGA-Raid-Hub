@@ -36,11 +36,14 @@ async function seed(q) {
 const FIRST = 9102;
 const SECOND = 9101;
 
-const kill = (q, { team = 1, encounter = FIRST, difficulty = 'mythic', report, fight = 1, date }) =>
+// A report starts at 20:00 Eastern on its raid date unless a case says otherwise.
+const kill = (q, { team = 1, encounter = FIRST, difficulty = 'mythic', report, fight = 1, date, started = null }) =>
   q(
-    `insert into public.team_raid_kills (team_id, encounter_id, difficulty, report_code, fight_id, raid_date)
-     values ($1, $2, $3, $4, $5, $6)`,
-    [team, encounter, difficulty, report, fight, date]
+    `insert into public.team_raid_kills
+       (team_id, encounter_id, difficulty, report_code, fight_id, raid_date, report_started_at)
+     values ($1, $2, $3, $4, $5, $6,
+             coalesce($7::timestamptz, ($6::date + time '20:00') at time zone 'America/New_York'))`,
+    [team, encounter, difficulty, report, fight, date, started]
   );
 
 const KILLS = 'select team_id, report_code from public.team_raid_kills order by team_id, report_code';
@@ -135,6 +138,22 @@ describe('lockout_week_start()', () => {
   });
 });
 
+// The lockout an instant falls in turns over at the reset, Tuesday 15:00 UTC,
+// not at midnight: a Monday raid still pulling at 00:30 Tuesday Eastern is in
+// the old week, and so is the morning before the servers come back.
+describe('lockout_start_at()', () => {
+  it('turns over at the Tuesday reset', async () => {
+    await withTxn(async ({ q }) => {
+      const res = await q(
+        `select at::text as at, public.lockout_start_at(at)::text as week
+           from unnest('{2026-09-29 04:30+00,2026-09-29 14:59+00,2026-09-29 15:00+00,2026-10-06 03:00+00}'::timestamptz[]) at
+          order by at`
+      );
+      expect(res.rows.map((r) => r.week)).toEqual(['2026-09-22', '2026-09-22', '2026-09-29', '2026-09-29']);
+    });
+  });
+});
+
 describe('team_raid_kills_this_week', () => {
   const WEEK = `select encounter_id, encounter_name, difficulty, raid_date::text, report_code, fight_id
                   from public.team_raid_kills_this_week order by encounter_id, difficulty`;
@@ -142,12 +161,28 @@ describe('team_raid_kills_this_week', () => {
   // This lockout's Tuesday, the Thursday after it and the Monday before the reset.
   async function days(q) {
     const res = await q(
-      `select public.lockout_week_start(public.raid_today())::text as tue,
-              (public.lockout_week_start(public.raid_today()) + 2)::text as thu,
-              (public.lockout_week_start(public.raid_today()) - 1)::text as last_monday`
+      `select public.lockout_start_at(now())::text as tue,
+              (public.lockout_start_at(now()) + 2)::text as thu,
+              (public.lockout_start_at(now()) - 1)::text as last_monday`
     );
     return res.rows[0];
   }
+
+  // Reports arrive newest first, and two logs of one night share a raid date:
+  // the week's first kill is the one from the earlier report.
+  it('names the earliest report’s kill as the week’s first, whatever order they arrive in', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seed(q);
+      const { tue } = await days(q);
+      const at = (hhmm) => q(`select (($1::date + $2::time) at time zone 'America/New_York')::text as t`, [tue, hhmm]);
+      const late = (await at('22:00')).rows[0].t;
+      const early = (await at('20:30')).rows[0].t;
+      await kill(q, { report: 'late', fight: 1, date: tue, started: late });
+      await kill(q, { report: 'early', fight: 9, date: tue, started: early });
+      const rows = (await asUser(OFFICER_T1, WEEK)).rows;
+      expect(rows.map((r) => [r.report_code, r.fight_id])).toEqual([['early', 9]]);
+    });
+  });
 
   // First Boss goes down on Heroic and then Mythic on Tuesday, and on Mythic
   // again on Thursday: two rows for it, each from Tuesday.
