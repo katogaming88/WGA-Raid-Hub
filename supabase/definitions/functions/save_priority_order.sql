@@ -10,12 +10,27 @@ AS $function$
 declare
   v_item_name text;
   v_count integer;
+  v_departed text;
 begin
   if not (coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false) or public.is_site_admin()) then
     raise exception 'Not authorized';
   end if;
   if p_track not in ('Hero', 'Myth') then
     raise exception 'Invalid track';
+  end if;
+
+  -- A page opened before a raider left still lists them. An earlier tier keeps
+  -- whoever was on its lists, so only the live tier is checked (#1383).
+  if p_season = public.current_season() then
+    select p.name_realm into v_departed
+      from jsonb_array_elements_text(coalesce(p_player_ids, '[]'::jsonb)) with ordinality as t(elem, ord)
+      join public.players p on p.id = (t.elem)::integer
+     where p.archived_at is not null
+     order by t.ord
+     limit 1;
+    if v_departed is not null then
+      raise exception '% is no longer on the roster. Reload the page to get the current list.', v_departed;
+    end if;
   end if;
 
   delete from public.priority_order

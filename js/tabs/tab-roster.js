@@ -1092,6 +1092,8 @@ function executeRemovePlayer(nameRealm, firstName) {
   // leave a window where someone is archived with no reason recorded. The
   // function also stamps archived_at from the database clock and refuses a
   // second archive, so a double click cannot overwrite the first reason.
+  // The archive also takes them off the live season's priority lists, in
+  // the same transaction (a trigger on players, #1383).
   supabaseClient
     .rpc('archive_player', {
       p_player_id: player.id,
@@ -1101,26 +1103,6 @@ function executeRemovePlayer(nameRealm, firstName) {
     .then(function (result) {
       if (result.error) throw new Error(result.error.message);
       return writeAuditLog('Player Removed', 'players', player.id, reason + ': ' + detail);
-    })
-    .then(function () {
-      // Drop them from the current season's standing priority_order too --
-      // generate_priority_order() already excludes archived players from
-      // new suggestions, but that only takes effect per item/track the next
-      // time an officer regenerates it; without this a removed raider kept
-      // showing up in the Priority tab, the RCLootCouncil export, and the
-      // addon's Full Priority Order panel until every item happened to get
-      // re-suggested. Best-effort: a failure here shouldn't block or
-      // rollback the roster removal itself, so it's a fire-and-forget catch.
-      return supabaseClient
-        .rpc('remove_player_priority_order', {
-          p_team_id: _teamCfg.supabaseTeamId,
-          p_season: resolveSeasonViewCode(),
-          p_player_id: player.id
-        })
-        .then(
-          function () {},
-          function () {}
-        );
     })
     .then(function () {
       if (DATA && DATA.roster) {

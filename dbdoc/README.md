@@ -135,7 +135,6 @@
 | public.admin_grant_boe_manager | int4 | p_discord_id text | FUNCTION |
 | public.admin_revoke_boe_manager | void | p_discord_id text | FUNCTION |
 | public.is_team_leader_anywhere | bool |  | FUNCTION |
-| public.remove_player_priority_order | int4 | p_team_id integer, p_season text, p_player_id integer | FUNCTION |
 | public.set_team_officer_bios | jsonb | p_team_id integer, p_bios jsonb | FUNCTION |
 | public.build_rclc_export | jsonb | p_team_id integer, p_season text, p_track text | FUNCTION |
 | public.boe_mark_paid | void | p_id integer, p_paid_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_donated boolean DEFAULT false | FUNCTION |
@@ -215,6 +214,7 @@
 | public.also_on_teams | record | p_team_id integer | FUNCTION |
 | public.record_raid_night_participation | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[] | FUNCTION |
 | public.wishlist_setup_status | record | p_team_id integer | FUNCTION |
+| public.drop_archived_player_live_priority | trigger |  | FUNCTION |
 
 ## Enums
 

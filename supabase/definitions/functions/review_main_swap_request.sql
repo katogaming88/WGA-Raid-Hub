@@ -12,7 +12,6 @@ declare
   v_request public.main_swap_requests%rowtype;
   v_from public.players%rowtype;
   v_player_id integer;
-  v_live_season text;
   v_spec_label text;
   v_note text := nullif(btrim(p_note), '');
 begin
@@ -87,18 +86,6 @@ begin
           and b.raid_date = a.raid_date
      );
 
-  -- The old character's standing priority rows for the live season go, the
-  -- same as removing them from the roster would: they no longer hold a slot
-  -- in the Priority List, the RCLootCouncil export or the addon panel. The
-  -- live season is the tier (#938); null only on a stack with no tier row.
-  v_live_season := public.current_season();
-
-  if v_live_season is not null then
-    delete from public.priority_order
-     where team_id = v_request.team_id
-       and season = v_live_season
-       and player_id = v_request.from_player_id;
-  end if;
 
   update public.main_swap_requests
      set status = 'approved', reviewed_at = now(), reviewed_by = public.my_person_id(),

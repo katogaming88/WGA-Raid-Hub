@@ -136,6 +136,7 @@ begin
     left join recip r on r.player_id = po.player_id and r.item_id = po.item_id
     left join wish w on w.player_id = po.player_id and w.item_id = po.item_id
     where po.team_id = p_team_id
+      and p.archived_at is null
       and po.season = p_season
       and po.track = p_track
       and not coalesce(r.has_myth, false)

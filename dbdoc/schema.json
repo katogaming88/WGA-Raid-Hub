@@ -1401,6 +1401,10 @@
         {
           "name": "players_keep_url_code",
           "def": "CREATE TRIGGER players_keep_url_code BEFORE UPDATE OF url_code ON public.players FOR EACH ROW EXECUTE FUNCTION keep_player_url_code()"
+        },
+        {
+          "name": "players_drop_live_priority_on_archive",
+          "def": "CREATE TRIGGER players_drop_live_priority_on_archive AFTER UPDATE OF archived_at ON public.players FOR EACH ROW WHEN (((old.archived_at IS NULL) AND (new.archived_at IS NOT NULL))) EXECUTE FUNCTION drop_archived_player_live_priority()"
         }
       ]
     },
@@ -10119,12 +10123,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.remove_player_priority_order",
-      "return_type": "int4",
-      "arguments": "p_team_id integer, p_season text, p_player_id integer",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.set_team_officer_bios",
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_bios jsonb",
@@ -10596,6 +10594,12 @@
       "name": "public.wishlist_setup_status",
       "return_type": "record",
       "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.drop_archived_player_live_priority",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],
