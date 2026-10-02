@@ -1,9 +1,10 @@
 // Raid buffs, boss debuffs and raid utility, and who brings each: the one list
 // every page that checks buff coverage reads (#1244). The current site keeps a
 // copy in js/common.js until cutover, and a test fails when the two disagree,
-// so a change here goes there too. spellId is the Wowhead spell a name links
-// to; where a row covers several classes' versions of one effect, it is one
-// representative spell.
+// so a change here goes there too. frontend-tests.yml watches this one file
+// for that test, so it imports nothing. spellId is the Wowhead spell a name
+// links to; where a row covers several classes' versions of one effect, it is
+// one representative spell.
 export type BuffGroup = 'buff' | 'debuff' | 'utility';
 
 export type Buff = {

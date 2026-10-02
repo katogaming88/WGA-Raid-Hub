@@ -2265,6 +2265,8 @@ The lineup grid (#1231/#1232) checked every boss against numbers typed into `app
 
 **Not in this migration:** unifying the buff list `js/common.js` (RAID_BUFFS/BOSS_DEBUFFS/RAID_UTILITY) and the app's own curated 13-buff subset read -- the third piece #1244 named. That is a bigger, cross-codebase change (one data source both the current site and the new app fetch from, and a decision about which buffs the lineup check itself cares about versus the roster page's fuller coverage widget) than the two schema pieces here, so it stays open on the issue rather than riding along.
 
+**The buff list stays out of the database (2026-10-01).** Kat ruled on the issue on 2026-09-19 that the list is built in the new app and that `js/common.js`'s copy retires at cutover, so there is no table and no file both sites fetch. The app keeps one list, `app/src/roster/buffs.ts`, holding all 21 entries the current Roster tab's coverage panel shows, each with its Wowhead spell and Mass Grip limited to Blood. The lineup checks every raid buff and boss debuff plus the two utilities marked must-have, lust and a battle res, which are the 13 it checked before; the rebuilt Roster pages read the full list. Until cutover, `tests/frontend/buff-list-drift.test.js` fails whenever the site's copy and the app's disagree. A table would have changed through a migration, a PR either way, and the current site would have had to be rewired to read it.
+
 [Full discussion -> #1244](https://github.com/katogaming88/WGA-Raid-Hub/issues/1244).
 
 ## #944 -- team_id on scoring and player_equipped_gear; the guard on every two-key table

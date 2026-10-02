@@ -20,7 +20,7 @@ const appGroup = (group) =>
     spellId
   }));
 
-describe('the current site’s buff list matches the new app’s (#1244)', () => {
+describe('js/common.js’s buff lists match app/src/roster/buffs.ts (#1244)', () => {
   it('raid buffs', () => {
     expect(plain(common.RAID_BUFFS)).toEqual(appGroup('buff'));
   });

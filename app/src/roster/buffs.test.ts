@@ -9,7 +9,7 @@ const buff = (name: string) => BUFFS.find((b) => b.name === name)!;
 
 describe('the buff list', () => {
   it('names each buff once, with the classes that bring it and its Wowhead spell', () => {
-    expect(BUFFS).toHaveLength(21);
+    expect(new Set(BUFFS.map((b) => b.group))).toEqual(new Set(['buff', 'debuff', 'utility']));
     expect(new Set(BUFFS.map((b) => b.name)).size).toBe(BUFFS.length);
     for (const b of BUFFS) {
       expect(b.classes.length).toBeGreaterThan(0);
