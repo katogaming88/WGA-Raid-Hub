@@ -20,7 +20,7 @@
 alter table public.team_members add column archived_at timestamptz;
 
 comment on column public.team_members.archived_at is
-  'Set when an officer archives this membership (archive_team_member, #1355) for someone who left -- never deleted, so the account''s history keeps pointing at something. Cleared by team_invite_link_join() if they come back. A team leader''s direct edit of the row can also set or clear it. Every "what is this person on this team" predicate (my_team_role, my_officer_team_ids, my_leader_team_ids, is_any_team_officer, is_team_leader_anywhere) skips an archived row; my_player_ids() and earlier_characters() still read it, since that is the history.';
+  'Set when an officer archives this membership (archive_team_member, #1355) for someone who left -- never deleted, so the account''s history keeps pointing at something. Cleared by team_invite_link_join() if they come back. Neither changes it any other way: a direct update of the column is refused (team_members_archived_at_through_functions). Every "what is this person on this team" predicate (my_team_role, my_officer_team_ids, my_leader_team_ids, is_any_team_officer, is_team_leader_anywhere) skips an archived row; my_player_ids() and earlier_characters() still read it, since that is the history.';
 
 create or replace function public.my_team_role(p_team_id integer) returns text
 language sql stable security definer set search_path to 'public'
@@ -190,11 +190,11 @@ comment on function public.team_invite_link_join(text, bigint) is
 
 -- A team leader could delete a membership directly, skipping
 -- admin_revoke_team_role()'s check and everything archive_team_member() now
--- does. Ending one goes through that function, or a team leader's direct
--- edit of archived_at, which the update policy below allows both ways; direct
--- writes stay to insert (a new membership) and update (role changes, and
--- archive_team_member's own writes, which run as this function's definer and so
--- aren't gated by this policy at all).
+-- does. Ending one goes through that function only; direct writes stay to
+-- insert (a new membership) and update (role changes, and archive_team_member's
+-- own writes, which run as this function's definer and so aren't gated by
+-- this policy at all). The trigger after the policies keeps archived_at out of
+-- a direct update.
 drop policy "Team leaders write team_members" on public.team_members;
 
 create policy "Team leaders insert team_members" on public.team_members
@@ -213,6 +213,30 @@ create policy "Team leaders update team_members" on public.team_members
     team_id = any ((select public.my_leader_team_ids())::integer[])
     or (select public.is_site_admin())
   );
+
+-- A direct update of archived_at would skip everything archive_team_member()
+-- does (the characters, the reason, the audit row) and leave a membership
+-- archived with its characters active, or restored with them archived. The
+-- two database functions run as their owner, so the check only meets a write
+-- made as the signed-in caller, the way check_boe_status_transition() does.
+create function public.team_members_archived_at_through_functions() returns trigger
+language plpgsql
+set search_path to 'public'
+as $$
+begin
+  if current_user <> 'authenticated' then
+    return new;
+  end if;
+  if new.archived_at is distinct from old.archived_at then
+    raise exception 'A membership is archived through Archive Member and restored through the invite link, not by editing it';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger team_members_archived_at_through_functions
+  before update of archived_at on public.team_members
+  for each row execute function public.team_members_archived_at_through_functions();
 
 -- Officer-only: someone left. Archives the membership and their active
 -- characters rather than deleting the row (#1355, Rex's review) -- deleting

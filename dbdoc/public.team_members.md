@@ -41,6 +41,7 @@
 | ---- | ---------- |
 | trg_team_members_updated_at | CREATE TRIGGER trg_team_members_updated_at BEFORE UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
 | team_members_set_person | CREATE TRIGGER team_members_set_person BEFORE INSERT OR UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION set_person_from_discord_id() |
+| team_members_archived_at_through_functions | CREATE TRIGGER team_members_archived_at_through_functions BEFORE UPDATE OF archived_at ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_archived_at_through_functions() |
 
 ## Relations
 

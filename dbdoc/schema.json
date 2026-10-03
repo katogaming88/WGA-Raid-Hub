@@ -2340,6 +2340,10 @@
         {
           "name": "team_members_set_person",
           "def": "CREATE TRIGGER team_members_set_person BEFORE INSERT OR UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION set_person_from_discord_id()"
+        },
+        {
+          "name": "team_members_archived_at_through_functions",
+          "def": "CREATE TRIGGER team_members_archived_at_through_functions BEFORE UPDATE OF archived_at ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_archived_at_through_functions()"
         }
       ]
     },
@@ -10948,6 +10952,12 @@
       "name": "public.raid_night_info",
       "return_type": "record",
       "arguments": "p_team_id integer, p_raid_date date",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_members_archived_at_through_functions",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],
