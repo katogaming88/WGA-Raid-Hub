@@ -22,12 +22,17 @@ const ROSTER_JS = readFileSync(path.join(HERE, '../../js/roster.js'), 'utf8');
 // give the page a ?team=: that is not a cold landing, so roster.js boots the
 // app instead, and loadData()'s reads chain both. Without them the boot
 // rejects, which vitest reports as an unhandled error and a failed run even
-// though every test passes.
+// though every test passes. `is` keeps the rows whose column is null, as
+// PostgREST does, so an archived membership drops out only when asked (#1400).
 function builder(result) {
   const b = {
     select: () => b,
     eq: () => b,
-    is: () => b,
+    is: (col, val) =>
+      builder({
+        ...result,
+        data: Array.isArray(result.data) ? result.data.filter((r) => (r[col] ?? null) === val) : result.data
+      }),
     gt: () => b,
     order: () => b,
     limit: () => b,
@@ -149,6 +154,16 @@ describe('cold landing (#779)', () => {
     await settle();
     expect(nav.hrefs).toEqual(['/index.html?team=hellfire']);
     expect(nav.replaced).toEqual([]);
+  });
+
+  it('sends someone archived off their one team to the guild page (#1400)', async () => {
+    const { nav } = coldLand({
+      session: { user: { id: 'auth-1' } },
+      memberRows: [{ team_id: 2, archived_at: '2026-10-02T12:00:00Z', players: [{ name_realm: 'Bravo-Tichondrius' }] }]
+    });
+    await settle();
+    expect(nav.replaced).toEqual(['guild.html']);
+    expect(nav.hrefs).toEqual([]);
   });
 
   it('sends a signed-in account with no claim to the guild page', async () => {

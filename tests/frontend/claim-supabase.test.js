@@ -46,6 +46,13 @@ function makeSelect() {
 
 // Routes .from(table) and .rpc(name) to per-test resolvers and records the chain
 // so tests can assert the filters used. Each resolver returns a { data, error }.
+// An .is(col, null) also keeps only the rows whose column is null, as PostgREST
+// does, so an archived membership drops out only when the page asks (#1400).
+const honourIs = (r, filters) =>
+  r && Array.isArray(r.data)
+    ? { ...r, data: r.data.filter((row) => filters.every(([c, v]) => (row[c] ?? null) === v)) }
+    : r;
+
 function makeClient(config) {
   const captured = { byTable: {}, rpc: null };
   function builder(resolve) {
@@ -82,6 +89,7 @@ function makeClient(config) {
       then(ok, err) {
         return Promise.resolve()
           .then(() => resolve())
+          .then((r) => honourIs(r, calls.is))
           .then(ok, err);
       }
     };
@@ -405,6 +413,14 @@ describe('resolveDiscordSession', () => {
 
     it('leaves claimedElsewhere null when the other team row has no linked player', async () => {
       const { sandbox } = setupElsewhere([{ team_id: 2, players: [] }]);
+      const mapped = await sandbox.resolveDiscordSession(session);
+      expect(mapped.claimedElsewhere).toBeNull();
+    });
+
+    it('leaves claimedElsewhere null when the other team archived them (#1400)', async () => {
+      const { sandbox } = setupElsewhere([
+        { team_id: 2, archived_at: '2026-10-02T12:00:00Z', players: [{ name_realm: 'Alt-Illidan' }] }
+      ]);
       const mapped = await sandbox.resolveDiscordSession(session);
       expect(mapped.claimedElsewhere).toBeNull();
     });
