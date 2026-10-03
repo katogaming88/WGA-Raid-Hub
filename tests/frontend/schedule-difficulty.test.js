@@ -173,6 +173,17 @@ describe('saveScheduleRule() difficulty', () => {
     expect(sandbox.SCHEDULE_RULES[0].difficulty).toBe('mythic');
     expect(audit[0].detail).toContain('Mythic');
   });
+
+  it('saves Heroic into Mythic as Mythic', async () => {
+    const { sandbox, calls } = loadSandbox({
+      rowFields: { ...RULE_FIELDS, '.sched-rule-difficulty': { value: 'heroic-into-mythic' } }
+    });
+    sandbox.SCHEDULE_RULES = [TUESDAY_RULE];
+    sandbox.saveScheduleRule(5);
+    await flush();
+    const write = calls.find((c) => c.table === 'raid_schedule' && c.update);
+    expect(write.update).toHaveProperty('difficulty', 'mythic');
+  });
 });
 
 describe('saveScheduleDefaultDifficulty()', () => {
@@ -198,6 +209,16 @@ describe('saveScheduleDefaultDifficulty()', () => {
     const write = calls.find((c) => c.table === 'team_schedule_settings' && c.upsert);
     expect(write.upsert.default_difficulty).toBe(null);
     expect(sandbox.SCHEDULE_DEFAULT_DIFFICULTY).toBe(null);
+  });
+
+  it('stores Heroic into Mythic as Mythic', async () => {
+    const { sandbox, els, calls } = loadSandbox();
+    els.schedDefaultDifficulty = makeEl({ value: 'heroic-into-mythic' });
+    sandbox.saveScheduleDefaultDifficulty();
+    await flush();
+    const write = calls.find((c) => c.table === 'team_schedule_settings' && c.upsert);
+    expect(write.upsert.default_difficulty).toBe('mythic');
+    expect(sandbox.SCHEDULE_DEFAULT_DIFFICULTY).toBe('mythic');
   });
 
   // A rebuilt table would throw away a row an officer has edited and not saved.
@@ -264,6 +285,15 @@ describe('addScheduleException() difficulty', () => {
     expect(write.insert).toHaveProperty('difficulty', 'mythic');
   });
 
+  it('saves an added night picked as Heroic into Mythic as Mythic', async () => {
+    const { sandbox, els, calls } = loadSandbox();
+    fillForm(els, 'heroic-into-mythic');
+    sandbox.addScheduleException('added');
+    await flush();
+    const write = calls.find((c) => c.table === 'raid_schedule_exceptions' && c.insert);
+    expect(write.insert).toHaveProperty('difficulty', 'mythic');
+  });
+
   it('sends null for an added night left at Team default', async () => {
     const { sandbox, els, calls } = loadSandbox();
     fillForm(els, '');
@@ -311,19 +341,30 @@ describe('the difficulty labels', () => {
     expect(html).toContain('<option value="">Team default (Mythic)</option>');
   });
 
-  // A night that moves from Heroic into Mythic counts as Mythic, and every
-  // select an officer picks a night's difficulty from says so.
-  it('every Mythic choice names the mixed night: weekly rows, the default and the added-night form', () => {
+  // A night that moves from Heroic into Mythic counts as Mythic, but it reads
+  // as its own choice rather than as a second name on the Mythic one.
+  it('every select offers Mythic and Heroic into Mythic as separate choices: weekly rows, the default and the added-night form', () => {
     const { sandbox, els } = loadSandbox();
     sandbox.SCHEDULE_RULES = [TUESDAY_RULE];
     sandbox.renderScheduleRules();
-    expect(els.scheduleRulesWrap.innerHTML).toContain('<option value="mythic">Mythic, or Heroic into Mythic</option>');
+    expect(els.scheduleRulesWrap.innerHTML).toContain(
+      '<option value="mythic">Mythic</option><option value="heroic-into-mythic">Heroic into Mythic</option>'
+    );
     const page = readFileSync(path.join(HERE, '../../officer.html'), 'utf8');
-    const mythicChoices = page.match(/<option value="mythic">[^<]*<\/option>/g);
-    expect(mythicChoices).toEqual([
-      '<option value="mythic">Mythic, or Heroic into Mythic</option>',
-      '<option value="mythic">Mythic, or Heroic into Mythic</option>'
-    ]);
+    const pairs = page.match(
+      /<option value="mythic">Mythic<\/option>\s*<option value="heroic-into-mythic">Heroic into Mythic<\/option>/g
+    );
+    expect(pairs).toHaveLength(2);
+    expect(page).not.toContain('Mythic, or Heroic into Mythic');
+  });
+
+  it('a night saved as Mythic shows the Mythic choice, the first of the two', () => {
+    const { sandbox, els } = loadSandbox();
+    sandbox.SCHEDULE_RULES = [{ ...TUESDAY_RULE, difficulty: 'mythic' }];
+    sandbox.renderScheduleRules();
+    const html = els.scheduleRulesWrap.innerHTML;
+    expect(html).toContain('<option value="mythic" selected>Mythic</option>');
+    expect(html).toContain('<option value="heroic-into-mythic">Heroic into Mythic</option>');
   });
 
   it('the one-off list shows an added night at its resolved difficulty, and none for a cancelled one', () => {
