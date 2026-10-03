@@ -76,18 +76,15 @@ as $$
 $$;
 
 -- Un-archives on the way back in, the one step team_invite_link_join() owed
--- this design: a returning raider's insert now conflicts on their own
--- (archived) row instead of silently doing nothing, and picks it back up.
--- The link is a raider's way in, so a returning officer or team leader
--- comes back as a raider; a current member opening it keeps their role.
--- Always returning an id from the insert drops the old select-fallback.
-create or replace function public.team_invite_link_join(
-  p_code text,
-  p_blizzard_id bigint
-)
-returns text
-language plpgsql security definer set search_path to 'public'
-as $$
+-- this design: a returning member's insert now conflicts on their own
+-- (archived) row and picks it back up instead of leaving it archived. The
+-- rest of the function is as it was.
+CREATE OR REPLACE FUNCTION public.team_invite_link_join(p_code text, p_blizzard_id bigint)
+ RETURNS text
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 declare
   v_uid uuid := auth.uid();
   v_discord_id text;
@@ -110,11 +107,15 @@ begin
     raise exception 'This invite link does not work';
   end if;
 
+  -- team_members is keyed on the Discord id, as claim_character() is.
   v_discord_id := public.current_discord_id();
   if v_discord_id is null then
     raise exception 'Connect Discord before joining a team';
   end if;
 
+  -- The character has to be one Blizzard confirmed for this person, the way
+  -- request_main_swap() takes a character id rather than a name. Everything
+  -- below reads the name from this row, so the caller never supplies it.
   select * into v_character
     from public.characters c
    where c.blizzard_id = p_blizzard_id
@@ -127,25 +128,47 @@ begin
     from public.classes_specs cs
    where cs.class = v_character.class_name and cs.spec = v_character.spec_name;
 
+  -- The membership goes the same way, for the same reason: a person opening
+  -- the link in two tabs would otherwise have both find no membership and both
+  -- insert, and the second would surface team_members_team_id_person_id_key
+  -- instead of joining. The trigger fills person_id before the conflict is
+  -- checked, so it can arbitrate on it. An existing membership is updated only
+  -- when it was archived (#1355): the person is coming back, and as a raider,
+  -- since the link is a raider's way in. A current one is left alone, since an
+  -- update would touch its updated_at for nothing; the select below finds it.
   insert into public.team_members (team_id, discord_id, role)
   values (v_team_id, v_discord_id, 'raider')
   on conflict (team_id, person_id) do update
-     set role = case when team_members.archived_at is not null then 'raider' else team_members.role end,
-         archived_at = null
+     set role = 'raider', archived_at = null
+   where team_members.archived_at is not null
   returning id into v_member_id;
 
+  if v_member_id is null then
+    select tm.id into v_member_id
+      from public.team_members tm
+     where tm.team_id = v_team_id and tm.person_id = public.my_person_id();
+  end if;
+
+  -- One statement for the new character and the returning one, so a join
+  -- racing another on the same name cannot pass a check and then write.
   insert into public.players (team_id, name_realm, class_spec_id, is_trial, join_date, team_member_id)
   values (v_team_id, v_character.name_realm, v_spec_id, true, v_today, v_member_id)
   on conflict (team_id, name_realm_key) do update
      set team_member_id = excluded.team_member_id,
          class_spec_id = coalesce(excluded.class_spec_id, players.class_spec_id),
+         -- Back from the archive: a new stint, on trial and without the flags an
+         -- officer set for the last one, like any new add.
          is_trial = case when players.archived_at is not null then excluded.is_trial else players.is_trial end,
          join_date = case when players.archived_at is not null then excluded.join_date else players.join_date end,
+         -- The backup flags add_signup_to_roster() resets, plus the two
+         -- grants an officer made to whoever held the character before.
          is_backup_tank = case when players.archived_at is not null then false else players.is_backup_tank end,
          is_backup_healer = case when players.archived_at is not null then false else players.is_backup_healer end,
          wishlist_allowed = case when players.archived_at is not null then false else players.wishlist_allowed end,
          bis_allowed = case when players.archived_at is not null then false else players.bis_allowed end,
          archived_at = null
+   -- Never take over a character that belongs to someone else, active or
+   -- archived; the same guard claim_character() applies, on the write itself.
    where players.team_member_id is null or players.team_member_id = excluded.team_member_id
   returning id into v_player_id;
 
@@ -153,12 +176,14 @@ begin
     raise exception '% is already claimed', v_character.name_realm;
   end if;
 
+  -- The caller is a raider, so write_audit_log()'s officer gate would refuse
+  -- them; this is one of the RPCs that writes its own row.
   insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (v_team_id, v_uid, 'Joined via Invite Link', 'players', v_player_id, to_jsonb(v_character.name_realm));
 
   return 'joined';
 end;
-$$;
+$function$;
 
 comment on function public.team_invite_link_join(text, bigint) is
   'Joins the signed-in person to the team behind a live invite code with the character they picked, named by its Battle.net id and resolved from public.characters so it is one their own account holds (#1319). Adds their team_members row (their guild membership) and puts the character on the roster, un-archiving either one if they had left (#1355); a returning officer or team leader comes back as a raider. Refuses a dead code, a person with no Discord, a character that is not on their account, and one someone else holds. Always ''joined'' until the character limit (#1259) exists (#1264).';
