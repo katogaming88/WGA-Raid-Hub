@@ -22,6 +22,7 @@ begin
   from players p
   join team_members tm on tm.id = p.team_member_id
   where tm.person_id = public.my_person_id()
+    and tm.archived_at is null
     and p.team_id = p_team_id
     and p.archived_at is null;
 

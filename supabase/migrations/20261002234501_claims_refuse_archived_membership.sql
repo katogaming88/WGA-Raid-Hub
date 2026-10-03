@@ -19,11 +19,12 @@
 --
 -- Closing the ways in does not make that state impossible: the Roster tab's
 -- re-add un-archives a character with a direct write and leaves its link on
--- the archived membership, until #1133 or #1402 restores it. So the three
--- reads that decide what a person owns on a team, is_own_player(),
--- my_active_player_ids() and request_main_swap()'s roster lookup, skip an
--- archived membership too, and the person owns nothing there however the
--- character came back.
+-- the archived membership, until #1133 or #1402 restores it. So the reads
+-- that decide what a person owns on a team, is_own_player(),
+-- my_active_player_ids(), and the own-character lookups in
+-- request_main_swap(), set_own_rsvp() and submit_self_received()'s
+-- auto-approval, skip an archived membership too, and the person owns
+-- nothing there however the character came back.
 
 CREATE OR REPLACE FUNCTION public.claim_character(p_team_id integer, p_name_realm text)
  RETURNS TABLE(name_realm text, role text)
@@ -277,5 +278,139 @@ begin
 end;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.set_own_rsvp(p_team_id integer, p_raid_date date, p_status text, p_note text DEFAULT NULL::text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_uid uuid := auth.uid();
+  v_player_id integer;
+  v_is_bench boolean;
+  v_is_optional boolean;
+begin
+  if v_uid is null then
+    raise exception 'Not signed in';
+  end if;
+
+  select p.id, p.is_bench into v_player_id, v_is_bench
+  from players p
+  join team_members tm on tm.id = p.team_member_id
+  where tm.person_id = public.my_person_id()
+    and tm.archived_at is null
+    and p.team_id = p_team_id
+    and p.archived_at is null;
+
+  if v_player_id is null then
+    raise exception 'No active roster character found for this team.';
+  end if;
+
+  v_is_optional := is_optional_raid_night(p_team_id, p_raid_date);
+
+  if v_is_bench and not v_is_optional then
+    raise exception 'Bench players cannot set an RSVP status.';
+  end if;
+
+  if p_status is null then
+    delete from raid_rsvps where team_id = p_team_id and player_id = v_player_id and raid_date = p_raid_date;
+    return;
+  end if;
+
+  if p_status not in ('Attending', 'Late', 'Leaving Early', 'Tentative', 'Absent') then
+    raise exception 'Invalid RSVP status: %', p_status;
+  end if;
+
+  if p_status = 'Attending' and not v_is_optional then
+    raise exception 'Attending is only valid on an optional raid night.';
+  end if;
+
+  insert into raid_rsvps (team_id, player_id, raid_date, status, note)
+  values (p_team_id, v_player_id, p_raid_date, p_status, p_note)
+  on conflict (team_id, player_id, raid_date)
+  do update set status = excluded.status, note = excluded.note, updated_at = now();
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.submit_self_received(p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text)
+ RETURNS TABLE(id integer, auto_approved boolean)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_player_id integer;
+  v_item_id integer;
+  v_existing_status text;
+  v_track_label text := case p_track
+    when 'Myth' then ' at Mythic' when 'Hero' then ' at Heroic' when 'Champion' then ' on the Champion track'
+    else '' end;
+  v_auto_approved boolean := false;
+  v_request_id integer;
+begin
+  select p.id into v_player_id
+  from public.players p
+  where p.team_id = p_team_id and p.name_realm = p_name_realm and p.archived_at is null
+  for update;
+  if not found then
+    raise exception 'Character not found on roster';
+  end if;
+
+  if coalesce(p_source, '') = 'Other' and btrim(coalesce(p_note, '')) = '' then
+    raise exception 'Say where the item came from in the note. An officer reviews Other reports.';
+  end if;
+
+  select i.id into v_item_id from public.items i where i.name = p_item_name;
+  if not found then
+    raise exception 'Unknown item: %', p_item_name;
+  end if;
+
+  select r.status into v_existing_status
+  from public.self_received_requests r
+  where r.player_id = v_player_id
+    and r.self_item_id = v_item_id
+    and r.slot is not distinct from nullif(p_slot, '')
+    and r.track is not distinct from p_track
+    and r.status in ('pending', 'approved')
+  order by r.status
+  limit 1;
+  if v_existing_status = 'approved' then
+    raise exception 'This item is already marked received% for this character.', v_track_label;
+  elsif v_existing_status = 'pending' then
+    raise exception 'You already reported this item%. It is waiting for an officer to review it.', v_track_label;
+  end if;
+
+  if auth.uid() is not null
+    and coalesce(p_source, '') <> 'Other'
+    and (coalesce(p_source, '') = 'Pug raid' or coalesce(p_note, '') !~* '\yraid\y') then
+    select true into v_auto_approved
+    from public.players p
+    join public.team_members tm on tm.id = p.team_member_id
+    where p.id = v_player_id and tm.person_id = public.my_person_id() and tm.archived_at is null;
+  end if;
+
+  insert into public.self_received_requests
+    (team_id, player_id, self_item_id, track, source, note, slot, status)
+  values
+    (p_team_id, v_player_id, v_item_id, p_track, nullif(p_source, ''), nullif(p_note, ''),
+     nullif(p_slot, ''),
+     case when coalesce(v_auto_approved, false) then 'approved' else 'pending' end)
+  returning self_received_requests.id into v_request_id;
+
+  if coalesce(v_auto_approved, false) then
+    insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+    values (
+      p_team_id,
+      auth.uid(),
+      'Self-Received Auto-Approved',
+      'players',
+      v_player_id,
+      jsonb_build_object('item', p_item_name, 'track', p_track, 'source', p_source)
+    );
+  end if;
+
+  return query select v_request_id, coalesce(v_auto_approved, false);
+end $function$;
+
 comment on column public.team_members.archived_at is
-  'Set when an officer archives this membership (archive_team_member, #1355) for someone who left -- never deleted, so the account''s history keeps pointing at something. Cleared by team_invite_link_join() if they come back. Neither changes it any other way: a direct update of the column is refused (team_members_archived_at_through_functions). Every "what is this person on this team" predicate (my_team_role, my_officer_team_ids, my_leader_team_ids, is_any_team_officer, is_team_leader_anywhere) skips an archived row, and so does every "what does this person own there" read (is_own_player, my_active_player_ids, #1401); my_player_ids() and earlier_characters() still read it, since that is the history.';
+  'Set when an officer archives this membership (archive_team_member, #1355) for someone who left -- never deleted, so the account''s history keeps pointing at something. Cleared by team_invite_link_join() if they come back. Neither changes it any other way: a direct update of the column is refused (team_members_archived_at_through_functions). Every "what is this person on this team" predicate (my_team_role, my_officer_team_ids, my_leader_team_ids, is_any_team_officer, is_team_leader_anywhere) skips an archived row, and so does every "what does this person own there" read (is_own_player, my_active_player_ids, and the own-character lookups in request_main_swap, set_own_rsvp and submit_self_received, #1401); my_player_ids() and earlier_characters() still read it, since that is the history.';
