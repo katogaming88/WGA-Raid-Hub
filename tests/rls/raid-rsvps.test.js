@@ -219,7 +219,7 @@ describe('raid_rsvps RLS', () => {
 });
 
 // #1401: the Roster tab's re-add brings a character back with its link left on
-// an archived membership, until #1133 or #1402 restores it. The archived
+// an archived membership, until #1133 restores it. The archived
 // person owns nothing on the team meanwhile. A team of the case's own, so the
 // archive writes no seeded row (#1123).
 describe('set_own_rsvp() and an archived membership (#1401)', () => {

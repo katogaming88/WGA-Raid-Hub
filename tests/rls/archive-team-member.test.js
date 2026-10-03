@@ -400,7 +400,7 @@ describe('team_members RLS after the archive change', () => {
 });
 
 // #1401: the Roster tab's re-add brings a character back with its link left on
-// the archived membership, until #1133 or #1402 restores the membership. The
+// the archived membership, until #1133 restores the membership. The
 // person owns nothing on the team meanwhile, whatever path made the character
 // live again.
 describe('an archived membership owns nothing on its team, even with a character re-added', () => {

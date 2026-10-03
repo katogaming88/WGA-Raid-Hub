@@ -2,11 +2,11 @@
 --
 -- Since #1423 an officer can archive someone's membership, and it comes back
 -- only through an officer (decided on #1355, 2026-10-02): the invite link
--- today, a signup add (#1402), a Roster re-add (#1133) or a role grant
--- (#1403). claim_character() and link_battlenet_roster_characters() both
--- found the person's archived membership and attached the character to it,
--- which skipped that decision and left the membership archived with a live
--- character on it.
+-- and a signup add (#1402) today, and a Roster re-add (#1133) or a role
+-- grant (#1403) to come. claim_character() and
+-- link_battlenet_roster_characters() both found the person's archived
+-- membership and attached the character to it, which skipped that decision
+-- and left the membership archived with a live character on it.
 --
 -- claim_character() now refuses with a message the current site shows as it
 -- stands, and claim_name() (#1355's names table) will reuse. The import
@@ -19,7 +19,7 @@
 --
 -- Closing the ways in does not make that state impossible: the Roster tab's
 -- re-add un-archives a character with a direct write and leaves its link on
--- the archived membership, until #1133 or #1402 restores it. So the reads
+-- the archived membership, until #1133 restores it. So the reads
 -- that decide what a person owns on a team, is_own_player(),
 -- my_active_player_ids(), and the own-character lookups in
 -- request_main_swap(), set_own_rsvp() and submit_self_received()'s
@@ -413,4 +413,4 @@ begin
 end $function$;
 
 comment on column public.team_members.archived_at is
-  'Set when an officer archives this membership (archive_team_member, #1355) for someone who left -- never deleted, so the account''s history keeps pointing at something. Cleared by team_invite_link_join() if they come back. Neither changes it any other way: a direct update of the column is refused (team_members_archived_at_through_functions). Every "what is this person on this team" predicate (my_team_role, my_officer_team_ids, my_leader_team_ids, is_any_team_officer, is_team_leader_anywhere) skips an archived row, and so does every "what does this person own there" read (is_own_player, my_active_player_ids, and the own-character lookups in request_main_swap, set_own_rsvp and submit_self_received, #1401); my_player_ids() and earlier_characters() still read it, since that is the history.';
+  'Set when an officer archives this membership (archive_team_member, #1355) for someone who left -- never deleted, so the account''s history keeps pointing at something. Cleared when an officer brings them back: team_invite_link_join(), or restore_team_member() when an officer adds their season signup (#1402). Nothing changes it any other way: a direct update of the column is refused (team_members_archived_at_through_functions). Every "what is this person on this team" predicate (my_team_role, my_officer_team_ids, my_leader_team_ids, is_any_team_officer, is_team_leader_anywhere) skips an archived row, and so does every "what does this person own there" read (is_own_player, my_active_player_ids, and the own-character lookups in request_main_swap, set_own_rsvp and submit_self_received, #1401); my_player_ids() and earlier_characters() still read it, since that is the history.';
