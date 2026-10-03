@@ -108,6 +108,21 @@ describe('request_main_swap()', () => {
       await expect(ask(asUser, RAIDER_T1, characterId)).rejects.toThrow(/no character on this team/);
     });
   });
+
+  it('refuses someone archived off the team, even with their character re-added (#1401)', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { characterId, raiderPlayer } = await fixture(q);
+      await asUser(OFFICER_T1, 'select public.archive_team_member(1, $1, $2, $3)', [
+        PHOENIX_RAIDER_MEMBER,
+        'moved_guilds',
+        'Joined another guild'
+      ]);
+      // The Roster tab's re-add brings the character back with its link left
+      // on the archived membership.
+      await q('update public.players set archived_at = null where id = $1', [raiderPlayer]);
+      await expect(ask(asUser, RAIDER_T1, characterId)).rejects.toThrow(/no character on this team/);
+    });
+  });
 });
 
 describe('who reads a main swap request', () => {

@@ -399,4 +399,38 @@ describe('team_members RLS after the archive change', () => {
   });
 });
 
+// #1401: the Roster tab's re-add brings a character back with its link left on
+// the archived membership, until #1133 or #1402 restores the membership. The
+// person owns nothing on the team meanwhile, whatever path made the character
+// live again.
+describe('an archived membership owns nothing on its team, even with a character re-added', () => {
+  const readd = (q, playerId) => q('update public.players set archived_at = null where id = $1', [playerId]);
+  const ownRowUpdate = (asUser, uid, playerId) =>
+    asUser(uid, 'update public.players set bonus_roll_encounter_id = null where id = $1 returning id', [playerId]);
+
+  it("is_own_player() is false for the re-added character's old owner", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const playerId = await seedPlayer(q, { memberId: team.raider.memberId, nameRealm: 'Readded-Illidan' });
+      const own = async () =>
+        (await asUser(team.raider.uid, 'select public.is_own_player($1) as own', [playerId])).rows[0].own;
+      expect(await own()).toBe(true);
+      await archiveMember(asUser, team.officer.uid, team.teamId, team.raider.memberId);
+      await readd(q, playerId);
+      expect(await own()).toBe(false);
+    });
+  });
+
+  it('their own-row rules (my_active_player_ids()) reach none of its rows', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const playerId = await seedPlayer(q, { memberId: team.raider.memberId, nameRealm: 'Readded-Illidan' });
+      expect((await ownRowUpdate(asUser, team.raider.uid, playerId)).rowCount).toBe(1);
+      await archiveMember(asUser, team.officer.uid, team.teamId, team.raider.memberId);
+      await readd(q, playerId);
+      expect((await ownRowUpdate(asUser, team.raider.uid, playerId)).rowCount).toBe(0);
+    });
+  });
+});
+
 afterAll(() => pool.end());
