@@ -17,15 +17,21 @@ var SCHEDULE_EXCEPTIONS = [];
 // weekly night or an added night left at "Team default" stores null and
 // raid_night_info() resolves it to this. Null here means not set.
 var SCHEDULE_DEFAULT_DIFFICULTY = null;
+// True when the default could not be read: nothing names a value then, and
+// the default cannot be saved, so a Save cannot erase one it never saw.
+var _schedDefaultUnread = false;
 
 var _SCHED_WEEKDAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 var _SCHED_DIFFICULTY_LABELS = { heroic: 'Heroic', mythic: 'Mythic' };
+// What each select offers: a night that moves from Heroic into Mythic is Mythic.
+var _SCHED_DIFFICULTY_CHOICES = { heroic: 'Heroic', mythic: 'Mythic, or Heroic into Mythic' };
 
 function _schedDifficultyValue(v) {
   return v === 'heroic' || v === 'mythic' ? v : null;
 }
 
 function _schedDefaultLabel() {
+  if (_schedDefaultUnread) return 'Team default';
   var d = SCHEDULE_DEFAULT_DIFFICULTY;
   return 'Team default (' + (d ? _SCHED_DIFFICULTY_LABELS[d] : 'not set') + ')';
 }
@@ -44,7 +50,7 @@ function _schedDifficultyOptions(selected) {
       '"' +
       (selected === d ? ' selected' : '') +
       '>' +
-      _SCHED_DIFFICULTY_LABELS[d] +
+      _SCHED_DIFFICULTY_CHOICES[d] +
       '</option>';
   });
   return html;
@@ -69,7 +75,8 @@ function buildScheduleTab() {
   if (excWrap) excWrap.innerHTML = '';
 
   // The default is read first so the rows render with its label. A failed
-  // read leaves it not set and still loads the schedule.
+  // read locks the default rather than showing a value it does not know, and
+  // still loads the schedule.
   // team-read-guard: one row per team (team_id is the primary key).
   supabaseClient
     .from('team_schedule_settings')
@@ -78,10 +85,12 @@ function buildScheduleTab() {
     .maybeSingle()
     .then(function (result) {
       var status = document.getElementById('scheduleDefaultStatus');
+      _schedDefaultUnread = !!result.error;
       if (result.error) {
         if (status) status.textContent = 'Error loading the team default: ' + result.error.message;
         SCHEDULE_DEFAULT_DIFFICULTY = null;
       } else {
+        if (status) status.textContent = '';
         SCHEDULE_DEFAULT_DIFFICULTY = _schedDifficultyValue(result.data && result.data.default_difficulty);
       }
       renderScheduleDefault();
@@ -141,29 +150,37 @@ function _schedTimeInputValue(t) {
 
 function renderScheduleDefault() {
   var sel = document.getElementById('schedDefaultDifficulty');
-  if (sel) sel.value = SCHEDULE_DEFAULT_DIFFICULTY || '';
+  var btn = document.getElementById('schedDefaultSaveBtn');
+  if (sel) {
+    sel.value = SCHEDULE_DEFAULT_DIFFICULTY || '';
+    sel.disabled = _schedDefaultUnread;
+  }
+  if (btn) btn.disabled = _schedDefaultUnread;
+  var label = _schedDefaultLabel();
   var excOption = document.getElementById('schedExcDifficultyDefault');
-  if (excOption) excOption.textContent = _schedDefaultLabel();
+  if (excOption) excOption.textContent = label;
+  // In place, so a weekly row edited and not yet saved keeps its edits.
+  var rowOptions = document.querySelectorAll('.sched-rule-difficulty option[value=""]');
+  for (var i = 0; i < rowOptions.length; i++) rowOptions[i].textContent = label;
 }
 
 function saveScheduleDefaultDifficulty() {
   var sel = document.getElementById('schedDefaultDifficulty');
+  var btn = document.getElementById('schedDefaultSaveBtn');
   var status = document.getElementById('scheduleDefaultStatus');
   var difficulty = _schedDifficultyValue(sel ? sel.value : '');
+  if (btn) btn.disabled = true;
   supabaseClient
     .from('team_schedule_settings')
-    .upsert(
-      { team_id: _teamCfg.supabaseTeamId, default_difficulty: difficulty, updated_at: new Date().toISOString() },
-      { onConflict: 'team_id' }
-    )
+    .upsert({ team_id: _teamCfg.supabaseTeamId, default_difficulty: difficulty }, { onConflict: 'team_id' })
     .then(function (result) {
+      if (btn) btn.disabled = false;
       if (result.error) {
         if (status) status.textContent = result.error.message;
         return;
       }
       SCHEDULE_DEFAULT_DIFFICULTY = difficulty;
       renderScheduleDefault();
-      renderScheduleRules();
       renderScheduleExceptions();
       if (status) {
         status.textContent = 'Saved.';

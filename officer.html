@@ -1075,7 +1075,7 @@
                   <option value="mythic">Mythic, or Heroic into Mythic</option>
                 </select>
               </div>
-              <button class="btn btn-muted" onclick="saveScheduleDefaultDifficulty()">Save</button>
+              <button class="btn btn-muted" id="schedDefaultSaveBtn" onclick="saveScheduleDefaultDifficulty()">Save</button>
               <div id="scheduleDefaultStatus" role="status" style="font-size:0.93rem;color:var(--melee);padding-bottom:0.4rem;"></div>
             </div>
             <div id="scheduleRulesWrap"></div>
@@ -1104,7 +1104,7 @@
                   <select id="schedExcDifficultyInput" class="add-player-input" style="font-size:0.97rem;padding:0.3rem 0.5rem;">
                     <option value="" id="schedExcDifficultyDefault">Team default</option>
                     <option value="heroic">Heroic</option>
-                    <option value="mythic">Mythic</option>
+                    <option value="mythic">Mythic, or Heroic into Mythic</option>
                   </select>
                 </div>
                 <div style="flex:1;min-width:160px;">
