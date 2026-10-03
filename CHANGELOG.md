@@ -12,6 +12,28 @@ answers to.
 
 ---
 
+## [3.162.0] - 2026-10-02
+
+### Frontend
+
+- Someone an officer archives off a team no longer sees that team as
+  theirs. In the new app the team leaves their own list, and its officer
+  menus go with it. On the current site nothing treats it as theirs any
+  more: its pages give them no officer view, the BoE page offers no payout
+  buttons for it and no longer pre-fills it on a find, signing in no longer
+  lands them on its roster, and another team's page no longer says they are
+  claimed there. No page can archive anyone yet, so nothing changes today:
+  this is ready for the Roster page's Archive Member (#1400).
+
+### Backend
+
+- `resolve_person()`, which tells the app who someone is and which teams
+  they are on, now says whether each membership is archived. It still
+  returns an archived membership, so an officer looking the person up sees
+  it (#1400).
+
+---
+
 ## [3.161.0] - 2026-10-02
 
 ### Backend
