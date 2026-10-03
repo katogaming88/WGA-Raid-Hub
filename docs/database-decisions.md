@@ -10,6 +10,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-03 -- a waiting main swap is cancelled when its character leaves the roster (#1428)
+
+Shipped: 20261003124046_waiting_main_swap_cancelled_on_archive.sql
+
+Once the character a main swap is from is archived, the swap can never be approved, so it is cancelled rather than left in the officers' queue (decided 2026-10-03). Until now it stayed there: Approve failed with "no longer on the roster", and Decline sent a "declined" note to someone who had left, or about a swap already done by hand.
+
+- **Cancel, not decline, hide or block.** For Archive Member, cancelling was chosen over leaving it for an officer to clear, declining it (no officer judged the swap itself), hiding it until the person returns (a request nobody can see, which can come back stale), showing it as ended with Decline only (still manual), and refusing the archive while a request waits. The rule then widened to every way a character leaves the roster, since an approval can never succeed once the old character is gone. Refusing a Remove while a swap waits was rejected: the current site has no main swap queue, so an officer there would be blocked by something they cannot see.
+- **A trigger on `players.archived_at`, as #1383's priority cleanup.** Four paths archive a character (`archive_player()`, `archive_team_member()`, a signup main swap through `add_signup_to_roster()`, an officer's direct update), and the trigger covers each and any still to come. It runs as its owner: `main_swap_requests` and `notifications` have no write rule for the officer whose archive fires it.
+- **Who closed it, and why.** The acting officer is the reviewer (`my_person_id()`, null for the service role). "Membership ended" when the character's membership is archived, with no notification, since they left; "Character removed" otherwise, with a notification to the raider on the archived character, which their inbox still reads.
+- **Not revived.** Restoring the member or re-adding the character leaves the request cancelled. The raider asks again: a cancelled request does not block asking, and will not once #1430 blocks a declined one.
+- **One lock order.** An archive locks the membership where it touches one, then the character, then, through the trigger, the request. The review takes the same three in that order before it reads the request's status, and marks an approval approved before it archives the old character, so the trigger leaves that one alone. `request_main_swap()` holds the character it checked `for share` until the request is saved, so a removal cannot slip between the check and the insert. The review's "no longer on the roster" refusal went: the archive cancels the request first, so nothing reaches it.
+
+[Full discussion -> #1428](https://github.com/katogaming88/WGA-Raid-Hub/issues/1428).
+
 ## 2026-10-03 -- every removal reason is kept, one row each (#1427)
 
 Shipped: 20261003091840_removal_reasons.sql

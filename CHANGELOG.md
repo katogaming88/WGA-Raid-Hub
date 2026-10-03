@@ -12,6 +12,28 @@ answers to.
 
 ---
 
+## [Unreleased]
+
+### Backend
+
+- A main swap that can no longer go through is cancelled instead of
+  waiting in the officers' queue. When the character a raider asked to
+  swap away from leaves the roster (the Roster tab's Remove, Archive
+  Member, a main swap through a season signup, or an officer archiving it
+  directly), any swap waiting from it is cancelled, with the officer who
+  acted recorded and a note saying why. If only the character was removed,
+  the raider is told: "Your main swap to <alt> was cancelled: <old> is no
+  longer on the roster." If their membership was archived, nothing is
+  sent. Approving a swap works as before (#1428).
+
+### Project
+
+- The database tests can check which locks a row holds, from inside the
+  test's own transaction (`rowLockModes()`), so a lock a function takes
+  until it commits is tested rather than only commented (#1428).
+
+---
+
 ## [3.165.0] - 2026-10-03
 
 ### Backend
