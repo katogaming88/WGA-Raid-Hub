@@ -4,7 +4,7 @@
 // happens as the impersonated caller, assertions happen back as postgres,
 // everything rolled back at the end.
 import { describe, it, expect } from 'vitest';
-import { withTxn, seedPlayer, RAIDER_T1, OFFICER_T1, OFFICER_T2 } from './helpers.js';
+import { withTxn, seedPlayer, seedTeam, RAIDER_T1, OFFICER_T1, OFFICER_T2 } from './helpers.js';
 
 // Links RAIDER_T1's existing team_members row (id 3, seed.sql) to a minted
 // team-1 players row so is_own_player()/set_own_rsvp() can resolve it; the
@@ -214,6 +214,29 @@ describe('raid_rsvps RLS', () => {
           [pid]
         )
       ).rejects.toThrow();
+    });
+  });
+});
+
+// #1401: the Roster tab's re-add brings a character back with its link left on
+// an archived membership, until #1133 or #1402 restores it. The archived
+// person owns nothing on the team meanwhile. A team of the case's own, so the
+// archive writes no seeded row (#1123).
+describe('set_own_rsvp() and an archived membership (#1401)', () => {
+  it('refuses someone archived off the team, even with their character re-added', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const playerId = await seedPlayer(q, { memberId: team.raider.memberId });
+      await asUser(team.officer.uid, 'select public.archive_team_member($1, $2, $3, $4)', [
+        team.teamId,
+        team.raider.memberId,
+        'moved_guilds',
+        'Joined another guild'
+      ]);
+      await q('update public.players set archived_at = null where id = $1', [playerId]);
+      await expect(setOwn(asUser, team.raider.uid, team.teamId, '2026-09-10', 'Late')).rejects.toThrow(
+        /No active roster character/
+      );
     });
   });
 });
