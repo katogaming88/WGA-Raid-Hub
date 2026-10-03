@@ -93,14 +93,15 @@ describe('archive_team_member ("Delete Member")', () => {
   });
 });
 
-describe('archive_team_member: an officer or the team leader is archived by the team leader or a site admin', () => {
+describe('archive_team_member: an officer is archived by the team leader or a site admin, the leader by a site admin', () => {
   const LEADER_OR_ADMIN = /team leader or a site admin/;
+  const ADMIN_ONLY = /Only a site admin can archive the team leader/;
 
   it('an officer cannot archive the team leader', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       await expect(archiveMember(asUser, team.officer.uid, team.teamId, team.leader.memberId)).rejects.toThrow(
-        LEADER_OR_ADMIN
+        ADMIN_ONLY
       );
       expect(await archivedAt(q, team.leader.memberId)).toBeNull();
     });
@@ -130,6 +131,18 @@ describe('archive_team_member: an officer or the team leader is archived by the 
       );
       await archiveMember(asUser, guildOfficer, team.teamId, team.raider.memberId);
       expect(await archivedAt(q, team.raider.memberId)).not.toBeNull();
+    });
+  });
+
+  // A team with no active leader can only be given one by a site admin, so the
+  // leader's own archive belongs to a site admin too.
+  it('the team leader cannot archive their own membership', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await expect(archiveMember(asUser, team.leader.uid, team.teamId, team.leader.memberId)).rejects.toThrow(
+        ADMIN_ONLY
+      );
+      expect(await archivedAt(q, team.leader.memberId)).toBeNull();
     });
   });
 
