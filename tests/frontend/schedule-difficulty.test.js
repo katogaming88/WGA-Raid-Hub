@@ -226,6 +226,25 @@ describe('saveScheduleDefaultDifficulty()', () => {
     await flush();
     expect(els.schedDefaultSaveBtn.disabled).toBe(false);
   });
+
+  it('gives Save back and keeps the old default when the save is refused', async () => {
+    const { sandbox, els, audit } = loadSandbox();
+    const realFrom = sandbox.supabaseClient.from;
+    sandbox.supabaseClient.from = (table) => {
+      const b = realFrom(table);
+      b.then = (resolve) => Promise.resolve({ data: null, error: { message: 'permission denied' } }).then(resolve);
+      return b;
+    };
+    sandbox.SCHEDULE_DEFAULT_DIFFICULTY = 'heroic';
+    els.schedDefaultDifficulty = makeEl({ value: 'mythic' });
+    els.schedDefaultSaveBtn = makeEl();
+    sandbox.saveScheduleDefaultDifficulty();
+    await flush();
+    expect(els.schedDefaultSaveBtn.disabled).toBe(false);
+    expect(els.scheduleDefaultStatus.textContent).toBe('permission denied');
+    expect(sandbox.SCHEDULE_DEFAULT_DIFFICULTY).toBe('heroic');
+    expect(audit).toEqual([]);
+  });
 });
 
 describe('addScheduleException() difficulty', () => {
