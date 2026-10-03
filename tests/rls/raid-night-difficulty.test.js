@@ -1,8 +1,10 @@
 // A raid night's difficulty (#1246). Each weekly rule (raid_schedule) and each
-// added night (raid_schedule_exceptions) says heroic or mythic, or null for
-// the team default in team_schedule_settings. raid_night_info() resolves it in
-// its existing precedence: a cancelled date has none, an added night's own
-// value then the default, the weekday rule's own value then the default.
+// added night (raid_schedule_exceptions) says heroic, mythic or
+// heroic_into_mythic, or null for the team default in team_schedule_settings.
+// raid_night_info() resolves it in its existing precedence: a cancelled date
+// has none, an added night's own value then the default, the weekday rule's
+// own value then the default. It reports the difficulty kills count at, so a
+// night that moves from Heroic into Mythic comes back as mythic.
 // Officers of the team, guild officers and site admins write the default, as
 // they write the schedule; anyone reads it, as anyone reads the schedule.
 //
@@ -41,6 +43,44 @@ const difficulty = async (q, date) =>
   (await q('select difficulty from public.raid_night_info(1, $1)', [date])).rows[0].difficulty;
 
 describe('raid_night_info() difficulty', () => {
+  it('keeps Heroic into Mythic as picked, on the rule, the added night and the default', async () => {
+    await withTxn(async ({ q }) => {
+      await setDefault(q, 'heroic_into_mythic');
+      await rule(q, { difficulty: 'heroic_into_mythic' });
+      await exception(q, { date: THURSDAY, difficulty: 'heroic_into_mythic' });
+      const stored = await q(
+        `select (select difficulty from public.raid_schedule where team_id = 1) as rule,
+                (select difficulty from public.raid_schedule_exceptions where team_id = 1) as added,
+                (select default_difficulty from public.team_schedule_settings where team_id = 1) as dflt`
+      );
+      expect(stored.rows[0]).toEqual({
+        rule: 'heroic_into_mythic',
+        added: 'heroic_into_mythic',
+        dflt: 'heroic_into_mythic'
+      });
+    });
+  });
+
+  it('reports a weekly night or an added night picked as Heroic into Mythic as mythic', async () => {
+    await withTxn(async ({ q }) => {
+      await setDefault(q, 'heroic');
+      await rule(q, { difficulty: 'heroic_into_mythic' });
+      await exception(q, { date: THURSDAY, difficulty: 'heroic_into_mythic' });
+      expect(await difficulty(q, TUESDAY)).toBe('mythic');
+      expect(await difficulty(q, THURSDAY)).toBe('mythic');
+    });
+  });
+
+  it('reports a night following a Heroic into Mythic default as mythic', async () => {
+    await withTxn(async ({ q }) => {
+      await setDefault(q, 'heroic_into_mythic');
+      await rule(q);
+      await exception(q, { date: THURSDAY });
+      expect(await difficulty(q, TUESDAY)).toBe('mythic');
+      expect(await difficulty(q, THURSDAY)).toBe('mythic');
+    });
+  });
+
   it("returns a weekly night's own pick", async () => {
     await withTxn(async ({ q }) => {
       await setDefault(q, 'heroic');
