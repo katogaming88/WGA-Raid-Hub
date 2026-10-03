@@ -190,6 +190,20 @@ describe('removal_reasons gets a row for every reason written', () => {
     });
   });
 
+  it('clearing the reason of a character still removed goes through and writes no row', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const playerId = await seedPlayer(q, { teamId: team.teamId });
+      await archivePlayer(asUser, team.officer.uid, playerId);
+      await asUser(
+        team.officer.uid,
+        'update public.player_officer_notes set archived_reason = null, archived_reason_detail = null where player_id = $1',
+        [playerId]
+      );
+      expect((await rowsFor(q, team.teamId)).map((r) => r.detail)).toEqual(['Joined another guild']);
+    });
+  });
+
   it('saving an officer note, or clearing a reason, writes no row', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
