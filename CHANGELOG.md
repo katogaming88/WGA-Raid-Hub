@@ -12,6 +12,33 @@ answers to.
 
 ---
 
+## [3.161.0] - 2026-10-02
+
+### Backend
+
+- Taking someone off a team now archives their membership instead of
+  deleting it, so their characters keep the record of whose loot, attendance
+  and BoE finds they were. A new database function, `archive_team_member()`,
+  marks the membership and the person's active characters as archived and
+  records why they left, one of the six reasons the Roster tab offers plus
+  the officer's detail, on each character and in the audit log. No page
+  calls it yet: the Roster page's Archive Member does, once the names work
+  for #1355 lands (#1355).
+- An archived membership no longer counts as a role on its team. The five
+  database functions behind every "what is this person on this team" check
+  skip it (#1355).
+- Only the team leader or a site admin can archive an officer or the team
+  leader. Officers and guild officers archive raiders (#1355).
+- Someone archived who rejoins through the team's invite link comes back as
+  a raider, whatever role they held before (#1355).
+- Team leaders can no longer delete a membership straight from the table.
+  They can still change a role there, but a membership is archived only
+  through `archive_team_member()` and restored only through the invite
+  link: a direct edit of `archived_at` is refused, so every archive carries
+  its characters, reason and audit row (#1355).
+
+---
+
 ## [3.160.0] - 2026-10-02
 
 ### Frontend
