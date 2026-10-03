@@ -1064,7 +1064,7 @@
               These recurring nights drive the raid calendar raiders see (Home widget and the Calendar page) -- add one row per weekly raid night, edit and click <strong>Save</strong> per row. Raiders are auto-marked Present unless benched; an <strong>Optional</strong> night has no automatic Present and everyone must respond instead (#895).<br>
               Use <strong>One-Off Changes</strong> below to cancel a single occurrence of a weekly night, or add an extra night that isn't part of the regular schedule.<br>
               Cancelling or removing a night does not touch any RSVPs raiders already submitted for it -- those rows are left in place but become harmless.<br>
-              Each night says Heroic or Mythic, so the boss lineup can tell which of the week's kills count for it. Set the team's usual difficulty once under <strong>Raid difficulty</strong>; every night follows it unless you pick another for that night. A night that starts on Heroic and moves into Mythic counts as Mythic.
+              Each night says Heroic or Mythic, so the boss lineup can tell which of the week's kills count for it. Set the team's usual difficulty once under <strong>Raid difficulty</strong>; every night follows it unless you pick another for that night. Pick <strong>Heroic into Mythic</strong> for a night that starts on Heroic and pushes into Mythic; it counts as Mythic.
             </div>
             <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:0.85rem;">
               <div>
@@ -1072,7 +1072,8 @@
                 <select id="schedDefaultDifficulty" class="add-player-input" style="font-size:0.97rem;padding:0.3rem 0.5rem;">
                   <option value="">Not set</option>
                   <option value="heroic">Heroic</option>
-                  <option value="mythic">Mythic, or Heroic into Mythic</option>
+                  <option value="mythic">Mythic</option>
+                  <option value="heroic_into_mythic">Heroic into Mythic</option>
                 </select>
               </div>
               <button class="btn btn-muted" id="schedDefaultSaveBtn" onclick="saveScheduleDefaultDifficulty()">Save</button>
@@ -1104,7 +1105,8 @@
                   <select id="schedExcDifficultyInput" class="add-player-input" style="font-size:0.97rem;padding:0.3rem 0.5rem;">
                     <option value="" id="schedExcDifficultyDefault">Team default</option>
                     <option value="heroic">Heroic</option>
-                    <option value="mythic">Mythic, or Heroic into Mythic</option>
+                    <option value="mythic">Mythic</option>
+                    <option value="heroic_into_mythic">Heroic into Mythic</option>
                   </select>
                 </div>
                 <div style="flex:1;min-width:160px;">

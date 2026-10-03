@@ -22,12 +22,13 @@ var SCHEDULE_DEFAULT_DIFFICULTY = null;
 var _schedDefaultUnread = false;
 
 var _SCHED_WEEKDAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-var _SCHED_DIFFICULTY_LABELS = { heroic: 'Heroic', mythic: 'Mythic' };
-// What each select offers: a night that moves from Heroic into Mythic is Mythic.
-var _SCHED_DIFFICULTY_CHOICES = { heroic: 'Heroic', mythic: 'Mythic, or Heroic into Mythic' };
+// Heroic into Mythic is stored as its own choice so it shows as picked;
+// raid_night_info() counts it as Mythic.
+var _SCHED_DIFFICULTIES = ['heroic', 'mythic', 'heroic_into_mythic'];
+var _SCHED_DIFFICULTY_LABELS = { heroic: 'Heroic', mythic: 'Mythic', heroic_into_mythic: 'Heroic into Mythic' };
 
 function _schedDifficultyValue(v) {
-  return v === 'heroic' || v === 'mythic' ? v : null;
+  return _SCHED_DIFFICULTIES.indexOf(v) !== -1 ? v : null;
 }
 
 function _schedDefaultLabel() {
@@ -43,14 +44,14 @@ function _schedResolvedDifficultyLabel(d) {
 
 function _schedDifficultyOptions(selected) {
   var html = '<option value=""' + (selected ? '' : ' selected') + '>' + _esc(_schedDefaultLabel()) + '</option>';
-  ['heroic', 'mythic'].forEach(function (d) {
+  _SCHED_DIFFICULTIES.forEach(function (d) {
     html +=
       '<option value="' +
       d +
       '"' +
       (selected === d ? ' selected' : '') +
       '>' +
-      _SCHED_DIFFICULTY_CHOICES[d] +
+      _SCHED_DIFFICULTY_LABELS[d] +
       '</option>';
   });
   return html;
