@@ -37,11 +37,16 @@ begin
     raise exception 'That membership is not on this team';
   end if;
 
-  -- Ending an officer's or the leader's membership is a role change, which
-  -- belongs to the team leader or a site admin, as in admin_revoke_team_role().
-  if v_role in ('officer', 'team_leader')
+  -- Ending an officer's membership is a role change, which belongs to the team
+  -- leader or a site admin, as in admin_revoke_team_role(). The leader's own is
+  -- a site admin's alone: a team left with no active leader can only be given
+  -- one by a site admin.
+  if v_role = 'team_leader' and not public.is_site_admin() then
+    raise exception 'Only a site admin can archive the team leader';
+  end if;
+  if v_role = 'officer'
      and not (coalesce(public.my_team_role(p_team_id) = 'team_leader', false) or public.is_site_admin()) then
-    raise exception 'Only the team leader or a site admin can archive an officer or the team leader';
+    raise exception 'Only the team leader or a site admin can archive an officer';
   end if;
 
   if v_archived_at is not null then
@@ -52,10 +57,9 @@ begin
     from public.players p
    where p.team_member_id = p_team_member_id and p.archived_at is null;
 
-  -- Logged before the archive, not after: write_audit_log() re-checks the
-  -- caller's own officer status live, and a team leader archiving their own
-  -- membership would otherwise fail that check the instant their own row
-  -- says archived_at is not null, aborting the archive it just did.
+  -- Logged before the archive: write_audit_log() re-checks the caller's own
+  -- officer status live, so it has to run while the caller's rows read as
+  -- they did when the call started.
   perform public.write_audit_log(
     p_team_id, 'team_member_archived', 'team_member', p_team_member_id,
     jsonb_build_object('reason', p_reason, 'detail', p_detail, 'player_ids', to_jsonb(v_player_ids))
