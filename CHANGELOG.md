@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [Unreleased]
+
+### Backend
+
+- Granting a team role to someone who left the team brings them back
+  with that role. Before, the grant refused them, naming a role they no
+  longer held. Taking a role away from someone who left is refused and
+  leaves their record as it is, where before it demoted their archived
+  membership to raider, or deleted it when nothing pointed at it. No page
+  calls either yet; the site admin runs them from the setup guide
+  (#1403).
+
 ## [3.166.2] - 2026-10-04
 
 ### Project

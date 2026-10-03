@@ -935,11 +935,15 @@ Your own `auth_user_id` is the `sub`: `select auth_user_id from site_admins`.
 Re-running the grant for someone who already has a role on the team is always refused, and says so
 when nobody has signed in with that Discord id yet. The grant refuses to *change* a role that is
 already set, so a promotion or demotion goes through the officer dashboard, not this call.
+Someone whose membership was archived (they left the team) holds no role, so granting them one
+brings them back with it (#1403). Their characters stay archived until an officer re-adds them on
+the Roster tab.
 
 To remove a role, `admin_revoke_team_role(team_id, discord_id)`. It demotes to `raider` when that
-person has claimed a character on the team and deletes the row only when nothing points at it,
-because the foreign key from `players` is `ON DELETE SET NULL` and a plain delete would silently
-unclaim their character.
+person has claimed a character on the team or has a removal reason on record, and deletes the row
+only when nothing points at it, because the foreign key from `players` is `ON DELETE SET NULL` and
+a plain delete would silently unclaim their character. Someone archived off the team is refused,
+as someone never on it is, and their membership is left as it is.
 
 Direct SQL remains the fallback if the RPC is ever unavailable. Name the Discord id and the role;
 the trigger fills `person_id` and `auth_user_id` from the person, and skipping the RPC also skips

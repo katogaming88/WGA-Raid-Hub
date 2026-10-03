@@ -72,6 +72,21 @@ of scope (#959's territory).
 
 ---
 
+## 2026-10-03 -- a role grant brings someone archived back with that role, and a revoke refuses them (#1403)
+
+Shipped: 20261003154127_role_grant_restores_archived_member.sql
+
+`admin_grant_team_role()` and `admin_revoke_team_role()` read a membership without asking whether #1355 had archived it. The grant refused someone archived with "already has the raider role on this team", naming a role that no longer counted. The revoke took the archived row for a role to remove: it demoted it to raider (always, since #1427 gives every archived membership a removal reason) or deleted it when nothing pointed at it. No page calls either; the site admin runs them from `docs/supabase-setup-guide.md`.
+
+- **The grant brings them back with the granted role.** A grant is the team leader's or a site admin's action, so by the rule settled on #1355 (any action of an officer's or above brings an archived member back) it restores the membership, with the role it grants rather than the one the row held. A current membership is still refused: a sitting role is never rewritten by a grant.
+- **Inline, in the row the grant already locks**, not through `restore_team_member()`. That function restores as a raider by design, and a role parameter on it would let any officer bring someone back as an officer or team leader; the grant's own gate is already the gate for setting a role. Two grants racing on one archived row run one after the other on that lock, and the second finds a current membership and is refused. The lock order against other paths stays a review item, as for #1428.
+- **Logged twice**, as the other ways back are: `team_member_restored` naming the role the row held, and `team_role_granted` with `restored: true` in its detail.
+- **Their characters stay archived**, and no removal reason is touched. An officer re-adds the characters they play, which `restore_player()` (#1133) does.
+- **Accepted:** a mistyped Discord id that belongs to someone archived now brings them back with a role instead of being refused. A mistyped id for someone never on the team already created a membership, so the risk is the same, and both entries say what happened; Archive Member undoes it.
+- **The revoke refuses an archived membership** with its existing "does not have a role on this team" answer and leaves the row as it is. Someone archived holds no role to take, and the delete would have erased the record archiving exists to keep.
+
+[Full discussion -> #1403](https://github.com/katogaming88/WGA-Raid-Hub/issues/1403).
+
 ## 2026-10-03 -- a declined main swap stays declined (#1430)
 
 Shipped: 20261003152246_declined_main_swap_stays_declined.sql
@@ -243,7 +258,7 @@ The codebase already had a rule against exactly this: `admin_revoke_team_role()`
 - **Team leaders lose direct DELETE on `team_members`.** The old single `ALL` write policy let a team leader delete a membership straight from the table, skipping `admin_revoke_team_role()`'s check entirely -- and would have kept skipping `archive_team_member()`'s "archive, don't delete" rule the same way. Split into separate INSERT and UPDATE policies (Postgres policies don't take a multi-command list); nothing grants table-level DELETE to anyone now. The UPDATE policy would still let a team leader or a site admin set or clear `archived_at` directly, skipping the characters, the reason and the audit row `archive_team_member()` writes, so a trigger (`team_members_archived_at_through_functions`) refuses a direct change to that column (2026-10-02): the two database functions are the only ways a membership ends or comes back.
 - **An archive records why they left, the way the Roster tab's removal does.** `archive_team_member()` takes a reason (one of the six `archive_player()` accepts, #476) and a detail, writes them to each character it archives (the two archive columns only, so an officer note stays) and to the audit entry with the archived character ids, since a member with no characters has no notes row to hold them. Since #1427 the membership's reason also gets a row of its own in `removal_reasons` (entry above). Without it, a departure through Archive Member would leave the retention record blank (#1382 review). A second archive now returns before anything is written or logged.
 - **`write_audit_log()` is called before the archive, not after,** inside `archive_team_member()` -- it re-checks the caller's own officer status live, and an officer archiving their own membership failed that check the instant their own row said `archived_at is not null`, aborting the archive it had just done. Found by a test for exactly that case, not by Rex's review. Nobody can archive their own officer or leader membership since the rule above, and the order stays.
-- **Not changed:** `admin_revoke_team_role()`'s own delete branch (a memberless grant with zero characters) still deletes outright; Rex's review didn't ask for that to change. Since #1427 it demotes instead when a removal reason points at the membership (entry above). "Remove from Guild" (archiving every membership a person has across the guild, not just one team) is tracked as #1379.
+- **Not changed:** `admin_revoke_team_role()`'s own delete branch (a memberless grant with zero characters) still deletes outright; Rex's review didn't ask for that to change. Since #1427 it demotes instead when a removal reason points at the membership (entry above), and since #1403 it refuses an archived membership outright (entry above). "Remove from Guild" (archiving every membership a person has across the guild, not just one team) is tracked as #1379.
 
 [Full discussion -> #1355](https://github.com/katogaming88/WGA-Raid-Hub/issues/1355#issuecomment-5863645131) (Rex's review comment).
 
