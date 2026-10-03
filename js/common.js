@@ -380,7 +380,10 @@ function fetchBoeAccess(session) {
     var uid = (session.user && session.user.id) || null;
     if (!uid) return Promise.resolve([]);
     // team-read-guard: the caller's own membership rows, at most one per team.
-    return Promise.resolve(supabaseClient.from('team_members').select('team_id, role').eq('auth_user_id', uid)).then(
+    // An archived membership is not a role on its team (#1400).
+    return Promise.resolve(
+      supabaseClient.from('team_members').select('team_id, role').eq('auth_user_id', uid).is('archived_at', null)
+    ).then(
       function (result) {
         if (!result || result.error || !result.data) return [];
         return result.data

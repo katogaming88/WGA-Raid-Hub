@@ -319,11 +319,13 @@ function findClaimElsewhere(userId) {
 }
 
 function resolveDiscordSession(session) {
+  // An archived membership is not a place on this team (#1400).
   return supabaseClient
     .from('team_members')
     .select('id, role, name_realm')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .eq('auth_user_id', session.user.id)
+    .is('archived_at', null)
     .maybeSingle()
     .then(function (memberResult) {
       var member = memberResult.data;
