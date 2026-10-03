@@ -419,6 +419,17 @@ describe('a waiting main swap is cancelled when its character leaves the roster'
     });
   });
 
+  // Re-adding a character already on the roster writes archived_at = null
+  // over null; only a character going from on the roster to off it counts.
+  it("a signup that brings in the raider's current character leaves the swap waiting", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { team, raiderPlayer, id } = await swapOnOwnTeam(q, asUser);
+      const signupId = await seedSignup(q, { teamId: team.teamId, nameRealm: await nameOf(q, raiderPlayer) });
+      await asUser(team.officer.uid, 'select public.add_signup_to_roster($1, $2)', [signupId, false]);
+      expect((await requestOf(q, id)).status).toBe('pending');
+    });
+  });
+
   it('bringing the member back leaves it cancelled', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { team, id } = await swapOnOwnTeam(q, asUser);
