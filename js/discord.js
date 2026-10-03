@@ -91,7 +91,7 @@ function renderDiscordNav(session) {
         if (sel) sel.value = firstName;
       };
       dd.appendChild(profileBtn);
-    } else if (currentSession && !currentSession.nameRealm) {
+    } else if (currentSession && offersClaimInMenu(currentSession)) {
       var claimBtn = document.createElement('button');
       claimBtn.textContent = 'Claim your character';
       claimBtn.onclick = function () {
@@ -524,6 +524,13 @@ function initDiscordLogin() {
 // archived off this team (membershipEnded, #1401), where a claim is refused.
 function offersClaimOnSignIn(mapped) {
   return !mapped.nameRealm && !mapped.claimedElsewhere && !mapped.dismissedNoCharacter && !mapped.membershipEnded;
+}
+
+// Whether the account menu offers "Claim your character": a deliberate pick,
+// so it stays for a dismissed prompt or a claim on another team, but not for a
+// membership an officer archived here, where a claim is refused (#1401).
+function offersClaimInMenu(session) {
+  return !session.nameRealm && !session.membershipEnded;
 }
 
 function showDiscordClaimModal(session) {
