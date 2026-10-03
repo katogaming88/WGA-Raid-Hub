@@ -12,6 +12,26 @@ answers to.
 
 ---
 
+## [3.165.0] - 2026-10-03
+
+### Backend
+
+- The reason an officer gives for removing someone is never lost now.
+  Before, a character kept only its latest reason: re-adding them wiped
+  it, and removing them again wrote over it. Every reason now gets a row
+  of its own in a new table, `removal_reasons`, whichever way it was
+  written, and so does the reason for ending someone's membership. Nobody
+  can change or delete a row, and a character with a reason on record
+  cannot be deleted on its own. Writing the same reason again adds
+  nothing, and correcting one keeps both under the same removal. The 13
+  reasons recorded since 2026-08-28 are copied in from the audit log,
+  including one a re-add had already wiped. Revoking someone's team role
+  keeps them on the team as a raider when a reason points at their
+  membership, as it already does when a character does. Nothing shows the
+  table yet; the Roster page will (#1427).
+
+---
+
 ## [3.164.0] - 2026-10-03
 
 ### Frontend
