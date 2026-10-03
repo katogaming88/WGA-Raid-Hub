@@ -16,6 +16,14 @@
 -- unchanged. Both hold the membership row for share from the check to the
 -- link, so an archive committing in between cannot leave a live character
 -- on an archived membership.
+--
+-- Closing the ways in does not make that state impossible: the Roster tab's
+-- re-add un-archives a character with a direct write and leaves its link on
+-- the archived membership, until #1133 or #1402 restores it. So the three
+-- reads that decide what a person owns on a team, is_own_player(),
+-- my_active_player_ids() and request_main_swap()'s roster lookup, skip an
+-- archived membership too, and the person owns nothing there however the
+-- character came back.
 
 CREATE OR REPLACE FUNCTION public.claim_character(p_team_id integer, p_name_realm text)
  RETURNS TABLE(name_realm text, role text)
@@ -164,3 +172,110 @@ begin
   end loop;
 end;
 $function$;
+
+CREATE OR REPLACE FUNCTION public.is_own_player(p_player_id integer)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select exists (
+    select 1
+    from players p
+    join team_members tm on tm.id = p.team_member_id
+    where p.id = p_player_id
+      and p.archived_at is null
+      and tm.archived_at is null
+      and tm.person_id = my_person_id()
+  );
+$function$;
+
+CREATE OR REPLACE FUNCTION public.my_active_player_ids()
+ RETURNS integer[]
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select coalesce(array_agg(p.id), '{}')
+    from players p
+    join team_members tm on tm.id = p.team_member_id
+   where tm.person_id = my_person_id()
+     and p.archived_at is null
+     and tm.archived_at is null;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.request_main_swap(p_team_id integer, p_character_id integer, p_class_spec_id integer, p_note text DEFAULT NULL::text)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_person_id integer := public.my_person_id();
+  v_character public.characters%rowtype;
+  v_from_player_id integer;
+  v_spec_class text;
+  v_request_id integer;
+begin
+  if v_person_id is null then
+    raise exception 'Not signed in';
+  end if;
+
+  select * into v_character from public.characters
+   where id = p_character_id and person_id = v_person_id;
+  if not found then
+    raise exception 'That character is not on your account';
+  end if;
+
+  select p.id into v_from_player_id
+    from public.players p
+    join public.team_members tm on tm.id = p.team_member_id
+   where p.team_id = p_team_id
+     and p.archived_at is null
+     and tm.archived_at is null
+     and tm.person_id = v_person_id
+   order by p.id
+   limit 1;
+  if v_from_player_id is null then
+    raise exception 'You have no character on this team''s roster';
+  end if;
+
+  if exists (
+    select 1 from public.players p
+     where p.team_id = p_team_id
+       and p.archived_at is null
+       and p.name_realm_key = v_character.name_realm_key
+  ) then
+    raise exception '% is already on this roster', v_character.name_realm;
+  end if;
+
+  select cs.class into v_spec_class from public.classes_specs cs where cs.id = p_class_spec_id;
+  if v_spec_class is null then
+    raise exception 'Unknown spec';
+  end if;
+  if v_character.class_name is not null and v_spec_class is distinct from v_character.class_name then
+    raise exception '% is a %, not a %', v_character.name, v_character.class_name, v_spec_class;
+  end if;
+
+  if exists (
+    select 1 from public.main_swap_requests r
+     where r.team_id = p_team_id and r.person_id = v_person_id and r.status = 'pending'
+  ) then
+    raise exception 'You already have a main swap waiting for an officer';
+  end if;
+
+  insert into public.main_swap_requests (
+    team_id, person_id, from_player_id, character_id, name_realm, class_spec_id, note
+  )
+  values (
+    p_team_id, v_person_id, v_from_player_id, p_character_id,
+    v_character.name_realm, p_class_spec_id, nullif(btrim(p_note), '')
+  )
+  returning id into v_request_id;
+
+  return v_request_id;
+end;
+$function$;
+
+comment on column public.team_members.archived_at is
+  'Set when an officer archives this membership (archive_team_member, #1355) for someone who left -- never deleted, so the account''s history keeps pointing at something. Cleared by team_invite_link_join() if they come back. Neither changes it any other way: a direct update of the column is refused (team_members_archived_at_through_functions). Every "what is this person on this team" predicate (my_team_role, my_officer_team_ids, my_leader_team_ids, is_any_team_officer, is_team_leader_anywhere) skips an archived row, and so does every "what does this person own there" read (is_own_player, my_active_player_ids, #1401); my_player_ids() and earlier_characters() still read it, since that is the history.';
