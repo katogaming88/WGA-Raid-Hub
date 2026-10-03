@@ -88,6 +88,18 @@ begin
     return null;
   end if;
 
+  -- Reached only by a swap left waiting without the trigger (a restore with
+  -- triggers off): the archive closes every other one first.
+  if v_from.archived_at is not null then
+    raise exception '% is no longer on the roster', v_from.name_realm;
+  end if;
+
+  -- The old character already renamed into the one asked for (the Roster
+  -- tab's rename keeps the row): approving would archive the row it approved.
+  if v_player_id = v_request.from_player_id then
+    raise exception '% is already on the roster as their character', v_request.name_realm;
+  end if;
+
   -- Approved before the old character is archived, so the trigger that cancels
   -- a waiting swap when its character leaves the roster finds this one closed.
   update public.main_swap_requests

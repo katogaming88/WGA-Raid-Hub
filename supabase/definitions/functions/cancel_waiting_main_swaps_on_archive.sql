@@ -11,26 +11,30 @@ AS $function$
 declare
   v_membership_ended boolean;
 begin
-  -- The character they asked for is on the roster now: the swap was done
-  -- another way, by a signup main swap or by hand.
-  update main_swap_requests r
-     set status = 'approved',
-         reviewed_at = now(),
-         reviewed_by = my_person_id(),
-         officer_note = 'Already on the roster',
-         approved_player_id = a.id
-    from players a
-   where r.from_player_id = new.id
-     and r.team_id = new.team_id
-     and r.status = 'pending'
-     and a.team_id = new.team_id
-     and a.name_realm_key = lower(replace(r.name_realm, ' ', ''))
-     and a.archived_at is null;
-
   select tm.archived_at is not null into v_membership_ended
     from team_members tm
    where tm.id = new.team_member_id;
   v_membership_ended := coalesce(v_membership_ended, false);
+
+  -- The character they asked for is on the roster now, unlinked or theirs:
+  -- the swap was done another way, by a signup main swap or by hand. Not
+  -- for someone who has left.
+  if not v_membership_ended then
+    update main_swap_requests r
+       set status = 'approved',
+           reviewed_at = now(),
+           reviewed_by = my_person_id(),
+           officer_note = 'Already on the roster',
+           approved_player_id = a.id
+      from players a
+     where r.from_player_id = new.id
+       and r.team_id = new.team_id
+       and r.status = 'pending'
+       and a.team_id = new.team_id
+       and a.name_realm_key = lower(replace(r.name_realm, ' ', ''))
+       and a.archived_at is null
+       and (a.team_member_id is null or a.team_member_id = new.team_member_id);
+  end if;
 
   with cancelled as (
     update main_swap_requests
