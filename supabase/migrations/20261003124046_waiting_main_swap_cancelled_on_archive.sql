@@ -10,9 +10,10 @@
 -- direct update. A trigger on players.archived_at covers all four, the shape
 -- #1392 used for the live priority lists.
 --
--- A swap to a character that is on the roster by then was done another way
--- (a signup main swap to the same alt, or by hand), so it closes as approved
--- with no notification. Any other waiting swap is cancelled with the acting
+-- A swap to a character that is on the roster by then, unlinked or the
+-- raider's own, was done another way (a signup main swap to the same alt, or
+-- by hand), so it closes as approved with no notification, unless the
+-- membership was archived. Any other waiting swap is cancelled with the acting
 -- officer as reviewer and a note saying why: "Membership ended" when the
 -- character's membership is archived (archive_team_member() archives the
 -- membership before its characters), with no notification, since they left;
@@ -28,7 +29,14 @@
 -- on the membership. The review takes the membership for share, then the new
 -- roster row, then the old character, then the request, so it waits behind
 -- any of them instead of deadlocking. request_main_swap() holds the character
--- it checked until the request is saved.
+-- it checked until the request is saved. (Remove or a signup main swap and
+-- Archive Member of the same raider at the same moment can still deadlock
+-- with each other: their key share on the membership comes after the
+-- character. That predates this change.)
+--
+-- The review still refuses a swap waiting from a character already off the
+-- roster, which only a restore with triggers off could leave, and a swap the
+-- old character was already renamed into.
 
 create or replace function public.cancel_waiting_main_swaps_on_archive() returns trigger
 language plpgsql security definer set search_path to 'public'
@@ -36,26 +44,30 @@ as $$
 declare
   v_membership_ended boolean;
 begin
-  -- The character they asked for is on the roster now: the swap was done
-  -- another way, by a signup main swap or by hand.
-  update main_swap_requests r
-     set status = 'approved',
-         reviewed_at = now(),
-         reviewed_by = my_person_id(),
-         officer_note = 'Already on the roster',
-         approved_player_id = a.id
-    from players a
-   where r.from_player_id = new.id
-     and r.team_id = new.team_id
-     and r.status = 'pending'
-     and a.team_id = new.team_id
-     and a.name_realm_key = lower(replace(r.name_realm, ' ', ''))
-     and a.archived_at is null;
-
   select tm.archived_at is not null into v_membership_ended
     from team_members tm
    where tm.id = new.team_member_id;
   v_membership_ended := coalesce(v_membership_ended, false);
+
+  -- The character they asked for is on the roster now, unlinked or theirs:
+  -- the swap was done another way, by a signup main swap or by hand. Not
+  -- for someone who has left.
+  if not v_membership_ended then
+    update main_swap_requests r
+       set status = 'approved',
+           reviewed_at = now(),
+           reviewed_by = my_person_id(),
+           officer_note = 'Already on the roster',
+           approved_player_id = a.id
+      from players a
+     where r.from_player_id = new.id
+       and r.team_id = new.team_id
+       and r.status = 'pending'
+       and a.team_id = new.team_id
+       and a.name_realm_key = lower(replace(r.name_realm, ' ', ''))
+       and a.archived_at is null
+       and (a.team_member_id is null or a.team_member_id = new.team_member_id);
+  end if;
 
   with cancelled as (
     update main_swap_requests
@@ -88,8 +100,8 @@ create trigger players_cancel_waiting_main_swaps_on_archive
   execute function public.cancel_waiting_main_swaps_on_archive();
 
 -- A swap already waiting from a character off the roster (none on
--- production, 2026-10-03) is closed the way the trigger would have, since the
--- review no longer refuses one.
+-- production, 2026-10-03) is cancelled, with no notification, so none is left
+-- that only a Decline could clear.
 update public.main_swap_requests r
    set status = 'cancelled',
        reviewed_at = now(),
@@ -184,6 +196,18 @@ begin
             concat('Your main swap to ', v_request.name_realm, ' was declined.',
                    case when v_note is not null then ' ' || v_note end));
     return null;
+  end if;
+
+  -- Reached only by a swap left waiting without the trigger (a restore with
+  -- triggers off): the archive closes every other one first.
+  if v_from.archived_at is not null then
+    raise exception '% is no longer on the roster', v_from.name_realm;
+  end if;
+
+  -- The old character already renamed into the one asked for (the Roster
+  -- tab's rename keeps the row): approving would archive the row it approved.
+  if v_player_id = v_request.from_player_id then
+    raise exception '% is already on the roster as their character', v_request.name_realm;
   end if;
 
   -- Approved before the old character is archived, so the trigger that cancels
