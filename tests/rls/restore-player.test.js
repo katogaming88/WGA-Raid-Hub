@@ -46,8 +46,14 @@ const auditFor = async (q, teamId) =>
     )
   ).rows;
 
-const twoSpecs = async (q) =>
-  (await q('select id from public.classes_specs order by id limit 2')).rows.map((r) => r.id);
+// The seed holds one spec (id 1), so the second is minted for the case.
+const twoSpecs = async (q) => {
+  const { rows } = await q(
+    "insert into public.classes_specs (class, spec, role) values ('Seed', $1, 'Melee') returning id",
+    [`Spec${tag()}`]
+  );
+  return [1, rows[0].id];
+};
 
 const specLabel = async (q, id) =>
   (await q("select concat_ws(' ', class, spec, role) as label from public.classes_specs where id = $1", [id])).rows[0]
