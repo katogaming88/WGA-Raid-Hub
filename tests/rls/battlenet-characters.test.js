@@ -166,6 +166,47 @@ describe('link_battlenet_roster_characters()', () => {
   });
 });
 
+describe('link_battlenet_roster_characters() and an archived membership (#1401)', () => {
+  const archiveRaider = (q) => q('update public.team_members set archived_at = now() where id = 3');
+  const linkOf = async (q, playerId) =>
+    (await q('select team_member_id from public.players where id = $1', [playerId])).rows[0].team_member_id;
+
+  it('skips a team the person was archived off with its own outcome, and links the rest', async () => {
+    await withTxn(async ({ q }) => {
+      // RAIDER_T1 is team_members id 3 on team 1, and on no other team.
+      const person = await personOf(q, RAIDER_T1);
+      await archiveRaider(q);
+      const onEnded = await newPlayer(q, 1, 'Comeback-Illidan');
+      const elsewhere = await newPlayer(q, 2, 'Elsewhere-Illidan');
+
+      const rows = await link(q, person, [
+        { name: 'Comeback', realm: 'Illidan' },
+        { name: 'Elsewhere', realm: 'Illidan' }
+      ]);
+      expect(rows.map((r) => [r.player_id, r.outcome])).toEqual([
+        [onEnded, 'membership_ended'],
+        [elsewhere, 'linked']
+      ]);
+      expect(await linkOf(q, onEnded)).toBeNull();
+      expect((await q('select archived_at from public.team_members where id = 3')).rows[0].archived_at).not.toBeNull();
+    });
+  });
+
+  it('says a character still on an archived membership has ended rather than being theirs', async () => {
+    await withTxn(async ({ q }) => {
+      const person = await personOf(q, RAIDER_T1);
+      // Left on the membership by a re-add before #1133 or #1402 restores it.
+      const stillLinked = await newPlayer(q, 1, 'Readded-Illidan', 3);
+      await archiveRaider(q);
+
+      expect(await link(q, person, [{ name: 'Readded', realm: 'Illidan' }])).toEqual([
+        { player_id: stillLinked, team_id: 1, name_realm: 'Readded-Illidan', outcome: 'membership_ended' }
+      ]);
+      expect(await linkOf(q, stillLinked)).toBe(3);
+    });
+  });
+});
+
 describe('save_battlenet_characters()', () => {
   it('saves the picked characters and replaces an earlier pick', async () => {
     await withTxn(async ({ q }) => {

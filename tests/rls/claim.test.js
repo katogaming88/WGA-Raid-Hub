@@ -315,4 +315,36 @@ describe('on_auth_user_created backfills auth_user_id (trigger capture)', () => 
   });
 });
 
+// #1401: an archived membership comes back only through an officer (decided on
+// #1355, 2026-10-02), so a claim does not reopen it. The check is per team.
+describe('claim_character and an archived membership (#1401)', () => {
+  const ENDED = /Your membership on this team has ended\. Ask one of its officers to add you back\./;
+  const archiveRaider = (q) => q('update public.team_members set archived_at = now() where id = 3');
+
+  it('refuses someone archived off the team, and links nothing', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const playerId = await seedPlayer(q, { teamId: 1, nameRealm: 'Comeback-Illidan' });
+      await archiveRaider(q);
+      await expect(claim(asUser, RAIDER_T1, 1, 'Comeback-Illidan')).rejects.toThrow(ENDED);
+      expect(await linkOf(q, playerId)).toBeNull();
+      expect((await q('select archived_at from public.team_members where id = 3')).rows[0].archived_at).not.toBeNull();
+    });
+  });
+
+  it('still lets them claim on a team they were not archived off', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const playerId = await seedPlayer(q, { teamId: 2, nameRealm: 'Elsewhere-Illidan' });
+      await archiveRaider(q);
+      await claim(asUser, RAIDER_T1, 2, 'Elsewhere-Illidan');
+      const member = (
+        await q('select id, role, archived_at from public.team_members where team_id = 2 and auth_user_id = $1', [
+          RAIDER_T1
+        ])
+      ).rows[0];
+      expect(member).toMatchObject({ role: 'raider', archived_at: null });
+      expect(await linkOf(q, playerId)).toBe(member.id);
+    });
+  });
+});
+
 afterAll(() => pool.end());
