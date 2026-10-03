@@ -377,6 +377,33 @@ describe('a waiting main swap is cancelled when its character leaves the roster'
     });
   });
 
+  it('a signup main swap to the alt they asked for closes it as approved, with no note to the raider', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { team, raiderPlayer, nameRealm, id } = await swapOnOwnTeam(q, asUser);
+      const signupId = await seedSignup(q, { teamId: team.teamId, nameRealm });
+      const playerId = (
+        await asUser(team.officer.uid, 'select public.add_signup_to_roster($1, $2, $3) as player_id', [
+          signupId,
+          false,
+          raiderPlayer
+        ])
+      ).rows[0].player_id;
+      expect(await requestOf(q, id)).toMatchObject({ status: 'approved', officer_note: 'Already on the roster' });
+      expect(await statusOf(q, id)).toEqual({ status: 'approved', approved_player_id: playerId });
+      expect(await noticesOn(q, [raiderPlayer, playerId])).toEqual([]);
+    });
+  });
+
+  it('removing a character nobody holds any more cancels its swap without a note', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { team, raiderPlayer, id } = await swapOnOwnTeam(q, asUser);
+      await q('update public.players set team_member_id = null where id = $1', [raiderPlayer]);
+      await removePlayer(asUser, team.officer.uid, raiderPlayer);
+      expect(await requestOf(q, id)).toMatchObject({ status: 'cancelled', officer_note: 'Character removed' });
+      expect(await noticesOn(q, [raiderPlayer])).toEqual([]);
+    });
+  });
+
   it('approving it archives the old character without cancelling it, and sends only the approval', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { team, raiderPlayer, id } = await swapOnOwnTeam(q, asUser);
