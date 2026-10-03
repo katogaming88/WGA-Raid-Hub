@@ -197,7 +197,7 @@ function fakePage() {
     addPlayerRole: el({ value: 'Ranged' }),
     addPlayerTrial: el(),
     addPlayerJoinDate: el({ value: '2026-10-03' }),
-    addPlayerError: el({ style: { display: 'none' } }),
+    addPlayerError: el(),
     addPlayerRealmDropdown: el(),
     addPlayerModal: el(),
     rosterAddStatus: el()
@@ -210,34 +210,49 @@ function fakePage() {
   return { els, button, document };
 }
 
+// js/common.js's own validateCharName and normalise, handed over rather than
+// stood in for; loaded once, since the whole file runs to reach them.
+const COMMON = loadCommonJs(quietConsole);
+
 describe('telling the officer how the add went (#1133)', () => {
-  // validateCharName and normalise are js/common.js's own, handed over rather
-  // than stood in for; the dashboard rebuild is officer.js's and not under test.
-  function submit(respond) {
+  // The dashboard rebuild (officer.js) and the reload (common.js) are counted,
+  // not run.
+  function loadPage(respond) {
     const { client } = makeClient(respond);
     const page = fakePage();
     const { sandbox } = loadSandbox(client, page.document);
-    const common = loadCommonJs(quietConsole);
-    sandbox.validateCharName = common.validateCharName;
-    sandbox.normalise = common.normalise;
+    sandbox.validateCharName = COMMON.validateCharName;
+    sandbox.normalise = COMMON.normalise;
     sandbox.DATA = { roster: [] };
-    sandbox.buildOfficerDashboard = () => {};
-    sandbox.submitAddPlayer();
-    return page;
+    page.rebuilds = 0;
+    page.reloads = 0;
+    sandbox.buildOfficerDashboard = () => {
+      page.rebuilds += 1;
+    };
+    sandbox.loadData = () => {
+      page.reloads += 1;
+    };
+    return { sandbox, page };
+  }
+
+  function submit(respond) {
+    const loaded = loadPage(respond);
+    loaded.sandbox.submitAddPlayer();
+    return loaded;
   }
 
   it('says a brand-new name was added', async () => {
-    const page = submit(respondWith({ insert: { data: { id: 77 }, error: null } }));
+    const { page } = submit(respondWith({ insert: { data: { id: 77 }, error: null } }));
     await vi.waitFor(() => expect(page.els.rosterAddStatus.textContent).toBe('Back-Illidan was added to the roster.'));
   });
 
   it('says someone removed earlier is back', async () => {
-    const page = submit(respondWith({ existing: REMOVED }));
+    const { page } = submit(respondWith({ existing: REMOVED }));
     await vi.waitFor(() => expect(page.els.rosterAddStatus.textContent).toBe('Back-Illidan is back on the roster.'));
   });
 
   it('says when their team membership came back too', async () => {
-    const page = submit(respondWith({ existing: REMOVED, restore: { data: true, error: null } }));
+    const { page } = submit(respondWith({ existing: REMOVED, restore: { data: true, error: null } }));
     await vi.waitFor(() =>
       expect(page.els.rosterAddStatus.textContent).toBe(
         'Back-Illidan is back on the roster, and their team membership is restored, as a raider.'
@@ -247,13 +262,46 @@ describe('telling the officer how the add went (#1133)', () => {
 
   it('shows why it failed in the form, and says nothing on the roster', async () => {
     const restore = { data: null, error: { message: 'Back-Illidan is already on the roster' } };
-    const page = submit(respondWith({ existing: REMOVED, restore }));
+    const { page } = submit(respondWith({ existing: REMOVED, restore }));
     await vi.waitFor(() =>
       expect(page.els.addPlayerError.textContent).toBe('Failed to add player: Back-Illidan is already on the roster')
     );
-    expect(page.els.addPlayerError.style.display).toBe('');
+    expect(page.els.addPlayerError.style.display).not.toBe('none');
     expect(page.button.disabled).toBe(false);
     expect(page.els.rosterAddStatus.textContent).toBe('');
+  });
+
+  it('clears an earlier message when the button is pressed again', async () => {
+    const { sandbox, page } = submit(respondWith({ insert: { data: { id: 77 }, error: null } }));
+    await vi.waitFor(() => expect(page.els.rosterAddStatus.textContent).toBe('Back-Illidan was added to the roster.'));
+    // The same name again: the form refuses it before any call.
+    sandbox.submitAddPlayer();
+    expect(page.els.addPlayerError.textContent).toBe('Back-Illidan is already on the roster.');
+    expect(page.els.rosterAddStatus.textContent).toBe('');
+  });
+
+  it('adds a brand-new name to the roster from the form, with no reload', async () => {
+    const { sandbox, page } = submit(respondWith({ insert: { data: { id: 77 }, error: null } }));
+    await vi.waitFor(() => expect(page.rebuilds).toBe(1));
+    expect(page.reloads).toBe(0);
+    expect(sandbox.DATA.roster.map((p) => [p.id, p.nameRealm])).toEqual([[77, 'Back-Illidan']]);
+  });
+
+  // A re-add keeps what the form left blank and everything the form does not
+  // show, so the form's values are not the row.
+  it('reloads the roster after a re-add instead of showing the form as the row', async () => {
+    const { sandbox, page } = submit(respondWith({ existing: REMOVED }));
+    await vi.waitFor(() => expect(page.reloads).toBe(1));
+    expect(sandbox.DATA.roster).toEqual([]);
+  });
+
+  it('still says how it went when the roster rebuild fails', async () => {
+    const { sandbox, page } = loadPage(respondWith({ insert: { data: { id: 77 }, error: null } }));
+    sandbox.buildOfficerDashboard = () => {
+      throw new Error('rebuild failed');
+    };
+    sandbox.submitAddPlayer();
+    await vi.waitFor(() => expect(page.els.rosterAddStatus.textContent).toBe('Back-Illidan was added to the roster.'));
   });
 });
 
@@ -265,8 +313,12 @@ describe('officer.html announces how the add went (#1133)', () => {
     expect(tagWithId('rosterAddStatus')).toContain('role="status"');
   });
 
-  it("reads out the form's error when an add fails", () => {
-    expect(tagWithId('addPlayerError')).toContain('role="alert"');
+  // An alert written while its element is hidden is not reliably read out, so
+  // the element stays rendered and only its text changes.
+  it("reads out the form's error when an add fails, from an element that stays rendered", () => {
+    const tag = tagWithId('addPlayerError');
+    expect(tag).toContain('role="alert"');
+    expect(tag).not.toContain('display:none');
   });
 });
 
