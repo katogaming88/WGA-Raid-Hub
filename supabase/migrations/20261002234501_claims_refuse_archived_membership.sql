@@ -13,7 +13,9 @@
 -- reports the team's characters as membership_ended and links nothing,
 -- including a character still linked to the archived membership, which it
 -- used to call already_yours. A claim or import on any other team is
--- unchanged.
+-- unchanged. Both hold the membership row for share from the check to the
+-- link, so an archive committing in between cannot leave a live character
+-- on an archived membership.
 
 CREATE OR REPLACE FUNCTION public.claim_character(p_team_id integer, p_name_realm text)
  RETURNS TABLE(name_realm text, role text)
@@ -43,9 +45,13 @@ begin
     raise exception 'Character not found on roster';
   end if;
 
+  -- for share: archive_team_member() locks this row before it reads which
+  -- characters to sweep, so the check and the link below land wholly before
+  -- or wholly after an archive, never in between (#1401).
   select tm.id, tm.role, tm.archived_at into v_member_id, v_member_role, v_member_archived_at
   from public.team_members tm
-  where tm.team_id = p_team_id and tm.person_id = public.my_person_id();
+  where tm.team_id = p_team_id and tm.person_id = public.my_person_id()
+  for share;
 
   -- An archived membership comes back only through an officer (#1401).
   if v_member_archived_at is not null then
@@ -124,9 +130,12 @@ begin
       continue;
     end if;
 
+    -- for share, as claim_character() holds it: an archive cannot slip in
+    -- between this check and the link (#1401).
     select tm.id, tm.archived_at into v_member_id, v_member_archived_at
       from team_members tm
-     where tm.team_id = v_row.team_id and tm.person_id = p_person_id;
+     where tm.team_id = v_row.team_id and tm.person_id = p_person_id
+       for share;
 
     if v_member_archived_at is not null then
       outcome := 'membership_ended';

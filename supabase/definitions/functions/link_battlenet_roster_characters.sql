@@ -44,9 +44,12 @@ begin
       continue;
     end if;
 
+    -- for share, as claim_character() holds it: an archive cannot slip in
+    -- between this check and the link (#1401).
     select tm.id, tm.archived_at into v_member_id, v_member_archived_at
       from team_members tm
-     where tm.team_id = v_row.team_id and tm.person_id = p_person_id;
+     where tm.team_id = v_row.team_id and tm.person_id = p_person_id
+       for share;
 
     if v_member_archived_at is not null then
       outcome := 'membership_ended';

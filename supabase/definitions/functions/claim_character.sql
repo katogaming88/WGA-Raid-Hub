@@ -30,9 +30,13 @@ begin
     raise exception 'Character not found on roster';
   end if;
 
+  -- for share: archive_team_member() locks this row before it reads which
+  -- characters to sweep, so the check and the link below land wholly before
+  -- or wholly after an archive, never in between (#1401).
   select tm.id, tm.role, tm.archived_at into v_member_id, v_member_role, v_member_archived_at
   from public.team_members tm
-  where tm.team_id = p_team_id and tm.person_id = public.my_person_id();
+  where tm.team_id = p_team_id and tm.person_id = public.my_person_id()
+  for share;
 
   -- An archived membership comes back only through an officer (#1401).
   if v_member_archived_at is not null then
