@@ -1,6 +1,22 @@
--- Function public.request_main_swap: current definition, generated from the database.
--- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): authenticated
+-- #1430: a declined main swap stays declined.
+--
+-- An officer's decline did not stick. request_main_swap() refused only while
+-- another request was waiting, so the raider could ask for the same alt again
+-- straight away and it was back in the officers' queue. Now a declined request
+-- for that alt, from that raider on that team, refuses the ask, with no expiry.
+-- The alt is matched by name key (lower case, no spaces), as #1428 matches it,
+-- so asking for another spec or picking the alt again from Battle.net (a new
+-- characters row) does not get round it. A cancelled request, whether the
+-- raider's own or #1428's, does not block, and neither does a decline on
+-- another team or another raider's decline.
+--
+-- The way back stays with officers: they can put the alt on the roster by
+-- hand, and next season's signup asks about a main swap again. A button for
+-- an officer to let the raider ask again waits until officers need one.
+--
+-- The check reads main_swap_requests without a lock. A decline cannot race
+-- the ask: while the request still waits, the waiting check refuses, and once
+-- the decline commits, this check does.
 
 CREATE OR REPLACE FUNCTION public.request_main_swap(p_team_id integer, p_character_id integer, p_class_spec_id integer, p_note text DEFAULT NULL::text)
  RETURNS integer
@@ -92,3 +108,6 @@ begin
   return v_request_id;
 end;
 $function$;
+
+comment on column public.main_swap_requests.status is
+  'pending until an officer approves or declines it, or it is cancelled: by the raider, or when the character it is from leaves the roster (#1428). A decline stands: request_main_swap() refuses that raider the same alt on that team again (#1430).';

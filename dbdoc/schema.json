@@ -7158,7 +7158,8 @@
           "name": "status",
           "type": "text",
           "nullable": false,
-          "default": "'pending'::text"
+          "default": "'pending'::text",
+          "comment": "pending until an officer approves or declines it, or it is cancelled: by the raider, or when the character it is from leaves the roster (#1428). A decline stands: request_main_swap() refuses that raider the same alt on that team again (#1430)."
         },
         {
           "name": "requested_at",

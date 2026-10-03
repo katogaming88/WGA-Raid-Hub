@@ -10,6 +10,21 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-03 -- a declined main swap stays declined (#1430)
+
+Shipped: 20261003152246_declined_main_swap_stays_declined.sql
+
+An officer's decline did not stick. `request_main_swap()` refused only while another request was waiting, so the raider could ask for the same alt again straight away and it was back in the officers' queue. Once declined, that raider cannot ask for that alt again on that team (decided 2026-10-03).
+
+- **Blocked for good, for that alt only.** Chosen over a block for a set time, a block until next season, an officer choice at each decline between "not now" and "no", blocking every alt for a while after a decline, and allowing the ask but showing the old decline in the queue. A button for an officer to let the raider ask again was weighed and left until officers need one. Until then the way back is an officer putting the alt on the roster by hand, or next season's signup.
+- **The same alt is the same name.** It is matched by name key (lower case, no spaces) against the request's `name_realm`, the way #1428 matches it, and not by `character_id`, since choosing alts again replaces the `characters` row and nulls the request's link to it. Whatever spec they ask for counts as the same swap.
+- **What does not block:** a cancelled request (the raider's own, or #1428's when the character left the roster), an approved one, a decline on another team, and another raider's decline for the same name.
+- **Where it sits in the ask:** after "already on this roster" and before the waiting check, so a raider with another swap waiting is told the alt was declined rather than that one is waiting.
+- **No lock and no backfill.** A decline cannot race the ask: while the request still waits, the waiting check refuses, and once the decline commits, this one does. Production has no main swap requests (2026-10-03).
+- **The raider sees it on the new app's Characters card**, where a declined alt shows Declined and the officer's note instead of the ask, in a pull request after this migration's.
+
+[Full discussion -> #1430](https://github.com/katogaming88/WGA-Raid-Hub/issues/1430).
+
 ## 2026-10-03 -- the Roster tab's re-add is one call that keeps why they left (#1133)
 
 Shipped: 20261003130915_restore_player.sql
@@ -37,7 +52,7 @@ Once the character a main swap is from is archived, the swap can never be approv
 - **A trigger on `players.archived_at`, as #1383's priority cleanup.** Four paths archive a character (`archive_player()`, `archive_team_member()`, a signup main swap through `add_signup_to_roster()`, an officer's direct update), and the trigger covers each and any still to come. It runs as its owner: `main_swap_requests` and `notifications` have no write rule for the officer whose archive fires it.
 - **Who closed it, and why.** The acting officer is the reviewer (`my_person_id()`, null for the service role). "Membership ended" when the character's membership is archived, with no notification, since they left; "Character removed" otherwise, with a notification to the raider on the archived character, which their inbox still reads, unless nobody holds the character any more (its claim removed), since no inbox would show it.
 - **Already done another way** (from the code review). A swap to a character that is on the roster by the time the old one leaves, unlinked or the raider's own, through a signup main swap to the same alt or by hand, closes as approved with that row as `approved_player_id`, "Already on the roster", and no notification: cancelling it would tell a raider their swap was cancelled just as they got it. Not when the membership was archived (they left, whatever is on the roster), and not for a row held by someone else's membership.
-- **Not revived.** Restoring the member or re-adding the character leaves the request cancelled. The raider asks again: a cancelled request does not block asking, and will not once #1430 blocks a declined one.
+- **Not revived.** Restoring the member or re-adding the character leaves the request cancelled. The raider asks again: a cancelled request does not block asking, and #1430, which blocks a declined one, leaves it that way.
 - **The review waits behind an archive.** Archive Member locks the membership, then the characters, then, through the trigger, the request; Remove and a signup main swap lock the character, then the request, and take only a key share on the membership (a signup swap writes the new roster row before it archives the old one). The review takes the membership for share, which that key share does not block, then the new roster row, then the old character, then the request, and checks the status again once it holds the request, so it waits behind any of them instead of deadlocking. It marks an approval approved before it archives the old character, so the trigger leaves that one alone. `request_main_swap()` holds the character it checked `for share` until the request is saved, so a removal cannot slip between the check and the insert. Not settled here, and older than this change: Remove or a signup main swap and Archive Member of the same raider at the same moment can still deadlock with each other, since their key share on the membership comes after the character.
 - **The review still refuses** a swap waiting from a character already off the roster, which only a restore with triggers off could now leave (from the second code review), and a swap the old character was already renamed into, which would archive the row it approved. A backfill in the same migration cancels any swap already waiting from a character off the roster (none on production, 2026-10-03).
 

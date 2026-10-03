@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.166.1] - 2026-10-03
+
+### Backend
+
+- A main swap an officer declines stays declined. Until now the raider
+  could ask for the same alt again straight away, and it went back into
+  the officers' queue. Asking again for that alt on that team is now
+  refused: "An officer declined your main swap to <alt>. Ask one of this
+  team's officers if that should change." It counts as the same alt
+  whatever spec they ask for and however long ago it was declined. A swap
+  the raider cancelled, or one cancelled because their character left the
+  roster, does not count. Asking for a main swap is only in the new app
+  (#1430).
+
+---
+
 ## [3.166.0] - 2026-10-03
 
 ### Frontend
