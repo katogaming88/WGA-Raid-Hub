@@ -14,13 +14,14 @@
 -- it does only what Option 2 lets an officer do anyway.
 
 create function public.restore_team_member(p_team_id integer, p_team_member_id integer)
-returns void
+returns boolean
 language plpgsql
 security definer
 set search_path to 'public'
 as $$
 declare
   v_team_id integer;
+  v_role text;
   v_archived_at timestamptz;
 begin
   if not (
@@ -32,8 +33,8 @@ begin
   end if;
 
   -- Locked, as in archive_team_member(), so a restore and an archive of the
-  -- same person run one after the other.
-  select team_id, archived_at into v_team_id, v_archived_at
+  -- same person run one after the other, and two restores answer once.
+  select team_id, role, archived_at into v_team_id, v_role, v_archived_at
     from public.team_members where id = p_team_member_id
     for update;
   if v_team_id is null or v_team_id <> p_team_id then
@@ -41,24 +42,25 @@ begin
   end if;
 
   if v_archived_at is null then
-    return;
+    return false;
   end if;
 
   perform public.write_audit_log(
     p_team_id, 'team_member_restored', 'team_member', p_team_member_id,
-    jsonb_build_object('role', 'raider')
+    jsonb_build_object('role', 'raider', 'archived_role', v_role)
   );
 
   -- Back as a raider whatever role the archived row held, as through the
   -- invite link; a role above that is the team leader's to grant.
   update public.team_members set archived_at = null, role = 'raider' where id = p_team_member_id;
+  return true;
 end;
 $$;
 
 alter function public.restore_team_member(integer, integer) owner to postgres;
 
 comment on function public.restore_team_member(integer, integer) is
-  'Officer-only: brings an archived team_members row back as a raider (#1402), whatever role it held, and writes a team_member_restored audit entry. Characters stay as they are: the caller brings back the one it adds. A membership that is not archived is left alone and nothing is logged. Called by add_signup_to_roster() when the signer''s membership is archived (Option 2 on #1355: any officer action brings an archived member back).';
+  'Officer-only: brings an archived team_members row back as a raider (#1402), whatever role it held, and writes a team_member_restored audit entry naming the role it held. Characters stay as they are: the caller brings back the one it adds. A membership that is not archived is left alone and nothing is logged. Returns whether it restored anyone, read under the row lock. Called by add_signup_to_roster() when the signer''s membership is archived (Option 2 on #1355: any officer action brings an archived member back).';
 
 revoke all on function public.restore_team_member(integer, integer) from public;
 revoke execute on function public.restore_team_member(integer, integer) from anon;
@@ -79,6 +81,7 @@ declare
   v_prior_team_member_id integer;
   v_signer_member_id integer;
   v_signer_archived boolean;
+  v_restored boolean := false;
   v_spec_label text;
   v_archived_name_realm text;
 begin
@@ -106,10 +109,13 @@ begin
   end if;
 
   -- An officer adding the signup brings an archived signer back (#1402).
-  -- Before the character is written, so the membership is locked before the
-  -- character, the order archive_team_member() and the invite link take.
+  -- The read above takes no lock, so the restore's own answer, read under
+  -- its lock, says whether this add is the one that brought them back. It
+  -- runs before the character is written, so a restore locks the membership
+  -- before the character, the order archive_team_member() and the invite
+  -- link take.
   if v_signer_archived then
-    perform public.restore_team_member(v_signup.team_id, v_signer_member_id);
+    v_restored := public.restore_team_member(v_signup.team_id, v_signer_member_id);
   end if;
 
   insert into public.players (
@@ -195,7 +201,9 @@ begin
   -- Audit (#1136). Same action names and detail shape the Roster tab's own
   -- add and remove write, so both paths read alike in the Audit Log. Skipped
   -- only when nobody is signed in (a service-role or test call), because
-  -- write_audit_log() needs an actor and would otherwise abort the add.
+  -- write_audit_log() needs an actor and would otherwise abort the add. Such
+  -- a call stops earlier for an archived signer: restore_team_member() is an
+  -- officer's, and refuses it.
   if auth.uid() is not null then
     select concat_ws(' ', cs.class, cs.spec, cs.role)
       into v_spec_label
@@ -208,7 +216,7 @@ begin
         coalesce(v_spec_label, 'Unknown spec'),
         'from signup',
         case when v_archived_name_realm is not null then 'main swap from ' || v_archived_name_realm end,
-        case when v_signer_archived then 'membership restored' end))
+        case when v_restored then 'membership restored' end))
     );
 
     if v_archived_name_realm is not null then

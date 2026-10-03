@@ -3,13 +3,14 @@
 -- execute (site roles): authenticated
 
 CREATE OR REPLACE FUNCTION public.restore_team_member(p_team_id integer, p_team_member_id integer)
- RETURNS void
+ RETURNS boolean
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
 declare
   v_team_id integer;
+  v_role text;
   v_archived_at timestamptz;
 begin
   if not (
@@ -21,8 +22,8 @@ begin
   end if;
 
   -- Locked, as in archive_team_member(), so a restore and an archive of the
-  -- same person run one after the other.
-  select team_id, archived_at into v_team_id, v_archived_at
+  -- same person run one after the other, and two restores answer once.
+  select team_id, role, archived_at into v_team_id, v_role, v_archived_at
     from public.team_members where id = p_team_member_id
     for update;
   if v_team_id is null or v_team_id <> p_team_id then
@@ -30,16 +31,17 @@ begin
   end if;
 
   if v_archived_at is null then
-    return;
+    return false;
   end if;
 
   perform public.write_audit_log(
     p_team_id, 'team_member_restored', 'team_member', p_team_member_id,
-    jsonb_build_object('role', 'raider')
+    jsonb_build_object('role', 'raider', 'archived_role', v_role)
   );
 
   -- Back as a raider whatever role the archived row held, as through the
   -- invite link; a role above that is the team leader's to grant.
   update public.team_members set archived_at = null, role = 'raider' where id = p_team_member_id;
+  return true;
 end;
 $function$;

@@ -10974,7 +10974,7 @@
     },
     {
       "name": "public.restore_team_member",
-      "return_type": "void",
+      "return_type": "bool",
       "arguments": "p_team_id integer, p_team_member_id integer",
       "type": "FUNCTION"
     }
