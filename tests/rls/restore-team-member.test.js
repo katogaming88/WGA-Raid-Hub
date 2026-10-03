@@ -90,6 +90,18 @@ describe('restore_team_member()', () => {
     });
   });
 
+  // write_audit_log() refuses another team's officer too, but only on the way
+  // to restoring someone; a current membership returns before it.
+  it("another team's officer is refused on a current membership too", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const other = await seedTeam(q);
+      await expect(restoreMember(asUser, other.officer.uid, team.teamId, team.raider.memberId)).rejects.toThrow(
+        /Not authorized/
+      );
+    });
+  });
+
   it('refuses a membership that is not on the given team', async () => {
     await withTxn(async ({ q, asUser }) => {
       const teamA = await seedTeam(q);
