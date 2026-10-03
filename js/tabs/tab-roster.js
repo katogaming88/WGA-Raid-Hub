@@ -7,9 +7,11 @@
 // straight to Supabase: RLS already permits an officer's plain
 // insert/update against `players`, and each write logs itself via
 // writeAuditLog() (#214). Two writes are exceptions since #925, both because
-// their data moved to player_officer_notes: the officer note upserts there
+// their data moved to player_officer_notes: the officer note is written there
 // instead, and removing a player goes through archive_player() so the
-// archived_at on `players` and the reason on that table land together. GAS keeps its
+// archived_at on `players` and the reason on that table land together.
+// Re-adding a removed player goes through restore_player() (#1133), which
+// also brings back their team membership and leaves the reason alone. GAS keeps its
 // addPlayer/removePlayer/updatePlayerField handlers until this path is
 // verified side by side (#216); nothing here calls them anymore.
 //
@@ -101,22 +103,25 @@ function rosterFieldAuditDetail(field, value) {
 // updateClassSpecSupabase instead, since they resolve to one FK together.
 //
 // officerNote is the one field that does not live on players: it moved to
-// player_officer_notes in #925, so it upserts a row there rather than
-// updating one that already exists. The audit entry still targets players,
-// which is what an officer is looking at and what every other roster write
-// records. Both paths are officer-gated by their table's own policy.
+// player_officer_notes in #925, so writing one upserts a row there, and
+// clearing one updates the row in place, so a player with no row does not
+// gain a blank one (#1133). The audit entry still targets players, which is
+// what an officer is looking at and what every other roster write records.
+// Both paths are officer-gated by their table's own policy.
 function updateRosterFieldSupabase(nameRealm, field, value) {
   var player = findRosterPlayer(nameRealm);
   var column = ROSTER_FIELD_COLUMN[field];
   if (!player || !player.id || !column) return Promise.reject(new Error('Unknown player or field.'));
   var write;
   if (field === 'officerNote') {
-    write = supabaseClient.from('player_officer_notes').upsert(
-      { player_id: player.id, team_id: _teamCfg.supabaseTeamId, officer_notes: value || null },
-      {
-        onConflict: 'player_id'
-      }
-    );
+    write = value
+      ? supabaseClient
+          .from('player_officer_notes')
+          .upsert(
+            { player_id: player.id, team_id: _teamCfg.supabaseTeamId, officer_notes: value },
+            { onConflict: 'player_id' }
+          )
+      : supabaseClient.from('player_officer_notes').update({ officer_notes: null }).eq('player_id', player.id);
   } else {
     var payload = {};
     payload[column] = ROSTER_FIELD_RAW_VALUE[field] ? value || null : !!value;
@@ -126,28 +131,6 @@ function updateRosterFieldSupabase(nameRealm, field, value) {
     if (result.error) throw new Error(result.error.message);
     return writeAuditLog(ROSTER_FIELD_AUDIT_LABEL[field], 'players', player.id, rosterFieldAuditDetail(field, value));
   });
-}
-
-// Re-adding an archived player clears why they left (#476). That reason moved
-// to player_officer_notes in #925, so it is a second write rather than two
-// more nulls on the players update above. Updates in place rather than
-// upserting, so a returning player who never had a row does not gain an empty
-// one. Best-effort and self-warning: they are back on the roster either way,
-// and a stale reason is not worth failing the add over. Always resolves, so
-// the caller's error handling stays about the add itself.
-function clearArchiveReason(playerId) {
-  return supabaseClient
-    .from('player_officer_notes')
-    .update({ archived_reason: null, archived_reason_detail: null })
-    .eq('player_id', playerId)
-    .then(
-      function (result) {
-        if (result.error) console.warn('Could not clear the archive reason.', result.error.message);
-      },
-      function (err) {
-        console.warn('Could not clear the archive reason.', err);
-      }
-    );
 }
 
 var statItemsDiff = 'all';
@@ -880,11 +863,11 @@ function submitAddPlayer() {
     });
 }
 
-// Three-case upsert (docs/database-decisions.md roster-promotion pattern):
+// Three-case add (docs/database-decisions.md roster-promotion pattern):
 // brand-new name_realm -> insert; a previously archived row for the same
-// name_realm -> un-archive it in place (preserves its id, so historical
-// rclc_loot/attendance rows stay linked); an already-active row ->
-// reject rather than silently overwrite. Resolves to the written player's id.
+// name_realm -> restore_player() brings it back in place (preserves its id,
+// so historical rclc_loot/attendance rows stay linked); an already-active row
+// -> reject rather than silently overwrite. Resolves to the written player's id.
 function addPlayerToRosterSupabase(payload) {
   if (!supabaseClient) return Promise.reject(new Error('Not connected to Supabase.'));
   var teamId = _teamCfg.supabaseTeamId;
@@ -911,32 +894,13 @@ function addPlayerToRosterSupabase(payload) {
           if (existing.error) throw new Error(existing.error.message);
           var row = existing.data;
           if (row && !row.archived_at) throw new Error(payload.nameRealm + ' is already on the roster.');
-          var fields = {
-            team_id: teamId,
-            name_realm: payload.nameRealm,
-            nickname: payload.nick || null,
-            class_spec_id: classSpecId,
-            is_trial: !!payload.isTrial,
-            is_bench: false,
-            join_date: payload.joinDate || null,
-            archived_at: null
-          };
           return row
-            ? supabaseClient.from('players').update(fields).eq('id', row.id).select('id').single()
-            : supabaseClient.from('players').insert(fields).select('id').single();
+            ? restoreRosterPlayerSupabase(row.id, payload, classSpecId)
+            : insertRosterPlayerSupabase(teamId, payload, classSpecId);
         });
     })
-    .then(function (writeResult) {
-      if (writeResult.error) throw new Error(writeResult.error.message);
-      var playerId = writeResult.data.id;
-      var detail = [payload.class, payload.spec, payload.role].filter(Boolean).join(' ');
-      return clearArchiveReason(playerId)
-        .then(function () {
-          return writeAuditLog('Player Added', 'players', playerId, detail);
-        })
-        .then(function () {
-          return backfillNotOnRosterForPlayer(teamId, playerId, payload.joinDate);
-        })
+    .then(function (playerId) {
+      return backfillNotOnRosterForPlayer(teamId, playerId, payload.joinDate)
         .catch(function (err) {
           // Best-effort: the player is already added successfully at this
           // point, so a backfill failure shouldn't surface as an add failure.
@@ -945,6 +909,50 @@ function addPlayerToRosterSupabase(payload) {
         .then(function () {
           return playerId;
         });
+    });
+}
+
+function insertRosterPlayerSupabase(teamId, payload, classSpecId) {
+  return supabaseClient
+    .from('players')
+    .insert({
+      team_id: teamId,
+      name_realm: payload.nameRealm,
+      nickname: payload.nick || null,
+      class_spec_id: classSpecId,
+      is_trial: !!payload.isTrial,
+      is_bench: false,
+      join_date: payload.joinDate || null
+    })
+    .select('id')
+    .single()
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      var playerId = result.data.id;
+      var detail = [payload.class, payload.spec, payload.role].filter(Boolean).join(' ');
+      return writeAuditLog('Player Added', 'players', playerId, detail).then(function () {
+        return playerId;
+      });
+    });
+}
+
+// One call (#1133): restore_player() brings the row back with the form's
+// values, brings back the team membership it is linked to, leaves why they
+// left where it is, and writes the Player Added entry itself. A blank
+// nickname or join date keeps the character's own.
+function restoreRosterPlayerSupabase(playerId, payload, classSpecId) {
+  return supabaseClient
+    .rpc('restore_player', {
+      p_player_id: playerId,
+      p_name_realm: payload.nameRealm,
+      p_nickname: payload.nick || null,
+      p_class_spec_id: classSpecId,
+      p_is_trial: !!payload.isTrial,
+      p_join_date: payload.joinDate || null
+    })
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      return playerId;
     });
 }
 
