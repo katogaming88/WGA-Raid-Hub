@@ -170,6 +170,19 @@ describe('team_schedule_settings', () => {
     }
   });
 
+  // The tab sends no updated_at; a client-sent one is overwritten by the server's clock.
+  it('stamps updated_at from the database clock on every change', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await setDefault(q, 'heroic');
+      await asUser(
+        OFFICER_T1,
+        "update public.team_schedule_settings set default_difficulty = 'mythic', updated_at = '2000-01-01' where team_id = 1"
+      );
+      const row = (await q('select updated_at = now() as stamped from public.team_schedule_settings')).rows[0];
+      expect(row.stamped).toBe(true);
+    });
+  });
+
   it('is readable by a signed-out visitor, like the schedule', async () => {
     await withTxn(async ({ q, asAnon }) => {
       await setDefault(q, 'heroic');
