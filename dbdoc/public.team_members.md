@@ -120,6 +120,7 @@ erDiagram
   text note
   integer created_by FK
   timestamp_with_time_zone created_at
+  text difficulty
 }
 "public.teams" {
   integer id

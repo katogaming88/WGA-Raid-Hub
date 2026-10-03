@@ -1947,6 +1947,7 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          difficulty: string | null
           duration_minutes: number
           id: number
           is_optional: boolean
@@ -1958,6 +1959,7 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          difficulty?: string | null
           duration_minutes?: number
           id?: number
           is_optional?: boolean
@@ -1969,6 +1971,7 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          difficulty?: string | null
           duration_minutes?: number
           id?: number
           is_optional?: boolean
@@ -1991,6 +1994,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: number | null
+          difficulty: string | null
           duration_minutes: number | null
           exception_type: string
           id: number
@@ -2003,6 +2007,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: number | null
+          difficulty?: string | null
           duration_minutes?: number | null
           exception_type: string
           id?: number
@@ -2015,6 +2020,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: number | null
+          difficulty?: string | null
           duration_minutes?: number | null
           exception_type?: string
           id?: number
@@ -2948,6 +2954,32 @@ export type Database = {
             foreignKeyName: "team_raid_progress_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_schedule_settings: {
+        Row: {
+          default_difficulty: string | null
+          team_id: number
+          updated_at: string
+        }
+        Insert: {
+          default_difficulty?: string | null
+          team_id: number
+          updated_at?: string
+        }
+        Update: {
+          default_difficulty?: string | null
+          team_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_schedule_settings_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: true
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
@@ -4042,6 +4074,7 @@ export type Database = {
       raid_night_info: {
         Args: { p_raid_date: string; p_team_id: number }
         Returns: {
+          difficulty: string
           exists: boolean
           is_optional: boolean
           start_time: string

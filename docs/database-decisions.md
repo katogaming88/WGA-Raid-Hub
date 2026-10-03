@@ -10,6 +10,23 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-02 -- a raid night says Heroic or Mythic, with a team default (#1246)
+
+Shipped: 20261002203140_raid_night_difficulty.sql
+
+The lineup can only take a boss killed earlier in the week off a later night when it knows which difficulty that night is for, and nothing on the schedule said so. Both teams with a raid list kill at both difficulties in the same week.
+
+- **Per night, with a team default.** `raid_schedule.difficulty` and `raid_schedule_exceptions.difficulty` follow `is_optional`'s pattern: set where the schedule is set, resolved per date. Null means the team default, kept one row per team in `team_schedule_settings` (the shape `team_lineup_settings` set for #1244), so a team that has gone all-Mythic changes one value and a Heroic Monday beside a Mythic Thursday can still be said. A night set explicitly keeps its pick when the default changes, and the Schedule tab shows which default a night follows.
+- **A mixed night counts as Mythic.** A week runs Heroic before Mythic, so a night that finishes Heroic and pushes into Mythic is pushing bosses already killed on Heroic. Counting it as Heroic would take exactly those bosses off it; counting it as Mythic can only miss a skip, which leaves the officer's Skip where it is today.
+- **One resolver, not a fourth.** `raid_night_info()` gains a `difficulty` column rather than a new function beside it, since three night resolvers already exist. Its existing precedence decides: a cancelled date has none, an added night's own value then the default, the weekday rule's own value then the default. The return type change is a drop and create, which repeats the function's comment and its `service_role` grant.
+- **Officers write the default under `raid_schedule`'s own rule**: the team's officers, guild officers and site admins, by a direct write from the tab (#894's convention for schedule tables).
+- **Anyone reads it, unlike `team_raid_kills`.** `raid_night_info()` is not `SECURITY DEFINER` and anyone may execute it, so a narrower read would give a signed-out caller or a raider a null difficulty on every night left at default while an officer got the real one. The schedule tables it sits beside are public read for the same reason. It is one more table for #1286's inventory.
+- **Not here:** the two client resolvers (`computeRaidNights()`, `raidNights()`) show no difficulty yet, and the automatic skip is the next pull request for #1246.
+
+[Full discussion -> #1246](https://github.com/katogaming88/WGA-Raid-Hub/issues/1246).
+
+---
+
 ## 2026-10-02 -- every boss kill is kept, and this lockout's kills are one query away (#1246)
 
 Shipped: 20261002181943_team_raid_kills.sql

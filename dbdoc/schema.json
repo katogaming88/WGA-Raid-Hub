@@ -5230,6 +5230,12 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "difficulty",
+          "type": "text",
+          "nullable": true,
+          "comment": "Heroic or Mythic for this weekly night (#1246); null follows the team default in team_schedule_settings. A night that moves from Heroic into Mythic is Mythic."
         }
       ],
       "indexes": [
@@ -5253,6 +5259,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "raid_schedule_difficulty_check",
+          "type": "CHECK",
+          "def": "CHECK ((difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text])))",
+          "table": "public.raid_schedule",
+          "referenced_table": "",
+          "columns": [
+            "difficulty"
+          ]
+        },
         {
           "name": "raid_schedule_weekday_check",
           "type": "CHECK",
@@ -5357,6 +5373,12 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "difficulty",
+          "type": "text",
+          "nullable": true,
+          "comment": "Heroic or Mythic for an added night (#1246); null follows the team default in team_schedule_settings. Only applies to an 'added' row, as is_optional does."
         }
       ],
       "indexes": [
@@ -5380,6 +5402,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "raid_schedule_exceptions_difficulty_check",
+          "type": "CHECK",
+          "def": "CHECK ((difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text])))",
+          "table": "public.raid_schedule_exceptions",
+          "referenced_table": "",
+          "columns": [
+            "difficulty"
+          ]
+        },
         {
           "name": "raid_schedule_exceptions_type_check",
           "type": "CHECK",
@@ -8482,6 +8514,74 @@
         "public.team_raid_kills",
         "public.raid_encounters"
       ]
+    },
+    {
+      "name": "public.team_schedule_settings",
+      "type": "BASE TABLE",
+      "comment": "A team's own schedule settings (#1246): the raid difficulty every weekly or added night follows unless it sets its own. No row, or a null, means not set. Written by the officers who write raid_schedule.",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "default_difficulty",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_schedule_settings_pkey",
+          "def": "CREATE UNIQUE INDEX team_schedule_settings_pkey ON public.team_schedule_settings USING btree (team_id)",
+          "table": "public.team_schedule_settings",
+          "columns": [
+            "team_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_schedule_settings_default_difficulty_check",
+          "type": "CHECK",
+          "def": "CHECK ((default_difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text])))",
+          "table": "public.team_schedule_settings",
+          "referenced_table": "",
+          "columns": [
+            "default_difficulty"
+          ]
+        },
+        {
+          "name": "team_schedule_settings_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_schedule_settings",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_schedule_settings_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id)",
+          "table": "public.team_schedule_settings",
+          "referenced_table": "",
+          "columns": [
+            "team_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -10000,6 +10100,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_schedule_settings",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -10409,12 +10522,6 @@
       "name": "public.claim_raid_signup_sheet",
       "return_type": "text",
       "arguments": "p_team_id integer, p_raid_date date, p_channel_id text",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.raid_night_info",
-      "return_type": "record",
-      "arguments": "p_team_id integer, p_raid_date date",
       "type": "FUNCTION"
     },
     {
@@ -10829,6 +10936,12 @@
       "name": "public.lockout_start_at",
       "return_type": "date",
       "arguments": "p_at timestamp with time zone",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.raid_night_info",
+      "return_type": "record",
+      "arguments": "p_team_id integer, p_raid_date date",
       "type": "FUNCTION"
     }
   ],

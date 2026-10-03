@@ -17,11 +17,13 @@ The raid calendar's officer-owned recurring weekly rule (#892, part of #640): on
 | active | boolean | true | false |  |  |  |
 | is_optional | boolean | false | false |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
+| difficulty | text |  | true |  |  | Heroic or Mythic for this weekly night (#1246); null follows the team default in team_schedule_settings. A night that moves from Heroic into Mythic is Mythic. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| raid_schedule_difficulty_check | CHECK | CHECK ((difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text]))) |
 | raid_schedule_weekday_check | CHECK | CHECK (((weekday >= 0) AND (weekday <= 6))) |
 | raid_schedule_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | raid_schedule_pkey | PRIMARY KEY | PRIMARY KEY (id) |
@@ -51,6 +53,7 @@ erDiagram
   boolean active
   boolean is_optional
   timestamp_with_time_zone created_at
+  text difficulty
 }
 "public.teams" {
   integer id
