@@ -12,6 +12,30 @@ answers to.
 
 ---
 
+## [Unreleased]
+
+### Frontend
+
+- Re-adding someone who was removed earlier, through "+ Add Player" on
+  the Roster tab, is one step now, and it keeps the reason they were
+  removed. Before, the re-add wiped that reason in a second write that
+  could fail without anyone seeing it. If their team membership had been
+  ended, it comes back too, as a raider. A nickname or join date left
+  blank on the form keeps the one the character already had (#1133).
+- Clearing an officer note for a player who never had one no longer
+  leaves an empty notes row behind (#1133).
+
+### Backend
+
+- A new function, `restore_player()`, brings a removed character back in
+  one call. It sets what the form gives, keeps whatever was left blank,
+  restores the team membership the character is linked to, and leaves
+  the removal reason and `removal_reasons` alone. It refuses a character
+  already on the roster or a name that is not that character, and writes
+  the "Player Added" audit entry itself, marked "re-added" (#1133).
+
+---
+
 ## [3.165.1] - 2026-10-03
 
 ### Backend
