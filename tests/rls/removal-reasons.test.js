@@ -79,7 +79,45 @@ describe('removal_reasons gets a row for every reason written', () => {
     });
   });
 
-  it('an officer writing a reason straight onto the notes row leaves a row too', async () => {
+  it('an officer removing a character by hand and writing the reason onto the notes row leaves a row too', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const playerId = await seedPlayer(q, { teamId: team.teamId });
+      await asUser(team.officer.uid, 'update public.players set archived_at = now() where id = $1', [playerId]);
+      await asUser(
+        team.officer.uid,
+        `insert into public.player_officer_notes (player_id, team_id, archived_reason, archived_reason_detail)
+         values ($1, $2, 'drama', 'Written by hand')`,
+        [playerId, team.teamId]
+      );
+      const rows = await rowsFor(q, team.teamId);
+      expect(rows.map((r) => [r.player_id, r.reason, r.detail])).toEqual([[playerId, 'drama', 'Written by hand']]);
+    });
+  });
+
+  // A test transaction's now() never moves, so the removal is dated before it:
+  // only a row dated from players.archived_at can match.
+  it('the row is dated at the removal itself, not when the reason was written', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const playerId = await seedPlayer(q, { teamId: team.teamId });
+      await asUser(team.officer.uid, "update public.players set archived_at = '2026-09-01T00:00:00Z' where id = $1", [
+        playerId
+      ]);
+      await asUser(
+        team.officer.uid,
+        `insert into public.player_officer_notes (player_id, team_id, archived_reason, archived_reason_detail)
+         values ($1, $2, 'other', 'Left')`,
+        [playerId, team.teamId]
+      );
+      const { rows } = await q('select removed_at from public.removal_reasons where player_id = $1', [playerId]);
+      expect(rows.map((r) => r.removed_at.toISOString())).toEqual(['2026-09-01T00:00:00.000Z']);
+    });
+  });
+
+  // Nobody was removed, so there is nothing to keep: the officer page never
+  // does this, and a stray write must not leave a permanent false record.
+  it('a reason written onto a character still on the roster is not a removal', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const playerId = await seedPlayer(q, { teamId: team.teamId });
@@ -89,8 +127,45 @@ describe('removal_reasons gets a row for every reason written', () => {
          values ($1, $2, 'drama', 'Written by hand')`,
         [playerId, team.teamId]
       );
-      const rows = await rowsFor(q, team.teamId);
-      expect(rows.map((r) => [r.player_id, r.reason, r.detail])).toEqual([[playerId, 'drama', 'Written by hand']]);
+      expect(await rowsFor(q, team.teamId)).toEqual([]);
+    });
+  });
+
+  it('writing the same reason again adds nothing, and a correction is kept under the same removal', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const playerId = await seedPlayer(q, { teamId: team.teamId });
+      // Removed before this transaction began, so a correction written now
+      // only lands under the same removal if rows are dated by the removal.
+      await asUser(team.officer.uid, "update public.players set archived_at = '2026-09-01T00:00:00Z' where id = $1", [
+        playerId
+      ]);
+      await asUser(
+        team.officer.uid,
+        `insert into public.player_officer_notes (player_id, team_id, archived_reason, archived_reason_detail)
+         values ($1, $2, 'other', 'Left')`,
+        [playerId, team.teamId]
+      );
+      await asUser(
+        team.officer.uid,
+        "update public.player_officer_notes set archived_reason = 'other', archived_reason_detail = 'Left' where player_id = $1",
+        [playerId]
+      );
+      expect(await rowsFor(q, team.teamId)).toHaveLength(1);
+      await asUser(
+        team.officer.uid,
+        "update public.player_officer_notes set archived_reason_detail = 'Left for another guild' where player_id = $1",
+        [playerId]
+      );
+      const { rows } = await q(
+        `select detail, count(*) over (partition by removed_at)::int as same_removal
+           from public.removal_reasons where player_id = $1 order by id`,
+        [playerId]
+      );
+      expect(rows).toEqual([
+        { detail: 'Left', same_removal: 2 },
+        { detail: 'Left for another guild', same_removal: 2 }
+      ]);
     });
   });
 
@@ -193,6 +268,23 @@ describe('who can read and write removal_reasons', () => {
       expect((await rowsFor(q, team.teamId)).map((r) => r.detail)).toEqual(['Joined another guild']);
     });
   });
+
+  it('the service role cannot update, delete or empty it either', async () => {
+    await withTxn(async ({ q, asUser, asRole }) => {
+      const team = await seedTeam(q);
+      const playerId = await seedPlayer(q, { teamId: team.teamId });
+      await archivePlayer(asUser, team.officer.uid, playerId);
+      const asService = asRole('service_role', null);
+      await expect(
+        asService("update public.removal_reasons set detail = 'changed' where team_id = $1", [team.teamId])
+      ).rejects.toMatchObject({ code: RLS_DENIED });
+      await expect(
+        asService('delete from public.removal_reasons where team_id = $1', [team.teamId])
+      ).rejects.toMatchObject({ code: RLS_DENIED });
+      await expect(asService('truncate public.removal_reasons')).rejects.toMatchObject({ code: RLS_DENIED });
+      expect(await rowsFor(q, team.teamId)).toHaveLength(1);
+    });
+  });
 });
 
 describe('removal_reasons keeps its rows whole', () => {
@@ -207,6 +299,36 @@ describe('removal_reasons keeps its rows whole', () => {
           playerId
         ])
       ).rejects.toThrow(/does not match players.team_id/);
+    });
+  });
+
+  it("refuses a membership's row filed under another team than the membership's", async () => {
+    await withTxn(async ({ q }) => {
+      const team = await seedTeam(q);
+      const other = await seedTeam(q);
+      await expect(
+        q("insert into public.removal_reasons (team_id, team_member_id, reason) values ($1, $2, 'other')", [
+          other.teamId,
+          team.raider.memberId
+        ])
+      ).rejects.toThrow(/does not match team_members.team_id/);
+    });
+  });
+
+  // admin_revoke_team_role() deletes a membership no character points at; once
+  // a reason points at it, it demotes instead, as it does for a character.
+  it('revoking the role of someone with a reason on record demotes them rather than failing', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const playerId = await seedPlayer(q, { memberId: team.officer.memberId });
+      await archivePlayer(asUser, team.leader.uid, playerId);
+      await q('update public.players set team_member_id = null where id = $1', [playerId]);
+      await asUser(team.leader.uid, 'select public.admin_revoke_team_role($1, $2)', [
+        team.teamId,
+        team.officer.discordId
+      ]);
+      const member = (await q('select role from public.team_members where id = $1', [team.officer.memberId])).rows;
+      expect(member).toEqual([{ role: 'raider' }]);
     });
   });
 
