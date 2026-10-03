@@ -301,16 +301,34 @@ describe('team_members RLS after the archive change', () => {
     });
   });
 
-  it('a team leader can archive and un-archive a membership by editing the row', async () => {
+  // Editing archived_at directly would skip everything Archive Member does
+  // (the characters, the reason, the audit row) and leave a half-archived
+  // membership, so the column only changes inside the two database functions.
+  it('a team leader cannot archive or restore a membership by editing the row', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
-      await asUser(team.leader.uid, 'update public.team_members set archived_at = now() where id = $1', [
-        team.raider.memberId
-      ]);
+      await expect(
+        asUser(team.leader.uid, 'update public.team_members set archived_at = now() where id = $1', [
+          team.raider.memberId
+        ])
+      ).rejects.toThrow(/Archive Member/);
+      await q('update public.team_members set archived_at = now() where id = $1', [team.raider.memberId]);
+      await expect(
+        asUser(team.leader.uid, 'update public.team_members set archived_at = null where id = $1', [
+          team.raider.memberId
+        ])
+      ).rejects.toThrow(/Archive Member/);
       expect(await archivedAt(q, team.raider.memberId)).not.toBeNull();
-      await asUser(team.leader.uid, 'update public.team_members set archived_at = null where id = $1', [
-        team.raider.memberId
-      ]);
+    });
+  });
+
+  it('a site admin cannot either', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const admin = await seedGrant(q, 'site_admin');
+      await expect(
+        asUser(admin, 'update public.team_members set archived_at = now() where id = $1', [team.raider.memberId])
+      ).rejects.toThrow(/Archive Member/);
       expect(await archivedAt(q, team.raider.memberId)).toBeNull();
     });
   });
