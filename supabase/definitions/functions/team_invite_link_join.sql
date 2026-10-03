@@ -49,7 +49,9 @@ begin
 
   insert into public.team_members (team_id, discord_id, role)
   values (v_team_id, v_discord_id, 'raider')
-  on conflict (team_id, person_id) do update set archived_at = null
+  on conflict (team_id, person_id) do update
+     set role = case when team_members.archived_at is not null then 'raider' else team_members.role end,
+         archived_at = null
   returning id into v_member_id;
 
   insert into public.players (team_id, name_realm, class_spec_id, is_trial, join_date, team_member_id)

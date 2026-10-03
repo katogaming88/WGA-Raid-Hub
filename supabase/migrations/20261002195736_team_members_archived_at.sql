@@ -78,6 +78,8 @@ $$;
 -- Un-archives on the way back in, the one step team_invite_link_join() owed
 -- this design: a returning raider's insert now conflicts on their own
 -- (archived) row instead of silently doing nothing, and picks it back up.
+-- The link is a raider's way in, so a returning officer or team leader
+-- comes back as a raider; a current member opening it keeps their role.
 -- Always returning an id from the insert drops the old select-fallback.
 create or replace function public.team_invite_link_join(
   p_code text,
@@ -127,7 +129,9 @@ begin
 
   insert into public.team_members (team_id, discord_id, role)
   values (v_team_id, v_discord_id, 'raider')
-  on conflict (team_id, person_id) do update set archived_at = null
+  on conflict (team_id, person_id) do update
+     set role = case when team_members.archived_at is not null then 'raider' else team_members.role end,
+         archived_at = null
   returning id into v_member_id;
 
   insert into public.players (team_id, name_realm, class_spec_id, is_trial, join_date, team_member_id)
@@ -157,7 +161,7 @@ end;
 $$;
 
 comment on function public.team_invite_link_join(text, bigint) is
-  'Joins the signed-in person to the team behind a live invite code with the character they picked, named by its Battle.net id and resolved from public.characters so it is one their own account holds (#1319). Adds their team_members row (their guild membership) and puts the character on the roster, un-archiving either one if they had left (#1355). Refuses a dead code, a person with no Discord, a character that is not on their account, and one someone else holds. Always ''joined'' until the character limit (#1259) exists (#1264).';
+  'Joins the signed-in person to the team behind a live invite code with the character they picked, named by its Battle.net id and resolved from public.characters so it is one their own account holds (#1319). Adds their team_members row (their guild membership) and puts the character on the roster, un-archiving either one if they had left (#1355); a returning officer or team leader comes back as a raider. Refuses a dead code, a person with no Discord, a character that is not on their account, and one someone else holds. Always ''joined'' until the character limit (#1259) exists (#1264).';
 
 -- A team leader could delete a membership directly, skipping
 -- admin_revoke_team_role()'s check and everything archive_team_member() now
