@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.archive_team_member(p_team_id integer, p_team_member_id integer)
+CREATE OR REPLACE FUNCTION public.archive_team_member(p_team_id integer, p_team_member_id integer, p_reason text, p_detail text)
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -11,6 +11,8 @@ AS $function$
 declare
   v_team_id integer;
   v_role text;
+  v_archived_at timestamptz;
+  v_player_ids integer[];
 begin
   if not (
     p_team_id = any (public.my_officer_team_ids())
@@ -20,7 +22,17 @@ begin
     raise exception 'Not authorized';
   end if;
 
-  select team_id, role into v_team_id, v_role from public.team_members where id = p_team_member_id;
+  -- The same six player_officer_notes.archived_reason accepts.
+  if p_reason is null or p_reason not in
+     ('schedule_conflict', 'performance', 'drama', 'moved_guilds', 'switching_mains', 'other') then
+    raise exception 'That is not one of the reasons a membership can be archived for';
+  end if;
+
+  -- Locked, so two archives of the same person cannot both pass the
+  -- already-archived check below.
+  select team_id, role, archived_at into v_team_id, v_role, v_archived_at
+    from public.team_members where id = p_team_member_id
+    for update;
   if v_team_id is null or v_team_id <> p_team_id then
     raise exception 'That membership is not on this team';
   end if;
@@ -32,13 +44,32 @@ begin
     raise exception 'Only the team leader or a site admin can archive an officer or the team leader';
   end if;
 
+  if v_archived_at is not null then
+    return;
+  end if;
+
+  select coalesce(array_agg(p.id order by p.id), '{}') into v_player_ids
+    from public.players p
+   where p.team_member_id = p_team_member_id and p.archived_at is null;
+
   -- Logged before the archive, not after: write_audit_log() re-checks the
   -- caller's own officer status live, and a team leader archiving their own
   -- membership would otherwise fail that check the instant their own row
   -- says archived_at is not null, aborting the archive it just did.
-  perform public.write_audit_log(p_team_id, 'team_member_archived', 'team_member', p_team_member_id);
+  perform public.write_audit_log(
+    p_team_id, 'team_member_archived', 'team_member', p_team_member_id,
+    jsonb_build_object('reason', p_reason, 'detail', p_detail, 'player_ids', to_jsonb(v_player_ids))
+  );
 
-  update public.team_members set archived_at = now() where id = p_team_member_id and archived_at is null;
-  update public.players set archived_at = now() where team_member_id = p_team_member_id and archived_at is null;
+  update public.team_members set archived_at = now() where id = p_team_member_id;
+  update public.players set archived_at = now() where id = any (v_player_ids);
+
+  -- Only the two archive columns are written on conflict, as in
+  -- archive_player(): an officer note already on the character stays.
+  insert into public.player_officer_notes (player_id, team_id, archived_reason, archived_reason_detail)
+  select player_id, p_team_id, p_reason, p_detail from unnest(v_player_ids) as player_id
+  on conflict (player_id) do update
+     set archived_reason = excluded.archived_reason,
+         archived_reason_detail = excluded.archived_reason_detail;
 end;
 $function$;

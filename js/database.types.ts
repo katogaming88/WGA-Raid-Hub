@@ -3822,7 +3822,12 @@ export type Database = {
         Returns: string
       }
       archive_team_member: {
-        Args: { p_team_id: number; p_team_member_id: number }
+        Args: {
+          p_detail: string
+          p_reason: string
+          p_team_id: number
+          p_team_member_id: number
+        }
         Returns: undefined
       }
       auth_user_for_discord_id: {
