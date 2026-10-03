@@ -125,9 +125,22 @@ describe('restore_team_member()', () => {
           actor_id: team.officer.uid,
           target_type: 'team_member',
           target_id: team.raider.memberId,
-          detail: { role: 'raider' }
+          detail: { role: 'raider', archived_role: 'raider' }
         }
       ]);
+    });
+  });
+
+  // The add reads whether the signer is archived before it locks anything, so
+  // two adds for the same person at once both see them archived; the answer
+  // here, read under the lock, is what its audit entry goes by.
+  it('says whether it restored anyone', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await archiveMember(asUser, team.officer.uid, team.teamId, team.raider.memberId);
+      const first = await restoreMember(asUser, team.officer.uid, team.teamId, team.raider.memberId);
+      const second = await restoreMember(asUser, team.officer.uid, team.teamId, team.raider.memberId);
+      expect([first.rows[0].restore_team_member, second.rows[0].restore_team_member]).toEqual([true, false]);
     });
   });
 
@@ -157,6 +170,10 @@ describe('restore_team_member()', () => {
       await archiveMember(asUser, team.leader.uid, team.teamId, team.officer.memberId);
       await restoreMember(asUser, team.leader.uid, team.teamId, team.officer.memberId);
       expect(await membership(q, team.officer.memberId)).toEqual({ role: 'raider', archived_at: null });
+      // The audit entry keeps the role they had, the one trace of the demotion.
+      expect((await restoreRows(q, team.teamId)).map((r) => r.detail)).toEqual([
+        { role: 'raider', archived_role: 'officer' }
+      ]);
     });
   });
 
