@@ -7,7 +7,9 @@
 // an officer at all. These cover the grant's four branches, the gate, the
 // revoke's demote-vs-delete split, and a person holding a role on two teams,
 // which nothing has ever exercised because no Discord id is on two teams in
-// production or in the seed.
+// production or in the seed. Both functions on an archived membership (the
+// grant restores it, the revoke refuses it, #1403) are in
+// team-role-archived-member.test.js.
 //
 // Each test runs in one rolled-back transaction: fixture writes happen as
 // postgres (bypasses RLS), the call happens as the named identity, assertions

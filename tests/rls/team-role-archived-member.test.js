@@ -7,10 +7,20 @@
 // archive_team_member(), the only way a membership is archived, and reads the
 // fixture back before the call: the grant's old refusal and the revoke's
 // "no role" answer would hide a fixture that is not what the case says.
+import { randomUUID } from 'node:crypto';
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedTeam, seedPlayer } from './helpers.js';
+import { pool, withTxn, insertDiscordUser, grantGuild, seedTeam, seedPlayer } from './helpers.js';
 
 afterAll(() => pool.end());
+
+// A site admin with no membership on the team.
+const seedSiteAdmin = async (q) => {
+  const uid = randomUUID();
+  const discordId = `fixture-${randomUUID()}`;
+  await insertDiscordUser(q, uid, discordId);
+  await grantGuild(q, discordId, 'site_admin');
+  return uid;
+};
 
 const archiveMember = (asUser, uid, teamId, memberId) =>
   asUser(uid, 'select public.archive_team_member($1, $2, $3, $4)', [teamId, memberId, 'moved_guilds', 'Left']);
@@ -130,6 +140,67 @@ describe('admin_grant_team_role() on an archived membership', () => {
         /already has the raider role on this team\. Change a role through the promote path/
       );
       expect(await membership(q, team.raider.memberId)).toEqual({ role: 'raider', archived_at: null });
+    });
+  });
+
+  it('a site admin brings an archived team leader back as team leader', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const admin = await seedSiteAdmin(q);
+      await archiveMember(asUser, admin, team.teamId, team.leader.memberId);
+      expect(await membership(q, team.leader.memberId)).toMatchObject({
+        role: 'team_leader',
+        archived_at: expect.any(Date)
+      });
+
+      await grant(asUser, admin, team.teamId, team.leader.discordId, 'team_leader');
+
+      expect(await membership(q, team.leader.memberId)).toEqual({ role: 'team_leader', archived_at: null });
+    });
+  });
+
+  // Nobody has signed in with the Discord id, so the membership comes back
+  // with no account, as a fresh grant to that id would.
+  it('brings back an archived member with no account, and says it is not linked', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const discordId = `fixture-${randomUUID()}`;
+      const memberId = (
+        await q("insert into public.team_members (team_id, discord_id, role) values ($1, $2, 'raider') returning id", [
+          team.teamId,
+          discordId
+        ])
+      ).rows[0].id;
+      await archiveMember(asUser, team.officer.uid, team.teamId, memberId);
+      expect(
+        (await q('select auth_user_id, archived_at from public.team_members where id = $1', [memberId])).rows[0]
+      ).toMatchObject({ auth_user_id: null, archived_at: expect.any(Date) });
+
+      const res = await grant(asUser, team.leader.uid, team.teamId, discordId, 'officer');
+
+      expect(res.rows[0].auth_user_id).toBeNull();
+      expect(await membership(q, memberId)).toEqual({ role: 'officer', archived_at: null });
+      expect((await roleLog(q, memberId)).map((r) => r.detail)).toEqual([
+        { role: 'officer', archived_role: 'raider' },
+        { discord_id: discordId, role: 'officer', linked: false, restored: true }
+      ]);
+    });
+  });
+
+  // Control: the gate comes before the archived row is read.
+  it('an officer cannot bring an archived member back through the grant', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await archiveMember(asUser, team.officer.uid, team.teamId, team.raider.memberId);
+      expect(await membership(q, team.raider.memberId)).toMatchObject({
+        role: 'raider',
+        archived_at: expect.any(Date)
+      });
+
+      await expect(grant(asUser, team.officer.uid, team.teamId, team.raider.discordId, 'raider')).rejects.toThrow(
+        /^Not authorized$/
+      );
+      expect((await membership(q, team.raider.memberId)).archived_at).not.toBeNull();
     });
   });
 });
