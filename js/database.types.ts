@@ -4141,6 +4141,10 @@ export type Database = {
         Returns: string
       }
       resolve_person: { Args: { p_discord_id: string }; Returns: Json }
+      restore_team_member: {
+        Args: { p_team_id: number; p_team_member_id: number }
+        Returns: undefined
+      }
       review_main_swap_request: {
         Args: { p_approve: boolean; p_note?: string; p_request_id: number }
         Returns: number

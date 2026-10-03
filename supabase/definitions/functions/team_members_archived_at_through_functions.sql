@@ -12,7 +12,7 @@ begin
     return new;
   end if;
   if new.archived_at is distinct from old.archived_at then
-    raise exception 'A membership is archived through Archive Member and restored through the invite link, not by editing it';
+    raise exception 'A membership is archived through Archive Member and restored when an officer brings the person back, not by editing it';
   end if;
   return new;
 end;

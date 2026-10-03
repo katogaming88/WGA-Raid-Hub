@@ -2216,7 +2216,7 @@
           "name": "archived_at",
           "type": "timestamp with time zone",
           "nullable": true,
-          "comment": "Set when an officer archives this membership (archive_team_member, #1355) for someone who left -- never deleted, so the account's history keeps pointing at something. Cleared by team_invite_link_join() if they come back. Neither changes it any other way: a direct update of the column is refused (team_members_archived_at_through_functions). Every \"what is this person on this team\" predicate (my_team_role, my_officer_team_ids, my_leader_team_ids, is_any_team_officer, is_team_leader_anywhere) skips an archived row; my_player_ids() and earlier_characters() still read it, since that is the history."
+          "comment": "Set when an officer archives this membership (archive_team_member, #1355) for someone who left -- never deleted, so the account's history keeps pointing at something. Cleared when an officer brings them back: team_invite_link_join(), or restore_team_member() when an officer adds their season signup (#1402). Nothing changes it any other way: a direct update of the column is refused (team_members_archived_at_through_functions). Every \"what is this person on this team\" predicate (my_team_role, my_officer_team_ids, my_leader_team_ids, is_any_team_officer, is_team_leader_anywhere) skips an archived row; my_player_ids() and earlier_characters() still read it, since that is the history."
         }
       ],
       "indexes": [
@@ -10970,6 +10970,12 @@
       "name": "public.archive_team_member",
       "return_type": "void",
       "arguments": "p_team_id integer, p_team_member_id integer, p_reason text, p_detail text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.restore_team_member",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_team_member_id integer",
       "type": "FUNCTION"
     }
   ],
