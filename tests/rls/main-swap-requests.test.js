@@ -388,9 +388,22 @@ describe('a waiting main swap is cancelled when its character leaves the roster'
           raiderPlayer
         ])
       ).rows[0].player_id;
-      expect(await requestOf(q, id)).toMatchObject({ status: 'approved', officer_note: 'Already on the roster' });
+      expect(await requestOf(q, id)).toMatchObject({
+        status: 'approved',
+        reviewed_by: await personOf(q, team.officer.memberId),
+        officer_note: 'Already on the roster'
+      });
       expect(await statusOf(q, id)).toEqual({ status: 'approved', approved_player_id: playerId });
       expect(await noticesOn(q, [raiderPlayer, playerId])).toEqual([]);
+    });
+  });
+
+  it('an alt they played before, still off the roster, does not count as already on it', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { team, raiderPlayer, nameRealm, id } = await swapOnOwnTeam(q, asUser);
+      await seedPlayer(q, { teamId: team.teamId, nameRealm, archivedAt: '2026-01-01T00:00:00Z' });
+      await removePlayer(asUser, team.officer.uid, raiderPlayer);
+      expect(await requestOf(q, id)).toMatchObject({ status: 'cancelled', officer_note: 'Character removed' });
     });
   });
 
@@ -407,8 +420,9 @@ describe('a waiting main swap is cancelled when its character leaves the roster'
   it('approving it archives the old character without cancelling it, and sends only the approval', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { team, raiderPlayer, id } = await swapOnOwnTeam(q, asUser);
-      const playerId = (await review(asUser, team.officer.uid, id, true)).rows[0].player_id;
+      const playerId = (await review(asUser, team.officer.uid, id, true, 'See you on the Paladin.')).rows[0].player_id;
       expect(await statusOf(q, id)).toEqual({ status: 'approved', approved_player_id: playerId });
+      expect((await requestOf(q, id)).officer_note).toBe('See you on the Paladin.');
       const notices = await noticesOn(q, [raiderPlayer, playerId]);
       expect(notices).toHaveLength(1);
       expect(notices[0]).toContain('was approved');
@@ -422,6 +436,9 @@ describe('a waiting main swap is cancelled when its character leaves the roster'
       const other = await seedMember(q, { teamId: team.teamId });
       const otherSwap = await fixture(q, { memberId: other.memberId, name: 'Otheralt' });
       const otherId = (await ask(asUser, other.uid, otherSwap.characterId, FROST_MAGE, null, team.teamId)).rows[0].id;
+      // The other raider's alt is on the roster by now, added by hand; their
+      // swap still waits for their own old character to leave.
+      await seedPlayer(q, { teamId: team.teamId, nameRealm: otherSwap.nameRealm });
 
       await removePlayer(asUser, team.officer.uid, second);
       expect((await requestOf(q, id)).status).toBe('pending');
