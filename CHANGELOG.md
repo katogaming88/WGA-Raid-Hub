@@ -12,6 +12,32 @@ answers to.
 
 ---
 
+## [3.160.0] - 2026-10-02
+
+### Frontend
+
+- The officer Raid Schedule tab now says whether each raid night is Heroic
+  or Mythic. A **Raid difficulty** setting at the top sets the team's usual
+  difficulty once, and every weekly night and added night follows it unless
+  an officer picks another for that night. A night that starts on Heroic and
+  moves into Mythic counts as Mythic. Each night shows which default it
+  follows, so a night set differently stands out. This is the first half of
+  letting the boss lineup take a boss already killed this week off the
+  team's later nights (#1246).
+
+### Backend
+
+- Weekly raid nights (`raid_schedule`) and added nights
+  (`raid_schedule_exceptions`) each gain a difficulty, Heroic or Mythic, and
+  a new `team_schedule_settings` table holds each team's default. A night
+  left blank follows the default. `raid_night_info()`, which answers whether
+  a date is a raid night, now also returns that night's difficulty. The
+  team's officers, guild officers and site admins set the default, as they
+  set the schedule, and anyone can read it, as anyone can read the schedule
+  (#1246).
+
+---
+
 ## [3.159.11] - 2026-10-02
 
 ### Backend
