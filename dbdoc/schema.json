@@ -1405,6 +1405,10 @@
         {
           "name": "players_drop_live_priority_on_archive",
           "def": "CREATE TRIGGER players_drop_live_priority_on_archive AFTER UPDATE OF archived_at ON public.players FOR EACH ROW WHEN (((old.archived_at IS NULL) AND (new.archived_at IS NOT NULL))) EXECUTE FUNCTION drop_archived_player_live_priority()"
+        },
+        {
+          "name": "players_cancel_waiting_main_swaps_on_archive",
+          "def": "CREATE TRIGGER players_cancel_waiting_main_swaps_on_archive AFTER UPDATE OF archived_at ON public.players FOR EACH ROW WHEN (((old.archived_at IS NULL) AND (new.archived_at IS NOT NULL))) EXECUTE FUNCTION cancel_waiting_main_swaps_on_archive()"
         }
       ]
     },
@@ -7107,7 +7111,7 @@
     {
       "name": "public.main_swap_requests",
       "type": "BASE TABLE",
-      "comment": "A raider's request to make one of their alts their roster character, outside a signup window (#631, #942 step 5c). Written only by request_main_swap(), cancel_main_swap_request() and review_main_swap_request(). name_realm and class_spec_id are what they asked for, kept here so the request still reads right after the character row changes.",
+      "comment": "A raider's request to make one of their alts their roster character, outside a signup window (#631, #942 step 5c). Written only by request_main_swap(), cancel_main_swap_request() and review_main_swap_request(), and by the trigger that cancels a waiting swap when its character leaves the roster (cancel_waiting_main_swaps_on_archive, #1428). name_realm and class_spec_id are what they asked for, kept here so the request still reads right after the character row changes.",
       "columns": [
         {
           "name": "id",
@@ -11234,6 +11238,12 @@
     },
     {
       "name": "public.record_removal_reason",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.cancel_waiting_main_swaps_on_archive",
       "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"

@@ -64,7 +64,7 @@
 | [public.guild_officers](public.guild_officers.md) | 5 | Read-only view of guild_grants (#942), dropped at cutover (#1105). | VIEW |
 | [public.boe_managers](public.boe_managers.md) | 5 | Read-only view of guild_grants (#942), dropped at cutover (#1105). | VIEW |
 | [public.characters](public.characters.md) | 13 | Characters a person chose to show from their Battle.net account (#942 step 5, #1162). Written only by save_battlenet_characters() from the battlenet-characters Edge Function. A character here is an alt unless the same name_realm_key is a roster row linked to the person. | BASE TABLE |
-| [public.main_swap_requests](public.main_swap_requests.md) | 14 | A raider's request to make one of their alts their roster character, outside a signup window (#631, #942 step 5c). Written only by request_main_swap(), cancel_main_swap_request() and review_main_swap_request(). name_realm and class_spec_id are what they asked for, kept here so the request still reads right after the character row changes. | BASE TABLE |
+| [public.main_swap_requests](public.main_swap_requests.md) | 14 | A raider's request to make one of their alts their roster character, outside a signup window (#631, #942 step 5c). Written only by request_main_swap(), cancel_main_swap_request() and review_main_swap_request(), and by the trigger that cancels a waiting swap when its character leaves the roster (cancel_waiting_main_swaps_on_archive, #1428). name_realm and class_spec_id are what they asked for, kept here so the request still reads right after the character row changes. | BASE TABLE |
 | [public.boss_groups](public.boss_groups.md) | 5 | The standing group per boss for a team (#1216): one row per raider in the group that kills that boss. A new raid night is filled from these. Written only through set_boss_group(). | BASE TABLE |
 | [public.raid_night_bosses](public.raid_night_bosses.md) | 9 | The bosses on one raid night's list for a team (#1216), in pull order. skipped keeps a boss the team is not pulling that night on the list. confirmed_at and confirmed_by say an officer saved that boss's lineup for the night; until then it follows the boss's standing group. No rows for a night means it is not planned yet. | BASE TABLE |
 | [public.raid_night_lineups](public.raid_night_lineups.md) | 6 | The plan for one raid night (#1216): one row per raider in for one boss. Filled from boss_groups ahead of the night, then edited through set_raid_night_lineup(). Kept after the night, so it still says who was planned in. | BASE TABLE |
@@ -226,6 +226,7 @@
 | public.restore_team_member | bool | p_team_id integer, p_team_member_id integer | FUNCTION |
 | public.check_removal_reason_membership_team | trigger |  | FUNCTION |
 | public.record_removal_reason | trigger |  | FUNCTION |
+| public.cancel_waiting_main_swaps_on_archive | trigger |  | FUNCTION |
 
 ## Enums
 
