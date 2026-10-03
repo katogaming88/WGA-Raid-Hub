@@ -111,16 +111,22 @@ describe('request_main_swap()', () => {
 
   it('refuses someone archived off the team, even with their character re-added (#1401)', async () => {
     await withTxn(async ({ q, asUser }) => {
-      const { characterId, raiderPlayer } = await fixture(q);
-      await asUser(OFFICER_T1, 'select public.archive_team_member(1, $1, $2, $3)', [
-        PHOENIX_RAIDER_MEMBER,
+      // A team of the case's own: the archive writes the raider's characters,
+      // so it never touches a seeded row (#1123).
+      const team = await seedTeam(q);
+      const { characterId, raiderPlayer } = await fixture(q, { memberId: team.raider.memberId });
+      await asUser(team.officer.uid, 'select public.archive_team_member($1, $2, $3, $4)', [
+        team.teamId,
+        team.raider.memberId,
         'moved_guilds',
         'Joined another guild'
       ]);
       // The Roster tab's re-add brings the character back with its link left
       // on the archived membership.
       await q('update public.players set archived_at = null where id = $1', [raiderPlayer]);
-      await expect(ask(asUser, RAIDER_T1, characterId)).rejects.toThrow(/no character on this team/);
+      await expect(ask(asUser, team.raider.uid, characterId, FROST_MAGE, null, team.teamId)).rejects.toThrow(
+        /no character on this team/
+      );
     });
   });
 });

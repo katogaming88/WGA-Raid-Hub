@@ -320,29 +320,43 @@ describe('on_auth_user_created backfills auth_user_id (trigger capture)', () => 
 // #1355, 2026-10-02), so a claim does not reopen it. The check is per team.
 describe('claim_character and an archived membership (#1401)', () => {
   const ENDED = /Your membership on this team has ended\. Ask one of its officers to add you back\./;
-  // The team 1 officer archives the team 1 raider (team_members id 3).
-  const archiveRaider = (asUser) =>
-    asUser(OFFICER_T1, 'select public.archive_team_member(1, 3, $1, $2)', ['moved_guilds', 'Joined another guild']);
+  // A team of the case's own, its raider archived by its officer: the archive
+  // writes the raider's characters, so it never touches a seeded row (#1123).
+  const archivedTeam = async (q, asUser) => {
+    const team = await seedTeam(q);
+    await asUser(team.officer.uid, 'select public.archive_team_member($1, $2, $3, $4)', [
+      team.teamId,
+      team.raider.memberId,
+      'moved_guilds',
+      'Joined another guild'
+    ]);
+    return team;
+  };
 
   it('refuses someone archived off the team, and links nothing', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await archiveRaider(asUser);
+      const team = await archivedTeam(q, asUser);
       // An officer puts a character on the roster after the archive.
-      const playerId = await seedPlayer(q, { teamId: 1, nameRealm: 'Comeback-Illidan' });
-      await expect(claim(asUser, RAIDER_T1, 1, 'Comeback-Illidan')).rejects.toThrow(ENDED);
+      const playerId = await seedPlayer(q, { teamId: team.teamId, nameRealm: 'Comeback-Illidan' });
+      await expect(claim(asUser, team.raider.uid, team.teamId, 'Comeback-Illidan')).rejects.toThrow(ENDED);
       expect(await linkOf(q, playerId)).toBeNull();
-      expect((await q('select archived_at from public.team_members where id = 3')).rows[0].archived_at).not.toBeNull();
+      expect(
+        (await q('select archived_at from public.team_members where id = $1', [team.raider.memberId])).rows[0]
+          .archived_at
+      ).not.toBeNull();
     });
   });
 
   it('still lets them claim on a team they were not archived off', async () => {
     await withTxn(async ({ q, asUser }) => {
-      const playerId = await seedPlayer(q, { teamId: 2, nameRealm: 'Elsewhere-Illidan' });
-      await archiveRaider(asUser);
-      await claim(asUser, RAIDER_T1, 2, 'Elsewhere-Illidan');
+      const team = await archivedTeam(q, asUser);
+      const other = await seedTeam(q);
+      const playerId = await seedPlayer(q, { teamId: other.teamId, nameRealm: 'Elsewhere-Illidan' });
+      await claim(asUser, team.raider.uid, other.teamId, 'Elsewhere-Illidan');
       const member = (
-        await q('select id, role, archived_at from public.team_members where team_id = 2 and auth_user_id = $1', [
-          RAIDER_T1
+        await q('select id, role, archived_at from public.team_members where team_id = $1 and auth_user_id = $2', [
+          other.teamId,
+          team.raider.uid
         ])
       ).rows[0];
       expect(member).toMatchObject({ role: 'raider', archived_at: null });
