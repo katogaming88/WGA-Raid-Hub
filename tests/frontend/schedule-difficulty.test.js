@@ -81,7 +81,9 @@ function makeClient(reads = {}) {
   return { client, calls };
 }
 
-function loadSandbox({ reads, rowFields } = {}) {
+// defaultOptions stands in for the "Team default (...)" option of each weekly
+// row already on screen, which a saved default relabels in place.
+function loadSandbox({ reads, rowFields, defaultOptions = [] } = {}) {
   const els = {};
   const audit = [];
   const row = {
@@ -100,7 +102,8 @@ function loadSandbox({ reads, rowFields } = {}) {
         if (!els[id]) els[id] = makeEl();
         return els[id];
       },
-      querySelector: (sel) => (sel.indexOf('data-rule-id') !== -1 ? row : null)
+      querySelector: (sel) => (sel.indexOf('data-rule-id') !== -1 ? row : null),
+      querySelectorAll: (sel) => (sel === '.sched-rule-difficulty option[value=""]' ? defaultOptions : [])
     },
     fetch: () => Promise.resolve({ ok: true, json: () => Promise.resolve([]) }),
     setTimeout: () => 0,
@@ -173,14 +176,14 @@ describe('saveScheduleRule() difficulty', () => {
 });
 
 describe('saveScheduleDefaultDifficulty()', () => {
-  it("upserts the team's default on team_id, with updated_at", async () => {
+  // updated_at is the database's to stamp (a trigger), not the browser clock's.
+  it("upserts the team's default on team_id, and nothing else", async () => {
     const { sandbox, els, calls, audit } = loadSandbox();
     els.schedDefaultDifficulty = makeEl({ value: 'heroic' });
     sandbox.saveScheduleDefaultDifficulty();
     await flush();
     const write = calls.find((c) => c.table === 'team_schedule_settings' && c.upsert);
-    expect(write.upsert).toMatchObject({ team_id: 1, default_difficulty: 'heroic' });
-    expect(typeof write.upsert.updated_at).toBe('string');
+    expect(write.upsert).toEqual({ team_id: 1, default_difficulty: 'heroic' });
     expect(write.upsertOpts).toEqual({ onConflict: 'team_id' });
     expect(sandbox.SCHEDULE_DEFAULT_DIFFICULTY).toBe('heroic');
     expect(audit[0].action).toBe('Raid Difficulty Default Updated');
@@ -197,15 +200,31 @@ describe('saveScheduleDefaultDifficulty()', () => {
     expect(sandbox.SCHEDULE_DEFAULT_DIFFICULTY).toBe(null);
   });
 
-  it('relabels the rule rows already on screen after a save', async () => {
-    const { sandbox, els } = loadSandbox();
+  // A rebuilt table would throw away a row an officer has edited and not saved.
+  it('relabels each weekly row in place and leaves the rows on screen as they are', async () => {
+    const options = [
+      makeEl({ textContent: 'Team default (not set)' }),
+      makeEl({ textContent: 'Team default (not set)' })
+    ];
+    const { sandbox, els } = loadSandbox({ defaultOptions: options });
     sandbox.SCHEDULE_RULES = [TUESDAY_RULE];
     sandbox.renderScheduleRules();
-    expect(els.scheduleRulesWrap.innerHTML).toContain('>Team default (not set)</option>');
+    const onScreen = els.scheduleRulesWrap.innerHTML;
     els.schedDefaultDifficulty = makeEl({ value: 'mythic' });
     sandbox.saveScheduleDefaultDifficulty();
     await flush();
-    expect(els.scheduleRulesWrap.innerHTML).toContain('>Team default (Mythic)</option>');
+    expect(els.scheduleRulesWrap.innerHTML).toBe(onScreen);
+    expect(options.map((o) => o.textContent)).toEqual(['Team default (Mythic)', 'Team default (Mythic)']);
+  });
+
+  it('disables its Save button until the save answers', async () => {
+    const { sandbox, els } = loadSandbox();
+    els.schedDefaultDifficulty = makeEl({ value: 'heroic' });
+    els.schedDefaultSaveBtn = makeEl();
+    sandbox.saveScheduleDefaultDifficulty();
+    expect(els.schedDefaultSaveBtn.disabled).toBe(true);
+    await flush();
+    expect(els.schedDefaultSaveBtn.disabled).toBe(false);
   });
 });
 
@@ -271,6 +290,21 @@ describe('the difficulty labels', () => {
     const html = els.scheduleRulesWrap.innerHTML;
     expect(html).toContain('<option value="heroic" selected>Heroic</option>');
     expect(html).toContain('<option value="">Team default (Mythic)</option>');
+  });
+
+  // A night that moves from Heroic into Mythic counts as Mythic, and every
+  // select an officer picks a night's difficulty from says so.
+  it('every Mythic choice names the mixed night: weekly rows, the default and the added-night form', () => {
+    const { sandbox, els } = loadSandbox();
+    sandbox.SCHEDULE_RULES = [TUESDAY_RULE];
+    sandbox.renderScheduleRules();
+    expect(els.scheduleRulesWrap.innerHTML).toContain('<option value="mythic">Mythic, or Heroic into Mythic</option>');
+    const page = readFileSync(path.join(HERE, '../../officer.html'), 'utf8');
+    const mythicChoices = page.match(/<option value="mythic">[^<]*<\/option>/g);
+    expect(mythicChoices).toEqual([
+      '<option value="mythic">Mythic, or Heroic into Mythic</option>',
+      '<option value="mythic">Mythic, or Heroic into Mythic</option>'
+    ]);
   });
 
   it('the one-off list shows an added night at its resolved difficulty, and none for a cancelled one', () => {
@@ -354,5 +388,42 @@ describe('buildScheduleTab() reads the team default', () => {
     expect(calls.some((c) => c.table === 'raid_schedule')).toBe(true);
     expect(els.scheduleRulesWrap.innerHTML).toContain('data-rule-id="5"');
     expect(els.scheduleDefaultStatus.textContent).toContain('relation does not exist');
+  });
+
+  // An unread default is not "Not set": showing it as one would let a Save
+  // erase the real value, and the rows would name a default nobody chose.
+  it('locks the default and names no value when the default cannot be read', async () => {
+    const { sandbox, els } = loadSandbox({ reads: { raid_schedule: [TUESDAY_RULE] } });
+    const realFrom = sandbox.supabaseClient.from;
+    sandbox.supabaseClient.from = (table) => {
+      const b = realFrom(table);
+      if (table !== 'team_schedule_settings') return b;
+      b.then = (resolve) => Promise.resolve({ data: null, error: { message: 'timeout' } }).then(resolve);
+      return b;
+    };
+    els.scheduleRulesWrap = makeEl();
+    sandbox.buildScheduleTab();
+    await flush();
+    await flush();
+    expect(els.schedDefaultDifficulty.disabled).toBe(true);
+    expect(els.schedDefaultSaveBtn.disabled).toBe(true);
+    expect(els.scheduleRulesWrap.innerHTML).toContain('<option value="" selected>Team default</option>');
+  });
+
+  it('clears an earlier error and unlocks the default when a later read succeeds', async () => {
+    const { sandbox, els } = loadSandbox({
+      reads: { team_schedule_settings: { default_difficulty: 'heroic' }, raid_schedule: [TUESDAY_RULE] }
+    });
+    els.scheduleDefaultStatus = makeEl({ textContent: 'Error loading the team default: timeout' });
+    els.schedDefaultDifficulty = makeEl({ disabled: true });
+    els.schedDefaultSaveBtn = makeEl({ disabled: true });
+    els.scheduleRulesWrap = makeEl();
+    sandbox.buildScheduleTab();
+    await flush();
+    await flush();
+    expect(els.scheduleDefaultStatus.textContent).toBe('');
+    expect(els.schedDefaultDifficulty.disabled).toBe(false);
+    expect(els.schedDefaultSaveBtn.disabled).toBe(false);
+    expect(els.schedDefaultDifficulty.value).toBe('heroic');
   });
 });
