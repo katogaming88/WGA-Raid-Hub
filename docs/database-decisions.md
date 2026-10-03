@@ -87,7 +87,7 @@ The gear sync takes an equipped item's track from its bonus ids and falls back t
 
 ## 2026-09-28 -- ending a membership archives it; it is never deleted (#1355)
 
-Shipped: 20261002195736_team_members_archived_at.sql
+Shipped: 20261002220740_team_members_archived_at.sql
 
 Rex's review of the `names` design (comment on #1355, 2026-09-28) found that the first pass at "Delete Member" -- an outright `DELETE` of the `team_members` row -- had a real bug: `players.team_member_id` is `ON DELETE SET NULL`, so deleting the membership would null it on every character that pointed at it, *archived ones included*. That link is what says whose an archived character's loot, attendance and BoE finds were, and how `earlier_characters()` finds an old main. Losing it also frees the character for the next Battle.net import carrying the same name to silently revive as theirs, since the join already revives any archived character nobody holds.
 
