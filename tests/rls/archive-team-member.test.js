@@ -93,6 +93,60 @@ describe('archive_team_member ("Delete Member")', () => {
   });
 });
 
+// Each predicate on its own: archive_team_member() reads my_officer_team_ids()
+// and write_audit_log() reads my_team_role(), so the case above still passes
+// when either one alone counts an archived row.
+describe('an archived membership no longer counts in any role predicate', () => {
+  const ask = async (asUser, uid, call, params = []) => (await asUser(uid, `select ${call} as v`, params)).rows[0].v;
+
+  it('my_team_role() is null for an archived officer', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      expect(await ask(asUser, team.officer.uid, 'public.my_team_role($1)', [team.teamId])).toBe('officer');
+      await archiveMember(asUser, team.leader.uid, team.teamId, team.officer.memberId);
+      expect(await ask(asUser, team.officer.uid, 'public.my_team_role($1)', [team.teamId])).toBeNull();
+    });
+  });
+
+  it('my_officer_team_ids() leaves out the team for an archived officer', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      expect(await ask(asUser, team.officer.uid, 'public.my_officer_team_ids()')).toContain(team.teamId);
+      await archiveMember(asUser, team.leader.uid, team.teamId, team.officer.memberId);
+      expect(await ask(asUser, team.officer.uid, 'public.my_officer_team_ids()')).not.toContain(team.teamId);
+    });
+  });
+
+  it('is_any_team_officer() is false for an archived officer with no other team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      expect(await ask(asUser, team.officer.uid, 'public.is_any_team_officer()')).toBe(true);
+      await archiveMember(asUser, team.leader.uid, team.teamId, team.officer.memberId);
+      expect(await ask(asUser, team.officer.uid, 'public.is_any_team_officer()')).toBe(false);
+    });
+  });
+
+  it('my_leader_team_ids() leaves out the team for an archived team leader', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const admin = await seedGrant(q, 'site_admin');
+      expect(await ask(asUser, team.leader.uid, 'public.my_leader_team_ids()')).toContain(team.teamId);
+      await archiveMember(asUser, admin, team.teamId, team.leader.memberId);
+      expect(await ask(asUser, team.leader.uid, 'public.my_leader_team_ids()')).not.toContain(team.teamId);
+    });
+  });
+
+  it('is_team_leader_anywhere() is false for an archived team leader with no other team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const admin = await seedGrant(q, 'site_admin');
+      expect(await ask(asUser, team.leader.uid, 'public.is_team_leader_anywhere()')).toBe(true);
+      await archiveMember(asUser, admin, team.teamId, team.leader.memberId);
+      expect(await ask(asUser, team.leader.uid, 'public.is_team_leader_anywhere()')).toBe(false);
+    });
+  });
+});
+
 describe('archive_team_member: an officer is archived by the team leader or a site admin, the leader by a site admin', () => {
   const LEADER_OR_ADMIN = /team leader or a site admin/;
   const ADMIN_ONLY = /Only a site admin can archive the team leader/;
