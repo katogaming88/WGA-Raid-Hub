@@ -5235,7 +5235,7 @@
           "name": "difficulty",
           "type": "text",
           "nullable": true,
-          "comment": "Heroic or Mythic for this weekly night (#1246); null follows the team default in team_schedule_settings. A night that moves from Heroic into Mythic is Mythic."
+          "comment": "Heroic, Mythic or Heroic into Mythic for this weekly night (#1246); null follows the team default in team_schedule_settings. raid_night_info() counts heroic_into_mythic as mythic."
         }
       ],
       "indexes": [
@@ -5262,7 +5262,7 @@
         {
           "name": "raid_schedule_difficulty_check",
           "type": "CHECK",
-          "def": "CHECK ((difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text])))",
+          "def": "CHECK ((difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text, 'heroic_into_mythic'::text])))",
           "table": "public.raid_schedule",
           "referenced_table": "",
           "columns": [
@@ -5378,7 +5378,7 @@
           "name": "difficulty",
           "type": "text",
           "nullable": true,
-          "comment": "Heroic or Mythic for an added night (#1246); null follows the team default in team_schedule_settings. Only applies to an 'added' row, as is_optional does."
+          "comment": "Heroic, Mythic or Heroic into Mythic for an added night (#1246); null follows the team default in team_schedule_settings. Only applies to an 'added' row, as is_optional does. raid_night_info() counts heroic_into_mythic as mythic."
         }
       ],
       "indexes": [
@@ -5405,7 +5405,7 @@
         {
           "name": "raid_schedule_exceptions_difficulty_check",
           "type": "CHECK",
-          "def": "CHECK ((difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text])))",
+          "def": "CHECK ((difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text, 'heroic_into_mythic'::text])))",
           "table": "public.raid_schedule_exceptions",
           "referenced_table": "",
           "columns": [
@@ -8551,7 +8551,7 @@
         {
           "name": "team_schedule_settings_default_difficulty_check",
           "type": "CHECK",
-          "def": "CHECK ((default_difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text])))",
+          "def": "CHECK ((default_difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text, 'heroic_into_mythic'::text])))",
           "table": "public.team_schedule_settings",
           "referenced_table": "",
           "columns": [

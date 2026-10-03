@@ -14,6 +14,7 @@ declare
   v_added raid_schedule_exceptions%rowtype;
   v_rule raid_schedule%rowtype;
   v_default text;
+  v_difficulty text;
 begin
   select true into v_cancelled
   from raid_schedule_exceptions
@@ -33,8 +34,9 @@ begin
   where team_id = p_team_id and raid_date = p_raid_date and exception_type = 'added';
 
   if found then
+    v_difficulty := coalesce(v_added.difficulty, v_default);
     return query select true, v_added.start_time, 'America/New_York'::text, v_added.is_optional,
-      coalesce(v_added.difficulty, v_default);
+      case v_difficulty when 'heroic_into_mythic' then 'mythic' else v_difficulty end;
     return;
   end if;
 
@@ -43,8 +45,9 @@ begin
   where team_id = p_team_id and active and weekday = v_weekday;
 
   if found then
+    v_difficulty := coalesce(v_rule.difficulty, v_default);
     return query select true, v_rule.start_time, v_rule.timezone, v_rule.is_optional,
-      coalesce(v_rule.difficulty, v_default);
+      case v_difficulty when 'heroic_into_mythic' then 'mythic' else v_difficulty end;
     return;
   end if;
 

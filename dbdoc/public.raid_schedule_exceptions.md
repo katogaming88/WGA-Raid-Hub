@@ -18,13 +18,13 @@ One-off cancellation or addition on top of raid_schedule's recurring rule (#892)
 | note | text |  | true |  |  |  |
 | created_by | integer |  | true |  | [public.team_members](public.team_members.md) |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
-| difficulty | text |  | true |  |  | Heroic or Mythic for an added night (#1246); null follows the team default in team_schedule_settings. Only applies to an 'added' row, as is_optional does. |
+| difficulty | text |  | true |  |  | Heroic, Mythic or Heroic into Mythic for an added night (#1246); null follows the team default in team_schedule_settings. Only applies to an 'added' row, as is_optional does. raid_night_info() counts heroic_into_mythic as mythic. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| raid_schedule_exceptions_difficulty_check | CHECK | CHECK ((difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text]))) |
+| raid_schedule_exceptions_difficulty_check | CHECK | CHECK ((difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text, 'heroic_into_mythic'::text]))) |
 | raid_schedule_exceptions_type_check | CHECK | CHECK ((exception_type = ANY (ARRAY['cancelled'::text, 'added'::text]))) |
 | raid_schedule_exceptions_created_by_fkey | FOREIGN KEY | FOREIGN KEY (created_by) REFERENCES team_members(id) ON DELETE SET NULL |
 | raid_schedule_exceptions_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |

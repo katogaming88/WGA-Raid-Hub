@@ -16,7 +16,7 @@ A team's own schedule settings (#1246): the raid difficulty every weekly or adde
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| team_schedule_settings_default_difficulty_check | CHECK | CHECK ((default_difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text]))) |
+| team_schedule_settings_default_difficulty_check | CHECK | CHECK ((default_difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text, 'heroic_into_mythic'::text]))) |
 | team_schedule_settings_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | team_schedule_settings_pkey | PRIMARY KEY | PRIMARY KEY (team_id) |
 
