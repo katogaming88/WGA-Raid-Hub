@@ -13,7 +13,8 @@
 -- team_schedule_settings is written by the officers who write the schedule,
 -- under raid_schedule's own rule, and read by anyone like the schedule:
 -- raid_night_info() is not security definer, so a narrower read would give a
--- signed-out caller a different answer than an officer.
+-- signed-out caller a different answer than an officer. The database stamps
+-- its updated_at, as on team_invite_links, so no browser clock reaches it.
 --
 -- raid_night_info() gains a column, which a return type change can only do by
 -- drop and create. The drop takes its comment and its service_role grant, both
@@ -42,6 +43,10 @@ comment on table public.team_schedule_settings is
 
 alter table public.team_schedule_settings owner to postgres;
 alter table public.team_schedule_settings enable row level security;
+
+create trigger trg_team_schedule_settings_updated_at
+  before update on public.team_schedule_settings
+  for each row execute function public.set_updated_at();
 
 create policy "Claude readers read team_schedule_settings" on public.team_schedule_settings
   for select to claude_readers using (true);

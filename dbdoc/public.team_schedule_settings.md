@@ -26,6 +26,12 @@ A team's own schedule settings (#1246): the raid difficulty every weekly or adde
 | ---- | ---------- |
 | team_schedule_settings_pkey | CREATE UNIQUE INDEX team_schedule_settings_pkey ON public.team_schedule_settings USING btree (team_id) |
 
+## Triggers
+
+| Name | Definition |
+| ---- | ---------- |
+| trg_team_schedule_settings_updated_at | CREATE TRIGGER trg_team_schedule_settings_updated_at BEFORE UPDATE ON public.team_schedule_settings FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+
 ## Relations
 
 ```mermaid
