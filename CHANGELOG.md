@@ -30,9 +30,9 @@ answers to.
 
 ### Project
 
-- The database tests can check which locks a row holds, from inside the
-  test's own transaction (`rowLockModes()`), so a lock a function takes
-  until it commits is tested rather than only commented (#1428).
+- The database tests can check which locks a call holds on a row until
+  it commits, from inside the test's own transaction (`rowLockModes()`).
+  The order a function takes them in is still checked by review (#1428).
 
 ---
 
