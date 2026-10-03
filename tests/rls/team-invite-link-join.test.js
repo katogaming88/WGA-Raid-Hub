@@ -290,6 +290,21 @@ describe('team_invite_link_join() and an archived membership', () => {
     });
   });
 
+  // An update would touch updated_at and run the membership triggers for a row
+  // with nothing to change. Inside the test's transaction now() does not move,
+  // so the check is the row version itself: an update writes a new one.
+  it("does not rewrite a current member's row when they open the link", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const code = await mint(asUser);
+      const member = await seedMember(q, { teamId: 1, role: 'raider' });
+      const version = async () =>
+        (await q('select ctid::text from public.team_members where id = $1', [member.memberId])).rows[0].ctid;
+      const before = await version();
+      await join(asUser, member.uid, code, await character(q, member.uid));
+      expect(await version()).toBe(before);
+    });
+  });
+
   it('leaves a current officer their role when they open the link', async () => {
     await withTxn(async ({ q, asUser }) => {
       const code = await mint(asUser);
