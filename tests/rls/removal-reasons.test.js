@@ -6,7 +6,7 @@
 // Each case mints its own team (seedTeam), so it never writes a seeded row.
 import { randomUUID } from 'node:crypto';
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedTeam, seedPlayer, RLS_DENIED } from './helpers.js';
+import { pool, withTxn, insertDiscordUser, grantGuild, seedTeam, seedPlayer, RLS_DENIED } from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -149,6 +149,24 @@ describe('who can read and write removal_reasons', () => {
       expect(await count((t, p) => asUser(other.officer.uid, t, p))).toBe(0);
       expect(await count((t, p) => asUser(team.raider.uid, t, p))).toBe(0);
       expect(await count((t, p) => asAnon(t, p))).toBe(0);
+    });
+  });
+
+  it('a guild officer and a site admin read them too', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const playerId = await seedPlayer(q, { teamId: team.teamId });
+      await archivePlayer(asUser, team.officer.uid, playerId);
+      for (const grant of ['guild_officer', 'site_admin']) {
+        const uid = randomUUID();
+        const discordId = `fixture-${randomUUID()}`;
+        await insertDiscordUser(q, uid, discordId);
+        await grantGuild(q, discordId, grant);
+        const seen = await asUser(uid, 'select count(*)::int as n from public.removal_reasons where team_id = $1', [
+          team.teamId
+        ]);
+        expect(seen.rows[0].n).toBe(1);
+      }
     });
   });
 
