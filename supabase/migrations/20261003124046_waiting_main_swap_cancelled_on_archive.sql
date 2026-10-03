@@ -1,4 +1,4 @@
--- #1428: a waiting main swap is cancelled when the character it is from
+-- #1428: a waiting main swap is closed when the character it is from
 -- leaves the roster.
 --
 -- Once that character is archived, review_main_swap_request() could never
@@ -10,19 +10,25 @@
 -- direct update. A trigger on players.archived_at covers all four, the shape
 -- #1392 used for the live priority lists.
 --
--- The swap is cancelled with the acting officer as reviewer and a note saying
--- why. "Membership ended" when the character's membership is archived
--- (archive_team_member() archives the membership before its characters), and
--- no notification, since they left. "Character removed" otherwise, with a
--- notification to the raider, who is still on the team; it reaches them on
--- the archived character, since the inbox reads every character a person
--- holds. Security definer: main_swap_requests and notifications have no write
--- rule for the officer whose archive fires it.
+-- A swap to a character that is on the roster by then was done another way
+-- (a signup main swap to the same alt, or by hand), so it closes as approved
+-- with no notification. Any other waiting swap is cancelled with the acting
+-- officer as reviewer and a note saying why: "Membership ended" when the
+-- character's membership is archived (archive_team_member() archives the
+-- membership before its characters), with no notification, since they left;
+-- "Character removed" otherwise, with a notification to the raider on the
+-- archived character, which their inbox still reads, unless nobody holds the
+-- character any more. Security definer: main_swap_requests and notifications
+-- have no write rule for the officer whose archive fires it.
 --
 -- Approving a swap archives its own old character, so the approval now marks
--- the request approved first. Every archive locks the membership, then the
--- character, then (through the trigger) the request, so the review takes them
--- in that order and request_main_swap() holds the character it checked.
+-- the request approved first. Archive Member locks the membership, then the
+-- characters, then (through the trigger) the request; Remove and a signup
+-- main swap lock the character, then the request, and take only a key share
+-- on the membership. The review takes the membership for share, then the new
+-- roster row, then the old character, then the request, so it waits behind
+-- any of them instead of deadlocking. request_main_swap() holds the character
+-- it checked until the request is saved.
 
 create or replace function public.cancel_waiting_main_swaps_on_archive() returns trigger
 language plpgsql security definer set search_path to 'public'
@@ -30,6 +36,22 @@ as $$
 declare
   v_membership_ended boolean;
 begin
+  -- The character they asked for is on the roster now: the swap was done
+  -- another way, by a signup main swap or by hand.
+  update main_swap_requests r
+     set status = 'approved',
+         reviewed_at = now(),
+         reviewed_by = my_person_id(),
+         officer_note = 'Already on the roster',
+         approved_player_id = a.id
+    from players a
+   where r.from_player_id = new.id
+     and r.team_id = new.team_id
+     and r.status = 'pending'
+     and a.team_id = new.team_id
+     and a.name_realm_key = lower(replace(r.name_realm, ' ', ''))
+     and a.archived_at is null;
+
   select tm.archived_at is not null into v_membership_ended
     from team_members tm
    where tm.id = new.team_member_id;
@@ -42,6 +64,7 @@ begin
            reviewed_by = my_person_id(),
            officer_note = case when v_membership_ended then 'Membership ended' else 'Character removed' end
      where from_player_id = new.id
+       and team_id = new.team_id
        and status = 'pending'
     returning name_realm
   )
@@ -49,7 +72,8 @@ begin
   select new.team_id, new.id,
          concat('Your main swap to ', c.name_realm, ' was cancelled: ', new.name_realm, ' is no longer on the roster.')
     from cancelled c
-   where not v_membership_ended;
+   where not v_membership_ended
+     and new.team_member_id is not null;
 
   return new;
 end;
@@ -62,6 +86,19 @@ create trigger players_cancel_waiting_main_swaps_on_archive
   for each row
   when (old.archived_at is null and new.archived_at is not null)
   execute function public.cancel_waiting_main_swaps_on_archive();
+
+-- A swap already waiting from a character off the roster (none on
+-- production, 2026-10-03) is closed the way the trigger would have, since the
+-- review no longer refuses one.
+update public.main_swap_requests r
+   set status = 'cancelled',
+       reviewed_at = now(),
+       officer_note = case when tm.archived_at is not null then 'Membership ended' else 'Character removed' end
+  from public.players p
+  left join public.team_members tm on tm.id = p.team_member_id
+ where p.id = r.from_player_id
+   and p.archived_at is not null
+   and r.status = 'pending';
 
 CREATE OR REPLACE FUNCTION public.review_main_swap_request(p_request_id integer, p_approve boolean, p_note text DEFAULT NULL::text)
  RETURNS integer
@@ -76,7 +113,8 @@ declare
   v_spec_label text;
   v_note text := nullif(btrim(p_note), '');
 begin
-  -- Read without a lock first, for the rows to lock below.
+  -- Read without a lock first, for the rows to lock below; the status is
+  -- checked again once the request is held.
   select * into v_request from public.main_swap_requests where id = p_request_id;
   if not found then
     raise exception 'No main swap with id %', p_request_id;
@@ -88,16 +126,48 @@ begin
     raise exception 'Not authorized';
   end if;
 
-  -- Locked in the order every archive takes them: the membership, the old
-  -- character, then the request, which the trigger cancelling a waiting swap
-  -- reaches last (#1428). An approval and a removal or Archive Member of the
-  -- same raider then wait for each other instead of deadlocking.
+  if v_request.status is distinct from 'pending' then
+    raise exception 'That main swap was already %', v_request.status;
+  end if;
+
+  -- Rows are taken in an order that waits behind an archive instead of
+  -- deadlocking with it (#1428): the membership, for share, which the key
+  -- share a removal takes on it does not block; then the new roster row,
+  -- which a signup main swap writes before it archives the old character;
+  -- then the old character; then the request, which the trigger cancelling a
+  -- waiting swap reaches last.
   perform 1 from public.team_members
    where id = (select team_member_id from public.players where id = v_request.from_player_id)
      for share;
+  select * into v_from from public.players where id = v_request.from_player_id;
+
+  if p_approve then
+    -- The character joins the roster, or comes back to it. Same on-conflict
+    -- shape as add_signup_to_roster(): a character they played before keeps its
+    -- id, so its loot and raid history stay attached to it.
+    insert into public.players (
+      team_id, name_realm, class_spec_id, is_trial, join_date, is_backup_tank, is_backup_healer, team_member_id
+    )
+    values (
+      v_request.team_id, v_request.name_realm, v_request.class_spec_id, v_from.is_trial, v_from.join_date,
+      v_from.is_backup_tank, v_from.is_backup_healer, v_from.team_member_id
+    )
+    on conflict (team_id, name_realm_key) do update
+      set class_spec_id = excluded.class_spec_id,
+          is_trial = excluded.is_trial,
+          join_date = excluded.join_date,
+          is_backup_tank = excluded.is_backup_tank,
+          is_backup_healer = excluded.is_backup_healer,
+          team_member_id = coalesce(players.team_member_id, excluded.team_member_id),
+          archived_at = null
+    returning id into v_player_id;
+  end if;
+
   select * into v_from from public.players where id = v_request.from_player_id for no key update;
   select * into v_request from public.main_swap_requests where id = p_request_id for update;
-
+  if not found then
+    raise exception 'No main swap with id %', p_request_id;
+  end if;
   if v_request.status is distinct from 'pending' then
     raise exception 'That main swap was already %', v_request.status;
   end if;
@@ -115,26 +185,6 @@ begin
                    case when v_note is not null then ' ' || v_note end));
     return null;
   end if;
-
-  -- The character joins the roster, or comes back to it. Same on-conflict
-  -- shape as add_signup_to_roster(): a character they played before keeps its
-  -- id, so its loot and raid history stay attached to it.
-  insert into public.players (
-    team_id, name_realm, class_spec_id, is_trial, join_date, is_backup_tank, is_backup_healer, team_member_id
-  )
-  values (
-    v_request.team_id, v_request.name_realm, v_request.class_spec_id, v_from.is_trial, v_from.join_date,
-    v_from.is_backup_tank, v_from.is_backup_healer, v_from.team_member_id
-  )
-  on conflict (team_id, name_realm_key) do update
-    set class_spec_id = excluded.class_spec_id,
-        is_trial = excluded.is_trial,
-        join_date = excluded.join_date,
-        is_backup_tank = excluded.is_backup_tank,
-        is_backup_healer = excluded.is_backup_healer,
-        team_member_id = coalesce(players.team_member_id, excluded.team_member_id),
-        archived_at = null
-  returning id into v_player_id;
 
   -- Approved before the old character is archived, so the trigger that cancels
   -- a waiting swap when its character leaves the roster finds this one closed.
@@ -216,8 +266,8 @@ begin
    limit 1
   -- Held until the request is saved, so a removal cannot take the character
   -- off the roster between this check and the insert and leave a swap
-  -- waiting from it (#1428). Only the character: archive_team_member() locks
-  -- the membership first, and so must anything else that locks both.
+  -- waiting from it (#1428). Only the character: locking the membership here
+  -- too would take it after the character, the opposite of Archive Member.
      for share of p;
   if v_from_player_id is null then
     raise exception 'You have no character on this team''s roster';
@@ -261,4 +311,4 @@ end;
 $function$;
 
 comment on table public.main_swap_requests is
-  'A raider''s request to make one of their alts their roster character, outside a signup window (#631, #942 step 5c). Written only by request_main_swap(), cancel_main_swap_request() and review_main_swap_request(), and by the trigger that cancels a waiting swap when its character leaves the roster (cancel_waiting_main_swaps_on_archive, #1428). name_realm and class_spec_id are what they asked for, kept here so the request still reads right after the character row changes.';
+  'A raider''s request to make one of their alts their roster character, outside a signup window (#631, #942 step 5c). Written only by request_main_swap(), cancel_main_swap_request() and review_main_swap_request(), and by the trigger that closes a waiting swap when its character leaves the roster (cancel_waiting_main_swaps_on_archive, #1428). name_realm and class_spec_id are what they asked for, kept here so the request still reads right after the character row changes.';
