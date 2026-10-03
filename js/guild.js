@@ -134,6 +134,7 @@ function resolveGuildTeam() {
             .from('team_members')
             .select('team_id, players!players_team_member_id_fkey(name_realm, archived_at)')
             .eq('auth_user_id', session.user.id)
+            .is('archived_at', null)
         ),
         10000
       ).then(function (res) {

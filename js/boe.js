@@ -220,7 +220,8 @@ function refreshBoeIdentity() {
       return supabaseClient
         .from('team_members')
         .select('team_id, players!players_team_member_id_fkey(name_realm, archived_at)')
-        .eq('auth_user_id', session.user.id);
+        .eq('auth_user_id', session.user.id)
+        .is('archived_at', null);
     })
     .then(function (res) {
       if (!res || res.error || !res.data) return;

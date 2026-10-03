@@ -296,6 +296,7 @@ function findClaimElsewhere(userId) {
     .select('team_id, players!players_team_member_id_fkey(name_realm, archived_at)')
     .eq('auth_user_id', userId)
     .neq('team_id', _teamCfg.supabaseTeamId)
+    .is('archived_at', null)
     .then(function (result) {
       var rows = result.data || [];
       for (var i = 0; i < rows.length; i++) {
