@@ -2796,6 +2796,7 @@ export type Database = {
       }
       team_members: {
         Row: {
+          archived_at: string | null
           auth_user_id: string | null
           discord_id: string
           id: number
@@ -2806,6 +2807,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          archived_at?: string | null
           auth_user_id?: string | null
           discord_id: string
           id?: number
@@ -2816,6 +2818,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          archived_at?: string | null
           auth_user_id?: string | null
           discord_id?: string
           id?: number
@@ -3817,6 +3820,10 @@ export type Database = {
       archive_player: {
         Args: { p_detail: string; p_player_id: number; p_reason: string }
         Returns: string
+      }
+      archive_team_member: {
+        Args: { p_team_id: number; p_team_member_id: number }
+        Returns: undefined
       }
       auth_user_for_discord_id: {
         Args: { p_discord_id: string }

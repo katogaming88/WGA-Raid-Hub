@@ -85,6 +85,25 @@ The gear sync takes an equipped item's track from its bonus ids and falls back t
 
 ---
 
+## 2026-09-28 -- ending a membership archives it; it is never deleted (#1355)
+
+Shipped: 20261002195736_team_members_archived_at.sql
+
+Rex's review of the `names` design (comment on #1355, 2026-09-28) found that the first pass at "Delete Member" -- an outright `DELETE` of the `team_members` row -- had a real bug: `players.team_member_id` is `ON DELETE SET NULL`, so deleting the membership would null it on every character that pointed at it, *archived ones included*. That link is what says whose an archived character's loot, attendance and BoE finds were, and how `earlier_characters()` finds an old main. Losing it also frees the character for the next Battle.net import carrying the same name to silently revive as theirs, since the join already revives any archived character nobody holds.
+
+The codebase already had a rule against exactly this: `admin_revoke_team_role()` (decisions log, #910) demotes to raider rather than deleting whenever a `players` row still points at the membership. The `names` design's first pass missed applying that same rule to its own new delete path.
+
+- **`team_members` gets `archived_at`,** the column `players` already has for the same idea. `archive_team_member()` (renamed from `delete_team_member`) sets it and archives the person's active characters with it, instead of deleting either row.
+- **`team_invite_link_join()` clears it on the way back in.** Its insert's `on conflict (team_id, person_id)` went from `do nothing` to `do update set archived_at = null`, so a returning raider's membership (and, through the usual upsert, their character) picks back up instead of staying invisible.
+- **Five predicates start skipping archived rows:** `my_team_role()`, `my_officer_team_ids()`, `my_leader_team_ids()`, `is_any_team_officer()`, `is_team_leader_anywhere()`. An archived membership stops being "this person's role on this team" the instant it's set. `my_player_ids()` and `earlier_characters()` don't change -- they answer history, not current standing.
+- **Team leaders lose direct DELETE on `team_members`.** The old single `ALL` write policy let a team leader delete a membership straight from the table, skipping `admin_revoke_team_role()`'s check entirely -- and would have kept skipping `archive_team_member()`'s "archive, don't delete" rule the same way. Split into separate INSERT and UPDATE policies (Postgres policies don't take a multi-command list); nothing grants table-level DELETE to anyone now.
+- **`write_audit_log()` is called before the archive, not after,** inside `archive_team_member()` -- it re-checks the caller's own officer status live, and an officer archiving their own membership failed that check the instant their own row said `archived_at is not null`, aborting the archive it had just done. Found by a test for exactly that case, not by Rex's review.
+- **Not changed:** `admin_revoke_team_role()`'s own delete branch (a memberless grant with zero characters) still deletes outright; Rex's review didn't ask for that to change. "Remove from Guild" (archiving every membership a person has across the guild, not just one team) is tracked as #1379.
+
+[Full discussion -> #1355](https://github.com/katogaming88/WGA-Raid-Hub/issues/1355#issuecomment-5863645131) (Rex's review comment).
+
+---
+
 ## 2026-09-28 -- the setup status and the demand report count one season (#1268)
 
 Shipped: 20260928020820_demand_and_setup_status_season.sql

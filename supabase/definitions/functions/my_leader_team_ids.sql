@@ -11,5 +11,6 @@ AS $function$
   select coalesce(array_agg(distinct team_id), '{}')
     from team_members
    where person_id = my_person_id()
-     and role = 'team_leader';
+     and role = 'team_leader'
+     and archived_at is null;
 $function$;

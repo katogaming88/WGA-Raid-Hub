@@ -12,5 +12,6 @@ AS $function$
     select 1 from team_members
     where person_id = my_person_id()
       and role = 'team_leader'
+      and archived_at is null
   );
 $function$;
