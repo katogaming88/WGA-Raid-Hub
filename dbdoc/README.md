@@ -227,6 +227,7 @@
 | public.check_removal_reason_membership_team | trigger |  | FUNCTION |
 | public.record_removal_reason | trigger |  | FUNCTION |
 | public.cancel_waiting_main_swaps_on_archive | trigger |  | FUNCTION |
+| public.restore_player | bool | p_player_id integer, p_name_realm text DEFAULT NULL::text, p_nickname text DEFAULT NULL::text, p_class_spec_id integer DEFAULT NULL::integer, p_is_trial boolean DEFAULT NULL::boolean, p_join_date date DEFAULT NULL::date | FUNCTION |
 
 ## Enums
 
