@@ -3,7 +3,7 @@
 -- execute (site roles): public
 
 CREATE OR REPLACE FUNCTION public.raid_night_info(p_team_id integer, p_raid_date date)
- RETURNS TABLE("exists" boolean, start_time time without time zone, timezone text, is_optional boolean)
+ RETURNS TABLE("exists" boolean, start_time time without time zone, timezone text, is_optional boolean, difficulty text)
  LANGUAGE plpgsql
  STABLE
  SET search_path TO 'public'
@@ -13,22 +13,30 @@ declare
   v_cancelled boolean;
   v_added raid_schedule_exceptions%rowtype;
   v_rule raid_schedule%rowtype;
+  v_default text;
+  v_difficulty text;
 begin
   select true into v_cancelled
   from raid_schedule_exceptions
   where team_id = p_team_id and raid_date = p_raid_date and exception_type = 'cancelled';
 
   if v_cancelled then
-    return query select false, null::time, null::text, null::boolean;
+    return query select false, null::time, null::text, null::boolean, null::text;
     return;
   end if;
+
+  select default_difficulty into v_default
+  from team_schedule_settings
+  where team_id = p_team_id;
 
   select * into v_added
   from raid_schedule_exceptions
   where team_id = p_team_id and raid_date = p_raid_date and exception_type = 'added';
 
   if found then
-    return query select true, v_added.start_time, 'America/New_York'::text, v_added.is_optional;
+    v_difficulty := coalesce(v_added.difficulty, v_default);
+    return query select true, v_added.start_time, 'America/New_York'::text, v_added.is_optional,
+      case v_difficulty when 'heroic_into_mythic' then 'mythic' else v_difficulty end;
     return;
   end if;
 
@@ -37,10 +45,12 @@ begin
   where team_id = p_team_id and active and weekday = v_weekday;
 
   if found then
-    return query select true, v_rule.start_time, v_rule.timezone, v_rule.is_optional;
+    v_difficulty := coalesce(v_rule.difficulty, v_default);
+    return query select true, v_rule.start_time, v_rule.timezone, v_rule.is_optional,
+      case v_difficulty when 'heroic_into_mythic' then 'mythic' else v_difficulty end;
     return;
   end if;
 
-  return query select false, null::time, null::text, null::boolean;
+  return query select false, null::time, null::text, null::boolean, null::text;
 end;
 $function$;

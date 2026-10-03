@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.159.11">
-  <link rel="stylesheet" href="css/officer.css?v=3.159.11">
+  <link rel="stylesheet" href="css/styles.css?v=3.160.0">
+  <link rel="stylesheet" href="css/officer.css?v=3.160.0">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS Lists, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -1063,7 +1063,21 @@
             <div id="help-schedule" class="help-tip" style="margin-top:0;margin-bottom:0.75rem;">
               These recurring nights drive the raid calendar raiders see (Home widget and the Calendar page) -- add one row per weekly raid night, edit and click <strong>Save</strong> per row. Raiders are auto-marked Present unless benched; an <strong>Optional</strong> night has no automatic Present and everyone must respond instead (#895).<br>
               Use <strong>One-Off Changes</strong> below to cancel a single occurrence of a weekly night, or add an extra night that isn't part of the regular schedule.<br>
-              Cancelling or removing a night does not touch any RSVPs raiders already submitted for it -- those rows are left in place but become harmless.
+              Cancelling or removing a night does not touch any RSVPs raiders already submitted for it -- those rows are left in place but become harmless.<br>
+              Each night says Heroic or Mythic, so the boss lineup can tell which of the week's kills count for it. Set the team's usual difficulty once under <strong>Raid difficulty</strong>; every night follows it unless you pick another for that night. Pick <strong>Heroic into Mythic</strong> for a night that starts on Heroic and pushes into Mythic; it counts as Mythic.
+            </div>
+            <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:0.85rem;">
+              <div>
+                <label for="schedDefaultDifficulty" style="display:block;font-size:0.85rem;color:var(--text-muted);margin-bottom:2px;">Raid difficulty (team default)</label>
+                <select id="schedDefaultDifficulty" class="add-player-input" style="font-size:0.97rem;padding:0.3rem 0.5rem;">
+                  <option value="">Not set</option>
+                  <option value="heroic">Heroic</option>
+                  <option value="mythic">Mythic</option>
+                  <option value="heroic_into_mythic">Heroic into Mythic</option>
+                </select>
+              </div>
+              <button class="btn btn-muted" id="schedDefaultSaveBtn" onclick="saveScheduleDefaultDifficulty()">Save</button>
+              <div id="scheduleDefaultStatus" role="status" style="font-size:0.93rem;color:var(--melee);padding-bottom:0.4rem;"></div>
             </div>
             <div id="scheduleRulesWrap"></div>
             <div id="scheduleRuleStatus" style="font-size:0.93rem;color:var(--melee);margin-top:0.5rem;"></div>
@@ -1086,6 +1100,15 @@
                 <label style="display:flex;align-items:center;gap:5px;font-size:0.93rem;color:var(--text-muted);cursor:pointer;padding-bottom:0.4rem;">
                   <input type="checkbox" id="schedExcOptionalInput"> Optional (added only)
                 </label>
+                <div>
+                  <label for="schedExcDifficultyInput" style="display:block;font-size:0.85rem;color:var(--text-muted);margin-bottom:2px;">Difficulty (added only)</label>
+                  <select id="schedExcDifficultyInput" class="add-player-input" style="font-size:0.97rem;padding:0.3rem 0.5rem;">
+                    <option value="" id="schedExcDifficultyDefault">Team default</option>
+                    <option value="heroic">Heroic</option>
+                    <option value="mythic">Mythic</option>
+                    <option value="heroic_into_mythic">Heroic into Mythic</option>
+                  </select>
+                </div>
                 <div style="flex:1;min-width:160px;">
                   <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:2px;">Note</div>
                   <input type="text" id="schedExcNoteInput" class="add-player-input" placeholder="Optional note" style="width:100%;font-size:0.97rem;padding:0.3rem 0.5rem;">
@@ -1105,7 +1128,7 @@
 
   </main>
 
-  <footer class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum">3.159.11</span> &middot; <a
+  <footer class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum">3.160.0</span> &middot; <a
       class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank"
       rel="noopener">Changelog</a></footer>
 
@@ -1221,28 +1244,28 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.159.11"></script>
-  <script src="js/discord.js?v=3.159.11"></script>
-  <script src="js/officer.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-roster.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-signups.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-requests.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-bis.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-priority.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-audit.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-reports.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-season.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-schedule.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-bios.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.159.11"></script>
-  <script src="js/tabs/tab-admin.js?v=3.159.11"></script>
+  <script src="js/common.js?v=3.160.0"></script>
+  <script src="js/discord.js?v=3.160.0"></script>
+  <script src="js/officer.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-roster.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-signups.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-requests.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-bis.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-priority.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-audit.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-reports.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-season.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-schedule.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-bios.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.160.0"></script>
+  <script src="js/tabs/tab-admin.js?v=3.160.0"></script>
   <script>
 renderSiteNav('officer');
 document.getElementById('versionNum').textContent = VERSION;
