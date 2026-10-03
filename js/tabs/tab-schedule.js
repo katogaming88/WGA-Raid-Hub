@@ -13,8 +13,42 @@
 
 var SCHEDULE_RULES = [];
 var SCHEDULE_EXCEPTIONS = [];
+// The team's default raid difficulty (team_schedule_settings, #1246): a
+// weekly night or an added night left at "Team default" stores null and
+// raid_night_info() resolves it to this. Null here means not set.
+var SCHEDULE_DEFAULT_DIFFICULTY = null;
 
 var _SCHED_WEEKDAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+var _SCHED_DIFFICULTY_LABELS = { heroic: 'Heroic', mythic: 'Mythic' };
+
+function _schedDifficultyValue(v) {
+  return v === 'heroic' || v === 'mythic' ? v : null;
+}
+
+function _schedDefaultLabel() {
+  var d = SCHEDULE_DEFAULT_DIFFICULTY;
+  return 'Team default (' + (d ? _SCHED_DIFFICULTY_LABELS[d] : 'not set') + ')';
+}
+
+// What a night's own value means on screen: its pick, or the team default.
+function _schedResolvedDifficultyLabel(d) {
+  return d ? _SCHED_DIFFICULTY_LABELS[d] : _schedDefaultLabel();
+}
+
+function _schedDifficultyOptions(selected) {
+  var html = '<option value=""' + (selected ? '' : ' selected') + '>' + _esc(_schedDefaultLabel()) + '</option>';
+  ['heroic', 'mythic'].forEach(function (d) {
+    html +=
+      '<option value="' +
+      d +
+      '"' +
+      (selected === d ? ' selected' : '') +
+      '>' +
+      _SCHED_DIFFICULTY_LABELS[d] +
+      '</option>';
+  });
+  return html;
+}
 
 // Local copy of js/calendar.js's _calIsoDate -- officer.html doesn't load
 // calendar.js (it's raider-facing, Home/calendar.html only), so this tab
@@ -34,11 +68,36 @@ function buildScheduleTab() {
   if (wrap) wrap.innerHTML = '<p style="font-size:1rem;color:var(--text-muted);">Loading...</p>';
   if (excWrap) excWrap.innerHTML = '';
 
+  // The default is read first so the rows render with its label. A failed
+  // read leaves it not set and still loads the schedule.
+  // team-read-guard: one row per team (team_id is the primary key).
+  supabaseClient
+    .from('team_schedule_settings')
+    .select('default_difficulty')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .maybeSingle()
+    .then(function (result) {
+      var status = document.getElementById('scheduleDefaultStatus');
+      if (result.error) {
+        if (status) status.textContent = 'Error loading the team default: ' + result.error.message;
+        SCHEDULE_DEFAULT_DIFFICULTY = null;
+      } else {
+        SCHEDULE_DEFAULT_DIFFICULTY = _schedDifficultyValue(result.data && result.data.default_difficulty);
+      }
+      renderScheduleDefault();
+      _loadScheduleRulesAndExceptions();
+    });
+}
+
+function _loadScheduleRulesAndExceptions() {
+  var wrap = document.getElementById('scheduleRulesWrap');
+  var excWrap = document.getElementById('scheduleExceptionsWrap');
+
   // team-read-guard: one row per weekday/time slot a team raids (UNIQUE on
   // team_id/weekday/start_time), nowhere near the 1000-row cap.
   supabaseClient
     .from('raid_schedule')
-    .select('id, weekday, start_time, timezone, duration_minutes, active, is_optional')
+    .select('id, weekday, start_time, timezone, duration_minutes, active, is_optional, difficulty')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .order('weekday')
     .then(function (result) {
@@ -59,7 +118,7 @@ function buildScheduleTab() {
   // the 1000-row cap for any team's realistic one-off schedule changes.
   supabaseClient
     .from('raid_schedule_exceptions')
-    .select('id, raid_date, exception_type, start_time, duration_minutes, is_optional, note')
+    .select('id, raid_date, exception_type, start_time, duration_minutes, is_optional, note, difficulty')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .gte('raid_date', _schedIsoDate(new Date()))
     .order('raid_date')
@@ -80,6 +139,47 @@ function _schedTimeInputValue(t) {
   return (t || '').slice(0, 5);
 }
 
+function renderScheduleDefault() {
+  var sel = document.getElementById('schedDefaultDifficulty');
+  if (sel) sel.value = SCHEDULE_DEFAULT_DIFFICULTY || '';
+  var excOption = document.getElementById('schedExcDifficultyDefault');
+  if (excOption) excOption.textContent = _schedDefaultLabel();
+}
+
+function saveScheduleDefaultDifficulty() {
+  var sel = document.getElementById('schedDefaultDifficulty');
+  var status = document.getElementById('scheduleDefaultStatus');
+  var difficulty = _schedDifficultyValue(sel ? sel.value : '');
+  supabaseClient
+    .from('team_schedule_settings')
+    .upsert(
+      { team_id: _teamCfg.supabaseTeamId, default_difficulty: difficulty, updated_at: new Date().toISOString() },
+      { onConflict: 'team_id' }
+    )
+    .then(function (result) {
+      if (result.error) {
+        if (status) status.textContent = result.error.message;
+        return;
+      }
+      SCHEDULE_DEFAULT_DIFFICULTY = difficulty;
+      renderScheduleDefault();
+      renderScheduleRules();
+      renderScheduleExceptions();
+      if (status) {
+        status.textContent = 'Saved.';
+        setTimeout(function () {
+          if (status) status.textContent = '';
+        }, 2000);
+      }
+      writeAuditLog(
+        'Raid Difficulty Default Updated',
+        'team_schedule_settings',
+        _teamCfg.supabaseTeamId,
+        difficulty ? _SCHED_DIFFICULTY_LABELS[difficulty] : 'Not set'
+      );
+    });
+}
+
 function renderScheduleRules() {
   var wrap = document.getElementById('scheduleRulesWrap');
   if (!wrap) return;
@@ -94,6 +194,7 @@ function renderScheduleRules() {
     html += '<th style="padding:0.2rem 0.5rem;">Duration (min)</th>';
     html += '<th style="padding:0.2rem 0.5rem;">Timezone</th>';
     html += '<th style="padding:0.2rem 0.5rem;">Optional</th>';
+    html += '<th style="padding:0.2rem 0.5rem;">Difficulty</th>';
     html += '<th style="padding:0.2rem 0.5rem;">Active</th>';
     html += '<th style="padding:0.2rem 0;"></th>';
     html += '</tr></thead><tbody>';
@@ -130,6 +231,12 @@ function renderScheduleRules() {
         (r.is_optional ? ' checked' : '') +
         '></td>';
       html +=
+        '<td style="padding:0.25rem 0.5rem;"><select class="add-player-input sched-rule-difficulty" aria-label="Difficulty for ' +
+        _SCHED_WEEKDAY_LABELS[r.weekday] +
+        '" style="font-size:0.97rem;padding:0.25rem 0.4rem;">' +
+        _schedDifficultyOptions(r.difficulty) +
+        '</select></td>';
+      html +=
         '<td style="padding:0.25rem 0.5rem;"><input type="checkbox" class="sched-rule-active"' +
         (r.active ? ' checked' : '') +
         '></td>';
@@ -158,7 +265,7 @@ function addScheduleRule() {
   supabaseClient
     .from('raid_schedule')
     .insert({ team_id: _teamCfg.supabaseTeamId, weekday: 0, start_time: '20:00:00', duration_minutes: 180 })
-    .select('id, weekday, start_time, timezone, duration_minutes, active, is_optional')
+    .select('id, weekday, start_time, timezone, duration_minutes, active, is_optional, difficulty')
     .then(function (result) {
       if (btn) btn.disabled = false;
       if (result.error) {
@@ -180,6 +287,7 @@ function saveScheduleRule(id) {
   var timezone = row.querySelector('.sched-rule-timezone').value.trim();
   var isOptional = row.querySelector('.sched-rule-optional').checked;
   var active = row.querySelector('.sched-rule-active').checked;
+  var difficulty = _schedDifficultyValue(row.querySelector('.sched-rule-difficulty').value);
   var status = document.getElementById('scheduleRuleStatus');
 
   if (!startTime || !duration || !timezone) {
@@ -195,7 +303,8 @@ function saveScheduleRule(id) {
       duration_minutes: duration,
       timezone: timezone,
       is_optional: isOptional,
-      active: active
+      active: active,
+      difficulty: difficulty
     })
     .eq('id', id)
     .then(function (result) {
@@ -214,7 +323,8 @@ function saveScheduleRule(id) {
           duration_minutes: duration,
           timezone: timezone,
           is_optional: isOptional,
-          active: active
+          active: active,
+          difficulty: difficulty
         };
       }
       if (status) {
@@ -231,6 +341,7 @@ function saveScheduleRule(id) {
           ' ' +
           startTime +
           (isOptional ? ' (optional)' : '') +
+          (difficulty ? ' (' + _SCHED_DIFFICULTY_LABELS[difficulty] + ')' : '') +
           (active ? '' : ' (inactive)')
       );
     });
@@ -271,6 +382,7 @@ function renderScheduleExceptions() {
   html += '<th style="padding:0.2rem 0.5rem;">Start Time</th>';
   html += '<th style="padding:0.2rem 0.5rem;">Duration</th>';
   html += '<th style="padding:0.2rem 0.5rem;">Optional</th>';
+  html += '<th style="padding:0.2rem 0.5rem;">Difficulty</th>';
   html += '<th style="padding:0.2rem 0.5rem;">Note</th>';
   html += '<th style="padding:0.2rem 0;"></th>';
   html += '</tr></thead><tbody>';
@@ -297,6 +409,10 @@ function renderScheduleExceptions() {
       '<td style="padding:0.2rem 0.5rem;color:var(--text-muted);">' +
       (isAdded && ex.is_optional ? 'Yes' : '-') +
       '</td>';
+    html +=
+      '<td style="padding:0.2rem 0.5rem;color:var(--text-muted);">' +
+      (isAdded ? _esc(_schedResolvedDifficultyLabel(ex.difficulty)) : '-') +
+      '</td>';
     html += '<td style="padding:0.2rem 0.5rem;color:var(--text-muted);">' + _esc(ex.note || '-') + '</td>';
     html +=
       '<td style="padding:0.2rem 0;"><button class="btn btn-danger" style="font-size:0.91rem;padding:2px 10px;" onclick="deleteScheduleException(' +
@@ -313,6 +429,7 @@ function addScheduleException(type) {
   var startInput = document.getElementById('schedExcStartInput');
   var durationInput = document.getElementById('schedExcDurationInput');
   var optionalInput = document.getElementById('schedExcOptionalInput');
+  var difficultyInput = document.getElementById('schedExcDifficultyInput');
   var noteInput = document.getElementById('schedExcNoteInput');
   var status = document.getElementById('scheduleExceptionStatus');
 
@@ -335,6 +452,7 @@ function addScheduleException(type) {
     start_time: isAdded ? startInput.value : null,
     duration_minutes: isAdded ? parseInt(durationInput.value, 10) : null,
     is_optional: isAdded && optionalInput ? optionalInput.checked : false,
+    difficulty: isAdded && difficultyInput ? _schedDifficultyValue(difficultyInput.value) : null,
     note: (noteInput && noteInput.value.trim()) || null,
     created_by: session && session.teamMemberId ? session.teamMemberId : null
   };
@@ -342,7 +460,7 @@ function addScheduleException(type) {
   supabaseClient
     .from('raid_schedule_exceptions')
     .insert(row)
-    .select('id, raid_date, exception_type, start_time, duration_minutes, is_optional, note')
+    .select('id, raid_date, exception_type, start_time, duration_minutes, is_optional, note, difficulty')
     .then(function (result) {
       if (result.error) {
         if (status) status.textContent = result.error.message;
@@ -357,6 +475,7 @@ function addScheduleException(type) {
       if (startInput) startInput.value = '';
       if (durationInput) durationInput.value = '';
       if (optionalInput) optionalInput.checked = false;
+      if (difficultyInput) difficultyInput.value = '';
       if (noteInput) noteInput.value = '';
       if (status) {
         status.textContent = 'Saved.';
