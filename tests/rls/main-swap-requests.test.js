@@ -284,12 +284,14 @@ describe('review_main_swap_request()', () => {
     });
   });
 
+  // The old character leaving the roster cancels the swap (#1428), so there is
+  // nothing left to approve.
   it('refuses a swap away from a character that has since left the roster', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { characterId, raiderPlayer } = await fixture(q);
       const id = (await ask(asUser, RAIDER_T1, characterId)).rows[0].id;
       await q('update public.players set archived_at = now() where id = $1', [raiderPlayer]);
-      await expect(review(asUser, OFFICER_T1, id, true)).rejects.toThrow(/no longer on the roster/);
+      await expect(review(asUser, OFFICER_T1, id, true)).rejects.toThrow(/already cancelled/);
     });
   });
 });
