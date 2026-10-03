@@ -55,12 +55,15 @@ begin
   -- the link in two tabs would otherwise have both find no membership and both
   -- insert, and the second would surface team_members_team_id_person_id_key
   -- instead of joining. The trigger fills person_id before the conflict is
-  -- checked, so it can arbitrate on it. do nothing rather than do update,
-  -- since there is nothing to change on a membership that already exists and
-  -- an update would touch its updated_at.
+  -- checked, so it can arbitrate on it. An existing membership is updated only
+  -- when it was archived (#1355): the person is coming back, and as a raider,
+  -- since the link is a raider's way in. A current one is left alone, since an
+  -- update would touch its updated_at for nothing; the select below finds it.
   insert into public.team_members (team_id, discord_id, role)
   values (v_team_id, v_discord_id, 'raider')
-  on conflict (team_id, person_id) do nothing
+  on conflict (team_id, person_id) do update
+     set role = 'raider', archived_at = null
+   where team_members.archived_at is not null
   returning id into v_member_id;
 
   if v_member_id is null then

@@ -18,7 +18,7 @@
 | [public.scoring](public.scoring.md) | 11 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 18 |  | BASE TABLE |
 | [public.self_received_requests](public.self_received_requests.md) | 12 |  | BASE TABLE |
-| [public.team_members](public.team_members.md) | 8 |  | BASE TABLE |
+| [public.team_members](public.team_members.md) | 9 |  | BASE TABLE |
 | [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
 | [public.teams](public.teams.md) | 6 |  | BASE TABLE |
 | [public.pending_roster](public.pending_roster.md) | 15 |  | VIEW |
@@ -220,6 +220,8 @@
 | public.lockout_week_start | date | p_raid_date date | FUNCTION |
 | public.lockout_start_at | date | p_at timestamp with time zone | FUNCTION |
 | public.raid_night_info | record | p_team_id integer, p_raid_date date | FUNCTION |
+| public.team_members_archived_at_through_functions | trigger |  | FUNCTION |
+| public.archive_team_member | void | p_team_id integer, p_team_member_id integer, p_reason text, p_detail text | FUNCTION |
 
 ## Enums
 
@@ -546,6 +548,7 @@ erDiagram
   text name_realm
   timestamp_with_time_zone updated_at
   integer person_id FK
+  timestamp_with_time_zone archived_at
 }
 "public.team_settings" {
   integer team_id FK

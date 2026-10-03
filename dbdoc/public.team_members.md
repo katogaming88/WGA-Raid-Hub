@@ -12,6 +12,7 @@
 | name_realm | text |  | true |  |  |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
 | person_id | integer |  | false |  | [public.people](public.people.md) |  |
+| archived_at | timestamp with time zone |  | true |  |  | Set when an officer archives this membership (archive_team_member, #1355) for someone who left -- never deleted, so the account's history keeps pointing at something. Cleared by team_invite_link_join() if they come back. Neither changes it any other way: a direct update of the column is refused (team_members_archived_at_through_functions). Every "what is this person on this team" predicate (my_team_role, my_officer_team_ids, my_leader_team_ids, is_any_team_officer, is_team_leader_anywhere) skips an archived row; my_player_ids() and earlier_characters() still read it, since that is the history. |
 
 ## Constraints
 
@@ -40,6 +41,7 @@
 | ---- | ---------- |
 | trg_team_members_updated_at | CREATE TRIGGER trg_team_members_updated_at BEFORE UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
 | team_members_set_person | CREATE TRIGGER team_members_set_person BEFORE INSERT OR UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION set_person_from_discord_id() |
+| team_members_archived_at_through_functions | CREATE TRIGGER team_members_archived_at_through_functions BEFORE UPDATE OF archived_at ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_archived_at_through_functions() |
 
 ## Relations
 
@@ -61,6 +63,7 @@ erDiagram
   text name_realm
   timestamp_with_time_zone updated_at
   integer person_id FK
+  timestamp_with_time_zone archived_at
 }
 "public.players" {
   integer id
