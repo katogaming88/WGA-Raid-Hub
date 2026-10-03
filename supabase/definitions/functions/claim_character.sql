@@ -13,6 +13,7 @@ declare
   v_player_id integer;
   v_member_id integer;
   v_member_role text;
+  v_member_archived_at timestamptz;
   v_discord_id text;
 begin
   if v_uid is null then
@@ -29,9 +30,18 @@ begin
     raise exception 'Character not found on roster';
   end if;
 
-  select tm.id, tm.role into v_member_id, v_member_role
+  -- for share: archive_team_member() locks this row before it reads which
+  -- characters to sweep, so the check and the link below land wholly before
+  -- or wholly after an archive, never in between (#1401).
+  select tm.id, tm.role, tm.archived_at into v_member_id, v_member_role, v_member_archived_at
   from public.team_members tm
-  where tm.team_id = p_team_id and tm.person_id = public.my_person_id();
+  where tm.team_id = p_team_id and tm.person_id = public.my_person_id()
+  for share;
+
+  -- An archived membership comes back only through an officer (#1401).
+  if v_member_archived_at is not null then
+    raise exception 'Your membership on this team has ended. Ask one of its officers to add you back.';
+  end if;
 
   if v_member_id is null then
     v_discord_id := public.current_discord_id();

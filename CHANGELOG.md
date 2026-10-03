@@ -12,6 +12,39 @@ answers to.
 
 ---
 
+## [3.164.0] - 2026-10-03
+
+### Frontend
+
+- Someone an officer archived off a team is no longer offered a claim
+  there. On the current site, the team page shows "Your membership on this
+  team has ended" with a note to ask one of its officers to add them back,
+  instead of opening the claim box, and the account menu no longer offers
+  "Claim your character". Someone also claimed on another team still gets
+  the card that switches them there. In the new app, choosing alts after
+  connecting Battle.net shows a character on that team as "membership
+  ended", with the same advice. No page can archive anyone yet, so nothing
+  changes today (#1401).
+
+### Backend
+
+- Claiming a character, and the Battle.net import, refuse a team the person
+  was archived off. The claim says "Your membership on this team has ended.
+  Ask one of its officers to add you back.", and the import reports the
+  character as `membership_ended` and links nothing. Both hold the
+  membership while they check, so an archive cannot land in between (#1401).
+- An archived membership owns nothing on its team, even when the Roster tab
+  has re-added one of its characters: no wishlist, RSVP or bonus roll edits,
+  no main swap request, and a self-received report goes to an officer
+  rather than being approved on its own (#1401).
+
+### Functions
+
+- `battlenet-characters` passes the import's new `membership_ended` outcome
+  through to the app (#1401).
+
+---
+
 ## [3.163.0] - 2026-10-03
 
 ### Backend

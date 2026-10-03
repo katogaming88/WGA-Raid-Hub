@@ -54,7 +54,8 @@ const honourIs = (r, filters) =>
     : r;
 
 function makeClient(config) {
-  const captured = { byTable: {}, rpc: null };
+  // byTable keeps each table's latest chain; all keeps every chain in order.
+  const captured = { byTable: {}, all: {}, rpc: null };
   function builder(resolve) {
     const calls = { select: null, eq: [], neq: [], is: [], order: [], limit: null, maybeSingle: false };
     const b = {
@@ -99,6 +100,7 @@ function makeClient(config) {
     from(table) {
       const { b, calls } = builder(() => (config[table] ? config[table]() : { data: null, error: null }));
       captured.byTable[table] = calls;
+      (captured.all[table] = captured.all[table] || []).push(calls);
       return b;
     },
     rpc(name, params) {
@@ -319,6 +321,57 @@ describe('resolveDiscordSession', () => {
     return { sandbox, captured };
   }
 
+  // #1401: an officer archived their membership here, so a claim would be
+  // refused. The page says so instead of offering one.
+  describe('membershipEnded (#1401)', () => {
+    function setupEnded(archivedRow) {
+      let teamMembersCalls = 0;
+      const { client, captured } = makeClient({
+        team_members: () => {
+          teamMembersCalls += 1;
+          // First the current membership (none), then any archived one on this
+          // team, then the cross-team findClaimElsewhere() read.
+          if (teamMembersCalls === 1) return { data: null, error: null };
+          if (teamMembersCalls === 2) return { data: archivedRow, error: null };
+          return { data: [], error: null };
+        },
+        rpc: { is_site_admin: () => ({ data: false, error: null }) }
+      });
+      return { sandbox: loadDiscordJs({ supabaseClient: client }), captured };
+    }
+
+    it('is set when their only membership on this team is archived', async () => {
+      const { sandbox, captured } = setupEnded({ archived_at: '2026-10-02T12:00:00Z' });
+      const mapped = await sandbox.resolveDiscordSession(session);
+      expect(mapped.nameRealm).toBeNull();
+      expect(mapped.membershipEnded).toBe(true);
+      // The second read is the archived one, and only for this team and account.
+      const ended = captured.all.team_members[1];
+      expect(ended.select).toBe('archived_at');
+      expect(ended.eq).toEqual([
+        ['team_id', 1],
+        ['auth_user_id', 'u1']
+      ]);
+    });
+
+    it('is not set for someone who was never on this team', async () => {
+      const { sandbox } = setupEnded(null);
+      expect((await sandbox.resolveDiscordSession(session)).membershipEnded).toBe(false);
+    });
+
+    it('keeps the claim box from opening on its own, and out of the account menu', () => {
+      const sandbox = loadDiscordJs({ supabaseClient: makeClient({}).client });
+      expect(sandbox.offersClaimInMenu({ nameRealm: null })).toBe(true);
+      expect(sandbox.offersClaimInMenu({ nameRealm: null, membershipEnded: true })).toBe(false);
+      expect(sandbox.offersClaimInMenu({ nameRealm: 'Kato-Illidan' })).toBe(false);
+      expect(sandbox.offersClaimOnSignIn({ nameRealm: null })).toBe(true);
+      expect(sandbox.offersClaimOnSignIn({ nameRealm: null, membershipEnded: true })).toBe(false);
+      expect(sandbox.offersClaimOnSignIn({ nameRealm: null, dismissedNoCharacter: true })).toBe(false);
+      expect(sandbox.offersClaimOnSignIn({ nameRealm: null, claimedElsewhere: { teamSlug: 'hellfire' } })).toBe(false);
+      expect(sandbox.offersClaimOnSignIn({ nameRealm: 'Kato-Illidan' })).toBe(false);
+    });
+  });
+
   it('resolves nameRealm from the linked player and filters the lookup', async () => {
     const { sandbox, captured } = setup({
       member: { id: 5, role: 'raider', name_realm: null },
@@ -444,12 +497,43 @@ describe('_renderClaimPrompt', () => {
       claimPromptElsewhereWho: makeEl(),
       claimPromptElsewhereChar: makeEl(),
       claimPromptElsewhereTeam: makeEl(),
-      claimPromptBtn: makeEl({ style: { display: 'none' } })
+      claimPromptBtn: makeEl({ style: { display: 'none' } }),
+      membershipEndedCard: makeEl({ style: { display: 'none' } })
     };
     let current = null;
     const sandbox = loadQuickActions({ els, getSession: () => current });
     return { els, sandbox, setSession: (s) => (current = s) };
   }
+
+  it('says the membership has ended in place of the claim box (#1401)', () => {
+    const { els, sandbox, setSession } = setup();
+    setSession({ username: 'Kato', nameRealm: null, membershipEnded: true });
+    sandbox._renderClaimPrompt();
+    expect(els.claimPromptCard.style.display).toBe('none');
+    expect(els.membershipEndedCard.style.display).toBe('');
+  });
+
+  it('still points someone archived here but claimed on another team to that team', () => {
+    const { els, sandbox, setSession } = setup();
+    setSession({
+      username: 'Kato',
+      nameRealm: null,
+      membershipEnded: true,
+      claimedElsewhere: { teamSlug: 'hellfire', teamName: 'Hellfire Rollers', nameRealm: 'Alt-Illidan' }
+    });
+    sandbox._renderClaimPrompt();
+    expect(els.membershipEndedCard.style.display).toBe('none');
+    expect(els.claimPromptCard.style.display).toBe('');
+    expect(els.claimPromptBtn.textContent).toBe('Switch to Hellfire Rollers');
+  });
+
+  it('keeps the ended card hidden for an ordinary unclaimed account', () => {
+    const { els, sandbox, setSession } = setup();
+    setSession({ username: 'Kato', nameRealm: null });
+    sandbox._renderClaimPrompt();
+    expect(els.claimPromptCard.style.display).toBe('');
+    expect(els.membershipEndedCard.style.display).toBe('none');
+  });
 
   it('shows the elsewhere message and wires the button to switch teams (#368 follow-up)', () => {
     const { els, sandbox, setSession } = setup();

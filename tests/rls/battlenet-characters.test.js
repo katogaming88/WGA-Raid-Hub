@@ -7,6 +7,7 @@ import {
   pool,
   withTxn,
   insertDiscordUser,
+  seedTeam,
   OFFICER_T1,
   OFFICER_T2,
   RAIDER_T1,
@@ -162,6 +163,77 @@ describe('link_battlenet_roster_characters()', () => {
           { name: 'Nobody', realm: 'Nowhere' }
         ])
       ).toEqual([]);
+    });
+  });
+});
+
+describe('link_battlenet_roster_characters() and an archived membership (#1401)', () => {
+  // A team of the case's own, its raider archived by its officer: the archive
+  // writes the raider's characters, so it never touches a seeded row (#1123).
+  const archive = (asUser, team) =>
+    asUser(team.officer.uid, 'select public.archive_team_member($1, $2, $3, $4)', [
+      team.teamId,
+      team.raider.memberId,
+      'moved_guilds',
+      'Joined another guild'
+    ]);
+  const linkOf = async (q, playerId) =>
+    (await q('select team_member_id from public.players where id = $1', [playerId])).rows[0].team_member_id;
+
+  it('skips a team the person was archived off with its own outcome, and links the rest', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const other = await seedTeam(q);
+      const person = await personOf(q, team.raider.uid);
+      await archive(asUser, team);
+      const onEnded = await newPlayer(q, team.teamId, 'Comeback-Illidan');
+      const elsewhere = await newPlayer(q, other.teamId, 'Elsewhere-Illidan');
+
+      const rows = await link(q, person, [
+        { name: 'Comeback', realm: 'Illidan' },
+        { name: 'Elsewhere', realm: 'Illidan' }
+      ]);
+      expect(rows.map((r) => [r.player_id, r.outcome])).toEqual([
+        [onEnded, 'membership_ended'],
+        [elsewhere, 'linked']
+      ]);
+      expect(await linkOf(q, onEnded)).toBeNull();
+      expect(
+        (await q('select archived_at from public.team_members where id = $1', [team.raider.memberId])).rows[0]
+          .archived_at
+      ).not.toBeNull();
+    });
+  });
+
+  it('says a character still on an archived membership has ended rather than being theirs', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const person = await personOf(q, team.raider.uid);
+      const stillLinked = await newPlayer(q, team.teamId, 'Readded-Illidan', team.raider.memberId);
+      await archive(asUser, team);
+      // The Roster tab's re-add brings the character back and leaves its link
+      // on the archived membership, until #1133 restores it.
+      await q('update public.players set archived_at = null where id = $1', [stillLinked]);
+
+      expect(await link(q, person, [{ name: 'Readded', realm: 'Illidan' }])).toEqual([
+        { player_id: stillLinked, team_id: team.teamId, name_realm: 'Readded-Illidan', outcome: 'membership_ended' }
+      ]);
+      expect(await linkOf(q, stillLinked)).toBe(team.raider.memberId);
+    });
+  });
+
+  // The same hold claim_character() takes, for the same reason (claim.test.js
+  // explains the lock it is asked through).
+  it('holds the membership against an archive from its check until it commits', async () => {
+    await withTxn(async (linking) => {
+      const person = await personOf(linking.q, RAIDER_T1);
+      await newPlayer(linking.q, 1, 'Racing-Illidan');
+      expect((await link(linking.q, person, [{ name: 'Racing', realm: 'Illidan' }]))[0].outcome).toBe('linked');
+      await withTxn(async ({ q }) => {
+        await expect(q('select 1 from public.team_members where id = 3 for no key update nowait')).rejects.toThrow(
+          /could not obtain lock/
+        );
+      });
     });
   });
 });

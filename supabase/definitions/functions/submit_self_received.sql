@@ -56,7 +56,7 @@ begin
     select true into v_auto_approved
     from public.players p
     join public.team_members tm on tm.id = p.team_member_id
-    where p.id = v_player_id and tm.person_id = public.my_person_id();
+    where p.id = v_player_id and tm.person_id = public.my_person_id() and tm.archived_at is null;
   end if;
 
   insert into public.self_received_requests

@@ -30,6 +30,7 @@ begin
     join public.team_members tm on tm.id = p.team_member_id
    where p.team_id = p_team_id
      and p.archived_at is null
+     and tm.archived_at is null
      and tm.person_id = v_person_id
    order by p.id
    limit 1;

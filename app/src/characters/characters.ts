@@ -14,7 +14,8 @@
 import type { LootRow } from '../profile/profile';
 
 // What the battlenet-characters function answers with.
-export type RosterOutcome = 'linked' | 'already_yours' | 'claimed_by_someone_else' | 'needs_discord';
+export type RosterOutcome =
+  'linked' | 'already_yours' | 'claimed_by_someone_else' | 'needs_discord' | 'membership_ended';
 
 export type RosterLink = { player_id: number; team_id: number; name_realm: string; outcome: RosterOutcome };
 
@@ -43,7 +44,9 @@ export type PickerRow =
   | { kind: 'choose'; character: AccountCharacter }
   | { kind: 'yours'; character: AccountCharacter; team: string }
   | { kind: 'claimed'; character: AccountCharacter; team: string }
-  | { kind: 'needs-discord'; character: AccountCharacter; team: string };
+  | { kind: 'needs-discord'; character: AccountCharacter; team: string }
+  // An officer archived their membership on that team (#1401).
+  | { kind: 'ended'; character: AccountCharacter; team: string };
 
 export function pickerRows(answer: CharactersAnswer, teams: TeamNames): PickerRow[] {
   return answer.characters.map((character) => {
@@ -52,6 +55,7 @@ export function pickerRows(answer: CharactersAnswer, teams: TeamNames): PickerRo
     const team = teams.get(link.team_id) ?? 'A team';
     if (link.outcome === 'claimed_by_someone_else') return { kind: 'claimed', character, team };
     if (link.outcome === 'needs_discord') return { kind: 'needs-discord', character, team };
+    if (link.outcome === 'membership_ended') return { kind: 'ended', character, team };
     return { kind: 'yours', character, team };
   });
 }

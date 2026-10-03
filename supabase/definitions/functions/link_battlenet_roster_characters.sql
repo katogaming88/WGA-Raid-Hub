@@ -12,6 +12,7 @@ declare
   v_discord_id text;
   v_row record;
   v_member_id integer;
+  v_member_archived_at timestamptz;
 begin
   select discord_id into v_discord_id from people where id = p_person_id;
   if not found then
@@ -19,7 +20,7 @@ begin
   end if;
 
   for v_row in
-    select p.id, p.team_id, p.name_realm, p.team_member_id, tm.person_id as holder
+    select p.id, p.team_id, p.name_realm, p.team_member_id, tm.person_id as holder, tm.archived_at as holder_archived_at
       from players p
       left join team_members tm on tm.id = p.team_member_id
      where p.archived_at is null
@@ -34,14 +35,27 @@ begin
     name_realm := v_row.name_realm;
 
     if v_row.team_member_id is not null then
-      outcome := case when v_row.holder = p_person_id then 'already_yours' else 'claimed_by_someone_else' end;
+      outcome := case
+                   when v_row.holder <> p_person_id then 'claimed_by_someone_else'
+                   when v_row.holder_archived_at is not null then 'membership_ended'
+                   else 'already_yours'
+                 end;
       return next;
       continue;
     end if;
 
-    select tm.id into v_member_id
+    -- for share, as claim_character() holds it: an archive cannot slip in
+    -- between this check and the link (#1401).
+    select tm.id, tm.archived_at into v_member_id, v_member_archived_at
       from team_members tm
-     where tm.team_id = v_row.team_id and tm.person_id = p_person_id;
+     where tm.team_id = v_row.team_id and tm.person_id = p_person_id
+       for share;
+
+    if v_member_archived_at is not null then
+      outcome := 'membership_ended';
+      return next;
+      continue;
+    end if;
 
     if v_member_id is null then
       if v_discord_id is null then

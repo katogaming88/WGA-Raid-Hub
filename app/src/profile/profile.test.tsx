@@ -685,6 +685,35 @@ describe('Characters card and alts picker', () => {
     ]);
   });
 
+  it('tells a raider whose membership on a team ended to ask its officers (#1401)', async () => {
+    const ended = {
+      ...answer,
+      characters: [
+        ...answer.characters,
+        {
+          blizzard_id: 105,
+          name: 'Grihzback',
+          realm: 'Illidan',
+          realm_slug: 'illidan',
+          class_name: 'Druid',
+          spec_name: 'Balance',
+          level: 90,
+          item_level: 690,
+          saved: false,
+          roster: { player_id: 32, team_id: 2, name_realm: 'Grihzback-Illidan', outcome: 'membership_ended' }
+        }
+      ]
+    };
+    renderApp(
+      '/g/wga/t/phoenix/me',
+      { ...profileHandlers(person('raider', 11), withPerson()), invoke: () => ({ data: ended }) },
+      { authReturn: { intent: 'choose-alts', error: null }, battlenetToken: 'bnet-token' }
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Choose your alts' });
+    expect(await within(dialog).findByText('Hellfire Rollers · membership ended')).toBeInTheDocument();
+    expect(within(dialog).getByText('Ask its officers to add you back')).toBeInTheDocument();
+  });
+
   it('sends the raider back to Battle.net when there is no token, and when it has expired', async () => {
     const expired = new Response(JSON.stringify({ success: false, error: 'Your Battle.net sign-in has expired.' }), {
       status: 401

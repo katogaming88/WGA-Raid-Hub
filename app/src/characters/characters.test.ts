@@ -48,7 +48,8 @@ describe('pickerRows', () => {
           character(2, 'Grihzy', { saved: true }),
           character(3, 'Holygrihz', { roster: link('claimed_by_someone_else', 2) }),
           character(4, 'Grihzfrost', { roster: link('needs_discord', 2) }),
-          character(5, 'Grihznew', { roster: link('linked') })
+          character(5, 'Grihznew', { roster: link('linked') }),
+          character(6, 'Grihzback', { roster: link('membership_ended', 2) })
         ],
         roster: []
       },
@@ -59,7 +60,8 @@ describe('pickerRows', () => {
       ['Grihzy', 'choose', null],
       ['Holygrihz', 'claimed', 'Hellfire'],
       ['Grihzfrost', 'needs-discord', 'Hellfire'],
-      ['Grihznew', 'yours', 'Phoenix']
+      ['Grihznew', 'yours', 'Phoenix'],
+      ['Grihzback', 'ended', 'Hellfire']
     ]);
     // Only a character they can choose starts as an alt, and only if saved.
     expect([...savedAlts(rows)]).toEqual([2]);

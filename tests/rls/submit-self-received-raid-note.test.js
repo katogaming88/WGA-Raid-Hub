@@ -17,7 +17,7 @@
 // to id 3 (RAIDER_T1's row) inside the transaction, where it rolls back
 // with everything else; the seeded players are never written.
 import { describe, it, expect, afterAll } from 'vitest';
-import { withTxn as withSharedTxn, seedPlayer, RAIDER_T1 } from './helpers.js';
+import { withTxn as withSharedTxn, seedPlayer, seedTeam, RAIDER_T1 } from './helpers.js';
 
 // Wraps the shared harness: asRaider runs one statement as the team 1
 // raider, then restores postgres.
@@ -123,6 +123,41 @@ describe('submit_self_received: self-reported raid loot', () => {
       await linkPlayerToAuthUser(q);
       const res = await submit(asRaider, null, 'Bonus Roll');
       expect(res.rows[0].auto_approved).toBe(true);
+    });
+  });
+});
+
+// #1401: a report on a character the Roster tab re-added onto an archived
+// membership goes to officer review, since the archived person owns nothing on
+// the team. A team of the case's own, so the archive writes no seeded row.
+describe('submit_self_received: an archived membership (#1401)', () => {
+  const report = (asUser, team) =>
+    asUser(
+      team.raider.uid,
+      "select * from public.submit_self_received($1, $2, 'Seed Test Staff', 'Hero', 'Great Vault', 'from my vault')",
+      [team.teamId, NAME]
+    );
+
+  it('auto-approves a current member on a team of its own (the control)', async () => {
+    await withSharedTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await seedPlayer(q, { memberId: team.raider.memberId, nameRealm: NAME });
+      expect((await report(asUser, team)).rows[0].auto_approved).toBe(true);
+    });
+  });
+
+  it('sends the report to officer review once the membership is archived, even with the character re-added', async () => {
+    await withSharedTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const playerId = await seedPlayer(q, { memberId: team.raider.memberId, nameRealm: NAME });
+      await asUser(team.officer.uid, 'select public.archive_team_member($1, $2, $3, $4)', [
+        team.teamId,
+        team.raider.memberId,
+        'moved_guilds',
+        'Joined another guild'
+      ]);
+      await q('update public.players set archived_at = null where id = $1', [playerId]);
+      expect((await report(asUser, team)).rows[0].auto_approved).toBe(false);
     });
   });
 });

@@ -12,5 +12,6 @@ AS $function$
     from players p
     join team_members tm on tm.id = p.team_member_id
    where tm.person_id = my_person_id()
-     and p.archived_at is null;
+     and p.archived_at is null
+     and tm.archived_at is null;
 $function$;
