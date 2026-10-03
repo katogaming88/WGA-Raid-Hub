@@ -822,7 +822,7 @@ function submitAddPlayer() {
     isTrial: isTrial,
     joinDate: joinDateVal
   })
-    .then(function (playerId) {
+    .then(function (added) {
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Add Player';
@@ -830,7 +830,7 @@ function submitAddPlayer() {
       if (DATA && DATA.roster) {
         var parts = nameRealm.split('-');
         DATA.roster.push({
-          id: playerId,
+          id: added.id,
           nameRealm: nameRealm,
           firstName: parts[0],
           realm: parts.slice(1).join('-'),
@@ -847,6 +847,8 @@ function submitAddPlayer() {
       }
       hideAddPlayerModal();
       buildOfficerDashboard();
+      var statusEl = document.getElementById('rosterAddStatus');
+      if (statusEl) statusEl.textContent = rosterAddMessage(nameRealm, added);
       if (typeof window._pendingRosterOnSuccess === 'function') {
         window._pendingRosterOnSuccess();
         window._pendingRosterOnSuccess = null;
@@ -863,11 +865,21 @@ function submitAddPlayer() {
     });
 }
 
+// What the roster's status line says once the form closes (#1133). A failed
+// add keeps the form open with its own error instead.
+function rosterAddMessage(nameRealm, added) {
+  if (!added.readded) return nameRealm + ' was added to the roster.';
+  return added.membershipRestored
+    ? nameRealm + ' is back on the roster, and their team membership is restored, as a raider.'
+    : nameRealm + ' is back on the roster.';
+}
+
 // Three-case add (docs/database-decisions.md roster-promotion pattern):
 // brand-new name_realm -> insert; a previously archived row for the same
 // name_realm -> restore_player() brings it back in place (preserves its id,
 // so historical rclc_loot/attendance rows stay linked); an already-active row
-// -> reject rather than silently overwrite. Resolves to the written player's id.
+// -> reject rather than silently overwrite. Resolves to { id, readded,
+// membershipRestored }: the written player's id and what the add did.
 function addPlayerToRosterSupabase(payload) {
   if (!supabaseClient) return Promise.reject(new Error('Not connected to Supabase.'));
   var teamId = _teamCfg.supabaseTeamId;
@@ -899,15 +911,15 @@ function addPlayerToRosterSupabase(payload) {
             : insertRosterPlayerSupabase(teamId, payload, classSpecId);
         });
     })
-    .then(function (playerId) {
-      return backfillNotOnRosterForPlayer(teamId, playerId, payload.joinDate)
+    .then(function (added) {
+      return backfillNotOnRosterForPlayer(teamId, added.id, payload.joinDate)
         .catch(function (err) {
           // Best-effort: the player is already added successfully at this
           // point, so a backfill failure shouldn't surface as an add failure.
           console.warn('Not on Roster backfill failed.', err);
         })
         .then(function () {
-          return playerId;
+          return added;
         });
     });
 }
@@ -931,7 +943,7 @@ function insertRosterPlayerSupabase(teamId, payload, classSpecId) {
       var playerId = result.data.id;
       var detail = [payload.class, payload.spec, payload.role].filter(Boolean).join(' ');
       return writeAuditLog('Player Added', 'players', playerId, detail).then(function () {
-        return playerId;
+        return { id: playerId, readded: false, membershipRestored: false };
       });
     });
 }
@@ -952,7 +964,7 @@ function restoreRosterPlayerSupabase(playerId, payload, classSpecId) {
     })
     .then(function (result) {
       if (result.error) throw new Error(result.error.message);
-      return playerId;
+      return { id: playerId, readded: true, membershipRestored: result.data === true };
     });
 }
 

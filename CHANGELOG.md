@@ -22,6 +22,11 @@ answers to.
   could fail without anyone seeing it. If their team membership had been
   ended, it comes back too, as a raider. A nickname or join date left
   blank on the form keeps the one the character already had (#1133).
+- "+ Add Player" now says how it went. Once the form closes, a line
+  above the roster says the player was added, is back on the roster, or
+  is back with their team membership restored. A failed add keeps the
+  form open with the reason, which screen readers now read out too
+  (#1133).
 - Clearing an officer note for a player who never had one no longer
   leaves an empty notes row behind (#1133).
 
