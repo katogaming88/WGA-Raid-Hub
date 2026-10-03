@@ -336,6 +336,20 @@ describe('resolveDiscordSession', () => {
     expect(q.limit).toBe(1);
   });
 
+  it('reads only a membership on this team that is not archived (#1400)', async () => {
+    const { sandbox, captured } = setup({
+      member: { id: 5, role: 'officer', name_realm: null },
+      linkedPlayer: { name_realm: 'Linked-Illidan' }
+    });
+    await sandbox.resolveDiscordSession(session);
+    const q = captured.byTable.team_members;
+    expect(q.eq).toEqual([
+      ['team_id', 1],
+      ['auth_user_id', 'u1']
+    ]);
+    expect(q.is).toEqual([['archived_at', null]]);
+  });
+
   it('falls back to team_members.name_realm when no player is linked', async () => {
     const { sandbox } = setup({
       member: { id: 5, role: 'officer', name_realm: 'Bridge-Illidan' },

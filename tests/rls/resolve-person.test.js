@@ -165,6 +165,28 @@ describe('resolve_person()', () => {
     });
   });
 
+  // The flag rides on each team rather than filtering it out (#1400): the app
+  // drops an archived team from the person's own access, and an officer
+  // looking them up still sees the membership.
+  it('says whether each membership is archived', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      expect((await resolve(asUser, RAIDER_T1, 'discord-raider-1')).teams[0].archived_at).toBeNull();
+      await q('update public.team_members set archived_at = now() where id = $1', [RAIDER_T1_MEMBER]);
+      const person = await resolve(asUser, RAIDER_T1, 'discord-raider-1');
+      expect(person.teams[0]).toMatchObject({ team_id: 1, team_member_id: RAIDER_T1_MEMBER });
+      expect(person.teams[0].archived_at).toEqual(expect.any(String));
+    });
+  });
+
+  it('still shows an officer the membership of someone archived off their team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await q('update public.team_members set archived_at = now() where id = $1', [RAIDER_T1_MEMBER]);
+      const person = await resolve(asUser, OFFICER_T1, 'discord-raider-1');
+      expect(person.teams.map((t) => t.team_id)).toEqual([1]);
+      expect(person.teams[0].archived_at).toEqual(expect.any(String));
+    });
+  });
+
   it('finds someone known only through a guild-wide grant', async () => {
     await withTxn(async ({ asUser }) => {
       const person = await resolve(asUser, SITE_ADMIN, 'discord-site-admin');
