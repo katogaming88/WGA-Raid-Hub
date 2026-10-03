@@ -14,7 +14,8 @@
 -- one is covered (archive_player(), archive_team_member(), an officer editing
 -- the row). A membership's row is written by archive_team_member() itself.
 -- Nobody writes the table directly, and a character or membership with a
--- reason on record cannot be deleted on its own.
+-- reason on record cannot be deleted on its own; admin_revoke_team_role()
+-- keeps such a membership as a raider, as it keeps one a character points at.
 
 create table public.removal_reasons (
   id bigint generated always as identity primary key,
@@ -29,16 +30,23 @@ create table public.removal_reasons (
 );
 
 comment on table public.removal_reasons is
-  'Every reason a character or a membership was removed for (#1427), one row each, never updated or deleted. A character''s row comes from a trigger on player_officer_notes, a membership''s from archive_team_member(). The notes row still holds the latest reason; this holds all of them.';
+  'Every reason a character or a membership was removed for (#1427), never updated or deleted. A character''s row comes from a trigger on player_officer_notes, a membership''s from archive_team_member(). The notes row still holds the latest reason; this holds all of them.';
 comment on column public.removal_reasons.player_id is
   'The character removed. Null on a membership''s own row (archive_team_member()).';
 comment on column public.removal_reasons.team_member_id is
-  'The membership: the one ended, on a membership''s row, or the one the character was linked to when it was removed.';
+  'The membership: the one ended, on a membership''s row, or the one the character was linked to when it was removed. Rows copied from the audit log carry the character''s link as it stood when they were copied.';
+comment on column public.removal_reasons.removed_at is
+  'When they were removed: the character''s archived_at, so a correction written later stays under the same removal. One row per removal, reason and detail.';
 comment on column public.removal_reasons.removed_by is
   'The person who removed them, from my_person_id(); null for a write with nobody signed in, and for an audit entry whose account has no person.';
 
+create index removal_reasons_team_id_idx on public.removal_reasons (team_id);
 create index removal_reasons_player_id_idx on public.removal_reasons (player_id);
 create index removal_reasons_team_member_id_idx on public.removal_reasons (team_member_id);
+-- One row per removal, reason and detail: writing the same reason onto the
+-- notes row again adds nothing.
+create unique index removal_reasons_one_per_reason on public.removal_reasons (player_id, removed_at, reason, detail)
+  nulls not distinct where player_id is not null;
 
 alter table public.removal_reasons owner to postgres;
 alter table public.removal_reasons enable row level security;
@@ -47,17 +55,45 @@ create trigger trg_removal_reasons_team_id_check
   before insert or update on public.removal_reasons
   for each row execute function public.check_team_id_matches_player();
 
+-- check_team_id_matches_player() checks a character's row; a membership's own
+-- row has no character, so its team is checked against the membership.
+create function public.check_removal_reason_membership_team()
+returns trigger
+language plpgsql
+set search_path to 'public'
+as $$
+begin
+  if new.player_id is null and new.team_member_id is not null
+     and new.team_id is distinct from (select team_id from team_members where id = new.team_member_id) then
+    raise exception 'team_id % does not match team_members.team_id for team_member_id %',
+      new.team_id, new.team_member_id;
+  end if;
+  return new;
+end;
+$$;
+
+alter function public.check_removal_reason_membership_team() owner to postgres;
+revoke all on function public.check_removal_reason_membership_team() from public, anon, authenticated;
+
+create trigger trg_removal_reasons_membership_team_check
+  before insert or update on public.removal_reasons
+  for each row execute function public.check_removal_reason_membership_team();
+
 create policy "Claude readers read removal_reasons" on public.removal_reasons
   for select to claude_readers using (true);
 create policy "Officers read removal_reasons" on public.removal_reasons
   for select using ((((team_id = ANY ((SELECT my_officer_team_ids())::integer[]))) OR (SELECT is_guild_officer()) OR (SELECT is_site_admin())));
 
--- No write policy, and the privileges revoked, so a direct write fails loudly
--- rather than being filtered to nothing.
-revoke insert, update, delete on public.removal_reasons from anon, authenticated;
+-- Read only, for every role the site and its functions use: no write policy,
+-- and every other privilege revoked, so a direct write or a truncate fails
+-- loudly rather than being filtered to nothing.
+revoke all on table public.removal_reasons from public, anon, authenticated, service_role;
+grant select on table public.removal_reasons to anon, authenticated, service_role;
 
 -- Security definer because nobody may write the table directly; it runs on
--- the notes row the caller was already allowed to write.
+-- the notes row the caller was already allowed to write. Only for a character
+-- that has been removed: a reason on one still on the roster is not a
+-- removal. Dated by the removal, so a correction written later stays under it.
 create function public.record_removal_reason()
 returns trigger
 language plpgsql
@@ -65,11 +101,12 @@ security definer
 set search_path to 'public'
 as $$
 begin
-  insert into public.removal_reasons (team_id, player_id, team_member_id, reason, detail, removed_by)
-  select new.team_id, new.player_id, p.team_member_id, new.archived_reason, new.archived_reason_detail,
-         public.my_person_id()
+  insert into public.removal_reasons (team_id, player_id, team_member_id, removed_at, reason, detail, removed_by)
+  select new.team_id, new.player_id, p.team_member_id, p.archived_at, new.archived_reason,
+         new.archived_reason_detail, public.my_person_id()
     from public.players p
-   where p.id = new.player_id;
+   where p.id = new.player_id and p.archived_at is not null
+  on conflict (player_id, removed_at, reason, detail) where player_id is not null do nothing;
   return null;
 end;
 $$;
@@ -163,6 +200,65 @@ begin
 end;
 $function$;
 
+comment on function public.archive_team_member(integer, integer, text, text) is
+  'Officer-only: archives a team_members row for someone who left (#1355), and their active characters with it, rather than deleting either -- players.team_member_id is ON DELETE SET NULL, so a delete would sever an archived character''s history and free it for the next Battle.net import to claim as theirs (Rex''s review, 2026-09-28). Records the reason (one of the six archive_player() takes) and the detail on each character it archives, in the audit entry with the archived character ids, and in removal_reasons, one row for the membership and one per character (#1427). An officer''s membership is archived only by the team leader or a site admin, the team leader''s only by a site admin. A second archive does nothing. team_invite_link_join() clears archived_at if they come back.';
+
+-- A membership with a reason on record is kept, like one a character points
+-- at: removal_reasons.team_member_id has no delete action, so deleting it
+-- would fail on the key instead (#1427).
+CREATE OR REPLACE FUNCTION public.admin_revoke_team_role(p_team_id integer, p_discord_id text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_existing public.team_members%rowtype;
+  v_claimed integer;
+begin
+  if not (public.is_site_admin() or coalesce(public.my_team_role(p_team_id) = 'team_leader', false)) then
+    raise exception 'Not authorized';
+  end if;
+
+  select * into v_existing
+  from public.team_members
+  where team_id = p_team_id
+    and person_id = (select id from public.people where discord_id = p_discord_id)
+  for update;
+
+  if not found then
+    raise exception 'That Discord account does not have a role on this team';
+  end if;
+
+  -- players_team_member_id_fkey is ON DELETE SET NULL, so deleting a member a
+  -- character points at would silently unclaim that character, with no error
+  -- anywhere and nothing in the audit log saying it happened. Somebody who
+  -- has claimed a character stays on the team as a raider instead, and so
+  -- does somebody with a removal reason on record (#1427).
+  select count(*) into v_claimed from public.players where team_member_id = v_existing.id;
+
+  if v_claimed > 0 or exists (select 1 from public.removal_reasons where team_member_id = v_existing.id) then
+    update public.team_members set role = 'raider' where id = v_existing.id;
+
+    perform public.write_audit_log(
+      p_team_id, 'team_role_demoted', 'team_member', v_existing.id,
+      jsonb_build_object('discord_id', p_discord_id, 'from_role', v_existing.role, 'claimed_characters', v_claimed)
+    );
+    return;
+  end if;
+
+  delete from public.team_members where id = v_existing.id;
+
+  perform public.write_audit_log(
+    p_team_id, 'team_role_revoked', 'team_member', v_existing.id,
+    jsonb_build_object('discord_id', p_discord_id, 'from_role', v_existing.role)
+  );
+end;
+$function$;
+
+comment on function public.admin_revoke_team_role(integer, text) is
+  'Removes a per-team role by Discord id. Demotes to raider when any character is claimed against the member, because the foreign key from players is ON DELETE SET NULL and a delete would silently unclaim it, or when a removal reason points at the membership (#1427); removes the row only when nothing points at it. (#910)';
+
 -- The reasons already on record: each Roster tab removal since #476 wrote
 -- "reason: detail" to its audit entry. The detail is everything after the
 -- first ": ", since a detail may hold one of its own.
@@ -180,3 +276,32 @@ select p.team_id, p.id, p.team_member_id, a.created_at,
    and split_part(a.detail #>> '{}', ': ', 1) in
        ('schedule_conflict', 'performance', 'drama', 'moved_guilds', 'switching_mains', 'other')
  order by a.id;
+
+-- And each Archive Member since #1355, whose audit entry holds the reason, the
+-- detail and the characters it archived: the membership's row, then one per
+-- character, as archive_team_member() now writes them.
+insert into public.removal_reasons (team_id, team_member_id, removed_at, reason, detail, removed_by)
+select a.team_id, a.target_id, a.created_at, a.detail ->> 'reason', a.detail ->> 'detail', pe.id
+  from public.audit_log a
+  join public.team_members tm on tm.id = a.target_id and tm.team_id = a.team_id
+  left join public.people pe on pe.auth_user_id = a.actor_id
+ where a.action = 'team_member_archived'
+   and a.target_type = 'team_member'
+   and jsonb_typeof(a.detail) = 'object'
+   and a.detail ->> 'reason' in
+       ('schedule_conflict', 'performance', 'drama', 'moved_guilds', 'switching_mains', 'other')
+ order by a.id;
+
+insert into public.removal_reasons (team_id, player_id, team_member_id, removed_at, reason, detail, removed_by)
+select p.team_id, p.id, a.target_id, a.created_at, a.detail ->> 'reason', a.detail ->> 'detail', pe.id
+  from public.audit_log a
+  cross join lateral jsonb_array_elements_text(coalesce(a.detail -> 'player_ids', '[]'::jsonb)) as pid(id)
+  join public.players p on p.id = pid.id::integer and p.team_id = a.team_id
+  left join public.people pe on pe.auth_user_id = a.actor_id
+ where a.action = 'team_member_archived'
+   and a.target_type = 'team_member'
+   and jsonb_typeof(a.detail) = 'object'
+   and a.detail ->> 'reason' in
+       ('schedule_conflict', 'performance', 'drama', 'moved_guilds', 'switching_mains', 'other')
+ order by a.id
+on conflict (player_id, removed_at, reason, detail) where player_id is not null do nothing;

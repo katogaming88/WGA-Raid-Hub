@@ -8606,7 +8606,7 @@
     {
       "name": "public.removal_reasons",
       "type": "BASE TABLE",
-      "comment": "Every reason a character or a membership was removed for (#1427), one row each, never updated or deleted. A character's row comes from a trigger on player_officer_notes, a membership's from archive_team_member(). The notes row still holds the latest reason; this holds all of them.",
+      "comment": "Every reason a character or a membership was removed for (#1427), never updated or deleted. A character's row comes from a trigger on player_officer_notes, a membership's from archive_team_member(). The notes row still holds the latest reason; this holds all of them.",
       "columns": [
         {
           "name": "id",
@@ -8628,13 +8628,14 @@
           "name": "team_member_id",
           "type": "integer",
           "nullable": true,
-          "comment": "The membership: the one ended, on a membership's row, or the one the character was linked to when it was removed."
+          "comment": "The membership: the one ended, on a membership's row, or the one the character was linked to when it was removed. Rows copied from the audit log carry the character's link as it stood when they were copied."
         },
         {
           "name": "removed_at",
           "type": "timestamp with time zone",
           "nullable": false,
-          "default": "now()"
+          "default": "now()",
+          "comment": "When they were removed: the character's archived_at, so a correction written later stays under the same removal. One row per removal, reason and detail."
         },
         {
           "name": "reason",
@@ -8663,6 +8664,14 @@
           ]
         },
         {
+          "name": "removal_reasons_team_id_idx",
+          "def": "CREATE INDEX removal_reasons_team_id_idx ON public.removal_reasons USING btree (team_id)",
+          "table": "public.removal_reasons",
+          "columns": [
+            "team_id"
+          ]
+        },
+        {
           "name": "removal_reasons_player_id_idx",
           "def": "CREATE INDEX removal_reasons_player_id_idx ON public.removal_reasons USING btree (player_id)",
           "table": "public.removal_reasons",
@@ -8676,6 +8685,17 @@
           "table": "public.removal_reasons",
           "columns": [
             "team_member_id"
+          ]
+        },
+        {
+          "name": "removal_reasons_one_per_reason",
+          "def": "CREATE UNIQUE INDEX removal_reasons_one_per_reason ON public.removal_reasons USING btree (player_id, removed_at, reason, detail) NULLS NOT DISTINCT WHERE (player_id IS NOT NULL)",
+          "table": "public.removal_reasons",
+          "columns": [
+            "player_id",
+            "removed_at",
+            "reason",
+            "detail"
           ]
         }
       ],
@@ -8768,6 +8788,10 @@
         {
           "name": "trg_removal_reasons_team_id_check",
           "def": "CREATE TRIGGER trg_removal_reasons_team_id_check BEFORE INSERT OR UPDATE ON public.removal_reasons FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        },
+        {
+          "name": "trg_removal_reasons_membership_team_check",
+          "def": "CREATE TRIGGER trg_removal_reasons_membership_team_check BEFORE INSERT OR UPDATE ON public.removal_reasons FOR EACH ROW EXECUTE FUNCTION check_removal_reason_membership_team()"
         }
       ]
     }
@@ -11200,6 +11224,12 @@
       "name": "public.restore_team_member",
       "return_type": "bool",
       "arguments": "p_team_id integer, p_team_member_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.check_removal_reason_membership_team",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     },
     {
