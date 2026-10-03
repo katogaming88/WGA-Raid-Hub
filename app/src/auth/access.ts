@@ -32,6 +32,7 @@ type PersonJson = {
     team_id: number;
     team_member_id: number;
     role: string;
+    archived_at?: string | null;
     characters: { player_id: number; name_realm: string; url_code: string | null; archived_at: string | null }[];
   }[];
 } | null;
@@ -41,21 +42,25 @@ const asRole = (role: string): TeamRole => (role === 'officer' || role === 'team
 // resolve_person() (#941) answers for a Discord id, and the caller's own id
 // comes from current_discord_id(), which reads auth.identities (#1135) rather
 // than anything the browser can rewrite. Archived characters keep their link
-// (#941) but are not claims, so they are dropped here.
+// (#941) but are not claims, so they are dropped here, and so is a team whose
+// membership an officer archived (#1400), which resolve_person() still returns
+// so an officer looking the person up sees it.
 export function toAccess(person: PersonJson, dismissedNoCharacter: boolean): Access {
   if (!person) return { ...NO_ACCESS, dismissedNoCharacter };
   return {
     siteAdmin: person.site_admin === true,
     guildOfficer: person.guild_officer === true,
     boeManager: person.boe_manager === true,
-    teams: (person.teams ?? []).map((t) => ({
-      teamId: t.team_id,
-      teamMemberId: t.team_member_id,
-      role: asRole(t.role),
-      characters: t.characters
-        .filter((c) => c.archived_at === null)
-        .map((c) => ({ playerId: c.player_id, nameRealm: c.name_realm, urlCode: c.url_code }))
-    })),
+    teams: (person.teams ?? [])
+      .filter((t) => !t.archived_at)
+      .map((t) => ({
+        teamId: t.team_id,
+        teamMemberId: t.team_member_id,
+        role: asRole(t.role),
+        characters: t.characters
+          .filter((c) => c.archived_at === null)
+          .map((c) => ({ playerId: c.player_id, nameRealm: c.name_realm, urlCode: c.url_code }))
+      })),
     dismissedNoCharacter
   };
 }
