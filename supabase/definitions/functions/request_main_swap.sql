@@ -36,8 +36,8 @@ begin
    limit 1
   -- Held until the request is saved, so a removal cannot take the character
   -- off the roster between this check and the insert and leave a swap
-  -- waiting from it (#1428). Only the character: archive_team_member() locks
-  -- the membership first, and so must anything else that locks both.
+  -- waiting from it (#1428). Only the character: locking the membership here
+  -- too would take it after the character, the opposite of Archive Member.
      for share of p;
   if v_from_player_id is null then
     raise exception 'You have no character on this team''s roster';

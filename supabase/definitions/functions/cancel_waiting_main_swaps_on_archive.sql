@@ -11,6 +11,22 @@ AS $function$
 declare
   v_membership_ended boolean;
 begin
+  -- The character they asked for is on the roster now: the swap was done
+  -- another way, by a signup main swap or by hand.
+  update main_swap_requests r
+     set status = 'approved',
+         reviewed_at = now(),
+         reviewed_by = my_person_id(),
+         officer_note = 'Already on the roster',
+         approved_player_id = a.id
+    from players a
+   where r.from_player_id = new.id
+     and r.team_id = new.team_id
+     and r.status = 'pending'
+     and a.team_id = new.team_id
+     and a.name_realm_key = lower(replace(r.name_realm, ' ', ''))
+     and a.archived_at is null;
+
   select tm.archived_at is not null into v_membership_ended
     from team_members tm
    where tm.id = new.team_member_id;
@@ -23,6 +39,7 @@ begin
            reviewed_by = my_person_id(),
            officer_note = case when v_membership_ended then 'Membership ended' else 'Character removed' end
      where from_player_id = new.id
+       and team_id = new.team_id
        and status = 'pending'
     returning name_realm
   )
@@ -30,7 +47,8 @@ begin
   select new.team_id, new.id,
          concat('Your main swap to ', c.name_realm, ' was cancelled: ', new.name_realm, ' is no longer on the roster.')
     from cancelled c
-   where not v_membership_ended;
+   where not v_membership_ended
+     and new.team_member_id is not null;
 
   return new;
 end;
