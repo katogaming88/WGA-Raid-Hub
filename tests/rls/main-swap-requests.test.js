@@ -144,12 +144,12 @@ describe('a declined main swap stays declined', () => {
     await review(asUser, officer, id, false, 'Not this tier.');
     return id;
   };
-  const altOf = async (q, personId, name) =>
+  const altOf = async (q, personId, name, realm = 'Illidan') =>
     (
       await q(
         `insert into public.characters (person_id, blizzard_id, name, realm, realm_slug, class_name, spec_name, level)
-         values ($1, $2, $3, 'Illidan', 'illidan', 'Mage', 'Frost', 90) returning id`,
-        [personId, Math.floor(Math.random() * 1e9), name]
+         values ($1, $2, $3, $4, $5, 'Mage', 'Frost', 90) returning id`,
+        [personId, Math.floor(Math.random() * 1e9), name, realm, realm.toLowerCase().replace(/ /g, '-')]
       )
     ).rows[0].id;
 
@@ -158,7 +158,9 @@ describe('a declined main swap stays declined', () => {
       const { characterId } = await fixture(q);
       await decline(asUser, RAIDER_T1, characterId);
       const fire = (
-        await q("insert into public.classes_specs (class, spec, role) values ('Mage', 'Fire', 'Ranged') returning id")
+        await q("insert into public.classes_specs (class, spec, role) values ('Mage', $1, 'Ranged') returning id", [
+          `Fire ${Math.random().toString(36).slice(2, 10)}`
+        ])
       ).rows[0].id;
       await expect(ask(asUser, RAIDER_T1, characterId, fire)).rejects.toThrow(
         /^An officer declined your main swap to Swapalt-Illidan\. Ask one of this team's officers if that should change\.$/
@@ -177,6 +179,24 @@ describe('a declined main swap stays declined', () => {
       });
       const again = await altOf(q, personId, 'SWAPALT');
       await expect(ask(asUser, RAIDER_T1, again)).rejects.toThrow(DECLINED);
+    });
+  });
+
+  it('matches an alt on a realm with a space in its name', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { personId } = await fixture(q);
+      const alt = await altOf(q, personId, 'Spacealt', 'Area 52');
+      await decline(asUser, RAIDER_T1, alt);
+      await expect(ask(asUser, RAIDER_T1, alt)).rejects.toThrow(/declined your main swap to Spacealt-Area 52\./);
+    });
+  });
+
+  it('says the alt is on the roster, not declined, once an officer has added it', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { characterId, nameRealm } = await fixture(q);
+      await decline(asUser, RAIDER_T1, characterId);
+      await q('insert into public.players (team_id, name_realm, class_spec_id) values (1, $1, 1)', [nameRealm]);
+      await expect(ask(asUser, RAIDER_T1, characterId)).rejects.toThrow(/already on this roster/);
     });
   });
 

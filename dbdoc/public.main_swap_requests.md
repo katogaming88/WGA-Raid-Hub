@@ -16,7 +16,7 @@ A raider's request to make one of their alts their roster character, outside a s
 | name_realm | text |  | false |  |  |  |
 | class_spec_id | integer |  | true |  | [public.classes_specs](public.classes_specs.md) |  |
 | note | text |  | true |  |  |  |
-| status | text | 'pending'::text | false |  |  | pending until an officer approves or declines it, or it is cancelled: by the raider, or when the character it is from leaves the roster (#1428). A decline stands: request_main_swap() refuses that raider the same alt on that team again (#1430). |
+| status | text | 'pending'::text | false |  |  | pending until an officer approves or declines it or the raider cancels it. When the character it is from leaves the roster, a trigger cancels it, or approves it if the alt is on the roster by then (#1428). A decline stands: request_main_swap() refuses that raider the same alt on that team again (#1430). |
 | requested_at | timestamp with time zone | now() | false |  |  |  |
 | reviewed_at | timestamp with time zone |  | true |  |  |  |
 | reviewed_by | integer |  | true |  | [public.people](public.people.md) |  |

@@ -14,6 +14,7 @@ declare
   v_from_player_id integer;
   v_spec_class text;
   v_request_id integer;
+  v_open text;
 begin
   if v_person_id is null then
     raise exception 'Not signed in';
@@ -52,15 +53,17 @@ begin
     raise exception '% is already on this roster', v_character.name_realm;
   end if;
 
-  -- A decline stands (#1430): the same alt, by name, cannot be asked for
-  -- again on this team.
-  if exists (
-    select 1 from public.main_swap_requests r
-     where r.team_id = p_team_id
-       and r.person_id = v_person_id
-       and r.status = 'declined'
-       and lower(replace(r.name_realm, ' ', '')) = v_character.name_realm_key
-  ) then
+  -- A decline stands for the same alt, by name (#1430). One read for this
+  -- and the waiting check below, so a decline landing mid-ask cannot pass both.
+  select r.status into v_open
+    from public.main_swap_requests r
+   where r.team_id = p_team_id
+     and r.person_id = v_person_id
+     and (r.status = 'pending'
+          or (r.status = 'declined' and lower(replace(r.name_realm, ' ', '')) = v_character.name_realm_key))
+   order by r.status = 'declined' desc
+   limit 1;
+  if v_open = 'declined' then
     raise exception 'An officer declined your main swap to %. Ask one of this team''s officers if that should change.',
       v_character.name_realm;
   end if;
@@ -73,10 +76,7 @@ begin
     raise exception '% is a %, not a %', v_character.name, v_character.class_name, v_spec_class;
   end if;
 
-  if exists (
-    select 1 from public.main_swap_requests r
-     where r.team_id = p_team_id and r.person_id = v_person_id and r.status = 'pending'
-  ) then
+  if v_open = 'pending' then
     raise exception 'You already have a main swap waiting for an officer';
   end if;
 
