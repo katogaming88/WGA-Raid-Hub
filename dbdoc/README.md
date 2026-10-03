@@ -222,6 +222,7 @@
 | public.raid_night_info | record | p_team_id integer, p_raid_date date | FUNCTION |
 | public.team_members_archived_at_through_functions | trigger |  | FUNCTION |
 | public.archive_team_member | void | p_team_id integer, p_team_member_id integer, p_reason text, p_detail text | FUNCTION |
+| public.restore_team_member | bool | p_team_id integer, p_team_member_id integer | FUNCTION |
 
 ## Enums
 

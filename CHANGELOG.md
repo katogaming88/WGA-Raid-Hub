@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.163.0] - 2026-10-03
+
+### Backend
+
+- When an officer adds the season signup of someone archived off the
+  team, that person is back on the team, as a raider whatever role they
+  had. Before, a character they played before came back onto the roster
+  while they stayed archived, so the site refused them their own wishlist
+  and RSVPs on it. A character new to the team is added as before, for
+  them to claim. The add's audit entry says the membership was restored,
+  beside a new entry for the restore that names the role they had. The
+  restore is a new function, `restore_team_member()`, with the same
+  officer check as archiving someone. No page can archive anyone yet, so
+  nothing changes today (#1402).
+
+---
+
 ## [3.162.0] - 2026-10-02
 
 ### Frontend
