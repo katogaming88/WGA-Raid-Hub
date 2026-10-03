@@ -197,9 +197,11 @@ describe('saveScheduleDefaultDifficulty()', () => {
     expect(sandbox.SCHEDULE_DEFAULT_DIFFICULTY).toBe(null);
   });
 
-  it('relabels the rule rows after a save', async () => {
+  it('relabels the rule rows already on screen after a save', async () => {
     const { sandbox, els } = loadSandbox();
     sandbox.SCHEDULE_RULES = [TUESDAY_RULE];
+    sandbox.renderScheduleRules();
+    expect(els.scheduleRulesWrap.innerHTML).toContain('>Team default (not set)</option>');
     els.schedDefaultDifficulty = makeEl({ value: 'mythic' });
     sandbox.saveScheduleDefaultDifficulty();
     await flush();

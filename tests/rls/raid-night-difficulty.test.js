@@ -57,8 +57,9 @@ describe('raid_night_info() difficulty', () => {
     });
   });
 
-  it("returns an added night's own pick over a weekly rule of the other difficulty", async () => {
+  it("returns an added night's own pick over a weekly rule and a team default of the other difficulty", async () => {
     await withTxn(async ({ q }) => {
+      await setDefault(q, 'heroic');
       await rule(q, { difficulty: 'heroic' });
       await exception(q, { date: TUESDAY, difficulty: 'mythic' });
       expect(await difficulty(q, TUESDAY)).toBe('mythic');
