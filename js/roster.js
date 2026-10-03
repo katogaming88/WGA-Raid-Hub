@@ -1105,6 +1105,7 @@ function resolveColdLanding() {
         .from('team_members')
         .select('team_id, players!players_team_member_id_fkey(name_realm, archived_at)')
         .eq('auth_user_id', session.user.id)
+        .is('archived_at', null)
         .then(function (res) {
           var rows = (res && res.data) || [];
           var claimedSlug = null;

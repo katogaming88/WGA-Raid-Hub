@@ -54,6 +54,7 @@ function builder(result) {
   const b = {
     select: () => b,
     eq: () => b,
+    is: () => b,
     order: () => b,
     limit: () => b,
     gt: () => b,

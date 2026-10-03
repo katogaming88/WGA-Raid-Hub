@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.161.0';
+var VERSION = '3.162.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20261002220740';
+var REQUIRED_SCHEMA = '20261002224531';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -380,7 +380,10 @@ function fetchBoeAccess(session) {
     var uid = (session.user && session.user.id) || null;
     if (!uid) return Promise.resolve([]);
     // team-read-guard: the caller's own membership rows, at most one per team.
-    return Promise.resolve(supabaseClient.from('team_members').select('team_id, role').eq('auth_user_id', uid)).then(
+    // An archived membership is not a role on its team (#1400).
+    return Promise.resolve(
+      supabaseClient.from('team_members').select('team_id, role').eq('auth_user_id', uid).is('archived_at', null)
+    ).then(
       function (result) {
         if (!result || result.error || !result.data) return [];
         return result.data

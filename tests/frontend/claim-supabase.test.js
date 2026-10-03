@@ -46,6 +46,13 @@ function makeSelect() {
 
 // Routes .from(table) and .rpc(name) to per-test resolvers and records the chain
 // so tests can assert the filters used. Each resolver returns a { data, error }.
+// An .is(col, null) also keeps only the rows whose column is null, as PostgREST
+// does, so an archived membership drops out only when the page asks (#1400).
+const honourIs = (r, filters) =>
+  r && Array.isArray(r.data)
+    ? { ...r, data: r.data.filter((row) => filters.every(([c, v]) => (row[c] ?? null) === v)) }
+    : r;
+
 function makeClient(config) {
   const captured = { byTable: {}, rpc: null };
   function builder(resolve) {
@@ -82,6 +89,7 @@ function makeClient(config) {
       then(ok, err) {
         return Promise.resolve()
           .then(() => resolve())
+          .then((r) => honourIs(r, calls.is))
           .then(ok, err);
       }
     };
@@ -336,6 +344,20 @@ describe('resolveDiscordSession', () => {
     expect(q.limit).toBe(1);
   });
 
+  it('reads only a membership on this team that is not archived (#1400)', async () => {
+    const { sandbox, captured } = setup({
+      member: { id: 5, role: 'officer', name_realm: null },
+      linkedPlayer: { name_realm: 'Linked-Illidan' }
+    });
+    await sandbox.resolveDiscordSession(session);
+    const q = captured.byTable.team_members;
+    expect(q.eq).toEqual([
+      ['team_id', 1],
+      ['auth_user_id', 'u1']
+    ]);
+    expect(q.is).toEqual([['archived_at', null]]);
+  });
+
   it('falls back to team_members.name_realm when no player is linked', async () => {
     const { sandbox } = setup({
       member: { id: 5, role: 'officer', name_realm: 'Bridge-Illidan' },
@@ -391,6 +413,14 @@ describe('resolveDiscordSession', () => {
 
     it('leaves claimedElsewhere null when the other team row has no linked player', async () => {
       const { sandbox } = setupElsewhere([{ team_id: 2, players: [] }]);
+      const mapped = await sandbox.resolveDiscordSession(session);
+      expect(mapped.claimedElsewhere).toBeNull();
+    });
+
+    it('leaves claimedElsewhere null when the other team archived them (#1400)', async () => {
+      const { sandbox } = setupElsewhere([
+        { team_id: 2, archived_at: '2026-10-02T12:00:00Z', players: [{ name_realm: 'Alt-Illidan' }] }
+      ]);
       const mapped = await sandbox.resolveDiscordSession(session);
       expect(mapped.claimedElsewhere).toBeNull();
     });

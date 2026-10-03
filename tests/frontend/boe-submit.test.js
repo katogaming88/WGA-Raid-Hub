@@ -84,6 +84,9 @@ function builder(rows) {
   const settled = Promise.resolve({ data: rows, error: null });
   const chain = {
     eq: () => chain,
+    // Keeps the rows whose column is null, as PostgREST does, so a membership
+    // the finder was archived off drops out only when the page asks (#1400).
+    is: (col, val) => builder(rows.filter((r) => (r[col] ?? null) === val)),
     then: (onOk, onErr) => settled.then(onOk, onErr),
     catch: (onErr) => settled.catch(onErr)
   };
@@ -477,6 +480,16 @@ describe('identity resolution (#767, #891)', () => {
     const { sandbox, el } = makeSandbox();
     sandbox.supabaseClient = recorderClient({
       memberRows: [claim(3, 'Retired-Tichondrius', '2026-01-01T00:00:00Z')]
+    }).client;
+    await sandbox.initBoeCard();
+    expect(el('boeTeamSelect').value).toBe('');
+    expect(el('boeCharName').value).toBe('');
+  });
+
+  it('ignores a membership the finder was archived off (#1400)', async () => {
+    const { sandbox, el } = makeSandbox();
+    sandbox.supabaseClient = recorderClient({
+      memberRows: [{ ...claim(3, 'Kae-Tichondrius'), archived_at: '2026-10-02T12:00:00Z' }]
     }).client;
     await sandbox.initBoeCard();
     expect(el('boeTeamSelect').value).toBe('');

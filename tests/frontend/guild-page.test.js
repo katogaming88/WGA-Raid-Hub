@@ -49,6 +49,13 @@ function builder(result) {
   const b = {
     select: () => b,
     eq: () => b,
+    // Keeps the rows whose column is null, as PostgREST does, so a membership
+    // the person was archived off drops out only when the page asks (#1400).
+    is: (col, val) =>
+      builder({
+        ...result,
+        data: Array.isArray(result.data) ? result.data.filter((r) => (r[col] ?? null) === val) : result.data
+      }),
     order: () => b,
     limit: () => b,
     // fetchAllPaged() walks pages by keyset; without this the BoE read throws.
@@ -307,6 +314,17 @@ describe('resolveGuildTeam precedence', () => {
     const { sandbox } = makeSandbox({
       session: SESSION,
       memberRows: [{ team_id: 2, players: [] }, claim(3, 'Charlie-Tichondrius')]
+    });
+    expect(await sandbox.resolveGuildTeam()).toBe('immolation');
+  });
+
+  it('does not land on a team the person was archived off (#1400)', async () => {
+    const { sandbox } = makeSandbox({
+      session: SESSION,
+      memberRows: [
+        { ...claim(2, 'Bravo-Tichondrius'), archived_at: '2026-10-02T12:00:00Z' },
+        claim(3, 'Charlie-Tichondrius')
+      ]
     });
     expect(await sandbox.resolveGuildTeam()).toBe('immolation');
   });

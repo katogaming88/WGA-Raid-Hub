@@ -301,6 +301,26 @@ describe('session and access helpers', () => {
     expect(access.teams[0]?.characters.map((c) => c.nameRealm)).toEqual(['Live-Illidan']);
   });
 
+  it('drops a team whose membership is archived, and its officer tools with it', () => {
+    const base = person('officer');
+    const team = base.teams[0]!;
+    const access = toAccess(
+      {
+        ...base,
+        teams: [
+          { ...team, archived_at: '2026-10-02T12:00:00Z' },
+          { ...team, team_id: 2, team_member_id: 2, archived_at: null },
+          // An answer from before the flag existed reads as current.
+          { ...team, team_id: 3, team_member_id: 3 }
+        ]
+      },
+      false
+    );
+    expect(access.teams.map((t) => t.teamId)).toEqual([2, 3]);
+    expect(can(access, 'actAsOfficer', 1)).toBe(false);
+    expect(can(access, 'actAsOfficer', 2)).toBe(true);
+  });
+
   it('answers each ability from the right grant', () => {
     const on = (patch: Partial<Access>): Access => ({ ...NO_ACCESS, ...patch });
     const team = (role: 'raider' | 'officer' | 'team_leader') =>

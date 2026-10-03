@@ -38,6 +38,10 @@ function withClient({ rpc = {}, members = [], reject = false, memberError = fals
           calls.push('eq:' + col + '=' + val);
           return b;
         },
+        is: (col, val) => {
+          calls.push('is:' + col + '=' + val);
+          return b;
+        },
         then: (resolve, rejectFn) =>
           Promise.resolve(
             memberError ? { data: null, error: { message: 'permission denied' } } : { data: members, error: null }
@@ -79,6 +83,12 @@ describe('fetchBoeAccess', () => {
     await sandbox.fetchBoeAccess(SESSION);
     expect(calls).toContain('from:team_members');
     expect(calls).toContain('eq:auth_user_id=auth-1');
+  });
+
+  it('leaves out a team the caller was archived off (#1400)', async () => {
+    const { sandbox, calls } = withClient();
+    await sandbox.fetchBoeAccess(SESSION);
+    expect(calls).toContain('is:archived_at=null');
   });
 
   it('a signed-in raider may open the page and act on nothing', async () => {
