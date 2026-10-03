@@ -483,9 +483,61 @@ describe('a waiting main swap is cancelled when its character leaves the roster'
     });
   });
 
-  // The locks that keep a removal from slipping between a check and a write,
-  // and an approval and an archive from deadlocking: every archive takes the
-  // membership, then the character, then (through the trigger) the request.
+  it('Archive Member cancels it even when the alt they asked for is on the roster unlinked', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { team, nameRealm, id } = await swapOnOwnTeam(q, asUser);
+      // A season signup for the alt, added without a main swap, leaves it on
+      // the roster with no membership.
+      await seedPlayer(q, { teamId: team.teamId, nameRealm });
+      await archiveMember(asUser, team);
+      expect(await requestOf(q, id)).toMatchObject({ status: 'cancelled', officer_note: 'Membership ended' });
+    });
+  });
+
+  it("an alt on the roster as someone else's character does not count as already on it", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { team, raiderPlayer, nameRealm, id } = await swapOnOwnTeam(q, asUser);
+      const someoneElse = await seedMember(q, { teamId: team.teamId });
+      await seedPlayer(q, { memberId: someoneElse.memberId, nameRealm });
+      await removePlayer(asUser, team.officer.uid, raiderPlayer);
+      expect(await requestOf(q, id)).toMatchObject({ status: 'cancelled', officer_note: 'Character removed' });
+    });
+  });
+
+  // Asked of the review directly: a swap can be waiting from a character
+  // already off the roster only if it got there without the trigger (a
+  // restore with triggers off), so the review still refuses one.
+  it('approving a swap still waiting from a character already off the roster is refused', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const { personId, raiderPlayer } = await fixture(q, { memberId: team.raider.memberId });
+      await q('update public.players set archived_at = now() where id = $1', [raiderPlayer]);
+      const id = (
+        await q(
+          `insert into public.main_swap_requests (team_id, person_id, from_player_id, name_realm, class_spec_id)
+           values ($1, $2, $3, 'Restored-Illidan', $4) returning id`,
+          [team.teamId, personId, raiderPlayer, FROST_MAGE]
+        )
+      ).rows[0].id;
+      await expect(review(asUser, team.officer.uid, id, true)).rejects.toThrow(/no longer on the roster/);
+    });
+  });
+
+  it('approving a swap the old character was already renamed into is refused, and keeps that character', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { team, raiderPlayer, nameRealm, id } = await swapOnOwnTeam(q, asUser);
+      // The Roster tab's rename keeps the row and its history under the new name.
+      await q('update public.players set name_realm = $1 where id = $2', [nameRealm, raiderPlayer]);
+      await expect(review(asUser, team.officer.uid, id, true)).rejects.toThrow(/already on the roster/);
+      const old = (await q('select archived_at from public.players where id = $1', [raiderPlayer])).rows[0];
+      expect(old.archived_at).toBeNull();
+    });
+  });
+
+  // The locks that keep a removal from slipping between a check and a write.
+  // Only which rows a call holds is asked here; the order the review takes
+  // them in (membership, new roster row, old character, request) is in its
+  // comment and the decisions log.
   it('an ask holds the character it swaps from until it commits', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { raiderPlayer } = await swapOnOwnTeam(q, asUser);
@@ -493,7 +545,7 @@ describe('a waiting main swap is cancelled when its character leaves the roster'
     });
   });
 
-  it('a review holds the membership and the old character, as an archive takes them', async () => {
+  it('a review holds the membership and the old character until it commits', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { team, raiderPlayer, id } = await swapOnOwnTeam(q, asUser);
       await review(asUser, team.officer.uid, id, false);
