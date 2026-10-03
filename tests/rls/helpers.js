@@ -260,3 +260,17 @@ export async function seedSignup(
   );
   return rows[0].id;
 }
+
+// The lock modes held on one row, read from inside the case's own transaction
+// (#1428), so a lock a function takes and holds until commit can be asserted.
+// pgrowlocks is created in that transaction and leaves with its rollback; no
+// migration carries it. Use rows of the case's own: another file's lock on a
+// seeded row would show here too.
+export async function rowLockModes(q, table, id) {
+  await q('create extension if not exists pgrowlocks');
+  const { rows } = await q(
+    `select modes from pgrowlocks($1) where locked_row = (select ctid from public.${table} where id = $2)`,
+    [`public.${table}`, id]
+  );
+  return rows.flatMap((r) => r.modes);
+}
