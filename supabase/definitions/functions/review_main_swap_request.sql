@@ -15,7 +15,9 @@ declare
   v_spec_label text;
   v_note text := nullif(btrim(p_note), '');
 begin
-  select * into v_request from public.main_swap_requests where id = p_request_id for update;
+  -- Read without a lock first, for the rows to lock below; the status is
+  -- checked again once the request is held.
+  select * into v_request from public.main_swap_requests where id = p_request_id;
   if not found then
     raise exception 'No main swap with id %', p_request_id;
   end if;
@@ -30,7 +32,47 @@ begin
     raise exception 'That main swap was already %', v_request.status;
   end if;
 
+  -- Rows are taken in an order that waits behind an archive instead of
+  -- deadlocking with it (#1428): the membership, for share, which the key
+  -- share a removal takes on it does not block; then the new roster row,
+  -- which a signup main swap writes before it archives the old character;
+  -- then the old character; then the request, which the trigger cancelling a
+  -- waiting swap reaches last.
+  perform 1 from public.team_members
+   where id = (select team_member_id from public.players where id = v_request.from_player_id)
+     for share;
   select * into v_from from public.players where id = v_request.from_player_id;
+
+  if p_approve then
+    -- The character joins the roster, or comes back to it. Same on-conflict
+    -- shape as add_signup_to_roster(): a character they played before keeps its
+    -- id, so its loot and raid history stay attached to it.
+    insert into public.players (
+      team_id, name_realm, class_spec_id, is_trial, join_date, is_backup_tank, is_backup_healer, team_member_id
+    )
+    values (
+      v_request.team_id, v_request.name_realm, v_request.class_spec_id, v_from.is_trial, v_from.join_date,
+      v_from.is_backup_tank, v_from.is_backup_healer, v_from.team_member_id
+    )
+    on conflict (team_id, name_realm_key) do update
+      set class_spec_id = excluded.class_spec_id,
+          is_trial = excluded.is_trial,
+          join_date = excluded.join_date,
+          is_backup_tank = excluded.is_backup_tank,
+          is_backup_healer = excluded.is_backup_healer,
+          team_member_id = coalesce(players.team_member_id, excluded.team_member_id),
+          archived_at = null
+    returning id into v_player_id;
+  end if;
+
+  select * into v_from from public.players where id = v_request.from_player_id for no key update;
+  select * into v_request from public.main_swap_requests where id = p_request_id for update;
+  if not found then
+    raise exception 'No main swap with id %', p_request_id;
+  end if;
+  if v_request.status is distinct from 'pending' then
+    raise exception 'That main swap was already %', v_request.status;
+  end if;
 
   if not p_approve then
     update public.main_swap_requests
@@ -46,29 +88,24 @@ begin
     return null;
   end if;
 
+  -- Reached only by a swap left waiting without the trigger (a restore with
+  -- triggers off): the archive closes every other one first.
   if v_from.archived_at is not null then
     raise exception '% is no longer on the roster', v_from.name_realm;
   end if;
 
-  -- The character joins the roster, or comes back to it. Same on-conflict
-  -- shape as add_signup_to_roster(): a character they played before keeps its
-  -- id, so its loot and raid history stay attached to it.
-  insert into public.players (
-    team_id, name_realm, class_spec_id, is_trial, join_date, is_backup_tank, is_backup_healer, team_member_id
-  )
-  values (
-    v_request.team_id, v_request.name_realm, v_request.class_spec_id, v_from.is_trial, v_from.join_date,
-    v_from.is_backup_tank, v_from.is_backup_healer, v_from.team_member_id
-  )
-  on conflict (team_id, name_realm_key) do update
-    set class_spec_id = excluded.class_spec_id,
-        is_trial = excluded.is_trial,
-        join_date = excluded.join_date,
-        is_backup_tank = excluded.is_backup_tank,
-        is_backup_healer = excluded.is_backup_healer,
-        team_member_id = coalesce(players.team_member_id, excluded.team_member_id),
-        archived_at = null
-  returning id into v_player_id;
+  -- The old character already renamed into the one asked for (the Roster
+  -- tab's rename keeps the row): approving would archive the row it approved.
+  if v_player_id = v_request.from_player_id then
+    raise exception '% is already on the roster as their character', v_request.name_realm;
+  end if;
+
+  -- Approved before the old character is archived, so the trigger that cancels
+  -- a waiting swap when its character leaves the roster finds this one closed.
+  update public.main_swap_requests
+     set status = 'approved', reviewed_at = now(), reviewed_by = public.my_person_id(),
+         officer_note = v_note, approved_player_id = v_player_id
+   where id = p_request_id;
 
   -- The link stays on the archived character (#941): its attendance, loot and
   -- BoE finds still belong to this person, and step 5b's loot total reads it.
@@ -85,12 +122,6 @@ begin
           and b.player_id = v_player_id
           and b.raid_date = a.raid_date
      );
-
-
-  update public.main_swap_requests
-     set status = 'approved', reviewed_at = now(), reviewed_by = public.my_person_id(),
-         officer_note = v_note, approved_player_id = v_player_id
-   where id = p_request_id;
 
   -- Audit (#1136): the same two lines a main swap through a signup writes, so
   -- both read alike in the Audit Log.

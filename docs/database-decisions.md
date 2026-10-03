@@ -10,6 +10,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-03 -- a waiting main swap is cancelled when its character leaves the roster (#1428)
+
+Shipped: 20261003124046_waiting_main_swap_cancelled_on_archive.sql
+
+Once the character a main swap is from is archived, the swap can never be approved, so it is cancelled rather than left in the officers' queue (decided 2026-10-03). Until now it stayed there: Approve failed with "no longer on the roster", and Decline sent a "declined" note to someone who had left, or about a swap already done by hand.
+
+- **Cancel, not decline, hide or block.** For Archive Member, cancelling was chosen over leaving it for an officer to clear, declining it (no officer judged the swap itself), hiding it until the person returns (a request nobody can see, which can come back stale), showing it as ended with Decline only (still manual), and refusing the archive while a request waits. The rule then widened to every way a character leaves the roster, since an approval can never succeed once the old character is gone. Refusing a Remove while a swap waits was rejected: the current site has no main swap queue, so an officer there would be blocked by something they cannot see.
+- **A trigger on `players.archived_at`, as #1383's priority cleanup.** Four paths archive a character (`archive_player()`, `archive_team_member()`, a signup main swap through `add_signup_to_roster()`, an officer's direct update), and the trigger covers each and any still to come. It runs as its owner: `main_swap_requests` and `notifications` have no write rule for the officer whose archive fires it.
+- **Who closed it, and why.** The acting officer is the reviewer (`my_person_id()`, null for the service role). "Membership ended" when the character's membership is archived, with no notification, since they left; "Character removed" otherwise, with a notification to the raider on the archived character, which their inbox still reads, unless nobody holds the character any more (its claim removed), since no inbox would show it.
+- **Already done another way** (from the code review). A swap to a character that is on the roster by the time the old one leaves, unlinked or the raider's own, through a signup main swap to the same alt or by hand, closes as approved with that row as `approved_player_id`, "Already on the roster", and no notification: cancelling it would tell a raider their swap was cancelled just as they got it. Not when the membership was archived (they left, whatever is on the roster), and not for a row held by someone else's membership.
+- **Not revived.** Restoring the member or re-adding the character leaves the request cancelled. The raider asks again: a cancelled request does not block asking, and will not once #1430 blocks a declined one.
+- **The review waits behind an archive.** Archive Member locks the membership, then the characters, then, through the trigger, the request; Remove and a signup main swap lock the character, then the request, and take only a key share on the membership (a signup swap writes the new roster row before it archives the old one). The review takes the membership for share, which that key share does not block, then the new roster row, then the old character, then the request, and checks the status again once it holds the request, so it waits behind any of them instead of deadlocking. It marks an approval approved before it archives the old character, so the trigger leaves that one alone. `request_main_swap()` holds the character it checked `for share` until the request is saved, so a removal cannot slip between the check and the insert. Not settled here, and older than this change: Remove or a signup main swap and Archive Member of the same raider at the same moment can still deadlock with each other, since their key share on the membership comes after the character.
+- **The review still refuses** a swap waiting from a character already off the roster, which only a restore with triggers off could now leave (from the second code review), and a swap the old character was already renamed into, which would archive the row it approved. A backfill in the same migration cancels any swap already waiting from a character off the roster (none on production, 2026-10-03).
+
+[Full discussion -> #1428](https://github.com/katogaming88/WGA-Raid-Hub/issues/1428).
+
 ## 2026-10-03 -- every removal reason is kept, one row each (#1427)
 
 Shipped: 20261003091840_removal_reasons.sql
