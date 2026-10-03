@@ -288,6 +288,20 @@ describe('team_members RLS after the archive change', () => {
     });
   });
 
+  it('a team leader can archive and un-archive a membership by editing the row', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await asUser(team.leader.uid, 'update public.team_members set archived_at = now() where id = $1', [
+        team.raider.memberId
+      ]);
+      expect(await archivedAt(q, team.raider.memberId)).not.toBeNull();
+      await asUser(team.leader.uid, 'update public.team_members set archived_at = null where id = $1', [
+        team.raider.memberId
+      ]);
+      expect(await archivedAt(q, team.raider.memberId)).toBeNull();
+    });
+  });
+
   it('a team leader can still update a membership (role changes)', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
