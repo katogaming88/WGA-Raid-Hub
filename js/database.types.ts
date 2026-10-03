@@ -4217,6 +4217,17 @@ export type Database = {
         Returns: string
       }
       resolve_person: { Args: { p_discord_id: string }; Returns: Json }
+      restore_player: {
+        Args: {
+          p_class_spec_id?: number
+          p_is_trial?: boolean
+          p_join_date?: string
+          p_name_realm?: string
+          p_nickname?: string
+          p_player_id: number
+        }
+        Returns: boolean
+      }
       restore_team_member: {
         Args: { p_team_id: number; p_team_member_id: number }
         Returns: boolean

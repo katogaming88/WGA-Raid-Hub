@@ -10,6 +10,23 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-03 -- the Roster tab's re-add is one call that keeps why they left (#1133)
+
+Shipped: 20261003130915_restore_player.sql
+
+Re-adding a removed player on the Roster tab was three client writes: an update of the character, a second write clearing its removal reason that swallowed its own failure, and the audit entry. Two rules settled since the issue was filed changed the fix: a removal's reason is never lost (#1427), and any officer action that brings someone back restores their archived membership (#1355). This supersedes the #476 entries' "Cleared (`null`) on reactivation".
+
+- **One function, `restore_player()`, run with the officer's rights** like `archive_player()`, which it pairs with. It takes the form's values, so the re-add happens whole or not at all, and the rebuilt Roster page (#1360) can call the same function.
+- **The reason stays.** The function never touches `player_officer_notes` or `removal_reasons`. The notes columns keep the latest reason, and a later removal still gets a row of its own, dated by its own `archived_at`.
+- **The membership comes back through `restore_team_member()`, asked about every linked character**, not only one whose membership reads as archived. That call locks the membership before the character is written, the order `archive_team_member()` takes, so an archive cannot land between the read and the update. The character's own link decides whose membership comes back, since a Roster re-add has no signer to go by, unlike the signup add (#1402). A link to another team's membership is refused (none on production on 2026-10-03, of 76 linked characters).
+- **A blank field keeps what the character had.** The old re-add blanked a nickname or join date the form left empty; of 70 removed characters on 2026-10-03, 20 carried a nickname and 39 a join date. The form pre-fills today's date, so a re-add still replaces the join date unless the officer clears the field. The backup flags, the rotator flag and the BiS link carry over, as before.
+- **Only the spelling of the name can change, and the link must be the one it read.** Otherwise the update refuses, and the membership restore rolls back with it.
+- **The audit entry is written inside the function**, as `add_signup_to_roster()` has since #1136, so a failed second call cannot lose it.
+- **Not a trigger on un-archive.** `add_signup_to_roster()` revives a row that can still be linked to a different person before it moves the link to the signer, so a trigger would restore the wrong person's membership. A direct update of `players.archived_at` can still leave a live character on an archived membership, and #1401's reads cover that state until #1434 guards the column.
+- **Clearing an officer note updates the row in place** rather than upserting, so a player who never had a notes row does not gain a blank one. The two blank rows on production (players 163 and 139, 2026-10-03) stay: they hold no recorded value and nothing reads them.
+
+[Full discussion -> #1133](https://github.com/katogaming88/WGA-Raid-Hub/issues/1133).
+
 ## 2026-10-03 -- a waiting main swap is cancelled when its character leaves the roster (#1428)
 
 Shipped: 20261003124046_waiting_main_swap_cancelled_on_archive.sql

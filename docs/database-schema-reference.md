@@ -198,7 +198,7 @@ These were columns on `players` until #925. That table carries a `FOR SELECT USI
 | `archived_reason_detail` | text        | Required freeform specifics behind that category                         |
 | `updated_at`             | timestamptz | Auto-set on every UPDATE via trigger                                     |
 
-Written two ways: the officer note upserts directly from the Roster tab, and `archive_player()` writes the two archive columns alongside `players.archived_at` so a removal cannot record one without the other. The archive columns hold only the latest reason; every reason written to them is also kept in `removal_reasons` (#1427), below.
+Written two ways: the officer note is written directly from the Roster tab (an upsert, or an update in place when it is cleared, so a player with no row does not gain a blank one, #1133), and `archive_player()` writes the two archive columns alongside `players.archived_at` so a removal cannot record one without the other. The archive columns hold only the latest reason, which stays when the player is re-added (`restore_player()`, #1133); every reason written to them is also kept in `removal_reasons` (#1427), below.
 
 ---
 

@@ -218,10 +218,10 @@ describe('raid_rsvps RLS', () => {
   });
 });
 
-// #1401: the Roster tab's re-add brings a character back with its link left on
-// an archived membership, until #1133 restores it. The archived
-// person owns nothing on the team meanwhile. A team of the case's own, so the
-// archive writes no seeded row (#1123).
+// #1401: a direct un-archive brings a character back with its link left on an
+// archived membership (the Roster tab's re-add restores it too, since #1133).
+// The archived person owns nothing on the team meanwhile. A team of the case's
+// own, so the archive writes no seeded row (#1123).
 describe('set_own_rsvp() and an archived membership (#1401)', () => {
   it('refuses someone archived off the team, even with their character re-added', async () => {
     await withTxn(async ({ q, asUser }) => {

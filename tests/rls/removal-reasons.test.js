@@ -174,7 +174,7 @@ describe('removal_reasons gets a row for every reason written', () => {
       const team = await seedTeam(q);
       const playerId = await seedPlayer(q, { teamId: team.teamId });
       await archivePlayer(asUser, team.officer.uid, playerId, 'other', 'First time');
-      // Today's re-add on the Roster tab: un-archive, then clear the reason.
+      // The Roster tab's re-add before #1133: un-archive, then clear the reason.
       await asUser(team.officer.uid, 'update public.players set archived_at = null where id = $1', [playerId]);
       await asUser(
         team.officer.uid,

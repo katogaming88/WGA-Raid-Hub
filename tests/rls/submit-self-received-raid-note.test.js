@@ -127,9 +127,10 @@ describe('submit_self_received: self-reported raid loot', () => {
   });
 });
 
-// #1401: a report on a character the Roster tab re-added onto an archived
-// membership goes to officer review, since the archived person owns nothing on
-// the team. A team of the case's own, so the archive writes no seeded row.
+// #1401: a report on a character a direct un-archive brought back onto an
+// archived membership goes to officer review, since the archived person owns
+// nothing on the team. A team of the case's own, so the archive writes no
+// seeded row.
 describe('submit_self_received: an archived membership (#1401)', () => {
   const report = (asUser, team) =>
     asUser(

@@ -211,8 +211,8 @@ describe('link_battlenet_roster_characters() and an archived membership (#1401)'
       const person = await personOf(q, team.raider.uid);
       const stillLinked = await newPlayer(q, team.teamId, 'Readded-Illidan', team.raider.memberId);
       await archive(asUser, team);
-      // The Roster tab's re-add brings the character back and leaves its link
-      // on the archived membership, until #1133 restores it.
+      // A direct un-archive brings the character back and leaves its link on
+      // the archived membership (the Roster tab's re-add restores it, #1133).
       await q('update public.players set archived_at = null where id = $1', [stillLinked]);
 
       expect(await link(q, person, [{ name: 'Readded', realm: 'Illidan' }])).toEqual([

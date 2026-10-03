@@ -7,9 +7,11 @@
 // straight to Supabase: RLS already permits an officer's plain
 // insert/update against `players`, and each write logs itself via
 // writeAuditLog() (#214). Two writes are exceptions since #925, both because
-// their data moved to player_officer_notes: the officer note upserts there
+// their data moved to player_officer_notes: the officer note is written there
 // instead, and removing a player goes through archive_player() so the
-// archived_at on `players` and the reason on that table land together. GAS keeps its
+// archived_at on `players` and the reason on that table land together.
+// Re-adding a removed player goes through restore_player() (#1133), which
+// also brings back their team membership and leaves the reason alone. GAS keeps its
 // addPlayer/removePlayer/updatePlayerField handlers until this path is
 // verified side by side (#216); nothing here calls them anymore.
 //
@@ -101,22 +103,25 @@ function rosterFieldAuditDetail(field, value) {
 // updateClassSpecSupabase instead, since they resolve to one FK together.
 //
 // officerNote is the one field that does not live on players: it moved to
-// player_officer_notes in #925, so it upserts a row there rather than
-// updating one that already exists. The audit entry still targets players,
-// which is what an officer is looking at and what every other roster write
-// records. Both paths are officer-gated by their table's own policy.
+// player_officer_notes in #925, so writing one upserts a row there, and
+// clearing one updates the row in place, so a player with no row does not
+// gain a blank one (#1133). The audit entry still targets players, which is
+// what an officer is looking at and what every other roster write records.
+// Both paths are officer-gated by their table's own policy.
 function updateRosterFieldSupabase(nameRealm, field, value) {
   var player = findRosterPlayer(nameRealm);
   var column = ROSTER_FIELD_COLUMN[field];
   if (!player || !player.id || !column) return Promise.reject(new Error('Unknown player or field.'));
   var write;
   if (field === 'officerNote') {
-    write = supabaseClient.from('player_officer_notes').upsert(
-      { player_id: player.id, team_id: _teamCfg.supabaseTeamId, officer_notes: value || null },
-      {
-        onConflict: 'player_id'
-      }
-    );
+    write = value
+      ? supabaseClient
+          .from('player_officer_notes')
+          .upsert(
+            { player_id: player.id, team_id: _teamCfg.supabaseTeamId, officer_notes: value },
+            { onConflict: 'player_id' }
+          )
+      : supabaseClient.from('player_officer_notes').update({ officer_notes: null }).eq('player_id', player.id);
   } else {
     var payload = {};
     payload[column] = ROSTER_FIELD_RAW_VALUE[field] ? value || null : !!value;
@@ -126,28 +131,6 @@ function updateRosterFieldSupabase(nameRealm, field, value) {
     if (result.error) throw new Error(result.error.message);
     return writeAuditLog(ROSTER_FIELD_AUDIT_LABEL[field], 'players', player.id, rosterFieldAuditDetail(field, value));
   });
-}
-
-// Re-adding an archived player clears why they left (#476). That reason moved
-// to player_officer_notes in #925, so it is a second write rather than two
-// more nulls on the players update above. Updates in place rather than
-// upserting, so a returning player who never had a row does not gain an empty
-// one. Best-effort and self-warning: they are back on the roster either way,
-// and a stale reason is not worth failing the add over. Always resolves, so
-// the caller's error handling stays about the add itself.
-function clearArchiveReason(playerId) {
-  return supabaseClient
-    .from('player_officer_notes')
-    .update({ archived_reason: null, archived_reason_detail: null })
-    .eq('player_id', playerId)
-    .then(
-      function (result) {
-        if (result.error) console.warn('Could not clear the archive reason.', result.error.message);
-      },
-      function (err) {
-        console.warn('Could not clear the archive reason.', err);
-      }
-    );
 }
 
 var statItemsDiff = 'all';
@@ -679,7 +662,7 @@ function showAddPlayerModal() {
   document.getElementById('addPlayerSpec').innerHTML = '<option value="">-- Select spec --</option>';
   document.getElementById('addPlayerRole').value = 'Melee';
   document.getElementById('addPlayerTrial').checked = false;
-  document.getElementById('addPlayerError').style.display = 'none';
+  document.getElementById('addPlayerError').textContent = '';
 
   var today = new Date();
   var mm = today.getMonth() + 1;
@@ -792,16 +775,19 @@ function submitAddPlayer() {
   var role = document.getElementById('addPlayerRole').value;
   var isTrial = document.getElementById('addPlayerTrial').checked;
   var errEl = document.getElementById('addPlayerError');
+  // Each press starts over (#1133): the form's error and the roster's last
+  // message clear. The error stays rendered, so its alert is read out.
+  var statusEl = document.getElementById('rosterAddStatus');
+  errEl.textContent = '';
+  if (statusEl) statusEl.textContent = '';
 
   var nameErr = validateCharName(nameVal);
   if (nameErr) {
     errEl.textContent = nameErr;
-    errEl.style.display = '';
     return;
   }
   if (!realmVal || !cls || !spec || !role) {
     errEl.textContent = 'Please fill in all required fields.';
-    errEl.style.display = '';
     return;
   }
 
@@ -819,11 +805,9 @@ function submitAddPlayer() {
   }
   if (duplicate) {
     errEl.textContent = nameRealm + ' is already on the roster.';
-    errEl.style.display = '';
     return;
   }
 
-  errEl.style.display = 'none';
   var submitBtn = document.querySelector('#addPlayerModal .btn-gold');
   if (submitBtn) {
     submitBtn.disabled = true;
@@ -839,31 +823,49 @@ function submitAddPlayer() {
     isTrial: isTrial,
     joinDate: joinDateVal
   })
-    .then(function (playerId) {
+    .then(function (added) {
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Add Player';
       }
-      if (DATA && DATA.roster) {
-        var parts = nameRealm.split('-');
-        DATA.roster.push({
-          id: playerId,
-          nameRealm: nameRealm,
-          firstName: parts[0],
-          realm: parts.slice(1).join('-'),
-          nick: nickVal,
-          class: cls,
-          spec: spec,
-          role: role,
-          isTrial: isTrial,
-          isBench: false,
-          isRotator: false,
-          bisLink: '',
-          joinDate: joinDateVal
-        });
-      }
+      // Said before the rebuild, so a failed rebuild cannot take it with it.
+      if (statusEl) statusEl.textContent = rosterAddMessage(nameRealm, added);
       hideAddPlayerModal();
-      buildOfficerDashboard();
+      if (added.readded) {
+        // A re-add keeps what the form left blank and everything the form
+        // does not show (#1133), so the roster reloads rather than taking the
+        // form's values as the row.
+        loadData(
+          function () {
+            buildOfficerDashboard();
+          },
+          function () {
+            buildStatsBar();
+            buildRosterTable();
+            buildTrialPromoAlert();
+          }
+        );
+      } else {
+        if (DATA && DATA.roster) {
+          var parts = nameRealm.split('-');
+          DATA.roster.push({
+            id: added.id,
+            nameRealm: nameRealm,
+            firstName: parts[0],
+            realm: parts.slice(1).join('-'),
+            nick: nickVal,
+            class: cls,
+            spec: spec,
+            role: role,
+            isTrial: isTrial,
+            isBench: false,
+            isRotator: false,
+            bisLink: '',
+            joinDate: joinDateVal
+          });
+        }
+        buildOfficerDashboard();
+      }
       if (typeof window._pendingRosterOnSuccess === 'function') {
         window._pendingRosterOnSuccess();
         window._pendingRosterOnSuccess = null;
@@ -875,16 +877,25 @@ function submitAddPlayer() {
         submitBtn.textContent = 'Add Player';
       }
       errEl.textContent = 'Failed to add player: ' + err.message;
-      errEl.style.display = '';
       window._pendingRosterOnSuccess = null;
     });
 }
 
-// Three-case upsert (docs/database-decisions.md roster-promotion pattern):
+// What the roster's status line says once the form closes (#1133). A failed
+// add keeps the form open with its own error instead.
+function rosterAddMessage(nameRealm, added) {
+  if (!added.readded) return nameRealm + ' was added to the roster.';
+  return added.membershipRestored
+    ? nameRealm + ' is back on the roster, and their team membership is restored, as a raider.'
+    : nameRealm + ' is back on the roster.';
+}
+
+// Three-case add (docs/database-decisions.md roster-promotion pattern):
 // brand-new name_realm -> insert; a previously archived row for the same
-// name_realm -> un-archive it in place (preserves its id, so historical
-// rclc_loot/attendance rows stay linked); an already-active row ->
-// reject rather than silently overwrite. Resolves to the written player's id.
+// name_realm -> restore_player() brings it back in place (preserves its id,
+// so historical rclc_loot/attendance rows stay linked); an already-active row
+// -> reject rather than silently overwrite. Resolves to { id, readded,
+// membershipRestored }: the written player's id and what the add did.
 function addPlayerToRosterSupabase(payload) {
   if (!supabaseClient) return Promise.reject(new Error('Not connected to Supabase.'));
   var teamId = _teamCfg.supabaseTeamId;
@@ -911,40 +922,65 @@ function addPlayerToRosterSupabase(payload) {
           if (existing.error) throw new Error(existing.error.message);
           var row = existing.data;
           if (row && !row.archived_at) throw new Error(payload.nameRealm + ' is already on the roster.');
-          var fields = {
-            team_id: teamId,
-            name_realm: payload.nameRealm,
-            nickname: payload.nick || null,
-            class_spec_id: classSpecId,
-            is_trial: !!payload.isTrial,
-            is_bench: false,
-            join_date: payload.joinDate || null,
-            archived_at: null
-          };
           return row
-            ? supabaseClient.from('players').update(fields).eq('id', row.id).select('id').single()
-            : supabaseClient.from('players').insert(fields).select('id').single();
+            ? restoreRosterPlayerSupabase(row.id, payload, classSpecId)
+            : insertRosterPlayerSupabase(teamId, payload, classSpecId);
         });
     })
-    .then(function (writeResult) {
-      if (writeResult.error) throw new Error(writeResult.error.message);
-      var playerId = writeResult.data.id;
-      var detail = [payload.class, payload.spec, payload.role].filter(Boolean).join(' ');
-      return clearArchiveReason(playerId)
-        .then(function () {
-          return writeAuditLog('Player Added', 'players', playerId, detail);
-        })
-        .then(function () {
-          return backfillNotOnRosterForPlayer(teamId, playerId, payload.joinDate);
-        })
+    .then(function (added) {
+      return backfillNotOnRosterForPlayer(teamId, added.id, payload.joinDate)
         .catch(function (err) {
           // Best-effort: the player is already added successfully at this
           // point, so a backfill failure shouldn't surface as an add failure.
           console.warn('Not on Roster backfill failed.', err);
         })
         .then(function () {
-          return playerId;
+          return added;
         });
+    });
+}
+
+function insertRosterPlayerSupabase(teamId, payload, classSpecId) {
+  return supabaseClient
+    .from('players')
+    .insert({
+      team_id: teamId,
+      name_realm: payload.nameRealm,
+      nickname: payload.nick || null,
+      class_spec_id: classSpecId,
+      is_trial: !!payload.isTrial,
+      is_bench: false,
+      join_date: payload.joinDate || null
+    })
+    .select('id')
+    .single()
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      var playerId = result.data.id;
+      var detail = [payload.class, payload.spec, payload.role].filter(Boolean).join(' ');
+      return writeAuditLog('Player Added', 'players', playerId, detail).then(function () {
+        return { id: playerId, readded: false, membershipRestored: false };
+      });
+    });
+}
+
+// One call (#1133): restore_player() brings the row back with the form's
+// values, brings back the team membership it is linked to, leaves why they
+// left where it is, and writes the Player Added entry itself. A blank
+// nickname or join date keeps the character's own.
+function restoreRosterPlayerSupabase(playerId, payload, classSpecId) {
+  return supabaseClient
+    .rpc('restore_player', {
+      p_player_id: playerId,
+      p_name_realm: payload.nameRealm,
+      p_nickname: payload.nick || null,
+      p_class_spec_id: classSpecId,
+      p_is_trial: !!payload.isTrial,
+      p_join_date: payload.joinDate || null
+    })
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      return { id: playerId, readded: true, membershipRestored: result.data === true };
     });
 }
 

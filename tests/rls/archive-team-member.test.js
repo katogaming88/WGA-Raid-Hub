@@ -399,10 +399,10 @@ describe('team_members RLS after the archive change', () => {
   });
 });
 
-// #1401: the Roster tab's re-add brings a character back with its link left on
-// the archived membership, until #1133 restores the membership. The
-// person owns nothing on the team meanwhile, whatever path made the character
-// live again.
+// #1401: a direct update of a character's archived_at brings it back with its
+// link left on the archived membership (the Roster tab's re-add restores the
+// membership too, since #1133). The person owns nothing on the team meanwhile,
+// whatever path made the character live again.
 describe('an archived membership owns nothing on its team, even with a character re-added', () => {
   const readd = (q, playerId) => q('update public.players set archived_at = null where id = $1', [playerId]);
   const ownRowUpdate = (asUser, uid, playerId) =>
