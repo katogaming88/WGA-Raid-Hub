@@ -77,6 +77,7 @@
 | [public.team_raid_kills](public.team_raid_kills.md) | 9 | Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. | BASE TABLE |
 | [public.team_raid_kills_this_week](public.team_raid_kills_this_week.md) | 7 | Each boss a team has killed since this week's Tuesday reset, once per difficulty, with its first kill of the week (#1246). | VIEW |
 | [public.team_schedule_settings](public.team_schedule_settings.md) | 3 | A team's own schedule settings (#1246): the raid difficulty every weekly or added night follows unless it sets its own. No row, or a null, means not set. Written by the officers who write raid_schedule. | BASE TABLE |
+| [public.removal_reasons](public.removal_reasons.md) | 8 | Every reason a character or a membership was removed for (#1427), one row each, never updated or deleted. A character's row comes from a trigger on player_officer_notes, a membership's from archive_team_member(). The notes row still holds the latest reason; this holds all of them. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -223,6 +224,7 @@
 | public.team_members_archived_at_through_functions | trigger |  | FUNCTION |
 | public.archive_team_member | void | p_team_id integer, p_team_member_id integer, p_reason text, p_detail text | FUNCTION |
 | public.restore_team_member | bool | p_team_id integer, p_team_member_id integer | FUNCTION |
+| public.record_removal_reason | trigger |  | FUNCTION |
 
 ## Enums
 
@@ -364,6 +366,10 @@ erDiagram
 "public.team_raid_kills" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_raid_kills" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.team_schedule_settings" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.removal_reasons" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id)"
+"public.removal_reasons" }o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id)"
+"public.removal_reasons" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.removal_reasons" }o--o| "public.people" : "FOREIGN KEY (removed_by) REFERENCES people(id) ON DELETE SET NULL"
 
 "public.attendance" {
   integer id
@@ -1096,6 +1102,16 @@ erDiagram
   integer team_id FK
   text default_difficulty
   timestamp_with_time_zone updated_at
+}
+"public.removal_reasons" {
+  bigint id
+  integer team_id FK
+  integer player_id FK
+  integer team_member_id FK
+  timestamp_with_time_zone removed_at
+  text reason
+  text detail
+  integer removed_by FK
 }
 ```
 

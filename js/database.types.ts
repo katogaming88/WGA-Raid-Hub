@@ -2202,6 +2202,82 @@ export type Database = {
           },
         ]
       }
+      removal_reasons: {
+        Row: {
+          detail: string | null
+          id: number
+          player_id: number | null
+          reason: string
+          removed_at: string
+          removed_by: number | null
+          team_id: number
+          team_member_id: number | null
+        }
+        Insert: {
+          detail?: string | null
+          id?: never
+          player_id?: number | null
+          reason: string
+          removed_at?: string
+          removed_by?: number | null
+          team_id: number
+          team_member_id?: number | null
+        }
+        Update: {
+          detail?: string | null
+          id?: never
+          player_id?: number | null
+          reason?: string
+          removed_at?: string
+          removed_by?: number | null
+          team_id?: number
+          team_member_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "removal_reasons_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "removal_reasons_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "priority_order_gaps"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "removal_reasons_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "rnlsi"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "removal_reasons_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "removal_reasons_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "removal_reasons_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       retired_url_keys: {
         Row: {
           guild_id: number

@@ -198,7 +198,26 @@ These were columns on `players` until #925. That table carries a `FOR SELECT USI
 | `archived_reason_detail` | text        | Required freeform specifics behind that category                         |
 | `updated_at`             | timestamptz | Auto-set on every UPDATE via trigger                                     |
 
-Written two ways: the officer note upserts directly from the Roster tab, and `archive_player()` writes the two archive columns alongside `players.archived_at` so a removal cannot record one without the other.
+Written two ways: the officer note upserts directly from the Roster tab, and `archive_player()` writes the two archive columns alongside `players.archived_at` so a removal cannot record one without the other. The archive columns hold only the latest reason; every reason written to them is also kept in `removal_reasons` (#1427), below.
+
+---
+
+## `removal_reasons`
+
+Every reason a character or a membership was removed for (#1427), one row each, never updated or deleted. The notes row above keeps only the latest reason; this keeps all of them.
+
+| Column           | Type        | Purpose                                                                                   |
+| ---------------- | ----------- | ----------------------------------------------------------------------------------------- |
+| `id`             | int8        | PK, identity                                                                              |
+| `team_id`        | int4        | FK -> `teams.id` ON DELETE CASCADE, guarded against `players.team_id` by trigger          |
+| `player_id`      | int4        | FK -> `players.id`, no delete action; the character removed, null on a membership's row  |
+| `team_member_id` | int4        | FK -> `team_members.id`, no delete action; the membership ended, or the character's link |
+| `removed_at`     | timestamptz | When, default `now()`                                                                     |
+| `reason`         | text        | One of the six `player_officer_notes.archived_reason` accepts                             |
+| `detail`         | text        | The freeform specifics                                                                    |
+| `removed_by`     | int4        | FK -> `people.id` ON DELETE SET NULL; who removed them                                    |
+
+A character's row is written by a trigger on `player_officer_notes` whenever a reason is written there; a membership's row by `archive_team_member()`. Nobody writes the table directly, and a character or membership with a reason on record cannot be deleted on its own.
 
 ---
 

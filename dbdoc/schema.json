@@ -5946,6 +5946,10 @@
         {
           "name": "trg_player_officer_notes_updated_at",
           "def": "CREATE TRIGGER trg_player_officer_notes_updated_at BEFORE UPDATE ON public.player_officer_notes FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "player_officer_notes_record_removal_reason",
+          "def": "CREATE TRIGGER player_officer_notes_record_removal_reason AFTER INSERT OR UPDATE OF archived_reason, archived_reason_detail ON public.player_officer_notes FOR EACH ROW WHEN ((new.archived_reason IS NOT NULL)) EXECUTE FUNCTION record_removal_reason()"
         }
       ]
     },
@@ -8598,6 +8602,174 @@
           "def": "CREATE TRIGGER trg_team_schedule_settings_updated_at BEFORE UPDATE ON public.team_schedule_settings FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
+    },
+    {
+      "name": "public.removal_reasons",
+      "type": "BASE TABLE",
+      "comment": "Every reason a character or a membership was removed for (#1427), one row each, never updated or deleted. A character's row comes from a trigger on player_officer_notes, a membership's from archive_team_member(). The notes row still holds the latest reason; this holds all of them.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The character removed. Null on a membership's own row (archive_team_member())."
+        },
+        {
+          "name": "team_member_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The membership: the one ended, on a membership's row, or the one the character was linked to when it was removed."
+        },
+        {
+          "name": "removed_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "detail",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "removed_by",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The person who removed them, from my_person_id(); null for a write with nobody signed in, and for an audit entry whose account has no person."
+        }
+      ],
+      "indexes": [
+        {
+          "name": "removal_reasons_pkey",
+          "def": "CREATE UNIQUE INDEX removal_reasons_pkey ON public.removal_reasons USING btree (id)",
+          "table": "public.removal_reasons",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "removal_reasons_player_id_idx",
+          "def": "CREATE INDEX removal_reasons_player_id_idx ON public.removal_reasons USING btree (player_id)",
+          "table": "public.removal_reasons",
+          "columns": [
+            "player_id"
+          ]
+        },
+        {
+          "name": "removal_reasons_team_member_id_idx",
+          "def": "CREATE INDEX removal_reasons_team_member_id_idx ON public.removal_reasons USING btree (team_member_id)",
+          "table": "public.removal_reasons",
+          "columns": [
+            "team_member_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "removal_reasons_about_someone",
+          "type": "CHECK",
+          "def": "CHECK (((player_id IS NOT NULL) OR (team_member_id IS NOT NULL)))",
+          "table": "public.removal_reasons",
+          "referenced_table": "",
+          "columns": [
+            "player_id",
+            "team_member_id"
+          ]
+        },
+        {
+          "name": "removal_reasons_reason_check",
+          "type": "CHECK",
+          "def": "CHECK ((reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text])))",
+          "table": "public.removal_reasons",
+          "referenced_table": "",
+          "columns": [
+            "reason"
+          ]
+        },
+        {
+          "name": "removal_reasons_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id)",
+          "table": "public.removal_reasons",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "removal_reasons_team_member_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id)",
+          "table": "public.removal_reasons",
+          "referenced_table": "public.team_members",
+          "columns": [
+            "team_member_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "removal_reasons_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.removal_reasons",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "removal_reasons_removed_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (removed_by) REFERENCES people(id) ON DELETE SET NULL",
+          "table": "public.removal_reasons",
+          "referenced_table": "public.people",
+          "columns": [
+            "removed_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "removal_reasons_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.removal_reasons",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_removal_reasons_team_id_check",
+          "def": "CREATE TRIGGER trg_removal_reasons_team_id_check BEFORE INSERT OR UPDATE ON public.removal_reasons FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -10129,6 +10301,58 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.removal_reasons",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id)"
+    },
+    {
+      "table": "public.removal_reasons",
+      "columns": [
+        "team_member_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_members",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id)"
+    },
+    {
+      "table": "public.removal_reasons",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.removal_reasons",
+      "columns": [
+        "removed_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (removed_by) REFERENCES people(id) ON DELETE SET NULL"
     }
   ],
   "functions": [
@@ -10976,6 +11200,12 @@
       "name": "public.restore_team_member",
       "return_type": "bool",
       "arguments": "p_team_id integer, p_team_member_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.record_removal_reason",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],
