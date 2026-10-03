@@ -174,15 +174,17 @@ describe('saveScheduleRule() difficulty', () => {
     expect(audit[0].detail).toContain('Mythic');
   });
 
-  it('saves Heroic into Mythic as Mythic', async () => {
-    const { sandbox, calls } = loadSandbox({
-      rowFields: { ...RULE_FIELDS, '.sched-rule-difficulty': { value: 'heroic-into-mythic' } }
+  it('saves Heroic into Mythic as its own choice', async () => {
+    const { sandbox, calls, audit } = loadSandbox({
+      rowFields: { ...RULE_FIELDS, '.sched-rule-difficulty': { value: 'heroic_into_mythic' } }
     });
     sandbox.SCHEDULE_RULES = [TUESDAY_RULE];
     sandbox.saveScheduleRule(5);
     await flush();
     const write = calls.find((c) => c.table === 'raid_schedule' && c.update);
-    expect(write.update).toHaveProperty('difficulty', 'mythic');
+    expect(write.update).toHaveProperty('difficulty', 'heroic_into_mythic');
+    expect(sandbox.SCHEDULE_RULES[0].difficulty).toBe('heroic_into_mythic');
+    expect(audit[0].detail).toContain('Heroic into Mythic');
   });
 });
 
@@ -211,14 +213,16 @@ describe('saveScheduleDefaultDifficulty()', () => {
     expect(sandbox.SCHEDULE_DEFAULT_DIFFICULTY).toBe(null);
   });
 
-  it('stores Heroic into Mythic as Mythic', async () => {
-    const { sandbox, els, calls } = loadSandbox();
-    els.schedDefaultDifficulty = makeEl({ value: 'heroic-into-mythic' });
+  it('stores Heroic into Mythic as its own choice, and the rows name it', async () => {
+    const options = [makeEl({ textContent: 'Team default (not set)' })];
+    const { sandbox, els, calls } = loadSandbox({ defaultOptions: options });
+    els.schedDefaultDifficulty = makeEl({ value: 'heroic_into_mythic' });
     sandbox.saveScheduleDefaultDifficulty();
     await flush();
     const write = calls.find((c) => c.table === 'team_schedule_settings' && c.upsert);
-    expect(write.upsert.default_difficulty).toBe('mythic');
-    expect(sandbox.SCHEDULE_DEFAULT_DIFFICULTY).toBe('mythic');
+    expect(write.upsert.default_difficulty).toBe('heroic_into_mythic');
+    expect(sandbox.SCHEDULE_DEFAULT_DIFFICULTY).toBe('heroic_into_mythic');
+    expect(options[0].textContent).toBe('Team default (Heroic into Mythic)');
   });
 
   // A rebuilt table would throw away a row an officer has edited and not saved.
@@ -285,13 +289,13 @@ describe('addScheduleException() difficulty', () => {
     expect(write.insert).toHaveProperty('difficulty', 'mythic');
   });
 
-  it('saves an added night picked as Heroic into Mythic as Mythic', async () => {
+  it('saves an added night picked as Heroic into Mythic as its own choice', async () => {
     const { sandbox, els, calls } = loadSandbox();
-    fillForm(els, 'heroic-into-mythic');
+    fillForm(els, 'heroic_into_mythic');
     sandbox.addScheduleException('added');
     await flush();
     const write = calls.find((c) => c.table === 'raid_schedule_exceptions' && c.insert);
-    expect(write.insert).toHaveProperty('difficulty', 'mythic');
+    expect(write.insert).toHaveProperty('difficulty', 'heroic_into_mythic');
   });
 
   it('sends null for an added night left at Team default', async () => {
@@ -341,30 +345,53 @@ describe('the difficulty labels', () => {
     expect(html).toContain('<option value="">Team default (Mythic)</option>');
   });
 
-  // A night that moves from Heroic into Mythic counts as Mythic, but it reads
-  // as its own choice rather than as a second name on the Mythic one.
+  // Heroic into Mythic is its own choice, stored as itself, so what an
+  // officer picked is what the tab shows after a reload.
   it('every select offers Mythic and Heroic into Mythic as separate choices: weekly rows, the default and the added-night form', () => {
     const { sandbox, els } = loadSandbox();
     sandbox.SCHEDULE_RULES = [TUESDAY_RULE];
     sandbox.renderScheduleRules();
     expect(els.scheduleRulesWrap.innerHTML).toContain(
-      '<option value="mythic">Mythic</option><option value="heroic-into-mythic">Heroic into Mythic</option>'
+      '<option value="mythic">Mythic</option><option value="heroic_into_mythic">Heroic into Mythic</option>'
     );
     const page = readFileSync(path.join(HERE, '../../officer.html'), 'utf8');
     const pairs = page.match(
-      /<option value="mythic">Mythic<\/option>\s*<option value="heroic-into-mythic">Heroic into Mythic<\/option>/g
+      /<option value="mythic">Mythic<\/option>\s*<option value="heroic_into_mythic">Heroic into Mythic<\/option>/g
     );
     expect(pairs).toHaveLength(2);
     expect(page).not.toContain('Mythic, or Heroic into Mythic');
   });
 
-  it('a night saved as Mythic shows the Mythic choice, the first of the two', () => {
+  it('a night saved as Heroic into Mythic shows that choice, and one saved as Mythic shows Mythic', () => {
     const { sandbox, els } = loadSandbox();
-    sandbox.SCHEDULE_RULES = [{ ...TUESDAY_RULE, difficulty: 'mythic' }];
+    sandbox.SCHEDULE_RULES = [
+      { ...TUESDAY_RULE, difficulty: 'heroic_into_mythic' },
+      { ...TUESDAY_RULE, id: 6, weekday: 4, difficulty: 'mythic' }
+    ];
     sandbox.renderScheduleRules();
-    const html = els.scheduleRulesWrap.innerHTML;
-    expect(html).toContain('<option value="mythic" selected>Mythic</option>');
-    expect(html).toContain('<option value="heroic-into-mythic">Heroic into Mythic</option>');
+    const rows = els.scheduleRulesWrap.innerHTML.split('<tr').slice(2);
+    expect(rows[0]).toContain('<option value="heroic_into_mythic" selected>Heroic into Mythic</option>');
+    expect(rows[0]).toContain('<option value="mythic">Mythic</option>');
+    expect(rows[1]).toContain('<option value="mythic" selected>Mythic</option>');
+    expect(rows[1]).toContain('<option value="heroic_into_mythic">Heroic into Mythic</option>');
+  });
+
+  it('the one-off list names an added night picked as Heroic into Mythic', () => {
+    const { sandbox, els } = loadSandbox();
+    sandbox.SCHEDULE_EXCEPTIONS = [
+      {
+        id: 1,
+        raid_date: '2026-10-08',
+        exception_type: 'added',
+        start_time: '21:30:00',
+        duration_minutes: 180,
+        is_optional: false,
+        note: null,
+        difficulty: 'heroic_into_mythic'
+      }
+    ];
+    sandbox.renderScheduleExceptions();
+    expect(els.scheduleExceptionsWrap.innerHTML).toContain('>Heroic into Mythic</td>');
   });
 
   it('the one-off list shows an added night at its resolved difficulty, and none for a cancelled one', () => {
