@@ -403,7 +403,9 @@ function PickerTableRow({
             'warn',
             onATeam ? 'Ask your officers to check the claim' : 'Ask an officer to check the claim'
           ]
-        : [`${row.team} · on the roster`, 'warn', 'Connect Discord to claim it'];
+        : row.kind === 'ended'
+          ? [`${row.team} · membership ended`, 'warn', 'Ask its officers to add you back']
+          : [`${row.team} · on the roster`, 'warn', 'Connect Discord to claim it'];
   return (
     <tr className="picker-locked">
       <CharacterCell character={character} />

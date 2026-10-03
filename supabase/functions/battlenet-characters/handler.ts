@@ -30,7 +30,7 @@ export type RosterLink = {
   player_id: number;
   team_id: number;
   name_realm: string;
-  outcome: 'linked' | 'already_yours' | 'claimed_by_someone_else' | 'needs_discord';
+  outcome: 'linked' | 'already_yours' | 'claimed_by_someone_else' | 'needs_discord' | 'membership_ended';
 };
 
 // One method per read or write the function performs.
