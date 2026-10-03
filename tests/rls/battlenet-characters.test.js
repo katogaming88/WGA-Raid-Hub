@@ -167,15 +167,17 @@ describe('link_battlenet_roster_characters()', () => {
 });
 
 describe('link_battlenet_roster_characters() and an archived membership (#1401)', () => {
-  const archiveRaider = (q) => q('update public.team_members set archived_at = now() where id = 3');
+  // The team 1 officer archives RAIDER_T1, team_members id 3 on team 1 and on
+  // no other team.
+  const archiveRaider = (asUser) =>
+    asUser(OFFICER_T1, 'select public.archive_team_member(1, 3, $1, $2)', ['moved_guilds', 'Joined another guild']);
   const linkOf = async (q, playerId) =>
     (await q('select team_member_id from public.players where id = $1', [playerId])).rows[0].team_member_id;
 
   it('skips a team the person was archived off with its own outcome, and links the rest', async () => {
-    await withTxn(async ({ q }) => {
-      // RAIDER_T1 is team_members id 3 on team 1, and on no other team.
+    await withTxn(async ({ q, asUser }) => {
       const person = await personOf(q, RAIDER_T1);
-      await archiveRaider(q);
+      await archiveRaider(asUser);
       const onEnded = await newPlayer(q, 1, 'Comeback-Illidan');
       const elsewhere = await newPlayer(q, 2, 'Elsewhere-Illidan');
 
@@ -193,16 +195,33 @@ describe('link_battlenet_roster_characters() and an archived membership (#1401)'
   });
 
   it('says a character still on an archived membership has ended rather than being theirs', async () => {
-    await withTxn(async ({ q }) => {
+    await withTxn(async ({ q, asUser }) => {
       const person = await personOf(q, RAIDER_T1);
-      // Left on the membership by a re-add before #1133 or #1402 restores it.
       const stillLinked = await newPlayer(q, 1, 'Readded-Illidan', 3);
-      await archiveRaider(q);
+      await archiveRaider(asUser);
+      // The Roster tab's re-add brings the character back and leaves its link
+      // on the archived membership, until #1133 or #1402 restores it.
+      await q('update public.players set archived_at = null where id = $1', [stillLinked]);
 
       expect(await link(q, person, [{ name: 'Readded', realm: 'Illidan' }])).toEqual([
         { player_id: stillLinked, team_id: 1, name_realm: 'Readded-Illidan', outcome: 'membership_ended' }
       ]);
       expect(await linkOf(q, stillLinked)).toBe(3);
+    });
+  });
+
+  // The same hold claim_character() takes, for the same reason (claim.test.js
+  // explains the lock it is asked through).
+  it('holds the membership against an archive from its check until it commits', async () => {
+    await withTxn(async (linking) => {
+      const person = await personOf(linking.q, RAIDER_T1);
+      await newPlayer(linking.q, 1, 'Racing-Illidan');
+      expect((await link(linking.q, person, [{ name: 'Racing', realm: 'Illidan' }]))[0].outcome).toBe('linked');
+      await withTxn(async ({ q }) => {
+        await expect(q('select 1 from public.team_members where id = 3 for no key update nowait')).rejects.toThrow(
+          /could not obtain lock/
+        );
+      });
     });
   });
 });

@@ -19,6 +19,7 @@ import {
   seedPlayer,
   seedMember,
   seedTeam,
+  OFFICER_T1,
   RAIDER_T1,
   TEAM_LEADER_T1
 } from './helpers.js';
@@ -319,12 +320,15 @@ describe('on_auth_user_created backfills auth_user_id (trigger capture)', () => 
 // #1355, 2026-10-02), so a claim does not reopen it. The check is per team.
 describe('claim_character and an archived membership (#1401)', () => {
   const ENDED = /Your membership on this team has ended\. Ask one of its officers to add you back\./;
-  const archiveRaider = (q) => q('update public.team_members set archived_at = now() where id = 3');
+  // The team 1 officer archives the team 1 raider (team_members id 3).
+  const archiveRaider = (asUser) =>
+    asUser(OFFICER_T1, 'select public.archive_team_member(1, 3, $1, $2)', ['moved_guilds', 'Joined another guild']);
 
   it('refuses someone archived off the team, and links nothing', async () => {
     await withTxn(async ({ q, asUser }) => {
+      await archiveRaider(asUser);
+      // An officer puts a character on the roster after the archive.
       const playerId = await seedPlayer(q, { teamId: 1, nameRealm: 'Comeback-Illidan' });
-      await archiveRaider(q);
       await expect(claim(asUser, RAIDER_T1, 1, 'Comeback-Illidan')).rejects.toThrow(ENDED);
       expect(await linkOf(q, playerId)).toBeNull();
       expect((await q('select archived_at from public.team_members where id = 3')).rows[0].archived_at).not.toBeNull();
@@ -334,7 +338,7 @@ describe('claim_character and an archived membership (#1401)', () => {
   it('still lets them claim on a team they were not archived off', async () => {
     await withTxn(async ({ q, asUser }) => {
       const playerId = await seedPlayer(q, { teamId: 2, nameRealm: 'Elsewhere-Illidan' });
-      await archiveRaider(q);
+      await archiveRaider(asUser);
       await claim(asUser, RAIDER_T1, 2, 'Elsewhere-Illidan');
       const member = (
         await q('select id, role, archived_at from public.team_members where team_id = 2 and auth_user_id = $1', [
@@ -343,6 +347,25 @@ describe('claim_character and an archived membership (#1401)', () => {
       ).rows[0];
       expect(member).toMatchObject({ role: 'raider', archived_at: null });
       expect(await linkOf(q, playerId)).toBe(member.id);
+    });
+  });
+
+  // archive_team_member() locks the membership row before it reads which
+  // characters to sweep. A claim that checked archived_at without holding the
+  // row could link a character after an archive committed in that gap, leaving
+  // it live on an archived membership, so the claim holds the row from its
+  // check until it commits. Asked the way only that hold answers: the link's
+  // foreign key takes a key share lock either way, which a no key update lock
+  // does not conflict with, and a share lock does.
+  it('holds the membership against an archive from its check until it commits', async () => {
+    await withTxn(async (claiming) => {
+      await seedPlayer(claiming.q, { teamId: 1, nameRealm: 'Racing-Illidan' });
+      await claim(claiming.asUser, RAIDER_T1, 1, 'Racing-Illidan');
+      await withTxn(async ({ q }) => {
+        await expect(q('select 1 from public.team_members where id = 3 for no key update nowait')).rejects.toThrow(
+          /could not obtain lock/
+        );
+      });
     });
   });
 });
