@@ -251,3 +251,51 @@ describe('team_invite_link_join()', () => {
     });
   });
 });
+
+// #1355: archiving ends a membership without deleting it, and the invite link
+// is the way back in. The link is a raider's way in, so a returning officer or
+// team leader comes back as a raider; a current member keeps their role.
+describe('team_invite_link_join() and an archived membership', () => {
+  const archive = (q, memberId) => q('update public.team_members set archived_at = now() where id = $1', [memberId]);
+  const membership = async (q, memberId) =>
+    (await q('select role, archived_at from public.team_members where id = $1', [memberId])).rows[0];
+
+  it('brings an archived raider back onto the team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const code = await mint(asUser);
+      const member = await seedMember(q, { teamId: 1, role: 'raider' });
+      await archive(q, member.memberId);
+      await join(asUser, member.uid, code, await character(q, member.uid));
+      expect(await membership(q, member.memberId)).toEqual({ role: 'raider', archived_at: null });
+    });
+  });
+
+  it('brings an archived officer back as a raider, not an officer', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const code = await mint(asUser);
+      const member = await seedMember(q, { teamId: 1, role: 'officer' });
+      await archive(q, member.memberId);
+      await join(asUser, member.uid, code, await character(q, member.uid));
+      expect(await membership(q, member.memberId)).toEqual({ role: 'raider', archived_at: null });
+    });
+  });
+
+  it('brings an archived team leader back as a raider', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const code = await mint(asUser);
+      const member = await seedMember(q, { teamId: 1, role: 'team_leader' });
+      await archive(q, member.memberId);
+      await join(asUser, member.uid, code, await character(q, member.uid));
+      expect(await membership(q, member.memberId)).toEqual({ role: 'raider', archived_at: null });
+    });
+  });
+
+  it('leaves a current officer their role when they open the link', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const code = await mint(asUser);
+      const member = await seedMember(q, { teamId: 1, role: 'officer' });
+      await join(asUser, member.uid, code, await character(q, member.uid));
+      expect(await membership(q, member.memberId)).toEqual({ role: 'officer', archived_at: null });
+    });
+  });
+});
