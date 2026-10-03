@@ -39,12 +39,14 @@ const INSERTS = {
 };
 
 describe('team_id beside player_id is guarded on every table that carries both (#944)', () => {
-  it('twenty-one tables run check_team_id_matches_player() before a write', async () => {
+  it('twenty-two tables run check_team_id_matches_player() before a write', async () => {
     await withTxn(async ({ q }) => {
       const { rows } = await q(GUARDED_SQL);
       const tables = rows.map((r) => r.relname);
-      expect(tables).toHaveLength(21);
+      expect(tables).toHaveLength(22);
       for (const table of Object.keys(INSERTS)) expect(tables).toContain(table);
+      // #1427: removal_reasons carries both, and a membership's own row has no player.
+      expect(tables).toContain('removal_reasons');
     });
   });
 

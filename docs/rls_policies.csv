@@ -122,6 +122,8 @@ raid_zones,Public read raid_zones,public,SELECT,PERMISSIVE,true,
 rclc_loot,Claude readers read rclc_loot,claude_readers,SELECT,PERMISSIVE,true,
 rclc_loot,Officer write loot,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 rclc_loot,Public read loot,public,SELECT,PERMISSIVE,true,
+removal_reasons,Claude readers read removal_reasons,claude_readers,SELECT,PERMISSIVE,true,
+removal_reasons,Officers read removal_reasons,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_guild_officer() AS is_guild_officer) OR ( SELECT is_site_admin() AS is_site_admin)),
 retired_url_keys,Claude readers read retired_url_keys,claude_readers,SELECT,PERMISSIVE,true,
 retired_url_keys,Public read retired_url_keys,public,SELECT,PERMISSIVE,true,
 scoring,Claude readers read scoring,claude_readers,SELECT,PERMISSIVE,true,

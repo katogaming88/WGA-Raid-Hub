@@ -8,7 +8,7 @@ One row per human (#942). auth_user_id is their sign-in account, null for a Disc
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer |  | false | [public.team_members](public.team_members.md) [public.guild_grants](public.guild_grants.md) [public.characters](public.characters.md) [public.main_swap_requests](public.main_swap_requests.md) [public.raid_night_bosses](public.raid_night_bosses.md) |  |  |
+| id | integer |  | false | [public.team_members](public.team_members.md) [public.guild_grants](public.guild_grants.md) [public.characters](public.characters.md) [public.main_swap_requests](public.main_swap_requests.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.removal_reasons](public.removal_reasons.md) |  |  |
 | auth_user_id | uuid |  | true |  |  |  |
 | discord_id | text |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
@@ -48,6 +48,7 @@ erDiagram
 "public.main_swap_requests" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
 "public.main_swap_requests" }o--o| "public.people" : "FOREIGN KEY (reviewed_by) REFERENCES people(id)"
 "public.raid_night_bosses" }o--o| "public.people" : "FOREIGN KEY (confirmed_by) REFERENCES people(id) ON DELETE SET NULL"
+"public.removal_reasons" }o--o| "public.people" : "FOREIGN KEY (removed_by) REFERENCES people(id) ON DELETE SET NULL"
 
 "public.people" {
   integer id
@@ -114,6 +115,16 @@ erDiagram
   timestamp_with_time_zone confirmed_at
   integer confirmed_by FK
   timestamp_with_time_zone created_at
+}
+"public.removal_reasons" {
+  bigint id
+  integer team_id FK
+  integer player_id FK
+  integer team_member_id FK
+  timestamp_with_time_zone removed_at
+  text reason
+  text detail
+  integer removed_by FK
 }
 ```
 

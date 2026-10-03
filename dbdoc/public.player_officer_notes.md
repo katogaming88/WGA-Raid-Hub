@@ -36,6 +36,7 @@ Officer-only annotations on a roster slot (#925): the private officer note, and 
 | ---- | ---------- |
 | trg_player_officer_notes_team_id_check | CREATE TRIGGER trg_player_officer_notes_team_id_check BEFORE INSERT OR UPDATE ON public.player_officer_notes FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player() |
 | trg_player_officer_notes_updated_at | CREATE TRIGGER trg_player_officer_notes_updated_at BEFORE UPDATE ON public.player_officer_notes FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+| player_officer_notes_record_removal_reason | CREATE TRIGGER player_officer_notes_record_removal_reason AFTER INSERT OR UPDATE OF archived_reason, archived_reason_detail ON public.player_officer_notes FOR EACH ROW WHEN ((new.archived_reason IS NOT NULL)) EXECUTE FUNCTION record_removal_reason() |
 
 ## Relations
 

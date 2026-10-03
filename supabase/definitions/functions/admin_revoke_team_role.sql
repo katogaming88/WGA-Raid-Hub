@@ -29,10 +29,11 @@ begin
   -- players_team_member_id_fkey is ON DELETE SET NULL, so deleting a member a
   -- character points at would silently unclaim that character, with no error
   -- anywhere and nothing in the audit log saying it happened. Somebody who
-  -- has claimed a character stays on the team as a raider instead.
+  -- has claimed a character stays on the team as a raider instead, and so
+  -- does somebody with a removal reason on record (#1427).
   select count(*) into v_claimed from public.players where team_member_id = v_existing.id;
 
-  if v_claimed > 0 then
+  if v_claimed > 0 or exists (select 1 from public.removal_reasons where team_member_id = v_existing.id) then
     update public.team_members set role = 'raider' where id = v_existing.id;
 
     perform public.write_audit_log(

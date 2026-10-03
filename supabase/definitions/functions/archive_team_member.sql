@@ -65,6 +65,11 @@ begin
     jsonb_build_object('reason', p_reason, 'detail', p_detail, 'player_ids', to_jsonb(v_player_ids))
   );
 
+  -- The membership's own reason (#1427). Its characters' rows come from the
+  -- notes write below, through record_removal_reason().
+  insert into public.removal_reasons (team_id, team_member_id, reason, detail, removed_by)
+  values (p_team_id, p_team_member_id, p_reason, p_detail, public.my_person_id());
+
   update public.team_members set archived_at = now() where id = p_team_member_id;
   update public.players set archived_at = now() where id = any (v_player_ids);
 
