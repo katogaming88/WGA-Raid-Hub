@@ -16,10 +16,13 @@ begin
     raise exception 'Not authorized';
   end if;
 
+  -- An archived membership holds no role, so it is refused like someone who
+  -- was never on the team, and kept as it is (#1403).
   select * into v_existing
   from public.team_members
   where team_id = p_team_id
     and person_id = (select id from public.people where discord_id = p_discord_id)
+    and archived_at is null
   for update;
 
   if not found then
