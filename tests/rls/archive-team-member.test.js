@@ -2,11 +2,24 @@
 // membership by archiving it, never by deleting it, so every character that
 // points at it keeps its history. Lives in the RLS suite because the function
 // is SECURITY DEFINER and the team_members write policies are RLS-shaped.
+import { randomUUID } from 'node:crypto';
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedTeam, seedPlayer } from './helpers.js';
+import { pool, withTxn, insertDiscordUser, grantGuild, seedTeam, seedMember, seedPlayer } from './helpers.js';
 
 const archiveMember = (asUser, uid, teamId, memberId) =>
   asUser(uid, 'select public.archive_team_member($1, $2)', [teamId, memberId]);
+
+// Someone with a guild-wide grant and no membership on the team.
+const seedGrant = async (q, grantType) => {
+  const uid = randomUUID();
+  const discordId = `fixture-${randomUUID()}`;
+  await insertDiscordUser(q, uid, discordId);
+  await grantGuild(q, discordId, grantType);
+  return uid;
+};
+
+const archivedAt = async (q, memberId) =>
+  (await q('select archived_at from public.team_members where id = $1', [memberId])).rows[0].archived_at;
 
 describe('archive_team_member ("Delete Member")', () => {
   it('a raider cannot call it', async () => {
@@ -70,10 +83,68 @@ describe('archive_team_member ("Delete Member")', () => {
   it('an archived officer no longer counts as an officer', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
-      await archiveMember(asUser, team.officer.uid, team.teamId, team.officer.memberId);
+      await archiveMember(asUser, team.leader.uid, team.teamId, team.officer.memberId);
       await expect(archiveMember(asUser, team.officer.uid, team.teamId, team.raider.memberId)).rejects.toThrow(
         /Not authorized/
       );
+    });
+  });
+});
+
+describe('archive_team_member: an officer or the team leader is archived by the team leader or a site admin', () => {
+  const LEADER_OR_ADMIN = /team leader or a site admin/;
+
+  it('an officer cannot archive the team leader', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await expect(archiveMember(asUser, team.officer.uid, team.teamId, team.leader.memberId)).rejects.toThrow(
+        LEADER_OR_ADMIN
+      );
+      expect(await archivedAt(q, team.leader.memberId)).toBeNull();
+    });
+  });
+
+  it('an officer cannot archive another officer, or their own membership', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const second = await seedMember(q, { teamId: team.teamId, role: 'officer' });
+      await expect(archiveMember(asUser, team.officer.uid, team.teamId, second.memberId)).rejects.toThrow(
+        LEADER_OR_ADMIN
+      );
+      await expect(archiveMember(asUser, team.officer.uid, team.teamId, team.officer.memberId)).rejects.toThrow(
+        LEADER_OR_ADMIN
+      );
+      expect(await archivedAt(q, second.memberId)).toBeNull();
+      expect(await archivedAt(q, team.officer.memberId)).toBeNull();
+    });
+  });
+
+  it('a guild officer cannot archive an officer, but can still archive a raider', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const guildOfficer = await seedGrant(q, 'guild_officer');
+      await expect(archiveMember(asUser, guildOfficer, team.teamId, team.officer.memberId)).rejects.toThrow(
+        LEADER_OR_ADMIN
+      );
+      await archiveMember(asUser, guildOfficer, team.teamId, team.raider.memberId);
+      expect(await archivedAt(q, team.raider.memberId)).not.toBeNull();
+    });
+  });
+
+  it('the team leader can archive an officer', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await archiveMember(asUser, team.leader.uid, team.teamId, team.officer.memberId);
+      expect(await archivedAt(q, team.officer.memberId)).not.toBeNull();
+    });
+  });
+
+  it('a site admin can archive the team leader', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const admin = await seedGrant(q, 'site_admin');
+      await archiveMember(asUser, admin, team.teamId, team.leader.memberId);
+      expect(await archivedAt(q, team.leader.memberId)).not.toBeNull();
     });
   });
 });
