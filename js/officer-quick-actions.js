@@ -89,11 +89,16 @@ function _renderClaimPrompt() {
   var elsewhereEl = document.getElementById('claimPromptElsewhereDesc');
   var btnEl = document.getElementById('claimPromptBtn');
   var session = typeof getDiscordSession === 'function' && getDiscordSession();
+  // #1401: an officer archived their membership here, and a claim would be
+  // refused, so a card says so in place of the claim card.
+  var ended = !!(session && !session.nameRealm && session.membershipEnded);
+  var endedEl = document.getElementById('membershipEndedCard');
+  if (endedEl) endedEl.style.display = ended ? '' : 'none';
   // #512: an account that explicitly said "I don't have a character yet"
   // (dismissNoCharacterClaim(), js/discord.js) never sees this card again --
   // the existing final `else` below already hides it, so no dismissedNoCharacter
   // branch of its own is needed.
-  if (session && !session.nameRealm && !session.dismissedNoCharacter) {
+  if (session && !session.nameRealm && !session.dismissedNoCharacter && !ended) {
     if (loadingEl) loadingEl.style.display = 'none';
     if (btnEl) btnEl.style.display = '';
     card.style.display = '';

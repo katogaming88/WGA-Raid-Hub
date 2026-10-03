@@ -379,12 +379,31 @@ function resolveDiscordSession(session) {
           isGuildOfficer: !!guildOfficerResult.data
         };
         if (nameRealm) return mapped;
-        // Both only matter once nameRealm is already known to be empty --
-        // claimedElsewhere (#368) and dismissedNoCharacter (#512) each
-        // suppress the claim prompt for a different reason (claimed on a
-        // different team vs. explicitly said "no character"), so both are
-        // checked together in one parallel round-trip rather than two
-        // sequential ones.
+        // With no current membership here, an archived one means an officer
+        // took them off the team, and only an officer brings them back
+        // (#1401): a claim would be refused, so the page says so instead.
+        var ended = member
+          ? Promise.resolve(false)
+          : supabaseClient
+              .from('team_members')
+              .select('archived_at')
+              .eq('team_id', _teamCfg.supabaseTeamId)
+              .eq('auth_user_id', session.user.id)
+              .maybeSingle()
+              .then(
+                function (result) {
+                  return !!(result && result.data && result.data.archived_at);
+                },
+                function () {
+                  return false;
+                }
+              );
+        // These only matter once nameRealm is already known to be empty --
+        // claimedElsewhere (#368), dismissedNoCharacter (#512) and
+        // membershipEnded (#1401) each suppress the claim prompt for a
+        // different reason (claimed on a different team, explicitly said "no
+        // character", or archived off this one), so all three are checked
+        // together in one parallel round-trip rather than sequential ones.
         return Promise.all([
           findClaimElsewhere(session.user.id),
           supabaseClient
@@ -393,10 +412,12 @@ function resolveDiscordSession(session) {
             .eq('auth_user_id', session.user.id)
             .is('team_id', null)
             .eq('key', 'no_character_dismissed')
-            .maybeSingle()
+            .maybeSingle(),
+          ended
         ]).then(function (results) {
           mapped.claimedElsewhere = results[0];
           mapped.dismissedNoCharacter = !!results[1].data;
+          mapped.membershipEnded = results[2];
           return mapped;
         });
       });
@@ -481,13 +502,7 @@ function initDiscordLogin() {
           setDiscordSession(mapped);
           renderDiscordNav(mapped);
           if (typeof onDiscordLoginComplete === 'function') onDiscordLoginComplete(mapped);
-          // No unclaimed-character popup when the account is already claimed
-          // on a different team (claimedElsewhere -- the inline landing card
-          // already handles that case by pointing them to switch teams) or
-          // has explicitly dismissed the prompt (dismissedNoCharacter, #512).
-          if (!mapped.nameRealm && !mapped.claimedElsewhere && !mapped.dismissedNoCharacter) {
-            showDiscordClaimModal(mapped);
-          }
+          if (offersClaimOnSignIn(mapped)) showDiscordClaimModal(mapped);
         })
         .catch(fallBackToNoSession);
     }
@@ -501,6 +516,15 @@ function initDiscordLogin() {
 }
 
 // ── Claiming modal ────────────────────────────────────────────────────────────
+
+// Whether signing in opens the claim box on its own: not once a character is
+// claimed here, nor when the account is already claimed on a different team
+// (claimedElsewhere -- the inline landing card points them to switch teams),
+// has explicitly dismissed the prompt (dismissedNoCharacter, #512), or was
+// archived off this team (membershipEnded, #1401), where a claim is refused.
+function offersClaimOnSignIn(mapped) {
+  return !mapped.nameRealm && !mapped.claimedElsewhere && !mapped.dismissedNoCharacter && !mapped.membershipEnded;
+}
 
 function showDiscordClaimModal(session) {
   var modal = document.getElementById('discordClaimModal');
