@@ -25,8 +25,9 @@ answers to.
 - "+ Add Player" now says how it went. Once the form closes, a line
   above the roster says the player was added, is back on the roster, or
   is back with their team membership restored. A failed add keeps the
-  form open with the reason, which screen readers now read out too
-  (#1133).
+  form open with the reason, which screen readers now read out too.
+  After a re-add the roster reloads, so it shows what the player kept
+  rather than what the form left blank (#1133).
 - Clearing an officer note for a player who never had one no longer
   leaves an empty notes row behind (#1133).
 

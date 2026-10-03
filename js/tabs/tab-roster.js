@@ -662,7 +662,7 @@ function showAddPlayerModal() {
   document.getElementById('addPlayerSpec').innerHTML = '<option value="">-- Select spec --</option>';
   document.getElementById('addPlayerRole').value = 'Melee';
   document.getElementById('addPlayerTrial').checked = false;
-  document.getElementById('addPlayerError').style.display = 'none';
+  document.getElementById('addPlayerError').textContent = '';
 
   var today = new Date();
   var mm = today.getMonth() + 1;
@@ -775,16 +775,19 @@ function submitAddPlayer() {
   var role = document.getElementById('addPlayerRole').value;
   var isTrial = document.getElementById('addPlayerTrial').checked;
   var errEl = document.getElementById('addPlayerError');
+  // Each press starts over (#1133): the form's error and the roster's last
+  // message clear. The error stays rendered, so its alert is read out.
+  var statusEl = document.getElementById('rosterAddStatus');
+  errEl.textContent = '';
+  if (statusEl) statusEl.textContent = '';
 
   var nameErr = validateCharName(nameVal);
   if (nameErr) {
     errEl.textContent = nameErr;
-    errEl.style.display = '';
     return;
   }
   if (!realmVal || !cls || !spec || !role) {
     errEl.textContent = 'Please fill in all required fields.';
-    errEl.style.display = '';
     return;
   }
 
@@ -802,11 +805,9 @@ function submitAddPlayer() {
   }
   if (duplicate) {
     errEl.textContent = nameRealm + ' is already on the roster.';
-    errEl.style.display = '';
     return;
   }
 
-  errEl.style.display = 'none';
   var submitBtn = document.querySelector('#addPlayerModal .btn-gold');
   if (submitBtn) {
     submitBtn.disabled = true;
@@ -827,28 +828,44 @@ function submitAddPlayer() {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Add Player';
       }
-      if (DATA && DATA.roster) {
-        var parts = nameRealm.split('-');
-        DATA.roster.push({
-          id: added.id,
-          nameRealm: nameRealm,
-          firstName: parts[0],
-          realm: parts.slice(1).join('-'),
-          nick: nickVal,
-          class: cls,
-          spec: spec,
-          role: role,
-          isTrial: isTrial,
-          isBench: false,
-          isRotator: false,
-          bisLink: '',
-          joinDate: joinDateVal
-        });
-      }
-      hideAddPlayerModal();
-      buildOfficerDashboard();
-      var statusEl = document.getElementById('rosterAddStatus');
+      // Said before the rebuild, so a failed rebuild cannot take it with it.
       if (statusEl) statusEl.textContent = rosterAddMessage(nameRealm, added);
+      hideAddPlayerModal();
+      if (added.readded) {
+        // A re-add keeps what the form left blank and everything the form
+        // does not show (#1133), so the roster reloads rather than taking the
+        // form's values as the row.
+        loadData(
+          function () {
+            buildOfficerDashboard();
+          },
+          function () {
+            buildStatsBar();
+            buildRosterTable();
+            buildTrialPromoAlert();
+          }
+        );
+      } else {
+        if (DATA && DATA.roster) {
+          var parts = nameRealm.split('-');
+          DATA.roster.push({
+            id: added.id,
+            nameRealm: nameRealm,
+            firstName: parts[0],
+            realm: parts.slice(1).join('-'),
+            nick: nickVal,
+            class: cls,
+            spec: spec,
+            role: role,
+            isTrial: isTrial,
+            isBench: false,
+            isRotator: false,
+            bisLink: '',
+            joinDate: joinDateVal
+          });
+        }
+        buildOfficerDashboard();
+      }
       if (typeof window._pendingRosterOnSuccess === 'function') {
         window._pendingRosterOnSuccess();
         window._pendingRosterOnSuccess = null;
@@ -860,7 +877,6 @@ function submitAddPlayer() {
         submitBtn.textContent = 'Add Player';
       }
       errEl.textContent = 'Failed to add player: ' + err.message;
-      errEl.style.display = '';
       window._pendingRosterOnSuccess = null;
     });
 }

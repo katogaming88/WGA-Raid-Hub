@@ -124,8 +124,8 @@ describe('request_main_swap()', () => {
         'moved_guilds',
         'Joined another guild'
       ]);
-      // The Roster tab's re-add brings the character back with its link left
-      // on the archived membership.
+      // A direct un-archive brings the character back with its link left on
+      // the archived membership (the Roster tab's re-add restores it, #1133).
       await q('update public.players set archived_at = null where id = $1', [raiderPlayer]);
       await expect(ask(asUser, team.raider.uid, characterId, FROST_MAGE, null, team.teamId)).rejects.toThrow(
         /no character on this team/
