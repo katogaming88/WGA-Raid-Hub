@@ -80,6 +80,19 @@ export function realScopeToSeasonView(seasons, seasonView = null) {
   return sandbox.scopeToSeasonView;
 }
 
+// The shipped writeAuditLog (#214), for suites whose subject logs through it as
+// a global. Like fetchAttendanceRowsCached below, it reads supabaseClient and
+// _teamCfg from js/common.js's own scope, so both are set on this sandbox.
+export function realWriteAuditLog(client, teamId) {
+  const sandbox = loadCommonJs(quietConsole);
+  sandbox.supabaseClient = client;
+  sandbox._teamCfg = { supabaseTeamId: teamId };
+  if (typeof sandbox.writeAuditLog !== 'function') {
+    throw new Error('js/common.js does not define writeAuditLog');
+  }
+  return sandbox.writeAuditLog;
+}
+
 // The shipped fetchAttendanceRowsCached (#837), for suites whose subject
 // (e.g. tab-attendance.js's loadAttendanceGrid) shares it as a global instead
 // of paging the `attendance` table itself. Needs its own supabaseClient/
