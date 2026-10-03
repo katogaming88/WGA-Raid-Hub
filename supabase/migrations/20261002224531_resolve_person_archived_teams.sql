@@ -1,6 +1,16 @@
--- Function public.resolve_person: current definition, generated from the database.
--- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): authenticated
+-- #1400: resolve_person() says whether each membership is archived.
+--
+-- Since #1423 an officer can archive a membership, and the database's role
+-- checks skip it, but resolve_person() listed an archived membership exactly
+-- like a current one, so the app went on counting the team as the person's
+-- and showing them its officer tools. Each team now carries archived_at, the
+-- way each character already does. The app drops an archived team from the
+-- person's own access (toAccess()), and the function keeps returning it, so
+-- an officer looking the person up still sees the membership.
+--
+-- The rest of the body is unchanged, including the uncoalesced
+-- my_team_role() comparison in the WHERE clause that T6 (#752) allows by
+-- name: a null there excludes the row exactly as false does.
 
 CREATE OR REPLACE FUNCTION public.resolve_person(p_discord_id text)
  RETURNS jsonb
