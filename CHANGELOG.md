@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.166.2] - 2026-10-03
+
+### Backend
+
+- A `names` table: a roster row's display label that can exist bare (an
+  officer lists someone before they've signed in) and gets claimed later,
+  self-service (`claim_name()`) or by an officer assigning it directly. A
+  claim refuses on the caller's own archived membership, the same rule
+  `claim_character()` already follows -- coming back takes an officer, not
+  a claim. Database only; no page reads or writes this yet (#1355).
+
+---
+
 ## [3.166.1] - 2026-10-03
 
 ### Backend
