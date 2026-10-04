@@ -49,6 +49,12 @@ begin
   -- them back with the one it gives, in the row locked above. Their
   -- characters stay archived: an officer re-adds the ones they play.
   if found and v_existing.archived_at is not null then
+    -- Only a site admin archives a team leader, so only a site admin brings
+    -- anyone back as one; a team leader brings them back below it.
+    if p_role = 'team_leader' and not public.is_site_admin() then
+      raise exception 'Only a site admin can bring someone who left back as team leader';
+    end if;
+
     perform public.write_audit_log(
       p_team_id, 'team_member_restored', 'team_member', v_existing.id,
       jsonb_build_object('role', p_role, 'archived_role', v_existing.role)
@@ -94,7 +100,7 @@ end;
 $function$;
 
 comment on function public.admin_grant_team_role(integer, text, text) is
-  'Grants a per-team role by Discord id. Site admins may grant on any team; a team leader only on their own, which means a team with no members can only be opened by a site admin. The membership''s account is the one the trigger copies from the person the Discord id names (#942, #1135), and the grant returns it. Refuses to change a role someone already holds on the team. Someone archived off the team holds none, so the grant brings them back with the granted role and logs team_member_restored as well (#1403; Option 2 on #1355); their characters stay archived. (#910)';
+  'Grants a per-team role by Discord id. Site admins may grant on any team; a team leader only on their own, which means a team with no members can only be opened by a site admin. The membership''s account is the one the trigger copies from the person the Discord id names (#942, #1135), and the grant returns it. Refuses to change a role someone already holds on the team. Someone archived off the team holds none, so the grant brings them back with the granted role and logs team_member_restored as well (#1403; Option 2 on #1355); their characters stay archived. Only a site admin brings anyone back as team leader, as only a site admin archives one. (#910)';
 
 CREATE OR REPLACE FUNCTION public.admin_revoke_team_role(p_team_id integer, p_discord_id text)
  RETURNS void

@@ -936,8 +936,8 @@ Re-running the grant for someone who already has a role on the team is always re
 when nobody has signed in with that Discord id yet. The grant refuses to *change* a role that is
 already set, so a promotion or demotion goes through the officer dashboard, not this call.
 Someone whose membership was archived (they left the team) holds no role, so granting them one
-brings them back with it (#1403). Their characters stay archived until an officer re-adds them on
-the Roster tab. If that was a mistake (a mistyped Discord id that belonged to someone who left),
+brings them back with it (#1403); only a site admin can bring someone back as team leader. Their
+characters stay archived until an officer re-adds them on the Roster tab. If that was a mistake (a mistyped Discord id that belonged to someone who left),
 revoking the role does not undo it: the revoke only demotes them to raider, and they stay on the
 team. Archive them again instead, with Delete Member in the app or, in the same kind of session,
 `archive_team_member(team_id, team_member_id, 'other', 'Granted by mistake')`.
