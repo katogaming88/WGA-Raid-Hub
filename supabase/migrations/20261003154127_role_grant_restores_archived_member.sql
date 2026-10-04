@@ -110,17 +110,20 @@ begin
     raise exception 'Not authorized';
   end if;
 
-  -- An archived membership holds no role, so it is refused like someone who
-  -- was never on the team, and kept as it is (#1403).
   select * into v_existing
   from public.team_members
   where team_id = p_team_id
     and person_id = (select id from public.people where discord_id = p_discord_id)
-    and archived_at is null
   for update;
 
   if not found then
     raise exception 'That Discord account does not have a role on this team';
+  end if;
+
+  -- An archived membership holds no role, so there is nothing to take, and
+  -- the row is kept as it is (#1403).
+  if v_existing.archived_at is not null then
+    raise exception 'That Discord account''s membership on this team has ended, so it has no role to remove';
   end if;
 
   -- players_team_member_id_fkey is ON DELETE SET NULL, so deleting a member a
@@ -150,7 +153,7 @@ end;
 $function$;
 
 comment on function public.admin_revoke_team_role(integer, text) is
-  'Removes a per-team role by Discord id. Demotes to raider when any character is claimed against the member, because the foreign key from players is ON DELETE SET NULL and a delete would silently unclaim it, or when a removal reason points at the membership (#1427); removes the row only when nothing points at it. Refuses someone archived off the team, who holds no role, and leaves their membership as it is (#1403). (#910)';
+  'Removes a per-team role by Discord id. Demotes to raider when any character is claimed against the member, because the foreign key from players is ON DELETE SET NULL and a delete would silently unclaim it, or when a removal reason points at the membership (#1427); removes the row only when nothing points at it. Refuses someone archived off the team, who holds no role, saying their membership has ended, and leaves it as it is (#1403). (#910)';
 
 comment on column public.team_members.archived_at is
   'Set when an officer archives this membership (archive_team_member, #1355) for someone who left -- never deleted, so the account''s history keeps pointing at something. Cleared when they are brought back: team_invite_link_join(); restore_team_member(), as a raider, when an officer adds their season signup (#1402) or re-adds one of their characters on the Roster tab (restore_player(), #1133); or admin_grant_team_role(), with the role it grants, when the team leader or a site admin grants them one (#1403). Nothing changes it any other way: a direct update of the column is refused (team_members_archived_at_through_functions). Every "what is this person on this team" predicate (my_team_role, my_officer_team_ids, my_leader_team_ids, is_any_team_officer, is_team_leader_anywhere) skips an archived row, and so does every "what does this person own there" read (is_own_player, my_active_player_ids, and the own-character lookups in request_main_swap, set_own_rsvp and submit_self_received, #1401), and admin_revoke_team_role() refuses one (#1403); my_player_ids() and earlier_characters() still read it, since that is the history.';

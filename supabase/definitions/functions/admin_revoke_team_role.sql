@@ -16,17 +16,20 @@ begin
     raise exception 'Not authorized';
   end if;
 
-  -- An archived membership holds no role, so it is refused like someone who
-  -- was never on the team, and kept as it is (#1403).
   select * into v_existing
   from public.team_members
   where team_id = p_team_id
     and person_id = (select id from public.people where discord_id = p_discord_id)
-    and archived_at is null
   for update;
 
   if not found then
     raise exception 'That Discord account does not have a role on this team';
+  end if;
+
+  -- An archived membership holds no role, so there is nothing to take, and
+  -- the row is kept as it is (#1403).
+  if v_existing.archived_at is not null then
+    raise exception 'That Discord account''s membership on this team has ended, so it has no role to remove';
   end if;
 
   -- players_team_member_id_fkey is ON DELETE SET NULL, so deleting a member a

@@ -942,8 +942,9 @@ the Roster tab.
 To remove a role, `admin_revoke_team_role(team_id, discord_id)`. It demotes to `raider` when that
 person has claimed a character on the team or has a removal reason on record, and deletes the row
 only when nothing points at it, because the foreign key from `players` is `ON DELETE SET NULL` and
-a plain delete would silently unclaim their character. Someone archived off the team is refused,
-as someone never on it is, and their membership is left as it is.
+a plain delete would silently unclaim their character. Someone archived off the team is refused
+with a message saying their membership has ended, and their membership is left as it is; "does not
+have a role on this team" means the Discord id is not on the team at all.
 
 Direct SQL remains the fallback if the RPC is ever unavailable. Name the Discord id and the role;
 the trigger fills `person_id` and `auth_user_id` from the person, and skipping the RPC also skips
