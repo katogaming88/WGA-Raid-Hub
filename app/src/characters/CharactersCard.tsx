@@ -8,8 +8,8 @@ import { useOpenAltsPicker } from './AltsPicker';
 import { CharacterIcon } from './CharacterIcon';
 import { MainSwapDialog } from './MainSwapDialog';
 import { altsOf, type SavedCharacter } from './characters';
-import { altAsk, type SwapRequest } from './mainSwap';
-import { useCancelMainSwap, useMyMainSwap } from './useMainSwaps';
+import { altAsk, type MySwaps, type SwapRequest } from './mainSwap';
+import { useCancelMainSwap, useMyMainSwaps } from './useMainSwaps';
 import { usePersonCharacters, usePersonOfPlayer } from './useCharacters';
 import './characters.css';
 
@@ -81,9 +81,10 @@ function Alts({ personId, player, own }: { personId: number; player: ProfilePlay
   const saved = usePersonCharacters(personId);
   const team = useTeam();
   const touch = useTouchScreen();
-  // The raider's own waiting request, so the alt it names says so and the
-  // others say why they cannot be asked for (#631).
-  const pending = useMyMainSwap(team.id, own ? personId : null);
+  // The raider's own requests: the waiting one, so the alt it names says so
+  // and the others say why they cannot be asked for (#631), and the declined
+  // ones, so those alts say why not (#1430).
+  const mine = useMyMainSwaps(team.id, own ? personId : null);
   return (
     <DataState query={saved} label="alts">
       {(rows) => {
@@ -98,13 +99,7 @@ function Alts({ personId, player, own }: { personId: number; player: ProfilePlay
         return (
           <ul className="characters-list" aria-label="Alts">
             {alts.map((alt) => (
-              <AltRow
-                key={alt.id}
-                alt={alt}
-                player={player}
-                own={own}
-                pending={pending.isSuccess ? pending.data : null}
-              />
+              <AltRow key={alt.id} alt={alt} player={player} own={own} mine={mine.isSuccess ? mine.data : NO_SWAPS} />
             ))}
           </ul>
         );
@@ -113,19 +108,21 @@ function Alts({ personId, player, own }: { personId: number; player: ProfilePlay
   );
 }
 
+const NO_SWAPS: MySwaps = { pending: null, declined: [] };
+
 function AltRow({
   alt,
   player,
   own,
-  pending
+  mine
 }: {
   alt: SavedCharacter;
   player: ProfilePlayer;
   own: boolean;
-  pending: SwapRequest | null;
+  mine: MySwaps;
 }) {
   const [asking, setAsking] = useState(false);
-  const ask = own ? altAsk(pending, `${alt.name}-${alt.realm}`) : null;
+  const ask = own ? altAsk(mine.pending, `${alt.name}-${alt.realm}`, mine.declined) : null;
   return (
     <li className={own ? 'character-row character-row-own' : 'character-row'}>
       <CharacterIcon className={alt.class_name} spec={alt.spec_name} />
@@ -140,10 +137,12 @@ function AltRow({
       </span>
       <span
         className={
-          ask?.kind === 'waiting' ? 'status-tag character-tag character-tag-waiting' : 'status-tag character-tag'
+          ask?.kind === 'waiting' || ask?.kind === 'declined'
+            ? `status-tag character-tag character-tag-${ask.kind}`
+            : 'status-tag character-tag'
         }
       >
-        {ask?.kind === 'waiting' ? 'Waiting' : 'Alt'}
+        {ask?.kind === 'waiting' ? 'Waiting' : ask?.kind === 'declined' ? 'Declined' : 'Alt'}
       </span>
       <span className="num character-level">{alt.item_level ?? '–'}</span>
       {ask?.kind === 'ask' && (
@@ -151,7 +150,13 @@ function AltRow({
           Ask to raid on this one
         </button>
       )}
-      {ask?.kind === 'waiting' && <CancelAsk request={pending!} />}
+      {ask?.kind === 'waiting' && <CancelAsk request={mine.pending!} />}
+      {ask?.kind === 'declined' && (
+        <span className="character-ask characters-declined">
+          <span>An officer declined this swap. Ask an officer if that should change.</span>
+          {ask.note && <span>Officer’s note: {ask.note}</span>}
+        </span>
+      )}
       {asking && <MainSwapDialog alt={alt} fromNameRealm={player.name_realm} onClose={() => setAsking(false)} />}
     </li>
   );
