@@ -217,7 +217,7 @@ describe('admin_revoke_team_role() on an archived membership', () => {
       expect(await reasons(q, team.officer.memberId)).toHaveLength(1);
 
       await expect(revoke(asUser, team.leader.uid, team.teamId, team.officer.discordId)).rejects.toThrow(
-        /does not have a role on this team/
+        /membership on this team has ended, so it has no role to remove/
       );
     });
   });
@@ -239,7 +239,7 @@ describe('admin_revoke_team_role() on an archived membership', () => {
       expect(claimed.rows[0].n).toBe(0);
 
       await expect(revoke(asUser, team.leader.uid, team.teamId, team.officer.discordId)).rejects.toThrow(
-        /does not have a role on this team/
+        /membership on this team has ended, so it has no role to remove/
       );
     });
   });
@@ -255,6 +255,19 @@ describe('admin_revoke_team_role() on an archived membership', () => {
 
       expect(await membership(q, team.officer.memberId)).toEqual({ role: 'raider', archived_at: null });
       expect((await roleLog(q, team.officer.memberId)).map((r) => r.action)).toEqual(['team_role_demoted']);
+    });
+  });
+
+  // Control: someone never on the team keeps the answer they always had, so
+  // only an archived membership is told it has ended.
+  it('still tells someone never on the team they have no role there', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const other = await seedTeam(q);
+
+      await expect(revoke(asUser, team.leader.uid, team.teamId, other.raider.discordId)).rejects.toThrow(
+        /^That Discord account does not have a role on this team$/
+      );
     });
   });
 });
