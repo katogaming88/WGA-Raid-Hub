@@ -10,6 +10,27 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-04 -- public forms require sign-in and team membership (#1417)
+
+Shipped: not yet, #1417 (and #1286, whose membership check this reuses).
+
+Four request forms (M+ exclusion, BiS Source, My BiS Changed, Mark Received)
+and the BoE find report call a database or Edge Function directly with no
+sign-in and no rate limit. Kat's call: sign-in alone isn't enough -- nobody
+reaches a team's forms without being signed in *and* a member of that
+team's guild, the same membership check #1286 gives every other
+members-only table and function, not a separate rule invented for these
+six endpoints. A per-character hourly submission cap (counted from rows
+already written) stays on top as defense in depth. A bot check (Cloudflare
+Turnstile) was considered and rejected -- this is a guild tool at guild
+scale, not a public target, and Turnstile adds an Edge Function dependency
+and friction for a threat that doesn't apply here. The contact form is out
+of scope (#959's territory).
+
+[Full discussion -> #1417](https://github.com/katogaming88/WGA-Raid-Hub/issues/1417)
+
+---
+
 ## 2026-10-03 -- a declined main swap stays declined (#1430)
 
 Shipped: 20261003152246_declined_main_swap_stays_declined.sql
