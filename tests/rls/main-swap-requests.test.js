@@ -134,6 +134,148 @@ describe('request_main_swap()', () => {
   });
 });
 
+// Once an officer declines a swap, the raider cannot ask for that alt again on
+// that team (#1430). The alt is matched by name, whatever spec they ask for and
+// whichever Battle.net row it comes from.
+describe('a declined main swap stays declined', () => {
+  const DECLINED = /An officer declined your main swap to/;
+  const decline = async (asUser, uid, characterId, { teamId = 1, officer = OFFICER_T1 } = {}) => {
+    const id = (await ask(asUser, uid, characterId, FROST_MAGE, null, teamId)).rows[0].id;
+    await review(asUser, officer, id, false, 'Not this tier.');
+    return id;
+  };
+  const altOf = async (q, personId, name, realm = 'Illidan') =>
+    (
+      await q(
+        `insert into public.characters (person_id, blizzard_id, name, realm, realm_slug, class_name, spec_name, level)
+         values ($1, $2, $3, $4, $5, 'Mage', 'Frost', 90) returning id`,
+        [personId, Math.floor(Math.random() * 1e9), name, realm, realm.toLowerCase().replace(/ /g, '-')]
+      )
+    ).rows[0].id;
+
+  it('refuses the same alt again, whatever spec they ask for', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { characterId } = await fixture(q);
+      await decline(asUser, RAIDER_T1, characterId);
+      const fire = (
+        await q("insert into public.classes_specs (class, spec, role) values ('Mage', $1, 'Ranged') returning id", [
+          `Fire ${Math.random().toString(36).slice(2, 10)}`
+        ])
+      ).rows[0].id;
+      await expect(ask(asUser, RAIDER_T1, characterId, fire)).rejects.toThrow(
+        /^An officer declined your main swap to Swapalt-Illidan\. Ask one of this team's officers if that should change\.$/
+      );
+    });
+  });
+
+  it('still refuses it when the alt comes back from Battle.net as a new row', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { characterId, personId } = await fixture(q);
+      const id = await decline(asUser, RAIDER_T1, characterId);
+      // Choosing alts again replaces the row; the request keeps the name.
+      await q('delete from public.characters where id = $1', [characterId]);
+      expect((await q('select character_id from public.main_swap_requests where id = $1', [id])).rows[0]).toEqual({
+        character_id: null
+      });
+      const again = await altOf(q, personId, 'SWAPALT');
+      await expect(ask(asUser, RAIDER_T1, again)).rejects.toThrow(DECLINED);
+    });
+  });
+
+  it('matches an alt on a realm with a space in its name', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { personId } = await fixture(q);
+      const alt = await altOf(q, personId, 'Spacealt', 'Area 52');
+      await decline(asUser, RAIDER_T1, alt);
+      await expect(ask(asUser, RAIDER_T1, alt)).rejects.toThrow(/declined your main swap to Spacealt-Area 52\./);
+    });
+  });
+
+  it('says the alt is on the roster, not declined, once an officer has added it', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { characterId, nameRealm } = await fixture(q);
+      await decline(asUser, RAIDER_T1, characterId);
+      await q('insert into public.players (team_id, name_realm, class_spec_id) values (1, $1, 1)', [nameRealm]);
+      await expect(ask(asUser, RAIDER_T1, characterId)).rejects.toThrow(/already on this roster/);
+    });
+  });
+
+  it('still refuses it a year later', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { characterId } = await fixture(q);
+      const id = await decline(asUser, RAIDER_T1, characterId);
+      await q(
+        `update public.main_swap_requests
+            set requested_at = now() - interval '1 year', reviewed_at = now() - interval '1 year'
+          where id = $1`,
+        [id]
+      );
+      await expect(ask(asUser, RAIDER_T1, characterId)).rejects.toThrow(DECLINED);
+    });
+  });
+
+  it('says it was declined, not that another swap is waiting, while one is', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { characterId, personId } = await fixture(q);
+      await decline(asUser, RAIDER_T1, characterId);
+      await ask(asUser, RAIDER_T1, await altOf(q, personId, 'Otheralt'));
+      await expect(ask(asUser, RAIDER_T1, characterId)).rejects.toThrow(DECLINED);
+    });
+  });
+
+  it('does not stop the same alt on another team of theirs', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { characterId, personId } = await fixture(q);
+      await decline(asUser, RAIDER_T1, characterId);
+      const team = await seedTeam(q);
+      const discordId = (await q('select discord_id from public.team_members where id = $1', [PHOENIX_RAIDER_MEMBER]))
+        .rows[0].discord_id;
+      const there = (
+        await q("insert into public.team_members (team_id, discord_id, role) values ($1, $2, 'raider') returning id", [
+          team.teamId,
+          discordId
+        ])
+      ).rows[0].id;
+      expect(await personOf(q, there)).toBe(personId);
+      await seedPlayer(q, { memberId: there });
+      await expect(ask(asUser, RAIDER_T1, characterId, FROST_MAGE, null, team.teamId)).resolves.toBeTruthy();
+    });
+  });
+
+  it('does not stop a swap to another alt', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { characterId, personId } = await fixture(q);
+      await decline(asUser, RAIDER_T1, characterId);
+      await expect(ask(asUser, RAIDER_T1, await altOf(q, personId, 'Otheralt'))).resolves.toBeTruthy();
+    });
+  });
+
+  it('does not stop another raider asking for an alt of the same name', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const mine = await fixture(q, { memberId: team.raider.memberId });
+      const other = await seedMember(q, { teamId: team.teamId });
+      const theirs = await fixture(q, { memberId: other.memberId });
+      await decline(asUser, other.uid, theirs.characterId, { teamId: team.teamId, officer: team.officer.uid });
+      await expect(ask(asUser, team.raider.uid, mine.characterId, FROST_MAGE, null, team.teamId)).resolves.toBeTruthy();
+    });
+  });
+
+  it('does not count a swap to that alt that was approved', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      // Approved once, and the alt has since left the roster again.
+      const { characterId, personId, raiderPlayer, nameRealm } = await fixture(q);
+      await q(
+        `insert into public.main_swap_requests
+           (team_id, person_id, from_player_id, character_id, name_realm, class_spec_id, status, reviewed_at)
+         values (1, $1, $2, $3, $4, $5, 'approved', now() - interval '1 month')`,
+        [personId, raiderPlayer, characterId, nameRealm, FROST_MAGE]
+      );
+      await expect(ask(asUser, RAIDER_T1, characterId)).resolves.toBeTruthy();
+    });
+  });
+});
+
 describe('who reads a main swap request', () => {
   const read = 'select id from public.main_swap_requests';
 
@@ -145,6 +287,19 @@ describe('who reads a main swap request', () => {
         expect((await asUser(uid, read)).rows.map((r) => r.id)).toContain(id);
       }
       expect((await asUser(OFFICER_T2, read)).rows.map((r) => r.id)).not.toContain(id);
+    });
+  });
+
+  // The Characters card shows the raider a declined swap and why (#1430).
+  it('lets the raider read a declined request and the officer note on it', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { characterId } = await fixture(q);
+      const id = (await ask(asUser, RAIDER_T1, characterId)).rows[0].id;
+      await review(asUser, OFFICER_T1, id, false, 'Finish the tier on your Mage first.');
+      const row = await asUser(RAIDER_T1, 'select status, officer_note from public.main_swap_requests where id = $1', [
+        id
+      ]);
+      expect(row.rows).toEqual([{ status: 'declined', officer_note: 'Finish the tier on your Mage first.' }]);
     });
   });
 });
