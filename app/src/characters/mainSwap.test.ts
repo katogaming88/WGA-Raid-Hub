@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { altAsk, askedAgo, characterName, specLabel, specsFor, swapLine, type ReviewRow } from './mainSwap';
+import { altAsk, askedAgo, characterName, specLabel, specsFor, splitMine, swapLine, type ReviewRow } from './mainSwap';
 
 const SPECS = [
   { id: 1, class: 'Evoker', spec: 'Preservation', role: 'Heal' },
@@ -18,6 +18,7 @@ const request = (extra: Partial<ReviewRow> = {}): ReviewRow => ({
   note: null,
   status: 'pending',
   requested_at: '2026-09-14T18:00:00Z',
+  officer_note: null,
   from_player: { name_realm: 'Grihzold-Illidan' },
   classes_specs: { class: 'Evoker', spec: 'Preservation', role: 'Heal' },
   ...extra
@@ -70,5 +71,46 @@ describe('altAsk()', () => {
     const pending = request();
     expect(altAsk(pending, 'Grihzy-Illidan')).toEqual({ kind: 'waiting' });
     expect(altAsk(pending, 'Grihznak-Illidan')).toEqual({ kind: 'blocked' });
+  });
+
+  // A decline stands (#1430): the database refuses that alt again, so the card
+  // says so instead of offering the ask.
+  it('marks an alt an officer declined, with the officer note, in place of the ask', () => {
+    const declined = [request({ id: 2, status: 'declined', officer_note: 'Finish the tier on your Mage first.' })];
+    expect(altAsk(null, 'Grihzy-Illidan', declined)).toEqual({
+      kind: 'declined',
+      note: 'Finish the tier on your Mage first.'
+    });
+    expect(altAsk(null, 'Grihznak-Illidan', declined)).toEqual({ kind: 'ask' });
+  });
+
+  it('matches a declined alt whatever the letter case or spaces, as the database does', () => {
+    const declined = [request({ status: 'declined', name_realm: 'GRIHZBEAR-Area52' })];
+    expect(altAsk(null, 'Grihzbear-Area 52', declined)).toEqual({ kind: 'declined', note: null });
+  });
+
+  it('keeps a declined alt declined while another swap waits', () => {
+    const pending = request({ id: 3, name_realm: 'Grihznak-Illidan' });
+    const declined = [request({ id: 2, status: 'declined', officer_note: 'Not this tier.' })];
+    expect(altAsk(pending, 'Grihzy-Illidan', declined)).toEqual({ kind: 'declined', note: 'Not this tier.' });
+    expect(altAsk(pending, 'Grihznak-Illidan', declined)).toEqual({ kind: 'waiting' });
+    expect(altAsk(pending, 'Grihzbear-Area 52', declined)).toEqual({ kind: 'blocked' });
+  });
+});
+
+describe('splitMine()', () => {
+  it("splits the raider's requests into the one waiting and the declined ones, and drops the rest", () => {
+    const mine = splitMine([
+      request({ id: 1, status: 'declined' }),
+      request({ id: 2, status: 'cancelled', name_realm: 'Grihzbear-Area 52' }),
+      request({ id: 3, status: 'pending', name_realm: 'Grihznak-Illidan' }),
+      request({ id: 4, status: 'approved', name_realm: 'Grihzold-Illidan' })
+    ]);
+    expect(mine.pending?.id).toBe(3);
+    expect(mine.declined.map((r) => r.id)).toEqual([1]);
+  });
+
+  it('has nothing waiting and nothing declined for a raider with no requests', () => {
+    expect(splitMine([])).toEqual({ pending: null, declined: [] });
   });
 });
