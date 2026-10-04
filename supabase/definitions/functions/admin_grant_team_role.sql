@@ -68,7 +68,7 @@ begin
   end if;
 
   if found then
-    -- An existing row is never rewritten. `role` drives every team role
+    -- A current row is never rewritten. `role` drives every team role
     -- helper and a wide slice of the read rules, so overwriting it would let
     -- one mistyped Discord id demote a sitting team leader. Changing a role
     -- stays with the promote path in the officer dashboard.

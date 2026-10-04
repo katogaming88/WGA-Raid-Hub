@@ -316,6 +316,23 @@ describe('admin_revoke_team_role() on an archived membership', () => {
     });
   });
 
+  // The setup guide's warning: a revoke does not undo a grant that brought
+  // someone back. Their archived characters and removal reason still point at
+  // the row, so it is demoted and kept, not deleted.
+  it('after a grant brings someone back, a revoke demotes them and keeps the row', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await seedPlayer(q, { memberId: team.raider.memberId });
+      await archiveMember(asUser, team.officer.uid, team.teamId, team.raider.memberId);
+      await grant(asUser, team.leader.uid, team.teamId, team.raider.discordId, 'officer');
+      expect(await membership(q, team.raider.memberId)).toEqual({ role: 'officer', archived_at: null });
+
+      await revoke(asUser, team.leader.uid, team.teamId, team.raider.discordId);
+
+      expect(await membership(q, team.raider.memberId)).toEqual({ role: 'raider', archived_at: null });
+    });
+  });
+
   // Control: someone never on the team keeps the answer they always had, so
   // only an archived membership is told it has ended.
   it('still tells someone never on the team they have no role there', async () => {
