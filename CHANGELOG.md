@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.166.3] - 2026-10-03
+
+### Frontend
+
+- The new app's Roster page shows `names` (#1437): a claimed Name overrides
+  its row's display name, and a bare one (no account yet) gets its own row
+  with a Claim button for anyone signed in. Every row action -- Claim,
+  Edit, Remove claim, Archive Member/Delete Name -- lives behind one "..."
+  menu instead of inline buttons. Archiving a member now asks for a reason
+  and a detail, the same vocabulary "Remove Player" already uses on the
+  current site's Roster tab. Not yet linked from anywhere else (#1355).
+
+---
+
 ## [3.166.2] - 2026-10-03
 
 ### Backend

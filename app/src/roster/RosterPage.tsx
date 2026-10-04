@@ -1,20 +1,23 @@
-import { Fragment, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { Fragment, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Link } from 'react-router';
 import { can, charactersOn, useAccess } from '../auth/access';
 import { useSession } from '../auth/session';
 import { DataState } from '../components/DataState';
+import { useStatus } from '../components/Status';
 import { useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
 import { useCurrentSeason } from '../profile/useProfile';
 import {
   ROLE_LABELS,
   ROLE_ORDER,
+  bareNames,
   classColor,
   officerStats,
   summarize,
   summaryLine,
   toIncoming,
   toRoster,
+  type GearRow,
   type OfficerStats,
   type Raider,
   type Role,
@@ -26,6 +29,9 @@ import { CharacterIcon } from '../characters/CharacterIcon';
 import { altCountLabel, altsOf, earlierOwners, type SavedCharacter } from '../characters/characters';
 import { useEarlierLoot, useTeamAlts } from '../characters/useCharacters';
 import { MainSwapReviews } from '../characters/MainSwapReviews';
+import { NameRowActions } from './NameRowActions';
+import { useCreateName, useNames } from './useNames';
+import type { NameRow } from './names';
 import {
   useIncomingRoster,
   useRosterGear,
@@ -77,7 +83,7 @@ export function RosterPage() {
         hidden={showing !== 'current'}
       >
         <DataState query={current} label="the roster">
-          {([players, gear]) => <CurrentRoster groups={toRoster(players, gear)} players={players} />}
+          {([players, gear]) => <CurrentRoster players={players} gear={gear} />}
         </DataState>
       </div>
 
@@ -200,12 +206,19 @@ function altsByPlayer(
   return out;
 }
 
-function CurrentRoster({ groups, players }: { groups: RoleGroup[]; players: RosterPlayers }) {
+function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRow[] }) {
   const team = useTeam();
   const profileLink = useProfileLinks(team.id);
   // Attendance and items awarded, for officers only (Kat, 2026-09-14): shown
   // to everyone they would invite loot and attendance comparisons.
   const officer = useIsOfficer(team.id);
+  // Bare and claimed Names (#1355): a claimed one overrides a row's display
+  // name; a bare one has no character yet, so it gets its own row below the
+  // role groups rather than fitting into one.
+  const namesQuery = useNames(team.id);
+  const names = namesQuery.data ?? [];
+  const groups = toRoster(players, gear, names);
+  const unclaimed = bareNames(names);
   const season = useCurrentSeason(team.id);
   // Items include loot on each raider's earlier characters (Kat, 2026-09-15).
   const officerData = bothQueries(
@@ -232,14 +245,9 @@ function CurrentRoster({ groups, players }: { groups: RoleGroup[]; players: Rost
   const [filter, setFilter] = useState<Filter>('All');
   const summary = summarize(groups);
   const shown = filter === 'All' ? groups : groups.filter((g) => g.role === filter);
-
-  if (groups.length === 0) {
-    return (
-      <div className="card placeholder">
-        <p>No one is on this team’s roster yet.</p>
-      </div>
-    );
-  }
+  // Bare Names have no role, so a role tab (Tanks/Healers/...) has nothing to
+  // show them under; they only fold into the unfiltered Everyone view.
+  const shownUnclaimed = filter === 'All' ? unclaimed : [];
 
   // The filter sits above both columns, so the summary panel starts level with
   // the table rather than with the filter (Kat, 2026-09-14).
@@ -247,67 +255,151 @@ function CurrentRoster({ groups, players }: { groups: RoleGroup[]; players: Rost
     <div className="roster-current">
       {/* Main swaps waiting for an officer (#631), above the team they change. */}
       <MainSwapReviews teamId={team.id} officer={officer} />
-      <div className="role-filter" role="group" aria-label="Show role">
-        {(['All', ...ROLE_ORDER] as Filter[]).map((f) => (
-          <button
-            key={f}
-            type="button"
-            className="role-filter-option"
-            aria-pressed={filter === f}
-            onClick={() => setFilter(f)}
-          >
-            {f === 'All' ? 'Everyone' : ROLE_LABELS[f]}
-          </button>
-        ))}
-      </div>
-      {officer && (
-        <div className="alts-toggle">
-          <div className="role-filter" role="group" aria-label="Alts">
-            <button
-              type="button"
-              className="role-filter-option"
-              aria-pressed={showAlts}
-              onClick={() => setShowAlts(true)}
-            >
-              Show alts
-            </button>
-            <button
-              type="button"
-              className="role-filter-option"
-              aria-pressed={!showAlts}
-              onClick={() => setShowAlts(false)}
-            >
-              Hide alts
-            </button>
+      {namesQuery.isError && (
+        <DataState query={namesQuery} label="the team's Names">
+          {() => null}
+        </DataState>
+      )}
+      {/* Bare Names (#1355): officers add one ahead of a raider having an
+          account, optionally with a role guess so it sits under that tab. */}
+      {officer && <CreateNameForm teamId={team.id} />}
+      {groups.length === 0 && unclaimed.length === 0 ? (
+        <div className="card placeholder">
+          <p>No one is on this team’s roster yet.</p>
+        </div>
+      ) : (
+        <>
+          <div className="role-filter" role="group" aria-label="Show role">
+            {(['All', ...ROLE_ORDER] as Filter[]).map((f) => (
+              <button
+                key={f}
+                type="button"
+                className="role-filter-option"
+                aria-pressed={filter === f}
+                onClick={() => setFilter(f)}
+              >
+                {f === 'All' ? 'Everyone' : ROLE_LABELS[f]}
+              </button>
+            ))}
           </div>
-          <span>Only officers see this switch and the rows under a raider.</span>
-        </div>
+          {officer && (
+            <div className="alts-toggle">
+              <div className="role-filter" role="group" aria-label="Alts">
+                <button
+                  type="button"
+                  className="role-filter-option"
+                  aria-pressed={showAlts}
+                  onClick={() => setShowAlts(true)}
+                >
+                  Show alts
+                </button>
+                <button
+                  type="button"
+                  className="role-filter-option"
+                  aria-pressed={!showAlts}
+                  onClick={() => setShowAlts(false)}
+                >
+                  Hide alts
+                </button>
+              </div>
+              <span>Only officers see this switch and the rows under a raider.</span>
+            </div>
+          )}
+          {officer && officerData.isError && (
+            <DataState query={officerData} label="attendance and items">
+              {() => null}
+            </DataState>
+          )}
+          {officer && teamAlts.isError && (
+            <DataState query={teamAlts} label="alts">
+              {() => null}
+            </DataState>
+          )}
+          <div className="roster-layout">
+            <div className="roster-main">
+              <RosterTable
+                groups={shown}
+                caption="Current roster"
+                details
+                profileLink={profileLink}
+                stats={stats}
+                alts={alts}
+                showAlts={showAlts}
+                teamId={team.id}
+                officer={officer}
+                unclaimed={shownUnclaimed}
+              />
+            </div>
+            <RosterSummaryPanel summary={summary} />
+          </div>
+        </>
       )}
-      {officer && officerData.isError && (
-        <DataState query={officerData} label="attendance and items">
-          {() => null}
-        </DataState>
-      )}
-      {officer && teamAlts.isError && (
-        <DataState query={teamAlts} label="alts">
-          {() => null}
-        </DataState>
-      )}
-      <div className="roster-layout">
-        <div className="roster-main">
-          <RosterTable
-            groups={shown}
-            caption="Current roster"
-            details
-            profileLink={profileLink}
-            stats={stats}
-            alts={alts}
-            showAlts={showAlts}
-          />
-        </div>
-        <RosterSummaryPanel summary={summary} />
-      </div>
     </div>
+  );
+}
+
+// Officer: a bare Name, with an optional raid role guess so it can sit under
+// that tab before it has a character (#1355).
+function CreateNameForm({ teamId }: { teamId: number }) {
+  const id = useId();
+  const [label, setLabel] = useState('');
+  const [role, setRole] = useState('');
+  const create = useCreateName(teamId);
+  const { announce } = useStatus();
+
+  const onSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    create.mutate(
+      { label: trimmed, role: role || null },
+      {
+        onSuccess: () => {
+          announce('success', `${trimmed} added.`);
+          setLabel('');
+          setRole('');
+        }
+      }
+    );
+  };
+
+  return (
+    <form onSubmit={onSubmit} noValidate className="create-name-form">
+      <div className="field">
+        <label className="field-label" htmlFor={`${id}-label`}>
+          Add a Name
+        </label>
+        <input
+          id={`${id}-label`}
+          className="input"
+          type="text"
+          placeholder="Raider's display name"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+        />
+      </div>
+      <div className="field">
+        <label className="field-label" htmlFor={`${id}-role`}>
+          Role
+        </label>
+        <select id={`${id}-role`} className="input" value={role} onChange={(e) => setRole(e.target.value)}>
+          <option value="">Not sure yet</option>
+          {ROLE_ORDER.map((r) => (
+            <option key={r} value={r}>
+              {ROLE_LABELS[r]}
+            </option>
+          ))}
+        </select>
+      </div>
+      {create.isError && (
+        <p className="form-error" role="alert">
+          That did not save: {create.error.message}
+        </p>
+      )}
+      <button type="submit" className="button" disabled={create.isPending || !label.trim()}>
+        {create.isPending ? 'Adding…' : 'Add Name'}
+      </button>
+    </form>
   );
 }
 
@@ -331,7 +423,10 @@ function RosterTable({
   profileLink = () => null,
   stats = null,
   alts = null,
-  showAlts = false
+  showAlts = false,
+  teamId,
+  officer = false,
+  unclaimed = []
 }: {
   groups: RoleGroup[];
   caption: string;
@@ -341,6 +436,12 @@ function RosterTable({
   // Officers only: each row's alts, and whether their rows are showing.
   alts?: Map<number, SavedCharacter[]> | null;
   showAlts?: boolean;
+  // Bare Names (#1355), with no character or role of their own -- shown as an
+  // extra group below the role groups. Needs teamId/officer for the row
+  // actions; the incoming-roster table (no Names) never passes these.
+  teamId?: number | undefined;
+  officer?: boolean;
+  unclaimed?: NameRow[];
 }) {
   const columns = details ? (stats ? 6 : 4) : 1;
   return (
@@ -394,6 +495,8 @@ function RosterTable({
                     href={profileLink(raider)}
                     stats={stats ? (raider.playerId !== null ? (stats.get(raider.playerId) ?? null) : null) : undefined}
                     altCount={raiderAlts.length}
+                    teamId={teamId}
+                    officer={officer}
                   />
                   {showAlts &&
                     raiderAlts.map((alt) => (
@@ -404,6 +507,20 @@ function RosterTable({
             })}
           </tbody>
         ))}
+        {unclaimed.length > 0 && teamId !== undefined && (
+          <tbody>
+            {unclaimed.map((n) => (
+              <UnclaimedRow
+                key={`name-${n.id}`}
+                teamId={teamId}
+                officer={officer}
+                name={n}
+                details={details}
+                withStats={stats !== null}
+              />
+            ))}
+          </tbody>
+        )}
       </table>
     </div>
   );
@@ -414,7 +531,9 @@ function RosterRow({
   details,
   href,
   stats,
-  altCount = 0
+  altCount = 0,
+  teamId,
+  officer = false
 }: {
   raider: Raider;
   details: boolean;
@@ -423,6 +542,10 @@ function RosterRow({
   altCount?: number;
   // Undefined when the columns are not shown; null for a row with no numbers.
   stats?: OfficerStats | null | undefined;
+  // For this row's claimed-Name actions (#1355); undefined on the
+  // incoming-roster table, which carries no Names.
+  teamId?: number | undefined;
+  officer?: boolean;
 }) {
   const icon = specIcon(raider.className, raider.spec);
   return (
@@ -441,9 +564,12 @@ function RosterRow({
         )}
         {raider.character && <span className="raider-character">{raider.character}</span>}
         {altCount > 0 && <span className="alt-count">{altCountLabel(altCount)}</span>}
-        <span className="raider-spec">
-          {raider.spec} {raider.className}
-        </span>
+        {/* A bare Name with only a role guess has no class/spec yet (#1355). */}
+        {(raider.spec || raider.className) && (
+          <span className="raider-spec">
+            {raider.spec} {raider.className}
+          </span>
+        )}
       </th>
       {details && (
         <>
@@ -472,6 +598,68 @@ function RosterRow({
                 {s}
               </span>
             ))}
+            {teamId !== undefined && raider.nameId != null && (
+              <NameRowActions
+                teamId={teamId}
+                officer={officer}
+                nameId={raider.nameId}
+                label={raider.name}
+                role={raider.role}
+                teamMemberId={raider.teamMemberId ?? null}
+              />
+            )}
+          </td>
+        </>
+      )}
+    </tr>
+  );
+}
+
+// A bare Name (#1355): no character, no role, so no gear/tier/attendance --
+// just the label, a Claim button for anyone signed in, and officer actions.
+function UnclaimedRow({
+  teamId,
+  officer,
+  name,
+  details,
+  withStats
+}: {
+  teamId: number;
+  officer: boolean;
+  name: NameRow;
+  details: boolean;
+  withStats: boolean;
+}) {
+  const none = (
+    <>
+      <span aria-hidden="true">–</span>
+      <span className="visually-hidden">Not yet claimed</span>
+    </>
+  );
+  return (
+    <tr className="unclaimed-row">
+      <th scope="row" className="raider-cell">
+        <span className="raider-name">{name.label}</span>
+      </th>
+      {details && (
+        <>
+          <td className="col-num text-dim">{none}</td>
+          <td className="text-dim">{none}</td>
+          {withStats && (
+            <>
+              <td className="col-num text-dim">{none}</td>
+              <td className="col-num text-dim">{none}</td>
+            </>
+          )}
+          <td className="status-cell">
+            <NameRowActions
+              teamId={teamId}
+              officer={officer}
+              nameId={name.id}
+              label={name.label}
+              role={name.role}
+              teamMemberId={null}
+            />
           </td>
         </>
       )}

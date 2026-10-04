@@ -147,6 +147,8 @@ export async function openApp(browser, port, state) {
     players: [],
     player_equipped_gear: [],
     incoming_roster: [],
+    // Bare/claimed roster Names (#1355): empty unless a state lists them.
+    names: [],
     team_settings: [],
     // The per-tier switches (#939): empty means everything closed.
     team_seasons: [],
