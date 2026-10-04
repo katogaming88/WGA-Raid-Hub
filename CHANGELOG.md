@@ -14,7 +14,7 @@ answers to.
 
 ## [3.166.3] - 2026-10-03
 
-### Frontend
+### Project
 
 - The new app's Roster page shows `names` (#1437): a claimed Name overrides
   its row's display name, and a bare one (no account yet) gets its own row
