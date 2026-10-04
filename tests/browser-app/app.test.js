@@ -208,12 +208,8 @@ const waitingSwap = (fromNameRealm) => [
 ];
 
 // The same swap, declined (#1430): the alt says so, with the officer's note.
-const declinedSwap = (fromNameRealm) => [
-  {
-    ...waitingSwap(fromNameRealm)[0],
-    status: 'declined',
-    officer_note: 'We need your Death Knight for battle res this tier.'
-  }
+const declinedSwap = (fromNameRealm, officerNote = 'We need your Death Knight for battle res this tier.') => [
+  { ...waitingSwap(fromNameRealm)[0], status: 'declined', officer_note: officerNote }
 ];
 
 const pickerCharacter = (blizzard_id, name, className, spec, item_level, roster = null) => ({
@@ -1006,6 +1002,7 @@ const STATES = [
       main_swap_requests: declinedSwap(VIEWERS.torbjorn.player.name_realm)
     }
   }),
+  // A note with a link in it, so the 480px check sees the row wrap it.
   profileState('my profile, a main swap declined, light', 'torbjorn', 'torbjorn', {
     sentinel: 'main .character-tag-declined',
     colorScheme: 'light',
@@ -1013,7 +1010,10 @@ const STATES = [
       ...profileState('', 'torbjorn', 'torbjorn').tables,
       players: [{ ...VIEWERS.torbjorn.player, team_members: { person_id: 70 } }],
       characters: ALT_CHARACTERS,
-      main_swap_requests: declinedSwap(VIEWERS.torbjorn.player.name_realm)
+      main_swap_requests: declinedSwap(
+        VIEWERS.torbjorn.player.name_realm,
+        'Read this first: https://www.wowhead.com/guide/classes/evoker/preservation/overview-pve-healer'
+      )
     }
   }),
   profileState('my profile', 'torbjorn', 'torbjorn'),

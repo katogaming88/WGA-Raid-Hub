@@ -89,6 +89,32 @@ describe('altAsk()', () => {
     expect(altAsk(null, 'Grihzbear-Area 52', declined)).toEqual({ kind: 'declined', note: null });
   });
 
+  it("shows the newest decline's note when an alt was declined more than once", () => {
+    const declined = [
+      request({ id: 4, status: 'declined', officer_note: 'Healing is full until next season.' }),
+      request({ id: 2, status: 'declined', officer_note: 'Finish the tier first.' })
+    ];
+    expect(altAsk(null, 'Grihzy-Illidan', declined)).toEqual({
+      kind: 'declined',
+      note: 'Healing is full until next season.'
+    });
+    expect(altAsk(null, 'Grihzy-Illidan', [...declined].reverse())).toEqual({
+      kind: 'declined',
+      note: 'Healing is full until next season.'
+    });
+  });
+
+  it('matches the waiting alt by name key too', () => {
+    expect(altAsk(request({ name_realm: 'GRIHZBEAR-Area52' }), 'Grihzbear-Area 52')).toEqual({ kind: 'waiting' });
+  });
+
+  // Rows written before #1436 can hold both; the raider keeps Cancel request.
+  it('shows a waiting request as waiting even if that alt was declined before', () => {
+    expect(altAsk(request(), 'Grihzy-Illidan', [request({ id: 2, status: 'declined' })])).toEqual({
+      kind: 'waiting'
+    });
+  });
+
   it('keeps a declined alt declined while another swap waits', () => {
     const pending = request({ id: 3, name_realm: 'Grihznak-Illidan' });
     const declined = [request({ id: 2, status: 'declined', officer_note: 'Not this tier.' })];

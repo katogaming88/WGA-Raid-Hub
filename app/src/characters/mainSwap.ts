@@ -67,17 +67,16 @@ export const swapLine = (row: ReviewRow): string =>
   )}`;
 
 // Whether the Characters card offers an alt the ask. One request at a time per
-// team, so while one is waiting the others only say why they cannot be asked
-// for.
-// An alt an officer declined says so, with the officer's note, since the
-// database refuses that alt again (#1430). Matched by name key, as it does.
+// team, so while one is waiting the others cannot be asked for. An alt an
+// officer declined cannot be asked for again (#1430), so it says so with the
+// newest decline's note, matched by name key as the database matches it.
 export type AltAsk =
   { kind: 'ask' } | { kind: 'waiting' } | { kind: 'declined'; note: string | null } | { kind: 'blocked' };
 
 export function altAsk(pending: SwapRequest | null, altNameRealm: string, declined: SwapRequest[] = []): AltAsk {
   const key = nameRealmKey(altNameRealm);
   if (pending !== null && nameRealmKey(pending.name_realm) === key) return { kind: 'waiting' };
-  const decline = declined.find((r) => nameRealmKey(r.name_realm) === key);
+  const decline = declined.filter((r) => nameRealmKey(r.name_realm) === key).sort((a, b) => b.id - a.id)[0];
   if (decline) return { kind: 'declined', note: decline.officer_note };
   return pending === null ? { kind: 'ask' } : { kind: 'blocked' };
 }

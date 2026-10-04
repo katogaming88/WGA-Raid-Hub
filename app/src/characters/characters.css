@@ -331,13 +331,20 @@
   color: var(--text-muted);
 }
 
-/* A declined swap says why, in place of the ask (#1430). */
+/* A declined swap says why, in place of the ask (#1430). The note is the
+   officer's own words, so it wraps anywhere rather than widen the row. */
 .characters-declined {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  color: var(--text-muted);
-  font-size: var(--text-xs);
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.characters-declined p {
+  margin: 0;
 }
 
 .characters-cancel {

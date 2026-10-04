@@ -81,9 +81,7 @@ function Alts({ personId, player, own }: { personId: number; player: ProfilePlay
   const saved = usePersonCharacters(personId);
   const team = useTeam();
   const touch = useTouchScreen();
-  // The raider's own requests: the waiting one, so the alt it names says so
-  // and the others say why they cannot be asked for (#631), and the declined
-  // ones, so those alts say why not (#1430).
+  // The raider's own waiting and declined requests (#631, #1430).
   const mine = useMyMainSwaps(team.id, own ? personId : null);
   return (
     <DataState query={saved} label="alts">
@@ -152,10 +150,10 @@ function AltRow({
       )}
       {ask?.kind === 'waiting' && <CancelAsk request={mine.pending!} />}
       {ask?.kind === 'declined' && (
-        <span className="character-ask characters-declined">
-          <span>An officer declined this swap. Ask an officer if that should change.</span>
-          {ask.note && <span>Officer’s note: {ask.note}</span>}
-        </span>
+        <div className="character-ask characters-declined">
+          <p className="text-muted">An officer declined this swap. Ask an officer if that should change.</p>
+          {ask.note && <p>Officer’s note: {ask.note}</p>}
+        </div>
       )}
       {asking && <MainSwapDialog alt={alt} fromNameRealm={player.name_realm} onClose={() => setAsking(false)} />}
     </li>
