@@ -9,18 +9,9 @@
 // "no role" answer would hide a fixture that is not what the case says.
 import { randomUUID } from 'node:crypto';
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, insertDiscordUser, grantGuild, seedTeam, seedPlayer } from './helpers.js';
+import { pool, withTxn, seedTeam, seedMember, seedPlayer, SITE_ADMIN } from './helpers.js';
 
 afterAll(() => pool.end());
-
-// A site admin with no membership on the team.
-const seedSiteAdmin = async (q) => {
-  const uid = randomUUID();
-  const discordId = `fixture-${randomUUID()}`;
-  await insertDiscordUser(q, uid, discordId);
-  await grantGuild(q, discordId, 'site_admin');
-  return uid;
-};
 
 const archiveMember = (asUser, uid, teamId, memberId) =>
   asUser(uid, 'select public.archive_team_member($1, $2, $3, $4)', [teamId, memberId, 'moved_guilds', 'Left']);
@@ -146,14 +137,32 @@ describe('admin_grant_team_role() on an archived membership', () => {
   it('a site admin brings an archived team leader back as team leader', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
-      const admin = await seedSiteAdmin(q);
-      await archiveMember(asUser, admin, team.teamId, team.leader.memberId);
+      await archiveMember(asUser, SITE_ADMIN, team.teamId, team.leader.memberId);
       expect(await membership(q, team.leader.memberId)).toMatchObject({
         role: 'team_leader',
         archived_at: expect.any(Date)
       });
 
-      await grant(asUser, admin, team.teamId, team.leader.discordId, 'team_leader');
+      await grant(asUser, SITE_ADMIN, team.teamId, team.leader.discordId, 'team_leader');
+
+      expect(await membership(q, team.leader.memberId)).toEqual({ role: 'team_leader', archived_at: null });
+    });
+  });
+
+  // Only a site admin archives a team leader, but the granted role decides who
+  // may give it back, and a team leader may make anyone team leader (#1403's
+  // decisions entry).
+  it('a team leader brings back an archived team leader whom only a site admin could archive', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const coLeader = await seedMember(q, { teamId: team.teamId, role: 'team_leader' });
+      await archiveMember(asUser, SITE_ADMIN, team.teamId, team.leader.memberId);
+      expect(await membership(q, team.leader.memberId)).toMatchObject({
+        role: 'team_leader',
+        archived_at: expect.any(Date)
+      });
+
+      await grant(asUser, coLeader.uid, team.teamId, team.leader.discordId, 'team_leader');
 
       expect(await membership(q, team.leader.memberId)).toEqual({ role: 'team_leader', archived_at: null });
     });
