@@ -149,10 +149,10 @@ describe('admin_grant_team_role() on an archived membership', () => {
     });
   });
 
-  // Only a site admin archives a team leader, but the granted role decides who
-  // may give it back, and a team leader may make anyone team leader (#1403's
-  // decisions entry).
-  it('a team leader brings back an archived team leader whom only a site admin could archive', async () => {
+  // Only a site admin archives a team leader, and only a site admin brings
+  // anyone who left back as one. A team leader brings them back as a raider or
+  // an officer.
+  it('a team leader cannot bring an archived team leader back as team leader', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const coLeader = await seedMember(q, { teamId: team.teamId, role: 'team_leader' });
@@ -162,9 +162,58 @@ describe('admin_grant_team_role() on an archived membership', () => {
         archived_at: expect.any(Date)
       });
 
-      await grant(asUser, coLeader.uid, team.teamId, team.leader.discordId, 'team_leader');
+      await expect(grant(asUser, coLeader.uid, team.teamId, team.leader.discordId, 'team_leader')).rejects.toThrow(
+        /^Only a site admin can bring someone who left back as team leader$/
+      );
+    });
+  });
 
-      expect(await membership(q, team.leader.memberId)).toEqual({ role: 'team_leader', archived_at: null });
+  it('a team leader cannot bring an archived raider back as team leader either', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await archiveMember(asUser, team.officer.uid, team.teamId, team.raider.memberId);
+      expect(await membership(q, team.raider.memberId)).toMatchObject({
+        role: 'raider',
+        archived_at: expect.any(Date)
+      });
+
+      await expect(grant(asUser, team.leader.uid, team.teamId, team.raider.discordId, 'team_leader')).rejects.toThrow(
+        /^Only a site admin can bring someone who left back as team leader$/
+      );
+    });
+  });
+
+  // Control: the team leader can still bring them back, below team leader.
+  it('a team leader brings an archived team leader back as an officer', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const coLeader = await seedMember(q, { teamId: team.teamId, role: 'team_leader' });
+      await archiveMember(asUser, SITE_ADMIN, team.teamId, team.leader.memberId);
+      expect(await membership(q, team.leader.memberId)).toMatchObject({
+        role: 'team_leader',
+        archived_at: expect.any(Date)
+      });
+
+      await grant(asUser, coLeader.uid, team.teamId, team.leader.discordId, 'officer');
+
+      expect(await membership(q, team.leader.memberId)).toEqual({ role: 'officer', archived_at: null });
+    });
+  });
+
+  // Control: the rule is about bringing someone back. A team leader still makes
+  // someone new to the team team leader, as since #910.
+  it('a team leader still makes someone new to the team team leader', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const discordId = `fixture-${randomUUID()}`;
+
+      await grant(asUser, team.leader.uid, team.teamId, discordId, 'team_leader');
+
+      const row = await q('select role, archived_at from public.team_members where team_id = $1 and discord_id = $2', [
+        team.teamId,
+        discordId
+      ]);
+      expect(row.rows).toEqual([{ role: 'team_leader', archived_at: null }]);
     });
   });
 
