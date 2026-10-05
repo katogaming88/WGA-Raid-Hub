@@ -78,7 +78,7 @@
 | [public.team_raid_kills_this_week](public.team_raid_kills_this_week.md) | 7 | Each boss a team has killed since this week's Tuesday reset, once per difficulty, with its first kill of the week (#1246). | VIEW |
 | [public.team_schedule_settings](public.team_schedule_settings.md) | 3 | A team's own schedule settings (#1246): the raid difficulty every weekly or added night follows unless it sets its own. No row, or a null, means not set. Written by the officers who write raid_schedule. | BASE TABLE |
 | [public.removal_reasons](public.removal_reasons.md) | 8 | Every reason a character or a membership was removed for (#1427), never updated or deleted. A character's row comes from a trigger on player_officer_notes, a membership's from archive_team_member(). The notes row still holds the latest reason; this holds all of them. | BASE TABLE |
-| [public.names](public.names.md) | 6 | A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming/assigning/unclaiming only ever updates this row -- team_members is never created or merged as part of it, and a names row outlives its membership being archived. | BASE TABLE |
+| [public.names](public.names.md) | 6 | A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming, assigning and unclaiming update this row; a raider's first claim on a team also creates their membership (claim_name), and nothing merges memberships. A names row outlives its membership being archived. | BASE TABLE |
 
 ## Stored procedures and functions
 

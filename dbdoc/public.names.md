@@ -2,7 +2,7 @@
 
 ## Description
 
-A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming/assigning/unclaiming only ever updates this row -- team_members is never created or merged as part of it, and a names row outlives its membership being archived.
+A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming, assigning and unclaiming update this row; a raider's first claim on a team also creates their membership (claim_name), and nothing merges memberships. A names row outlives its membership being archived.
 
 ## Columns
 
@@ -38,7 +38,7 @@ A team roster row's display label (#1355), independent of team_members: bare (te
 
 | Name | Definition |
 | ---- | ---------- |
-| names_check_team_member_same_team | CREATE TRIGGER names_check_team_member_same_team BEFORE INSERT OR UPDATE OF team_member_id ON public.names FOR EACH ROW EXECUTE FUNCTION names_team_member_same_team() |
+| names_check_team_member_same_team | CREATE TRIGGER names_check_team_member_same_team BEFORE INSERT OR UPDATE ON public.names FOR EACH ROW EXECUTE FUNCTION names_team_member_same_team() |
 
 ## Relations
 

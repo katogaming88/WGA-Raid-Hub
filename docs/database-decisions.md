@@ -10,6 +10,68 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-04 -- the nightly backup dumps stay unencrypted (#1418)
+
+Shipped: no migration, decision only.
+
+`db-backup.yml` uploads two unencrypted `pg_dump` files (the public schema,
+and `auth.users`/`auth.identities`) to R2 every night. Kat's call: leave it,
+option 3 from the issue. R2 already encrypts stored files at rest, so the
+real exposure is whoever holds the workflow's secrets or the read-only
+restore profile -- the same people who already hold full production
+access, encrypted backups or not. Encrypting in the workflow (option 1)
+trades that for a worse failure mode on a small volunteer-run project with
+no real key-custody practice: a lost offline private key loses every
+backup, which defeats the point of having them. Trimming the auth dump
+(option 2) is not pursued either -- a restore should rebuild the full
+account, not a partial one. Worth revisiting if the project ever has a
+second site admin and a documented key-rotation plan.
+
+[Full discussion -> #1418](https://github.com/katogaming88/WGA-Raid-Hub/issues/1418)
+
+---
+
+## 2026-10-04 -- every current-site character claim posts to the officer channel (#1419)
+
+Shipped: not yet, #1419 (Discord post, #959's architecture).
+
+The current site's Claim button (`claim_character()`) lets any signed-in
+Discord account claim any unclaimed roster character, with no ownership
+check -- measured exploitable on the local stack 2026-10-02. Kat's call:
+option 2, post every claim to the team's officer channel, the way Mark
+Received and M+ requests already do. The bug self-resolves at cutover
+(#1105): the new app proves ownership through Battle.net, so this is a
+time-boxed risk on a site that's retiring, and option 3's officer-approval
+queue is real work not worth building for something leaving soon. Option 1
+(leave it, officers keep watching Claims Management) is zero-cost but
+leaves the blind spot until an officer happens to check; the poster closes
+it for the cost of a small change behind #959's existing architecture.
+
+[Full discussion -> #1419](https://github.com/katogaming88/WGA-Raid-Hub/issues/1419)
+
+---
+
+## 2026-10-04 -- public forms require sign-in and team membership (#1417)
+
+Shipped: not yet, #1417 (and #1286, whose membership check this reuses).
+
+Four request forms (M+ exclusion, BiS Source, My BiS Changed, Mark Received)
+and the BoE find report call a database or Edge Function directly with no
+sign-in and no rate limit. Kat's call: sign-in alone isn't enough -- nobody
+reaches a team's forms without being signed in *and* a member of that
+team's guild, the same membership check #1286 gives every other
+members-only table and function, not a separate rule invented for these
+six endpoints. A per-character hourly submission cap (counted from rows
+already written) stays on top as defense in depth. A bot check (Cloudflare
+Turnstile) was considered and rejected -- this is a guild tool at guild
+scale, not a public target, and Turnstile adds an Edge Function dependency
+and friction for a threat that doesn't apply here. The contact form is out
+of scope (#959's territory).
+
+[Full discussion -> #1417](https://github.com/katogaming88/WGA-Raid-Hub/issues/1417)
+
+---
+
 ## 2026-09-28 -- a `names` table, separate from `team_members` (#1355)
 
 Shipped: 20261003232012_names_table.sql

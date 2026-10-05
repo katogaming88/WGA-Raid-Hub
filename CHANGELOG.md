@@ -36,6 +36,25 @@ answers to.
   claim refuses on the caller's own archived membership, the same rule
   `claim_character()` already follows -- coming back takes an officer, not
   a claim. Database only; no page reads or writes this yet (#1355).
+- A claim checks the Name before it writes anything, so a claim against
+  the wrong team, or for a Name that is gone or taken, changes nothing and
+  says why. Someone who already holds a Name on the team is told so in
+  words rather than with a database error, and every claim leaves a
+  `Name Claimed` row in the audit log naming the label and whether the
+  claim created the membership (#1355).
+- A claimed Name cannot be moved to a team its membership is not on,
+  whichever column the change touches (#1355).
+
+---
+
+## [3.166.2] - 2026-10-04
+
+### Project
+
+- Logged two security-audit decisions (docs/database-decisions.md):
+  nightly backups stay unencrypted (#1418), and every current-site
+  character claim will post to the officer Discord channel until cutover
+  (#1419). Neither build is in this PR.
 
 ---
 

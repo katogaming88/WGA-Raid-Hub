@@ -7,8 +7,9 @@
 -- officer can create bare (team_member_id null), that a raider later claims
 -- (self-service, claim_name) or an officer assigns (a plain table write --
 -- assign is not a distinct action from rename/remove, all three are just
--- updates to this table). team_members itself is never created or merged as
--- part of claiming -- only names churns.
+-- updates to this table). Claiming never merges memberships: a raider's first
+-- claim on a team creates their team_members row from their Discord identity,
+-- as claim_character() does, and every other claim only updates names.
 --
 -- The "joined, but hasn't claimed a Name" pool isn't tracked here: it's just
 -- a team_members row with no names row pointing at it yet.
@@ -42,7 +43,7 @@ create table public.names (
 create unique index names_team_id_label_key on public.names (team_id, lower(btrim(label)));
 
 comment on table public.names is
-  'A team roster row''s display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming/assigning/unclaiming only ever updates this row -- team_members is never created or merged as part of it, and a names row outlives its membership being archived.';
+  'A team roster row''s display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming, assigning and unclaiming update this row; a raider''s first claim on a team also creates their membership (claim_name), and nothing merges memberships. A names row outlives its membership being archived.';
 comment on column public.names.label is
   'The display name shown until claimed. Survives Remove claim (the label goes back to bare) and the membership being archived -- unique per team, case- and whitespace-insensitive, since claiming is picking one off a list.';
 comment on column public.names.team_member_id is
@@ -52,7 +53,8 @@ comment on column public.names.role is
 
 -- A names row has to point at a membership on its own team; nothing else
 -- enforced that, and an officer's client picking from the wrong team's
--- unclaimed-members pool would otherwise silently cross teams.
+-- unclaimed-members pool would otherwise silently cross teams. It runs on
+-- every write, so moving a claimed Name by its team_id alone is checked too.
 create function public.names_team_member_same_team() returns trigger
 language plpgsql
 set search_path to 'public'
@@ -72,7 +74,7 @@ end;
 $$;
 
 create trigger names_check_team_member_same_team
-  before insert or update of team_member_id on public.names
+  before insert or update on public.names
   for each row execute function public.names_team_member_same_team();
 
 alter table public.names enable row level security;
@@ -111,9 +113,19 @@ declare
   v_member_id integer;
   v_member_archived_at timestamp with time zone;
   v_discord_id text;
+  v_label text;
+  v_membership_created boolean := false;
 begin
   if v_uid is null then
     raise exception 'Not signed in';
+  end if;
+
+  -- The Name first, so a wrong team or Name creates no membership. No lock:
+  -- the update below is what decides a race for the same Name.
+  perform 1 from public.names
+   where id = p_name_id and team_id = p_team_id and team_member_id is null;
+  if not found then
+    raise exception 'That Name is not available to claim';
   end if;
 
   select tm.id, tm.archived_at into v_member_id, v_member_archived_at
@@ -132,20 +144,35 @@ begin
     insert into public.team_members (team_id, discord_id, role)
     values (p_team_id, v_discord_id, 'raider')
     returning id into v_member_id;
+    v_membership_created := true;
   end if;
 
-  update public.names
-     set team_member_id = v_member_id
-   where id = p_name_id and team_id = p_team_id and team_member_id is null;
+  -- One membership holds one Name (team_member_id is unique), so a second
+  -- claim by the same person stops here, in words.
+  begin
+    update public.names
+       set team_member_id = v_member_id
+     where id = p_name_id and team_id = p_team_id and team_member_id is null
+    returning label into v_label;
+  exception when unique_violation then
+    raise exception 'You already have a Name on this team. Ask an officer if it needs changing.';
+  end;
 
   if not found then
     raise exception 'That Name is not available to claim';
   end if;
+
+  -- Its own row, since write_audit_log() refuses a raider, the same way
+  -- team_invite_link_join() logs a join.
+  insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+  values (p_team_id, v_uid, 'Name Claimed', 'names', p_name_id,
+          jsonb_build_object('label', v_label, 'team_member_id', v_member_id,
+                             'membership_created', v_membership_created));
 end;
 $$;
 
 comment on function public.claim_name(integer, integer) is
-  'Self-service claim of a bare or joined-unclaimed Name (#1355): links the caller''s own team_members row (creating it from their Discord identity if this is their first claim on the team, the same as claim_character()) to the picked names row. Refuses a Name that is already claimed, and refuses on the caller''s own archived membership (#1401) -- coming back takes an officer, not a claim.';
+  'Self-service claim of a bare or joined-unclaimed Name (#1355): links the caller''s own team_members row (creating it from their Discord identity if this is their first claim on the team, the same as claim_character()) to the picked names row. Checks the Name before anything is written, refuses a Name that is already claimed or a second Name for the same membership, and refuses on the caller''s own archived membership (#1401) -- coming back takes an officer, not a claim. Writes its own Name Claimed audit row, since write_audit_log() refuses a raider.';
 
 revoke all on function public.claim_name(integer, integer) from public;
 revoke execute on function public.claim_name(integer, integer) from anon;
