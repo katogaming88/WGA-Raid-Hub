@@ -639,7 +639,15 @@ describe('the officer writes and their audit rows', () => {
     await user.click(within(await openRowMenu(user, /Raz/, 'Raz')).getByRole('menuitem', { name: 'Remove claim' }));
     await screen.findByText('Raz is unclaimed again.');
     expect(client.writes).toEqual([
-      { table: 'names', method: 'update', values: { team_member_id: null }, filters: [['eq', 'id', 2]] }
+      {
+        table: 'names',
+        method: 'update',
+        values: { team_member_id: null },
+        filters: [
+          ['eq', 'id', 2],
+          ['eq', 'team_member_id', 9]
+        ]
+      }
     ]);
     expect(audits(client)).toEqual([
       {
@@ -662,7 +670,15 @@ describe('the officer writes and their audit rows', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Delete Name' }));
     await screen.findByText('Bare Raider removed.');
     expect(client.writes).toEqual([
-      { table: 'names', method: 'delete', values: undefined, filters: [['eq', 'id', 1]] }
+      {
+        table: 'names',
+        method: 'delete',
+        values: undefined,
+        filters: [
+          ['eq', 'id', 1],
+          ['is', 'team_member_id', null]
+        ]
+      }
     ]);
     expect(audits(client)).toEqual([
       { p_team_id: 1, p_action: 'Name Deleted', p_target_type: 'names', p_target_id: 1, p_detail: null }
@@ -754,5 +770,65 @@ describe('what a write reads again', () => {
     await user.click(within(menu).getByRole('menuitem', { name: 'Claim' }));
     await screen.findByText('Claimed Bare Raider.');
     await waitFor(() => expect(readsOf(client, 'team_members')).toBeGreaterThan(before));
+  });
+});
+
+// Delete Name and Remove claim act only on the Name as the officer saw it.
+describe('a Name that changed since the page read it', () => {
+  const CHANGED =
+    'That did not save: That Name has changed since the page loaded. Reload the page to see it as it is now.';
+  const openRowMenu = async (user: ReturnType<typeof userEvent.setup>, rowName: RegExp | string, label: string) => {
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table).getByRole('rowheader', { name: rowName }).closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: `More actions for ${label}` }));
+    return screen.findByRole('menu', { name: `More actions for ${label}` });
+  };
+  const audits = (client: ReturnType<typeof renderApp>['client']) =>
+    client.rpcs.filter(([name]) => name === 'write_audit_log');
+
+  it('is not deleted once someone has claimed it, and says why', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(
+      '/g/wga/t/phoenix/roster',
+      namesHandlers({ role: 'officer', write: () => ({ data: [] }) })
+    );
+    await user.click(
+      within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Delete Name' })
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Delete Bare Raider?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Delete Name' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(CHANGED);
+    expect(audits(client)).toEqual([]);
+  });
+
+  it('keeps a claim someone else now holds, and says why', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(
+      '/g/wga/t/phoenix/roster',
+      namesHandlers({ role: 'officer', write: () => ({ data: [] }) })
+    );
+    await user.click(within(await openRowMenu(user, /Raz/, 'Raz')).getByRole('menuitem', { name: 'Remove claim' }));
+    expect(await screen.findByText(CHANGED)).toHaveAttribute('role', 'alert');
+    expect(audits(client)).toEqual([]);
+  });
+
+  it('shows no earlier failure when Delete Name is opened again', async () => {
+    const user = userEvent.setup();
+    renderApp(
+      '/g/wga/t/phoenix/roster',
+      namesHandlers({ role: 'officer', write: () => ({ error: { message: 'Not allowed', code: '42501' } }) })
+    );
+    await user.click(
+      within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Delete Name' })
+    );
+    let dialog = await screen.findByRole('dialog', { name: 'Delete Bare Raider?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Delete Name' }));
+    await within(dialog).findByRole('alert');
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await user.click(
+      within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Delete Name' })
+    );
+    dialog = await screen.findByRole('dialog', { name: 'Delete Bare Raider?' });
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument();
   });
 });
