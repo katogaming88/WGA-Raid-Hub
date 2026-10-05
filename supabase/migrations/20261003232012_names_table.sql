@@ -143,9 +143,15 @@ begin
     returning id into v_member_id;
   end if;
 
-  update public.names
-     set team_member_id = v_member_id
-   where id = p_name_id and team_id = p_team_id and team_member_id is null;
+  -- One membership holds one Name (team_member_id is unique), so a second
+  -- claim by the same person stops here, in words.
+  begin
+    update public.names
+       set team_member_id = v_member_id
+     where id = p_name_id and team_id = p_team_id and team_member_id is null;
+  exception when unique_violation then
+    raise exception 'You already have a Name on this team. Ask an officer if it needs changing.';
+  end;
 
   if not found then
     raise exception 'That Name is not available to claim';
