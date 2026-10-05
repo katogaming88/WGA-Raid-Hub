@@ -39,6 +39,14 @@ function onDone<V>(callback: ((variables: V) => void) | undefined) {
   return callback ? { onSuccess: (_data: null, variables: V) => callback(variables) } : {};
 }
 
+// The per-team label index is the only unique rule a create or rename can
+// break, and its label may belong to someone who left, whose row is hidden.
+function labelError(error: { message: string; code?: string }) {
+  return error.code === '23505'
+    ? { message: 'A Name on this team already has that label. It may belong to someone who has left.' }
+    : error;
+}
+
 // Officer: a bare Name, unclaimed until someone claims or is assigned it.
 // role is the raid role it's expected to fill, so it can sit under that tab
 // before it has a character; null when the officer doesn't know yet.
@@ -46,7 +54,7 @@ export function useCreateName(teamId: number) {
   return useSupabaseMutation<null, { label: string; role: string | null }>(
     async (client, { label, role }) => {
       const result = await client.from('names').insert({ team_id: teamId, label, role });
-      if (result.error) return result;
+      if (result.error) return { data: null, error: labelError(result.error) };
       await writeAuditLog(client, teamId, 'Name Created', null, role ? `${label} (${role})` : label);
       return { data: null, error: null };
     },
@@ -60,7 +68,7 @@ export function useRenameName(teamId: number) {
   return useSupabaseMutation<null, { nameId: number; label: string; role: string | null }>(
     async (client, { nameId, label, role }) => {
       const result = await client.from('names').update({ label, role }).eq('id', nameId);
-      if (result.error) return result;
+      if (result.error) return { data: null, error: labelError(result.error) };
       await writeAuditLog(client, teamId, 'Name Renamed', nameId, role ? `${label} (${role})` : label);
       return { data: null, error: null };
     },
