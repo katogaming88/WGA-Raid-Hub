@@ -2,6 +2,7 @@
 // claim_name() (self-service). Lives in the RLS suite because the function is
 // SECURITY DEFINER and the table's officer-write policy and the cross-team
 // trigger are RLS-shaped.
+import { randomUUID } from 'node:crypto';
 import { describe, it, expect, afterAll } from 'vitest';
 import { pool, withTxn, insertDiscordUser, seedTeam } from './helpers.js';
 
@@ -130,8 +131,9 @@ describe('claim_name', () => {
   it('a caller with no membership yet gets one created from their Discord identity', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
-      const uid = '00000000-0000-0000-0000-0000000000f1';
-      await insertDiscordUser(q, uid, 'discord-names-brandnew');
+      const uid = randomUUID();
+      const discordId = `fixture-${randomUUID()}`;
+      await insertDiscordUser(q, uid, discordId);
       const nameId = await insertName(q, team.teamId, 'Brand New Claimant');
 
       await claimName(asUser, uid, team.teamId, nameId);
@@ -140,7 +142,7 @@ describe('claim_name', () => {
         .rows;
       expect(members).toHaveLength(1);
       expect(members[0].role).toBe('raider');
-      expect(members[0].discord_id).toBe('discord-names-brandnew');
+      expect(members[0].discord_id).toBe(discordId);
 
       const row = (await q('select team_member_id from public.names where id = $1', [nameId])).rows[0];
       expect(row.team_member_id).toBe(members[0].id);
@@ -158,19 +160,19 @@ describe('claim_name', () => {
   it('refuses a caller with no Discord identity and no existing membership', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
-      const uid = '00000000-0000-0000-0000-0000000000f2';
+      const uid = randomUUID();
       // A Battle.net-only account: signed in, no Discord identity at all.
       await q(
         `insert into auth.users (id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data)
          values ($1, 'authenticated', 'authenticated', $2, 'x', '{}'::jsonb, '{}'::jsonb)`,
-        [uid, 'no-discord-f2@example.com']
+        [uid, `no-discord-${uid}@example.com`]
       );
       const nameId = await insertName(q, team.teamId, 'No Discord Claimant');
       await expect(claimName(asUser, uid, team.teamId, nameId)).rejects.toThrow(/no Discord identity/);
     });
   });
 
-  it("refuses to un-archive the caller's own ended membership -- only a fresh invite link does that", async () => {
+  it("refuses to un-archive the caller's own ended membership -- coming back takes an officer", async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       await q('update public.team_members set archived_at = now() where id = $1', [team.raider.memberId]);
