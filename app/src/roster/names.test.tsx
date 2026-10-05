@@ -926,3 +926,16 @@ describe('the row menu beside a scrollbar', () => {
     }
   });
 });
+
+describe('Add a Name and focus', () => {
+  it('puts focus back in the label field once the Name is added', async () => {
+    const user = userEvent.setup();
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
+    await screen.findByRole('table', { name: 'Current roster' });
+    const input = screen.getByLabelText('Add a Name');
+    await user.type(input, 'Thalindra');
+    await user.click(screen.getByRole('button', { name: 'Add Name' }));
+    await screen.findByText('Thalindra added.');
+    expect(input).toHaveFocus();
+  });
+});
