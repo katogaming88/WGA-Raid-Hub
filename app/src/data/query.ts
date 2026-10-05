@@ -63,17 +63,26 @@ export function bothQueries<A, B>(a: UseQueryResult<A>, b: UseQueryResult<B>): U
 // read, so the caller's error state shows it and it gets reported. Once it
 // succeeds, every cached read whose key starts with one of `refreshes` is
 // read again, so no page shows numbers from before the write (#1101).
+// `onSuccess` runs after those reads are back, and runs even when the
+// component that started the write has gone, which a callback passed to
+// mutate() does not: a row a write takes away still gets its message.
 export function useSupabaseMutation<T, V>(
   write: (client: Client, variables: V) => PromiseLike<Result<T>>,
-  options: { key: readonly unknown[]; refreshes: readonly (readonly unknown[])[] }
+  options: {
+    key: readonly unknown[];
+    refreshes: readonly (readonly unknown[])[];
+    onSuccess?: (data: T, variables: V) => void;
+  }
 ): UseMutationResult<T, Error, V> {
   const client = useSupabase();
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: options.key,
     mutationFn: (variables: V) => unwrap(write(client, variables)),
-    onSuccess: () =>
-      Promise.all(options.refreshes.map((queryKey) => queryClient.invalidateQueries({ queryKey }))).then(() => {})
+    onSuccess: (data, variables) =>
+      Promise.all(options.refreshes.map((queryKey) => queryClient.invalidateQueries({ queryKey }))).then(() =>
+        options.onSuccess?.(data, variables)
+      )
   });
 }
 

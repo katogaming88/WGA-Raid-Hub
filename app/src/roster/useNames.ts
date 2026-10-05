@@ -33,6 +33,12 @@ export function useNames(teamId: number) {
   );
 }
 
+// What a row action runs once its write and the refreshed reads are back,
+// whether or not the row that started it is still on the page.
+function onDone<V>(callback: ((variables: V) => void) | undefined) {
+  return callback ? { onSuccess: (_data: null, variables: V) => callback(variables) } : {};
+}
+
 // Officer: a bare Name, unclaimed until someone claims or is assigned it.
 // role is the raid role it's expected to fill, so it can sit under that tab
 // before it has a character; null when the officer doesn't know yet.
@@ -63,7 +69,7 @@ export function useRenameName(teamId: number) {
 }
 
 // Officer: fixes a wrong self-service claim. The label survives, bare.
-export function useRemoveNameClaim(teamId: number) {
+export function useRemoveNameClaim(teamId: number, done?: (variables: { nameId: number }) => void) {
   return useSupabaseMutation<null, { nameId: number }>(
     async (client, { nameId }) => {
       const result = await client.from('names').update({ team_member_id: null }).eq('id', nameId);
@@ -71,18 +77,18 @@ export function useRemoveNameClaim(teamId: number) {
       await writeAuditLog(client, teamId, 'Name Claim Removed', nameId, null);
       return { data: null, error: null };
     },
-    { key: ['remove-name-claim', teamId], refreshes: [key(teamId)] }
+    { key: ['remove-name-claim', teamId], refreshes: [key(teamId)], ...onDone(done) }
   );
 }
 
 // Self-service: the raider picks their own bare Name off the list.
-export function useClaimName(teamId: number) {
+export function useClaimName(teamId: number, done?: (variables: { nameId: number }) => void) {
   return useSupabaseMutation<null, { nameId: number }>(
     async (client, { nameId }) => {
       const result = await client.rpc('claim_name', { p_team_id: teamId, p_name_id: nameId });
       return { data: null, error: result.error };
     },
-    { key: ['claim-name', teamId], refreshes: [key(teamId), ['access']] }
+    { key: ['claim-name', teamId], refreshes: [key(teamId), ['access']], ...onDone(done) }
   );
 }
 
@@ -102,7 +108,10 @@ export const ARCHIVE_REASONS: { value: string; label: string }[] = [
 // characters (never deletes either, #1423), so the roster read needs
 // refreshing too, alongside this team's Names, and so does the membership
 // read a name-only row depends on.
-export function useArchiveTeamMember(teamId: number) {
+export function useArchiveTeamMember(
+  teamId: number,
+  done?: (variables: { teamMemberId: number; reason: string; detail: string }) => void
+) {
   return useSupabaseMutation<null, { teamMemberId: number; reason: string; detail: string }>(
     async (client, { teamMemberId, reason, detail }) => {
       const result = await client.rpc('archive_team_member', {
@@ -113,13 +122,17 @@ export function useArchiveTeamMember(teamId: number) {
       });
       return { data: null, error: result.error };
     },
-    { key: ['archive-team-member', teamId], refreshes: [key(teamId), ['roster', teamId], ['team-alts', teamId]] }
+    {
+      key: ['archive-team-member', teamId],
+      refreshes: [key(teamId), ['roster', teamId], ['team-alts', teamId]],
+      ...onDone(done)
+    }
   );
 }
 
 // Officer: removes a bare Name outright (never claimed), a plain table
 // delete under the same officer-write policy create/rename/assign use.
-export function useDeleteName(teamId: number) {
+export function useDeleteName(teamId: number, done?: (variables: { nameId: number }) => void) {
   return useSupabaseMutation<null, { nameId: number }>(
     async (client, { nameId }) => {
       const result = await client.from('names').delete().eq('id', nameId);
@@ -127,6 +140,6 @@ export function useDeleteName(teamId: number) {
       await writeAuditLog(client, teamId, 'Name Deleted', nameId, null);
       return { data: null, error: null };
     },
-    { key: ['delete-name', teamId], refreshes: [key(teamId)] }
+    { key: ['delete-name', teamId], refreshes: [key(teamId)], ...onDone(done) }
   );
 }

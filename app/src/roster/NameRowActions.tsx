@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useId, useRef, useState, type FormEvent } from 'react';
 import { Dialog } from '../components/Dialog';
 import { Menu, type MenuAction } from '../components/Menu';
 import { useStatus } from '../components/Status';
@@ -40,9 +40,21 @@ export function NameRowActions({
   const { announce } = useStatus();
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const claim = useClaimName(teamId);
-  const removeClaim = useRemoveNameClaim(teamId);
-  const deleteName = useDeleteName(teamId);
+  // The roster table this row sits in, learned once when the row mounts: when
+  // a write takes the row away, focus goes to the table instead of falling to
+  // the page itself.
+  const [region, setRegion] = useState<HTMLElement | null>(null);
+  const wrapRef = useCallback((el: HTMLSpanElement | null) => {
+    if (el) setRegion(el.closest<HTMLElement>('[role="region"]'));
+  }, []);
+  const refocus = () => {
+    window.setTimeout(() => {
+      if (region?.isConnected && document.activeElement === document.body) region.focus();
+    }, 0);
+  };
+  const claim = useClaimName(teamId, refocus);
+  const removeClaim = useRemoveNameClaim(teamId, refocus);
+  const deleteName = useDeleteName(teamId, refocus);
 
   const menuActions: MenuAction[] = [];
   if (nameId !== null && teamMemberId === null && user) {
@@ -73,7 +85,7 @@ export function NameRowActions({
   if (menuActions.length === 0) return null;
 
   return (
-    <span className="name-actions">
+    <span className="name-actions" ref={wrapRef}>
       <Menu label={`More actions for ${label}`} actions={menuActions} />
       {claim.isError && (
         <p className="form-error" role="alert">
@@ -101,6 +113,7 @@ export function NameRowActions({
           teamMemberId={teamMemberId}
           label={label}
           onClose={() => setConfirmDelete(false)}
+          onArchived={refocus}
         />
       )}
       {confirmDelete && teamMemberId === null && nameId !== null && (
@@ -168,17 +181,20 @@ function ArchiveMemberDialog({
   teamId,
   teamMemberId,
   label,
-  onClose
+  onClose,
+  onArchived
 }: {
   teamId: number;
   teamMemberId: number;
   label: string;
   onClose: () => void;
+  // Runs once the archive is done, even if this row has gone by then.
+  onArchived: () => void;
 }) {
   const id = useId();
   const [reason, setReason] = useState('');
   const [detail, setDetail] = useState('');
-  const archiveMember = useArchiveTeamMember(teamId);
+  const archiveMember = useArchiveTeamMember(teamId, onArchived);
   const { announce } = useStatus();
   const selectRef = useRef<HTMLSelectElement>(null);
 

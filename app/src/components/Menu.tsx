@@ -36,6 +36,13 @@ export function Menu({ label, actions }: { label: string; actions: MenuAction[] 
     // up with the trigger; closing is simpler than tracking position live.
     const onScroll = () => setOpen(false);
     const onKeyDown = (event: KeyboardEvent) => {
+      // Tab leaves the menu the way Escape does, back on its trigger.
+      if (event.key === 'Tab') {
+        event.preventDefault();
+        setOpen(false);
+        triggerRef.current?.focus();
+        return;
+      }
       if (event.key === 'Escape') {
         event.stopPropagation();
         setOpen(false);
@@ -112,6 +119,9 @@ export function Menu({ label, actions }: { label: string; actions: MenuAction[] 
                 disabled={action.disabled}
                 onClick={() => {
                   setOpen(false);
+                  // Back on the trigger before the action runs, so a dialog
+                  // it opens hands focus back here when it closes.
+                  triggerRef.current?.focus();
                   action.onSelect();
                 }}
               >
