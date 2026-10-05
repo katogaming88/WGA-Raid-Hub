@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers, type Read } from '../test/fakeSupabase';
@@ -324,5 +324,41 @@ describe('Archive Member on a row with no Name', () => {
       .getByRole('rowheader', { name: /Brannoc/ })
       .closest('tr')!;
     expect(within(row).queryByRole('button', { name: 'More actions for Brannoc' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Archive Member on a name-only row', () => {
+  it('takes the row away once the membership has ended', async () => {
+    const user = userEvent.setup();
+    const wren: NameRow = { id: 4, label: 'Wren', team_member_id: 21, role: null };
+    let archived = false;
+    const handlers = namesHandlers({
+      role: 'officer',
+      names: [...NAMES, wren],
+      rpc(name, args) {
+        if (name === 'archive_team_member') {
+          archived = true;
+          return { data: null };
+        }
+        return seededHandlers().rpc!(name, args);
+      }
+    });
+    const from = handlers.from!;
+    handlers.from = (read) =>
+      read.table === 'team_members'
+        ? { data: [{ id: 21, person_id: 121, archived_at: archived ? '2026-10-05T20:00:00Z' : null }] }
+        : from(read);
+    renderApp('/g/wga/t/phoenix/roster', handlers);
+
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = (await within(table).findByRole('rowheader', { name: 'Wren' })).closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: 'More actions for Wren' }));
+    await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Archive Member' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Archive Wren?' });
+    await user.selectOptions(within(dialog).getByLabelText('Reason'), 'moved_guilds');
+    await user.type(within(dialog).getByLabelText('Detail'), 'Moved to another guild');
+    await user.click(within(dialog).getByRole('button', { name: 'Archive Member' }));
+
+    await waitFor(() => expect(within(table).queryByRole('rowheader', { name: 'Wren' })).not.toBeInTheDocument());
   });
 });
