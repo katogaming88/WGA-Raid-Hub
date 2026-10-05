@@ -553,3 +553,37 @@ describe('messages after a row action', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Archive Raz?' })).not.toBeInTheDocument());
   });
 });
+
+// A label already on the team, possibly held by someone who left, reads as a
+// sentence rather than the database's own words.
+describe('a duplicate label', () => {
+  const DUPLICATE = {
+    error: { message: 'duplicate key value violates unique constraint "names_team_id_label_key"', code: '23505' }
+  };
+  const SENTENCE =
+    'That did not save: A Name on this team already has that label. It may belong to someone who has left.';
+
+  it('reads as a sentence on Add a Name', async () => {
+    const user = userEvent.setup();
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer', write: () => DUPLICATE }));
+    await screen.findByRole('table', { name: 'Current roster' });
+    await user.type(screen.getByLabelText('Add a Name'), 'Raz');
+    await user.click(screen.getByRole('button', { name: 'Add Name' }));
+    expect(await screen.findByText(SENTENCE)).toHaveAttribute('role', 'alert');
+  });
+
+  it('reads as a sentence on Edit', async () => {
+    const user = userEvent.setup();
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer', write: () => DUPLICATE }));
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: 'More actions for Bare Raider' }));
+    await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Edit' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit Name' });
+    const input = within(dialog).getByLabelText('Name');
+    await user.clear(input);
+    await user.type(input, 'Raz');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(SENTENCE);
+  });
+});
