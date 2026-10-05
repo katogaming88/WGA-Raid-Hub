@@ -935,11 +935,23 @@ Your own `auth_user_id` is the `sub`: `select auth_user_id from site_admins`.
 Re-running the grant for someone who already has a role on the team is always refused, and says so
 when nobody has signed in with that Discord id yet. The grant refuses to *change* a role that is
 already set, so a promotion or demotion goes through the officer dashboard, not this call.
+Someone whose membership was archived (they left the team) holds no role, so granting them one
+brings them back with it (#1403); only a site admin can bring someone back as team leader. Their
+characters stay archived until an officer re-adds them on the Roster tab.
+
+If that was a mistake (a mistyped Discord id that belonged to someone who left), revoking the role
+does not undo it: the revoke only demotes them to raider, and they stay on the team. Archive them
+again instead, in the same kind of session (no page calls it yet):
+`archive_team_member(team_id, team_member_id, 'other', 'Granted by mistake')`. That records a
+removal reason of its own, and the row keeps the role the grant gave; the role they held when they
+first left is in the `team_member_restored` audit entry.
 
 To remove a role, `admin_revoke_team_role(team_id, discord_id)`. It demotes to `raider` when that
-person has claimed a character on the team and deletes the row only when nothing points at it,
-because the foreign key from `players` is `ON DELETE SET NULL` and a plain delete would silently
-unclaim their character.
+person has claimed a character on the team or has a removal reason on record, and deletes the row
+only when nothing points at it, because the foreign key from `players` is `ON DELETE SET NULL` and
+a plain delete would silently unclaim their character. Someone archived off the team is refused
+with a message saying their membership has ended, and their membership is left as it is; "does not
+have a role on this team" means the Discord id is not on the team at all.
 
 Direct SQL remains the fallback if the RPC is ever unavailable. Name the Discord id and the role;
 the trigger fills `person_id` and `auth_user_id` from the person, and skipping the RPC also skips
