@@ -34,22 +34,31 @@ export function usePersonCharacters(personId: number | null) {
   );
 }
 
-// Every alt of the team's raiders, for the officer roster. Memberships and
-// characters are both readable only by the team's officers.
+// Every alt of the team's raiders, for the officer roster, and which
+// memberships are current (the Roster page's name-only rows, #1355).
+// Memberships and characters are both readable only by the team's officers.
 export function useTeamAlts(teamId: number, enabled: boolean) {
-  return useSupabaseQuery<{ personByMember: Map<number, number>; characters: SavedCharacter[] }>(
+  return useSupabaseQuery<{
+    personByMember: Map<number, number>;
+    currentMembers: Set<number>;
+    characters: SavedCharacter[];
+  }>(
     ['team-alts', teamId],
     async (client) => {
       // team-read-guard: one row per raider on the team (80 on the largest)
-      const members = await client.from('team_members').select('id, person_id').eq('team_id', teamId);
+      const members = await client.from('team_members').select('id, person_id, archived_at').eq('team_id', teamId);
       if (members.error) return { data: null, error: members.error };
-      const rows = (members.data ?? []) as { id: number; person_id: number }[];
+      const rows = (members.data ?? []) as { id: number; person_id: number; archived_at: string | null }[];
       const personByMember = new Map(rows.map((m) => [m.id, m.person_id]));
+      const currentMembers = new Set(rows.filter((m) => !m.archived_at).map((m) => m.id));
       const people = [...new Set(rows.map((m) => m.person_id))];
-      if (!people.length) return { data: { personByMember, characters: [] }, error: null };
+      if (!people.length) return { data: { personByMember, currentMembers, characters: [] }, error: null };
       const characters = await client.from('characters').select(CHARACTER_COLUMNS).in('person_id', people);
       if (characters.error) return { data: null, error: characters.error };
-      return { data: { personByMember, characters: (characters.data ?? []) as SavedCharacter[] }, error: null };
+      return {
+        data: { personByMember, currentMembers, characters: (characters.data ?? []) as SavedCharacter[] },
+        error: null
+      };
     },
     { enabled }
   );

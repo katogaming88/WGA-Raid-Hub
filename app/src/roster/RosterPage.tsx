@@ -12,6 +12,7 @@ import {
   ROLE_ORDER,
   bareNames,
   classColor,
+  nameOnlyRows,
   officerStats,
   summarize,
   summaryLine,
@@ -213,8 +214,8 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
   // to everyone they would invite loot and attendance comparisons.
   const officer = useIsOfficer(team.id);
   // Bare and claimed Names (#1355): a claimed one overrides a row's display
-  // name; a bare one has no character yet, so it gets its own row below the
-  // role groups rather than fitting into one.
+  // name; a bare one, or a claimed one whose member has no character yet, gets
+  // its own row below the role groups rather than fitting into one.
   const namesQuery = useNames(team.id);
   const names = namesQuery.data ?? [];
   const groups = toRoster(players, gear, names);
@@ -242,12 +243,29 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
     officer && teamAlts.isSuccess
       ? altsByPlayer(players, teamAlts.data.personByMember, teamAlts.data.characters)
       : null;
+  // Which memberships the viewer can tell are current: every one on the team
+  // for its officers, their own for anyone else, so a departed member's Name
+  // never shows as if they were still here.
+  const { user } = useSession();
+  const access = useAccess();
+  const ownMember =
+    user && access.isSuccess ? access.data.teams.find((t) => t.teamId === team.id)?.teamMemberId : undefined;
+  const current = officer
+    ? teamAlts.isSuccess
+      ? teamAlts.data.currentMembers
+      : null
+    : ownMember !== undefined
+      ? new Set([ownMember])
+      : null;
+  const nameRows = [...unclaimed, ...nameOnlyRows(names, players, current)].sort((a, b) =>
+    a.label.localeCompare(b.label)
+  );
   const [filter, setFilter] = useState<Filter>('All');
   const summary = summarize(groups);
   const shown = filter === 'All' ? groups : groups.filter((g) => g.role === filter);
-  // Bare Names have no role, so a role tab (Tanks/Healers/...) has nothing to
-  // show them under; they only fold into the unfiltered Everyone view.
-  const shownUnclaimed = filter === 'All' ? unclaimed : [];
+  // Name-only rows have no role, so a role tab (Tanks/Healers/...) has nothing
+  // to show them under; they only fold into the unfiltered Everyone view.
+  const shownNameRows = filter === 'All' ? nameRows : [];
 
   // The filter sits above both columns, so the summary panel starts level with
   // the table rather than with the filter (Kat, 2026-09-14).
@@ -263,7 +281,7 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
       {/* Bare Names (#1355): officers add one ahead of a raider having an
           account, optionally with a role guess so it sits under that tab. */}
       {officer && <CreateNameForm teamId={team.id} />}
-      {groups.length === 0 && unclaimed.length === 0 ? (
+      {groups.length === 0 && nameRows.length === 0 ? (
         <div className="card placeholder">
           <p>No one is on this team’s roster yet.</p>
         </div>
@@ -327,7 +345,7 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
                 showAlts={showAlts}
                 teamId={team.id}
                 officer={officer}
-                unclaimed={shownUnclaimed}
+                nameRows={shownNameRows}
               />
             </div>
             <RosterSummaryPanel summary={summary} />
@@ -426,7 +444,7 @@ function RosterTable({
   showAlts = false,
   teamId,
   officer = false,
-  unclaimed = []
+  nameRows = []
 }: {
   groups: RoleGroup[];
   caption: string;
@@ -436,12 +454,12 @@ function RosterTable({
   // Officers only: each row's alts, and whether their rows are showing.
   alts?: Map<number, SavedCharacter[]> | null;
   showAlts?: boolean;
-  // Bare Names (#1355), with no character or role of their own -- shown as an
-  // extra group below the role groups. Needs teamId/officer for the row
-  // actions; the incoming-roster table (no Names) never passes these.
+  // Names with no character or role of their own (#1355), bare or claimed --
+  // shown as an extra group below the role groups. Needs teamId/officer for
+  // the row actions; the incoming-roster table (no Names) never passes these.
   teamId?: number | undefined;
   officer?: boolean;
-  unclaimed?: NameRow[];
+  nameRows?: NameRow[];
 }) {
   const columns = details ? (stats ? 6 : 4) : 1;
   return (
@@ -507,10 +525,10 @@ function RosterTable({
             })}
           </tbody>
         ))}
-        {unclaimed.length > 0 && teamId !== undefined && (
+        {nameRows.length > 0 && teamId !== undefined && (
           <tbody>
-            {unclaimed.map((n) => (
-              <UnclaimedRow
+            {nameRows.map((n) => (
+              <NameOnlyRow
                 key={`name-${n.id}`}
                 teamId={teamId}
                 officer={officer}
@@ -615,9 +633,11 @@ function RosterRow({
   );
 }
 
-// A bare Name (#1355): no character, no role, so no gear/tier/attendance --
-// just the label, a Claim button for anyone signed in, and officer actions.
-function UnclaimedRow({
+// A Name with no character (#1355), so no gear, tier or attendance: a bare
+// one, with Claim for anyone signed in, or a claimed one whose member has no
+// character yet, tagged as Kat's decision on #1355 asks. Officer actions on
+// both.
+function NameOnlyRow({
   teamId,
   officer,
   name,
@@ -630,14 +650,15 @@ function UnclaimedRow({
   details: boolean;
   withStats: boolean;
 }) {
+  const claimed = name.team_member_id !== null;
   const none = (
     <>
       <span aria-hidden="true">–</span>
-      <span className="visually-hidden">Not yet claimed</span>
+      <span className="visually-hidden">{claimed ? 'No character yet' : 'Not yet claimed'}</span>
     </>
   );
   return (
-    <tr className="unclaimed-row">
+    <tr className={claimed ? 'name-only-row' : 'unclaimed-row'}>
       <th scope="row" className="raider-cell">
         <span className="raider-name">{name.label}</span>
       </th>
@@ -652,13 +673,14 @@ function UnclaimedRow({
             </>
           )}
           <td className="status-cell">
+            {claimed && <span className="status-tag">No characters yet</span>}
             <NameRowActions
               teamId={teamId}
               officer={officer}
               nameId={name.id}
               label={name.label}
               role={name.role}
-              teamMemberId={null}
+              teamMemberId={name.team_member_id}
             />
           </td>
         </>
