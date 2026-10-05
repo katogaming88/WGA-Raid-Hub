@@ -45,6 +45,12 @@ function namesHandlers(
   overrides: {
     rpc?: FakeHandlers['rpc'];
     role?: 'officer' | 'raider' | null;
+    names?: NameRow[];
+    // The memberships an officer's roster reads, with whether each ended.
+    members?: { id: number; person_id: number; archived_at: string | null }[];
+    // The signed-in person's own membership on the team.
+    teamMemberId?: number;
+    write?: FakeHandlers['write'];
   } = {}
 ): FakeHandlers {
   const base = seededHandlers();
@@ -52,7 +58,7 @@ function namesHandlers(
     site_admin: false,
     guild_officer: false,
     boe_manager: false,
-    teams: [{ team_id: 1, team_member_id: 1, role, characters: [] }]
+    teams: [{ team_id: 1, team_member_id: overrides.teamMemberId ?? 1, role, characters: [] }]
   });
   return seededHandlers({
     session: overrides.role === null ? undefined : fakeSession({ battlenet: 'X#1', discord: { id: 'd', name: 'X' } }),
@@ -62,8 +68,10 @@ function namesHandlers(
       if (overrides.rpc) return overrides.rpc(name, args);
       return base.rpc!(name, args);
     },
+    ...(overrides.write ? { write: overrides.write } : {}),
     from(read: Read) {
-      if (read.table === 'names') return { data: NAMES };
+      if (read.table === 'names') return { data: overrides.names ?? NAMES };
+      if (read.table === 'team_members' && overrides.members) return { data: overrides.members };
       if (read.table === 'players') return { data: [TORBJORN] };
       return base.from!(read);
     }
@@ -210,5 +218,52 @@ describe('Names on the Roster page', () => {
     const menu = await screen.findByRole('menu', { name: 'More actions for Bare Raider' });
     expect(within(menu).getAllByRole('menuitem')).toHaveLength(1);
     expect(within(menu).getByRole('menuitem', { name: 'Claim' })).toBeInTheDocument();
+  });
+});
+
+// Kat's "No characters yet" row (#1355): a claimed Name whose membership is
+// current and has no character on the roster.
+describe('a claimed Name with no character yet', () => {
+  const WREN: NameRow = { id: 4, label: 'Wren', team_member_id: 21, role: null };
+  const LEFT_US: NameRow = { id: 5, label: 'Left Us', team_member_id: 23, role: null };
+  const MEMBERS = [
+    { id: 9, person_id: 109, archived_at: null },
+    { id: 21, person_id: 121, archived_at: null },
+    { id: 23, person_id: 123, archived_at: '2026-10-01T12:00:00Z' }
+  ];
+  const rowFor = async (label: string) => {
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    return (await within(table).findByRole('rowheader', { name: label })).closest('tr')!;
+  };
+
+  it('shows an officer the row, tagged, with its menu, and not one whose membership ended', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/roster',
+      namesHandlers({ role: 'officer', names: [...NAMES, WREN, LEFT_US], members: MEMBERS })
+    );
+    const row = await rowFor('Wren');
+    expect(within(row).getByText('No characters yet')).toBeInTheDocument();
+    expect(within(row).getByRole('button', { name: 'More actions for Wren' })).toBeInTheDocument();
+    expect(screen.queryByRole('rowheader', { name: 'Left Us' })).not.toBeInTheDocument();
+  });
+
+  it('shows the claimer their own row, with no menu', async () => {
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'raider', teamMemberId: 21, names: [...NAMES, WREN] }));
+    const row = await rowFor('Wren');
+    expect(within(row).getByText('No characters yet')).toBeInTheDocument();
+    expect(within(row).queryByRole('button', { name: 'More actions for Wren' })).not.toBeInTheDocument();
+  });
+
+  it('shows another raider only their own such row', async () => {
+    const mine: NameRow = { id: 6, label: 'Mine', team_member_id: 1, role: null };
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'raider', names: [...NAMES, WREN, mine] }));
+    await rowFor('Mine');
+    expect(screen.queryByRole('rowheader', { name: 'Wren' })).not.toBeInTheDocument();
+  });
+
+  it('shows a signed-out visitor none', async () => {
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: null, names: [...NAMES, WREN] }));
+    await rowFor('Bare Raider');
+    expect(screen.queryByRole('rowheader', { name: 'Wren' })).not.toBeInTheDocument();
   });
 });
