@@ -110,6 +110,19 @@ export function bareNames(names: NameRow[]): NameRow[] {
   return names.filter((n) => n.team_member_id === null && !n.role).sort((a, b) => a.label.localeCompare(b.label));
 }
 
+// Claimed Names whose membership is current and has no character on the
+// roster (#1355): Kat's "No characters yet" row, listed below the role groups
+// since a claimed Name's role guess no longer counts. `current` is the
+// memberships the viewer can tell are current, null while that is unknown, so
+// a departed member's Name never shows as if they were still here.
+export function nameOnlyRows(names: NameRow[], players: PlayerRow[], current: ReadonlySet<number> | null): NameRow[] {
+  if (!current) return [];
+  const rostered = new Set(players.map((p) => p.team_member_id).filter((id): id is number => id != null));
+  return names
+    .filter((n) => n.team_member_id !== null && current.has(n.team_member_id) && !rostered.has(n.team_member_id))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
 // A player with no role is not a roster entry yet, the same rule the current
 // site's mapSupabaseRoster() applies.
 export function toRoster(players: PlayerRow[], gear: GearRow[], names: NameRow[] = []): RoleGroup[] {
