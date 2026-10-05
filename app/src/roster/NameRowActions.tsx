@@ -115,6 +115,7 @@ export function NameRowActions({
           teamId={teamId}
           teamMemberId={teamMemberId}
           label={label}
+          hasName={nameId !== null}
           onClose={() => setConfirmDelete(false)}
           onArchived={refocus}
         />
@@ -184,12 +185,15 @@ function ArchiveMemberDialog({
   teamId,
   teamMemberId,
   label,
+  hasName,
   onClose,
   onArchived
 }: {
   teamId: number;
   teamMemberId: number;
   label: string;
+  // A member's row with no Name has none to keep.
+  hasName: boolean;
   onClose: () => void;
   // Runs once the archive is done, even if this row has gone by then.
   onArchived: () => void;
@@ -219,8 +223,8 @@ function ArchiveMemberDialog({
   return (
     <Dialog title={`Archive ${label}?`} onClose={onClose} busy={archiveMember.isPending} initialFocus={selectRef}>
       <p className="text-muted">
-        {label} and their characters leave the active roster, for someone who left. Their history stays -- this Name,
-        their loot and attendance are not deleted, and an officer can bring them back.
+        {label} and their characters leave the active roster, for someone who left. Their history stays --{' '}
+        {hasName && 'this Name, '}their loot and attendance are not deleted, and an officer can bring them back.
       </p>
       <form onSubmit={onSubmit} noValidate className="archive-reason-form">
         <div className="field">
