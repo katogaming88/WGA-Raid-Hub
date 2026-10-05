@@ -45,12 +45,18 @@ export function useTeamAlts(teamId: number, enabled: boolean) {
   }>(
     ['team-alts', teamId],
     async (client) => {
-      // team-read-guard: one row per raider on the team (80 on the largest)
-      const members = await client.from('team_members').select('id, person_id, archived_at').eq('team_id', teamId);
+      // Current memberships only: ended ones are kept since #1423 and would
+      // otherwise grow this read every season.
+      // team-read-guard: one row per current member of the team (80 on the largest)
+      const members = await client
+        .from('team_members')
+        .select('id, person_id')
+        .eq('team_id', teamId)
+        .is('archived_at', null);
       if (members.error) return { data: null, error: members.error };
-      const rows = (members.data ?? []) as { id: number; person_id: number; archived_at: string | null }[];
+      const rows = (members.data ?? []) as { id: number; person_id: number }[];
       const personByMember = new Map(rows.map((m) => [m.id, m.person_id]));
-      const currentMembers = new Set(rows.filter((m) => !m.archived_at).map((m) => m.id));
+      const currentMembers = new Set(rows.map((m) => m.id));
       const people = [...new Set(rows.map((m) => m.person_id))];
       if (!people.length) return { data: { personByMember, currentMembers, characters: [] }, error: null };
       const characters = await client.from('characters').select(CHARACTER_COLUMNS).in('person_id', people);
