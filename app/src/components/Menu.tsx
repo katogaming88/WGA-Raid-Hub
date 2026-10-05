@@ -16,7 +16,7 @@ export type MenuAction = { label: string; onSelect: () => void; disabled?: boole
 // plain absolutely-positioned panel would try to escape the row with.
 export function Menu({ label, actions }: { label: string; actions: MenuAction[] }) {
   const [open, setOpen] = useState(false);
-  const [rect, setRect] = useState<{ top: number; right: number } | null>(null);
+  const [rect, setRect] = useState<{ top: number; right: number } | { bottom: number; right: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -80,7 +80,14 @@ export function Menu({ label, actions }: { label: string; actions: MenuAction[] 
   const onTrigger = () => {
     if (!open && triggerRef.current) {
       const box = triggerRef.current.getBoundingClientRect();
-      setRect({ top: box.bottom + 4, right: window.innerWidth - box.right });
+      const right = window.innerWidth - box.right;
+      // The panel is fixed to the window, which cannot be scrolled to show it,
+      // so a trigger in the lower half opens it upward instead of off screen.
+      setRect(
+        box.top > window.innerHeight / 2
+          ? { bottom: window.innerHeight - box.top + 4, right }
+          : { top: box.bottom + 4, right }
+      );
     }
     setOpen((o) => !o);
   };
@@ -102,14 +109,7 @@ export function Menu({ label, actions }: { label: string; actions: MenuAction[] 
       {open &&
         rect &&
         createPortal(
-          <div
-            id={id}
-            ref={panelRef}
-            role="menu"
-            aria-label={label}
-            className="menu-panel"
-            style={{ top: rect.top, right: rect.right }}
-          >
+          <div id={id} ref={panelRef} role="menu" aria-label={label} className="menu-panel" style={rect}>
             {actions.map((action) => (
               <button
                 key={action.label}
