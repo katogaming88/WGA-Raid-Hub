@@ -212,4 +212,20 @@ describe('the same-team check runs on every write', () => {
   });
 });
 
+describe('claim_name() checks the Name first', () => {
+  it('refuses a claim against a team that does not exist with its own sentence', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const nameId = await insertName(q, team.teamId, 'Somewhere Else');
+      const uid = randomUUID();
+      await insertDiscordUser(q, uid, `fixture-${randomUUID()}`);
+      const missingTeam = (await q('select coalesce(max(id), 0) + 1000 as id from public.teams')).rows[0].id;
+
+      await expect(claimName(asUser, uid, missingTeam, nameId)).rejects.toThrow(
+        /^That Name is not available to claim$/
+      );
+    });
+  });
+});
+
 afterAll(() => pool.end());
