@@ -220,7 +220,7 @@ function ArchiveMemberDialog({
     <Dialog title={`Archive ${label}?`} onClose={onClose} busy={archiveMember.isPending} initialFocus={selectRef}>
       <p className="text-muted">
         {label} and their characters leave the active roster, for someone who left. Their history stays -- this Name,
-        their loot and attendance are not deleted, and they can come back if they rejoin.
+        their loot and attendance are not deleted, and an officer can bring them back.
       </p>
       <form onSubmit={onSubmit} noValidate className="archive-reason-form">
         <div className="field">
