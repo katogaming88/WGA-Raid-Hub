@@ -343,6 +343,22 @@ describe('who can write a Name, and what survives a membership ending', () => {
     });
   });
 
+  it('lets an officer assign a bare Name to a member of the team and remove the claim again', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const nameId = await insertName(q, team.teamId, 'Assigned By Hand');
+      const claimedBy = () => q('select team_member_id from public.names where id = $1', [nameId]);
+
+      await asUser(team.officer.uid, 'update public.names set team_member_id = $1 where id = $2', [
+        team.raider.memberId,
+        nameId
+      ]);
+      expect((await claimedBy()).rows[0].team_member_id).toBe(team.raider.memberId);
+      await asUser(team.officer.uid, 'update public.names set team_member_id = null where id = $1', [nameId]);
+      expect((await claimedBy()).rows[0].team_member_id).toBeNull();
+    });
+  });
+
   it('lets an officer and a guild officer rename a claimed Name', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
