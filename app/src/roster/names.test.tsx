@@ -72,7 +72,13 @@ function namesHandlers(
     ...(overrides.write ? { write: overrides.write } : {}),
     from(read: Read) {
       if (read.table === 'names') return { data: overrides.names ?? NAMES };
-      if (read.table === 'team_members' && overrides.members) return { data: overrides.members };
+      // A read filtered to current memberships gets only those, as PostgREST answers.
+      if (read.table === 'team_members' && overrides.members) {
+        const currentOnly = read.filters.some(
+          ([op, column, value]) => op === 'is' && column === 'archived_at' && value === null
+        );
+        return { data: currentOnly ? overrides.members.filter((m) => !m.archived_at) : overrides.members };
+      }
       if (read.table === 'players') return { data: overrides.players ?? [TORBJORN] };
       return base.from!(read);
     }
@@ -346,7 +352,7 @@ describe('Archive Member on a name-only row', () => {
     const from = handlers.from!;
     handlers.from = (read) =>
       read.table === 'team_members'
-        ? { data: [{ id: 21, person_id: 121, archived_at: archived ? '2026-10-05T20:00:00Z' : null }] }
+        ? { data: archived ? [] : [{ id: 21, person_id: 121, archived_at: null }] }
         : from(read);
     renderApp('/g/wga/t/phoenix/roster', handlers);
 
@@ -937,5 +943,18 @@ describe('Add a Name and focus', () => {
     await user.click(screen.getByRole('button', { name: 'Add Name' }));
     await screen.findByText('Thalindra added.');
     expect(input).toHaveFocus();
+  });
+});
+
+describe("the officers' membership read", () => {
+  it('asks only for current memberships, so ended ones never fill it', async () => {
+    const { client } = renderApp(
+      '/g/wga/t/phoenix/roster',
+      namesHandlers({ role: 'officer', members: [{ id: 9, person_id: 109, archived_at: null }] })
+    );
+    await screen.findByRole('table', { name: 'Current roster' });
+    await waitFor(() => expect(client.reads.some((r) => r.table === 'team_members')).toBe(true));
+    const read = client.reads.find((r) => r.table === 'team_members')!;
+    expect(read.filters).toContainEqual(['is', 'archived_at', null]);
   });
 });
