@@ -228,4 +228,20 @@ describe('claim_name() checks the Name first', () => {
   });
 });
 
+describe('claim_name() and a second Name', () => {
+  it('refuses someone who already holds a Name, in a sentence, and leaves the second Name bare', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await insertName(q, team.teamId, 'First Pick', team.raider.memberId);
+      const secondId = await insertName(q, team.teamId, 'Second Pick');
+
+      await expect(claimName(asUser, team.raider.uid, team.teamId, secondId)).rejects.toThrow(
+        /^You already have a Name on this team\. Ask an officer if it needs changing\.$/
+      );
+      const second = (await q('select team_member_id from public.names where id = $1', [secondId])).rows[0];
+      expect(second.team_member_id).toBeNull();
+    });
+  });
+});
+
 afterAll(() => pool.end());
