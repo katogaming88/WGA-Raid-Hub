@@ -62,17 +62,21 @@ export function useCreateName(teamId: number) {
   );
 }
 
-// role is only meaningful while the Name is still bare -- ignored by the
-// database once claimed, but the caller only offers the field then too.
-export function useRenameName(teamId: number) {
-  return useSupabaseMutation<null, { nameId: number; label: string; role: string | null }>(
-    async (client, { nameId, label, role }) => {
-      const result = await client.from('names').update({ label, role }).eq('id', nameId);
+// role is only meaningful while the Name is still bare, so the caller leaves
+// it out for a claimed Name and the guess it already holds is kept. The audit
+// row says what the Name was called before.
+type Rename = { nameId: number; label: string; previousLabel: string; role?: string | null };
+export function useRenameName(teamId: number, done?: (variables: Rename) => void) {
+  return useSupabaseMutation<null, Rename>(
+    async (client, { nameId, label, previousLabel, role }) => {
+      const values = role === undefined ? { label } : { label, role };
+      const result = await client.from('names').update(values).eq('id', nameId);
       if (result.error) return { data: null, error: labelError(result.error) };
-      await writeAuditLog(client, teamId, 'Name Renamed', nameId, role ? `${label} (${role})` : label);
+      const now = role ? `${label} (${role})` : label;
+      await writeAuditLog(client, teamId, 'Name Renamed', nameId, `${now}, was ${previousLabel}`);
       return { data: null, error: null };
     },
-    { key: ['rename-name', teamId], refreshes: [key(teamId)] }
+    { key: ['rename-name', teamId], refreshes: [key(teamId)], ...onDone(done) }
   );
 }
 
@@ -157,13 +161,13 @@ export function useArchiveTeamMember(
 
 // Officer: removes a bare Name outright (never claimed), a plain table
 // delete under the same officer-write policy create/rename/assign use.
-export function useDeleteName(teamId: number, done?: (variables: { nameId: number }) => void) {
-  return useSupabaseMutation<null, { nameId: number }>(
-    async (client, { nameId }) => {
+export function useDeleteName(teamId: number, done?: (variables: { nameId: number; label: string }) => void) {
+  return useSupabaseMutation<null, { nameId: number; label: string }>(
+    async (client, { nameId, label }) => {
       const result = await client.from('names').delete().eq('id', nameId).is('team_member_id', null).select('id');
       if (result.error) return result;
       if (result.data?.length === 0) return { data: null, error: CHANGED };
-      await writeAuditLog(client, teamId, 'Name Deleted', nameId, null);
+      await writeAuditLog(client, teamId, 'Name Deleted', nameId, label);
       return { data: null, error: null };
     },
     { key: ['delete-name', teamId], refreshes: [key(teamId)], ...onDone(done) }

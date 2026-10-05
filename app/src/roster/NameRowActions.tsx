@@ -112,6 +112,7 @@ export function NameRowActions({
           role={role ?? null}
           bare={teamMemberId === null}
           onClose={() => setEditing(false)}
+          onRenamed={refocus}
         />
       )}
       {confirmDelete && teamMemberId !== null && (
@@ -132,7 +133,7 @@ export function NameRowActions({
           onCancel={() => setConfirmDelete(false)}
           onDelete={() =>
             deleteName.mutate(
-              { nameId },
+              { nameId, label },
               {
                 onSuccess: () => {
                   setConfirmDelete(false);
@@ -288,7 +289,8 @@ function RenameDialog({
   label,
   role,
   bare,
-  onClose
+  onClose,
+  onRenamed
 }: {
   teamId: number;
   nameId: number;
@@ -298,11 +300,13 @@ function RenameDialog({
   // once claimed, a character's own class_spec_id decides it instead.
   bare: boolean;
   onClose: () => void;
+  // Runs once the rename is done, even if a new role moved the row by then.
+  onRenamed: () => void;
 }) {
   const id = useId();
   const [value, setValue] = useState(label);
   const [roleValue, setRoleValue] = useState(role ?? '');
-  const rename = useRenameName(teamId);
+  const rename = useRenameName(teamId, onRenamed);
   const { announce } = useStatus();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -311,7 +315,7 @@ function RenameDialog({
     const trimmed = value.trim();
     if (!trimmed) return;
     rename.mutate(
-      { nameId, label: trimmed, role: bare && roleValue ? roleValue : null },
+      { nameId, label: trimmed, previousLabel: label, ...(bare ? { role: roleValue || null } : {}) },
       {
         onSuccess: () => {
           announce('success', 'Name updated.');
