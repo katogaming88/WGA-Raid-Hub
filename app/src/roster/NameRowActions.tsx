@@ -71,7 +71,10 @@ export function NameRowActions({
         label: 'Remove claim',
         disabled: removeClaim.isPending,
         onSelect: () =>
-          removeClaim.mutate({ nameId }, { onSuccess: () => announce('success', `${label} is unclaimed again.`) })
+          removeClaim.mutate(
+            { nameId, label, teamMemberId },
+            { onSuccess: () => announce('success', `${label} is unclaimed again.`) }
+          )
       });
     }
   }

@@ -9,7 +9,7 @@ async function writeAuditLog(
   teamId: number,
   action: string,
   targetId: number | null,
-  detail: string | null
+  detail: string | Record<string, string | number> | null
 ) {
   // Best-effort like useAttendance.ts's writeAuditLog: a failed audit log
   // entry does not undo the write it was describing.
@@ -76,13 +76,15 @@ export function useRenameName(teamId: number) {
   );
 }
 
-// Officer: fixes a wrong self-service claim. The label survives, bare.
-export function useRemoveNameClaim(teamId: number, done?: (variables: { nameId: number }) => void) {
-  return useSupabaseMutation<null, { nameId: number }>(
-    async (client, { nameId }) => {
+// Officer: fixes a wrong self-service claim. The label survives, bare, and
+// the audit row keeps which membership held it, as a claim's own row does.
+type RemoveClaim = { nameId: number; label: string; teamMemberId: number };
+export function useRemoveNameClaim(teamId: number, done?: (variables: RemoveClaim) => void) {
+  return useSupabaseMutation<null, RemoveClaim>(
+    async (client, { nameId, label, teamMemberId }) => {
       const result = await client.from('names').update({ team_member_id: null }).eq('id', nameId);
       if (result.error) return result;
-      await writeAuditLog(client, teamId, 'Name Claim Removed', nameId, null);
+      await writeAuditLog(client, teamId, 'Name Claim Removed', nameId, { label, team_member_id: teamMemberId });
       return { data: null, error: null };
     },
     { key: ['remove-name-claim', teamId], refreshes: [key(teamId)], ...onDone(done) }
