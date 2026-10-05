@@ -1235,14 +1235,17 @@ describe('roster row menu', () => {
     });
     try {
       const trigger = page.getByRole('button', { name: 'More actions for Mirelle' });
-      // The row's button just above the bottom edge, and the scroll's own
-      // event delivered before the click, as when someone scrolls and clicks.
+      // The row's button just above the bottom edge, its scroll settled, then
+      // opened from the keyboard: Playwright's own click nudges the page and
+      // its late scroll event would close the menu whatever the page does.
       await trigger.evaluate((el) => {
         const box = el.getBoundingClientRect();
         window.scrollBy(0, box.bottom - window.innerHeight + 8);
       });
       await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
-      await trigger.click();
+      await trigger.focus();
+      await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+      await page.keyboard.press('Enter');
       const menu = page.getByRole('menu', { name: 'More actions for Mirelle' });
       // Still open once the click has settled, not opened and closed again.
       await page.waitForTimeout(300);
