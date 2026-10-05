@@ -34,7 +34,12 @@ export function Menu({ label, actions }: { label: string; actions: MenuAction[] 
     // A scrolling ancestor (the table's own horizontal scroll, or the page)
     // would otherwise leave the panel anchored to a spot that no longer lines
     // up with the trigger; closing is simpler than tracking position live.
-    const onScroll = () => setOpen(false);
+    // Focus inside the panel goes back to the trigger rather than to the page.
+    const onScroll = () => {
+      const focused = panelRef.current?.contains(document.activeElement) ?? false;
+      setOpen(false);
+      if (focused) triggerRef.current?.focus({ preventScroll: true });
+    };
     const onKeyDown = (event: KeyboardEvent) => {
       // Tab leaves the menu the way Escape does, back on its trigger.
       if (event.key === 'Tab') {
@@ -80,13 +85,14 @@ export function Menu({ label, actions }: { label: string; actions: MenuAction[] 
   const onTrigger = () => {
     if (!open && triggerRef.current) {
       const box = triggerRef.current.getBoundingClientRect();
-      const right = window.innerWidth - box.right;
+      // Measured from the visible edges: a fixed panel's right and bottom do
+      // not count a classic scrollbar, which innerWidth and innerHeight do.
+      const { clientWidth, clientHeight } = document.documentElement;
+      const right = clientWidth - box.right;
       // The panel is fixed to the window, which cannot be scrolled to show it,
       // so a trigger in the lower half opens it upward instead of off screen.
       setRect(
-        box.top > window.innerHeight / 2
-          ? { bottom: window.innerHeight - box.top + 4, right }
-          : { top: box.bottom + 4, right }
+        box.top > clientHeight / 2 ? { bottom: clientHeight - box.top + 4, right } : { top: box.bottom + 4, right }
       );
     }
     setOpen((o) => !o);
