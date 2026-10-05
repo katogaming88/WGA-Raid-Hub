@@ -13,11 +13,12 @@ import {
   useRenameName
 } from './useNames';
 
-// A Name's actions (#1355), all behind one "..." menu (Kat, 2026-09-29):
+// A roster row's actions (#1355), all behind one "..." menu (Kat, 2026-09-29):
 // Claim on a bare row (anyone signed in), Edit/Remove claim/Archive Member
-// once claimed, Edit/Delete Name while still bare. Everything but Claim is
-// officer-only. No menu at all when nothing in it applies (a raider looking
-// at an already-claimed row).
+// once claimed, Edit/Delete Name while still bare, and Archive Member alone on
+// a member's row with no Name. Everything but Claim is officer-only. No menu
+// at all when nothing in it applies (a raider looking at an already-claimed
+// row).
 export function NameRowActions({
   teamId,
   officer,
@@ -28,7 +29,8 @@ export function NameRowActions({
 }: {
   teamId: number;
   officer: boolean;
-  nameId: number;
+  // Null on a member's row that holds no Name.
+  nameId: number | null;
   label: string;
   // The raid role guess a bare Name carries; meaningless once claimed.
   role?: string | null;
@@ -43,14 +45,14 @@ export function NameRowActions({
   const deleteName = useDeleteName(teamId);
 
   const menuActions: MenuAction[] = [];
-  if (teamMemberId === null && user) {
+  if (nameId !== null && teamMemberId === null && user) {
     menuActions.push({
       label: claim.isPending ? 'Claiming…' : 'Claim',
       disabled: claim.isPending,
       onSelect: () => claim.mutate({ nameId }, { onSuccess: () => announce('success', `Claimed ${label}.`) })
     });
   }
-  if (officer) {
+  if (officer && nameId !== null) {
     menuActions.push({ label: 'Edit', onSelect: () => setEditing(true) });
     if (teamMemberId !== null) {
       menuActions.push({
@@ -60,6 +62,8 @@ export function NameRowActions({
           removeClaim.mutate({ nameId }, { onSuccess: () => announce('success', `${label} is unclaimed again.`) })
       });
     }
+  }
+  if (officer && (teamMemberId !== null || nameId !== null)) {
     menuActions.push({
       label: teamMemberId !== null ? 'Archive Member' : 'Delete Name',
       onSelect: () => setConfirmDelete(true)
@@ -81,7 +85,7 @@ export function NameRowActions({
           That did not save: {removeClaim.error.message}
         </p>
       )}
-      {editing && (
+      {editing && nameId !== null && (
         <RenameDialog
           teamId={teamId}
           nameId={nameId}
@@ -99,7 +103,7 @@ export function NameRowActions({
           onClose={() => setConfirmDelete(false)}
         />
       )}
-      {confirmDelete && teamMemberId === null && (
+      {confirmDelete && teamMemberId === null && nameId !== null && (
         <DeleteNameDialog
           label={label}
           busy={deleteName.isPending}

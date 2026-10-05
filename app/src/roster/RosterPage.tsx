@@ -616,11 +616,13 @@ function RosterRow({
                 {s}
               </span>
             ))}
-            {teamId !== undefined && raider.nameId != null && (
+            {/* The menu is on any row with a Name, and for officers on any
+                row with a membership, so Archive Member never needs a Name. */}
+            {teamId !== undefined && (raider.nameId != null || (officer && raider.teamMemberId != null)) && (
               <NameRowActions
                 teamId={teamId}
                 officer={officer}
-                nameId={raider.nameId}
+                nameId={raider.nameId ?? null}
                 label={raider.name}
                 role={raider.role}
                 teamMemberId={raider.teamMemberId ?? null}
