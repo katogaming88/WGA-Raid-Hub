@@ -887,3 +887,42 @@ describe('Edit', () => {
     await waitFor(() => expect(screen.getByRole('region', { name: 'Current roster' })).toHaveFocus());
   });
 });
+
+describe('the row menu and a scroll', () => {
+  it('closes on a scroll with focus back on its "..." button', async () => {
+    const user = userEvent.setup();
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
+    const trigger = within(row).getByRole('button', { name: 'More actions for Raz' });
+    await user.click(trigger);
+    const menu = await screen.findByRole('menu', { name: 'More actions for Raz' });
+    expect(within(menu).getAllByRole('menuitem')[0]).toHaveFocus();
+    document.dispatchEvent(new Event('scroll'));
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+  });
+});
+
+describe('the row menu beside a scrollbar', () => {
+  it('measures its right edge from the visible edge of the window, not the scrollbar', async () => {
+    const user = userEvent.setup();
+    const width = Object.getOwnPropertyDescriptor(document.documentElement, 'clientWidth');
+    // A 1024px window with a 17px classic scrollbar down its right side.
+    Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, value: 1007 });
+    try {
+      renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
+      const table = await screen.findByRole('table', { name: 'Current roster' });
+      const row = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
+      const trigger = within(row).getByRole('button', { name: 'More actions for Raz' });
+      trigger.getBoundingClientRect = () => ({ top: 100, bottom: 124, left: 960, right: 992 }) as DOMRect;
+      await user.click(trigger);
+      const menu = await screen.findByRole('menu', { name: 'More actions for Raz' });
+      expect(window.innerWidth).toBe(1024);
+      expect(menu.style.right).toBe('15px');
+    } finally {
+      if (width) Object.defineProperty(document.documentElement, 'clientWidth', width);
+      else delete (document.documentElement as { clientWidth?: number }).clientWidth;
+    }
+  });
+});
