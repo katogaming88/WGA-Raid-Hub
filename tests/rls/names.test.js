@@ -4,7 +4,7 @@
 // trigger are RLS-shaped.
 import { randomUUID } from 'node:crypto';
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, insertDiscordUser, seedTeam, seedMember, SITE_ADMIN } from './helpers.js';
+import { pool, withTxn, insertDiscordUser, seedTeam, seedMember, SITE_ADMIN, GUILD_OFFICER } from './helpers.js';
 
 const insertName = (q, teamId, label, memberId = null) =>
   q('insert into public.names (team_id, label, team_member_id) values ($1, $2, $3) returning id', [
@@ -280,6 +280,105 @@ describe('claim_name() leaves an audit row', () => {
           detail: { label: 'Just Arrived', team_member_id: newcomerMemberId, membership_created: true }
         }
       ]);
+    });
+  });
+});
+
+describe('who can write a Name, and what survives a membership ending', () => {
+  it("leaves a raider's update and delete with nothing changed", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const nameId = await insertName(q, team.teamId, 'Untouched');
+      const updated = await asUser(team.raider.uid, "update public.names set label = 'Raider Was Here' where id = $1", [
+        nameId
+      ]);
+      const deleted = await asUser(team.raider.uid, 'delete from public.names where id = $1', [nameId]);
+      expect([updated.rowCount, deleted.rowCount]).toEqual([0, 0]);
+      expect((await q('select label from public.names where id = $1', [nameId])).rows).toEqual([
+        { label: 'Untouched' }
+      ]);
+    });
+  });
+
+  it("refuses another team's officer", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const other = await seedTeam(q);
+      const nameId = await insertName(q, team.teamId, 'Not Yours');
+      await expect(
+        asUser(other.officer.uid, "insert into public.names (team_id, label) values ($1, 'Planted')", [team.teamId])
+      ).rejects.toThrow(/row-level security/);
+      const updated = await asUser(other.officer.uid, "update public.names set label = 'Taken Over' where id = $1", [
+        nameId
+      ]);
+      expect(updated.rowCount).toBe(0);
+      expect((await q('select label from public.names where team_id = $1', [team.teamId])).rows).toEqual([
+        { label: 'Not Yours' }
+      ]);
+    });
+  });
+
+  it('refuses a Name from another team and creates no membership on the team named', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const other = await seedTeam(q);
+      const otherNameId = await insertName(q, other.teamId, 'Over There');
+      const uid = randomUUID();
+      await insertDiscordUser(q, uid, `fixture-${randomUUID()}`);
+
+      await expect(claimName(asUser, uid, team.teamId, otherNameId)).rejects.toThrow(
+        /^That Name is not available to claim$/
+      );
+      const members = await q('select id from public.team_members where auth_user_id = $1', [uid]);
+      expect(members.rows).toEqual([]);
+    });
+  });
+
+  it('lets an officer and a guild officer rename a claimed Name', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const nameId = await insertName(q, team.teamId, 'Old Label', team.raider.memberId);
+      await asUser(team.officer.uid, "update public.names set label = 'Officer Label' where id = $1", [nameId]);
+      expect((await q('select label from public.names where id = $1', [nameId])).rows[0].label).toBe('Officer Label');
+      await asUser(GUILD_OFFICER, "update public.names set label = 'Guild Label' where id = $1", [nameId]);
+      expect((await q('select label from public.names where id = $1', [nameId])).rows[0].label).toBe('Guild Label');
+    });
+  });
+
+  it('keeps a Name linked and its label taken after Archive Member, and a restore finds it theirs', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const nameId = await insertName(q, team.teamId, 'Gone For Now', team.raider.memberId);
+      await asUser(team.officer.uid, "select public.archive_team_member($1, $2, 'other', 'Taking a break')", [
+        team.teamId,
+        team.raider.memberId
+      ]);
+      const archivedAt = async () =>
+        (await q('select archived_at from public.team_members where id = $1', [team.raider.memberId])).rows[0]
+          .archived_at;
+      expect(await archivedAt()).not.toBeNull();
+      const linked = () => q('select team_member_id from public.names where id = $1', [nameId]);
+      expect((await linked()).rows[0].team_member_id).toBe(team.raider.memberId);
+      await expect(
+        asUser(team.officer.uid, "insert into public.names (team_id, label) values ($1, 'gone for now')", [team.teamId])
+      ).rejects.toThrow(/names_team_id_label_key/);
+
+      await asUser(team.officer.uid, 'select public.restore_team_member($1, $2)', [team.teamId, team.raider.memberId]);
+      expect(await archivedAt()).toBeNull();
+      expect((await linked()).rows[0].team_member_id).toBe(team.raider.memberId);
+    });
+  });
+
+  it('deletes the Name when a revoke deletes a membership with no character', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const nameId = await insertName(q, team.teamId, 'Revoked', team.raider.memberId);
+      await asUser(team.leader.uid, 'select public.admin_revoke_team_role($1, $2)', [
+        team.teamId,
+        team.raider.discordId
+      ]);
+      expect((await q('select id from public.team_members where id = $1', [team.raider.memberId])).rows).toEqual([]);
+      expect((await q('select id from public.names where id = $1', [nameId])).rows).toEqual([]);
     });
   });
 });
