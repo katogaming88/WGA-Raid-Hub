@@ -669,3 +669,19 @@ describe('the officer writes and their audit rows', () => {
     ]);
   });
 });
+
+// Coming back is an officer's call (decided on #1355, 2026-10-02): any officer
+// action brings an archived member back, and nothing they do themselves does.
+describe('the Archive dialog', () => {
+  it('says an officer can bring them back', async () => {
+    const user = userEvent.setup();
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: 'More actions for Raz' }));
+    await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Archive Member' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Archive Raz?' });
+    expect(dialog).toHaveTextContent('an officer can bring them back');
+    expect(dialog).not.toHaveTextContent('rejoin');
+  });
+});
