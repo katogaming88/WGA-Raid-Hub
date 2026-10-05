@@ -4,7 +4,16 @@
 // trigger are RLS-shaped.
 import { randomUUID } from 'node:crypto';
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, insertDiscordUser, seedTeam, seedMember, SITE_ADMIN, GUILD_OFFICER } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  insertDiscordUser,
+  seedTeam,
+  seedMember,
+  rowLockModes,
+  SITE_ADMIN,
+  GUILD_OFFICER
+} from './helpers.js';
 
 const insertName = (q, teamId, label, memberId = null) =>
   q('insert into public.names (team_id, label, team_member_id) values ($1, $2, $3) returning id', [
@@ -379,6 +388,17 @@ describe('who can write a Name, and what survives a membership ending', () => {
       ]);
       expect((await q('select id from public.team_members where id = $1', [team.raider.memberId])).rows).toEqual([]);
       expect((await q('select id from public.names where id = $1', [nameId])).rows).toEqual([]);
+    });
+  });
+});
+
+describe('claim_name() and an archive at the same moment', () => {
+  it("holds a share lock on the caller's membership until it commits, as claim_character() does", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const nameId = await insertName(q, team.teamId, 'Locked In');
+      await claimName(asUser, team.raider.uid, team.teamId, nameId);
+      expect(await rowLockModes(q, 'team_members', team.raider.memberId)).toContain('For Share');
     });
   });
 });
