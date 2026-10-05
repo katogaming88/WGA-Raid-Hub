@@ -4,7 +4,7 @@
 // trigger are RLS-shaped.
 import { randomUUID } from 'node:crypto';
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, insertDiscordUser, seedTeam } from './helpers.js';
+import { pool, withTxn, insertDiscordUser, seedTeam, seedMember, SITE_ADMIN } from './helpers.js';
 
 const insertName = (q, teamId, label, memberId = null) =>
   q('insert into public.names (team_id, label, team_member_id) values ($1, $2, $3) returning id', [
@@ -185,6 +185,29 @@ describe('claim_name', () => {
       expect(member.archived_at).not.toBeNull();
       const name = (await q('select team_member_id from public.names where id = $1', [nameId])).rows[0];
       expect(name.team_member_id).toBeNull();
+    });
+  });
+});
+
+describe('the same-team check runs on every write', () => {
+  it('refuses moving a claimed Name to another team by team_id alone, for a site admin and an officer of both teams', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const teamA = await seedTeam(q);
+      const teamB = await seedTeam(q);
+      const nameId = await insertName(q, teamA.teamId, 'Stays Home', teamA.raider.memberId);
+      const both = await seedMember(q, { teamId: teamA.teamId, role: 'officer' });
+      await q("insert into public.team_members (team_id, discord_id, role) values ($1, $2, 'officer')", [
+        teamB.teamId,
+        both.discordId
+      ]);
+
+      for (const uid of [SITE_ADMIN, both.uid]) {
+        await expect(
+          asUser(uid, 'update public.names set team_id = $1 where id = $2', [teamB.teamId, nameId])
+        ).rejects.toThrow(/^That membership is not on this team$/);
+      }
+      const row = (await q('select team_id, team_member_id from public.names where id = $1', [nameId])).rows[0];
+      expect(row).toEqual({ team_id: teamA.teamId, team_member_id: teamA.raider.memberId });
     });
   });
 });
