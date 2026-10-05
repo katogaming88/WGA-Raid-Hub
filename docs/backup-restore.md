@@ -83,7 +83,7 @@ Note the dependency, because it decides restore order: `priority_order` and `sco
 - `team_lineup_settings` (a team's own tanks-wanted and healers-wanted counts for the boss lineup, [#1244](https://github.com/katogaming88/WGA-Raid-Hub/issues/1244); officer-set, no other source, and a team with no row simply uses the 2/4 default. Restore after `teams`)
 - `team_schedule_settings` (a team's default raid difficulty, which every raid night without its own follows, [#1246](https://github.com/katogaming88/WGA-Raid-Hub/issues/1246); officer-set, no other source, and a team with no row has none set. Restore after `teams`)
 - `removal_reasons` (every reason a character or a membership was removed for, one row each, [#1427](https://github.com/katogaming88/WGA-Raid-Hub/issues/1427); the notes row keeps only the latest, so the earlier ones exist nowhere else once the audit log's free-text copies are gone. Restore after `players`, `team_members` and `people`)
-- `names` (a team's roster labels, [#1355](https://github.com/katogaming88/WGA-Raid-Hub/issues/1355): the bare ones an officer typed ahead of someone joining, and each claim linking a label to a membership; no other source, so a lost bare Name is typed again and a lost claim is made again)
+- `names` (a team's roster labels, [#1355](https://github.com/katogaming88/WGA-Raid-Hub/issues/1355): the bare ones an officer typed ahead of someone joining, and each claim linking a label to a membership; no other source, so a lost bare Name is typed again and a lost claim is made again. Restores after `teams` and `team_members`)
 
 This second list is exactly why the milestone exists: none of it can be re-fetched or re-derived, and the Danger Zone's clear RPCs make a bad delete a one-click possibility.
 
