@@ -100,7 +100,8 @@ export const ARCHIVE_REASONS: { value: string; label: string }[] = [
 
 // Officer: someone left. Archives the membership and their active
 // characters (never deletes either, #1423), so the roster read needs
-// refreshing too, alongside this team's Names.
+// refreshing too, alongside this team's Names, and so does the membership
+// read a name-only row depends on.
 export function useArchiveTeamMember(teamId: number) {
   return useSupabaseMutation<null, { teamMemberId: number; reason: string; detail: string }>(
     async (client, { teamMemberId, reason, detail }) => {
@@ -112,7 +113,7 @@ export function useArchiveTeamMember(teamId: number) {
       });
       return { data: null, error: result.error };
     },
-    { key: ['archive-team-member', teamId], refreshes: [key(teamId), ['roster', teamId]] }
+    { key: ['archive-team-member', teamId], refreshes: [key(teamId), ['roster', teamId], ['team-alts', teamId]] }
   );
 }
 
