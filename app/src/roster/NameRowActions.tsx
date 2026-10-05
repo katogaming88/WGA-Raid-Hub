@@ -81,7 +81,11 @@ export function NameRowActions({
   if (officer && (teamMemberId !== null || nameId !== null)) {
     menuActions.push({
       label: teamMemberId !== null ? 'Archive Member' : 'Delete Name',
-      onSelect: () => setConfirmDelete(true)
+      onSelect: () => {
+        // A failure from an earlier try is not this one's.
+        deleteName.reset();
+        setConfirmDelete(true);
+      }
     });
   }
 

@@ -76,14 +76,27 @@ export function useRenameName(teamId: number) {
   );
 }
 
+// Delete Name and Remove claim match only the Name as the officer saw it, so
+// one claimed, or claimed by someone else, since the page read it is left
+// alone and the officer is told.
+const CHANGED = {
+  message: 'That Name has changed since the page loaded. Reload the page to see it as it is now.'
+};
+
 // Officer: fixes a wrong self-service claim. The label survives, bare, and
 // the audit row keeps which membership held it, as a claim's own row does.
 type RemoveClaim = { nameId: number; label: string; teamMemberId: number };
 export function useRemoveNameClaim(teamId: number, done?: (variables: RemoveClaim) => void) {
   return useSupabaseMutation<null, RemoveClaim>(
     async (client, { nameId, label, teamMemberId }) => {
-      const result = await client.from('names').update({ team_member_id: null }).eq('id', nameId);
+      const result = await client
+        .from('names')
+        .update({ team_member_id: null })
+        .eq('id', nameId)
+        .eq('team_member_id', teamMemberId)
+        .select('id');
       if (result.error) return result;
+      if (result.data?.length === 0) return { data: null, error: CHANGED };
       await writeAuditLog(client, teamId, 'Name Claim Removed', nameId, { label, team_member_id: teamMemberId });
       return { data: null, error: null };
     },
@@ -147,8 +160,9 @@ export function useArchiveTeamMember(
 export function useDeleteName(teamId: number, done?: (variables: { nameId: number }) => void) {
   return useSupabaseMutation<null, { nameId: number }>(
     async (client, { nameId }) => {
-      const result = await client.from('names').delete().eq('id', nameId);
+      const result = await client.from('names').delete().eq('id', nameId).is('team_member_id', null).select('id');
       if (result.error) return result;
+      if (result.data?.length === 0) return { data: null, error: CHANGED };
       await writeAuditLog(client, teamId, 'Name Deleted', nameId, null);
       return { data: null, error: null };
     },
