@@ -685,3 +685,26 @@ describe('the Archive dialog', () => {
     expect(dialog).not.toHaveTextContent('rejoin');
   });
 });
+
+describe('the Archive dialog for a member with no Name', () => {
+  it('does not speak of a Name', async () => {
+    const user = userEvent.setup();
+    const brannoc = {
+      ...TORBJORN,
+      id: 2,
+      name_realm: 'Brannoc-Illidan',
+      team_member_id: 12,
+      classes_specs: { class: 'Paladin', spec: 'Holy', role: 'Heal' }
+    };
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer', players: [TORBJORN, brannoc] }));
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table)
+      .getByRole('rowheader', { name: /Brannoc/ })
+      .closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: 'More actions for Brannoc' }));
+    await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Archive Member' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Archive Brannoc?' });
+    expect(dialog).toHaveTextContent('their loot and attendance are not deleted');
+    expect(dialog).not.toHaveTextContent('this Name');
+  });
+});
