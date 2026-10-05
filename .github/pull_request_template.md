@@ -19,7 +19,9 @@ what problem goes away? -->
 ## Screenshots
 
 <!-- Required if this changes how something looks or adds something new.
-One per changed view; add phone width and light mode if they change. -->
+One per changed view; add phone width and light mode if they change.
+List each as "Screenshot N (file-name.png)", nothing else -- no notes on
+how or whether they get attached. -->
 
 ## Database changes (applies on merge)
 

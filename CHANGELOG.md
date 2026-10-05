@@ -25,6 +25,17 @@ answers to.
 
 ---
 
+## [3.166.2] - 2026-10-04
+
+### Project
+
+- Logged two security-audit decisions (docs/database-decisions.md):
+  nightly backups stay unencrypted (#1418), and every current-site
+  character claim will post to the officer Discord channel until cutover
+  (#1419). Neither build is in this PR.
+
+---
+
 ## [3.166.1] - 2026-10-03
 
 ### Backend
