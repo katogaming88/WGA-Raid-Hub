@@ -432,3 +432,124 @@ describe('focus after a row action', () => {
     await waitFor(() => expect(region).toHaveFocus());
   });
 });
+
+// A row action says it worked even when the write takes its row away, and the
+// Archive dialog closes itself when the row stays.
+describe('messages after a row action', () => {
+  const KAEL = {
+    ...TORBJORN,
+    id: 3,
+    name_realm: 'Kaelthas-Illidan',
+    team_member_id: 1,
+    classes_specs: { class: 'Mage', spec: 'Fire', role: 'Ranged' }
+  };
+
+  // Answers a table from `after` once the returned function has been called.
+  function changing(handlers: FakeHandlers, table: string, after: unknown[]) {
+    let changed = false;
+    const from = handlers.from!;
+    handlers.from = (read) => (read.table === table && changed ? { data: after } : from(read));
+    return () => {
+      changed = true;
+    };
+  }
+
+  it('says "Claimed" when the claim moves the Name onto the claimer\'s character row', async () => {
+    const user = userEvent.setup();
+    let done = () => {};
+    const handlers = namesHandlers({
+      role: 'raider',
+      players: [TORBJORN, KAEL],
+      rpc(name, args) {
+        if (name === 'claim_name') {
+          done();
+          return { data: null };
+        }
+        return seededHandlers().rpc!(name, args);
+      }
+    });
+    done = changing(
+      handlers,
+      'names',
+      NAMES.map((n) => (n.id === 1 ? { ...n, team_member_id: 1 } : n))
+    );
+    renderApp('/g/wga/t/phoenix/roster', handlers);
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: 'More actions for Bare Raider' }));
+    await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Claim' }));
+    expect(await screen.findByText('Claimed Bare Raider.')).toBeInTheDocument();
+  });
+
+  it('says "archived" when the archive takes the row away', async () => {
+    const user = userEvent.setup();
+    let done = () => {};
+    const handlers = namesHandlers({
+      role: 'officer',
+      rpc(name, args) {
+        if (name === 'archive_team_member') {
+          done();
+          return { data: null };
+        }
+        return seededHandlers().rpc!(name, args);
+      }
+    });
+    done = changing(handlers, 'players', []);
+    renderApp('/g/wga/t/phoenix/roster', handlers);
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: 'More actions for Raz' }));
+    await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Archive Member' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Archive Raz?' });
+    await user.selectOptions(within(dialog).getByLabelText('Reason'), 'drama');
+    await user.type(within(dialog).getByLabelText('Detail'), 'Left after a falling out');
+    await user.click(within(dialog).getByRole('button', { name: 'Archive Member' }));
+    expect(await screen.findByText('Raz archived.')).toBeInTheDocument();
+  });
+
+  it('says "removed" when Delete Name takes the row away', async () => {
+    const user = userEvent.setup();
+    let done = () => {};
+    const handlers = namesHandlers({
+      role: 'officer',
+      write: (w) => {
+        if (w.method === 'delete') done();
+        return { data: null };
+      }
+    });
+    done = changing(
+      handlers,
+      'names',
+      NAMES.filter((n) => n.id !== 1)
+    );
+    renderApp('/g/wga/t/phoenix/roster', handlers);
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: 'More actions for Bare Raider' }));
+    await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Delete Name' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Delete Bare Raider?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Delete Name' }));
+    expect(await screen.findByText('Bare Raider removed.')).toBeInTheDocument();
+  });
+
+  it('closes the Archive dialog when the row is still there afterwards', async () => {
+    const user = userEvent.setup();
+    renderApp(
+      '/g/wga/t/phoenix/roster',
+      namesHandlers({
+        role: 'officer',
+        rpc: (name, args) => (name === 'archive_team_member' ? { data: null } : seededHandlers().rpc!(name, args))
+      })
+    );
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: 'More actions for Raz' }));
+    await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Archive Member' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Archive Raz?' });
+    await user.selectOptions(within(dialog).getByLabelText('Reason'), 'other');
+    await user.type(within(dialog).getByLabelText('Detail'), 'Stepping back');
+    await user.click(within(dialog).getByRole('button', { name: 'Archive Member' }));
+    await screen.findByText('Raz archived.');
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Archive Raz?' })).not.toBeInTheDocument());
+  });
+});
