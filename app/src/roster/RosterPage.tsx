@@ -364,6 +364,9 @@ function CreateNameForm({ teamId }: { teamId: number }) {
   const [role, setRole] = useState('');
   const create = useCreateName(teamId);
   const { announce } = useStatus();
+  // Back in the field after a save: the button it was pressed from is disabled
+  // again once the field clears.
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -376,6 +379,7 @@ function CreateNameForm({ teamId }: { teamId: number }) {
           announce('success', `${trimmed} added.`);
           setLabel('');
           setRole('');
+          inputRef.current?.focus();
         }
       }
     );
@@ -389,6 +393,7 @@ function CreateNameForm({ teamId }: { teamId: number }) {
         </label>
         <input
           id={`${id}-label`}
+          ref={inputRef}
           className="input"
           type="text"
           placeholder="Raider's display name"
