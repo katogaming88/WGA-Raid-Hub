@@ -362,3 +362,73 @@ describe('Archive Member on a name-only row', () => {
     await waitFor(() => expect(within(table).queryByRole('rowheader', { name: 'Wren' })).not.toBeInTheDocument());
   });
 });
+
+// Keyboard focus never lands on the page itself after a row action: it goes
+// back to the row's "..." button, or to the roster table when the row the
+// action came from is gone.
+describe('focus after a row action', () => {
+  const openMenu = async (user: ReturnType<typeof userEvent.setup>, rowName: RegExp | string, label: string) => {
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table).getByRole('rowheader', { name: rowName }).closest('tr')!;
+    const trigger = within(row).getByRole('button', { name: `More actions for ${label}` });
+    await user.click(trigger);
+    return { trigger, menu: await screen.findByRole('menu', { name: `More actions for ${label}` }) };
+  };
+
+  it('returns to the "..." button after Edit then Cancel', async () => {
+    const user = userEvent.setup();
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
+    const { trigger, menu } = await openMenu(user, /Raz/, 'Raz');
+    await user.click(within(menu).getByRole('menuitem', { name: 'Edit' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit Name' });
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(trigger).toHaveFocus();
+  });
+
+  it('returns to the "..." button after Archive Member then Escape', async () => {
+    const user = userEvent.setup();
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
+    const { trigger, menu } = await openMenu(user, /Raz/, 'Raz');
+    await user.click(within(menu).getByRole('menuitem', { name: 'Archive Member' }));
+    await screen.findByRole('dialog', { name: 'Archive Raz?' });
+    await user.keyboard('{Escape}');
+    expect(trigger).toHaveFocus();
+  });
+
+  it('closes the menu on Tab and returns to the "..." button', async () => {
+    const user = userEvent.setup();
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
+    const { trigger } = await openMenu(user, /Raz/, 'Raz');
+    await user.tab();
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('moves to the roster table when a Claim takes the row away', async () => {
+    const user = userEvent.setup();
+    let claimed = false;
+    const handlers = namesHandlers({
+      role: 'raider',
+      rpc(name, args) {
+        if (name === 'claim_name') {
+          claimed = true;
+          return { data: null };
+        }
+        return seededHandlers().rpc!(name, args);
+      }
+    });
+    const from = handlers.from!;
+    handlers.from = (read) =>
+      read.table === 'names' && claimed
+        ? { data: NAMES.map((n) => (n.id === 1 ? { ...n, team_member_id: 1 } : n)) }
+        : from(read);
+    renderApp('/g/wga/t/phoenix/roster', handlers);
+    const { menu } = await openMenu(user, 'Bare Raider', 'Bare Raider');
+    await user.click(within(menu).getByRole('menuitem', { name: 'Claim' }));
+    const region = screen.getByRole('region', { name: 'Current roster' });
+    await waitFor(() =>
+      expect(within(region).queryByRole('button', { name: 'More actions for Bare Raider' })).not.toBeInTheDocument()
+    );
+    await waitFor(() => expect(region).toHaveFocus());
+  });
+});
