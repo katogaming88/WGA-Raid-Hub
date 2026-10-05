@@ -204,7 +204,12 @@ function ArchiveMemberDialog({
     if (!reason || !trimmed) return;
     archiveMember.mutate(
       { teamMemberId, reason, detail: trimmed },
-      { onSuccess: () => announce('success', `${label} archived.`) }
+      {
+        onSuccess: () => {
+          announce('success', `${label} archived.`);
+          onClose();
+        }
+      }
     );
   };
 
