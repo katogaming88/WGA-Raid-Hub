@@ -91,14 +91,15 @@ export function useRemoveNameClaim(teamId: number, done?: (variables: RemoveClai
   );
 }
 
-// Self-service: the raider picks their own bare Name off the list.
+// Self-service: the raider picks their own bare Name off the list. A first
+// claim on a team creates the membership, so the membership read refreshes.
 export function useClaimName(teamId: number, done?: (variables: { nameId: number }) => void) {
   return useSupabaseMutation<null, { nameId: number }>(
     async (client, { nameId }) => {
       const result = await client.rpc('claim_name', { p_team_id: teamId, p_name_id: nameId });
       return { data: null, error: result.error };
     },
-    { key: ['claim-name', teamId], refreshes: [key(teamId), ['access']], ...onDone(done) }
+    { key: ['claim-name', teamId], refreshes: [key(teamId), ['access'], ['team-alts', teamId]], ...onDone(done) }
   );
 }
 
@@ -116,8 +117,9 @@ export const ARCHIVE_REASONS: { value: string; label: string }[] = [
 
 // Officer: someone left. Archives the membership and their active
 // characters (never deletes either, #1423), so the roster read needs
-// refreshing too, alongside this team's Names, and so does the membership
-// read a name-only row depends on.
+// refreshing too, alongside this team's Names, the membership read a
+// name-only row depends on, and the waiting main swaps, which the archive
+// cancels.
 export function useArchiveTeamMember(
   teamId: number,
   done?: (variables: { teamMemberId: number; reason: string; detail: string }) => void
@@ -134,7 +136,7 @@ export function useArchiveTeamMember(
     },
     {
       key: ['archive-team-member', teamId],
-      refreshes: [key(teamId), ['roster', teamId], ['team-alts', teamId]],
+      refreshes: [key(teamId), ['roster', teamId], ['team-alts', teamId], ['team-main-swaps', teamId]],
       ...onDone(done)
     }
   );
