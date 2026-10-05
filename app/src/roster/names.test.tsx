@@ -708,3 +708,51 @@ describe('the Archive dialog for a member with no Name', () => {
     expect(dialog).not.toHaveTextContent('this Name');
   });
 });
+
+// A write reads again everything it can have changed on this page.
+describe('what a write reads again', () => {
+  const readsOf = (client: ReturnType<typeof renderApp>['client'], table: string) =>
+    client.reads.filter((r) => r.table === table).length;
+
+  it('Archive Member reads the waiting main swaps again, since archiving cancels them', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(
+      '/g/wga/t/phoenix/roster',
+      namesHandlers({
+        role: 'officer',
+        rpc: (name, args) => (name === 'archive_team_member' ? { data: null } : seededHandlers().rpc!(name, args))
+      })
+    );
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: 'More actions for Raz' }));
+    await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Archive Member' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Archive Raz?' });
+    await user.selectOptions(within(dialog).getByLabelText('Reason'), 'other');
+    await user.type(within(dialog).getByLabelText('Detail'), 'Stepping back');
+    const before = readsOf(client, 'main_swap_requests');
+    await user.click(within(dialog).getByRole('button', { name: 'Archive Member' }));
+    await screen.findByText('Raz archived.');
+    await waitFor(() => expect(readsOf(client, 'main_swap_requests')).toBeGreaterThan(before));
+  });
+
+  it('a Claim reads the memberships again, since it can create one', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(
+      '/g/wga/t/phoenix/roster',
+      namesHandlers({
+        role: 'officer',
+        rpc: (name, args) => (name === 'claim_name' ? { data: null } : seededHandlers().rpc!(name, args))
+      })
+    );
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: 'More actions for Bare Raider' }));
+    const menu = await screen.findByRole('menu');
+    await waitFor(() => expect(readsOf(client, 'team_members')).toBeGreaterThan(0));
+    const before = readsOf(client, 'team_members');
+    await user.click(within(menu).getByRole('menuitem', { name: 'Claim' }));
+    await screen.findByText('Claimed Bare Raider.');
+    await waitFor(() => expect(readsOf(client, 'team_members')).toBeGreaterThan(before));
+  });
+});
