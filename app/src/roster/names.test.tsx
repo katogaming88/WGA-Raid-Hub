@@ -46,6 +46,7 @@ function namesHandlers(
     rpc?: FakeHandlers['rpc'];
     role?: 'officer' | 'raider' | null;
     names?: NameRow[];
+    players?: (typeof TORBJORN)[];
     // The memberships an officer's roster reads, with whether each ended.
     members?: { id: number; person_id: number; archived_at: string | null }[];
     // The signed-in person's own membership on the team.
@@ -72,7 +73,7 @@ function namesHandlers(
     from(read: Read) {
       if (read.table === 'names') return { data: overrides.names ?? NAMES };
       if (read.table === 'team_members' && overrides.members) return { data: overrides.members };
-      if (read.table === 'players') return { data: [TORBJORN] };
+      if (read.table === 'players') return { data: overrides.players ?? [TORBJORN] };
       return base.from!(read);
     }
   });
@@ -265,5 +266,63 @@ describe('a claimed Name with no character yet', () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: null, names: [...NAMES, WREN] }));
     await rowFor('Bare Raider');
     expect(screen.queryByRole('rowheader', { name: 'Wren' })).not.toBeInTheDocument();
+  });
+});
+
+// Kat's "..." menu is on each roster row (#1355), so an officer can archive a
+// member whether or not they hold a Name.
+describe('Archive Member on a row with no Name', () => {
+  const BRANNOC = {
+    ...TORBJORN,
+    id: 2,
+    name_realm: 'Brannoc-Illidan',
+    team_member_id: 12,
+    classes_specs: { class: 'Paladin', spec: 'Holy', role: 'Heal' }
+  };
+
+  it('gives an officer Archive Member alone, and archives that member', async () => {
+    const user = userEvent.setup();
+    const seen: Record<string, unknown>[] = [];
+    renderApp(
+      '/g/wga/t/phoenix/roster',
+      namesHandlers({
+        role: 'officer',
+        players: [TORBJORN, BRANNOC],
+        rpc(name, args) {
+          if (name === 'archive_team_member') {
+            seen.push(args);
+            return { data: null };
+          }
+          return seededHandlers().rpc!(name, args);
+        }
+      })
+    );
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table)
+      .getByRole('rowheader', { name: /Brannoc/ })
+      .closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: 'More actions for Brannoc' }));
+    const menu = await screen.findByRole('menu', { name: 'More actions for Brannoc' });
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent)
+    ).toEqual(['Archive Member']);
+    await user.click(within(menu).getByRole('menuitem', { name: 'Archive Member' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Archive Brannoc?' });
+    await user.selectOptions(within(dialog).getByLabelText('Reason'), 'schedule_conflict');
+    await user.type(within(dialog).getByLabelText('Detail'), 'New job');
+    await user.click(within(dialog).getByRole('button', { name: 'Archive Member' }));
+    await screen.findByText('Brannoc archived.');
+    expect(seen).toEqual([{ p_team_id: 1, p_team_member_id: 12, p_reason: 'schedule_conflict', p_detail: 'New job' }]);
+  });
+
+  it('gives a raider no menu there', async () => {
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'raider', players: [TORBJORN, BRANNOC] }));
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table)
+      .getByRole('rowheader', { name: /Brannoc/ })
+      .closest('tr')!;
+    expect(within(row).queryByRole('button', { name: 'More actions for Brannoc' })).not.toBeInTheDocument();
   });
 });
