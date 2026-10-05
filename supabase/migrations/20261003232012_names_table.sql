@@ -128,9 +128,12 @@ begin
     raise exception 'That Name is not available to claim';
   end if;
 
+  -- for share, as in claim_character(): archive_team_member() locks this row
+  -- first, so the check and the link land wholly before or after an archive.
   select tm.id, tm.archived_at into v_member_id, v_member_archived_at
     from public.team_members tm
-   where tm.team_id = p_team_id and tm.person_id = public.my_person_id();
+   where tm.team_id = p_team_id and tm.person_id = public.my_person_id()
+     for share;
 
   if v_member_archived_at is not null then
     raise exception 'Your membership on this team has ended. Ask one of its officers to add you back.';
@@ -172,7 +175,7 @@ end;
 $$;
 
 comment on function public.claim_name(integer, integer) is
-  'Self-service claim of a bare or joined-unclaimed Name (#1355): links the caller''s own team_members row (creating it from their Discord identity if this is their first claim on the team, the same as claim_character()) to the picked names row. Checks the Name before anything is written, refuses a Name that is already claimed or a second Name for the same membership, and refuses on the caller''s own archived membership (#1401) -- coming back takes an officer, not a claim. Writes its own Name Claimed audit row, since write_audit_log() refuses a raider.';
+  'Self-service claim of a bare Name (#1355): links the caller''s own team_members row (creating it from their Discord identity if this is their first claim on the team, the same as claim_character()) to the picked names row. Checks the Name before anything is written, refuses a Name that is already claimed or a second Name for the same membership, and refuses on the caller''s own archived membership (#1401) -- coming back takes an officer, not a claim. Writes its own Name Claimed audit row, since write_audit_log() refuses a raider.';
 
 revoke all on function public.claim_name(integer, integer) from public;
 revoke execute on function public.claim_name(integer, integer) from anon;

@@ -28,9 +28,12 @@ begin
     raise exception 'That Name is not available to claim';
   end if;
 
+  -- for share, as in claim_character(): archive_team_member() locks this row
+  -- first, so the check and the link land wholly before or after an archive.
   select tm.id, tm.archived_at into v_member_id, v_member_archived_at
     from public.team_members tm
-   where tm.team_id = p_team_id and tm.person_id = public.my_person_id();
+   where tm.team_id = p_team_id and tm.person_id = public.my_person_id()
+     for share;
 
   if v_member_archived_at is not null then
     raise exception 'Your membership on this team has ended. Ask one of its officers to add you back.';

@@ -23,10 +23,22 @@ answers to.
   menu instead of inline buttons. Archiving a member now asks for a reason
   and a detail, the same vocabulary "Remove Player" already uses on the
   current site's Roster tab. Not yet linked from anywhere else (#1355).
+- A claimed Name whose member has no character yet gets its own row,
+  tagged No characters yet, which the team's officers and the claimer see.
+  Officers get the "..." menu, with Archive Member, on every row that has
+  a membership, whether or not it holds a Name (#1355).
+- The row menu keeps keyboard focus where it belongs: a dialog opened
+  from it hands focus back to the menu's button, Tab closes the menu, and
+  focus moves to the roster table when an action takes its row away. A
+  menu near the bottom of the window opens upward, on screen. The Archive
+  dialog closes itself when done and says an officer can bring the member
+  back (#1355).
+- A duplicate label reads as a sentence, and Remove claim's audit row
+  names the member whose claim it removed (#1355).
 
 ---
 
-## [3.166.2] - 2026-10-03
+## [3.167.0] - 2026-10-05
 
 ### Backend
 
