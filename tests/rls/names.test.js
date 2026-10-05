@@ -244,4 +244,44 @@ describe('claim_name() and a second Name', () => {
   });
 });
 
+describe('claim_name() leaves an audit row', () => {
+  it('writes one Name Claimed row per claim, naming the Name, the claimer and whether a membership was created', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const memberNameId = await insertName(q, team.teamId, 'Already Here');
+      await claimName(asUser, team.raider.uid, team.teamId, memberNameId);
+
+      const uid = randomUUID();
+      await insertDiscordUser(q, uid, `fixture-${randomUUID()}`);
+      const newcomerNameId = await insertName(q, team.teamId, 'Just Arrived');
+      await claimName(asUser, uid, team.teamId, newcomerNameId);
+      const newcomerMemberId = (
+        await q('select id from public.team_members where team_id = $1 and auth_user_id = $2', [team.teamId, uid])
+      ).rows[0].id;
+
+      const rows = (
+        await q(
+          `select actor_id, target_type, target_id, detail from public.audit_log
+            where team_id = $1 and action = 'Name Claimed' order by id`,
+          [team.teamId]
+        )
+      ).rows;
+      expect(rows).toEqual([
+        {
+          actor_id: team.raider.uid,
+          target_type: 'names',
+          target_id: memberNameId,
+          detail: { label: 'Already Here', team_member_id: team.raider.memberId, membership_created: false }
+        },
+        {
+          actor_id: uid,
+          target_type: 'names',
+          target_id: newcomerNameId,
+          detail: { label: 'Just Arrived', team_member_id: newcomerMemberId, membership_created: true }
+        }
+      ]);
+    });
+  });
+});
+
 afterAll(() => pool.end());
