@@ -629,7 +629,13 @@ describe('the officer writes and their audit rows', () => {
       { table: 'names', method: 'update', values: { label: 'Bryn', role: null }, filters: [['eq', 'id', 1]] }
     ]);
     expect(audits(client)).toEqual([
-      { p_team_id: 1, p_action: 'Name Renamed', p_target_type: 'names', p_target_id: 1, p_detail: 'Bryn' }
+      {
+        p_team_id: 1,
+        p_action: 'Name Renamed',
+        p_target_type: 'names',
+        p_target_id: 1,
+        p_detail: 'Bryn, was Bare Raider'
+      }
     ]);
   });
 
@@ -681,7 +687,7 @@ describe('the officer writes and their audit rows', () => {
       }
     ]);
     expect(audits(client)).toEqual([
-      { p_team_id: 1, p_action: 'Name Deleted', p_target_type: 'names', p_target_id: 1, p_detail: null }
+      { p_team_id: 1, p_action: 'Name Deleted', p_target_type: 'names', p_target_id: 1, p_detail: 'Bare Raider' }
     ]);
   });
 });
@@ -830,5 +836,54 @@ describe('a Name that changed since the page read it', () => {
     );
     dialog = await screen.findByRole('dialog', { name: 'Delete Bare Raider?' });
     expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+// Edit changes what the officer changed and nothing else, and keeps focus.
+describe('Edit', () => {
+  const openRowMenu = async (user: ReturnType<typeof userEvent.setup>, rowName: RegExp | string, label: string) => {
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table).getByRole('rowheader', { name: rowName }).closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: `More actions for ${label}` }));
+    return screen.findByRole('menu', { name: `More actions for ${label}` });
+  };
+
+  it("leaves a claimed Name's role guess alone", async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
+    await user.click(within(await openRowMenu(user, /Raz/, 'Raz')).getByRole('menuitem', { name: 'Edit' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit Name' });
+    const input = within(dialog).getByLabelText('Name');
+    await user.clear(input);
+    await user.type(input, 'Razz');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await screen.findByText('Name updated.');
+    expect(client.writes.map((w) => w.values)).toEqual([{ label: 'Razz' }]);
+  });
+
+  it('moves focus to the roster table when a new role takes the row to another group', async () => {
+    const user = userEvent.setup();
+    let saved = false;
+    const handlers = namesHandlers({
+      role: 'officer',
+      write: () => {
+        saved = true;
+        return { data: null };
+      }
+    });
+    const from = handlers.from!;
+    handlers.from = (read) =>
+      read.table === 'names' && saved
+        ? { data: NAMES.map((n) => (n.id === 1 ? { ...n, role: 'Tank' } : n)) }
+        : from(read);
+    renderApp('/g/wga/t/phoenix/roster', handlers);
+    await user.click(
+      within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Edit' })
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Edit Name' });
+    await user.selectOptions(within(dialog).getByLabelText(/^Role/), 'Tank');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await screen.findByText('Name updated.');
+    await waitFor(() => expect(screen.getByRole('region', { name: 'Current roster' })).toHaveFocus());
   });
 });
