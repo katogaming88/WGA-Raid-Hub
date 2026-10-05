@@ -52,7 +52,8 @@ comment on column public.names.role is
 
 -- A names row has to point at a membership on its own team; nothing else
 -- enforced that, and an officer's client picking from the wrong team's
--- unclaimed-members pool would otherwise silently cross teams.
+-- unclaimed-members pool would otherwise silently cross teams. It runs on
+-- every write, so moving a claimed Name by its team_id alone is checked too.
 create function public.names_team_member_same_team() returns trigger
 language plpgsql
 set search_path to 'public'
@@ -72,7 +73,7 @@ end;
 $$;
 
 create trigger names_check_team_member_same_team
-  before insert or update of team_member_id on public.names
+  before insert or update on public.names
   for each row execute function public.names_team_member_same_team();
 
 alter table public.names enable row level security;
