@@ -117,6 +117,14 @@ begin
     raise exception 'Not signed in';
   end if;
 
+  -- The Name first, so a wrong team or Name creates no membership. No lock:
+  -- the update below is what decides a race for the same Name.
+  perform 1 from public.names
+   where id = p_name_id and team_id = p_team_id and team_member_id is null;
+  if not found then
+    raise exception 'That Name is not available to claim';
+  end if;
+
   select tm.id, tm.archived_at into v_member_id, v_member_archived_at
     from public.team_members tm
    where tm.team_id = p_team_id and tm.person_id = public.my_person_id();
