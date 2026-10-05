@@ -587,3 +587,85 @@ describe('a duplicate label', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(SENTENCE);
   });
 });
+
+// What each officer write sends: the table write and its audit row.
+describe('the officer writes and their audit rows', () => {
+  const audits = (client: ReturnType<typeof renderApp>['client']) =>
+    client.rpcs.filter(([name]) => name === 'write_audit_log').map(([, args]) => args);
+  const openRowMenu = async (user: ReturnType<typeof userEvent.setup>, rowName: RegExp | string, label: string) => {
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table).getByRole('rowheader', { name: rowName }).closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: `More actions for ${label}` }));
+    return screen.findByRole('menu', { name: `More actions for ${label}` });
+  };
+
+  it('Add a Name inserts the label and role and logs Name Created', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
+    await screen.findByRole('table', { name: 'Current roster' });
+    await user.type(screen.getByLabelText('Add a Name'), 'Thalindra');
+    await user.selectOptions(screen.getByLabelText('Role'), 'Heal');
+    await user.click(screen.getByRole('button', { name: 'Add Name' }));
+    await screen.findByText('Thalindra added.');
+    expect(client.writes).toEqual([
+      { table: 'names', method: 'insert', values: { team_id: 1, label: 'Thalindra', role: 'Heal' }, filters: [] }
+    ]);
+    expect(audits(client)).toEqual([{ p_team_id: 1, p_action: 'Name Created', p_detail: 'Thalindra (Heal)' }]);
+  });
+
+  it('Edit updates the label and logs Name Renamed', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
+    await user.click(
+      within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Edit' })
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Edit Name' });
+    const input = within(dialog).getByLabelText('Name');
+    await user.clear(input);
+    await user.type(input, 'Bryn');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await screen.findByText('Name updated.');
+    expect(client.writes).toEqual([
+      { table: 'names', method: 'update', values: { label: 'Bryn', role: null }, filters: [['eq', 'id', 1]] }
+    ]);
+    expect(audits(client)).toEqual([
+      { p_team_id: 1, p_action: 'Name Renamed', p_target_type: 'names', p_target_id: 1, p_detail: 'Bryn' }
+    ]);
+  });
+
+  it('Remove claim clears the claim and logs which member held it', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
+    await user.click(within(await openRowMenu(user, /Raz/, 'Raz')).getByRole('menuitem', { name: 'Remove claim' }));
+    await screen.findByText('Raz is unclaimed again.');
+    expect(client.writes).toEqual([
+      { table: 'names', method: 'update', values: { team_member_id: null }, filters: [['eq', 'id', 2]] }
+    ]);
+    expect(audits(client)).toEqual([
+      {
+        p_team_id: 1,
+        p_action: 'Name Claim Removed',
+        p_target_type: 'names',
+        p_target_id: 2,
+        p_detail: { label: 'Raz', team_member_id: 9 }
+      }
+    ]);
+  });
+
+  it('Delete Name deletes the bare Name and logs Name Deleted', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
+    await user.click(
+      within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Delete Name' })
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Delete Bare Raider?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Delete Name' }));
+    await screen.findByText('Bare Raider removed.');
+    expect(client.writes).toEqual([
+      { table: 'names', method: 'delete', values: undefined, filters: [['eq', 'id', 1]] }
+    ]);
+    expect(audits(client)).toEqual([
+      { p_team_id: 1, p_action: 'Name Deleted', p_target_type: 'names', p_target_id: 1, p_detail: null }
+    ]);
+  });
+});
