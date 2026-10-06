@@ -72,6 +72,27 @@ of scope (#959's territory).
 
 ---
 
+## 2026-09-28 -- a `names` table, separate from `team_members` (#1355)
+
+Shipped: 20261003232012_names_table.sql
+
+The design and Rex's review are discussed in full on #1355 (both already
+summarized in this log under "ending a membership archives it; it is never
+deleted" and the entries that follow it); this entry just records the table
+itself landing. A `names` row is a roster row's display label, independent
+of `team_members`: bare and officer-created until someone claims it
+(self-service, `claim_name()`) or an officer assigns it directly, a plain
+write since there's no risk to guard beyond the same-team check and the
+per-team label uniqueness Rex asked for. `claim_name()` refuses on the
+caller's own archived membership, the rule decided on #1355 on 2026-10-02
+and already shipped for `claim_character()` (#1401) -- coming back takes an
+officer, not a claim. Database only; the Roster page doesn't read or write
+it yet.
+
+[Full discussion -> #1355](https://github.com/katogaming88/WGA-Raid-Hub/issues/1355#issuecomment-5863645131)
+
+---
+
 ## 2026-10-03 -- a role grant brings someone archived back with that role, and a revoke refuses them (#1403)
 
 Shipped: 20261003154127_role_grant_restores_archived_member.sql

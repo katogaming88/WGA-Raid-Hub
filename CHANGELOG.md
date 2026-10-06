@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.167.0] - 2026-10-05
+
+### Backend
+
+- A `names` table: a roster row's display label that can exist bare (an
+  officer lists someone before they've signed in) and gets claimed later,
+  self-service (`claim_name()`) or by an officer assigning it directly. A
+  claim refuses on the caller's own archived membership, the same rule
+  `claim_character()` already follows -- coming back takes an officer, not
+  a claim. Database only; no page reads or writes this yet (#1355).
+- A claim checks the Name before it writes anything, so a claim against
+  the wrong team, or for a Name that is gone or taken, changes nothing and
+  says why. Someone who already holds a Name on the team is told so in
+  words rather than with a database error, and every claim leaves a
+  `Name Claimed` row in the audit log naming the label and whether the
+  claim created the membership (#1355).
+- A claimed Name cannot be moved to a team its membership is not on,
+  whichever column the change touches (#1355).
+
+---
+
 ## [3.166.4] - 2026-10-05
 
 ### Project
@@ -23,8 +44,6 @@ answers to.
   officer's note when there is one. Since #1436 the database refuses that
   alt again, so the card no longer offers an ask that would be turned down
   (#1430).
-
----
 
 ## [3.166.3] - 2026-10-04
 

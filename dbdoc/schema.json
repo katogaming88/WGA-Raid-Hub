@@ -8799,6 +8799,148 @@
           "def": "CREATE TRIGGER trg_removal_reasons_membership_team_check BEFORE INSERT OR UPDATE ON public.removal_reasons FOR EACH ROW EXECUTE FUNCTION check_removal_reason_membership_team()"
         }
       ]
+    },
+    {
+      "name": "public.names",
+      "type": "BASE TABLE",
+      "comment": "A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming, assigning and unclaiming update this row; a raider's first claim on a team also creates their membership (claim_name), and nothing merges memberships. A names row outlives its membership being archived.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "label",
+          "type": "text",
+          "nullable": false,
+          "comment": "The display name shown until claimed. Survives Remove claim (the label goes back to bare) and the membership being archived -- unique per team, case- and whitespace-insensitive, since claiming is picking one off a list."
+        },
+        {
+          "name": "team_member_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "Null for a bare, unclaimed Name. Set by self-service claim (claim_name) or an officer's direct assign/remove-claim table write. Unique: one Name per membership."
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "nullable": true,
+          "comment": "The raid role (Tank/Heal/Melee/Ranged) an officer expects this bare Name to fill, so it can sit on the roster under that tab before it has a character. Meaningless once claimed -- a claimed row's role comes from its character's class_spec_id instead, never from here."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "names_pkey",
+          "def": "CREATE UNIQUE INDEX names_pkey ON public.names USING btree (id)",
+          "table": "public.names",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "names_team_member_id_key",
+          "def": "CREATE UNIQUE INDEX names_team_member_id_key ON public.names USING btree (team_member_id)",
+          "table": "public.names",
+          "columns": [
+            "team_member_id"
+          ]
+        },
+        {
+          "name": "names_team_id_label_key",
+          "def": "CREATE UNIQUE INDEX names_team_id_label_key ON public.names USING btree (team_id, lower(btrim(label)))",
+          "table": "public.names",
+          "columns": [
+            "team_id",
+            "lower"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "names_label_check",
+          "type": "CHECK",
+          "def": "CHECK ((btrim(label) \u003c\u003e ''::text))",
+          "table": "public.names",
+          "referenced_table": "",
+          "columns": [
+            "label"
+          ]
+        },
+        {
+          "name": "names_role_check",
+          "type": "CHECK",
+          "def": "CHECK ((role = ANY (ARRAY['Tank'::text, 'Heal'::text, 'Melee'::text, 'Ranged'::text])))",
+          "table": "public.names",
+          "referenced_table": "",
+          "columns": [
+            "role"
+          ]
+        },
+        {
+          "name": "names_team_member_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE",
+          "table": "public.names",
+          "referenced_table": "public.team_members",
+          "columns": [
+            "team_member_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "names_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.names",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "names_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.names",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "names_team_member_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_member_id)",
+          "table": "public.names",
+          "referenced_table": "",
+          "columns": [
+            "team_member_id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "names_check_team_member_same_team",
+          "def": "CREATE TRIGGER names_check_team_member_same_team BEFORE INSERT OR UPDATE ON public.names FOR EACH ROW EXECUTE FUNCTION names_team_member_same_team()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -10382,6 +10524,32 @@
       ],
       "parent_cardinality": "zero_or_one",
       "def": "FOREIGN KEY (removed_by) REFERENCES people(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.names",
+      "columns": [
+        "team_member_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.team_members",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.names",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -11253,6 +11421,18 @@
       "name": "public.restore_player",
       "return_type": "bool",
       "arguments": "p_player_id integer, p_name_realm text DEFAULT NULL::text, p_nickname text DEFAULT NULL::text, p_class_spec_id integer DEFAULT NULL::integer, p_is_trial boolean DEFAULT NULL::boolean, p_join_date date DEFAULT NULL::date",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.names_team_member_same_team",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.claim_name",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_name_id integer",
       "type": "FUNCTION"
     }
   ],

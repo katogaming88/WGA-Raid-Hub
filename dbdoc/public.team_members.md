@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('team_members_id_seq'::regclass) | false | [public.players](public.players.md) [public.season_signups](public.season_signups.md) [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) [public.removal_reasons](public.removal_reasons.md) |  |  |
+| id | integer | nextval('team_members_id_seq'::regclass) | false | [public.players](public.players.md) [public.season_signups](public.season_signups.md) [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) [public.removal_reasons](public.removal_reasons.md) [public.names](public.names.md) |  |  |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | discord_id | text |  | false |  |  |  |
 | auth_user_id | uuid |  | true |  |  |  |
@@ -52,6 +52,7 @@ erDiagram
 "public.season_signups" }o--o| "public.team_members" : "FOREIGN KEY (reviewed_by) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.raid_schedule_exceptions" }o--o| "public.team_members" : "FOREIGN KEY (created_by) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.removal_reasons" }o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id)"
+"public.names" |o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE"
 "public.team_members" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_members" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 
@@ -135,6 +136,14 @@ erDiagram
   text reason
   text detail
   integer removed_by FK
+}
+"public.names" {
+  integer id
+  integer team_id FK
+  text label
+  integer team_member_id FK
+  text role
+  timestamp_with_time_zone created_at
 }
 "public.teams" {
   integer id

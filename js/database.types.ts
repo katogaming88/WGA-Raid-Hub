@@ -979,6 +979,48 @@ export type Database = {
           },
         ]
       }
+      names: {
+        Row: {
+          created_at: string
+          id: number
+          label: string
+          role: string | null
+          team_id: number
+          team_member_id: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          label: string
+          role?: string | null
+          team_id: number
+          team_member_id?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          label?: string
+          role?: string | null
+          team_id?: number
+          team_member_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "names_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "names_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: true
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -3981,6 +4023,10 @@ export type Database = {
           name_realm: string
           role: string
         }[]
+      }
+      claim_name: {
+        Args: { p_name_id: number; p_team_id: number }
+        Returns: undefined
       }
       claim_raid_signup_sheet: {
         Args: { p_channel_id: string; p_raid_date: string; p_team_id: number }
