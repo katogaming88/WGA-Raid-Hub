@@ -775,6 +775,26 @@ describe('a boss killed earlier in the lockout (#1246)', () => {
     });
   });
 
+  it('counts a night with no start time as under way', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1 } = await seed(q);
+      await setTeamDifficulty(q, 'mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      const [wednesday, friday, saturday] = [await day(q, 8), await day(q, 10), await day(q, 11)];
+      // An added night with no start time stands in for the weekly 20:00 one.
+      await q(
+        "insert into public.raid_schedule_exceptions (team_id, raid_date, exception_type) values (1, $1, 'added')",
+        [friday]
+      );
+      await pinToday(q, friday);
+      await plan(asUser, OFFICER_T1, friday);
+      await plan(asUser, OFFICER_T1, saturday);
+      await kill(q, { report: 'r1', date: wednesday });
+      expect(await skippedOn(q, friday)).toEqual([[FIRST, false]]);
+      expect(await skippedOn(q, saturday)).toEqual([[FIRST, true]]);
+    });
+  });
+
   it('leaves a night already under way alone, and still reaches the nights after it', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { p1 } = await seed(q);
