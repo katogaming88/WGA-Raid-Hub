@@ -49,7 +49,7 @@ begin
     now(), public.my_person_id()
   )
   on conflict (team_id, raid_date, encounter_id)
-  do update set skipped = false, confirmed_at = now(), confirmed_by = public.my_person_id();
+  do update set skipped = false, skipped_for_kill_id = null, confirmed_at = now(), confirmed_by = public.my_person_id();
 
   delete from raid_night_lineups
   where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id;

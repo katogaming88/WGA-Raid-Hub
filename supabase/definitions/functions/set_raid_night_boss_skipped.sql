@@ -28,7 +28,7 @@ begin
   perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
 
   update raid_night_bosses
-     set skipped = p_skipped, confirmed_at = null, confirmed_by = null
+     set skipped = p_skipped, skipped_for_kill_id = null, confirmed_at = null, confirmed_by = null
    where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id;
 
   if not found then

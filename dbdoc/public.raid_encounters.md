@@ -107,6 +107,7 @@ erDiagram
   timestamp_with_time_zone confirmed_at
   integer confirmed_by FK
   timestamp_with_time_zone created_at
+  integer skipped_for_kill_id FK
 }
 "public.team_raid_kills" {
   integer id

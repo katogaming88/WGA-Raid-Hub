@@ -1707,6 +1707,7 @@ export type Database = {
           position: number
           raid_date: string
           skipped: boolean
+          skipped_for_kill_id: number | null
           team_id: number
         }
         Insert: {
@@ -1718,6 +1719,7 @@ export type Database = {
           position: number
           raid_date: string
           skipped?: boolean
+          skipped_for_kill_id?: number | null
           team_id: number
         }
         Update: {
@@ -1729,6 +1731,7 @@ export type Database = {
           position?: number
           raid_date?: string
           skipped?: boolean
+          skipped_for_kill_id?: number | null
           team_id?: number
         }
         Relationships: [
@@ -1744,6 +1747,13 @@ export type Database = {
             columns: ["encounter_id"]
             isOneToOne: false
             referencedRelation: "raid_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raid_night_bosses_skipped_for_kill_id_fkey"
+            columns: ["skipped_for_kill_id"]
+            isOneToOne: false
+            referencedRelation: "team_raid_kills"
             referencedColumns: ["id"]
           },
           {
@@ -4397,6 +4407,7 @@ export type Database = {
         Args: { p_skip_audit?: boolean; p_team_id: number; p_updates: Json }
         Returns: Json
       }
+      skip_killed_bosses: { Args: { p_kill_ids: number[] }; Returns: number }
       submit_bis_link: {
         Args: {
           p_bis_link: string

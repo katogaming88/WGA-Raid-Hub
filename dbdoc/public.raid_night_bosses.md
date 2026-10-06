@@ -17,6 +17,7 @@ The bosses on one raid night's list for a team (#1216), in pull order. skipped k
 | confirmed_at | timestamp with time zone |  | true |  |  | When an officer last saved this boss's lineup for the night. Null while the lineup is the automatic copy of the standing group. |
 | confirmed_by | integer |  | true |  | [public.people](public.people.md) |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
+| skipped_for_kill_id | integer |  | true |  | [public.team_raid_kills](public.team_raid_kills.md) | The kill that took this boss off the night (#1246): the team killed it earlier in the lockout at the night's difficulty. Null when an officer skipped it, and when it is not skipped. |
 
 ## Constraints
 
@@ -27,6 +28,7 @@ The bosses on one raid night's list for a team (#1216), in pull order. skipped k
 | raid_night_bosses_confirmed_by_fkey | FOREIGN KEY | FOREIGN KEY (confirmed_by) REFERENCES people(id) ON DELETE SET NULL |
 | raid_night_bosses_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | raid_night_bosses_team_id_raid_date_encounter_id_key | UNIQUE | UNIQUE (team_id, raid_date, encounter_id) |
+| raid_night_bosses_skipped_for_kill_id_fkey | FOREIGN KEY | FOREIGN KEY (skipped_for_kill_id) REFERENCES team_raid_kills(id) ON DELETE SET NULL |
 
 ## Indexes
 
@@ -36,6 +38,7 @@ The bosses on one raid night's list for a team (#1216), in pull order. skipped k
 | raid_night_bosses_team_id_raid_date_encounter_id_key | CREATE UNIQUE INDEX raid_night_bosses_team_id_raid_date_encounter_id_key ON public.raid_night_bosses USING btree (team_id, raid_date, encounter_id) |
 | raid_night_bosses_encounter_id_idx | CREATE INDEX raid_night_bosses_encounter_id_idx ON public.raid_night_bosses USING btree (encounter_id) |
 | raid_night_bosses_confirmed_by_idx | CREATE INDEX raid_night_bosses_confirmed_by_idx ON public.raid_night_bosses USING btree (confirmed_by) |
+| raid_night_bosses_skipped_for_kill_id_idx | CREATE INDEX raid_night_bosses_skipped_for_kill_id_idx ON public.raid_night_bosses USING btree (skipped_for_kill_id) |
 
 ## Relations
 
@@ -47,6 +50,7 @@ erDiagram
 "public.raid_night_participation" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
 "public.raid_night_bosses" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.raid_night_bosses" }o--o| "public.people" : "FOREIGN KEY (confirmed_by) REFERENCES people(id) ON DELETE SET NULL"
+"public.raid_night_bosses" }o--o| "public.team_raid_kills" : "FOREIGN KEY (skipped_for_kill_id) REFERENCES team_raid_kills(id) ON DELETE SET NULL"
 
 "public.raid_night_bosses" {
   integer id
@@ -58,6 +62,7 @@ erDiagram
   timestamp_with_time_zone confirmed_at
   integer confirmed_by FK
   timestamp_with_time_zone created_at
+  integer skipped_for_kill_id FK
 }
 "public.teams" {
   integer id
@@ -95,6 +100,17 @@ erDiagram
   integer id
   uuid auth_user_id FK
   text discord_id
+  timestamp_with_time_zone created_at
+}
+"public.team_raid_kills" {
+  integer id
+  integer team_id FK
+  integer encounter_id FK
+  text difficulty
+  text report_code
+  integer fight_id
+  date raid_date
+  timestamp_with_time_zone report_started_at
   timestamp_with_time_zone created_at
 }
 ```
