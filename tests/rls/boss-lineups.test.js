@@ -757,18 +757,38 @@ describe('a boss killed earlier in the lockout (#1246)', () => {
     });
   });
 
-  it('counts tonight as a night not yet played', async () => {
+  // Today is pinned into next week, so tonight's 20:00 start is still ahead of
+  // the real clock, or into last week, so it has passed, whatever time the
+  // suite runs.
+  it('counts tonight until it starts', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { p1 } = await seed(q);
       await setTeamDifficulty(q, 'mythic');
       await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
-      const [wednesday, thursday, friday] = [await day(q, 1), await day(q, 2), await day(q, 3)];
+      const [wednesday, thursday, friday] = [await day(q, 8), await day(q, 9), await day(q, 10)];
       await pinToday(q, friday);
       await plan(asUser, OFFICER_T1, thursday);
       await plan(asUser, OFFICER_T1, friday);
       await kill(q, { report: 'r1', date: wednesday });
       expect(await skippedOn(q, friday)).toEqual([[FIRST, true]]);
       expect(await skippedOn(q, thursday)).toEqual([[FIRST, false]]);
+    });
+  });
+
+  it('leaves a night already under way alone, and still reaches the nights after it', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1 } = await seed(q);
+      await setTeamDifficulty(q, 'mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      const [wednesday, friday, saturday] = [await day(q, -6), await day(q, -4), await day(q, -3)];
+      await pinToday(q, friday);
+      await plan(asUser, OFFICER_T1, friday);
+      await plan(asUser, OFFICER_T1, saturday);
+      await kill(q, { report: 'r1', date: wednesday });
+      expect(await night(q, friday)).toEqual([
+        { encounter_id: FIRST, position: 1, skipped: false, confirmed: false, players: [p1] }
+      ]);
+      expect(await skippedOn(q, saturday)).toEqual([[FIRST, true]]);
     });
   });
 
@@ -907,7 +927,14 @@ describe('a boss killed earlier in the lockout (#1246)', () => {
   it('takes the team’s lineup lock before it reads, as every lineup write does', async () => {
     await withTxn(async ({ q }) => {
       await seed(q);
-      await kill(q, { report: 'r1', date: await day(q, 0) });
+      await setTeamDifficulty(q, 'mythic');
+      const monday = await day(q, 6);
+      // Written directly: planning takes the lock, which then stays held to the
+      // end of the transaction and would satisfy the check below by itself.
+      await q(
+        'insert into public.raid_night_bosses (team_id, raid_date, encounter_id, position) values (1, $1, $2, 1)',
+        [monday, FIRST]
+      );
       const held = async (team) =>
         (
           await q(
@@ -918,6 +945,25 @@ describe('a boss killed earlier in the lockout (#1246)', () => {
             [team]
           )
         ).rows[0].n;
+      expect(await held(1)).toBe(0);
+      // The rule the skip reads, wrapped to refuse a read made without the lock.
+      await q(
+        'alter function public.kills_before_night(integer, integer, date, text) rename to kills_before_night_unwrapped'
+      );
+      await q(`create function public.kills_before_night(
+                 p_team_id integer, p_encounter_id integer, p_raid_date date, p_difficulty text)
+               returns setof public.team_raid_kills language plpgsql stable set search_path = public
+               as $$ begin
+                 if not exists (select 1 from pg_locks
+                                 where locktype = 'advisory' and pid = pg_backend_pid() and objsubid = 2
+                                   and classid::bigint = (hashtext('boss_lineup')::bigint + 4294967296) % 4294967296
+                                   and objid::bigint = p_team_id) then
+                   raise exception 'read before the lock';
+                 end if;
+                 return query select * from public.kills_before_night_unwrapped(p_team_id, p_encounter_id, p_raid_date, p_difficulty);
+               end $$`);
+      await kill(q, { report: 'r1', date: await day(q, 0) });
+      expect(await skippedOn(q, monday)).toEqual([[FIRST, true]]);
       expect(await held(1)).toBe(1);
       expect(await held(2)).toBe(0);
     });
