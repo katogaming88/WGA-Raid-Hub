@@ -33,6 +33,18 @@ answers to.
 
 ---
 
+## [3.166.4] - 2026-10-05
+
+### Project
+
+- The new app's Characters card says when an officer has declined a main
+  swap. On the raider's own profile, an alt an officer declined shows a
+  **Declined** tag and, in place of "Ask to raid on this one", "An officer
+  declined this swap. Ask an officer if that should change.", with the
+  officer's note when there is one. Since #1436 the database refuses that
+  alt again, so the card no longer offers an ask that would be turned down
+  (#1430).
+
 ## [3.166.3] - 2026-10-04
 
 ### Backend
