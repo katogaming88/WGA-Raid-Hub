@@ -4,7 +4,7 @@
 -- team_raid_kills keeps every kill the progression sync reads, and each night
 -- says its difficulty, but an officer still took each killed boss off the
 -- coming nights by hand. Each insert into team_raid_kills now does it, on the
--- team's nights not yet played whose difficulty matches, where no officer has
+-- team's nights not yet started whose difficulty matches, where no officer has
 -- saved or skipped the boss, when the insert brings the first kill of that boss
 -- before the night in its lockout. The boss stays on the night's list as
 -- skipped, with the kill in skipped_for_kill_id, so Put back works as it does
@@ -45,6 +45,30 @@ revoke all on function public.kills_before_night(integer, integer, date, text) f
 comment on function public.kills_before_night(integer, integer, date, text) is
   'A team''s kills of a boss at one difficulty earlier in a raid night''s lockout, before the night itself (#1246). A kill counts in the lockout its report started in, so a Tuesday report from before the reset belongs to the week before. The rule the killed-boss skip and fill_raid_night() share.';
 
+-- One Skip Killed Boss entry per boss taken off a night, with no actor: the
+-- sync and the cron have no caller. Shared by the skip and fill_raid_night().
+create function public.log_killed_boss_skips(p_boss_ids integer[])
+returns void
+language sql
+set search_path = public
+as $$
+  insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
+  select b.team_id, null, 'Skip Killed Boss', 'raid_night_bosses', b.encounter_id,
+         jsonb_build_object('raid_date', b.raid_date, 'boss', e.name, 'killed_on', k.raid_date,
+                            'difficulty', k.difficulty, 'report_code', k.report_code)
+  from raid_night_bosses b
+  join team_raid_kills k on k.id = b.skipped_for_kill_id
+  join raid_encounters e on e.id = b.encounter_id
+  where b.id = any (p_boss_ids)
+  order by b.raid_date, b.position;
+$$;
+
+alter function public.log_killed_boss_skips(integer[]) owner to postgres;
+revoke all on function public.log_killed_boss_skips(integer[]) from public, anon, authenticated;
+
+comment on function public.log_killed_boss_skips(integer[]) is
+  'Logs Skip Killed Boss with no actor for each raid_night_bosses row given that a kill took off its night (#1246), naming the night, the boss and the kill''s date, difficulty and report. Internal: called by skip_killed_bosses() and fill_raid_night().';
+
 create function public.skip_killed_bosses()
 returns trigger
 language plpgsql
@@ -53,6 +77,7 @@ set search_path = public
 as $$
 declare
   v_team integer;
+  v_skipped integer[];
 begin
   -- The lock every lineup write takes, before anything is read, so a night
   -- filled at the same moment either is seen here or sees these kills.
@@ -60,12 +85,15 @@ begin
     perform pg_advisory_xact_lock(hashtext('boss_lineup'), v_team);
   end loop;
 
+  -- A night already under way is left alone: tonight counts until its
+  -- scheduled start, and a night with no start time counts as started.
   with nights as (
-    select b.id, b.team_id, b.raid_date, b.encounter_id,
-           (select i.difficulty from raid_night_info(b.team_id, b.raid_date) i) as difficulty
+    select b.id, b.team_id, b.raid_date, b.encounter_id, i.difficulty
     from raid_night_bosses b
+    cross join lateral raid_night_info(b.team_id, b.raid_date) i
     where (b.team_id, b.encounter_id) in (select team_id, encounter_id from new_kills)
-      and b.raid_date >= raid_today()
+      and (b.raid_date > raid_today()
+           or (b.raid_date = raid_today() and now() < (b.raid_date + i.start_time) at time zone i.timezone))
       and b.confirmed_at is null
       and not b.skipped
   ),
@@ -84,20 +112,16 @@ begin
        set skipped = true, skipped_for_kill_id = f.kill_id
       from first_kills f
      where b.id = f.night_id
-    returning b.team_id, b.raid_date, b.encounter_id, b.skipped_for_kill_id
-  ),
-  cleared as (
-    delete from raid_night_lineups l
-    using skipped s
-    where l.team_id = s.team_id and l.raid_date = s.raid_date and l.encounter_id = s.encounter_id
+    returning b.id
   )
-  insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
-  select s.team_id, null, 'Skip Killed Boss', 'raid_night_bosses', s.encounter_id,
-         jsonb_build_object('raid_date', s.raid_date, 'boss', e.name, 'killed_on', k.raid_date,
-                            'difficulty', k.difficulty, 'report_code', k.report_code)
-  from skipped s
-  join team_raid_kills k on k.id = s.skipped_for_kill_id
-  join raid_encounters e on e.id = s.encounter_id;
+  select array_agg(id) into v_skipped from skipped;
+
+  delete from raid_night_lineups l
+  using raid_night_bosses b
+  where b.id = any (v_skipped)
+    and l.team_id = b.team_id and l.raid_date = b.raid_date and l.encounter_id = b.encounter_id;
+
+  perform log_killed_boss_skips(v_skipped);
 
   return null;
 end;
@@ -107,7 +131,7 @@ alter function public.skip_killed_bosses() owner to postgres;
 revoke all on function public.skip_killed_bosses() from public, anon, authenticated;
 
 comment on function public.skip_killed_bosses() is
-  'Runs after each insert into team_raid_kills (#1246). Takes a boss off the team''s raid nights not yet played, at the night''s difficulty, where no officer has saved or skipped it, when the insert brings the first kills of it before the night in that lockout (kills_before_night()). Marks it skipped with the earliest such kill in skipped_for_kill_id, removes its lineup and logs Skip Killed Boss with no actor. An error fails the insert; the progression sync sends the kills again on its next run.';
+  'Runs after each insert into team_raid_kills (#1246). Takes a boss off the team''s raid nights not yet started (tonight until its scheduled start), at the night''s difficulty, where no officer has saved or skipped it, when the insert brings the first kills of it before the night in that lockout (kills_before_night()). Marks it skipped with the earliest such kill in skipped_for_kill_id, removes its lineup and logs Skip Killed Boss with no actor (log_killed_boss_skips()). An error fails the insert; the progression sync sends the kills again on its next run.';
 
 create trigger team_raid_kills_skip_killed_bosses
   after insert on public.team_raid_kills
@@ -116,7 +140,7 @@ create trigger team_raid_kills_skip_killed_bosses
   execute function public.skip_killed_bosses();
 
 comment on table public.team_raid_kills is
-  'Every Heroic and Mythic boss kill in a team''s Warcraft Logs reports (#1246), one row per fight, dated by the report''s raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. Each insert takes the bosses it killed off the team''s later nights that lockout (skip_killed_bosses()).';
+  'Every Heroic and Mythic boss kill in a team''s Warcraft Logs reports (#1246), alt runs included as on team_raid_progress, one row per fight, dated by the report''s raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. Each insert takes the bosses it killed off the team''s later nights that lockout (skip_killed_bosses()).';
 
 create or replace function public.fill_raid_night(p_team_id integer, p_raid_date date)
 returns integer
@@ -158,14 +182,9 @@ begin
   join players p on p.id = g.player_id and p.archived_at is null and not p.is_bench
   where b.team_id = p_team_id and b.raid_date = p_raid_date and not b.skipped;
 
-  insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
-  select b.team_id, null, 'Skip Killed Boss', 'raid_night_bosses', b.encounter_id,
-         jsonb_build_object('raid_date', b.raid_date, 'boss', e.name, 'killed_on', k.raid_date,
-                            'difficulty', k.difficulty, 'report_code', k.report_code)
-  from raid_night_bosses b
-  join team_raid_kills k on k.id = b.skipped_for_kill_id
-  join raid_encounters e on e.id = b.encounter_id
-  where b.team_id = p_team_id and b.raid_date = p_raid_date;
+  perform log_killed_boss_skips(array(
+    select id from raid_night_bosses
+    where team_id = p_team_id and raid_date = p_raid_date and skipped_for_kill_id is not null));
 
   return v_count;
 end;
