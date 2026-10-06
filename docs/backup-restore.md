@@ -246,7 +246,7 @@ As of 2026-10-05, [#1355](https://github.com/katogaming88/WGA-Raid-Hub/issues/13
 The same day, [#1246](https://github.com/katogaming88/WGA-Raid-Hub/issues/1246) added `raid_night_bosses.skipped_for_kill_id`, a key from an in-app-only table to `team_raid_kills`, which is classified regenerable, and an insert trigger on `team_raid_kills` (`skip_killed_bosses()`). Three things follow for the selective-restore runbook above:
 
 - Restore `team_raid_kills` from the same dump as `raid_night_bosses`, kills first. A re-fetched kill gets a new id that no night names.
-- `truncate table public.team_raid_kills` is refused while nights point at it, and `cascade` would empty every team's night plans and participation. Delete its rows instead: the nights keep their skip and lose the kill they name until `raid_night_bosses` is restored too.
+- `truncate table public.team_raid_kills` is always refused, since `raid_night_bosses` has a foreign key to it, whether or not any night names a kill, and `cascade` would empty every team's night plans and participation. Delete its rows instead: the nights keep their skip and lose the kill they name until `raid_night_bosses` is restored too.
 - Wrap a data-only restore of `team_raid_kills` in `alter table public.team_raid_kills disable trigger user;` and `enable trigger user;`. Otherwise the trigger treats every restored kill as new and takes bosses back off nights where officers put them back.
 
 The full rebuild creates triggers after the data loads, so it skips nothing. No new table, no `auth.users` FK, no re-drill due.

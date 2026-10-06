@@ -11,8 +11,8 @@
 -- for a hand skip, and another log of a kill already counted leaves it put
 -- back. A night planned after the kill arrives with the boss skipped.
 --
--- An error in the skip fails the sync's insert. The sync reports it and sends
--- every kill again on its next run, which retries the skip.
+-- An error in the skip fails the sync's insert. The sync sends every kill again
+-- on its next run, which retries the skip.
 
 alter table public.raid_night_bosses
   add column skipped_for_kill_id integer references public.team_raid_kills(id) on delete set null,
