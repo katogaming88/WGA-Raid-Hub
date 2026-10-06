@@ -872,7 +872,13 @@ describe('a boss killed earlier in the lockout (#1246)', () => {
           actor_id: null,
           target_type: 'raid_night_bosses',
           target_id: FIRST,
-          detail: { raid_date: monday, boss: 'First Boss', killed_on: tuesday, difficulty: 'mythic', report_code: 'early' }
+          detail: {
+            raid_date: monday,
+            boss: 'First Boss',
+            killed_on: tuesday,
+            difficulty: 'mythic',
+            report_code: 'early'
+          }
         }
       ]);
     });
@@ -928,7 +934,9 @@ describe('a boss killed earlier in the lockout (#1246)', () => {
                as $$ begin raise exception 'broken on purpose'; end $$`);
       await expect(kill(q, { report: 'r1', date: tuesday })).rejects.toThrow(/broken on purpose/);
       await q('rollback to savepoint broken_skip');
-      expect((await q("select count(*)::int as n from public.team_raid_kills where report_code = 'r1'")).rows[0].n).toBe(0);
+      expect(
+        (await q("select count(*)::int as n from public.team_raid_kills where report_code = 'r1'")).rows[0].n
+      ).toBe(0);
       await kill(q, { report: 'r1', date: tuesday });
       expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
     });
