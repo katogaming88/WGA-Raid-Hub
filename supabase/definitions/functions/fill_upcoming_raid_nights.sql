@@ -13,7 +13,7 @@ declare
   v_date date;
   v_total integer := 0;
 begin
-  for v_team in select distinct team_id from boss_groups loop
+  for v_team in select distinct team_id from boss_groups order by team_id loop
     for v_date in select (public.raid_today() + d) from generate_series(0, 6) d loop
       if (select i.exists from public.raid_night_info(v_team, v_date) i) then
         perform pg_advisory_xact_lock(hashtext('boss_lineup'), v_team);

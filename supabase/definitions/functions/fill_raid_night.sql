@@ -26,10 +26,7 @@ begin
   join seasons s on s.code = z.season
   left join lateral (
     select k.id
-    from team_raid_kills k
-    where k.team_id = p_team_id and k.encounter_id = e.id and k.difficulty = v_difficulty
-      and k.raid_date < p_raid_date
-      and lockout_week_start(k.raid_date) = lockout_week_start(p_raid_date)
+    from kills_before_night(p_team_id, e.id, p_raid_date, v_difficulty) k
     order by k.report_started_at, k.fight_id
     limit 1
   ) k on true
@@ -44,6 +41,15 @@ begin
   join boss_groups g on g.team_id = b.team_id and g.encounter_id = b.encounter_id
   join players p on p.id = g.player_id and p.archived_at is null and not p.is_bench
   where b.team_id = p_team_id and b.raid_date = p_raid_date and not b.skipped;
+
+  insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
+  select b.team_id, null, 'Skip Killed Boss', 'raid_night_bosses', b.encounter_id,
+         jsonb_build_object('raid_date', b.raid_date, 'boss', e.name, 'killed_on', k.raid_date,
+                            'difficulty', k.difficulty, 'report_code', k.report_code)
+  from raid_night_bosses b
+  join team_raid_kills k on k.id = b.skipped_for_kill_id
+  join raid_encounters e on e.id = b.encounter_id
+  where b.team_id = p_team_id and b.raid_date = p_raid_date;
 
   return v_count;
 end;

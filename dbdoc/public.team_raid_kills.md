@@ -40,7 +40,7 @@ Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), one
 
 | Name | Definition |
 | ---- | ---------- |
-| team_raid_kills_skip_killed_bosses | CREATE TRIGGER team_raid_kills_skip_killed_bosses AFTER INSERT ON public.team_raid_kills REFERENCING NEW TABLE AS new_kills FOR EACH STATEMENT EXECUTE FUNCTION team_raid_kills_skip_killed_bosses() |
+| team_raid_kills_skip_killed_bosses | CREATE TRIGGER team_raid_kills_skip_killed_bosses AFTER INSERT ON public.team_raid_kills REFERENCING NEW TABLE AS new_kills FOR EACH STATEMENT EXECUTE FUNCTION skip_killed_bosses() |
 
 ## Relations
 

@@ -23,6 +23,7 @@ The bosses on one raid night's list for a team (#1216), in pull order. skipped k
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| raid_night_bosses_kill_only_when_skipped | CHECK | CHECK ((skipped OR (skipped_for_kill_id IS NULL))) |
 | raid_night_bosses_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | raid_night_bosses_encounter_id_fkey | FOREIGN KEY | FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE |
 | raid_night_bosses_confirmed_by_fkey | FOREIGN KEY | FOREIGN KEY (confirmed_by) REFERENCES people(id) ON DELETE SET NULL |

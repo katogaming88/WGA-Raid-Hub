@@ -231,8 +231,8 @@
 | public.restore_player | bool | p_player_id integer, p_name_realm text DEFAULT NULL::text, p_nickname text DEFAULT NULL::text, p_class_spec_id integer DEFAULT NULL::integer, p_is_trial boolean DEFAULT NULL::boolean, p_join_date date DEFAULT NULL::date | FUNCTION |
 | public.names_team_member_same_team | trigger |  | FUNCTION |
 | public.claim_name | void | p_team_id integer, p_name_id integer | FUNCTION |
-| public.skip_killed_bosses | int4 | p_kill_ids integer[] | FUNCTION |
-| public.team_raid_kills_skip_killed_bosses | trigger |  | FUNCTION |
+| public.kills_before_night | team_raid_kills | p_team_id integer, p_encounter_id integer, p_raid_date date, p_difficulty text | FUNCTION |
+| public.skip_killed_bosses | trigger |  | FUNCTION |
 
 ## Enums
 

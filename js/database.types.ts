@@ -4168,6 +4168,31 @@ export type Database = {
       is_own_player: { Args: { p_player_id: number }; Returns: boolean }
       is_site_admin: { Args: never; Returns: boolean }
       is_team_leader_anywhere: { Args: never; Returns: boolean }
+      kills_before_night: {
+        Args: {
+          p_difficulty: string
+          p_encounter_id: number
+          p_raid_date: string
+          p_team_id: number
+        }
+        Returns: {
+          created_at: string
+          difficulty: string
+          encounter_id: number
+          fight_id: number
+          id: number
+          raid_date: string
+          report_code: string
+          report_started_at: string
+          team_id: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "team_raid_kills"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       link_battlenet_roster_characters: {
         Args: { p_characters: Json; p_person_id: number }
         Returns: {
@@ -4407,7 +4432,6 @@ export type Database = {
         Args: { p_skip_audit?: boolean; p_team_id: number; p_updates: Json }
         Returns: Json
       }
-      skip_killed_bosses: { Args: { p_kill_ids: number[] }; Returns: number }
       submit_bis_link: {
         Args: {
           p_bis_link: string

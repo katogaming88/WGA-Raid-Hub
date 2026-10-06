@@ -7582,6 +7582,17 @@
       ],
       "constraints": [
         {
+          "name": "raid_night_bosses_kill_only_when_skipped",
+          "type": "CHECK",
+          "def": "CHECK ((skipped OR (skipped_for_kill_id IS NULL)))",
+          "table": "public.raid_night_bosses",
+          "referenced_table": "",
+          "columns": [
+            "skipped",
+            "skipped_for_kill_id"
+          ]
+        },
+        {
           "name": "raid_night_bosses_team_id_fkey",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
@@ -8516,7 +8527,7 @@
       "triggers": [
         {
           "name": "team_raid_kills_skip_killed_bosses",
-          "def": "CREATE TRIGGER team_raid_kills_skip_killed_bosses AFTER INSERT ON public.team_raid_kills REFERENCING NEW TABLE AS new_kills FOR EACH STATEMENT EXECUTE FUNCTION team_raid_kills_skip_killed_bosses()"
+          "def": "CREATE TRIGGER team_raid_kills_skip_killed_bosses AFTER INSERT ON public.team_raid_kills REFERENCING NEW TABLE AS new_kills FOR EACH STATEMENT EXECUTE FUNCTION skip_killed_bosses()"
         }
       ]
     },
@@ -11482,13 +11493,13 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.skip_killed_bosses",
-      "return_type": "int4",
-      "arguments": "p_kill_ids integer[]",
+      "name": "public.kills_before_night",
+      "return_type": "team_raid_kills",
+      "arguments": "p_team_id integer, p_encounter_id integer, p_raid_date date, p_difficulty text",
       "type": "FUNCTION"
     },
     {
-      "name": "public.team_raid_kills_skip_killed_bosses",
+      "name": "public.skip_killed_bosses",
       "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"
