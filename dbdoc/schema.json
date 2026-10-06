@@ -8385,7 +8385,7 @@
     {
       "name": "public.team_raid_kills",
       "type": "BASE TABLE",
-      "comment": "Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. Each insert takes the bosses it killed off the team's later nights that lockout (skip_killed_bosses()).",
+      "comment": "Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), alt runs included as on team_raid_progress, one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. Each insert takes the bosses it killed off the team's later nights that lockout (skip_killed_bosses()).",
       "columns": [
         {
           "name": "id",
@@ -11496,6 +11496,12 @@
       "name": "public.kills_before_night",
       "return_type": "team_raid_kills",
       "arguments": "p_team_id integer, p_encounter_id integer, p_raid_date date, p_difficulty text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.log_killed_boss_skips",
+      "return_type": "void",
+      "arguments": "p_boss_ids integer[]",
       "type": "FUNCTION"
     },
     {

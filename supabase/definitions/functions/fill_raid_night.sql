@@ -42,14 +42,9 @@ begin
   join players p on p.id = g.player_id and p.archived_at is null and not p.is_bench
   where b.team_id = p_team_id and b.raid_date = p_raid_date and not b.skipped;
 
-  insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
-  select b.team_id, null, 'Skip Killed Boss', 'raid_night_bosses', b.encounter_id,
-         jsonb_build_object('raid_date', b.raid_date, 'boss', e.name, 'killed_on', k.raid_date,
-                            'difficulty', k.difficulty, 'report_code', k.report_code)
-  from raid_night_bosses b
-  join team_raid_kills k on k.id = b.skipped_for_kill_id
-  join raid_encounters e on e.id = b.encounter_id
-  where b.team_id = p_team_id and b.raid_date = p_raid_date;
+  perform log_killed_boss_skips(array(
+    select id from raid_night_bosses
+    where team_id = p_team_id and raid_date = p_raid_date and skipped_for_kill_id is not null));
 
   return v_count;
 end;

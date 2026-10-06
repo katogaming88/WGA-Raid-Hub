@@ -4204,6 +4204,10 @@ export type Database = {
       }
       lockout_start_at: { Args: { p_at: string }; Returns: string }
       lockout_week_start: { Args: { p_raid_date: string }; Returns: string }
+      log_killed_boss_skips: {
+        Args: { p_boss_ids: number[] }
+        Returns: undefined
+      }
       my_active_player_ids: { Args: never; Returns: number[] }
       my_leader_team_ids: { Args: never; Returns: number[] }
       my_officer_team_ids: { Args: never; Returns: number[] }
