@@ -672,6 +672,23 @@ describe('a boss killed earlier in the lockout (#1246)', () => {
       expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
       expect(await skippedOn(q, monday, 2)).toEqual([[FIRST, false]]);
     });
+    // Another team's kill, stored first, is not one of this team's kills.
+    await withTxn(async ({ q, asUser }) => {
+      const { monday, tuesday } = await planned(q, asUser);
+      await kill(q, { team: 2, report: 'r2', date: tuesday });
+      await kill(q, { team: 1, report: 'r1', date: tuesday });
+      expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
+    });
+    // Nor does it take a boss off a night this team plans afterwards.
+    await withTxn(async ({ q, asUser }) => {
+      const { p1 } = await seed(q);
+      await setTeamDifficulty(q, 'mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      await kill(q, { team: 2, report: 'r2', date: await day(q, 0) });
+      const monday = await day(q, 6);
+      await plan(asUser, OFFICER_T1, monday);
+      expect(await skippedOn(q, monday)).toEqual([[FIRST, false]]);
+    });
   });
 
   it('leaves the boss on the night the kill happened', async () => {
