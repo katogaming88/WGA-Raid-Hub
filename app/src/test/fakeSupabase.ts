@@ -14,12 +14,24 @@ export type Read = {
   order?: string;
 };
 
-type Answer = { data?: unknown; error?: { message: string } | null; count?: number | null };
+// A table write: what was sent, and the filters that pick its rows.
+export type Write = {
+  table: string;
+  method: 'insert' | 'update' | 'upsert' | 'delete';
+  values: unknown;
+  filters: [string, string, unknown][];
+};
+
+// `code` is the Postgres error code PostgREST passes through (23505 for a
+// duplicate key).
+type Answer = { data?: unknown; error?: { message: string; code?: string } | null; count?: number | null };
 type InvokeAnswer = { data?: unknown; error?: { message: string; context?: unknown } | null };
 
 export type FakeHandlers = {
   rpc?: (name: string, args: Record<string, unknown>) => Answer | Promise<Answer>;
   from?: (read: Read) => Answer | Promise<Answer>;
+  // Inserts, updates and deletes; none means every write succeeds.
+  write?: (write: Write) => Answer | Promise<Answer>;
   // The signed-in session getSession() answers with; none means signed out.
   session?: unknown;
   // `error` may carry `context`, the Response supabase-js attaches to a
@@ -32,8 +44,9 @@ export type AuthCall = [string, unknown];
 
 export function fakeClient(
   handlers: FakeHandlers
-): Client & { reads: Read[]; rpcs: [string, unknown][]; authCalls: AuthCall[] } {
+): Client & { reads: Read[]; writes: Write[]; rpcs: [string, unknown][]; authCalls: AuthCall[] } {
   const reads: Read[] = [];
+  const writes: Write[] = [];
   const rpcs: [string, unknown][] = [];
   const authCalls: AuthCall[] = [];
 
@@ -44,6 +57,7 @@ export function fakeClient(
 
   const client = {
     reads,
+    writes,
     rpcs,
     authCalls,
     auth: {
@@ -75,7 +89,16 @@ export function fakeClient(
     },
     from(table: string) {
       const read: Read = { table, columns: undefined, options: undefined, filters: [], single: false };
+      let write: Write | null = null;
+      const writing = (method: Write['method'], values: unknown) => {
+        write = { table, method, values, filters: read.filters };
+        return builder;
+      };
       const builder = {
+        insert: (values: unknown) => writing('insert', values),
+        update: (values: unknown) => writing('update', values),
+        upsert: (values: unknown) => writing('upsert', values),
+        delete: () => writing('delete', undefined),
         select(columns?: string, options?: unknown) {
           read.columns = columns;
           read.options = options;
@@ -121,6 +144,10 @@ export function fakeClient(
           return builder;
         },
         then(resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) {
+          if (write) {
+            writes.push(write);
+            return settle(handlers.write ? handlers.write(write) : { data: null }).then(resolve, reject);
+          }
           reads.push(read);
           return settle(handlers.from ? handlers.from(read) : { data: null }).then(resolve, reject);
         }
@@ -128,7 +155,12 @@ export function fakeClient(
       return builder;
     }
   };
-  return client as unknown as Client & { reads: Read[]; rpcs: [string, unknown][]; authCalls: AuthCall[] };
+  return client as unknown as Client & {
+    reads: Read[];
+    writes: Write[];
+    rpcs: [string, unknown][];
+    authCalls: AuthCall[];
+  };
 }
 
 // A session as supabase-js stores one, with the logins the account holds.

@@ -1,0 +1,175 @@
+import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
+import type { Client } from '../lib/supabase';
+import type { NameRow } from './names';
+
+const key = (teamId: number) => ['names', teamId] as const;
+
+async function writeAuditLog(
+  client: Client,
+  teamId: number,
+  action: string,
+  targetId: number | null,
+  detail: string | Record<string, string | number> | null
+) {
+  // Best-effort like useAttendance.ts's writeAuditLog: a failed audit log
+  // entry does not undo the write it was describing.
+  try {
+    await client.rpc('write_audit_log', {
+      p_team_id: teamId,
+      p_action: action,
+      ...(targetId !== null ? { p_target_type: 'names', p_target_id: targetId } : {}),
+      p_detail: detail
+    });
+  } catch {
+    // The write is already recorded either way.
+  }
+}
+
+export function useNames(teamId: number) {
+  return useSupabaseQuery<NameRow[]>(key(teamId), (client) =>
+    readAll<NameRow>((from, to) =>
+      client.from('names').select('id, label, team_member_id, role').eq('team_id', teamId).order('id').range(from, to)
+    )
+  );
+}
+
+// What a row action runs once its write and the refreshed reads are back,
+// whether or not the row that started it is still on the page.
+function onDone<V>(callback: ((variables: V) => void) | undefined) {
+  return callback ? { onSuccess: (_data: null, variables: V) => callback(variables) } : {};
+}
+
+// The per-team label index is the only unique rule a create or rename can
+// break, and its label may belong to someone who left, whose row is hidden.
+function labelError(error: { message: string; code?: string }) {
+  return error.code === '23505'
+    ? { message: 'A Name on this team already has that label. It may belong to someone who has left.' }
+    : error;
+}
+
+// Officer: a bare Name, unclaimed until someone claims or is assigned it.
+// role is the raid role it's expected to fill, so it can sit under that tab
+// before it has a character; null when the officer doesn't know yet.
+export function useCreateName(teamId: number) {
+  return useSupabaseMutation<null, { label: string; role: string | null }>(
+    async (client, { label, role }) => {
+      const result = await client.from('names').insert({ team_id: teamId, label, role });
+      if (result.error) return { data: null, error: labelError(result.error) };
+      await writeAuditLog(client, teamId, 'Name Created', null, role ? `${label} (${role})` : label);
+      return { data: null, error: null };
+    },
+    { key: ['create-name', teamId], refreshes: [key(teamId)] }
+  );
+}
+
+// role is only meaningful while the Name is still bare, so the caller leaves
+// it out for a claimed Name and the guess it already holds is kept. The audit
+// row says what the Name was called before.
+type Rename = { nameId: number; label: string; previousLabel: string; role?: string | null };
+export function useRenameName(teamId: number, done?: (variables: Rename) => void) {
+  return useSupabaseMutation<null, Rename>(
+    async (client, { nameId, label, previousLabel, role }) => {
+      const values = role === undefined ? { label } : { label, role };
+      const result = await client.from('names').update(values).eq('id', nameId);
+      if (result.error) return { data: null, error: labelError(result.error) };
+      const now = role ? `${label} (${role})` : label;
+      await writeAuditLog(client, teamId, 'Name Renamed', nameId, `${now}, was ${previousLabel}`);
+      return { data: null, error: null };
+    },
+    { key: ['rename-name', teamId], refreshes: [key(teamId)], ...onDone(done) }
+  );
+}
+
+// Delete Name and Remove claim match only the Name as the officer saw it, so
+// one claimed, or claimed by someone else, since the page read it is left
+// alone and the officer is told.
+const CHANGED = {
+  message: 'That Name has changed since the page loaded. Reload the page to see it as it is now.'
+};
+
+// Officer: fixes a wrong self-service claim. The label survives, bare, and
+// the audit row keeps which membership held it, as a claim's own row does.
+type RemoveClaim = { nameId: number; label: string; teamMemberId: number };
+export function useRemoveNameClaim(teamId: number, done?: (variables: RemoveClaim) => void) {
+  return useSupabaseMutation<null, RemoveClaim>(
+    async (client, { nameId, label, teamMemberId }) => {
+      const result = await client
+        .from('names')
+        .update({ team_member_id: null })
+        .eq('id', nameId)
+        .eq('team_member_id', teamMemberId)
+        .select('id');
+      if (result.error) return result;
+      if (result.data?.length === 0) return { data: null, error: CHANGED };
+      await writeAuditLog(client, teamId, 'Name Claim Removed', nameId, { label, team_member_id: teamMemberId });
+      return { data: null, error: null };
+    },
+    { key: ['remove-name-claim', teamId], refreshes: [key(teamId)], ...onDone(done) }
+  );
+}
+
+// Self-service: the raider picks their own bare Name off the list. A first
+// claim on a team creates the membership, so the membership read refreshes.
+export function useClaimName(teamId: number, done?: (variables: { nameId: number }) => void) {
+  return useSupabaseMutation<null, { nameId: number }>(
+    async (client, { nameId }) => {
+      const result = await client.rpc('claim_name', { p_team_id: teamId, p_name_id: nameId });
+      return { data: null, error: result.error };
+    },
+    { key: ['claim-name', teamId], refreshes: [key(teamId), ['access'], ['team-alts', teamId]], ...onDone(done) }
+  );
+}
+
+// The six reasons archive_team_member() and archive_player() both take
+// (player_officer_notes.archived_reason), so a membership and its
+// characters are archived with the same vocabulary.
+export const ARCHIVE_REASONS: { value: string; label: string }[] = [
+  { value: 'schedule_conflict', label: 'Schedule conflict' },
+  { value: 'performance', label: 'Performance' },
+  { value: 'drama', label: 'Drama' },
+  { value: 'moved_guilds', label: 'Moved guilds' },
+  { value: 'switching_mains', label: 'Switching mains' },
+  { value: 'other', label: 'Other' }
+];
+
+// Officer: someone left. Archives the membership and their active
+// characters (never deletes either, #1423), so the roster read needs
+// refreshing too, alongside this team's Names, the membership read a
+// name-only row depends on, and the waiting main swaps, which the archive
+// cancels.
+export function useArchiveTeamMember(
+  teamId: number,
+  done?: (variables: { teamMemberId: number; reason: string; detail: string }) => void
+) {
+  return useSupabaseMutation<null, { teamMemberId: number; reason: string; detail: string }>(
+    async (client, { teamMemberId, reason, detail }) => {
+      const result = await client.rpc('archive_team_member', {
+        p_team_id: teamId,
+        p_team_member_id: teamMemberId,
+        p_reason: reason,
+        p_detail: detail
+      });
+      return { data: null, error: result.error };
+    },
+    {
+      key: ['archive-team-member', teamId],
+      refreshes: [key(teamId), ['roster', teamId], ['team-alts', teamId], ['team-main-swaps', teamId]],
+      ...onDone(done)
+    }
+  );
+}
+
+// Officer: removes a bare Name outright (never claimed), a plain table
+// delete under the same officer-write policy create/rename/assign use.
+export function useDeleteName(teamId: number, done?: (variables: { nameId: number; label: string }) => void) {
+  return useSupabaseMutation<null, { nameId: number; label: string }>(
+    async (client, { nameId, label }) => {
+      const result = await client.from('names').delete().eq('id', nameId).is('team_member_id', null).select('id');
+      if (result.error) return result;
+      if (result.data?.length === 0) return { data: null, error: CHANGED };
+      await writeAuditLog(client, teamId, 'Name Deleted', nameId, label);
+      return { data: null, error: null };
+    },
+    { key: ['delete-name', teamId], refreshes: [key(teamId)], ...onDone(done) }
+  );
+}

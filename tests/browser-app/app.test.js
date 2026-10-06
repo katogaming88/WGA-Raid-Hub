@@ -182,6 +182,25 @@ const rosterWithAlts = () => {
   };
 };
 
+// Names (#1355): one claimed on a character, a bare one with a role guess, a
+// bare one with none, and a claimed one whose member has no character yet.
+// Every membership states archived_at, since a row that leaves it out reads as
+// current.
+const rosterWithNames = () => ({
+  ...ROSTER,
+  players: ROSTER.players.map((p) => ({ ...p, team_member_id: p.id })),
+  team_members: [
+    ...ROSTER.players.map((p) => ({ id: p.id, person_id: 100 + p.id, archived_at: null })),
+    { id: 40, person_id: 140, archived_at: null }
+  ],
+  names: [
+    { id: 1, label: 'Bryn', team_member_id: 2, role: null },
+    { id: 2, label: 'Thalindra', team_member_id: null, role: 'Heal' },
+    { id: 3, label: 'Corvin', team_member_id: null, role: null },
+    { id: 4, label: 'Mirelle', team_member_id: 40, role: null }
+  ]
+});
+
 // A main swap waiting for an officer (#631), and the specs the ask offers.
 const SPECS = [
   { id: 1, class: 'Evoker', spec: 'Preservation', role: 'Heal' },
@@ -967,6 +986,14 @@ const STATES = [
     click: 'role=tab[name="Midnight Season 4 Roster (Tentative)"]'
   },
   {
+    label: 'roster, officer, Names',
+    path: '/g/wga/t/phoenix/roster',
+    sentinel: 'table.roster-table .name-only-row',
+    session: OFFICER,
+    who: 'officer',
+    tables: rosterWithNames()
+  },
+  {
     label: 'roster, officer, a main swap waiting',
     path: '/g/wga/t/phoenix/roster',
     sentinel: '.main-swaps',
@@ -1195,6 +1222,69 @@ describe('keyboard', () => {
       await page.keyboard.press('Escape');
       await dialog.waitFor({ state: 'detached' });
       expect(await trigger.evaluate((el) => el === document.activeElement)).toBe(true);
+    } finally {
+      await context.close();
+    }
+  });
+});
+
+describe('roster row menu', () => {
+  it('has no violations while open, and focus returns to its button when a dialog it opened closes', async () => {
+    const { context, page } = await openApp(browser, server.port, {
+      path: '/g/wga/t/phoenix/roster',
+      sentinel: 'table.roster-table .name-only-row',
+      session: OFFICER,
+      who: 'officer',
+      tables: rosterWithNames()
+    });
+    try {
+      const trigger = page.getByRole('button', { name: 'More actions for Bryn' });
+      await trigger.click();
+      const menu = page.getByRole('menu', { name: 'More actions for Bryn' });
+      await menu.waitFor();
+      expect(await axe(page)).toEqual([]);
+      await menu.getByRole('menuitem', { name: 'Edit' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Edit Name' });
+      await dialog.waitFor();
+      await page.keyboard.press('Escape');
+      await dialog.waitFor({ state: 'detached' });
+      expect(await trigger.evaluate((el) => el === document.activeElement)).toBe(true);
+    } finally {
+      await context.close();
+    }
+  });
+
+  it('opens on screen from a row at the bottom of the window, with its first item focused', async () => {
+    const { context, page } = await openApp(browser, server.port, {
+      path: '/g/wga/t/phoenix/roster',
+      sentinel: 'table.roster-table .name-only-row',
+      session: OFFICER,
+      who: 'officer',
+      tables: rosterWithNames()
+    });
+    try {
+      const trigger = page.getByRole('button', { name: 'More actions for Mirelle' });
+      // The row's button just above the bottom edge, its scroll settled, then
+      // opened from the keyboard: Playwright's own click nudges the page and
+      // its late scroll event would close the menu whatever the page does.
+      await trigger.evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        window.scrollBy(0, box.bottom - window.innerHeight + 8);
+      });
+      await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+      await trigger.focus();
+      await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+      await page.keyboard.press('Enter');
+      const menu = page.getByRole('menu', { name: 'More actions for Mirelle' });
+      // Still open once the click has settled, not opened and closed again.
+      await page.waitForTimeout(300);
+      expect(await menu.count()).toBe(1);
+      const box = await menu.boundingBox();
+      const height = page.viewportSize().height;
+      expect(box.y >= 0 && box.y + box.height <= height).toBe(true);
+      expect(await menu.getByRole('menuitem', { name: 'Edit' }).evaluate((el) => el === document.activeElement)).toBe(
+        true
+      );
     } finally {
       await context.close();
     }

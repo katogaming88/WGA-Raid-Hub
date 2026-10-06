@@ -3,6 +3,7 @@
 // worked out) are tested without rendering.
 
 import { attendance, seasonLoot, type AttendanceRow, type LootRow, type SeasonWindow } from '../profile/profile';
+import type { NameRow } from './names';
 
 export type Role = 'Tank' | 'Heal' | 'Melee' | 'Ranged';
 
@@ -41,9 +42,10 @@ export type Raider = {
   // a signup on next season's roster.
   playerId: number | null;
   urlCode: string | null;
-  // What the roster calls them: the nickname when there is one.
+  // What the roster calls them: the claimed Name's label when there is one
+  // (#1355), else the nickname, else the character's own name.
   name: string;
-  // The character's own name, shown beside a nickname.
+  // The character's own name, shown beside a Name/nickname.
   character: string | null;
   className: string;
   spec: string;
@@ -51,6 +53,10 @@ export type Raider = {
   itemLevel: number | null;
   tierPieces: number | null;
   statuses: Status[];
+  // The names row claiming this row's membership, if any (#1355) -- lets the
+  // row carry its own officer actions (Edit/Remove claim/Archive Member).
+  nameId?: number | null;
+  teamMemberId?: number | null;
 };
 
 export type RoleGroup = { role: Role; label: string; raiders: Raider[] };
@@ -87,21 +93,53 @@ function groupByRole(raiders: Raider[]): RoleGroup[] {
   })).filter((group) => group.raiders.length > 0);
 }
 
+// The claimed Name for each membership, keyed by team_member_id (#1355).
+// A row with no team_member_id, or whose membership nobody has claimed a
+// Name for yet, has none.
+function claimedNameByMember(names: NameRow[]): Map<number, { id: number; label: string }> {
+  const map = new Map<number, { id: number; label: string }>();
+  for (const n of names) if (n.team_member_id !== null) map.set(n.team_member_id, { id: n.id, label: n.label });
+  return map;
+}
+
+// Bare Names with no role guess (#1355): nothing places them on the roster,
+// so the page lists them as plain rows with no group of their own, only in
+// the unfiltered Everyone view. Sorted by label, like every other grouping.
+// A bare Name with a role folds into that role's group in toRoster() instead.
+export function bareNames(names: NameRow[]): NameRow[] {
+  return names.filter((n) => n.team_member_id === null && !n.role).sort((a, b) => a.label.localeCompare(b.label));
+}
+
+// Claimed Names whose membership is current and has no character on the
+// roster (#1355): Kat's "No characters yet" row, listed below the role groups
+// since a claimed Name's role guess no longer counts. `current` is the
+// memberships the viewer can tell are current, null while that is unknown, so
+// a departed member's Name never shows as if they were still here.
+export function nameOnlyRows(names: NameRow[], players: PlayerRow[], current: ReadonlySet<number> | null): NameRow[] {
+  if (!current) return [];
+  const rostered = new Set(players.map((p) => p.team_member_id).filter((id): id is number => id != null));
+  return names
+    .filter((n) => n.team_member_id !== null && current.has(n.team_member_id) && !rostered.has(n.team_member_id))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
 // A player with no role is not a roster entry yet, the same rule the current
 // site's mapSupabaseRoster() applies.
-export function toRoster(players: PlayerRow[], gear: GearRow[]): RoleGroup[] {
+export function toRoster(players: PlayerRow[], gear: GearRow[], names: NameRow[] = []): RoleGroup[] {
   const gearByPlayer = new Map<number, GearRow[]>();
   for (const row of gear) {
     const rows = gearByPlayer.get(row.player_id) ?? [];
     rows.push(row);
     gearByPlayer.set(row.player_id, rows);
   }
+  const claimed = claimedNameByMember(names);
   const raiders: Raider[] = [];
   for (const p of players) {
     const role = p.classes_specs?.role;
     if (!p.name_realm.trim() || !isRole(role)) continue;
     const character = firstName(p.name_realm);
-    const name = p.nickname?.trim() || character;
+    const claim = p.team_member_id != null ? claimed.get(p.team_member_id) : undefined;
+    const name = claim?.label ?? (p.nickname?.trim() || character);
     const statuses: Status[] = [];
     if (p.is_trial) statuses.push('Trial');
     if (p.is_bench) statuses.push('Bench');
@@ -117,7 +155,29 @@ export function toRoster(players: PlayerRow[], gear: GearRow[]): RoleGroup[] {
       role,
       itemLevel: equippedItemLevel(gearByPlayer.get(p.id) ?? []),
       tierPieces: p.tier_pieces_equipped,
-      statuses
+      statuses,
+      nameId: claim?.id ?? null,
+      teamMemberId: p.team_member_id ?? null
+    });
+  }
+  // A bare Name an officer gave a role guess: no character, so it takes its
+  // role's group directly rather than waiting for one (#1355).
+  for (const n of names) {
+    if (n.team_member_id !== null || !isRole(n.role)) continue;
+    raiders.push({
+      key: `name-${n.id}`,
+      playerId: null,
+      urlCode: null,
+      name: n.label,
+      character: null,
+      className: '',
+      spec: '',
+      role: n.role,
+      itemLevel: null,
+      tierPieces: null,
+      statuses: [],
+      nameId: n.id,
+      teamMemberId: null
     });
   }
   return groupByRole(raiders);

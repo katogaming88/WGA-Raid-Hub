@@ -7,6 +7,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { SPEC_ICON_KEYS, specIcon } from './specIcons';
 import {
   equippedItemLevel,
+  nameOnlyRows,
   officerStats,
   summarize,
   summaryLine,
@@ -101,6 +102,36 @@ describe('toRoster', () => {
       []
     );
     expect(group!.raiders[0]!.statuses).toEqual(['Trial', 'Rotator']);
+  });
+});
+
+// Kat's "No characters yet" row (#1355): a claimed Name whose membership is
+// current and has no character on the roster.
+describe('nameOnlyRows', () => {
+  const names = [
+    { id: 1, label: 'Wren', team_member_id: 21, role: null },
+    { id: 2, label: 'Ashka', team_member_id: 22, role: 'Tank' },
+    { id: 3, label: 'Left Us', team_member_id: 23, role: null },
+    { id: 4, label: 'On The Roster', team_member_id: 24, role: null },
+    { id: 5, label: 'Still Bare', team_member_id: null, role: 'Heal' }
+  ];
+  const rostered = [player(9, 'Brannoc-Illidan', 'Paladin', 'Holy', 'Heal', { team_member_id: 24 })];
+
+  it('lists claimed Names whose membership is current and has no character, by label', () => {
+    expect(nameOnlyRows(names, rostered, new Set([21, 22, 24])).map((n) => n.label)).toEqual(['Ashka', 'Wren']);
+  });
+
+  it('leaves out a membership that ended or one the viewer cannot see', () => {
+    expect(nameOnlyRows(names, rostered, new Set([21])).map((n) => n.label)).toEqual(['Wren']);
+  });
+
+  it('lists nobody while it is unknown which memberships are current', () => {
+    expect(nameOnlyRows(names, rostered, null)).toEqual([]);
+  });
+
+  it('leaves out a membership with a character on the roster, with or without a role', () => {
+    const noRole = [player(8, 'Nospec-Illidan', '', '', null, { team_member_id: 21 })];
+    expect(nameOnlyRows(names, [...rostered, ...noRole], new Set([21, 24])).map((n) => n.label)).toEqual([]);
   });
 });
 

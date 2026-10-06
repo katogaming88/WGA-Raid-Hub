@@ -12,6 +12,39 @@ answers to.
 
 ---
 
+## [3.167.1] - 2026-10-05
+
+### Project
+
+- The new app's Roster page shows `names` (#1437): a claimed Name overrides
+  its row's display name, and a bare one (no account yet) gets its own row
+  with a Claim button for anyone signed in. Every row action -- Claim,
+  Edit, Remove claim, Archive Member/Delete Name -- lives behind one "..."
+  menu instead of inline buttons. Archiving a member now asks for a reason
+  and a detail, the same vocabulary "Remove Player" already uses on the
+  current site's Roster tab. Not yet linked from anywhere else (#1355).
+- A claimed Name whose member has no character yet gets its own row,
+  tagged No characters yet, which the team's officers and the claimer see.
+  Officers get the "..." menu, with Archive Member, on every row that has
+  a membership, whether or not it holds a Name (#1355).
+- The row menu keeps keyboard focus where it belongs: a dialog opened
+  from it hands focus back to the menu's button, Tab or a scroll closes the
+  menu with focus back on the button, focus moves to the roster table when
+  an action takes its row away, and Add a Name puts focus back in its field
+  after a save. A menu near the bottom of the window opens upward, on
+  screen, and lines up with its button beside a classic scrollbar. The
+  Archive dialog closes itself when done and says an officer can bring the
+  member back (#1355).
+- Delete Name and Remove claim act only on the Name as the officer saw it,
+  and say so when it has changed since the page loaded. Edit no longer
+  clears a claimed Name's role guess, and Archive Member also refreshes the
+  waiting main swaps it cancels (#1355).
+- A duplicate label reads as a sentence, and the audit rows for Remove
+  claim, rename and delete say whose claim it was or what the Name was
+  called (#1355).
+
+---
+
 ## [3.167.0] - 2026-10-05
 
 ### Backend
