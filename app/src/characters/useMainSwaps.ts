@@ -1,5 +1,5 @@
 import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
-import type { ClassSpec, ReviewRow, SwapRequest } from './mainSwap';
+import { splitMine, type ClassSpec, type MySwaps, type ReviewRow, type SwapRequest } from './mainSwap';
 
 // Reading and writing main swap requests (#631, #942 step 5c). Who may read
 // one is the database's call: the raider it belongs to, their team's officers,
@@ -7,23 +7,24 @@ import type { ClassSpec, ReviewRow, SwapRequest } from './mainSwap';
 // is a roster change wearing a request's clothes.
 
 const REQUEST_COLUMNS =
-  'id, team_id, person_id, from_player_id, character_id, name_realm, class_spec_id, note, status, requested_at';
+  'id, team_id, person_id, from_player_id, character_id, name_realm, class_spec_id, note, status, requested_at, officer_note';
 
-// The raider's own request waiting on this team, if there is one.
-export function useMyMainSwap(teamId: number, personId: number | null) {
-  return useSupabaseQuery<SwapRequest | null>(
+// The raider's own request waiting on this team, if there is one, and the
+// ones an officer declined (#1430).
+export function useMyMainSwaps(teamId: number, personId: number | null) {
+  return useSupabaseQuery<MySwaps>(
     ['my-main-swap', teamId, personId],
     async (client) => {
+      // team-read-guard: one raider's own requests on one team, a handful at most
       const { data, error } = await client
         .from('main_swap_requests')
         .select(REQUEST_COLUMNS)
         .eq('team_id', teamId)
         .eq('person_id', personId!)
-        .eq('status', 'pending')
-        .order('id')
-        .limit(1);
+        .in('status', ['pending', 'declined'])
+        .order('id');
       if (error) return { data: null, error };
-      return { data: ((data ?? []) as unknown as SwapRequest[])[0] ?? null, error: null };
+      return { data: splitMine((data ?? []) as unknown as SwapRequest[]), error: null };
     },
     { enabled: personId !== null }
   );

@@ -9,6 +9,8 @@
 // - Approving keeps today's behaviour: the old character leaves the roster and
 //   keeps its history. The "Main tick" idea (#631) waits until cutover.
 
+import { nameRealmKey } from './characters';
+
 export type SwapStatus = 'pending' | 'approved' | 'declined' | 'cancelled';
 
 export type SwapRequest = {
@@ -22,6 +24,7 @@ export type SwapRequest = {
   note: string | null;
   status: SwapStatus;
   requested_at: string;
+  officer_note: string | null;
 };
 
 // A request with what an officer needs to read it: who they are on now, and
@@ -64,11 +67,25 @@ export const swapLine = (row: ReviewRow): string =>
   )}`;
 
 // Whether the Characters card offers an alt the ask. One request at a time per
-// team, so while one is waiting the others only say why they cannot be asked
-// for.
-export type AltAsk = { kind: 'ask' } | { kind: 'waiting' } | { kind: 'blocked' };
+// team, so while one is waiting the others cannot be asked for. An alt an
+// officer declined cannot be asked for again (#1430), so it says so with the
+// newest decline's note, matched by name key as the database matches it.
+export type AltAsk =
+  { kind: 'ask' } | { kind: 'waiting' } | { kind: 'declined'; note: string | null } | { kind: 'blocked' };
 
-export function altAsk(pending: SwapRequest | null, altNameRealm: string): AltAsk {
-  if (pending === null) return { kind: 'ask' };
-  return pending.name_realm === altNameRealm ? { kind: 'waiting' } : { kind: 'blocked' };
+export function altAsk(pending: SwapRequest | null, altNameRealm: string, declined: SwapRequest[] = []): AltAsk {
+  const key = nameRealmKey(altNameRealm);
+  if (pending !== null && nameRealmKey(pending.name_realm) === key) return { kind: 'waiting' };
+  const decline = declined.filter((r) => nameRealmKey(r.name_realm) === key).sort((a, b) => b.id - a.id)[0];
+  if (decline) return { kind: 'declined', note: decline.officer_note };
+  return pending === null ? { kind: 'ask' } : { kind: 'blocked' };
 }
+
+// The raider's own requests on a team, as the Characters card reads them: the
+// one waiting, if any, and every one an officer declined.
+export type MySwaps = { pending: SwapRequest | null; declined: SwapRequest[] };
+
+export const splitMine = (rows: SwapRequest[]): MySwaps => ({
+  pending: rows.find((r) => r.status === 'pending') ?? null,
+  declined: rows.filter((r) => r.status === 'declined')
+});
