@@ -903,10 +903,11 @@ describe('a boss killed earlier in the lockout (#1246)', () => {
   it('fails the kill’s insert when the skip fails, so the sync’s next run sends it again and skips', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { monday, tuesday } = await planned(q, asUser);
-      // A skip that always fails, until the savepoint is rolled back.
+      // A rule the skip reads that always fails, until the savepoint is rolled back.
       await q('savepoint broken_skip');
-      await q(`create or replace function public.skip_killed_bosses() returns trigger
-               language plpgsql security definer set search_path = public
+      await q(`create or replace function public.kills_before_night(
+                 p_team_id integer, p_encounter_id integer, p_raid_date date, p_difficulty text)
+               returns setof public.team_raid_kills language plpgsql stable set search_path = public
                as $$ begin raise exception 'broken on purpose'; end $$`);
       await expect(kill(q, { report: 'r1', date: tuesday })).rejects.toThrow(/broken on purpose/);
       await q('rollback to savepoint broken_skip');
