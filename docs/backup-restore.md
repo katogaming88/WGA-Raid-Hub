@@ -43,7 +43,7 @@ Every `public` base table appears below. That is the point of the list: a table 
 - `tier_token_map`, alongside the same catalog import.
 - `season_track_floors` (a tier's lowest item level per gear upgrade track, [#1267](https://github.com/katogaming88/WGA-Raid-Hub/issues/1267)): like `seasons`, the rows are in the migration that added each tier, so a schema rebuild brings them back.
 - `raid_zones`/`raid_encounters`, re-derivable from Warcraft Logs.
-- `player_wcl_season_perf`, `team_raid_progress` and `team_raid_kills`, re-fetched by the `wcl-sync` and `wcl-progression-sync` Edge Functions.
+- `player_wcl_season_perf`, `team_raid_progress` and `team_raid_kills`, re-fetched by the `wcl-sync` and `wcl-progression-sync` Edge Functions. A re-fetched kill gets a new id, though, and `raid_night_bosses` names kills by id, so restore `team_raid_kills` from the dump whenever `raid_night_bosses` is restored.
 - `player_equipped_gear`, re-fetched by the `blizzard-gear-sync` Edge Function (daily cron sweep, plus an officer on-demand call).
 - `priority_order`, rebuilt by `generate_priority_order()`.
 - `scoring`, recomputed from performance and attendance inputs.
@@ -79,7 +79,7 @@ Note the dependency, because it decides restore order: `priority_order` and `sco
 - `boe_items` and `boe_listings` (the BoE lifecycle and money receipt: sale prices, payouts, the split -- hand-entered by managers, no other source, [#745](https://github.com/katogaming88/WGA-Raid-Hub/issues/745))
 - `guilds` (the guild row and its URL key, [#1114](https://github.com/katogaming88/WGA-Raid-Hub/issues/1114); the FK root of `teams`)
 - `retired_url_keys` (old guild and team URL keys, so links already posted in Discord keep resolving, [#1114](https://github.com/katogaming88/WGA-Raid-Hub/issues/1114); losing it only breaks links that use a key since renamed)
-- `boss_groups`, `raid_night_bosses` and `raid_night_lineups` (the standing group per boss and each raid night's plan, [#1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216); officer-picked, no other source. The night plans are also the record of who was planned in for a night already played. Restore after `players`, `raid_encounters` and `people`, and `raid_night_bosses` before `raid_night_lineups`, which points at it)
+- `boss_groups`, `raid_night_bosses` and `raid_night_lineups` (the standing group per boss and each raid night's plan, [#1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216); officer-picked, no other source. The night plans are also the record of who was planned in for a night already played. Restore after `players`, `raid_encounters`, `people` and `team_raid_kills`, and `raid_night_bosses` before `raid_night_lineups`, which points at it)
 - `team_lineup_settings` (a team's own tanks-wanted and healers-wanted counts for the boss lineup, [#1244](https://github.com/katogaming88/WGA-Raid-Hub/issues/1244); officer-set, no other source, and a team with no row simply uses the 2/4 default. Restore after `teams`)
 - `team_schedule_settings` (a team's default raid difficulty, which every raid night without its own follows, [#1246](https://github.com/katogaming88/WGA-Raid-Hub/issues/1246); officer-set, no other source, and a team with no row has none set. Restore after `teams`)
 - `removal_reasons` (every reason a character or a membership was removed for, one row each, [#1427](https://github.com/katogaming88/WGA-Raid-Hub/issues/1427); the notes row keeps only the latest, so the earlier ones exist nowhere else once the audit log's free-text copies are gone. Restore after `players`, `team_members` and `people`)
@@ -243,7 +243,13 @@ As of 2026-10-03, [#1427](https://github.com/katogaming88/WGA-Raid-Hub/issues/14
 
 As of 2026-10-05, [#1355](https://github.com/katogaming88/WGA-Raid-Hub/issues/1355) added `names` (60 base tables), classified in-app-only above: a team's roster labels, typed by officers and claimed by raiders. Its keys are `team_id` to `teams` and `team_member_id` to `team_members`, so it restores after both; no new `auth.users` FK. No `EMPTY_CHECK` floor: a team that lists nobody ahead of time has no rows. No re-drill due.
 
-The same day, [#1246](https://github.com/katogaming88/WGA-Raid-Hub/issues/1246) added `raid_night_bosses.skipped_for_kill_id`, a key from an in-app-only table to `team_raid_kills`, which is classified regenerable. A restore of `raid_night_bosses` takes `team_raid_kills` from the same dump rather than re-fetching it: a re-fetched kill gets a new id, and a night still naming the old one fails its key. The skip trigger on `team_raid_kills` is created after the data loads, so a restore skips nothing. No new table, no `auth.users` FK, no re-drill due.
+The same day, [#1246](https://github.com/katogaming88/WGA-Raid-Hub/issues/1246) added `raid_night_bosses.skipped_for_kill_id`, a key from an in-app-only table to `team_raid_kills`, which is classified regenerable, and an insert trigger on `team_raid_kills` (`skip_killed_bosses()`). Three things follow for the selective-restore runbook above:
+
+- Restore `team_raid_kills` from the same dump as `raid_night_bosses`, kills first. A re-fetched kill gets a new id that no night names.
+- `truncate table public.team_raid_kills` is refused while nights point at it, and `cascade` would empty every team's night plans and participation. Delete its rows instead: the nights keep their skip and lose the kill they name until `raid_night_bosses` is restored too.
+- Wrap a data-only restore of `team_raid_kills` in `alter table public.team_raid_kills disable trigger user;` and `enable trigger user;`. Otherwise the trigger treats every restored kill as new and takes bosses back off nights where officers put them back.
+
+The full rebuild creates triggers after the data loads, so it skips nothing. No new table, no `auth.users` FK, no re-drill due.
 
 ## Ops notes
 
