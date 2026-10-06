@@ -243,6 +243,8 @@ As of 2026-10-03, [#1427](https://github.com/katogaming88/WGA-Raid-Hub/issues/14
 
 As of 2026-10-05, [#1355](https://github.com/katogaming88/WGA-Raid-Hub/issues/1355) added `names` (60 base tables), classified in-app-only above: a team's roster labels, typed by officers and claimed by raiders. Its keys are `team_id` to `teams` and `team_member_id` to `team_members`, so it restores after both; no new `auth.users` FK. No `EMPTY_CHECK` floor: a team that lists nobody ahead of time has no rows. No re-drill due.
 
+The same day, [#1246](https://github.com/katogaming88/WGA-Raid-Hub/issues/1246) added `raid_night_bosses.skipped_for_kill_id`, a key from an in-app-only table to `team_raid_kills`, which is classified regenerable. A restore of `raid_night_bosses` takes `team_raid_kills` from the same dump rather than re-fetching it: a re-fetched kill gets a new id, and a night still naming the old one fails its key. The skip trigger on `team_raid_kills` is created after the data loads, so a restore skips nothing. No new table, no `auth.users` FK, no re-drill due.
+
 ## Ops notes
 
 - GitHub disables `schedule` workflows after 60 days without repo activity; any push re-enables them. Not a realistic risk while the project is active, but worth knowing if it ever goes dormant.
