@@ -66,7 +66,7 @@
 | [public.characters](public.characters.md) | 13 | Characters a person chose to show from their Battle.net account (#942 step 5, #1162). Written only by save_battlenet_characters() from the battlenet-characters Edge Function. A character here is an alt unless the same name_realm_key is a roster row linked to the person. | BASE TABLE |
 | [public.main_swap_requests](public.main_swap_requests.md) | 14 | A raider's request to make one of their alts their roster character, outside a signup window (#631, #942 step 5c). Written only by request_main_swap(), cancel_main_swap_request() and review_main_swap_request(), and by the trigger that closes a waiting swap when its character leaves the roster (cancel_waiting_main_swaps_on_archive, #1428). name_realm and class_spec_id are what they asked for, kept here so the request still reads right after the character row changes. | BASE TABLE |
 | [public.boss_groups](public.boss_groups.md) | 5 | The standing group per boss for a team (#1216): one row per raider in the group that kills that boss. A new raid night is filled from these. Written only through set_boss_group(). | BASE TABLE |
-| [public.raid_night_bosses](public.raid_night_bosses.md) | 9 | The bosses on one raid night's list for a team (#1216), in pull order. skipped keeps a boss the team is not pulling that night on the list. confirmed_at and confirmed_by say an officer saved that boss's lineup for the night; until then it follows the boss's standing group. No rows for a night means it is not planned yet. | BASE TABLE |
+| [public.raid_night_bosses](public.raid_night_bosses.md) | 10 | The bosses on one raid night's list for a team (#1216), in pull order. skipped keeps a boss the team is not pulling that night on the list. confirmed_at and confirmed_by say an officer saved that boss's lineup for the night; until then it follows the boss's standing group. No rows for a night means it is not planned yet. | BASE TABLE |
 | [public.raid_night_lineups](public.raid_night_lineups.md) | 6 | The plan for one raid night (#1216): one row per raider in for one boss. Filled from boss_groups ahead of the night, then edited through set_raid_night_lineup(). Kept after the night, so it still says who was planned in. | BASE TABLE |
 | [public.team_lineup_settings](public.team_lineup_settings.md) | 4 | A team's own tanks-wanted and healers-wanted counts for the boss lineup's "Needs a look" check (#1244), defaulting to 2 and 4 when a team has no row. Written only by set_lineup_role_targets(). | BASE TABLE |
 | [public.team_seasons](public.team_seasons.md) | 6 | A team's two switches per tier (#939): whether raiders can sign up and whether they can edit their wishlist. No row means both closed. Written only by set_team_season(). | BASE TABLE |
@@ -74,7 +74,7 @@
 | [public.item_seasons](public.item_seasons.md) | 2 | The seasons a dungeon or crafted item is offered in (#1166). A raid item has no row: its season comes from raid_zones. Filled by scripts/dungeon-items-sql.js, never by a client. | BASE TABLE |
 | [public.raid_night_participation](public.raid_night_participation.md) | 6 | Who was actually in for a real pull of one boss on one raid night (#1242), one row per raider present. Written only by record_raid_night_participation(), called from the attendance sync once a night has a lineup (raid_night_bosses). Compare against raid_night_lineups for planned-vs-actual. | BASE TABLE |
 | [public.season_track_floors](public.season_track_floors.md) | 4 | The lowest item level of each gear upgrade track in a tier (#1267). blizzard-gear-sync grades equipped gear that carries no track bonus id against the current tier's floors, highest track first. Added by the migration that adds the tier. | BASE TABLE |
-| [public.team_raid_kills](public.team_raid_kills.md) | 9 | Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. | BASE TABLE |
+| [public.team_raid_kills](public.team_raid_kills.md) | 9 | Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), alt runs included as on team_raid_progress, one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. Each insert takes the bosses it killed off the team's later nights that lockout (skip_killed_bosses()). | BASE TABLE |
 | [public.team_raid_kills_this_week](public.team_raid_kills_this_week.md) | 7 | Each boss a team has killed since this week's Tuesday reset, once per difficulty, with its first kill of the week (#1246). | VIEW |
 | [public.team_schedule_settings](public.team_schedule_settings.md) | 3 | A team's own schedule settings (#1246): the raid difficulty every weekly or added night follows unless it sets its own. No row, or a null, means not set. Written by the officers who write raid_schedule. | BASE TABLE |
 | [public.removal_reasons](public.removal_reasons.md) | 8 | Every reason a character or a membership was removed for (#1427), never updated or deleted. A character's row comes from a trigger on player_officer_notes, a membership's from archive_team_member(). The notes row still holds the latest reason; this holds all of them. | BASE TABLE |
@@ -231,6 +231,9 @@
 | public.restore_player | bool | p_player_id integer, p_name_realm text DEFAULT NULL::text, p_nickname text DEFAULT NULL::text, p_class_spec_id integer DEFAULT NULL::integer, p_is_trial boolean DEFAULT NULL::boolean, p_join_date date DEFAULT NULL::date | FUNCTION |
 | public.names_team_member_same_team | trigger |  | FUNCTION |
 | public.claim_name | void | p_team_id integer, p_name_id integer | FUNCTION |
+| public.kills_before_night | team_raid_kills | p_team_id integer, p_encounter_id integer, p_raid_date date, p_difficulty text | FUNCTION |
+| public.log_killed_boss_skips | void | p_boss_ids integer[] | FUNCTION |
+| public.skip_killed_bosses | trigger |  | FUNCTION |
 
 ## Enums
 
@@ -358,6 +361,7 @@ erDiagram
 "public.raid_night_bosses" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.raid_night_bosses" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.raid_night_bosses" }o--o| "public.people" : "FOREIGN KEY (confirmed_by) REFERENCES people(id) ON DELETE SET NULL"
+"public.raid_night_bosses" }o--o| "public.team_raid_kills" : "FOREIGN KEY (skipped_for_kill_id) REFERENCES team_raid_kills(id) ON DELETE SET NULL"
 "public.raid_night_lineups" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.raid_night_lineups" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
 "public.team_lineup_settings" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
@@ -1038,6 +1042,7 @@ erDiagram
   timestamp_with_time_zone confirmed_at
   integer confirmed_by FK
   timestamp_with_time_zone created_at
+  integer skipped_for_kill_id FK
 }
 "public.raid_night_lineups" {
   integer id

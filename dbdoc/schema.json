@@ -7528,6 +7528,12 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "skipped_for_kill_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The kill that took this boss off the night (#1246): the team killed it earlier in the lockout at the night's difficulty. Null when an officer skipped it, and when it is not skipped."
         }
       ],
       "indexes": [
@@ -7564,9 +7570,28 @@
           "columns": [
             "confirmed_by"
           ]
+        },
+        {
+          "name": "raid_night_bosses_skipped_for_kill_id_idx",
+          "def": "CREATE INDEX raid_night_bosses_skipped_for_kill_id_idx ON public.raid_night_bosses USING btree (skipped_for_kill_id)",
+          "table": "public.raid_night_bosses",
+          "columns": [
+            "skipped_for_kill_id"
+          ]
         }
       ],
       "constraints": [
+        {
+          "name": "raid_night_bosses_kill_only_when_skipped",
+          "type": "CHECK",
+          "def": "CHECK ((skipped OR (skipped_for_kill_id IS NULL)))",
+          "table": "public.raid_night_bosses",
+          "referenced_table": "",
+          "columns": [
+            "skipped",
+            "skipped_for_kill_id"
+          ]
+        },
         {
           "name": "raid_night_bosses_team_id_fkey",
           "type": "FOREIGN KEY",
@@ -7626,6 +7651,19 @@
             "team_id",
             "raid_date",
             "encounter_id"
+          ]
+        },
+        {
+          "name": "raid_night_bosses_skipped_for_kill_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (skipped_for_kill_id) REFERENCES team_raid_kills(id) ON DELETE SET NULL",
+          "table": "public.raid_night_bosses",
+          "referenced_table": "public.team_raid_kills",
+          "columns": [
+            "skipped_for_kill_id"
+          ],
+          "referenced_columns": [
+            "id"
           ]
         }
       ]
@@ -8347,7 +8385,7 @@
     {
       "name": "public.team_raid_kills",
       "type": "BASE TABLE",
-      "comment": "Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all.",
+      "comment": "Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), alt runs included as on team_raid_progress, one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. Each insert takes the bosses it killed off the team's later nights that lockout (skip_killed_bosses()).",
       "columns": [
         {
           "name": "id",
@@ -8484,6 +8522,12 @@
             "report_code",
             "fight_id"
           ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "team_raid_kills_skip_killed_bosses",
+          "def": "CREATE TRIGGER team_raid_kills_skip_killed_bosses AFTER INSERT ON public.team_raid_kills REFERENCING NEW TABLE AS new_kills FOR EACH STATEMENT EXECUTE FUNCTION skip_killed_bosses()"
         }
       ]
     },
@@ -10284,6 +10328,19 @@
       "def": "FOREIGN KEY (confirmed_by) REFERENCES people(id) ON DELETE SET NULL"
     },
     {
+      "table": "public.raid_night_bosses",
+      "columns": [
+        "skipped_for_kill_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_raid_kills",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (skipped_for_kill_id) REFERENCES team_raid_kills(id) ON DELETE SET NULL"
+    },
+    {
       "table": "public.raid_night_lineups",
       "columns": [
         "player_id"
@@ -11433,6 +11490,24 @@
       "name": "public.claim_name",
       "return_type": "void",
       "arguments": "p_team_id integer, p_name_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.kills_before_night",
+      "return_type": "team_raid_kills",
+      "arguments": "p_team_id integer, p_encounter_id integer, p_raid_date date, p_difficulty text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.log_killed_boss_skips",
+      "return_type": "void",
+      "arguments": "p_boss_ids integer[]",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.skip_killed_bosses",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],

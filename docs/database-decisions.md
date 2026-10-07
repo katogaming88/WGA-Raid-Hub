@@ -10,6 +10,31 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-02 -- a boss killed earlier in the lockout comes off the team's later nights (#1246)
+
+Shipped: 20261005220909_lineup_skips_killed_bosses.sql
+
+Every kill is kept (`team_raid_kills`) and each night says its difficulty, but an officer still took each killed boss off the coming nights by hand. The lineup now does it.
+
+- **At kill time, by trigger.** An after-insert statement trigger on `team_raid_kills` runs `skip_killed_bosses()` on the rows the insert stored, so a kill reaches the plan on the progression sync's next run (Monday, Tuesday and Thursday evenings Eastern). A kill from another night waits for the next of those runs.
+- **An error fails the insert.** The sync sends every kill again on its next run, which retries the skip. The failure shows only in the run's reply today, which nothing reads; recording each run's outcome, as #1174 does for the gear sweep, is #1475. Turning the error into a warning was the first build; the review showed it would never retry, since a re-sent kill is skipped as already stored and the next log of it is no longer the first.
+- **One rule decides which kills count for a night,** `kills_before_night()`: the boss's kills at the night's difficulty, earlier in the night's lockout and before the night. A kill counts in the lockout its report started in (`lockout_start_at()`), so a Tuesday report from before the reset belongs to the week before. The skip and a newly planned night both use it.
+- **Which nights.** The team's nights not yet started (any night after today, and tonight until its scheduled start), whose difficulty from `raid_night_info()` matches, where no officer has saved the boss (`confirmed_at`) or skipped it. A night that goes Heroic into Mythic counts as Mythic, so a Heroic kill leaves its boss on it, and a night with no difficulty is never touched. The kill's own night keeps its lineup, which #1242's attendance reads.
+- **A night under way is left alone.** Decided on review: once a raid starts, its plan is the record #1242's participation is compared against, and a boss greyed out between pulls is a surprise to the raid leader. The start is `raid_night_info()`'s, in the night's own time zone; a night with no start time counts as started. A late log picked up before the start still reaches tonight. The sync's first tick is 8:00 pm Eastern, so a team that starts at or before 8:00 gets no tick before its start; the fix for that is the cron window (`20260821010329_wcl_progression_sync_wider_window.sql`), not this rule. Planning tonight after its start still fills it, with killed bosses arriving skipped: that makes a plan, it does not edit one.
+- **Only when the insert brings the night's first kills.** A boss comes off a night when every kill of it before the night arrived in this insert. Another log of a kill already counted changes nothing, which is what lets Put back stick, and a Tuesday log uploaded after Friday's still reaches Thursday. Two logs in one insert count once, as the earlier report's.
+- **The boss stays on the list as skipped, with the kill in `raid_night_bosses.skipped_for_kill_id`.** Put back and a lineup save clear it, as they clear a hand skip, and a check keeps the column on skipped bosses only. It is what the grid's greying (kat's board A2 on #1216) can read; the page is not part of this.
+- **A night planned after the kill arrives skipped,** with the same audit entry.
+- **Logged with no actor,** through `log_killed_boss_skips()`, which the skip and the fill share. One `Skip Killed Boss` entry per boss per night, naming the night, the boss, the kill's date, its difficulty and its report. The audit log readers show a blank author for a null actor, so the action name is what says the sync did it.
+- **The lock comes first.** The skip takes the per-team lineup lock before it reads, so a night filled at the same moment is either seen by the skip or sees the kill, and the hourly fill now takes its team locks in team order, as the skip does. A test wraps the rule to refuse a read made without the team's lock; the race itself cannot be staged in one rolled-back transaction.
+- **Alt runs count, for now.** `team_raid_kills` keeps every kill the sync reads, alt runs included, as `team_raid_progress` always has, so an alt group's kill takes its boss off the team's later nights. Which reports are the team's is the next step (#1469 to #1472): a table of the reports the sync reads, with the title rule attendance uses as its verdict and an officer's override, read by the skip, the kills view and progress. A fix inside the sync was built and dropped in review: it deleted the kills it judged, which loses them if the judgment is overturned.
+- **No catch-up at deploy:** production held no lineup rows when this was built, so there was nothing planned for kills already stored to reach.
+- **Accepted, from the review:** a report that runs on into the next raid night dates its kills to the night it started, so a boss killed in the later night is taken off that night; a night whose difficulty an officer changes after the skip keeps the skip, or misses one, by the order things happened; a delete and re-fetch of `team_raid_kills` treats every kill as new, re-skipping bosses an officer put back; and the night's difficulty and start are read once per boss row, a few dozen lookups on the sync's three evenings a week.
+- **Not here:** re-checking filled nights when a night's difficulty changes, and the grid's greying.
+
+[Full discussion -> #1246](https://github.com/katogaming88/WGA-Raid-Hub/issues/1246).
+
+---
+
 ## 2026-10-04 -- the nightly backup dumps stay unencrypted (#1418)
 
 Shipped: no migration, decision only.
@@ -201,7 +226,7 @@ The lineup can only take a boss killed earlier in the week off a later night whe
 - **One resolver, not a fourth.** `raid_night_info()` gains a `difficulty` column rather than a new function beside it, since three night resolvers already exist. Its existing precedence decides: a cancelled date has none, an added night's own value then the default, the weekday rule's own value then the default. The return type change is a drop and create, which repeats the function's comment and its `service_role` grant.
 - **Officers write the default under `raid_schedule`'s own rule**: the team's officers, guild officers and site admins, by a direct write from the tab (#894's convention for schedule tables). `set_updated_at()` stamps `updated_at` on every change, as on `team_invite_links`, so the row never carries a browser's clock.
 - **Anyone reads it, unlike `team_raid_kills`.** `raid_night_info()` is not `SECURITY DEFINER` and anyone may execute it, so a narrower read would give a signed-out caller or a raider a null difficulty on every night left at default while an officer got the real one. The schedule tables it sits beside are public read for the same reason. It is one more table for #1286's inventory.
-- **Not here:** the two client resolvers (`computeRaidNights()`, `raidNights()`) show no difficulty yet, and the automatic skip is the next pull request for #1246.
+- **Not here:** the two client resolvers (`computeRaidNights()`, `raidNights()`) show no difficulty yet. The automatic skip came in #1246's next pull request (the killed-boss entry above).
 
 [Full discussion -> #1246](https://github.com/katogaming88/WGA-Raid-Hub/issues/1246).
 
@@ -2487,7 +2512,7 @@ Phoenix runs 24 raiders into 20 seats per boss, and the seats rotate boss by bos
 
 **Not decided here:** whether the bot tells a raider when they are swapped out; whether bosses already killed this week grey out (that needs the progression sync to keep weekly kills, a separate change); and attendance taking the lineup as its reference, so a planned sit-out on the first boss is not flagged as late ([#1242](https://github.com/katogaming88/WGA-Raid-Hub/issues/1242)).
 
-**Kills by week are kept (2026-10-02, #1246).** The progression sync now keeps every Heroic and Mythic kill in `team_raid_kills`, and `team_raid_kills_this_week` lists the bosses down since the Tuesday reset. Taking those bosses off a team's later nights that week follows on #1246; showing them on the grid is the page's.
+**Kills by week are kept (2026-10-02, #1246).** The progression sync now keeps every Heroic and Mythic kill in `team_raid_kills`, and `team_raid_kills_this_week` lists the bosses down since the Tuesday reset. Each kill now takes its boss off the team's later nights that lockout (`skip_killed_bosses()`, with the kill in `raid_night_bosses.skipped_for_kill_id`), and `fill_raid_night()` plans such a boss as skipped; showing them on the grid is the page's.
 
 [Full discussion -> #1216](https://github.com/katogaming88/WGA-Raid-Hub/issues/1216).
 

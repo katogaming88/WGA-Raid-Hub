@@ -1707,6 +1707,7 @@ export type Database = {
           position: number
           raid_date: string
           skipped: boolean
+          skipped_for_kill_id: number | null
           team_id: number
         }
         Insert: {
@@ -1718,6 +1719,7 @@ export type Database = {
           position: number
           raid_date: string
           skipped?: boolean
+          skipped_for_kill_id?: number | null
           team_id: number
         }
         Update: {
@@ -1729,6 +1731,7 @@ export type Database = {
           position?: number
           raid_date?: string
           skipped?: boolean
+          skipped_for_kill_id?: number | null
           team_id?: number
         }
         Relationships: [
@@ -1744,6 +1747,13 @@ export type Database = {
             columns: ["encounter_id"]
             isOneToOne: false
             referencedRelation: "raid_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raid_night_bosses_skipped_for_kill_id_fkey"
+            columns: ["skipped_for_kill_id"]
+            isOneToOne: false
+            referencedRelation: "team_raid_kills"
             referencedColumns: ["id"]
           },
           {
@@ -4158,6 +4168,31 @@ export type Database = {
       is_own_player: { Args: { p_player_id: number }; Returns: boolean }
       is_site_admin: { Args: never; Returns: boolean }
       is_team_leader_anywhere: { Args: never; Returns: boolean }
+      kills_before_night: {
+        Args: {
+          p_difficulty: string
+          p_encounter_id: number
+          p_raid_date: string
+          p_team_id: number
+        }
+        Returns: {
+          created_at: string
+          difficulty: string
+          encounter_id: number
+          fight_id: number
+          id: number
+          raid_date: string
+          report_code: string
+          report_started_at: string
+          team_id: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "team_raid_kills"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       link_battlenet_roster_characters: {
         Args: { p_characters: Json; p_person_id: number }
         Returns: {
@@ -4169,6 +4204,10 @@ export type Database = {
       }
       lockout_start_at: { Args: { p_at: string }; Returns: string }
       lockout_week_start: { Args: { p_raid_date: string }; Returns: string }
+      log_killed_boss_skips: {
+        Args: { p_boss_ids: number[] }
+        Returns: undefined
+      }
       my_active_player_ids: { Args: never; Returns: number[] }
       my_leader_team_ids: { Args: never; Returns: number[] }
       my_officer_team_ids: { Args: never; Returns: number[] }

@@ -7,6 +7,8 @@ import { describe, it, expect } from 'vitest';
 import {
   withTxn,
   seedPlayer,
+  seedKill,
+  setTeamDifficulty,
   RAIDER_T1,
   RAIDER_T2,
   OFFICER_T1,
@@ -558,6 +560,457 @@ describe('lineup reads', () => {
       await expect(
         q('insert into public.boss_groups (team_id, encounter_id, player_id) values (1, $1, $2)', [FIRST, p3])
       ).rejects.toThrow(/does not match players.team_id/);
+    });
+  });
+});
+
+// The test's own kills (#1246), of the first boss unless a case names another.
+const kill = (q, kill) => seedKill(q, { encounter: FIRST, ...kill });
+
+// A raid date counted from the Tuesday that opens this lockout: day(q, 0) is
+// that Tuesday and day(q, 6) the Monday that closes it, which is never before
+// today, so every case can plan a coming night there whatever day it runs.
+const day = async (q, n) =>
+  (await q('select (public.lockout_week_start(public.raid_today()) + $1::int)::text as d', [n])).rows[0].d;
+
+// raid_today() fixed to a date of this lockout, for this transaction only, so
+// a case can put nights on both sides of today whatever day the suite runs.
+const pinToday = (q, date) =>
+  q(`create or replace function public.raid_today() returns date language sql stable
+     set search_path = public as $$ select date '${date}' $$`);
+
+// The kill that took a boss off a night, or null.
+const reason = async (q, date, encounter, team = 1) =>
+  (
+    await q(
+      'select skipped_for_kill_id as k from public.raid_night_bosses where team_id = $1 and raid_date = $2 and encounter_id = $3',
+      [team, date, encounter]
+    )
+  ).rows[0].k;
+
+const skipLog = async (q) =>
+  (
+    await q(
+      "select team_id, actor_id, target_type, target_id, detail from public.audit_log where action = 'Skip Killed Boss' order by id"
+    )
+  ).rows;
+
+const skippedOn = async (q, date, team = 1) => (await night(q, date, team)).map((b) => [b.encounter_id, b.skipped]);
+
+describe('a boss killed earlier in the lockout (#1246)', () => {
+  // Team 1 raids Mythic unless told otherwise, both bosses have a group, and
+  // the Monday that closes this lockout is planned before any kill arrives.
+  async function planned(q, asUser, { difficulty = 'mythic' } = {}) {
+    const players = await seed(q);
+    await setTeamDifficulty(q, difficulty);
+    await setGroup(asUser, OFFICER_T1, FIRST, [players.p1, players.p2]);
+    await setGroup(asUser, OFFICER_T1, SECOND, [players.p1]);
+    const monday = await day(q, 6);
+    await plan(asUser, OFFICER_T1, monday);
+    return { ...players, monday, tuesday: await day(q, 0) };
+  }
+
+  it('takes the boss off a later night that week at the kill’s difficulty, with its lineup, and keeps which kill did it', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, monday, tuesday } = await planned(q, asUser);
+      const id = await kill(q, { report: 'r1', date: tuesday });
+      expect(await night(q, monday)).toEqual([
+        { encounter_id: FIRST, position: 1, skipped: true, confirmed: false, players: [] },
+        { encounter_id: SECOND, position: 2, skipped: false, confirmed: false, players: [p1] }
+      ]);
+      expect(await reason(q, monday, FIRST)).toBe(id);
+      expect(await reason(q, monday, SECOND)).toBe(null);
+    });
+  });
+
+  it('logs each skip with no author, naming the night, the boss and the kill', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { monday, tuesday } = await planned(q, asUser);
+      await kill(q, { report: 'r1', date: tuesday });
+      expect(await skipLog(q)).toEqual([
+        {
+          team_id: 1,
+          actor_id: null,
+          target_type: 'raid_night_bosses',
+          target_id: FIRST,
+          detail: { raid_date: monday, boss: 'First Boss', killed_on: tuesday, difficulty: 'mythic', report_code: 'r1' }
+        }
+      ]);
+    });
+  });
+
+  it('counts a night that goes Heroic into Mythic as Mythic, so a Heroic kill leaves its boss on', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { monday, tuesday } = await planned(q, asUser, { difficulty: 'heroic_into_mythic' });
+      await kill(q, { encounter: FIRST, difficulty: 'mythic', report: 'r1', fight: 1, date: tuesday });
+      await kill(q, { encounter: SECOND, difficulty: 'heroic', report: 'r1', fight: 2, date: tuesday });
+      expect(await skippedOn(q, monday)).toEqual([
+        [FIRST, true],
+        [SECOND, false]
+      ]);
+    });
+  });
+
+  it('never reaches another team’s night, nor a night with no difficulty', async () => {
+    // Team 2 raids Mythic too, and only team 1 killed.
+    await withTxn(async ({ q, asUser }) => {
+      const { p6, monday, tuesday } = await planned(q, asUser);
+      await setTeamDifficulty(q, 'mythic', 2);
+      await setGroup(asUser, OFFICER_T2, FIRST, [p6], null, 2);
+      await plan(asUser, OFFICER_T2, monday, 2);
+      await kill(q, { team: 1, report: 'r1', date: tuesday });
+      expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
+      expect(await skippedOn(q, monday, 2)).toEqual([[FIRST, false]]);
+    });
+    // Team 2 says no difficulty, and both teams killed.
+    await withTxn(async ({ q, asUser }) => {
+      const { p6, monday, tuesday } = await planned(q, asUser);
+      await setGroup(asUser, OFFICER_T2, FIRST, [p6], null, 2);
+      await plan(asUser, OFFICER_T2, monday, 2);
+      await kill(q, { team: 1, report: 'r1', date: tuesday });
+      await kill(q, { team: 2, report: 'r2', date: tuesday });
+      expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
+      expect(await skippedOn(q, monday, 2)).toEqual([[FIRST, false]]);
+    });
+    // Another team's kill, stored first, is not one of this team's kills.
+    await withTxn(async ({ q, asUser }) => {
+      const { monday, tuesday } = await planned(q, asUser);
+      await kill(q, { team: 2, report: 'r2', date: tuesday });
+      await kill(q, { team: 1, report: 'r1', date: tuesday });
+      expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
+    });
+    // Nor does it take a boss off a night this team plans afterwards.
+    await withTxn(async ({ q, asUser }) => {
+      const { p1 } = await seed(q);
+      await setTeamDifficulty(q, 'mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      await kill(q, { team: 2, report: 'r2', date: await day(q, 0) });
+      const monday = await day(q, 6);
+      await plan(asUser, OFFICER_T1, monday);
+      expect(await skippedOn(q, monday)).toEqual([[FIRST, false]]);
+    });
+  });
+
+  it('leaves the boss on the night the kill happened', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { monday, tuesday } = await planned(q, asUser);
+      await kill(q, { encounter: FIRST, report: 'r1', date: monday });
+      await kill(q, { encounter: SECOND, report: 'r0', date: tuesday });
+      expect(await skippedOn(q, monday)).toEqual([
+        [FIRST, false],
+        [SECOND, true]
+      ]);
+    });
+  });
+
+  it('leaves a boss an officer saved or skipped for the night as they left it', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p2, monday, tuesday } = await planned(q, asUser);
+      await setNight(asUser, OFFICER_T1, monday, FIRST, [p2]);
+      await kill(q, { encounter: FIRST, report: 'r1', fight: 1, date: tuesday });
+      await kill(q, { encounter: SECOND, report: 'r1', fight: 2, date: tuesday });
+      expect(await night(q, monday)).toEqual([
+        { encounter_id: FIRST, position: 1, skipped: false, confirmed: true, players: [p2] },
+        { encounter_id: SECOND, position: 2, skipped: true, confirmed: false, players: [] }
+      ]);
+    });
+    await withTxn(async ({ q, asUser }) => {
+      const { monday, tuesday } = await planned(q, asUser);
+      await skip(asUser, OFFICER_T1, monday, FIRST, true);
+      await kill(q, { encounter: FIRST, report: 'r1', fight: 1, date: tuesday });
+      await kill(q, { encounter: SECOND, report: 'r1', fight: 2, date: tuesday });
+      expect(await skippedOn(q, monday)).toEqual([
+        [FIRST, true],
+        [SECOND, true]
+      ]);
+      expect(await reason(q, monday, FIRST)).toBe(null);
+      expect((await skipLog(q)).map((r) => r.target_id)).toEqual([SECOND]);
+    });
+  });
+
+  it('stays inside the kill’s lockout, and never rewrites a night already played', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { monday, tuesday } = await planned(q, asUser);
+      const nextTuesday = await day(q, 7);
+      const lastMonday = await day(q, -1);
+      await plan(asUser, OFFICER_T1, nextTuesday);
+      await plan(asUser, OFFICER_T1, lastMonday);
+      // Last week's kill, synced late, beside this week's.
+      await kill(q, { encounter: FIRST, report: 'r0', date: await day(q, -7) });
+      await kill(q, { encounter: FIRST, report: 'r1', date: tuesday });
+      expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
+      expect((await skippedOn(q, nextTuesday))[0]).toEqual([FIRST, false]);
+      expect((await skippedOn(q, lastMonday))[0]).toEqual([FIRST, false]);
+    });
+  });
+
+  it('counts a report from before Tuesday’s reset in the lockout it was played in', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { monday, tuesday } = await planned(q, asUser);
+      // Tuesday morning Eastern is before the 15:00 UTC reset.
+      await kill(q, { encounter: FIRST, report: 'r0', date: tuesday, started: `${tuesday} 09:00 America/New_York` });
+      await kill(q, { encounter: SECOND, report: 'r1', date: tuesday });
+      expect(await skippedOn(q, monday)).toEqual([
+        [FIRST, false],
+        [SECOND, true]
+      ]);
+    });
+  });
+
+  // Today is pinned into next week, so tonight's 20:00 start is still ahead of
+  // the real clock, or into last week, so it has passed, whatever time the
+  // suite runs.
+  it('counts tonight until it starts', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1 } = await seed(q);
+      await setTeamDifficulty(q, 'mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      const [wednesday, thursday, friday] = [await day(q, 8), await day(q, 9), await day(q, 10)];
+      await pinToday(q, friday);
+      await plan(asUser, OFFICER_T1, thursday);
+      await plan(asUser, OFFICER_T1, friday);
+      await kill(q, { report: 'r1', date: wednesday });
+      expect(await skippedOn(q, friday)).toEqual([[FIRST, true]]);
+      expect(await skippedOn(q, thursday)).toEqual([[FIRST, false]]);
+    });
+  });
+
+  it('counts a night with no start time as under way', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1 } = await seed(q);
+      await setTeamDifficulty(q, 'mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      const [wednesday, friday, saturday] = [await day(q, 8), await day(q, 10), await day(q, 11)];
+      // An added night with no start time stands in for the weekly 20:00 one.
+      await q(
+        "insert into public.raid_schedule_exceptions (team_id, raid_date, exception_type) values (1, $1, 'added')",
+        [friday]
+      );
+      await pinToday(q, friday);
+      await plan(asUser, OFFICER_T1, friday);
+      await plan(asUser, OFFICER_T1, saturday);
+      await kill(q, { report: 'r1', date: wednesday });
+      expect(await skippedOn(q, friday)).toEqual([[FIRST, false]]);
+      expect(await skippedOn(q, saturday)).toEqual([[FIRST, true]]);
+    });
+  });
+
+  it('leaves a night already under way alone, and still reaches the nights after it', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1 } = await seed(q);
+      await setTeamDifficulty(q, 'mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      const [wednesday, friday, saturday] = [await day(q, -6), await day(q, -4), await day(q, -3)];
+      await pinToday(q, friday);
+      await plan(asUser, OFFICER_T1, friday);
+      await plan(asUser, OFFICER_T1, saturday);
+      await kill(q, { report: 'r1', date: wednesday });
+      expect(await night(q, friday)).toEqual([
+        { encounter_id: FIRST, position: 1, skipped: false, confirmed: false, players: [p1] }
+      ]);
+      expect(await skippedOn(q, saturday)).toEqual([[FIRST, true]]);
+    });
+  });
+
+  it('takes a boss off a night when the first kill before it arrives, even after a later one', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { monday, tuesday } = await planned(q, asUser);
+      await pinToday(q, tuesday);
+      const thursday = await day(q, 2);
+      await plan(asUser, OFFICER_T1, thursday);
+      // Friday's log is uploaded before Tuesday's.
+      await kill(q, { report: 'fri', date: await day(q, 3) });
+      expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
+      expect((await skippedOn(q, thursday))[0]).toEqual([FIRST, false]);
+      const id = await kill(q, { report: 'tue', date: tuesday });
+      expect((await skippedOn(q, thursday))[0]).toEqual([FIRST, true]);
+      expect(await reason(q, thursday, FIRST)).toBe(id);
+    });
+  });
+
+  it('skips once for two logs of one kill, and a boss put back stays back when another log arrives', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, p2, monday, tuesday } = await planned(q, asUser);
+      // Two raiders logged the same kill; the sync stores both in one insert.
+      const both = await q(
+        `insert into public.team_raid_kills
+           (team_id, encounter_id, difficulty, report_code, fight_id, raid_date, report_started_at)
+         values (1, $1, 'mythic', 'late', 4, $2, ($2::date + time '20:30') at time zone 'America/New_York'),
+                (1, $1, 'mythic', 'early', 7, $2, ($2::date + time '20:00') at time zone 'America/New_York')
+         returning id, report_code`,
+        [FIRST, tuesday]
+      );
+      expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
+      expect(await reason(q, monday, FIRST)).toBe(both.rows.find((r) => r.report_code === 'early').id);
+      expect(await skipLog(q)).toHaveLength(1);
+
+      await skip(asUser, OFFICER_T1, monday, FIRST, false);
+      expect(await reason(q, monday, FIRST)).toBe(null);
+      await kill(q, { report: 'third', date: await day(q, 1) });
+      expect((await night(q, monday))[0]).toEqual({
+        encounter_id: FIRST,
+        position: 1,
+        skipped: false,
+        confirmed: false,
+        players: [p1, p2]
+      });
+      expect(await skipLog(q)).toHaveLength(1);
+    });
+  });
+
+  it('puts the boss back when an officer saves its lineup for the night', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p2, monday, tuesday } = await planned(q, asUser);
+      await kill(q, { report: 'r1', date: tuesday });
+      expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
+      await setNight(asUser, OFFICER_T1, monday, FIRST, [p2], []);
+      expect((await night(q, monday))[0]).toEqual({
+        encounter_id: FIRST,
+        position: 1,
+        skipped: false,
+        confirmed: true,
+        players: [p2]
+      });
+      expect(await reason(q, monday, FIRST)).toBe(null);
+    });
+  });
+
+  it('never keeps a kill on a boss that is back on the night', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { monday, tuesday } = await planned(q, asUser);
+      await kill(q, { report: 'r1', date: tuesday });
+      expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
+      await expect(
+        q(
+          'update public.raid_night_bosses set skipped = false where team_id = 1 and raid_date = $1 and encounter_id = $2',
+          [monday, FIRST]
+        )
+      ).rejects.toThrow(/raid_night_bosses_kill_only_when_skipped/);
+    });
+  });
+
+  it('plans a night with a boss already killed that lockout, at its difficulty, as skipped and logged', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, p2 } = await seed(q);
+      await setTeamDifficulty(q, 'mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1, p2]);
+      await setGroup(asUser, OFFICER_T1, SECOND, [p1]);
+      const [tuesday, monday] = [await day(q, 0), await day(q, 6)];
+      // Two logs of one kill, the later-starting one stored first.
+      await kill(q, { report: 'late', fight: 4, date: tuesday, started: `${tuesday} 20:30 America/New_York` });
+      const early = await kill(q, { report: 'early', fight: 7, date: tuesday });
+      await kill(q, { encounter: SECOND, difficulty: 'heroic', report: 'early', fight: 8, date: tuesday });
+      await plan(asUser, OFFICER_T1, monday);
+      expect(await night(q, monday)).toEqual([
+        { encounter_id: FIRST, position: 1, skipped: true, confirmed: false, players: [] },
+        { encounter_id: SECOND, position: 2, skipped: false, confirmed: false, players: [p1] }
+      ]);
+      expect(await reason(q, monday, FIRST)).toBe(early);
+      expect(await skipLog(q)).toEqual([
+        {
+          team_id: 1,
+          actor_id: null,
+          target_type: 'raid_night_bosses',
+          target_id: FIRST,
+          detail: {
+            raid_date: monday,
+            boss: 'First Boss',
+            killed_on: tuesday,
+            difficulty: 'mythic',
+            report_code: 'early'
+          }
+        }
+      ]);
+    });
+  });
+
+  it('plans a boss killed only last lockout, or on the night itself, as usual', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1 } = await seed(q);
+      await q(`insert into public.raid_encounters (id, zone_id, wcl_encounter_id, name, sort_index)
+               values (9103, 9001, 99103, 'Third Boss', 3)`);
+      await setTeamDifficulty(q, 'mythic');
+      for (const boss of [FIRST, SECOND, 9103]) await setGroup(asUser, OFFICER_T1, boss, [p1]);
+      const monday = await day(q, 6);
+      await kill(q, { encounter: FIRST, report: 'r0', date: await day(q, -1) });
+      await kill(q, { encounter: SECOND, report: 'r1', date: monday });
+      await kill(q, { encounter: 9103, report: 'r2', date: await day(q, 0) });
+      await plan(asUser, OFFICER_T1, monday);
+      expect(await skippedOn(q, monday)).toEqual([
+        [FIRST, false],
+        [SECOND, false],
+        [9103, true]
+      ]);
+    });
+  });
+
+  it('takes the team’s lineup lock before it reads, as every lineup write does', async () => {
+    await withTxn(async ({ q }) => {
+      await seed(q);
+      await setTeamDifficulty(q, 'mythic');
+      const monday = await day(q, 6);
+      // Written directly: planning takes the lock, which then stays held to the
+      // end of the transaction and would satisfy the check below by itself.
+      await q(
+        'insert into public.raid_night_bosses (team_id, raid_date, encounter_id, position) values (1, $1, $2, 1)',
+        [monday, FIRST]
+      );
+      const held = async (team) =>
+        (
+          await q(
+            `select count(*)::int as n from pg_locks
+              where locktype = 'advisory' and pid = pg_backend_pid() and objsubid = 2
+                and classid::bigint = (hashtext('boss_lineup')::bigint + 4294967296) % 4294967296
+                and objid::bigint = $1`,
+            [team]
+          )
+        ).rows[0].n;
+      expect(await held(1)).toBe(0);
+      // The rule the skip reads, wrapped to refuse a read made without the lock.
+      await q(
+        'alter function public.kills_before_night(integer, integer, date, text) rename to kills_before_night_unwrapped'
+      );
+      await q(`create function public.kills_before_night(
+                 p_team_id integer, p_encounter_id integer, p_raid_date date, p_difficulty text)
+               returns setof public.team_raid_kills language plpgsql stable set search_path = public
+               as $$ begin
+                 if not exists (select 1 from pg_locks
+                                 where locktype = 'advisory' and pid = pg_backend_pid() and objsubid = 2
+                                   and classid::bigint = (hashtext('boss_lineup')::bigint + 4294967296) % 4294967296
+                                   and objid::bigint = p_team_id) then
+                   raise exception 'read before the lock';
+                 end if;
+                 return query select * from public.kills_before_night_unwrapped(p_team_id, p_encounter_id, p_raid_date, p_difficulty);
+               end $$`);
+      await kill(q, { report: 'r1', date: await day(q, 0) });
+      expect(await skippedOn(q, monday)).toEqual([[FIRST, true]]);
+      expect(await held(1)).toBe(1);
+      expect(await held(2)).toBe(0);
+    });
+  });
+
+  it('fails the kill’s insert when the skip fails, so the sync’s next run sends it again and skips', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { monday, tuesday } = await planned(q, asUser);
+      // A rule the skip reads that always fails, until the savepoint is rolled back.
+      await q('savepoint broken_skip');
+      await q(`create or replace function public.kills_before_night(
+                 p_team_id integer, p_encounter_id integer, p_raid_date date, p_difficulty text)
+               returns setof public.team_raid_kills language plpgsql stable set search_path = public
+               as $$ begin raise exception 'broken on purpose'; end $$`);
+      await expect(kill(q, { report: 'r1', date: tuesday })).rejects.toThrow(/broken on purpose/);
+      await q('rollback to savepoint broken_skip');
+      expect(
+        (await q("select count(*)::int as n from public.team_raid_kills where report_code = 'r1'")).rows[0].n
+      ).toBe(0);
+      await kill(q, { report: 'r1', date: tuesday });
+      expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
+    });
+  });
+
+  it('cannot be run from the site', async () => {
+    await withTxn(async ({ asUser }) => {
+      await expect(asUser(SITE_ADMIN, 'select public.skip_killed_bosses()')).rejects.toThrow(/permission denied/);
     });
   });
 });

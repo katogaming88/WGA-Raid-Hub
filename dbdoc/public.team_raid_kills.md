@@ -2,13 +2,13 @@
 
 ## Description
 
-Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all.
+Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), alt runs included as on team_raid_progress, one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. Each insert takes the bosses it killed off the team's later nights that lockout (skip_killed_bosses()).
 
 ## Columns
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer |  | false |  |  |  |
+| id | integer |  | false | [public.raid_night_bosses](public.raid_night_bosses.md) |  |  |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | encounter_id | integer |  | false |  | [public.raid_encounters](public.raid_encounters.md) |  |
 | difficulty | text |  | false |  |  |  |
@@ -36,11 +36,18 @@ Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), one
 | team_raid_kills_team_id_report_code_fight_id_key | CREATE UNIQUE INDEX team_raid_kills_team_id_report_code_fight_id_key ON public.team_raid_kills USING btree (team_id, report_code, fight_id) |
 | team_raid_kills_team_encounter_date_idx | CREATE INDEX team_raid_kills_team_encounter_date_idx ON public.team_raid_kills USING btree (team_id, encounter_id, raid_date) |
 
+## Triggers
+
+| Name | Definition |
+| ---- | ---------- |
+| team_raid_kills_skip_killed_bosses | CREATE TRIGGER team_raid_kills_skip_killed_bosses AFTER INSERT ON public.team_raid_kills REFERENCING NEW TABLE AS new_kills FOR EACH STATEMENT EXECUTE FUNCTION skip_killed_bosses() |
+
 ## Relations
 
 ```mermaid
 erDiagram
 
+"public.raid_night_bosses" }o--o| "public.team_raid_kills" : "FOREIGN KEY (skipped_for_kill_id) REFERENCES team_raid_kills(id) ON DELETE SET NULL"
 "public.team_raid_kills" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_raid_kills" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 
@@ -54,6 +61,18 @@ erDiagram
   date raid_date
   timestamp_with_time_zone report_started_at
   timestamp_with_time_zone created_at
+}
+"public.raid_night_bosses" {
+  integer id
+  integer team_id FK
+  date raid_date
+  integer encounter_id FK
+  integer position
+  boolean skipped
+  timestamp_with_time_zone confirmed_at
+  integer confirmed_by FK
+  timestamp_with_time_zone created_at
+  integer skipped_for_kill_id FK
 }
 "public.teams" {
   integer id

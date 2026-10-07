@@ -12,6 +12,26 @@ answers to.
 
 ---
 
+## [3.168.0] - 2026-10-06
+
+### Backend
+
+- A boss the team killed earlier in the lockout comes off its later raid
+  nights that lockout by itself, at the night's difficulty (#1246). When the
+  progression sync stores the first kill of a boss before a night, the boss
+  is skipped on that night with its lineup removed, unless an officer has
+  saved or skipped it, and the audit log gets a `Skip Killed Boss` entry. A
+  night already under way is left alone: tonight counts until its scheduled
+  start. Put back brings it back as for a hand skip, and another log of the
+  same kill leaves it there. A night planned after the kill arrives with the
+  boss skipped. A night that goes Heroic into Mythic counts as Mythic, a night
+  with no difficulty is left alone, and a report from before Tuesday's reset
+  counts in the week it was played.
+- `raid_night_bosses.skipped_for_kill_id` names the kill that took a boss off
+  a night, for the lineup grid to read.
+
+---
+
 ## [3.167.1] - 2026-10-05
 
 ### Project

@@ -261,6 +261,33 @@ export async function seedSignup(
   return rows[0].id;
 }
 
+// A boss kill as wcl-progression-sync stores it (#1246), from a report that
+// starts at 20:00 Eastern on its raid date unless `started` says otherwise.
+// Returns its id.
+export async function seedKill(
+  q,
+  { team = 1, encounter, difficulty = 'mythic', report, fight = 1, date, started = null } = {}
+) {
+  const { rows } = await q(
+    `insert into public.team_raid_kills
+       (team_id, encounter_id, difficulty, report_code, fight_id, raid_date, report_started_at)
+     values ($1, $2, $3, $4, $5, $6,
+             coalesce($7::timestamptz, ($6::date + time '20:00') at time zone 'America/New_York'))
+     returning id`,
+    [team, encounter, difficulty, report, fight, date, started]
+  );
+  return rows[0].id;
+}
+
+// A team's default raid difficulty (#1246), set or replaced.
+export function setTeamDifficulty(q, difficulty, team = 1) {
+  return q(
+    `insert into public.team_schedule_settings (team_id, default_difficulty) values ($1, $2)
+     on conflict (team_id) do update set default_difficulty = excluded.default_difficulty`,
+    [team, difficulty]
+  );
+}
+
 // The lock modes held on one row, read from inside the case's own transaction
 // (#1428), so a lock a function takes and holds until commit can be asserted.
 // pgrowlocks is created in that transaction and leaves with its rollback; no

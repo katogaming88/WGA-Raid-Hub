@@ -10,7 +10,17 @@
 //
 // Each test runs in one rolled-back transaction (helpers.js withTxn).
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, OFFICER_T1, OFFICER_T2, RAIDER_T1, GUILD_OFFICER, SITE_ADMIN, RLS_DENIED } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  setTeamDifficulty,
+  OFFICER_T1,
+  OFFICER_T2,
+  RAIDER_T1,
+  GUILD_OFFICER,
+  SITE_ADMIN,
+  RLS_DENIED
+} from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -32,12 +42,7 @@ const exception = (q, { date, type = 'added', difficulty = null }) =>
     [date, type, difficulty]
   );
 
-const setDefault = (q, difficulty) =>
-  q(
-    `insert into public.team_schedule_settings (team_id, default_difficulty) values (1, $1)
-     on conflict (team_id) do update set default_difficulty = excluded.default_difficulty`,
-    [difficulty]
-  );
+const setDefault = (q, difficulty) => setTeamDifficulty(q, difficulty);
 
 const difficulty = async (q, date) =>
   (await q('select difficulty from public.raid_night_info(1, $1)', [date])).rows[0].difficulty;

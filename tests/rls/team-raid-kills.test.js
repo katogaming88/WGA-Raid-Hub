@@ -10,6 +10,7 @@ import {
   pool,
   withTxn,
   seedPlayer,
+  seedKill,
   RAIDER_T1,
   RAIDER_T2,
   OFFICER_T1,
@@ -36,15 +37,7 @@ async function seed(q) {
 const FIRST = 9102;
 const SECOND = 9101;
 
-// A report starts at 20:00 Eastern on its raid date unless a case says otherwise.
-const kill = (q, { team = 1, encounter = FIRST, difficulty = 'mythic', report, fight = 1, date, started = null }) =>
-  q(
-    `insert into public.team_raid_kills
-       (team_id, encounter_id, difficulty, report_code, fight_id, raid_date, report_started_at)
-     values ($1, $2, $3, $4, $5, $6,
-             coalesce($7::timestamptz, ($6::date + time '20:00') at time zone 'America/New_York'))`,
-    [team, encounter, difficulty, report, fight, date, started]
-  );
+const kill = (q, kill) => seedKill(q, { encounter: FIRST, ...kill });
 
 const KILLS = 'select team_id, report_code from public.team_raid_kills order by team_id, report_code';
 
