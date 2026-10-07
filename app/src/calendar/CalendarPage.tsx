@@ -15,6 +15,7 @@ import { useRosterPlayers } from '../roster/useRoster';
 import { isoDate, WEEKDAYS } from './nights';
 import {
   ago,
+  difficultyOf,
   ANSWERS,
   answerLabel,
   ATTENDING,
@@ -24,6 +25,7 @@ import {
   longDay,
   monthCounts,
   monthParam,
+  nightHeading,
   neighbours,
   nightsBetween,
   nightTitle,
@@ -44,6 +46,8 @@ import {
   type ScheduleRule
 } from './calendar';
 import { BossLineup } from './BossLineup';
+import { AddNightForm, CancelledNightCard, NightOfficerBar } from './NightOfficer';
+import { ScheduleEditor } from './ScheduleEditor';
 import { YourBosses } from './YourBosses';
 import {
   useAnswers,
@@ -76,6 +80,8 @@ type Viewer = {
   // The reader's character on this team's roster, if any.
   me: PlayerRow | null;
   officer: boolean;
+  // Their membership on this team, recorded on a schedule change they make.
+  teamMemberId: number | null;
   // Still finding out who a signed-in reader is.
   ready: boolean;
 };
@@ -93,6 +99,7 @@ function useViewer(roster: PlayerRow[] | undefined): Viewer {
     access: officer ? { kind: 'officer' } : mine.length ? { kind: 'raider', playerIds: mine } : { kind: 'none' },
     me,
     officer,
+    teamMemberId: access.data?.teams.find((t) => t.teamId === team.id)?.teamMemberId ?? null,
     ready: ready && roster !== undefined
   };
 }
@@ -146,14 +153,30 @@ function MonthPage({ month: monthValue }: { month: string | null }) {
   const label = monthLabel(year, month);
   const prev = new Date(year, month - 1, 1);
   const next = new Date(year, month + 1, 1);
+  const touch = useTouchScreen();
+  // Officer changes need a computer (Kat, 2026-09-16).
+  const officerTools = viewer.officer && !touch;
+  const [editing, setEditing] = useState(false);
+  const editorId = useId();
 
   return (
     <section className="page calendar-page" aria-labelledby="page-title">
       <div className="calendar-head">
         <div className="page-header">
           <h1 id="page-title">Calendar</h1>
-          {schedule.isSuccess && <p className="text-muted page-subtitle">{scheduleSummary(schedule.data)}</p>}
+          {schedule.isSuccess && <p className="text-muted page-subtitle">{scheduleSummary(schedule.data.rules)}</p>}
         </div>
+        {officerTools && (
+          <button
+            type="button"
+            className="button schedule-toggle"
+            aria-expanded={editing}
+            aria-controls={editing ? editorId : undefined}
+            onClick={() => setEditing((e) => !e)}
+          >
+            Edit schedule
+          </button>
+        )}
         <nav className="month-nav" aria-label="Month">
           <Link
             className="button icon-only"
@@ -178,16 +201,19 @@ function MonthPage({ month: monthValue }: { month: string | null }) {
         </nav>
       </div>
 
+      {officerTools && editing && <ScheduleEditor id={editorId} onClose={() => setEditing(false)} />}
+
       <DataState query={page} label="the calendar">
-        {([[rules, dayChanges], [players, rows]]) => (
+        {([[weekly, dayChanges], [players, rows]]) => (
           <Month
+            officerTools={officerTools}
             year={year}
             month={month}
             today={today}
             viewer={viewer}
             players={players}
             answers={rows}
-            {...nightsBetween(rules, dayChanges, from, to)}
+            {...nightsBetween(weekly.rules, dayChanges, from, to, weekly.teamDefault)}
           />
         )}
       </DataState>
@@ -196,6 +222,7 @@ function MonthPage({ month: monthValue }: { month: string | null }) {
 }
 
 function Month({
+  officerTools,
   year,
   month,
   today,
@@ -205,6 +232,7 @@ function Month({
   nights,
   cancelled
 }: {
+  officerTools: boolean;
   year: number;
   month: number;
   today: Date;
@@ -236,23 +264,28 @@ function Month({
   const chip = (entry: Entry) => {
     if (entry.cancelled) {
       return (
-        <div className="night-chip night-cancelled">
+        <Link
+          className="night-chip night-cancelled"
+          to={`${base}?date=${entry.date}`}
+          aria-label={`${shortDay(entry.date)}, Raid night, cancelled`}
+        >
           <span className="night-chip-row">
             <span className="night-title">Raid night</span>
             <span className="night-time">{startTime(entry.cancelled)}</span>
           </span>
           <span className="night-cancelled-label">Cancelled</span>
-        </div>
+        </Link>
       );
     }
     const night = entry.night!;
     const counts = seesAnswers ? monthCounts(players, night, answers) : null;
     const status = mine(night);
-    const title = nightTitle(night);
+    const { title, titleClass, level } = nightHeading(night);
     const label = [
       shortDay(night.date),
       title,
       startTime(night),
+      level?.label,
       counts ? `${counts.in} in${counts.out ? `, ${counts.out} out` : ''}` : null,
       status ? `you: ${status.label}` : null
     ]
@@ -268,9 +301,10 @@ function Month({
         data-date={night.date}
       >
         <span className="night-chip-row">
-          <span className="night-title">{title}</span>
+          <span className={`night-title ${titleClass}`.trim()}>{title}</span>
           <span className="night-time">{startTime(night)}</span>
         </span>
+        {level && <span className={`night-difficulty ${level.className}`}>{level.label}</span>}
         {counts && (
           <span className="night-count num">
             <b>{counts.in}</b> in{counts.out ? ` · ${counts.out} out` : ''}
@@ -313,6 +347,12 @@ function Month({
           </h2>
           <span className="next-raid-when">
             {shortDay(nextUp.date)} · {startTime(nextUp)}
+            {difficultyOf(nextUp) && (
+              <>
+                {' · '}
+                <span className={difficultyOf(nextUp)!.className}>{difficultyOf(nextUp)!.label}</span>
+              </>
+            )}
           </span>
           <Pill kind={nextStatus.kind}>{nextStatus.label}</Pill>
           {nextCounts && (
@@ -352,6 +392,15 @@ function Month({
                       {chip(e)}
                     </div>
                   ))}
+              {officerTools && d.inMonth && d.date >= todayIso && !entries.some((e) => e.date === d.date) && (
+                <Link
+                  className="month-day-add"
+                  to={`${base}?date=${d.date}`}
+                  aria-label={`Add a raid night on ${shortDay(d.date)}`}
+                >
+                  <Icon name="plus" size={14} />
+                </Link>
+              )}
             </div>
           ))}
         </div>
@@ -430,9 +479,18 @@ function NightPage({ date, lineup }: { date: string; lineup: boolean }) {
   const answers = useAnswers(team.id, date, date, viewer.access, viewer.ready);
   const page = bothQueries(bothQueries(schedule, changes), bothQueries(roster, answers));
 
-  const found = schedule.isSuccess && changes.isSuccess ? nightsBetween(schedule.data, changes.data, from, to) : null;
+  const found =
+    schedule.isSuccess && changes.isSuccess
+      ? nightsBetween(schedule.data.rules, changes.data, from, to, schedule.data.teamDefault)
+      : null;
   const night = found?.nights.find((n) => n.date === date) ?? null;
+  const heading = night ? nightHeading(night) : null;
+  const level = heading?.level ?? null;
   const { previous, next } = neighbours(found?.nights ?? [], date);
+  const touch = useTouchScreen();
+  // Schedule changes (#1361): an officer on a computer, and only for today on.
+  const [todayIso] = useState(() => isoDate(new Date()));
+  const changesSchedule = viewer.officer && !touch && date >= todayIso;
 
   return (
     <section className="page calendar-page night-page" aria-labelledby="page-title">
@@ -444,7 +502,18 @@ function NightPage({ date, lineup }: { date: string; lineup: boolean }) {
         <div className="page-header">
           <h1 id="page-title">{longDay(date)}</h1>
           <p className="text-muted page-subtitle">
-            {night ? `${timeRange(night)} · ${nightTitle(night)}` : found ? 'No raid' : ' '}
+            {night && heading && (
+              <>
+                {timeRange(night)} · <span className={heading.titleClass || undefined}>{heading.title}</span>
+                {level && (
+                  <>
+                    {' · '}
+                    <span className={level.className}>{level.label}</span>
+                  </>
+                )}
+              </>
+            )}
+            {!night && (found ? 'No raid' : ' ')}
           </p>
         </div>
         <nav className="night-nav" aria-label="Raid nights">
@@ -456,11 +525,13 @@ function NightPage({ date, lineup }: { date: string; lineup: boolean }) {
       <DataState query={page} label="this raid night">
         {([, [players, rows]]) => {
           if (!night) {
-            const wasCancelled = found?.cancelled.some((c) => c.date === date);
+            const cancelled = found?.cancelled.find((c) => c.date === date);
+            if (cancelled) return <CancelledNightCard cancelled={cancelled} officer={changesSchedule} />;
             return (
-              <p className="card calendar-note">
-                {wasCancelled ? 'This raid night was cancelled.' : 'The team has no raid on this date.'}
-              </p>
+              <>
+                <p className="card calendar-note">The team has no raid on this date.</p>
+                {changesSchedule && <AddNightForm date={date} teamMemberId={viewer.teamMemberId} />}
+              </>
             );
           }
           if (viewer.access.kind === 'none') {
@@ -472,7 +543,12 @@ function NightPage({ date, lineup }: { date: string; lineup: boolean }) {
               </p>
             );
           }
-          return <Night night={night} viewer={viewer} players={players} answers={rows} lineup={lineup} />;
+          return (
+            <>
+              {changesSchedule && <NightOfficerBar night={night} teamMemberId={viewer.teamMemberId} />}
+              <Night night={night} viewer={viewer} players={players} answers={rows} lineup={lineup} />
+            </>
+          );
         }}
       </DataState>
     </section>
@@ -610,12 +686,17 @@ function Coming({
         <aside className="card night-rail" aria-label="Your answer and tonight’s numbers">
           {canAnswer && mine && <OwnAnswer night={night} player={mine.player} answer={mine.answer} />}
           <section aria-labelledby="tonight-title" className="rail-section">
-            <h2 id="tonight-title" className="eyebrow">
-              Tonight
-            </h2>
+            {/* The total coming heads the panel; each row below is its own
+                group, so the rows add up to the roster (Kat, 2026-10-06). */}
+            <div className="tonight-head">
+              <h2 id="tonight-title" className="eyebrow">
+                Tonight
+              </h2>
+              <span className="tonight-total num">{view.counts.in} coming</span>
+            </div>
             <dl className="night-counts">
-              <Count kind="in" label="Coming" value={view.counts.in} />
-              <Count kind="flag" label="…of them late, leaving early or tentative" value={view.counts.flagged} sub />
+              <Count kind="in" label="On time" value={view.counts.in - view.counts.flagged} />
+              <Count kind="flag" label="Late, leaving early or tentative" value={view.counts.flagged} />
               <Count kind="out" label="Out" value={view.counts.out} />
               <Count kind="apart" label="Bench and rotators" value={view.counts.apart} />
             </dl>
@@ -696,10 +777,9 @@ function Coming({
   );
 }
 
-// `sub`: a part of the row above (the late raiders are counted as coming).
-function Count({ kind, label, value, sub = false }: { kind: Kind; label: string; value: number; sub?: boolean }) {
+function Count({ kind, label, value }: { kind: Kind; label: string; value: number }) {
   return (
-    <div className={`night-count-row${sub ? ' night-count-sub' : ''}`} data-kind={kind}>
+    <div className="night-count-row" data-kind={kind}>
       <dt>
         <Mark kind={kind} />
         {label}

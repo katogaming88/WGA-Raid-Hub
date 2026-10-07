@@ -521,9 +521,15 @@ a.night-chip:hover {
   color: var(--text-muted);
 }
 
-.night-count-sub {
-  padding-left: var(--space-3);
-  font-size: var(--text-xs);
+.tonight-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.tonight-total {
+  font-weight: 650;
 }
 
 .night-count-row dd {
@@ -1461,4 +1467,209 @@ a.night-chip:hover {
 
 .your-boss.is-in .your-boss-word {
   color: var(--brand);
+}
+
+/* The officer's raid schedule (#1361): the Edit schedule panel on the month,
+   and one-off changes made from a night's own page. */
+
+.schedule-toggle {
+  margin-left: auto;
+}
+
+.schedule-editor {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-color: var(--brand);
+}
+
+.schedule-editor-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.schedule-editor-head p {
+  margin: 0;
+}
+
+.schedule-editor-title {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.schedule-subtitle {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-md);
+}
+
+.schedule-default {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-3);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.schedule-default .field {
+  margin-bottom: 0;
+  min-width: 220px;
+}
+
+.schedule-default .field-hint {
+  flex-basis: 100%;
+}
+
+.schedule-weekly {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+/* The table scrolls inside its own box on a narrow screen. */
+.schedule-table-wrap {
+  /* Keeps the hidden "Actions" header inside the scrolling box. */
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.schedule-table th {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.schedule-table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+/* A night that does not follow the team default stands out. */
+.schedule-row-differs td {
+  background: var(--brand-soft);
+}
+
+.schedule-minutes {
+  width: 90px;
+}
+
+.schedule-actions {
+  white-space: nowrap;
+}
+
+.schedule-actions .button + .button {
+  margin-left: var(--space-2);
+}
+
+.schedule-row-error {
+  margin: var(--space-1) 0 0;
+  white-space: normal;
+}
+
+.schedule-editor-hint {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--page);
+}
+
+.officer-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+}
+
+.officer-bar .form-error {
+  margin: 0;
+}
+
+.cancelled-note {
+  margin: var(--space-1) 0 0;
+}
+
+.calendar-note p {
+  margin: 0;
+}
+
+.add-night {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 760px;
+  padding: var(--space-4);
+}
+
+.add-night p {
+  margin: 0;
+}
+
+.add-night-title {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.add-night-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.add-night-fields .field {
+  margin-bottom: 0;
+}
+
+.add-night-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* An officer's way to add a night on an empty day. */
+.month-day-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  width: 28px;
+  height: 28px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+}
+
+.month-day-add:hover,
+.month-day-add:focus-visible {
+  border-style: solid;
+  color: var(--text);
+  background: var(--hover);
+}
+
+@media (max-width: 720px) {
+  .add-night-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* A night's difficulty on its tile (#1361). */
+.night-difficulty {
+  font-size: var(--text-xs);
 }
