@@ -137,7 +137,7 @@ describe('hold_team_member()', () => {
     });
   });
 
-  it('holds it with nobody signed in, for a service-role signup add', async () => {
+  it('holds it with nobody signed in, as the database owner adds a signup', async () => {
     await withTxn(async ({ q }) => {
       const team = await seedTeam(q);
       await hold(q, team.raider.memberId);
