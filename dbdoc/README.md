@@ -234,6 +234,7 @@
 | public.kills_before_night | team_raid_kills | p_team_id integer, p_encounter_id integer, p_raid_date date, p_difficulty text | FUNCTION |
 | public.log_killed_boss_skips | void | p_boss_ids integer[] | FUNCTION |
 | public.skip_killed_bosses | trigger |  | FUNCTION |
+| public.hold_team_member | void | p_team_member_id integer | FUNCTION |
 
 ## Enums
 

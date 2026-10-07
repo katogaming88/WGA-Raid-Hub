@@ -9,9 +9,10 @@ CREATE OR REPLACE FUNCTION public.archive_player(p_player_id integer, p_reason t
 AS $function$
 declare
   v_team_id integer;
+  v_team_member_id integer;
   v_archived_at timestamptz;
 begin
-  select team_id into v_team_id from public.players where id = p_player_id;
+  select team_id, team_member_id into v_team_id, v_team_member_id from public.players where id = p_player_id;
   if v_team_id is null then
     raise exception 'Player % not found', p_player_id;
   end if;
@@ -21,6 +22,12 @@ begin
           or public.is_site_admin()) then
     raise exception 'Not authorized';
   end if;
+
+  -- The membership before the character, the order Archive Member takes
+  -- (#1432). A claim moving the character to another membership after the
+  -- read above is not covered: it would also need that membership archived
+  -- in the same instant.
+  perform public.hold_team_member(v_team_member_id);
 
   -- archived_at is null guards a double archive: a second call would
   -- otherwise silently rewrite the first reason with the second one.

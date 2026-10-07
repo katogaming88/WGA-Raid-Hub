@@ -1,6 +1,113 @@
--- Function public.add_signup_to_roster: current definition, generated from the database.
--- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): authenticated
+-- #1432: Remove and a signup add take the membership before the character.
+--
+-- Archive Member locks the membership, then each of the person's characters.
+-- Remove (archive_player) and a signup add (add_signup_to_roster) took the
+-- character first and reached the membership last, through the foreign keys
+-- on removal_reasons.team_member_id and the new character's team_member_id.
+-- When the two ran on the same raider at once, each waited on the other and
+-- Postgres cancelled one with "deadlock detected". Now both hold the
+-- membership first, so one waits behind the other.
+--
+-- The hold is its own function, run as its owner. Both callers run with the
+-- officer's own rights, and a share lock on a membership row needs its UPDATE
+-- policy, which only team leaders and site admins pass: for a plain officer
+-- the lock would match no row and hold nothing. It is gated like
+-- archive_player(), and it also lets a call with nobody signed in through,
+-- which only the database owner can make, since a signup add made that way
+-- has always worked. Holding a row for share changes nothing in it.
+--
+-- Being able to wait has two consequences. A signup main swap that waited
+-- behind Archive Member finds the old character already off the roster, and
+-- leaves the date it left alone, since its removal reason is keyed on that
+-- date. And a signer archived while the add waited is brought back, as if the
+-- archive had landed first (#1402).
+
+create function public.hold_team_member(p_team_member_id integer)
+returns void
+language plpgsql
+security definer
+set search_path to 'public'
+as $$
+declare
+  v_team_id integer;
+begin
+  if p_team_member_id is null then
+    return;
+  end if;
+
+  select team_id into v_team_id from public.team_members where id = p_team_member_id;
+  if v_team_id is null
+     or not (auth.uid() is null
+             or v_team_id = any (public.my_officer_team_ids())
+             or public.is_guild_officer()
+             or public.is_site_admin()) then
+    raise exception 'Not authorized';
+  end if;
+
+  perform 1 from public.team_members where id = p_team_member_id for share;
+end;
+$$;
+
+alter function public.hold_team_member(integer) owner to postgres;
+
+comment on function public.hold_team_member(integer) is
+  'Holds a team_members row for share until the caller''s transaction ends (#1432), so archive_player() and add_signup_to_roster() take the membership before the character, the order archive_team_member() takes. Runs as its owner because both callers run with the officer''s rights, and an officer''s own share lock on a membership matches no row. Gated like archive_player(), plus a call with nobody signed in, which only the database owner can make; a null id does nothing. Writes nothing.';
+
+revoke all on function public.hold_team_member(integer) from public;
+revoke execute on function public.hold_team_member(integer) from anon;
+grant execute on function public.hold_team_member(integer) to authenticated;
+
+CREATE OR REPLACE FUNCTION public.archive_player(p_player_id integer, p_reason text, p_detail text)
+ RETURNS timestamp with time zone
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_team_id integer;
+  v_team_member_id integer;
+  v_archived_at timestamptz;
+begin
+  select team_id, team_member_id into v_team_id, v_team_member_id from public.players where id = p_player_id;
+  if v_team_id is null then
+    raise exception 'Player % not found', p_player_id;
+  end if;
+
+  if not (coalesce(public.my_team_role(v_team_id) = any (array['officer', 'team_leader']), false)
+          or public.is_guild_officer()
+          or public.is_site_admin()) then
+    raise exception 'Not authorized';
+  end if;
+
+  -- The membership before the character, the order Archive Member takes
+  -- (#1432). A claim moving the character to another membership after the
+  -- read above is not covered: it would also need that membership archived
+  -- in the same instant.
+  perform public.hold_team_member(v_team_member_id);
+
+  -- archived_at is null guards a double archive: a second call would
+  -- otherwise silently rewrite the first reason with the second one.
+  update public.players
+     set archived_at = now()
+   where id = p_player_id
+     and archived_at is null
+  returning archived_at into v_archived_at;
+
+  if v_archived_at is null then
+    raise exception 'Player % is already archived', p_player_id;
+  end if;
+
+  -- Only the two archive columns are written on conflict. A player being
+  -- removed may already carry an officer note, and blanking it here would
+  -- destroy the note at exactly the moment it is most worth keeping.
+  insert into public.player_officer_notes (player_id, team_id, archived_reason, archived_reason_detail)
+  values (p_player_id, v_team_id, p_reason, p_detail)
+  on conflict (player_id) do update
+     set archived_reason = excluded.archived_reason,
+         archived_reason_detail = excluded.archived_reason_detail;
+
+  return v_archived_at;
+end;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.add_signup_to_roster(p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer, p_is_backup_tank boolean DEFAULT false, p_is_backup_healer boolean DEFAULT false)
  RETURNS integer

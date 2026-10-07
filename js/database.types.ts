@@ -4154,6 +4154,10 @@ export type Database = {
         }[]
       }
       guild_creation_open: { Args: never; Returns: boolean }
+      hold_team_member: {
+        Args: { p_team_member_id: number }
+        Returns: undefined
+      }
       import_rclc_loot: {
         Args: { p_rows: Json; p_season: string; p_team_id: number }
         Returns: Json
