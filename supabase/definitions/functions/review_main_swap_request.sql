@@ -33,8 +33,9 @@ begin
   end if;
 
   -- Rows are taken in an order that waits behind an archive instead of
-  -- deadlocking with it (#1428): the membership, for share, which the key
-  -- share a removal takes on it does not block; then the new roster row,
+  -- deadlocking with it (#1428): the membership, for share, which the share
+  -- a removal or a signup add holds on it (#1432) does not block; then the
+  -- new roster row,
   -- which a signup main swap writes before it archives the old character;
   -- then the old character; then the request, which the trigger cancelling a
   -- waiting swap reaches last.
