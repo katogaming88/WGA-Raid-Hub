@@ -26,6 +26,7 @@
 // calls and the environment reads below still come from the platform, and
 // join Deps with the PR that first puts an action under test.
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+import { isAltRun } from '../_shared/alt-run.ts';
 import { gqlInt, gqlString } from '../_shared/gql.ts';
 import { tierStartTimeMs } from '../_shared/tier-start.ts';
 import { parseRequest, type ScoringMetric } from './request.ts';
@@ -426,15 +427,6 @@ const SEASON_REPORT_LIMIT = 50;
 // = 1000 reports per run -- far beyond any real season, just a guard against
 // an unexpected has_more_pages loop.
 const MAX_REPORT_PAGES = 20;
-const ALT_RUN_KEYWORD = 'Alt';
-// A plain substring match on ALT_RUN_KEYWORD false-positives on any boss name
-// containing "Alt" as a run of letters inside a longer word -- confirmed live
-// against "Phoenix Heroic 8/27 - The Coiled Altar (...)", where "Altar"
-// silently excluded a real raid night as an alt run. Alt-run titles are
-// always "Alt" as its own word (e.g. "Phoenix Alt run", see
-// tests/import/attendance.test.js), so this only matches "Alt" with a word
-// boundary on both sides.
-const ALT_RUN_PATTERN = new RegExp(`\\b${ALT_RUN_KEYWORD}\\b`);
 
 async function getReportZone(token: string, reportCode: string): Promise<number | null> {
   const query = `query { reportData { report(code: ${gqlString(reportCode)}) { zone { id } } } }`;
@@ -914,7 +906,7 @@ async function refreshAttendance(token: string, guildId: number, teamId: number,
       continue;
     }
 
-    if (ALT_RUN_PATTERN.test(String(report.title))) {
+    if (isAltRun(report.title)) {
       excluded++;
       continue;
     }

@@ -733,3 +733,28 @@ Deno.test(
     );
   }
 );
+
+// A report uploaded while the pages are read pushes the list down by one, so
+// the next page repeats the last report of the one before it. One statement
+// cannot rewrite a row twice, and a repeated report would count its pulls twice.
+Deno.test('a report repeated across two pages is kept and counted once', async () => {
+  const { deps, db } = testDeps({
+    state: { teams: [TEAM], configs: { 1: ONE_RAID } },
+    responses: [
+      tokenResponse(),
+      reportsPage([REPORTS[0]], true),
+      reportsResponse([REPORTS[0], REPORTS[1]]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS)
+    ]
+  });
+  await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
+  assertEquals(
+    reportsWritten(db).map((rows) => rows.map((r) => r.report_code)),
+    [['reportA', 'reportB']]
+  );
+  const progress = db.calls.find((c) => c.method === 'upsertProgress')?.args[0] as Array<Record<string, unknown>>;
+  assertEquals(
+    progress.map((row) => row.mythic_pulls),
+    [3, 0]
+  );
+});

@@ -45,21 +45,30 @@
 // current_season(), read once per run and the same for every team: since
 // #1189 (2026-09-20) the season is app-wide, so a raid belongs to the tier
 // that is live when it is first seen, whatever a team's own settings say
-// (#933). A zone the table already holds keeps the tier it was filed under:
-// on the new tier's launch day every team's raid list still names the
-// outgoing raid until an officer replaces it, and re-filing that raid under
-// the new tier would duplicate its rows and pull it into the new tier's
-// scope. raid_zones is one row per (wcl_zone_id, season) shared by every
-// team. Until #933 the stamp was the syncing team's seasonName, to keep two
-// teams on different cycles apart, and a team with no name was skipped; the
-// cycle is gone, so a team with raids syncs whatever it has named, and a day
-// with no tier row (before the first tier's migration, or after a slipped
-// date) writes nothing, since the column is a foreign key to seasons.
+// (#933). A zone the table holds under an earlier tier is left as that tier
+// left it (#1469): on the new tier's launch day every team's raid list still
+// names the outgoing raid until an officer replaces it, and the reports are
+// read from the new tier's start, so syncing it would rebuild its progress
+// from the new tier's nights alone. raid_zones is one row per (wcl_zone_id,
+// season) shared by every team. Until #933 the stamp was the syncing team's
+// seasonName, to keep two teams on different cycles apart, and a team with no
+// name was skipped; the cycle is gone, so a team with raids syncs whatever it
+// has named, and a day with no tier row (before the first tier's migration,
+// or after a slipped date) writes nothing, since the column is a foreign key
+// to seasons.
+//
+// Every report it reads is also kept in team_raid_reports (#1469), one row per
+// team and report, with the title rule's verdict (_shared/alt-run.ts) in kind.
+// The sync never sends an officer's override, so a rewrite leaves it alone,
+// and never deletes a row, so a report older than the tier start stays on
+// record.
 //
 // handle() takes its reads and writes, its fetch and its environment as an
 // argument (#1006), so tests/edge/ runs it against plain objects; deps.ts
 // supplies the real ones and index.ts is the one line that serves it.
+import { isAltRun } from '../_shared/alt-run.ts';
 import { gqlInt } from '../_shared/gql.ts';
+import { tierStartTimeMs } from '../_shared/tier-start.ts';
 import { VERSION } from './version.ts';
 
 export type Env = { get(name: string): string | undefined };
@@ -203,23 +212,20 @@ async function wclQuery(deps: Deps, token: string, query: string): Promise<any |
   }
 }
 
-// WCL rejects the reports() query outright once its computed complexity
-// exceeds 50000 -- confirmed live via diagnostic logging (2026-08-21):
-// "Max query complexity should be 50000 but got 50401" at limit=100, for
-// every single team/zone, on every cron tick, silently. wclQuery() returns
-// null on any GraphQL error, so the report-fetch loop broke on page 1 with
-// zero reports every time -- no thrown error anywhere, which is exactly why
-// this went unnoticed: team_raid_progress simply never got written to,
-// starting from whenever the guild's logged reports/fights grew enough to
-// push a 100-report page over the limit. Complexity scales with both the
-// requested page size and each report's own (variable, growing-over-time)
-// fights array, so halving the limit isn't just "get back under 50000 today" --
-// it buys real headroom against the same regression recurring later in the
-// season as more fights accumulate.
+// A reports page's complexity is set by the query's shape, not by the guild's
+// data (measured 2026-10-06 against two guilds with very different fight
+// counts): page size x (5 + 100 x fields asked per fight) + 4, and Warcraft
+// Logs refuses a query above 50,000 outright. The five fight fields here
+// make about 25,250 at 50 a page and 50,504 at 100, so the 2026-08-21
+// refusal ("50000 but got 50401", every team on every tick, while the loop
+// silently stopped on page 1) was the page size, not a log that grew. A query
+// costs one point per report returned plus one, whatever its fields, so a
+// smaller page costs a point per extra page and nothing else. #1470 asks for
+// ten fields per fight, which fit at 25 a page.
 const REPORT_LIMIT = 50;
-// 20 pages * 50/page = 1000 reports per zone per run -- still far beyond any
-// real season's report count, just a guard against an unexpected
-// has_more_pages loop (e.g. a WCL response that never actually terminates).
+// 20 pages * 50/page = 1000 reports per team per run -- far beyond any real
+// tier's report count, just a guard against an unexpected has_more_pages
+// loop (e.g. a WCL response that never actually terminates).
 const MAX_REPORT_PAGES = 20;
 const MYTHIC_DIFF = 5;
 const HEROIC_DIFF = 4;
@@ -229,6 +235,18 @@ type RaidConfigEntry = {
   name?: string;
   isMiniRaid?: boolean;
 };
+
+type WclReport = {
+  code: string;
+  title?: string | null;
+  startTime: number;
+  zone?: { id: number } | null;
+  fights?: any[];
+};
+
+// One raid on the team's list as this run syncs it: Warcraft Logs' encounter
+// ids for its bosses, mapped to raid_encounters ids.
+type SyncedZone = { zoneName: string; encounterIdByWcl: Map<number, number> };
 
 // One of these per difficulty (Mythic, Heroic) tracked for an encounter.
 type DifficultyAgg = {
@@ -262,50 +280,46 @@ function newDifficultyAgg(): DifficultyAgg {
   };
 }
 
-async function syncTeamZone(
-  deps: Deps,
-  token: string,
-  teamId: number,
-  guildId: number,
-  season: string,
-  raid: RaidConfigEntry,
-  sortIndex: number
-): Promise<{ zoneName: string; encounters: number; killsError?: string } | null> {
+function zoneIdOf(raid: RaidConfigEntry): number | null {
   const zoneId = parseInt(String(raid.wclZoneId || ''), 10);
-  if (!zoneId || Number.isNaN(zoneId)) return null;
+  return !zoneId || Number.isNaN(zoneId) ? null : zoneId;
+}
 
-  const zoneQuery = `query { worldData { zone(id: ${gqlInt(zoneId)}) { name encounters { id name } } } }`;
-  const zoneResult = await wclQuery(deps, token, zoneQuery);
-  const zone = zoneResult?.data?.worldData?.zone;
-  if (!zone) return null;
-  const encounters: Array<{ id: number; name: string }> = zone.encounters || [];
-  if (encounters.length === 0) return { zoneName: zone.name, encounters: 0 };
-
-  // No zoneID filter on the reports() query, deliberately -- confirmed live
-  // that filtering by zoneID undercounted pulls relative to WCL's own guild
-  // progress page (this app showed 145 pulls on a boss WCL's
-  // /guild/progress/<id>?zone=<id> page showed 174 for). A report's own zone
-  // tag isn't reliable enough to filter on: wcl-sync's refreshAttendance hit
-  // the same gap and works around it by classifying each report itself
-  // rather than trusting reports(zoneID:) -- see getReportZone there. This
-  // does the equivalent by fetching every one of the guild's reports and
-  // keeping only fights whose encounterID belongs to this zone's own
-  // encounter list (checked against encounterIdByWcl below), rather than
-  // trusting the report-level zone.
-  //
-  // reports(guildID, limit) also only returns one page (up to REPORT_LIMIT
-  // reports) per call -- paginate through has_more_pages instead of trusting
-  // a single call, capped at MAX_REPORT_PAGES as a runaway guard.
-  const reports: Array<{ code: string; startTime: number; fights: any[] }> = [];
-  let page = 1;
-  for (;;) {
+// Every report the guild has logged since the tier start (every report, when
+// the tier has no start date), once per team per run (#1469).
+//
+// No zoneID filter on the reports() query, deliberately -- confirmed live
+// that filtering by zoneID undercounted pulls relative to WCL's own guild
+// progress page (this app showed 145 pulls on a boss WCL's
+// /guild/progress/<id>?zone=<id> page showed 174 for). A report's own zone
+// tag isn't reliable enough to filter on: wcl-sync's refreshAttendance hit
+// the same gap and works around it by classifying each report itself
+// rather than trusting reports(zoneID:) -- see getReportZone there. This
+// does the equivalent by keeping only fights whose encounterID belongs to a
+// raid's own encounter list (checked against encounterIdByWcl), rather than
+// trusting the report-level zone, which is only stored.
+//
+// reports(guildID, limit) also only returns one page (up to REPORT_LIMIT
+// reports) per call -- paginate through has_more_pages instead of trusting
+// a single call, capped at MAX_REPORT_PAGES as a runaway guard. A page
+// Warcraft Logs does not return throws, so the team writes nothing that run:
+// progress rebuilt from a partial list can lose a kill date. A report
+// uploaded while the pages are read pushes the list down by one, so a page
+// can repeat the last report of the page before it; it is kept once.
+async function fetchReports(deps: Deps, token: string, guildId: number, startMs: number | null): Promise<WclReport[]> {
+  const window = startMs === null ? '' : `, startTime: ${gqlInt(startMs)}`;
+  const reports: WclReport[] = [];
+  const seen = new Set<string>();
+  for (let page = 1; ; page++) {
     const reportsQuery = `
       query {
         reportData {
-          reports(guildID: ${gqlInt(guildId)}, limit: ${REPORT_LIMIT}, page: ${page}) {
+          reports(guildID: ${gqlInt(guildId)}, limit: ${REPORT_LIMIT}, page: ${page}${window}) {
             data {
               code
+              title
               startTime
+              zone { id }
               fights {
                 id
                 encounterID
@@ -321,19 +335,44 @@ async function syncTeamZone(
     `;
     const pageResult = await wclQuery(deps, token, reportsQuery);
     const pageReports = pageResult?.data?.reportData?.reports;
-    if (!pageReports) break;
-    reports.push(...(pageReports.data || []));
-    if (!pageReports.has_more_pages || page >= MAX_REPORT_PAGES) break;
-    page++;
+    if (!pageReports) throw new Error(`Reports page ${page} not returned`);
+    for (const report of (pageReports.data || []) as WclReport[]) {
+      if (seen.has(report.code)) continue;
+      seen.add(report.code);
+      reports.push(report);
+    }
+    if (!pageReports.has_more_pages || page >= MAX_REPORT_PAGES) return reports;
   }
+}
 
-  // A zone already on file keeps its tier (see the header); a new one takes
-  // the current tier.
+// One raid on the team's list: its zone and bosses from Warcraft Logs, filed
+// in raid_zones and raid_encounters. Null when the raid is not synced this
+// run: no usable zone id, a zone filed under an earlier tier (see the
+// header), or a zone Warcraft Logs does not know.
+async function prepareZone(
+  deps: Deps,
+  token: string,
+  season: string,
+  raid: RaidConfigEntry,
+  sortIndex: number
+): Promise<SyncedZone | null> {
+  const zoneId = zoneIdOf(raid);
+  if (zoneId === null) return null;
   const filedSeason = await deps.db.raidZoneSeason(zoneId);
+  if (filedSeason !== null && filedSeason !== season) return null;
+
+  const zoneQuery = `query { worldData { zone(id: ${gqlInt(zoneId)}) { name encounters { id name } } } }`;
+  const zoneResult = await wclQuery(deps, token, zoneQuery);
+  const zone = zoneResult?.data?.worldData?.zone;
+  if (!zone) return null;
+  const encounters: Array<{ id: number; name: string }> = zone.encounters || [];
+  const encounterIdByWcl = new Map<number, number>();
+  if (encounters.length === 0) return { zoneName: zone.name, encounterIdByWcl };
+
   const zoneRowId = await deps.db.upsertRaidZone({
     wcl_zone_id: zoneId,
     name: raid.name || zone.name || 'Unnamed Raid',
-    season: filedSeason ?? season,
+    season,
     is_mini_raid: !!raid.isMiniRaid,
     sort_index: sortIndex
   });
@@ -345,29 +384,63 @@ async function syncTeamZone(
     sort_index: i
   }));
   const savedEncounters = await deps.db.upsertEncounters(encounterRows);
-
-  const encounterIdByWcl = new Map<number, number>();
   for (const row of savedEncounters || []) encounterIdByWcl.set(row.wcl_encounter_id as number, row.id as number);
+  return { zoneName: zone.name, encounterIdByWcl };
+}
 
+// A team_raid_reports row per report: its Heroic and Mythic pulls and kills
+// on the bosses of the raids synced this run, as the progression card counts
+// them, and the title rule's verdict. Never the override columns.
+function reportRows(teamId: number, reports: WclReport[], bossIds: Set<number>): ReportRow[] {
+  return reports.map((report) => {
+    let pulls = 0;
+    let kills = 0;
+    for (const fight of report.fights || []) {
+      if (!bossIds.has(fight.encounterID)) continue;
+      if (fight.difficulty !== MYTHIC_DIFF && fight.difficulty !== HEROIC_DIFF) continue;
+      pulls++;
+      if (fight.kill) kills++;
+    }
+    return {
+      team_id: teamId,
+      report_code: report.code,
+      title: report.title ?? null,
+      started_at: new Date(report.startTime).toISOString(),
+      raid_date: formatReportDate(report.startTime),
+      wcl_zone_id: report.zone?.id ?? null,
+      boss_pulls: pulls,
+      boss_kills: kills,
+      kind: isAltRun(report.title) ? 'alt' : 'main'
+    };
+  });
+}
+
+// One raid's progress rows and kills from the team's reports. Returns the
+// kills write's error, if it failed.
+async function writeZoneProgress(
+  deps: Deps,
+  teamId: number,
+  reports: WclReport[],
+  encounterIdByWcl: Map<number, number>
+): Promise<string | undefined> {
   const agg = new Map<number, EncounterAgg>();
   function entryFor(encId: number): EncounterAgg {
     if (!agg.has(encId)) agg.set(encId, { mythic: newDifficultyAgg(), heroic: newDifficultyAgg() });
     return agg.get(encId)!;
   }
 
-  // The reports() query above no longer filters by difficulty -- fetching
-  // every difficulty's fights in one pass and bucketing by fight.difficulty
-  // here covers Heroic without a second report fetch/page loop per zone
-  // (avoiding the API-usage doubling flagged when #629 was filed). LFR/
-  // Normal fights come through too but are simply ignored below.
+  // The reports() query no longer filters by difficulty -- fetching every
+  // difficulty's fights in one pass and bucketing by fight.difficulty here
+  // covers Heroic without a second report fetch/page loop per zone (avoiding
+  // the API-usage doubling flagged when #629 was filed). LFR/Normal fights
+  // come through too but are simply ignored below.
   // Every kill is also kept as its own row (#1246), not just the first.
   const kills: KillRow[] = [];
   for (const report of reports) {
     for (const fight of report.fights || []) {
       const encId = fight.encounterID;
-      // Only this zone's own bosses -- the query above fetches every report
-      // for the guild, not just ones tagged to this zone (see the comment
-      // above the reports() query for why).
+      // Only this zone's own bosses -- the guild's reports are read once for
+      // every raid on the list (see fetchReports for why).
       if (encId == null || !encounterIdByWcl.has(encId)) continue;
       let e: DifficultyAgg;
       if (fight.difficulty === MYTHIC_DIFF) {
@@ -440,12 +513,10 @@ async function syncTeamZone(
     try {
       await deps.db.insertKills(kills);
     } catch (err) {
-      const killsError = err instanceof Error ? err.message : 'Unknown error';
-      return { zoneName: zone.name, encounters: encounters.length, killsError };
+      return err instanceof Error ? err.message : 'Unknown error';
     }
   }
-
-  return { zoneName: zone.name, encounters: encounters.length };
+  return undefined;
 }
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -471,31 +542,48 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const token = await getAccessToken(deps);
     if (!token) return jsonResponse({ success: false, error: 'Failed to get WCL access token' }, 500);
 
-    // The stamp on every team's raid_zones rows; no tier, no rows.
+    // The stamp on every team's raid_zones rows and the start of the reports
+    // window; no tier, no rows.
     const season = await deps.db.currentSeason();
     if (!season)
       return jsonResponse({ success: true, teams: teams.length, synced: 0, errors: [], note: 'no current tier' });
+    const startMs = tierStartTimeMs(season.startsAt);
 
     let synced = 0;
+    let reportsWritten = 0;
     const errors: Array<{ teamId: number; error: string }> = [];
 
     for (const team of teams) {
       try {
         const config: any = await deps.db.teamConfig(team.id);
         const raids: RaidConfigEntry[] = Array.isArray(config.raidProgression) ? config.raidProgression : [];
-        if (raids.length === 0) continue;
+        if (!raids.some((raid) => zoneIdOf(raid) !== null)) continue;
 
+        const reports = await fetchReports(deps, token, team.wcl_guild_id, startMs);
+        const zones: SyncedZone[] = [];
         for (let i = 0; i < raids.length; i++) {
-          const outcome = await syncTeamZone(deps, token, team.id, team.wcl_guild_id, season.code, raids[i], i);
-          if (outcome) synced++;
-          if (outcome?.killsError) errors.push({ teamId: team.id, error: `Kills not saved: ${outcome.killsError}` });
+          const zone = await prepareZone(deps, token, season.code, raids[i], i);
+          if (zone) zones.push(zone);
+        }
+
+        const bossIds = new Set(zones.flatMap((zone) => [...zone.encounterIdByWcl.keys()]));
+        const rows = reportRows(team.id, reports, bossIds);
+        if (rows.length > 0) {
+          await deps.db.upsertReports(rows);
+          reportsWritten += rows.length;
+        }
+
+        synced += zones.length;
+        for (const zone of zones) {
+          const killsError = await writeZoneProgress(deps, team.id, reports, zone.encounterIdByWcl);
+          if (killsError) errors.push({ teamId: team.id, error: `Kills not saved: ${killsError}` });
         }
       } catch (err) {
         errors.push({ teamId: team.id, error: err instanceof Error ? err.message : 'Unknown error' });
       }
     }
 
-    return jsonResponse({ success: true, teams: teams.length, synced, errors });
+    return jsonResponse({ success: true, teams: teams.length, synced, errors, reports: reportsWritten });
   } catch (err) {
     console.error('wcl-progression-sync error:', err);
     return jsonResponse({ success: false, error: err instanceof Error ? err.message : 'Unknown error' }, 500);
