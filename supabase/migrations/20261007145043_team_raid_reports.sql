@@ -11,7 +11,8 @@
 -- the sync on every run, with the title rule's verdict in kind. An officer's
 -- choice goes in kind_override (#1472), and effective_kind is the one the
 -- readers will count (#1471). A row is never deleted: the sync reads a
--- guild's newest reports only, so this copy is the record of anything older.
+-- guild's reports from the tier start, so this copy is the record of anything
+-- older.
 -- Written only by wcl-progression-sync's service role; read by the team's
 -- raiders and officers, as team_raid_kills is, until #1286 sets the rule for
 -- a new table.
@@ -51,7 +52,7 @@ comment on column public.team_raid_reports.boss_pulls is
 comment on column public.team_raid_reports.boss_kills is
   'The kills among boss_pulls.';
 comment on column public.team_raid_reports.kind is
-  'The title rule''s verdict: alt when the title has "Alt" as its own word, main otherwise. Rewritten on every run, so a report renamed on Warcraft Logs moves on the next one.';
+  'The title rule''s verdict: alt when the title has "Alt" as its own word, main otherwise. Rewritten on every run that reads the report (those since the tier start), so a report renamed on Warcraft Logs moves on the next one.';
 comment on column public.team_raid_reports.kind_override is
   'An officer''s choice of main or alt (#1472), which the sync never writes; null leaves the verdict standing.';
 comment on column public.team_raid_reports.kind_override_by is
@@ -60,6 +61,10 @@ comment on column public.team_raid_reports.kind_override_at is
   'When kind_override was set; set exactly when it is.';
 comment on column public.team_raid_reports.effective_kind is
   'kind_override when set, else kind: whether the report counts as the team''s raid.';
+
+-- The sync now reads the reports since the tier start, not every report.
+comment on table public.team_raid_progress is
+  'Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt on each wcl-progression-sync run from the reports since the tier start (#1469). A raid filed under an earlier tier keeps what that tier left it. Every kill, by week, is in team_raid_kills.';
 
 alter table public.team_raid_reports owner to postgres;
 alter table public.team_raid_reports enable row level security;

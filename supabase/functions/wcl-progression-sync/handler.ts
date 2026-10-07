@@ -5,7 +5,7 @@
 // landing page's progression card, and (for Heroic) the source of the
 // automatic AOTC date. It also keeps every Heroic and Mythic kill in
 // team_raid_kills (#1246), the only writer of that table; each run re-sends
-// them all and the insert skips any already kept, so the first run backfilled.
+// the tier's kills and the insert skips any already kept.
 //
 // Unlike wcl-sync, there is no logged-in officer to forward a JWT from --
 // this runs on a pg_cron schedule (supabase/migrations/
@@ -150,9 +150,8 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 // Ported from wcl-sync's REPORT_TIME_ZONE/formatReportDate -- same
-// America/New_York + early-morning-cutoff logic, kept in sync manually since
-// these two functions don't share a module (matches the rest of this repo's
-// one-file-per-Edge-Function style, see twitch-live-check).
+// America/New_York + early-morning-cutoff logic, kept in sync by hand: the two
+// functions share _shared/alt-run.ts and _shared/tier-start.ts, not this yet.
 const REPORT_TIME_ZONE = 'America/New_York';
 const EARLY_MORNING_CUTOFF_HOUR = 6;
 
@@ -348,7 +347,9 @@ async function fetchReports(deps: Deps, token: string, guildId: number, startMs:
 // One raid on the team's list: its zone and bosses from Warcraft Logs, filed
 // in raid_zones and raid_encounters. Null when the raid is not synced this
 // run: no usable zone id, a zone filed under an earlier tier (see the
-// header), or a zone Warcraft Logs does not know.
+// header), or a zone Warcraft Logs does not know. A zone query it does not
+// answer throws instead, as a reports page does: read as an unknown zone,
+// its bosses would drop out of every report's counts.
 async function prepareZone(
   deps: Deps,
   token: string,
@@ -363,7 +364,8 @@ async function prepareZone(
 
   const zoneQuery = `query { worldData { zone(id: ${gqlInt(zoneId)}) { name encounters { id name } } } }`;
   const zoneResult = await wclQuery(deps, token, zoneQuery);
-  const zone = zoneResult?.data?.worldData?.zone;
+  if (!zoneResult) throw new Error(`Zone ${zoneId} not returned`);
+  const zone = zoneResult.data?.worldData?.zone;
   if (!zone) return null;
   const encounters: Array<{ id: number; name: string }> = zone.encounters || [];
   const encounterIdByWcl = new Map<number, number>();
@@ -566,16 +568,23 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           if (zone) zones.push(zone);
         }
 
+        // The reports are the newest write, as the kills were: a failure is
+        // reported, and the progress the landing page reads still syncs.
         const bossIds = new Set(zones.flatMap((zone) => [...zone.encounterIdByWcl.keys()]));
         const rows = reportRows(team.id, reports, bossIds);
         if (rows.length > 0) {
-          await deps.db.upsertReports(rows);
-          reportsWritten += rows.length;
+          try {
+            await deps.db.upsertReports(rows);
+            reportsWritten += rows.length;
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Unknown error';
+            errors.push({ teamId: team.id, error: `Reports not saved: ${message}` });
+          }
         }
 
-        synced += zones.length;
         for (const zone of zones) {
           const killsError = await writeZoneProgress(deps, team.id, reports, zone.encounterIdByWcl);
+          synced++;
           if (killsError) errors.push({ teamId: team.id, error: `Kills not saved: ${killsError}` });
         }
       } catch (err) {
