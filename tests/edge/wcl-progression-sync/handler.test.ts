@@ -773,6 +773,36 @@ Deno.test('a raid already filed under the current tier syncs as before', async (
   assertEquals(killsWritten(db).length, 1);
 });
 
+// A report's counts take in the bosses of every raid on the list, not only
+// the first: a night that pulls the main raid and the mini raid counts both.
+Deno.test("a report's counts take in every raid on the team's list", async () => {
+  const { deps, db } = testDeps({
+    state: { teams: [TEAM], configs: { 1: TWO_RAIDS } },
+    responses: [
+      tokenResponse(),
+      reportsResponse([
+        {
+          code: 'both',
+          title: 'Phoenix Heroic 9/21',
+          startTime: REPORT_B_START,
+          zone: { id: 44 },
+          fights: [
+            { id: 1, encounterID: 3001, difficulty: 4, kill: true, bossPercentage: 0 },
+            { id: 2, encounterID: 3003, difficulty: 4, kill: false, bossPercentage: 20 }
+          ]
+        }
+      ]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }])
+    ]
+  });
+  await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
+  assertEquals(
+    reportsWritten(db).map((rows) => rows.map((r) => [r.report_code, r.boss_pulls, r.boss_kills])),
+    [[['both', 2, 1]]]
+  );
+});
+
 // Production's first team lists its raid twice: the report rows count each
 // pull once, whatever the list says.
 Deno.test('a raid listed twice counts its pulls once in the report rows', async () => {
