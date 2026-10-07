@@ -27,6 +27,7 @@
 // join Deps with the PR that first puts an action under test.
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { gqlInt, gqlString } from '../_shared/gql.ts';
+import { tierStartTimeMs } from '../_shared/tier-start.ts';
 import { parseRequest, type ScoringMetric } from './request.ts';
 import { VERSION } from './version.ts';
 
@@ -73,40 +74,6 @@ function formatReportDate(ms: number): string {
   const d = new Date(`${localDate}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() - 1);
   return d.toISOString().slice(0, 10);
-}
-
-// The attendance refresh's report window (#1269): the tier's start date as
-// Eastern midnight, the instant the reports query's startTime takes. One
-// read of the offset is exact at midnight because both US transitions happen
-// at 2 AM local, after it. A report starting between midnight and the cutoff
-// above on launch day is still fetched and dated the night before.
-export function tierStartTimeMs(startsAt: string | null): number | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(startsAt || '');
-  if (!match) return null;
-  const guessUtcMs = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  const parts: Record<string, string> = {};
-  const fields = new Intl.DateTimeFormat('en-US', {
-    timeZone: REPORT_TIME_ZONE,
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  }).formatToParts(new Date(guessUtcMs));
-  for (const part of fields) {
-    if (part.type !== 'literal') parts[part.type] = part.value;
-  }
-  const wallClockAsUtcMs = Date.UTC(
-    Number(parts.year),
-    Number(parts.month) - 1,
-    Number(parts.day),
-    Number(parts.hour),
-    Number(parts.minute),
-    Number(parts.second)
-  );
-  return guessUtcMs - (wallClockAsUtcMs - guessUtcMs);
 }
 
 // ── WCL API helpers (ported from gs/WCL.gs) ─────────────────────────────────
