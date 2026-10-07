@@ -157,6 +157,9 @@ export async function openApp(browser, port, state) {
     // Main swap requests and the spec list they are asked with (#631): empty
     // unless a state lists them.
     main_swap_requests: [],
+    // An officer's note on a character (#1360's player settings): none unless
+    // a state lists one.
+    player_officer_notes: [],
     classes_specs: [],
     // Home (#1102): the loot feed, raid progression, the calendar, and the
     // stream widget every team page carries.
@@ -256,7 +259,11 @@ export async function openApp(browser, port, state) {
       if (rest === 'teams') return route.fulfill(json(state.teams ?? TEAMS));
       if (rest === 'account_preferences') return route.fulfill(json(null));
       if (rest in tables) {
-        const rows = tables[rest];
+        // A read of one row by its id (a panel opening on one player, #1360)
+        // gets that row, as PostgREST filters it; every other read is
+        // answered whatever its filters.
+        const byId = url.searchParams.get('id')?.match(/^eq\.(\d+)$/)?.[1];
+        const rows = byId ? tables[rest].filter((r) => String(r.id) === byId) : tables[rest];
         // A count with no rows (Guild home's officer panel): the total is in
         // the Content-Range header.
         if (request.method() === 'HEAD') {

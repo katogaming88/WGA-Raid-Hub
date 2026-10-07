@@ -12,6 +12,34 @@ answers to.
 
 ---
 
+## [3.173.0] - 2026-10-07
+
+### Project
+
+- The new app's Roster gives officers player settings in a side panel
+  (#1360, part 1 of 4). A gear at the right end of each row opens it, with
+  nothing to scroll past: spec (one list, so the class comes with it), join
+  date, the Trial, Bench, Backup tank, Backup healer and Left out of M+
+  switches, and the officer note. Every change saves the moment it's made,
+  each on its own, with "Bench turned on for Torbjorn. Undo"; the note and
+  join date save when the field is left. The arrows step to the previous or
+  next player in the order the roster shows, the gear or Escape closes it,
+  and the page behind never moves or reflows. A Player settings button on a
+  player's Profile opens the same panel and closes it again. Works on phones
+  as a full-screen sheet. Same columns and audit entries as the current
+  site's Player Settings; a failed save no longer leaves earlier changes half
+  saved. Status messages can now carry a button (Undo). No database change.
+- The Roster's officer controls say "Member" instead of "Name": Add a Member,
+  Edit Member, Delete Member (Kat, 2026-10-07). Audit log entries keep their
+  existing wording. Add Member lines up with the fields beside it.
+- Browser tests: the panel joins the accessibility list in both themes (and
+  the 480px check, as the phone sheet); the harness answers a one-row read by
+  id with that row.
+- Revamp time log: #1477's row runs to its merge, and #1360's planning and
+  first PR.
+
+---
+
 ## [3.172.0] - 2026-10-07
 
 ### Project

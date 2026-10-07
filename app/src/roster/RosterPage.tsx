@@ -31,6 +31,7 @@ import { altCountLabel, altsOf, earlierOwners, type SavedCharacter } from '../ch
 import { useEarlierLoot, useTeamAlts } from '../characters/useCharacters';
 import { MainSwapReviews } from '../characters/MainSwapReviews';
 import { NameRowActions } from './NameRowActions';
+import { PlayerSettingsProvider, SettingsRowButton } from './PlayerSettings';
 import { useCreateName, useNames } from './useNames';
 import type { NameRow } from './names';
 import {
@@ -267,9 +268,14 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
   // to show them under; they only fold into the unfiltered Everyone view.
   const shownNameRows = filter === 'All' ? nameRows : [];
 
+  // Player settings (#1360) steps through the rows in the order they show.
+  const settingsOrder = shown.flatMap((g) =>
+    g.raiders.flatMap((r) => (r.playerId !== null ? [{ playerId: r.playerId, name: r.name }] : []))
+  );
+
   // The filter sits above both columns, so the summary panel starts level with
   // the table rather than with the filter (Kat, 2026-09-14).
-  return (
+  const page = (
     <div className="roster-current">
       {/* Main swaps waiting for an officer (#631), above the team they change. */}
       <MainSwapReviews teamId={team.id} officer={officer} />
@@ -354,6 +360,13 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
       )}
     </div>
   );
+  return officer ? (
+    <PlayerSettingsProvider teamId={team.id} order={settingsOrder}>
+      {page}
+    </PlayerSettingsProvider>
+  ) : (
+    page
+  );
 }
 
 // Officer: a bare Name, with an optional raid role guess so it can sit under
@@ -389,7 +402,7 @@ function CreateNameForm({ teamId }: { teamId: number }) {
     <form onSubmit={onSubmit} noValidate className="create-name-form">
       <div className="field">
         <label className="field-label" htmlFor={`${id}-label`}>
-          Add a Name
+          Add a Member
         </label>
         <input
           id={`${id}-label`}
@@ -420,7 +433,7 @@ function CreateNameForm({ teamId }: { teamId: number }) {
         </p>
       )}
       <button type="submit" className="button" disabled={create.isPending || !label.trim()}>
-        {create.isPending ? 'Adding…' : 'Add Name'}
+        {create.isPending ? 'Adding…' : 'Add Member'}
       </button>
     </form>
   );
@@ -616,11 +629,18 @@ function RosterRow({
             </>
           )}
           <td className="status-cell">
-            {raider.statuses.map((s) => (
-              <span key={s} className={`status-tag status-${s.toLowerCase()}`}>
-                {s}
-              </span>
-            ))}
+            <div className="status-line">
+              {raider.statuses.map((s) => (
+                <span key={s} className={`status-tag status-${s.toLowerCase()}`}>
+                  {s}
+                </span>
+              ))}
+              {/* Officers: one click to this player's settings, never buried in
+                  the menu, at the row's right end (Kat, 2026-10-07). */}
+              {officer && raider.playerId !== null && (
+                <SettingsRowButton playerId={raider.playerId} name={raider.name} />
+              )}
+            </div>
             {/* The menu is on any row with a Name, and for officers on any
                 row with a membership, so Archive Member never needs a Name. */}
             {teamId !== undefined && (raider.nameId != null || (officer && raider.teamMemberId != null)) && (

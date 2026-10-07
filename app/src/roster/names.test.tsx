@@ -160,7 +160,7 @@ describe('Names on the Roster page', () => {
     await user.click(within(bareRow).getByRole('button', { name: 'More actions for Bare Raider' }));
     const bareMenu = await screen.findByRole('menu', { name: 'More actions for Bare Raider' });
     expect(within(bareMenu).getByRole('menuitem', { name: 'Edit' })).toBeInTheDocument();
-    expect(within(bareMenu).getByRole('menuitem', { name: 'Delete Name' })).toBeInTheDocument();
+    expect(within(bareMenu).getByRole('menuitem', { name: 'Delete Member' })).toBeInTheDocument();
   });
 
   it('archives a member after picking a reason and detail, via archive_team_member', async () => {
@@ -199,18 +199,18 @@ describe('Names on the Roster page', () => {
     });
   });
 
-  it('an officer sees the Add a Name form, with a role picker', async () => {
+  it('an officer sees the Add a Member form, with a role picker', async () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
     await screen.findByRole('table', { name: 'Current roster' });
-    expect(screen.getByLabelText('Add a Name')).toBeInTheDocument();
+    expect(screen.getByLabelText('Add a Member')).toBeInTheDocument();
     expect(screen.getByLabelText('Role')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add Name' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add Member' })).toBeInTheDocument();
   });
 
-  it('a raider does not see the Add a Name form', async () => {
+  it('a raider does not see the Add a Member form', async () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'raider' }));
     await screen.findByRole('table', { name: 'Current roster' });
-    expect(screen.queryByLabelText('Add a Name')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Add a Member')).not.toBeInTheDocument();
   });
 
   it('a raider sees no "..." menu on an already-claimed row, but gets Claim-only on a bare one', async () => {
@@ -386,7 +386,7 @@ describe('focus after a row action', () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
     const { trigger, menu } = await openMenu(user, /Raz/, 'Raz');
     await user.click(within(menu).getByRole('menuitem', { name: 'Edit' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Edit Name' });
+    const dialog = await screen.findByRole('dialog', { name: 'Edit Member' });
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     expect(trigger).toHaveFocus();
   });
@@ -513,7 +513,7 @@ describe('messages after a row action', () => {
     expect(await screen.findByText('Raz archived.')).toBeInTheDocument();
   });
 
-  it('says "removed" when Delete Name takes the row away', async () => {
+  it('says "removed" when Delete Member takes the row away', async () => {
     const user = userEvent.setup();
     let done = () => {};
     const handlers = namesHandlers({
@@ -532,9 +532,9 @@ describe('messages after a row action', () => {
     const table = await screen.findByRole('table', { name: 'Current roster' });
     const row = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
     await user.click(within(row).getByRole('button', { name: 'More actions for Bare Raider' }));
-    await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Delete Name' }));
+    await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Delete Member' }));
     const dialog = await screen.findByRole('dialog', { name: 'Delete Bare Raider?' });
-    await user.click(within(dialog).getByRole('button', { name: 'Delete Name' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Delete Member' }));
     expect(await screen.findByText('Bare Raider removed.')).toBeInTheDocument();
   });
 
@@ -567,14 +567,14 @@ describe('a duplicate label', () => {
     error: { message: 'duplicate key value violates unique constraint "names_team_id_label_key"', code: '23505' }
   };
   const SENTENCE =
-    'That did not save: A Name on this team already has that label. It may belong to someone who has left.';
+    'That did not save: A Member on this team already has that name. It may belong to someone who has left.';
 
-  it('reads as a sentence on Add a Name', async () => {
+  it('reads as a sentence on Add a Member', async () => {
     const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer', write: () => DUPLICATE }));
     await screen.findByRole('table', { name: 'Current roster' });
-    await user.type(screen.getByLabelText('Add a Name'), 'Raz');
-    await user.click(screen.getByRole('button', { name: 'Add Name' }));
+    await user.type(screen.getByLabelText('Add a Member'), 'Raz');
+    await user.click(screen.getByRole('button', { name: 'Add Member' }));
     expect(await screen.findByText(SENTENCE)).toHaveAttribute('role', 'alert');
   });
 
@@ -585,7 +585,7 @@ describe('a duplicate label', () => {
     const row = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
     await user.click(within(row).getByRole('button', { name: 'More actions for Bare Raider' }));
     await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Edit' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Edit Name' });
+    const dialog = await screen.findByRole('dialog', { name: 'Edit Member' });
     const input = within(dialog).getByLabelText('Name');
     await user.clear(input);
     await user.type(input, 'Raz');
@@ -605,13 +605,13 @@ describe('the officer writes and their audit rows', () => {
     return screen.findByRole('menu', { name: `More actions for ${label}` });
   };
 
-  it('Add a Name inserts the label and role and logs Name Created', async () => {
+  it('Add a Member inserts the label and role and logs Name Created', async () => {
     const user = userEvent.setup();
     const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
     await screen.findByRole('table', { name: 'Current roster' });
-    await user.type(screen.getByLabelText('Add a Name'), 'Thalindra');
+    await user.type(screen.getByLabelText('Add a Member'), 'Thalindra');
     await user.selectOptions(screen.getByLabelText('Role'), 'Heal');
-    await user.click(screen.getByRole('button', { name: 'Add Name' }));
+    await user.click(screen.getByRole('button', { name: 'Add Member' }));
     await screen.findByText('Thalindra added.');
     expect(client.writes).toEqual([
       { table: 'names', method: 'insert', values: { team_id: 1, label: 'Thalindra', role: 'Heal' }, filters: [] }
@@ -625,12 +625,12 @@ describe('the officer writes and their audit rows', () => {
     await user.click(
       within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Edit' })
     );
-    const dialog = await screen.findByRole('dialog', { name: 'Edit Name' });
+    const dialog = await screen.findByRole('dialog', { name: 'Edit Member' });
     const input = within(dialog).getByLabelText('Name');
     await user.clear(input);
     await user.type(input, 'Bryn');
     await user.click(within(dialog).getByRole('button', { name: 'Save' }));
-    await screen.findByText('Name updated.');
+    await screen.findByText('Member updated.');
     expect(client.writes).toEqual([
       { table: 'names', method: 'update', values: { label: 'Bryn', role: null }, filters: [['eq', 'id', 1]] }
     ]);
@@ -672,14 +672,14 @@ describe('the officer writes and their audit rows', () => {
     ]);
   });
 
-  it('Delete Name deletes the bare Name and logs Name Deleted', async () => {
+  it('Delete Member deletes the unclaimed Member and logs Name Deleted', async () => {
     const user = userEvent.setup();
     const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
     await user.click(
-      within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Delete Name' })
+      within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Delete Member' })
     );
     const dialog = await screen.findByRole('dialog', { name: 'Delete Bare Raider?' });
-    await user.click(within(dialog).getByRole('button', { name: 'Delete Name' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Delete Member' }));
     await screen.findByText('Bare Raider removed.');
     expect(client.writes).toEqual([
       {
@@ -733,7 +733,7 @@ describe('the Archive dialog for a member with no Name', () => {
     await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Archive Member' }));
     const dialog = await screen.findByRole('dialog', { name: 'Archive Brannoc?' });
     expect(dialog).toHaveTextContent('their loot and attendance are not deleted');
-    expect(dialog).not.toHaveTextContent('this Name');
+    expect(dialog).not.toHaveTextContent('name, loot');
   });
 });
 
@@ -805,10 +805,10 @@ describe('a Name that changed since the page read it', () => {
       namesHandlers({ role: 'officer', write: () => ({ data: [] }) })
     );
     await user.click(
-      within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Delete Name' })
+      within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Delete Member' })
     );
     const dialog = await screen.findByRole('dialog', { name: 'Delete Bare Raider?' });
-    await user.click(within(dialog).getByRole('button', { name: 'Delete Name' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Delete Member' }));
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(CHANGED);
     expect(audits(client)).toEqual([]);
   });
@@ -824,21 +824,21 @@ describe('a Name that changed since the page read it', () => {
     expect(audits(client)).toEqual([]);
   });
 
-  it('shows no earlier failure when Delete Name is opened again', async () => {
+  it('shows no earlier failure when Delete Member is opened again', async () => {
     const user = userEvent.setup();
     renderApp(
       '/g/wga/t/phoenix/roster',
       namesHandlers({ role: 'officer', write: () => ({ error: { message: 'Not allowed', code: '42501' } }) })
     );
     await user.click(
-      within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Delete Name' })
+      within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Delete Member' })
     );
     let dialog = await screen.findByRole('dialog', { name: 'Delete Bare Raider?' });
-    await user.click(within(dialog).getByRole('button', { name: 'Delete Name' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Delete Member' }));
     await within(dialog).findByRole('alert');
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     await user.click(
-      within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Delete Name' })
+      within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Delete Member' })
     );
     dialog = await screen.findByRole('dialog', { name: 'Delete Bare Raider?' });
     expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument();
@@ -858,12 +858,12 @@ describe('Edit', () => {
     const user = userEvent.setup();
     const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
     await user.click(within(await openRowMenu(user, /Raz/, 'Raz')).getByRole('menuitem', { name: 'Edit' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Edit Name' });
+    const dialog = await screen.findByRole('dialog', { name: 'Edit Member' });
     const input = within(dialog).getByLabelText('Name');
     await user.clear(input);
     await user.type(input, 'Razz');
     await user.click(within(dialog).getByRole('button', { name: 'Save' }));
-    await screen.findByText('Name updated.');
+    await screen.findByText('Member updated.');
     expect(client.writes.map((w) => w.values)).toEqual([{ label: 'Razz' }]);
   });
 
@@ -886,10 +886,10 @@ describe('Edit', () => {
     await user.click(
       within(await openRowMenu(user, 'Bare Raider', 'Bare Raider')).getByRole('menuitem', { name: 'Edit' })
     );
-    const dialog = await screen.findByRole('dialog', { name: 'Edit Name' });
+    const dialog = await screen.findByRole('dialog', { name: 'Edit Member' });
     await user.selectOptions(within(dialog).getByLabelText(/^Role/), 'Tank');
     await user.click(within(dialog).getByRole('button', { name: 'Save' }));
-    await screen.findByText('Name updated.');
+    await screen.findByText('Member updated.');
     await waitFor(() => expect(screen.getByRole('region', { name: 'Current roster' })).toHaveFocus());
   });
 });
@@ -933,14 +933,14 @@ describe('the row menu beside a scrollbar', () => {
   });
 });
 
-describe('Add a Name and focus', () => {
+describe('Add a Member and focus', () => {
   it('puts focus back in the label field once the Name is added', async () => {
     const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
     await screen.findByRole('table', { name: 'Current roster' });
-    const input = screen.getByLabelText('Add a Name');
+    const input = screen.getByLabelText('Add a Member');
     await user.type(input, 'Thalindra');
-    await user.click(screen.getByRole('button', { name: 'Add Name' }));
+    await user.click(screen.getByRole('button', { name: 'Add Member' }));
     await screen.findByText('Thalindra added.');
     expect(input).toHaveFocus();
   });

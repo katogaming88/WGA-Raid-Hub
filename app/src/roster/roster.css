@@ -331,6 +331,25 @@ a.raider-name:hover {
   margin-bottom: var(--space-3);
 }
 
+/* The form spaces its own row, so the fields drop their usual bottom margin
+   and Add Member lines up with the boxes beside it (Kat, 2026-10-07). */
+.create-name-form .field {
+  margin-bottom: 0;
+}
+
 .archive-reason-form .field {
   margin-bottom: var(--space-2);
+}
+
+/* A row's tags, then the officer's settings gear pinned to the right end, so
+   the gear lines up on every row whatever tags come before it (#1360). */
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.settings-row-button {
+  margin-left: auto;
 }

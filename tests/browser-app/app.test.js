@@ -145,6 +145,16 @@ const TWO_SEASONS_OPEN = {
 
 const OFFICER = storedSession({ battlenet: 'Kato#1499', discord: 'Phoenix Officer' });
 
+const SETTINGS_OPEN = {
+  path: '/g/wga/t/phoenix/roster',
+  sentinel: 'table.roster-table',
+  session: OFFICER,
+  who: 'officer',
+  tables: ROSTER,
+  click: 'role=button[name=/^Player settings for/] >> nth=0',
+  afterClick: '.settings-panel [role="switch"]'
+};
+
 // Alts (#942 step 5b): saved characters, the memberships they hang off, and
 // what the battlenet-characters function answers the picker with.
 const ALT_CHARACTERS = [
@@ -1053,6 +1063,10 @@ const STATES = [
   pickerState('alts picker'),
   pickerState('alts picker, light', { colorScheme: 'light' }),
   { label: 'roster', path: '/g/wga/t/phoenix/roster', sentinel: 'table.roster-table', tables: ROSTER },
+  // Player settings (#1360): the panel open from a row's gear. The 480px check
+  // every state gets covers it as a phone's full-screen sheet.
+  { label: 'roster, officer, player settings', ...SETTINGS_OPEN },
+  { label: 'roster, officer, player settings, light', ...SETTINGS_OPEN, colorScheme: 'light' },
   {
     label: 'roster, light',
     path: '/g/wga/t/phoenix/roster',
@@ -1342,7 +1356,7 @@ describe('roster row menu', () => {
       await menu.waitFor();
       expect(await axe(page)).toEqual([]);
       await menu.getByRole('menuitem', { name: 'Edit' }).click();
-      const dialog = page.getByRole('dialog', { name: 'Edit Name' });
+      const dialog = page.getByRole('dialog', { name: 'Edit Member' });
       await dialog.waitFor();
       await page.keyboard.press('Escape');
       await dialog.waitFor({ state: 'detached' });

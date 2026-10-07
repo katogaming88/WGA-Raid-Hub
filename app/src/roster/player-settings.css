@@ -1,0 +1,200 @@
+/* Player settings panel (#1360): beside the page on a computer, the whole
+   screen on a phone. Under the status messages, so Undo shows over it. */
+.settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  width: min(400px, 100%);
+  border-left: 1px solid var(--border-strong);
+  background: var(--panel);
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.35);
+}
+
+.settings-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-kicker {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.settings-title h2 {
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--text-xl);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  outline: none;
+}
+
+.settings-nav {
+  border: 1px solid var(--border-strong);
+  background: var(--raised);
+  color: var(--text);
+}
+
+.settings-nav:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.settings-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-5);
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5);
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.settings-heading {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.settings-switches {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-switch-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  font-size: var(--text-sm);
+}
+
+.settings-switch-label {
+  color: var(--text);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+/* An on/off switch. The track's outline and the knob both clear 3:1 against
+   the panel, on and off, in both themes. */
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 42px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--text-dim);
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: left 120ms ease;
+}
+
+.switch[aria-checked='true'] {
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.switch[aria-checked='true']::after {
+  left: 21px;
+  background: var(--page);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch::after {
+    transition: none;
+  }
+}
+
+.settings-foot {
+  margin: 0;
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* A phone: the whole screen, with bigger switches to hit. */
+@media (max-width: 640px) {
+  .settings-panel {
+    width: 100%;
+    border-left: 0;
+  }
+
+  .settings-body {
+    padding: var(--space-4);
+  }
+
+  .settings-switch {
+    padding: var(--space-3) 0;
+  }
+
+  .switch {
+    width: 50px;
+    height: 30px;
+    border-radius: 15px;
+  }
+
+  .switch::after {
+    width: 22px;
+    height: 22px;
+  }
+
+  .switch[aria-checked='true']::after {
+    left: 23px;
+  }
+}
+
+/* The panel sits over the page, which never moves or reflows when it opens
+   (Kat, 2026-10-07); the gear is at each row's left edge, so it is never
+   under it. The Streams corner widget moves out from under the panel. */
+@media (min-width: 641px) {
+  :root:has(.settings-panel) .stream-widget {
+    right: calc(400px + var(--space-4));
+  }
+}
+
+/* A phone: the panel is the whole screen, so nothing floats over it. */
+@media (max-width: 640px) {
+  :root:has(.settings-panel) .stream-widget {
+    display: none;
+  }
+}

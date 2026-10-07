@@ -1,3 +1,4 @@
+import { PlayerSettingsButton } from '../roster/PlayerSettings';
 import { useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { DataState } from '../components/DataState';
@@ -316,6 +317,8 @@ function Profile({
             </a>
           </nav>
         )}
+        {/* Officers change this player's settings from here too (#1360). */}
+        {officerView && <PlayerSettingsButton teamId={teamId} target={{ playerId: player.id, name }} />}
       </header>
 
       <ProfileTabs base={base} current={tab} />
