@@ -260,10 +260,12 @@ export async function openApp(browser, port, state) {
       if (rest === 'account_preferences') return route.fulfill(json(null));
       if (rest in tables) {
         // A read of one row by its id (a panel opening on one player, #1360)
-        // gets that row, as PostgREST filters it; every other read is
-        // answered whatever its filters.
+        // gets that row, as PostgREST filters it, where the state's rows carry
+        // ids (site_settings' don't); every other read is answered whatever
+        // its filters.
         const byId = url.searchParams.get('id')?.match(/^eq\.(\d+)$/)?.[1];
-        const rows = byId ? tables[rest].filter((r) => String(r.id) === byId) : tables[rest];
+        const all = tables[rest];
+        const rows = byId && all.some((r) => 'id' in r) ? all.filter((r) => String(r.id) === byId) : all;
         // A count with no rows (Guild home's officer panel): the total is in
         // the Content-Range header.
         if (request.method() === 'HEAD') {
