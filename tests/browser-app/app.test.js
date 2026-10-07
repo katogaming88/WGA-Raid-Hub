@@ -723,6 +723,11 @@ const GUILD_OFFICER = {
   tables: { ...GUILD_TABLES, ...WAITING }
 };
 
+const CRASH = {
+  path: '/g/wga/t/phoenix/roster',
+  sentinel: 'text=Something went wrong on this page',
+  tables: { players: [null] }
+};
 const NEWS = { path: '/g/wga/news', sentinel: 'main:has(.news-entry)', news: NEWS_ENTRIES };
 
 // The Streams page (#1102): the live players and the offline directory, which
@@ -1015,6 +1020,18 @@ const STATES = [
     sentinel: 'text=Connect your Discord'
   },
   { label: 'page not found', path: '/g/wga/t/phoenix/nope', sentinel: 'text=Page not found' },
+  {
+    label: 'page not found, light',
+    path: '/g/wga/t/phoenix/nope',
+    sentinel: 'text=Page not found',
+    colorScheme: 'light'
+  },
+  { label: 'page not found, outside the frame', path: '/nope', sentinel: 'text=Page not found' },
+  // A page that crashes (#1477): a roster row that is not there trips the page,
+  // and the crash screen shows inside the frame.
+  { label: 'page crash', ...CRASH },
+  { label: 'page crash, light', ...CRASH, colorScheme: 'light' },
+  { label: 'page crash, details open', ...CRASH, click: 'text=Show error details' },
   {
     label: 'roster, officer, alts showing',
     path: '/g/wga/t/phoenix/roster',

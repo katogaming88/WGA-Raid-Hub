@@ -13,7 +13,7 @@ import {
   useResolvedAddress,
   type Address
 } from '../data/address';
-import { NotFoundPage } from '../pages/NotFoundPage';
+import { NotFoundPage, wayOn } from '../pages/NotFoundPage';
 import { AccountPanel } from '../auth/AccountPanel';
 import { ConnectPrompt } from '../auth/ConnectPrompt';
 import { AltsPickerProvider } from '../characters/AltsPicker';
@@ -133,7 +133,9 @@ export function AppShell() {
       </DataState>
     );
   } else if (!resolved) {
-    content = <NotFoundPage />;
+    // The guild or team key does not exist, so a link back to it would land
+    // here again.
+    content = <NotFoundPage home={wayOn()} />;
   } else if (!resolved.isCanonical) {
     content = <Navigate to={canonicalPath(location.pathname, resolved) + location.search} replace />;
   } else if (guildQuery.isError || guildQuery.isPending) {
