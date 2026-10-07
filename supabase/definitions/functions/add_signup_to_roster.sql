@@ -64,7 +64,8 @@ begin
 
   -- The signer's membership and the old character's before any character
   -- (#1432), lowest id first, so the add waits behind Archive Member instead
-  -- of deadlocking with it.
+  -- of deadlocking with it. As in archive_player(), a claim linking the old
+  -- character after the read above is not covered.
   for v_hold in
     select distinct m from unnest(array[v_signer_member_id, v_old_member_id]) as m
      where m is not null

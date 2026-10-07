@@ -174,7 +174,9 @@ describe('hold_team_member()', () => {
   it('does nothing for a character with no membership', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
-      await expect(hold((t, p) => asUser(team.officer.uid, t, p), null)).resolves.toBeDefined();
+      // A void return reads back as an empty string.
+      const { rows } = await hold((t, p) => asUser(team.officer.uid, t, p), null);
+      expect(rows).toEqual([{ hold_team_member: '' }]);
     });
   });
 
