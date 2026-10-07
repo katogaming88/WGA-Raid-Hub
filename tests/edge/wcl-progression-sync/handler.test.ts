@@ -756,6 +756,115 @@ Deno.test(
   }
 );
 
+// The steady state: every run after a raid's first finds it filed under the
+// current tier, and syncs it.
+Deno.test('a raid already filed under the current tier syncs as before', async () => {
+  const { deps, db } = testDeps({
+    state: { teams: [TEAM], configs: { 1: ONE_RAID }, zones: { 44: SEASON_CODE } },
+    responses: [tokenResponse(), reportsResponse(REPORTS), zoneResponse('Test Raid Zone', ENCOUNTERS)]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res.body.synced, 1);
+  assertEquals(
+    db.calls.filter((c) => c.method === 'upsertRaidZone').map((c) => (c.args[0] as { season: string }).season),
+    [SEASON_CODE]
+  );
+  assertEquals(db.calls.filter((c) => c.method === 'upsertProgress').length, 1);
+  assertEquals(killsWritten(db).length, 1);
+});
+
+// Production's first team lists its raid twice: the report rows count each
+// pull once, whatever the list says.
+Deno.test('a raid listed twice counts its pulls once in the report rows', async () => {
+  const { deps, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: { raidProgression: [ONE_RAID.raidProgression[0], ONE_RAID.raidProgression[0]] } }
+    },
+    responses: [
+      tokenResponse(),
+      reportsResponse(REPORTS),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Test Raid Zone', ENCOUNTERS)
+    ]
+  });
+  await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
+  assertEquals(
+    reportsWritten(db).map((rows) => rows.map((r) => [r.report_code, r.boss_pulls, r.boss_kills])),
+    [
+      [
+        ['reportA', 3, 1],
+        ['reportB', 2, 1]
+      ]
+    ]
+  );
+});
+
+// A zone query Warcraft Logs does not answer is not a zone it does not know:
+// its bosses would drop out of every report's counts. Like a failed reports
+// page, it is the team's error and the team writes nothing that run.
+Deno.test("a zone query Warcraft Logs does not answer is the team's error, and nothing is written for it", async () => {
+  const { deps, db } = testDeps({
+    state: { teams: [TEAM], configs: { 1: ONE_RAID } },
+    responses: [tokenResponse(), reportsResponse(REPORTS), graphqlError('Internal server error')]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, {
+    status: 200,
+    body: { success: true, teams: 1, synced: 0, errors: [{ teamId: 1, error: 'Zone 44 not returned' }], reports: 0 }
+  });
+  assertEquals(
+    db.calls.map((c) => c.method),
+    ['teams', 'currentSeason', 'teamConfig', 'raidZoneSeason']
+  );
+});
+
+// The reports are the newest write, as the kills were: when they fail, the
+// progress the landing page reads and the kills still sync, and the run says so.
+Deno.test('a failed reports write is reported and the progress and kills still sync', async () => {
+  const db = fakeDb({ teams: [TEAM], configs: { 1: ONE_RAID } });
+  db.upsertReports = () => Promise.reject(new Error('team_raid_reports is read-only tonight'));
+  const { fetch } = recordingFetch([
+    tokenResponse(),
+    reportsResponse(REPORTS),
+    zoneResponse('Test Raid Zone', ENCOUNTERS)
+  ]);
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), { fetch, env: fullEnv(), db }));
+  assertEquals(res, {
+    status: 200,
+    body: {
+      success: true,
+      teams: 1,
+      synced: 1,
+      errors: [{ teamId: 1, error: 'Reports not saved: team_raid_reports is read-only tonight' }],
+      reports: 0
+    }
+  });
+  assertEquals(db.calls.map((c) => c.method).slice(-2), ['upsertProgress', 'insertKills']);
+});
+
+// A raid counts as synced once its progress is written, not before.
+Deno.test('a raid whose progress write fails is not counted as synced', async () => {
+  const db = fakeDb({ teams: [TEAM], configs: { 1: ONE_RAID } });
+  db.upsertProgress = () => Promise.reject(new Error('team_raid_progress is read-only tonight'));
+  const { fetch } = recordingFetch([
+    tokenResponse(),
+    reportsResponse(REPORTS),
+    zoneResponse('Test Raid Zone', ENCOUNTERS)
+  ]);
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), { fetch, env: fullEnv(), db }));
+  assertEquals(res, {
+    status: 200,
+    body: {
+      success: true,
+      teams: 1,
+      synced: 0,
+      errors: [{ teamId: 1, error: 'team_raid_progress is read-only tonight' }],
+      reports: 2
+    }
+  });
+});
+
 // A report uploaded while the pages are read pushes the list down by one, so
 // the next page repeats the last report of the one before it. One statement
 // cannot rewrite a row twice, and a repeated report would count its pulls twice.

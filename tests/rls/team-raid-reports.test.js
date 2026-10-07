@@ -74,6 +74,27 @@ describe('who reads team_raid_reports', () => {
 });
 
 describe('who writes team_raid_reports', () => {
+  // An insert with no policy to allow it is refused with the same code as one
+  // with no privilege, so the grants themselves are read.
+  it('grants the site roles reading only, the sync inserting and rewriting, and nobody deleting', async () => {
+    await withTxn(async ({ q }) => {
+      const { rows } = await q(
+        `select r.role, p.privilege
+           from unnest(array['anon', 'authenticated', 'service_role']) as r(role)
+          cross join unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']) as p(privilege)
+          where has_table_privilege(r.role, 'public.team_raid_reports', p.privilege)
+          order by r.role, p.privilege`
+      );
+      expect(rows.map((r) => `${r.role} ${r.privilege}`)).toEqual([
+        'anon SELECT',
+        'authenticated SELECT',
+        'service_role INSERT',
+        'service_role SELECT',
+        'service_role UPDATE'
+      ]);
+    });
+  });
+
   // Every write privilege is revoked from the site roles, so a write fails
   // loudly rather than being filtered to no row.
   it('refuses an officer’s insert, update and delete outright', async () => {
