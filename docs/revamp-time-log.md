@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |      7 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     35 h 06 m |
-| Revamp 3: officer dashboard        |     13 h 14 m |
+| Revamp 3: officer dashboard        |     13 h 49 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **65 h 40 m** |
+| **All revamp work**                | **66 h 15 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -218,6 +218,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:11-11:04 PM | #1361 part 1 built: Edit schedule, cancel / bring back / add a night from the day, raiders see each night's difficulty, the Tonight panel regrouped; #1477 filed | Revamp 3 (#1361, #1477) | 55 m | ~45 m build, ~10 m Kat testing on localhost | 283,500 | Showing the difficulty to raiders and heading normal nights by it came from Kat's localhost review; the Tonight panel fix was approved to ride along. A hot-reload crash on localhost turned up that the app has no error or proper 404 page: filed as #1477. |
 | 11:04-11:18 PM | Raid night titles designed (#1478) | Revamp 3 (#1478) | 15 m | ~5 m build, ~10 m Kat deciding | 16,500 | Filed for Rex's database queue. Weekly titles in Edit schedule plus a one-night rename that never carries forward; with no title, the difficulty on the Calendar and "Tuesday Mythic raid" in Discord. |
 | 11:18-11:40 PM | #1361 part 1 shipped as PR #1479: main merged, v3.170.0 stamped, changelog, preflight, screenshots, today's time log rows | Revamp 3 (#1361) | 20 m | ~20 m build | 40,400 | All 8 preflight checks passed. PR opened 11:26 PM. |
+| 11:40-11:56 PM | PR #1479 reviewed and merged, branch cleaned up | Revamp 3 (#1361) | 15 m | ~3 m build, ~12 m Kat (screenshots pasted, design review, merge) | 13,000 | Merged 11:56 PM, every check green. |
+| 11:57 PM-12:15 AM | #1361 part 2 built: Team officers and Guild officers bios edited in place, tested with the local guild officer account, shipped as a PR | Revamp 3 (#1361) | 20 m | ~15 m build, ~5 m Kat testing on localhost | 62,000 | No database change: the two existing save functions check who may save and write their own audit entries. The current site's "type an image path" field dropped, as agreed. |
 
 ## Not counted (same sessions, not revamp)
 

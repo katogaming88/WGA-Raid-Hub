@@ -53,3 +53,137 @@
   font-size: var(--text-sm);
   color: var(--text-muted);
 }
+
+/* Editing bios in place (#1361). */
+
+.officers-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.bios-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Below the cards and pinned to the bottom of the screen (Kat, 2026-10-07:
+   Save above the fields read oddly). Stays mounted while editing; only its
+   words and buttons change. */
+.bios-save-bar {
+  position: sticky;
+  bottom: var(--space-2);
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--raised);
+}
+
+.bios-edit-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bio-edit-card {
+  padding: var(--space-4);
+}
+
+.bio-edit-fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.bio-edit-photo {
+  display: flex;
+  flex: 0 0 160px;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.bio-edit-photo .bio-photo {
+  width: 112px;
+  height: 112px;
+}
+
+.bio-edit-photo .form-error {
+  margin: 0;
+}
+
+.bio-photo-hint {
+  font-size: var(--text-xs);
+}
+
+/* The file input is hidden; its label is the button, so it shows the focus. */
+.bio-upload:focus-within {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.bio-upload.is-busy {
+  opacity: 0.6;
+}
+
+.bio-edit-fields {
+  flex: 999 1 420px;
+  min-width: 0;
+}
+
+.bio-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 var(--space-3);
+}
+
+.bios-save-status {
+  flex: 1 1 auto;
+}
+
+.bio-remove {
+  margin-left: auto;
+}
+
+.bio-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.bios-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.bios-add-title {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.bios-add .field {
+  max-width: 420px;
+  margin-bottom: 0;
+}
+
+@media (max-width: 560px) {
+  .bio-edit-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

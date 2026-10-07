@@ -12,6 +12,29 @@ answers to.
 
 ---
 
+## [3.171.0] - 2026-10-07
+
+### Project
+
+- The new app's Team officers and Guild officers pages let officers edit the
+  bio cards in place (#1361, part 2 of 2). **Edit officers** turns every card
+  into a form: photo, display name, character, title, pronouns, class, spec
+  and bio, with Move up, Move down and Remove officer. A save bar below the
+  cards, pinned to the bottom of the screen, stays put while editing and saves
+  the whole list at once; leaving with unsaved changes asks first. The
+  Streams corner widget moves up above a pinned save bar so it never covers
+  Save. Upload photo checks the type and size before
+  sending it to `upload-bio-photo`, and Remove photo clears the card's
+  photo. Add an officer can copy a raider's name, class and spec once from
+  the team's roster, or start blank. Team officers is edited by the team's
+  officers and leader, a site admin or a guild officer; Guild officers by a
+  guild officer or site admin, matching what `set_team_officer_bios()` and
+  `set_guild_officer_bios()` check. On a computer only. The current site's
+  "type an image path" field is not carried over. No database change.
+- Browser tests: both editors join the accessibility list.
+
+---
+
 ## [3.170.0] - 2026-10-06
 
 ### Project

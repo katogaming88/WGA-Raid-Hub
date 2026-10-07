@@ -762,6 +762,26 @@ const TEAM_OFFICERS = {
   tables: { team_settings: [{ team_id: 1, bios: OFFICER_BIOS }] }
 };
 
+// Editing the bios in place (#1361): a team officer on Team officers, and a
+// guild officer on Guild officers, each with Edit officers clicked.
+const TEAM_OFFICERS_EDITING = {
+  ...TEAM_OFFICERS,
+  session: OFFICER,
+  who: 'officer',
+  click: 'role=button[name="Edit officers"]',
+  afterClick: '.bios-save-bar'
+};
+const GUILD_OFFICERS_EDITING = {
+  ...GUILD_OFFICERS,
+  session: OFFICER,
+  person: {
+    discordId: 'discord-officer-1',
+    person: { site_admin: false, guild_officer: true, boe_manager: false, teams: [] }
+  },
+  click: 'role=button[name="Edit officers"]',
+  afterClick: '.bios-save-bar'
+};
+
 // History (#1102): a season with a roster to show behind the toggle.
 const HISTORY_ENTRY = {
   name: 'Season One',
@@ -846,6 +866,9 @@ const STATES = [
   { label: 'guild officers', ...GUILD_OFFICERS },
   { label: 'guild officers, light', ...GUILD_OFFICERS, colorScheme: 'light' },
   { label: 'team officers', ...TEAM_OFFICERS },
+  { label: 'team officers, officer editing', ...TEAM_OFFICERS_EDITING },
+  { label: 'team officers, officer editing, light', ...TEAM_OFFICERS_EDITING, colorScheme: 'light' },
+  { label: 'guild officers, guild officer editing', ...GUILD_OFFICERS_EDITING },
   { label: 'history', ...HISTORY },
   { label: 'history, light', ...HISTORY, colorScheme: 'light' },
   { label: 'signup', ...SIGNUP },
