@@ -8,10 +8,13 @@ import './status.css';
 // - role="alert" for errors, which stay until dismissed
 
 export type StatusKind = 'success' | 'progress' | 'error';
-type Message = { id: number; kind: StatusKind; text: string };
+// A button on a success message, such as Undo (#1360). Pressing it dismisses
+// the message.
+export type StatusAction = { label: string; onSelect: () => void };
+type Message = { id: number; kind: StatusKind; text: string; action?: StatusAction | undefined };
 
 type StatusValue = {
-  announce: (kind: StatusKind, text: string) => void;
+  announce: (kind: StatusKind, text: string, action?: StatusAction) => void;
 };
 
 const StatusContext = createContext<StatusValue | null>(null);
@@ -31,11 +34,14 @@ export function StatusProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const announce = useCallback(
-    (kind: StatusKind, text: string) => {
+    (kind: StatusKind, text: string, action?: StatusAction) => {
       const id = nextId.current++;
       // A new progress or success message replaces the last one of its kind;
       // errors pile up, since each needs its own acknowledgement.
-      setMessages((current) => [...current.filter((m) => kind === 'error' || m.kind === 'error'), { id, kind, text }]);
+      setMessages((current) => [
+        ...current.filter((m) => kind === 'error' || m.kind === 'error'),
+        { id, kind, text, action }
+      ]);
       if (kind === 'success')
         timers.current.set(
           id,
@@ -59,11 +65,27 @@ export function StatusProvider({ children }: { children: ReactNode }) {
       {children}
       <div className="status-stack">
         <div role="status" className="status-region">
-          {polite.map((m) => (
-            <p key={m.id} className={`status-message status-${m.kind}`}>
-              {m.text}
-            </p>
-          ))}
+          {polite.map((m) =>
+            m.action ? (
+              <div key={m.id} className={`status-message status-${m.kind}`}>
+                <p>{m.text}</p>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => {
+                    dismiss(m.id);
+                    m.action?.onSelect();
+                  }}
+                >
+                  {m.action.label}
+                </button>
+              </div>
+            ) : (
+              <p key={m.id} className={`status-message status-${m.kind}`}>
+                {m.text}
+              </p>
+            )
+          )}
         </div>
         <div role="alert" className="status-region">
           {errors.map((m) => (

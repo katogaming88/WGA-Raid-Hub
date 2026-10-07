@@ -80,7 +80,7 @@ export function NameRowActions({
   }
   if (officer && (teamMemberId !== null || nameId !== null)) {
     menuActions.push({
-      label: teamMemberId !== null ? 'Archive Member' : 'Delete Name',
+      label: teamMemberId !== null ? 'Archive Member' : 'Delete Member',
       onSelect: () => {
         // A failure from an earlier try is not this one's.
         deleteName.reset();
@@ -163,7 +163,7 @@ function DeleteNameDialog({
 }) {
   return (
     <Dialog title={`Delete ${label}?`} onClose={onCancel} busy={busy}>
-      <p className="text-muted">This deletes the bare Name "{label}". This cannot be undone from here.</p>
+      <p className="text-muted">This deletes the unclaimed Member "{label}". This cannot be undone from here.</p>
       {error && (
         <p className="form-error" role="alert">
           That did not save: {error}
@@ -175,7 +175,7 @@ function DeleteNameDialog({
           Cancel
         </button>
         <button type="button" className="button" disabled={busy} onClick={onDelete}>
-          {busy ? 'Saving…' : 'Delete Name'}
+          {busy ? 'Saving…' : 'Delete Member'}
         </button>
       </div>
     </Dialog>
@@ -228,8 +228,8 @@ function ArchiveMemberDialog({
   return (
     <Dialog title={`Archive ${label}?`} onClose={onClose} busy={archiveMember.isPending} initialFocus={selectRef}>
       <p className="text-muted">
-        {label} and their characters leave the active roster, for someone who left. Their history stays --{' '}
-        {hasName && 'this Name, '}their loot and attendance are not deleted, and an officer can bring them back.
+        {label} and their characters leave the active roster, for someone who left. Their history stays -- their{' '}
+        {hasName && 'name, '}loot and attendance are not deleted, and an officer can bring them back.
       </p>
       <form onSubmit={onSubmit} noValidate className="archive-reason-form">
         <div className="field">
@@ -318,7 +318,7 @@ function RenameDialog({
       { nameId, label: trimmed, previousLabel: label, ...(bare ? { role: roleValue || null } : {}) },
       {
         onSuccess: () => {
-          announce('success', 'Name updated.');
+          announce('success', 'Member updated.');
           onClose();
         }
       }
@@ -326,7 +326,7 @@ function RenameDialog({
   };
 
   return (
-    <Dialog title="Edit Name" onClose={onClose} busy={rename.isPending} initialFocus={inputRef}>
+    <Dialog title="Edit Member" onClose={onClose} busy={rename.isPending} initialFocus={inputRef}>
       <form onSubmit={onSubmit} noValidate>
         <div className="field">
           <label className="field-label" htmlFor={`${id}-label`}>

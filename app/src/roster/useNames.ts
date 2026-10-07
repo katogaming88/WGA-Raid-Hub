@@ -43,7 +43,7 @@ function onDone<V>(callback: ((variables: V) => void) | undefined) {
 // break, and its label may belong to someone who left, whose row is hidden.
 function labelError(error: { message: string; code?: string }) {
   return error.code === '23505'
-    ? { message: 'A Name on this team already has that label. It may belong to someone who has left.' }
+    ? { message: 'A Member on this team already has that name. It may belong to someone who has left.' }
     : error;
 }
 
