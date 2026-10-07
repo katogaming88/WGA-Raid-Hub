@@ -84,6 +84,20 @@ export type KillRow = {
   raid_date: string;
   report_started_at: string;
 };
+// One row of team_raid_reports (#1469): never the override columns, so the
+// upsert leaves an officer's choice where it is.
+export type ReportRow = {
+  team_id: number;
+  report_code: string;
+  title: string | null;
+  started_at: string;
+  raid_date: string;
+  wcl_zone_id: number | null;
+  boss_pulls: number;
+  boss_kills: number;
+  kind: 'main' | 'alt';
+};
+export type CurrentSeason = { code: string; startsAt: string | null };
 
 // One method per read or write the function performs. Production implements
 // it over supabase-js in deps.ts; a test hands in a plain object. Each throws
@@ -93,14 +107,16 @@ export interface ProgressDb {
   teams(): Promise<TeamRow[]>;
   // The team's team_settings.config, {} when it has no row.
   teamConfig(teamId: number): Promise<Record<string, unknown>>;
-  // current_season(): the tier's code, null when no tier has started.
-  currentSeason(): Promise<string | null>;
+  // current_season() and its seasons.starts_at, null when no tier has started.
+  currentSeason(): Promise<CurrentSeason | null>;
   // The season a zone is already filed under, null when raid_zones has no row for it.
   raidZoneSeason(wclZoneId: number): Promise<string | null>;
   // Upserts on (wcl_zone_id, season); returns the row id.
   upsertRaidZone(row: RaidZoneRow): Promise<number>;
   // Upserts on (zone_id, wcl_encounter_id); returns the ids.
   upsertEncounters(rows: EncounterRow[]): Promise<SavedEncounter[]>;
+  // Upserts on (team_id, report_code).
+  upsertReports(rows: ReportRow[]): Promise<void>;
   // Upserts on (team_id, encounter_id).
   upsertProgress(rows: ProgressRow[]): Promise<void>;
   // Inserts into team_raid_kills, skipping a (team_id, report_code, fight_id) already stored.
@@ -470,7 +486,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         if (raids.length === 0) continue;
 
         for (let i = 0; i < raids.length; i++) {
-          const outcome = await syncTeamZone(deps, token, team.id, team.wcl_guild_id, season, raids[i], i);
+          const outcome = await syncTeamZone(deps, token, team.id, team.wcl_guild_id, season.code, raids[i], i);
           if (outcome) synced++;
           if (outcome?.killsError) errors.push({ teamId: team.id, error: `Kills not saved: ${outcome.killsError}` });
         }
