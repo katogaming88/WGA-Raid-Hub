@@ -20,6 +20,8 @@ declare
   v_restored boolean := false;
   v_spec_label text;
   v_archived_name_realm text;
+  v_old_member_id integer;
+  v_hold integer;
 begin
   select * into v_signup from public.season_signups
    where id = p_signup_id for update;
@@ -44,6 +46,12 @@ begin
      where tm.team_id = v_signup.team_id and pe.auth_user_id = v_signup.auth_user_id;
   end if;
 
+  if p_archive_player_id is not null then
+    select team_member_id into v_old_member_id
+      from public.players
+     where id = p_archive_player_id and team_id = v_signup.team_id;
+  end if;
+
   -- An officer adding the signup brings an archived signer back (#1402).
   -- The read above takes no lock, so the restore's own answer, read under
   -- its lock, says whether this add is the one that brought them back. It
@@ -52,6 +60,29 @@ begin
   -- link take.
   if v_signer_archived then
     v_restored := public.restore_team_member(v_signup.team_id, v_signer_member_id);
+  end if;
+
+  -- The signer's membership and the old character's before any character
+  -- (#1432), lowest id first, so the add waits behind Archive Member instead
+  -- of deadlocking with it. As in archive_player(), a claim linking the old
+  -- character after the read above is not covered.
+  for v_hold in
+    select distinct m from unnest(array[v_signer_member_id, v_old_member_id]) as m
+     where m is not null
+     order by m
+  loop
+    perform public.hold_team_member(v_hold);
+  end loop;
+
+  -- An archive that landed while the add waited: the signer comes back, as if
+  -- it had landed before the add. Two adds for one signer meeting an archive
+  -- in the same instant can deadlock here, and one is retried.
+  if v_signer_member_id is not null and not v_restored then
+    select archived_at is not null into v_signer_archived
+      from public.team_members where id = v_signer_member_id;
+    if v_signer_archived then
+      v_restored := public.restore_team_member(v_signup.team_id, v_signer_member_id);
+    end if;
   end if;
 
   insert into public.players (
@@ -92,8 +123,10 @@ begin
 
     -- The link stays on the archived character (#941): its attendance, loot
     -- and BoE finds still belong to this person.
+    -- A character already off the roster keeps when it left, which its
+    -- removal reason is keyed on.
     update public.players set archived_at = now()
-     where id = p_archive_player_id and team_id = v_signup.team_id;
+     where id = p_archive_player_id and team_id = v_signup.team_id and archived_at is null;
 
     if v_archived_team_member_id is not null then
       update public.players set team_member_id = v_archived_team_member_id

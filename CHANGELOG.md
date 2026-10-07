@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.169.0] - 2026-10-06
+
+### Backend
+
+- Removing a character, or adding a season signup, no longer deadlocks with
+  Archive Member when both act on the same raider at once (#1432). Both now
+  take the person's membership before any character, as Archive Member does,
+  so one waits for the other instead of one being cancelled with an error. A
+  new function, `hold_team_member()`, takes that hold for them, since a plain
+  officer cannot lock a membership row directly. A signup main swap that
+  waited behind Archive Member leaves the date the old character left as it
+  was, and a signer archived while the add waited is brought back.
+
 ## [3.168.0] - 2026-10-06
 
 ### Backend

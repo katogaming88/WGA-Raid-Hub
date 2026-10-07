@@ -11509,6 +11509,12 @@
       "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.hold_team_member",
+      "return_type": "void",
+      "arguments": "p_team_member_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [
