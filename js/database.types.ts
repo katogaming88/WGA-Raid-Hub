@@ -3090,6 +3090,75 @@ export type Database = {
           },
         ]
       }
+      team_raid_reports: {
+        Row: {
+          boss_kills: number
+          boss_pulls: number
+          created_at: string
+          effective_kind: string | null
+          kind: string
+          kind_override: string | null
+          kind_override_at: string | null
+          kind_override_by: number | null
+          raid_date: string
+          report_code: string
+          started_at: string
+          team_id: number
+          title: string | null
+          updated_at: string
+          wcl_zone_id: number | null
+        }
+        Insert: {
+          boss_kills?: number
+          boss_pulls?: number
+          created_at?: string
+          effective_kind?: string | null
+          kind: string
+          kind_override?: string | null
+          kind_override_at?: string | null
+          kind_override_by?: number | null
+          raid_date: string
+          report_code: string
+          started_at: string
+          team_id: number
+          title?: string | null
+          updated_at?: string
+          wcl_zone_id?: number | null
+        }
+        Update: {
+          boss_kills?: number
+          boss_pulls?: number
+          created_at?: string
+          effective_kind?: string | null
+          kind?: string
+          kind_override?: string | null
+          kind_override_at?: string | null
+          kind_override_by?: number | null
+          raid_date?: string
+          report_code?: string
+          started_at?: string
+          team_id?: number
+          title?: string | null
+          updated_at?: string
+          wcl_zone_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_raid_reports_kind_override_by_fkey"
+            columns: ["kind_override_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_raid_reports_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_schedule_settings: {
         Row: {
           default_difficulty: string | null

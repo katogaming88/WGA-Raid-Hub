@@ -10,6 +10,26 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-06 -- a row for every Warcraft Logs report, saying whether it is the team's raid (#1469)
+
+Shipped: 20261007145043_team_raid_reports.sql
+
+Three readers decided on their own which reports were the team's: attendance by the title rule (`wcl-sync`), and the kills and the progression card by counting every report in the guild. Nothing kept a list of the reports, so an officer could neither see what the syncs had read nor overturn the rule. `team_raid_reports` is that list, the first of four steps (#1469 to #1472); nothing reads it yet.
+
+- **The sync records, the database decides.** `wcl-progression-sync` writes one row per team and report on every run, with the title rule's verdict in `kind`. An officer's choice goes in `kind_override` (#1472) and `effective_kind` is the one the readers will count (#1471). The first build put the rule inside the sync and deleted the kills it judged; it was dropped in #1246's review, since a judgment an officer overturns would have lost them.
+- **The verdict moves with the title.** The sync rewrites `kind` on every run, so a report renamed on Warcraft Logs is judged again; an override is never sent, so it stands through the rewrite. One rule, `_shared/alt-run.ts`, now serves both syncs.
+- **Never deleted.** The sync reads a guild's reports from the tier start, so a row is the only record of an older report. No role can delete one, the service role included, and the site roles keep SELECT only, so a direct write is refused rather than filtered to nothing.
+- **Read like `team_raid_kills`:** the team's raiders and officers, guild officers and site admins. No public read until #1286 sets the rule for a new table.
+- **One fetch per team, from the tier start.** The sync read the guild's whole history once for each raid on the team's list (both teams list two), about 270 points a run. It now reads the current tier's reports once per team, with each report's title and zone. Complexity is fixed by the query's shape (measured 2026-10-06: page size x (5 + 100 x fields per fight) + 4, refused above 50,000), so the two report fields add nothing that matters at 50 a page.
+- **A raid filed under an earlier tier is left as it stands.** With reports from the tier start only, a night of the outgoing raid after it would rebuild that raid's progress from one report. Its rows keep what the tier left them instead, which is also what #1470's rebuild will say. Accepted: a past tier's report uploaded late is never read. No team lists a past raid today.
+- **A reports page that fails is the team's error for that run,** and nothing is written for it. The loop used to stop and carry on with the partial list, and progress rebuilt from a partial list can lose a kill date.
+- **The counts are Heroic and Mythic pulls and kills on the bosses of the raids the team lists,** as the progression card counts them. A report of another raid keeps its row with zero.
+- **No key from `team_raid_kills` yet.** Its rows predate the table; #1470 keys every pull to its report.
+
+[Full discussion -> #1469](https://github.com/katogaming88/WGA-Raid-Hub/issues/1469).
+
+---
+
 ## 2026-10-06 -- Remove and a signup add hold the membership before the character (#1432)
 
 Shipped: 20261006204019_membership_before_character.sql

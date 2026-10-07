@@ -84,6 +84,7 @@ Note the dependency, because it decides restore order: `priority_order` and `sco
 - `team_schedule_settings` (a team's default raid difficulty, which every raid night without its own follows, [#1246](https://github.com/katogaming88/WGA-Raid-Hub/issues/1246); officer-set, no other source, and a team with no row has none set. Restore after `teams`)
 - `removal_reasons` (every reason a character or a membership was removed for, one row each, [#1427](https://github.com/katogaming88/WGA-Raid-Hub/issues/1427); the notes row keeps only the latest, so the earlier ones exist nowhere else once the audit log's free-text copies are gone. Restore after `players`, `team_members` and `people`)
 - `names` (a team's roster labels, [#1355](https://github.com/katogaming88/WGA-Raid-Hub/issues/1355): the bare ones an officer typed ahead of someone joining, and each claim linking a label to a membership; no other source, so a lost bare Name is typed again and a lost claim is made again. Restores after `teams` and `team_members`)
+- `team_raid_reports` (every Warcraft Logs report the progression sync has read for a team, with the title rule's verdict and an officer's override, [#1469](https://github.com/katogaming88/WGA-Raid-Hub/issues/1469). The sync rewrites the reports of the current tier on each run, but an officer's `kind_override` has no other source, and neither does the row of a report older than the tier start or the guild's newest 1,000. Restores after `teams` and `people`)
 
 This second list is exactly why the milestone exists: none of it can be re-fetched or re-derived, and the Danger Zone's clear RPCs make a bad delete a one-click possibility.
 
@@ -250,6 +251,8 @@ The same day, [#1246](https://github.com/katogaming88/WGA-Raid-Hub/issues/1246) 
 - Wrap a data-only restore of `team_raid_kills` in `alter table public.team_raid_kills disable trigger user;` and `enable trigger user;`. Otherwise the trigger treats every restored kill as new and takes bosses back off nights where officers put them back.
 
 The full rebuild creates triggers after the data loads, so it skips nothing. No new table, no `auth.users` FK, no re-drill due.
+
+As of 2026-10-07, [#1469](https://github.com/katogaming88/WGA-Raid-Hub/issues/1469) added `team_raid_reports` (61 base tables), classified in-app-only above: the sync would rewrite the current tier's rows, but an officer's override and the row of an older report exist nowhere else. Its keys are `team_id` to `teams` and `kind_override_by` to `people`, so it restores after both; no new `auth.users` FK. Every privilege but SELECT is revoked from the site roles and the service role keeps no DELETE, so a selective restore runs as `postgres`. No `EMPTY_CHECK` floor: a team with no Warcraft Logs guild has no rows. No re-drill due.
 
 ## Ops notes
 
