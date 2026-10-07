@@ -32,6 +32,17 @@ const ROW = `select title, kind, kind_override, effective_kind
 const seen = async (asUser, uid) =>
   (await asUser(uid, 'select team_id, report_code from public.team_raid_reports order by team_id, report_code')).rows;
 
+// A refused statement aborts the transaction, so a case that tries two rides
+// each on its own savepoint and the second is refused for its own reason.
+const attempt = (q) => async (text, params) => {
+  await q('savepoint attempted_write');
+  try {
+    return await q(text, params);
+  } finally {
+    await q('rollback to savepoint attempted_write');
+  }
+};
+
 describe('who reads team_raid_reports', () => {
   it('shows a team’s reports to its own raiders and officers, and every team’s to guild officers and site admins', async () => {
     await withTxn(async ({ q, asUser }) => {
@@ -140,14 +151,15 @@ describe('team_raid_reports keeps its rows whole', () => {
   it('refuses a kind or an override other than main and alt', async () => {
     await withTxn(async ({ q }) => {
       const a = await seedTeam(q);
-      await expect(report(q, a.teamId, 'r1', { kind: 'mythic' })).rejects.toMatchObject({
+      await expect(report(attempt(q), a.teamId, 'r1', { kind: 'mythic' })).rejects.toMatchObject({
         constraint: 'team_raid_reports_kind_check'
       });
       await report(q, a.teamId, 'r2');
       await expect(
-        q("update public.team_raid_reports set kind_override = 'both', kind_override_at = now() where team_id = $1", [
-          a.teamId
-        ])
+        attempt(q)(
+          "update public.team_raid_reports set kind_override = 'both', kind_override_at = now() where team_id = $1",
+          [a.teamId]
+        )
       ).rejects.toMatchObject({ constraint: 'team_raid_reports_kind_override_check' });
     });
   });
@@ -157,10 +169,10 @@ describe('team_raid_reports keeps its rows whole', () => {
       const a = await seedTeam(q);
       await report(q, a.teamId, 'r1');
       await expect(
-        q("update public.team_raid_reports set kind_override = 'alt' where team_id = $1", [a.teamId])
+        attempt(q)("update public.team_raid_reports set kind_override = 'alt' where team_id = $1", [a.teamId])
       ).rejects.toMatchObject({ constraint: 'team_raid_reports_override_has_time' });
       await expect(
-        q('update public.team_raid_reports set kind_override_at = now() where team_id = $1', [a.teamId])
+        attempt(q)('update public.team_raid_reports set kind_override_at = now() where team_id = $1', [a.teamId])
       ).rejects.toMatchObject({ constraint: 'team_raid_reports_override_has_time' });
     });
   });
