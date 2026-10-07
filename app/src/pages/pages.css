@@ -30,3 +30,30 @@
   font-weight: 650;
   color: var(--text);
 }
+
+/* Page not found and the crash screen (#1477): one look for both. */
+.problem-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 560px;
+  padding: var(--space-5);
+}
+
+.problem-card p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.problem-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* Either one on an address outside the frame, like a mistyped /join link. */
+.page-standalone {
+  padding: var(--space-6) var(--space-4);
+  max-width: 1200px;
+  margin: 0 auto;
+}

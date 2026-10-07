@@ -206,6 +206,8 @@ export async function openApp(browser, port, state) {
     if (url.hostname.endsWith('twitch.tv') || url.hostname.endsWith('ttvnw.net')) {
       return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>stream</title>' });
     }
+    // A crash is reported to Sentry (#1477); accepted here, never sent.
+    if (url.hostname.endsWith('.sentry.io')) return route.fulfill({ status: 200, body: '' });
 
     if (url.host === host.host) {
       if (request.method() === 'OPTIONS') return route.fulfill({ status: 204 });

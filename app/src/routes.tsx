@@ -27,6 +27,7 @@ import { CreateGuildPage } from './front/CreateGuildPage';
 import { FrontPage } from './front/FrontPage';
 import { JoinRoute } from './join/JoinRoute';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { ErrorPage } from './pages/ErrorPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { RequireAbility } from './auth/RequireAbility';
 import { GUILD_PAGES, TEAM_PAGES } from './layout/nav';
@@ -69,47 +70,65 @@ const BUILT_GUILD_PAGES: Record<string, ReactElement> = {
 // /g/<guild key>/... for guild-wide ones. The keys are not looked up yet; that
 // arrives with the data layer (resolve_address(), #1114), along with the
 // redirect for retired keys.
+// A crash outside the frame, or in the frame itself, shows the crash screen
+// on its own (#1477).
+const standalone = (page: ReactElement) => (
+  <main id="main" className="page-standalone">
+    {page}
+  </main>
+);
+const crashed = standalone(<ErrorPage />);
+
 export const routes: RouteObject[] = [
-  { path: '/', element: <FrontPage /> },
-  { path: '/new-guild', element: <CreateGuildPage /> },
-  { path: '/join/:code', element: <JoinRoute /> },
+  { path: '/', element: <FrontPage />, errorElement: crashed },
+  { path: '/new-guild', element: <CreateGuildPage />, errorElement: crashed },
+  { path: '/join/:code', element: <JoinRoute />, errorElement: crashed },
   {
     path: '/g/:guildKey',
     element: <AppShell />,
+    errorElement: crashed,
     children: [
-      { index: true, element: <GuildHomePage />, handle: { title: 'Guild home' } satisfies RouteHandle },
-      ...Object.entries(GUILD_PAGES).map(([path, title]) => ({
-        path,
-        element: BUILT_GUILD_PAGES[path] ?? <PlaceholderPage title={title} />,
-        handle: { title } satisfies RouteHandle
-      })),
+      // A crash in a page shows inside the frame, so the sidebar still works.
       {
-        path: 't/:teamKey',
+        errorElement: <ErrorPage />,
         children: [
-          { index: true, element: <HomePage />, handle: { title: 'Home' } satisfies RouteHandle },
-          ...Object.entries(TEAM_PAGES).map(([path, title]) => ({
-            // My profile has tabs, each with its own address (/me/gear).
-            path: path === 'me' ? 'me/:tab?' : path,
-            // Officer tools open only for the people who may use them (#1100: they sit under /officer/).
-            element: path.startsWith('officer/') ? (
-              <RequireAbility ability="viewOfficerTools" title={title}>
-                {BUILT_PAGES[path] ?? <PlaceholderPage title={title} />}
-              </RequireAbility>
-            ) : (
-              (BUILT_PAGES[path] ?? <PlaceholderPage title={title} />)
-            ),
+          { index: true, element: <GuildHomePage />, handle: { title: 'Guild home' } satisfies RouteHandle },
+          ...Object.entries(GUILD_PAGES).map(([path, title]) => ({
+            path,
+            element: BUILT_GUILD_PAGES[path] ?? <PlaceholderPage title={title} />,
             handle: { title } satisfies RouteHandle
           })),
-          // A player's profile by its address code (#1100), for the raider and officers.
           {
-            path: 'p/:playerCode/:tab?',
-            element: <PlayerProfilePage />,
-            handle: { title: 'Profile' } satisfies RouteHandle
-          }
+            path: 't/:teamKey',
+            children: [
+              { index: true, element: <HomePage />, handle: { title: 'Home' } satisfies RouteHandle },
+              ...Object.entries(TEAM_PAGES).map(([path, title]) => ({
+                // My profile has tabs, each with its own address (/me/gear).
+                path: path === 'me' ? 'me/:tab?' : path,
+                // Officer tools open only for the people who may use them (#1100: they sit under /officer/).
+                element: path.startsWith('officer/') ? (
+                  <RequireAbility ability="viewOfficerTools" title={title}>
+                    {BUILT_PAGES[path] ?? <PlaceholderPage title={title} />}
+                  </RequireAbility>
+                ) : (
+                  (BUILT_PAGES[path] ?? <PlaceholderPage title={title} />)
+                ),
+                handle: { title } satisfies RouteHandle
+              })),
+              // A player's profile by its address code (#1100), for the raider and officers.
+              {
+                path: 'p/:playerCode/:tab?',
+                element: <PlayerProfilePage />,
+                handle: { title: 'Profile' } satisfies RouteHandle
+              },
+              // Here too, so a wrong team page offers the team's home.
+              { path: '*', element: <NotFoundPage />, handle: { title: 'Page not found' } satisfies RouteHandle }
+            ]
+          },
+          { path: '*', element: <NotFoundPage />, handle: { title: 'Page not found' } satisfies RouteHandle }
         ]
-      },
-      { path: '*', element: <NotFoundPage />, handle: { title: 'Page not found' } satisfies RouteHandle }
+      }
     ]
   },
-  { path: '*', element: <NotFoundPage /> }
+  { path: '*', element: standalone(<NotFoundPage />), errorElement: crashed }
 ];

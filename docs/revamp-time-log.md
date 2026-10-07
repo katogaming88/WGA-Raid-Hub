@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |      7 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     35 h 06 m |
-| Revamp 3: officer dashboard        |     13 h 49 m |
+| Revamp 3: officer dashboard        |     14 h 39 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **66 h 15 m** |
+| **All revamp work**                | **67 h 05 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -220,6 +220,13 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:18-11:40 PM | #1361 part 1 shipped as PR #1479: main merged, v3.170.0 stamped, changelog, preflight, screenshots, today's time log rows | Revamp 3 (#1361) | 20 m | ~20 m build | 40,400 | All 8 preflight checks passed. PR opened 11:26 PM. |
 | 11:40-11:56 PM | PR #1479 reviewed and merged, branch cleaned up | Revamp 3 (#1361) | 15 m | ~3 m build, ~12 m Kat (screenshots pasted, design review, merge) | 13,000 | Merged 11:56 PM, every check green. |
 | 11:57 PM-12:15 AM | #1361 part 2 built: Team officers and Guild officers bios edited in place, tested with the local guild officer account, shipped as a PR | Revamp 3 (#1361) | 20 m | ~15 m build, ~5 m Kat testing on localhost | 62,000 | No database change: the two existing save functions check who may save and write their own audit entries. The current site's "type an image path" field dropped, as agreed. |
+| 12:15-12:35 AM | #1361 part 2 finished: the Streams widget moves up above a pinned save bar, PR #1481 reviewed and merged, #1103 row removed | Revamp 3 (#1361) | 20 m | ~10 m build, ~10 m Kat (review, merge) | -- | Early 2026-10-07, same session. Merged 12:31 AM. Row added late, in the #1477 PR. |
+
+### 2026-10-07
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 11:18-11:50 AM | #1477 built: our own crash screen and page-not-found page; News moved to the sidebar's Site group; #1482 filed | Revamp 3 (#1477) | 30 m | ~25 m build, ~5 m Kat (localhost, the News move, #1482 decided) | ~290,000 | Crash screen inside the frame, or on its own outside it; the 404 offers the team's home, guild page or site home. Kat asked mid-build to move News to Site; giving News, About and Help site addresses filed as #1482 (Multi-guild). |
 
 ## Not counted (same sessions, not revamp)
 
@@ -236,6 +243,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-10-06 | 6:21-6:27 PM | Issues older than #1000 checked for done or replaced work | 5 m |
 | 2026-10-06 | 6:27-6:54 PM | Bot switchover status: the new bot's Developer Team invite accepted and logo set; plan for #959 (dummy ping role, officers pick real roles in #994) posted on #959 | 25 m |
 | 2026-10-06 | 10:09-10:11 PM | Leftover local and remote branches deleted | 5 m |
+| 2026-10-07 | 11:10-11:18 AM | Where the work stood; Revamp 3 due date move to 10-31 tried (GitHub would not save milestone changes); #801, #871, #837, #649 closed | 10 m |
 
 ## Remaining in Revamp 1
 

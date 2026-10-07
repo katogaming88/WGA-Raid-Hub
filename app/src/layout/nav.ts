@@ -32,7 +32,6 @@ export function navGroups(
         { label: 'Guild home', icon: 'home', to: base.guild, end: true },
         { label: 'BoE sales', icon: 'coin', to: `${base.guild}/boe` },
         { label: 'Streams', icon: 'tv', to: `${base.guild}/streams`, live: show.liveCount ?? 0 },
-        { label: 'News', icon: 'news', to: `${base.guild}/news`, mark: show.newsUnread ?? false },
         { label: 'Guild officers', icon: 'shield', to: `${base.guild}/officers` }
       ]
     },
@@ -54,7 +53,9 @@ export function navGroups(
     },
     {
       heading: 'Site',
+      // News is about the site itself, not one guild (Kat, 2026-10-07).
       items: [
+        { label: 'News', icon: 'news', to: `${base.guild}/news`, mark: show.newsUnread ?? false },
         { label: 'About', icon: 'info', to: `${base.guild}/about` },
         { label: 'Help', icon: 'help', to: `${base.guild}/help` }
       ]
