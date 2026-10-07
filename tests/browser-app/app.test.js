@@ -388,6 +388,52 @@ const CAL_NIGHT_PAGE = {
   sentinel: 'main:has(.heads-up-item)'
 };
 
+// The officer's raid schedule (#1361): the Edit schedule panel, which reads
+// every column of the weekly nights; an empty day with the add form; and a
+// cancelled night with its reason and the way back.
+const CAL_SCHEDULE_TABLES = {
+  ...CAL_TABLES,
+  raid_schedule: CAL_SCHEDULE.map((r, i) => ({
+    id: i + 1,
+    team_id: 1,
+    timezone: 'America/New_York',
+    difficulty: i === 1 ? 'heroic' : null,
+    ...r
+  })),
+  team_schedule_settings: [{ team_id: 1, default_difficulty: 'mythic' }],
+  raid_schedule_exceptions: [
+    {
+      id: 1,
+      team_id: 1,
+      raid_date: '2026-05-19',
+      exception_type: 'cancelled',
+      start_time: null,
+      duration_minutes: null,
+      is_optional: false,
+      note: 'Patch day',
+      difficulty: null
+    }
+  ]
+};
+const CAL_EDITING = {
+  ...CAL_MONTH,
+  tables: CAL_SCHEDULE_TABLES,
+  click: 'role=button[name="Edit schedule"]',
+  afterClick: '.schedule-table'
+};
+const CAL_ADD_NIGHT = {
+  ...CAL_OFFICER,
+  tables: CAL_SCHEDULE_TABLES,
+  path: '/g/wga/t/phoenix/calendar?date=2026-05-15',
+  sentinel: 'main .add-night'
+};
+const CAL_CANCELLED = {
+  ...CAL_OFFICER,
+  tables: CAL_SCHEDULE_TABLES,
+  path: '/g/wga/t/phoenix/calendar?date=2026-05-19',
+  sentinel: 'main .officer-bar'
+};
+
 // The boss lineup (#1216): two raids, a planned night with a change from the
 // group, a raider in who said they are out, and the bench, so every cell state
 // and count tone is on the page.
@@ -890,6 +936,18 @@ const STATES = [
     label: 'calendar night, officer changing an answer',
     ...CAL_NIGHT_PAGE,
     click: '.night-row .edit-button'
+  },
+  { label: 'calendar month, officer editing the schedule', ...CAL_EDITING },
+  { label: 'calendar month, officer editing the schedule, light', ...CAL_EDITING, colorScheme: 'light' },
+  { label: 'calendar empty day, officer adding a night', ...CAL_ADD_NIGHT },
+  { label: 'calendar empty day, officer adding a night, light', ...CAL_ADD_NIGHT, colorScheme: 'light' },
+  { label: 'calendar cancelled night, officer', ...CAL_CANCELLED },
+  { label: 'calendar cancelled night, officer, light', ...CAL_CANCELLED, colorScheme: 'light' },
+  {
+    label: 'calendar night, officer cancelling it',
+    ...CAL_NIGHT_PAGE,
+    click: 'role=button[name="Cancel this night"]',
+    afterClick: '[role="dialog"]'
   },
   {
     label: 'home, signed out',

@@ -126,7 +126,8 @@ const readNight = async (page) =>
   ).sort((a, b) => a.name.localeCompare(b.name));
 
 const readCounts = async (page) => ({
-  in: Number(await page.locator('.night-count-row[data-kind="in"] dd').textContent()),
+  // Everyone coming, late or not: the total that heads the Tonight panel.
+  in: parseInt(await page.locator('.tonight-total').textContent(), 10),
   out: Number(await page.locator('.night-count-row[data-kind="out"] dd').textContent())
 });
 

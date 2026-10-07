@@ -6,21 +6,27 @@
 import { isoDate } from './nights';
 import { calendarDay, formatInstantShort } from '../lib/dates';
 import { ROLE_LABELS, ROLE_ORDER, type PlayerRow, type Role } from '../roster/roster';
+import { asDifficulty, DIFFICULTY_LABELS, type Difficulty } from './schedule';
 
 export type ScheduleRule = {
   weekday: number;
   start_time: string | null;
   duration_minutes: number | null;
   is_optional: boolean;
+  // Its own difficulty; none follows the team default (#1361).
+  difficulty?: string | null | undefined;
 };
 
 export type ScheduleChange = {
+  // The row's id, for an officer undoing the change (#1361).
+  id?: number;
   raid_date: string;
   exception_type: string;
   start_time: string | null;
   duration_minutes: number | null;
   is_optional: boolean;
   note: string | null;
+  difficulty?: string | null | undefined;
 };
 
 // A raider's answer for a night. Officers read the note; raiders read it only
@@ -41,9 +47,21 @@ export type RaidNight = {
   // Added for this date only, rather than from the weekly schedule.
   extra: boolean;
   note: string;
+  // An extra night's row, for an officer taking it off again (#1361).
+  changeId?: number | undefined;
+  // What the night is run at: its own pick, else the team default (#1361).
+  difficulty?: Difficulty | null | undefined;
 };
 
-export type CancelledNight = { date: string; start: string | null; durationMinutes: number | null };
+// A usual night called off for one date. The note is the reason raiders see,
+// and the change's id lets an officer bring the night back (#1361).
+export type CancelledNight = {
+  date: string;
+  start: string | null;
+  durationMinutes: number | null;
+  note?: string | undefined;
+  changeId?: number | undefined;
+};
 
 const dayOf = (date: string) => new Date(`${date}T00:00:00`);
 
@@ -54,9 +72,12 @@ export function nightsBetween(
   schedule: ScheduleRule[],
   changes: ScheduleChange[],
   from: string,
-  to: string
+  to: string,
+  teamDefault: Difficulty | null = null
 ): { nights: RaidNight[]; cancelled: CancelledNight[] } {
-  const cancelledDates = new Set(changes.filter((c) => c.exception_type === 'cancelled').map((c) => c.raid_date));
+  const cancelledDates = new Map(
+    changes.filter((c) => c.exception_type === 'cancelled').map((c) => [c.raid_date, c] as const)
+  );
   const added = new Map(changes.filter((c) => c.exception_type === 'added').map((c) => [c.raid_date, c]));
   const nights: RaidNight[] = [];
   const cancelled: CancelledNight[] = [];
@@ -65,8 +86,16 @@ export function nightsBetween(
     for (const rule of schedule) {
       if (rule.weekday !== d.getDay()) continue;
       const night = { date, start: rule.start_time, durationMinutes: rule.duration_minutes };
-      if (cancelledDates.has(date)) cancelled.push(night);
-      else nights.push({ ...night, optional: rule.is_optional, extra: false, note: '' });
+      const off = cancelledDates.get(date);
+      if (off) cancelled.push({ ...night, note: off.note ?? '', changeId: off.id });
+      else
+        nights.push({
+          ...night,
+          optional: rule.is_optional,
+          extra: false,
+          note: '',
+          difficulty: asDifficulty(rule.difficulty) ?? teamDefault
+        });
     }
     const extra = added.get(date);
     if (extra) {
@@ -76,7 +105,9 @@ export function nightsBetween(
         durationMinutes: extra.duration_minutes,
         optional: extra.is_optional,
         extra: true,
-        note: extra.note ?? ''
+        note: extra.note ?? '',
+        changeId: extra.id,
+        difficulty: asDifficulty(extra.difficulty) ?? teamDefault
       });
     }
   }
@@ -127,8 +158,27 @@ export function timeRange(night: { start: string | null; durationMinutes: number
   return `${clock(start)}${end} Eastern`;
 }
 
+// A night's difficulty in words, and the colour class loot uses for it.
+// Heroic into Mythic reads as Mythic, the difficulty its kills count at.
+export function difficultyOf(night: Pick<RaidNight, 'difficulty'>) {
+  if (!night.difficulty) return null;
+  return {
+    label: DIFFICULTY_LABELS[night.difficulty],
+    className: night.difficulty === 'heroic' ? 'difficulty difficulty-heroic' : 'difficulty difficulty-mythic'
+  };
+}
+
 export const nightTitle = (night: Pick<RaidNight, 'optional' | 'extra'>) =>
   night.optional ? 'Optional night' : night.extra ? 'Extra night' : 'Raid night';
+
+// How a night is headed on the calendar (Kat, 2026-10-06): a normal night with
+// a difficulty is headed by it, since "Raid night" on every tile says nothing.
+// An optional or extra night keeps its word, with the difficulty beside it.
+export function nightHeading(night: Pick<RaidNight, 'optional' | 'extra' | 'difficulty'>) {
+  const level = difficultyOf(night);
+  if (level && !night.optional && !night.extra) return { title: level.label, titleClass: level.className, level: null };
+  return { title: nightTitle(night), titleClass: '', level };
+}
 
 // Statuses
 

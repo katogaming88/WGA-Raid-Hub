@@ -1,6 +1,7 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { Answer, ScheduleChange, ScheduleRule } from './calendar';
+import { asDifficulty, type Difficulty } from './schedule';
 import {
   DEFAULT_ROLE_TARGETS,
   isStaleSave,
@@ -19,17 +20,34 @@ import {
 // "back to the default", which is how the current site clears an answer.
 const orNull = (value: string | null) => value as string;
 
-// The team's weekly raid nights: one row per night of the week.
+// The team's weekly raid nights, one row per night of the week, and the team
+// default difficulty a night without its own follows (#1361). Both are
+// public reads.
+export type Schedule = { rules: ScheduleRule[]; teamDefault: Difficulty | null };
+
 export function useSchedule(teamId: number) {
-  return useSupabaseQuery<ScheduleRule[]>(['calendar-schedule', teamId], (client) =>
-    // team-read-guard: one row per raid night of the week
-    client
-      .from('raid_schedule')
-      .select('weekday, start_time, duration_minutes, is_optional')
-      .eq('team_id', teamId)
-      .eq('active', true)
-      .order('weekday')
-  );
+  return useSupabaseQuery<Schedule>(['calendar-schedule', teamId], async (client) => {
+    const [rules, settings] = await Promise.all([
+      // team-read-guard: one row per raid night of the week
+      client
+        .from('raid_schedule')
+        .select('weekday, start_time, duration_minutes, is_optional, difficulty')
+        .eq('team_id', teamId)
+        .eq('active', true)
+        .order('weekday'),
+      // team-read-guard: one row per team (team_id is the primary key)
+      client.from('team_schedule_settings').select('default_difficulty').eq('team_id', teamId).maybeSingle()
+    ]);
+    const error = rules.error ?? settings.error;
+    if (error) return { data: null, error };
+    return {
+      data: {
+        rules: (rules.data ?? []) as ScheduleRule[],
+        teamDefault: asDifficulty(settings.data?.default_difficulty)
+      },
+      error: null
+    };
+  });
 }
 
 // One-off changes (a cancelled night, an extra one) between two dates.
@@ -38,7 +56,7 @@ export function useScheduleChanges(teamId: number, from: string, to: string) {
     // team-read-guard: one-off changes inside a date window, a few a month
     client
       .from('raid_schedule_exceptions')
-      .select('raid_date, exception_type, start_time, duration_minutes, is_optional, note')
+      .select('id, raid_date, exception_type, start_time, duration_minutes, is_optional, note, difficulty')
       .eq('team_id', teamId)
       .gte('raid_date', from)
       .lte('raid_date', to)

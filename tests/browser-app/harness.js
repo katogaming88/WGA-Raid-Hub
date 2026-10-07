@@ -104,7 +104,7 @@ function json(body, headers = {}) {
  * @param {{ path: string, viewport?: {width:number,height:number}, session?: object, who?: keyof PEOPLE,
  *           reducedMotion?: 'reduce'|'no-preference', colorScheme?: 'light'|'dark', sentinel?: string,
  *           tables?: Record<string, unknown[]>, person?: { discordId: string|null, person: object|null },
- *           click?: string, touch?: boolean, rpc?: Record<string, unknown>, functions?: string[],
+ *           click?: string, afterClick?: string, touch?: boolean, rpc?: Record<string, unknown>, functions?: string[],
  *           functionAnswers?: Record<string, unknown>, sessionStorage?: Record<string, string>,
  *           clock?: string, teams?: object[], news?: object[], newsSeen?: string }} state
  */
@@ -164,6 +164,8 @@ export async function openApp(browser, port, state) {
     team_raid_progress: [],
     raid_schedule: [],
     raid_schedule_exceptions: [],
+    // The team default difficulty a raid night follows (#1361).
+    team_schedule_settings: [],
     raid_rsvps: [],
     // The boss lineup on a night (#1216): the season's bosses, each boss's
     // usual group, and the night's plan.
@@ -279,5 +281,7 @@ export async function openApp(browser, port, state) {
   await page.waitForSelector(state.sentinel ?? 'main h1', { timeout: 20000 });
   // A state reached by clicking once the page is there, like a tab.
   if (state.click) await page.click(state.click);
+  // What the click opens, when it loads data of its own first.
+  if (state.afterClick) await page.waitForSelector(state.afterClick, { timeout: 20000 });
   return { context, page, unexpected, pageErrors };
 }

@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |      7 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     35 h 06 m |
-| Revamp 3: officer dashboard        |      5 h 00 m |
+| Revamp 3: officer dashboard        |     13 h 14 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **57 h 26 m** |
+| **All revamp work**                | **65 h 40 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -209,6 +209,16 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:14-9:22 PM | Missing time log row added for #1357/#1367 (Settings build) | Revamp 3 (#1103) | 10 m | build | -- | Kat asked for the row that #1367's own build had skipped; put on its own branch that #1358 (below) then built on top of, rather than its own PR. |
 | 9:22-9:58 PM | #1358 built: Settings Audit log in the new app (#1103 row 1) | Revamp 3 (#1358) | 35 m | ~20 m build, ~15 m Kat (pagination and a Changed By question) | -- | Ported `tab-audit.js`'s detail-string humanizing (nested jsonb flattened to `Key: Value`, arrays as an item count), the `resolve_actor_name()`/`players` lookups, and the search box. Kat asked for the long list to page (First/Previous/Next/Last, both above and below the table) and for First/Last specifically, not just Previous/Next. Kat then asked why Changed By was blank testing locally; traced actor `a1f412e6...` on production directly and replayed `resolve_actor_name()`'s SQL by hand to confirm the function is correct -- the local snapshot restore nulls `people.auth_user_id` for everyone except whoever has personally signed back in locally, so historical actors can never resolve there. Not a page bug; no code change needed. |
 
+### 2026-10-06
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 9:28-9:42 PM | Rex's database project write-up read, Revamp 3's remaining work listed, #1103 brought up to date, #1360 reworded | Revamp 3 (#1103) | 15 m | ~8 m build, ~7 m Kat | 209,400 | #1358 off the order (merged as #1370), #1342 now waits on Rex's #1465/#1467 rather than Kat, #1247 unblocked, the roster audit row names the weekly row shape. #1360 is officer tools on the existing Roster page, not a separate page. Revamp 3's 10-17 date will move; new date not set. |
+| 9:42-10:08 PM | #1361 scoped and mocked up; the flow decided and posted as the plan | Revamp 3 (#1361) | 25 m | ~15 m build, ~10 m Kat deciding | 154,900 | Design canvas with the Calendar closed and open, the night page's cancel, cancelled and add states, and Team officers editing. Kat picked the Edit schedule button on the Calendar over a Settings page or a sidebar item, one-off changes from the day itself, and a required difficulty on added nights. |
+| 10:11-11:04 PM | #1361 part 1 built: Edit schedule, cancel / bring back / add a night from the day, raiders see each night's difficulty, the Tonight panel regrouped; #1477 filed | Revamp 3 (#1361, #1477) | 55 m | ~45 m build, ~10 m Kat testing on localhost | 283,500 | Showing the difficulty to raiders and heading normal nights by it came from Kat's localhost review; the Tonight panel fix was approved to ride along. A hot-reload crash on localhost turned up that the app has no error or proper 404 page: filed as #1477. |
+| 11:04-11:18 PM | Raid night titles designed (#1478) | Revamp 3 (#1478) | 15 m | ~5 m build, ~10 m Kat deciding | 16,500 | Filed for Rex's database queue. Weekly titles in Edit schedule plus a one-night rename that never carries forward; with no title, the difficulty on the Calendar and "Tuesday Mythic raid" in Discord. |
+| 11:18-11:40 PM | #1361 part 1 shipped as PR #1479: main merged, v3.170.0 stamped, changelog, preflight, screenshots, today's time log rows | Revamp 3 (#1361) | 20 m | ~20 m build | 40,400 | All 8 preflight checks passed. PR opened 11:26 PM. |
+
 ## Not counted (same sessions, not revamp)
 
 | Date       | Time (ET)         | Item                                                                                                                         | Elapsed |
@@ -220,6 +230,10 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-09-18 | 11:50 PM–12:10 AM | Review of Rex's PR #1260 (duplicate Mark Received guard, old site): a Heroic copy on file does not block marking Mythic      |    20 m |
 | 2026-09-25 | 10:46-10:57 PM | Live-site fix: a Mythic item marked received now shows on the profile when a Heroic one shares the slot (PR #1338) | 10 m |
 | 2026-09-25 | 11:06-11:17 PM | Deleted 19 stale branches and the outdated redesign branch | 10 m |
+| 2026-10-06 | 5:53-6:21 PM | Where the work stood after the break; #1355's merged branches cleaned up; #1355's follow-ups checked | 30 m |
+| 2026-10-06 | 6:21-6:27 PM | Issues older than #1000 checked for done or replaced work | 5 m |
+| 2026-10-06 | 6:27-6:54 PM | Bot switchover status: the new bot's Developer Team invite accepted and logo set; plan for #959 (dummy ping role, officers pick real roles in #994) posted on #959 | 25 m |
+| 2026-10-06 | 10:09-10:11 PM | Leftover local and remote branches deleted | 5 m |
 
 ## Remaining in Revamp 1
 

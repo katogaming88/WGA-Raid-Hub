@@ -12,6 +12,39 @@ answers to.
 
 ---
 
+## [3.170.0] - 2026-10-06
+
+### Project
+
+- The new app's Calendar lets officers change the raid schedule (#1361, part
+  1 of 2). An **Edit schedule** button above the month opens the team default
+  difficulty and the weekly nights (day, start, length, timezone, optional,
+  difficulty, active), each saved on its own; a weekly night either follows
+  the team default or sets its own, and one set differently is tinted. One
+  date's changes are made from the day itself: a raid night's page has
+  **Cancel this night** (or **Remove this extra night**) with an optional
+  reason raiders see, a cancelled night's page shows that reason and **Bring
+  this night back**, and an empty day has **Add a raid night here**, which
+  must name its difficulty (Heroic, Mythic or Heroic into Mythic) rather than
+  following the team default. Officers only, on a computer, and only for today
+  on. Writes go to the same tables under the same officer rule as the current
+  site's Schedule tab, with the same audit log entries; no database change.
+- Raiders see each night's difficulty: a normal night's tile on the month is
+  headed by it ("Mythic", in the loot colours) instead of "Raid night" on
+  every tile, optional and extra nights keep their word with the difficulty
+  beside it, and it shows on Your next raid and the night page heading. A
+  night without its own follows the team default; with neither it still says
+  "Raid night". A cancelled night's tile opens its page, so raiders can read
+  why.
+- The night page's Tonight panel heads with how many are coming, and each row
+  under it is its own group (On time; Late, leaving early or tentative; Out;
+  Bench and rotators), so the rows add up to the roster.
+- Browser tests: the Edit schedule panel, an empty day's add form, a cancelled
+  night and the cancel dialog join the accessibility list in both themes. The
+  test harness can wait for what a click opens (`afterClick`).
+
+---
+
 ## [3.169.0] - 2026-10-06
 
 ### Backend
