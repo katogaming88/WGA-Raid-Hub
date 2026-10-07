@@ -591,12 +591,23 @@ Deno.test('a tier with no start date fetches every report, as before the window'
 });
 
 Deno.test('writes a row for every report it read, before any progress or kill', async () => {
+  // A third night, a Heroic wipe and a Heroic kill on boss two.
+  const REPORT_H = {
+    code: 'reportH',
+    title: 'Phoenix Heroic 9/21',
+    startTime: REPORT_B_START + 4 * 86400000,
+    zone: { id: 44 },
+    fights: [
+      { id: 1, encounterID: 3002, difficulty: 4, kill: false, bossPercentage: 3 },
+      { id: 2, encounterID: 3002, difficulty: 4, kill: true, bossPercentage: 0 }
+    ]
+  };
   const { deps, db } = testDeps({
     state: { teams: [TEAM], configs: { 1: ONE_RAID } },
-    responses: [tokenResponse(), reportsResponse(REPORTS), zoneResponse('Test Raid Zone', ENCOUNTERS)]
+    responses: [tokenResponse(), reportsResponse([...REPORTS, REPORT_H]), zoneResponse('Test Raid Zone', ENCOUNTERS)]
   });
   const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
-  assertEquals(res.body.reports, 2);
+  assertEquals(res.body.reports, 3);
   const methods = db.calls.map((c) => c.method);
   assertEquals(methods.slice(-3), ['upsertReports', 'upsertProgress', 'insertKills']);
   // Pulls and kills count Heroic and Mythic fights on the raid's own bosses:
@@ -620,6 +631,17 @@ Deno.test('writes a row for every report it read, before any progress or kill', 
         title: 'Phoenix Heroic 9/17',
         started_at: '2026-09-18T00:00:00.000Z',
         raid_date: '2026-09-17',
+        wcl_zone_id: 44,
+        boss_pulls: 2,
+        boss_kills: 1,
+        kind: 'main'
+      },
+      {
+        team_id: 1,
+        report_code: 'reportH',
+        title: 'Phoenix Heroic 9/21',
+        started_at: '2026-09-22T00:00:00.000Z',
+        raid_date: '2026-09-21',
         wcl_zone_id: 44,
         boss_pulls: 2,
         boss_kills: 1,
