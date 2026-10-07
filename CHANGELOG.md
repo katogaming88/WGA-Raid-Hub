@@ -22,14 +22,15 @@ answers to.
   "Something went wrong on this page" inside the normal sidebar and top bar,
   with Reload the page and a link back to the team's home (or the guild page,
   or the site home); a crash in the frame itself, or on a page outside it,
-  shows the same screen on its own. The error goes to Sentry and is never
-  shown on screen. A wrong address offers the most useful way on: the team's
+  shows the same screen on its own. The error goes to Sentry; a folded
+  "Show error details" under the buttons shows only its one-line message
+  (never the stack), with a pointer to the support Discord for reporting it. A wrong address offers the most useful way on: the team's
   home when it names a team, the guild page when it names only a guild,
   otherwise the site home, and is not reported. No database change.
 - News moves from the sidebar's Guild group to its Site group, since it is
   about the site, not one guild. Its address is unchanged for now (#1482).
-- Browser tests: the crash screen (light and dark) and page not found (light,
-  and outside the frame) join the accessibility list; the harness accepts
+- Browser tests: the crash screen (light, dark, and with its details open) and
+  page not found (light, and outside the frame) join the accessibility list; the harness accepts
   Sentry reports instead of counting them as unexpected requests.
 - Revamp time log: the missing row for #1361's last stretch on 2026-10-06/07,
   and today's rows.

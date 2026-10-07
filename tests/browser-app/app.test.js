@@ -1031,6 +1031,7 @@ const STATES = [
   // and the crash screen shows inside the frame.
   { label: 'page crash', ...CRASH },
   { label: 'page crash, light', ...CRASH, colorScheme: 'light' },
+  { label: 'page crash, details open', ...CRASH, click: 'text=Show error details' },
   {
     label: 'roster, officer, alts showing',
     path: '/g/wga/t/phoenix/roster',

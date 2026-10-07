@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
 import { Link, useParams, useRouteError } from 'react-router';
-import { reportError } from '../lib/errors';
+import { errorMessage, reportError } from '../lib/errors';
+import { SUPPORT_DISCORD_URL } from '../config';
 import { wayOn } from './NotFoundPage';
 
 // What a crash shows instead of React Router's built-in screen (#1477). One
 // for every route: inside the frame for a page, so the sidebar still works,
-// and on its own for anything outside it. The details go to Sentry, never to
-// the screen.
+// and on its own for anything outside it. The whole error goes to Sentry; the
+// screen offers only its one-line message, folded away, for someone reporting
+// it on the support Discord (Kat, 2026-10-07). Never the stack.
 export function ErrorPage() {
   const error = useRouteError();
   const { guildKey, teamKey } = useParams();
@@ -27,6 +29,19 @@ export function ErrorPage() {
             {way.label}
           </Link>
         </div>
+        <details className="problem-details">
+          <summary>Show error details</summary>
+          <p>
+            <code>{errorMessage(error)}</code>
+          </p>
+          <p>
+            If this keeps happening, share these details on the{' '}
+            <a href={SUPPORT_DISCORD_URL} target="_blank" rel="noopener noreferrer">
+              support Discord<span className="visually-hidden"> (opens in a new tab)</span>
+            </a>
+            .
+          </p>
+        </details>
       </div>
     </section>
   );

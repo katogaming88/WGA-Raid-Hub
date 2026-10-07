@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { setErrorReporter } from '../lib/errors';
 import { wayOn } from './NotFoundPage';
@@ -25,7 +26,7 @@ afterEach(() => {
 const quietConsole = () => vi.spyOn(console, 'error').mockImplementation(() => {});
 
 describe('crash screen', () => {
-  it('shows inside the frame, reports the error, and never shows its details', async () => {
+  it('shows inside the frame, reports the error, and folds its message away', async () => {
     quietConsole();
     const reported: unknown[] = [];
     setErrorReporter((error, context) => reported.push([context.where, (error as Error).message]));
@@ -35,8 +36,14 @@ describe('crash screen', () => {
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reload the page' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Go to the guild page' })).toHaveAttribute('href', '/g/wga');
-    expect(screen.queryByText(/secret detail/)).not.toBeInTheDocument();
     expect(reported).toContainEqual(['page crash', 'boom: secret detail']);
+
+    // Folded until asked for, then only the one-line message, never the stack.
+    expect(screen.getByText('boom: secret detail')).not.toBeVisible();
+    await userEvent.click(screen.getByText('Show error details'));
+    expect(screen.getByText('boom: secret detail')).toBeVisible();
+    expect(screen.queryByText(/at .*.tsx/)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /support Discord/ })).toBeInTheDocument();
   });
 
   it('shows on its own for a page outside the frame', async () => {
