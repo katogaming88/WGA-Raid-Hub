@@ -70,10 +70,12 @@
   gap: var(--space-3);
 }
 
-/* Stays mounted while editing; only its words and buttons change. */
+/* Below the cards and pinned to the bottom of the screen (Kat, 2026-10-07:
+   Save above the fields read oddly). Stays mounted while editing; only its
+   words and buttons change. */
 .bios-save-bar {
   position: sticky;
-  top: var(--space-2);
+  bottom: var(--space-2);
   z-index: 2;
   display: flex;
   flex-wrap: wrap;

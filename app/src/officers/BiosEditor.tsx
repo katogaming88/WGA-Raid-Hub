@@ -19,10 +19,10 @@ import {
 import { useUploadBioPhoto } from './useOfficers';
 
 // Editing officer bios in place (#1361): on Team officers and Guild officers,
-// an officer's Edit turns every card into a form. One save bar above the
-// cards stays put while editing (Kat, 2026-09-18: nothing above the controls
-// may come and go), and saves the whole list at once, as the current site's
-// editor does.
+// an officer's Edit turns every card into a form. One save bar below the
+// cards, pinned to the bottom of the screen (Kat, 2026-10-07), stays put while
+// editing (Kat, 2026-09-18: a bar must not come and go), and saves the whole
+// list at once, as the current site's editor does.
 export function BiosEditor({
   saved,
   save,
@@ -70,26 +70,6 @@ export function BiosEditor({
 
   return (
     <div className="bios-editor">
-      <div className="card bios-save-bar">
-        <span className="bios-save-status" role="status">
-          {save.isPending ? 'Saving…' : dirty ? 'You have unsaved changes.' : 'No unsaved changes.'}
-        </span>
-        <button type="button" className="button" onClick={() => (dirty ? setLeaving(true) : onDone())}>
-          Done editing
-        </button>
-        <button type="button" className="button" disabled={!dirty || save.isPending} onClick={discard}>
-          Discard
-        </button>
-        <button type="button" className="button button-primary" disabled={!dirty || save.isPending} onClick={onSave}>
-          {save.isPending ? 'Saving…' : 'Save officers'}
-        </button>
-      </div>
-      {save.isError && (
-        <p className="form-error" role="alert">
-          That did not save: {save.error.message}
-        </p>
-      )}
-
       {drafts.length ? (
         <ol className="bios-edit-list">
           {drafts.map((d, i) => (
@@ -126,7 +106,7 @@ export function BiosEditor({
               ))}
             </select>
             <p className="field-hint">
-              Copies their name, class and spec once. The card doesn’t follow them afterwards.
+              Fills in their name, class and spec now. If those change on the roster later, edit the card to match.
             </p>
           </div>
         )}
@@ -136,6 +116,26 @@ export function BiosEditor({
           </button>
         </div>
       </section>
+
+      <div className="card bios-save-bar">
+        <span className="bios-save-status" role="status">
+          {save.isPending ? 'Saving…' : dirty ? 'You have unsaved changes.' : 'No unsaved changes.'}
+        </span>
+        <button type="button" className="button" onClick={() => (dirty ? setLeaving(true) : onDone())}>
+          Done editing
+        </button>
+        <button type="button" className="button" disabled={!dirty || save.isPending} onClick={discard}>
+          Discard
+        </button>
+        <button type="button" className="button button-primary" disabled={!dirty || save.isPending} onClick={onSave}>
+          {save.isPending ? 'Saving…' : 'Save officers'}
+        </button>
+      </div>
+      {save.isError && (
+        <p className="form-error" role="alert">
+          That did not save: {save.error.message}
+        </p>
+      )}
 
       {leaving && (
         <Dialog title="Stop editing without saving?" onClose={() => setLeaving(false)}>
