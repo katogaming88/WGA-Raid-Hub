@@ -21,7 +21,9 @@ answers to.
   into a form: photo, display name, character, title, pronouns, class, spec
   and bio, with Move up, Move down and Remove officer. A save bar below the
   cards, pinned to the bottom of the screen, stays put while editing and saves
-  the whole list at once; leaving with unsaved changes asks first. Upload photo checks the type and size before
+  the whole list at once; leaving with unsaved changes asks first. The
+  Streams corner widget moves up above a pinned save bar so it never covers
+  Save. Upload photo checks the type and size before
   sending it to `upload-bio-photo`, and Remove photo clears the card's
   photo. Add an officer can copy a raider's name, class and spec once from
   the team's roster, or start blank. Team officers is edited by the team's

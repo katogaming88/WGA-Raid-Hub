@@ -189,3 +189,10 @@
   color: var(--text-muted);
   font-size: var(--text-xs);
 }
+
+/* A page's save bar pinned to the bottom of the screen (the bio editor's,
+   #1361) would sit under this corner widget, so the widget moves up above it
+   while one is showing. */
+body:has(.pinned-save-bar) .stream-widget {
+  bottom: calc(var(--space-4) + var(--pinned-save-bar-height, 64px));
+}

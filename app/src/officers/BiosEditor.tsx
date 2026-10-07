@@ -117,7 +117,7 @@ export function BiosEditor({
         </div>
       </section>
 
-      <div className="card bios-save-bar">
+      <div className="card bios-save-bar pinned-save-bar">
         <span className="bios-save-status" role="status">
           {save.isPending ? 'Saving…' : dirty ? 'You have unsaved changes.' : 'No unsaved changes.'}
         </span>
