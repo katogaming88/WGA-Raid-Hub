@@ -323,14 +323,16 @@ Deno.test("a raid filed under an earlier tier keeps its tier and is read from th
     ]
   );
 
-  // Every report read is kept, counted on both raids' bosses.
+  // Every report read is kept, counted on both raids' bosses as the progress
+  // counts them: the earlier night's pull on the new raid's boss is before
+  // that raid's tier, so it counts in neither.
   assertEquals(
     reportsWritten(db).map((rows) => rows.map((r) => [r.report_code, r.boss_pulls, r.boss_kills])),
     [
       [
         ['reportA', 3, 1],
         ['reportB', 2, 1],
-        ['reportM', 1, 0],
+        ['reportM', 0, 0],
         ['reportN', 2, 2]
       ]
     ]
@@ -1193,4 +1195,45 @@ Deno.test("a list still going at the page cap is the team's error, and nothing i
     db.calls.map((c) => c.method),
     ['teams', 'currentSeason', 'teamConfig']
   );
+});
+
+// A zone filed under a tier that starts after the current one (a tier whose
+// date was moved later) is inside the current tier's read already: its
+// reports since its own start are a part of it, so it costs no second read.
+Deno.test('a raid filed under a tier that starts after the current one costs no second read', async () => {
+  const { deps, calls, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: ONE_RAID },
+      zones: { 44: 'MID3' },
+      tiers: { MID3: '2026-11-10' }
+    },
+    responses: [tokenResponse(), reportsResponse([...REPORTS, REPORT_N]), zoneResponse('Test Raid Zone', ENCOUNTERS)]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 1, errors: [], reports: 3 } });
+  assertEquals(reportsCalls(calls).length, 1);
+  // Only report N is since its tier's start: one Heroic kill of boss one.
+  assertEquals(
+    killsWritten(db).map((rows) => (rows as Array<{ report_code: string }>).map((k) => k.report_code)),
+    [['reportN']]
+  );
+});
+
+// With no start date on the current tier, its read is every report already,
+// so a raid filed under an earlier tier needs no second one.
+Deno.test('a current tier with no start date reads once, whatever the earlier raids on the list', async () => {
+  const { deps, calls } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: ONE_RAID },
+      seasonStart: null,
+      zones: { 44: 'MID1' },
+      tiers: { MID1: '2026-03-03' }
+    },
+    responses: [tokenResponse(), reportsResponse(REPORTS), zoneResponse('Test Raid Zone', ENCOUNTERS)]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 1, errors: [], reports: 2 } });
+  assertEquals(reportsCalls(calls).length, 1);
 });
