@@ -14,15 +14,15 @@ Every Warcraft Logs report the progression sync reads for a team (#1469), one ro
 | started_at | timestamp with time zone |  | false |  |  |  |  |
 | raid_date | date |  | false |  |  |  | The report's raid night: its start in Eastern time, a start before 6 a.m. counting as the night before, as on team_raid_kills and attendance. |
 | wcl_zone_id | integer |  | true |  |  |  | The zone Warcraft Logs tags the report with, null when it has none. Not a key to raid_zones: a report can be of a raid no team lists. |
-| boss_pulls | integer | 0 | false |  |  |  | Heroic and Mythic fights in the report on the bosses of the raids the team lists for the current tier, as the progression card counts them. |
+| boss_pulls | integer | 0 | false |  |  |  | Heroic and Mythic fights in the report on the bosses of the raids the team lists, as the progression card counts them; counted again on every run that reads the report, against the list as it is then. |
 | boss_kills | integer | 0 | false |  |  |  | The kills among boss_pulls. |
-| kind | text |  | false |  |  |  | The title rule's verdict: alt when the title has "Alt" as its own word, main otherwise. Rewritten on every run that reads the report (those since the tier start), so a report renamed on Warcraft Logs moves on the next one. |
+| kind | text |  | false |  |  |  | The title rule's verdict: alt when the title has "Alt" as its own word, main otherwise. Rewritten on every run that reads the report, so a report renamed on Warcraft Logs moves on the next one. |
 | kind_override | text |  | true |  |  |  | An officer's choice of main or alt (#1472), which the sync never writes; null leaves the verdict standing. |
 | kind_override_by | integer |  | true |  |  | [public.people](public.people.md) | The person who set kind_override. |
 | kind_override_at | timestamp with time zone |  | true |  |  |  | When kind_override was set; set exactly when it is. |
 | effective_kind | text |  | true | GENERATED ALWAYS AS COALESCE(kind_override, kind) STORED |  |  | kind_override when set, else kind: whether the report counts as the team's raid. |
 | created_at | timestamp with time zone | now() | false |  |  |  |  |
-| updated_at | timestamp with time zone | now() | false |  |  |  |  |
+| updated_at | timestamp with time zone | now() | false |  |  |  | The last run that read the report: each run rewrites every report it reads, changed or not. |
 
 ## Constraints
 

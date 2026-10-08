@@ -2,7 +2,7 @@
 
 ## Description
 
-Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt on each wcl-progression-sync run from the reports since the tier start (#1469). A raid filed under an earlier tier keeps what that tier left it. Every kill, by week, is in team_raid_kills.
+Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt on each wcl-progression-sync run from the reports since the start of the tier the boss's raid is filed under (#1469). Every kill, by week, is in team_raid_kills.
 
 ## Columns
 

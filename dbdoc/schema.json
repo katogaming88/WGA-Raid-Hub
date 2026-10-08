@@ -3292,7 +3292,7 @@
     {
       "name": "public.team_raid_progress",
       "type": "BASE TABLE",
-      "comment": "Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt on each wcl-progression-sync run from the reports since the tier start (#1469). A raid filed under an earlier tier keeps what that tier left it. Every kill, by week, is in team_raid_kills.",
+      "comment": "Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt on each wcl-progression-sync run from the reports since the start of the tier the boss's raid is filed under (#1469). Every kill, by week, is in team_raid_kills.",
       "columns": [
         {
           "name": "id",
@@ -9029,7 +9029,7 @@
           "type": "integer",
           "nullable": false,
           "default": "0",
-          "comment": "Heroic and Mythic fights in the report on the bosses of the raids the team lists for the current tier, as the progression card counts them."
+          "comment": "Heroic and Mythic fights in the report on the bosses of the raids the team lists, as the progression card counts them; counted again on every run that reads the report, against the list as it is then."
         },
         {
           "name": "boss_kills",
@@ -9042,7 +9042,7 @@
           "name": "kind",
           "type": "text",
           "nullable": false,
-          "comment": "The title rule's verdict: alt when the title has \"Alt\" as its own word, main otherwise. Rewritten on every run that reads the report (those since the tier start), so a report renamed on Warcraft Logs moves on the next one."
+          "comment": "The title rule's verdict: alt when the title has \"Alt\" as its own word, main otherwise. Rewritten on every run that reads the report, so a report renamed on Warcraft Logs moves on the next one."
         },
         {
           "name": "kind_override",
@@ -9079,7 +9079,8 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": false,
-          "default": "now()"
+          "default": "now()",
+          "comment": "The last run that read the report: each run rewrites every report it reads, changed or not."
         }
       ],
       "indexes": [

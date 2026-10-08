@@ -63,8 +63,7 @@
 // Every report it reads is also kept in team_raid_reports (#1469), one row per
 // team and report, with the title rule's verdict (_shared/alt-run.ts) in kind.
 // The sync never sends an officer's override, so a rewrite leaves it alone,
-// and never deletes a row, so a report older than the tier start stays on
-// record.
+// and never deletes a row, so a report it no longer reads stays on record.
 //
 // handle() takes its reads and writes, its fetch and its environment as an
 // argument (#1006), so tests/edge/ runs it against plain objects; deps.ts

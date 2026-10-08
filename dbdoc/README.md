@@ -31,7 +31,7 @@
 | [public.notifications](public.notifications.md) | 6 |  | BASE TABLE |
 | [public.raid_zones](public.raid_zones.md) | 6 |  | BASE TABLE |
 | [public.raid_encounters](public.raid_encounters.md) | 6 |  | BASE TABLE |
-| [public.team_raid_progress](public.team_raid_progress.md) | 14 | Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt on each wcl-progression-sync run from the reports since the tier start (#1469). A raid filed under an earlier tier keeps what that tier left it. Every kill, by week, is in team_raid_kills. | BASE TABLE |
+| [public.team_raid_progress](public.team_raid_progress.md) | 14 | Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt on each wcl-progression-sync run from the reports since the start of the tier the boss's raid is filed under (#1469). Every kill, by week, is in team_raid_kills. | BASE TABLE |
 | [public.priority_order_live_first_prios](public.priority_order_live_first_prios.md) | 9 |  | VIEW |
 | [public.priority_order_first_prio_counts](public.priority_order_first_prio_counts.md) | 5 |  | VIEW |
 | [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
