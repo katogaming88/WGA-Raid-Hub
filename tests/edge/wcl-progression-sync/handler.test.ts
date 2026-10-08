@@ -975,3 +975,135 @@ Deno.test('a report repeated across two pages is kept and counted once', async (
     [3, 0]
   );
 });
+
+// An earlier tier's reports are read once per team, however many of its
+// raids are still on the list.
+Deno.test('two raids filed under the same earlier tier share one read of its reports', async () => {
+  const { deps, calls, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: { raidProgression: TWO_RAIDS.raidProgression } },
+      currentSeason: 'MID3',
+      seasonStart: '2026-11-10',
+      zones: { 44: 'MID2', 45: 'MID2' },
+      tiers: { MID2: '2026-08-11' }
+    },
+    responses: [
+      tokenResponse(),
+      reportsResponse([]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }]),
+      reportsResponse(REPORTS)
+    ]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [], reports: 2 } });
+  assertEquals(reportsCalls(calls).length, 2);
+  assertEquals(db.calls.filter((c) => c.method === 'tierStart').length, 1);
+});
+
+// A raid with no bosses needs no reports, whatever tier it is filed under.
+Deno.test('a raid with no bosses filed under an earlier tier costs no read', async () => {
+  const { deps, calls, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: { raidProgression: [ONE_RAID.raidProgression[0], { wclZoneId: 57, name: 'Frozen Raid' }] } },
+      zones: { 57: 'MID1' },
+      tiers: { MID1: '2026-03-03' }
+    },
+    responses: [
+      tokenResponse(),
+      reportsResponse(REPORTS),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Frozen Raid Zone', [])
+    ]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [], reports: 2 } });
+  assertEquals(reportsCalls(calls).length, 1);
+  assertEquals(db.calls.filter((c) => c.method === 'tierStart').length, 0);
+});
+
+// An earlier tier with no start date reads every report, as the current one does.
+Deno.test('a raid filed under an earlier tier with no start date reads every report', async () => {
+  const { deps, calls } = testDeps({
+    state: { teams: [TEAM], configs: { 1: ONE_RAID }, zones: { 44: 'MID1' } },
+    responses: [
+      tokenResponse(),
+      reportsResponse([]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      reportsResponse(REPORTS)
+    ]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res.body.errors, []);
+  const fetched = reportsCalls(calls);
+  assertEquals(fetched.length, 2);
+  assertMatch(fetched[1].body ?? '', /reports\(guildID: 777, limit: 50, page: 1\)/);
+});
+
+// A page of the earlier tier's reports Warcraft Logs does not return leaves a
+// partial list, as a page of the current tier's does.
+Deno.test(
+  "a failed read of an earlier tier's reports is the team's error, and no report, progress or kill is written",
+  async () => {
+    const { deps, db } = testDeps({
+      state: {
+        teams: [TEAM],
+        configs: { 1: ONE_RAID },
+        currentSeason: 'MID3',
+        seasonStart: '2026-11-10',
+        zones: { 44: 'MID2' },
+        tiers: { MID2: '2026-08-11' }
+      },
+      responses: [
+        tokenResponse(),
+        reportsResponse([REPORT_N]),
+        zoneResponse('Test Raid Zone', ENCOUNTERS),
+        graphqlError('Internal server error')
+      ]
+    });
+    const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+    assertEquals(res, {
+      status: 200,
+      body: {
+        success: true,
+        teams: 1,
+        synced: 0,
+        errors: [{ teamId: 1, error: 'Reports page 1 not returned' }],
+        reports: 0
+      }
+    });
+    assertEquals(
+      db.calls.filter((c) => ['upsertReports', 'upsertProgress', 'insertKills'].includes(c.method)),
+      []
+    );
+  }
+);
+
+// The page cap guards against a list that never ends; it is not a window. A
+// list still going at the cap is a partial list, the team's error like a page
+// that fails.
+Deno.test("a list still going at the page cap is the team's error, and nothing is written", async () => {
+  const pages = Array.from({ length: 20 }, (_, i) => reportsPage([{ ...REPORTS[0], code: `page${i + 1}` }], true));
+  const { deps, calls, db } = testDeps({
+    state: { teams: [TEAM], configs: { 1: ONE_RAID } },
+    responses: [tokenResponse(), ...pages, zoneResponse('Test Raid Zone', ENCOUNTERS)]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, {
+    status: 200,
+    body: {
+      success: true,
+      teams: 1,
+      synced: 0,
+      errors: [{ teamId: 1, error: 'Reports past page 20 not read' }],
+      reports: 0
+    }
+  });
+  assertEquals(reportsCalls(calls).length, 20);
+  assertEquals(
+    db.calls.map((c) => c.method),
+    ['teams', 'currentSeason', 'teamConfig']
+  );
+});
