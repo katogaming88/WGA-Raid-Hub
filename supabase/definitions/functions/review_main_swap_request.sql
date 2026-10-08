@@ -14,7 +14,7 @@ declare
   v_player_id integer;
   v_spec_label text;
   v_note text := nullif(btrim(p_note), '');
-  v_prior_live boolean;
+  v_member_id integer;
   v_prior_member_id integer;
 begin
   -- Read without a lock first, for the rows to lock below; the status is
@@ -41,35 +41,43 @@ begin
   -- which a signup main swap writes before it archives the old character;
   -- then the old character; then the request, which the trigger cancelling a
   -- waiting swap reaches last.
-  perform 1 from public.team_members
-   where id = (select team_member_id from public.players where id = v_request.from_player_id)
+  -- The raider is the person who asked (#1433), not whoever holds the old
+  -- character now: a claim removed and taken by someone else while the swap
+  -- waited would otherwise move the alt to them.
+  select id into v_member_id from public.team_members
+   where team_id = v_request.team_id and person_id = v_request.person_id and archived_at is null
      for share;
+  if v_member_id is null then
+    raise exception 'The raider who asked is no longer on this team';
+  end if;
   select * into v_from from public.players where id = v_request.from_player_id;
+  if v_from.team_member_id is distinct from v_member_id then
+    raise exception '% is no longer linked to the raider who asked', v_from.name_realm;
+  end if;
 
   if p_approve then
-    -- A row by that name on the roster as anyone else's character is refused
-    -- (#1433): it came on while the swap waited, and only an officer can say
-    -- whose it is. Held as the upsert below holds it.
-    select archived_at is null, team_member_id into v_prior_live, v_prior_member_id
+    -- A row by that name held by anyone else, on the roster or archived, is
+    -- refused (#1433): the row carries that person's history, and only an
+    -- officer can say whose the name is now. Held as the upsert below holds it.
+    select team_member_id into v_prior_member_id
       from public.players
      where team_id = v_request.team_id
        and name_realm_key = lower(replace(v_request.name_realm, ' ', ''))
        for no key update;
-    if v_prior_live and v_prior_member_id is not null
-       and v_prior_member_id is distinct from v_from.team_member_id then
-      raise exception '% is on the roster as someone else''s character', v_request.name_realm;
+    if v_prior_member_id is not null and v_prior_member_id <> v_member_id then
+      raise exception '% is someone else''s character on this team', v_request.name_realm;
     end if;
 
-    -- The character joins the roster, or comes back to it, as the raider's
-    -- (#1433), the way add_signup_to_roster() moves a revived row to the
-    -- signer. A character they played before keeps its id, so its loot and
-    -- raid history stay attached to it.
+    -- The character joins the roster, or comes back to it, as the raider's.
+    -- Same on-conflict shape as add_signup_to_roster(): a character they
+    -- played before keeps its id, so its loot and raid history stay attached
+    -- to it.
     insert into public.players (
       team_id, name_realm, class_spec_id, is_trial, join_date, is_backup_tank, is_backup_healer, team_member_id
     )
     values (
       v_request.team_id, v_request.name_realm, v_request.class_spec_id, v_from.is_trial, v_from.join_date,
-      v_from.is_backup_tank, v_from.is_backup_healer, v_from.team_member_id
+      v_from.is_backup_tank, v_from.is_backup_healer, v_member_id
     )
     on conflict (team_id, name_realm_key) do update
       set class_spec_id = excluded.class_spec_id,

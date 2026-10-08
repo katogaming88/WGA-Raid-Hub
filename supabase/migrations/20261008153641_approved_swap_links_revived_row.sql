@@ -1,19 +1,26 @@
--- #1433: an approved main swap puts the alt on the raider's membership.
+-- #1433: an approved main swap refuses an alt that is someone else's.
 --
 -- The approval revived the alt's roster row with whatever link it already
 -- had. When the alt was once someone else's character on this team, the
 -- raider's old character was archived, the alt came back as the other
--- person's, and the "approved" notice went to that person's inbox. A revived
--- row now takes the raider's link, as a signup main swap already does.
+-- person's, and the "approved" notice went to that person's inbox.
 --
--- A row by that name already on the roster as someone else's character is
--- refused instead of taken over. The ask refuses a name on the roster, so the
--- row came on while the swap waited: a name the raider no longer holds, freed
--- by a deleted or renamed character and taken by someone else on the realm,
--- or a typo on a signup or a claim. The database cannot tell which person the
--- character belongs to now, so an officer removes or relinks that row first.
--- The read that decides it holds the row the upsert holds next, so the lock
--- order stays membership, new roster row, old character, request.
+-- Moving the row to the raider was rejected: the row carries the other
+-- person's loot, attendance, inbox and notes, and the database cannot tell
+-- whether the name came back to its owner or was freed and taken by someone
+-- else. So a row by that name held by anyone else, on the roster or archived,
+-- is refused, and an officer declines the swap or sorts out the row. How a
+-- reused name keeps two people's history apart is decided separately. A row
+-- nobody holds, or the raider's own, is approved onto as before, and takes
+-- the raider's membership.
+--
+-- The raider is the person on the request. The old character's link used to
+-- stand in for them, and a claim removed and taken by someone else while the
+-- swap waited would have moved the alt, and the notice, to that person. An
+-- old character no longer linked to the raider is refused too.
+--
+-- The read that decides the refusal holds the row the upsert holds next, so
+-- the lock order stays membership, new roster row, old character, request.
 
 CREATE OR REPLACE FUNCTION public.review_main_swap_request(p_request_id integer, p_approve boolean, p_note text DEFAULT NULL::text)
  RETURNS integer
@@ -27,7 +34,7 @@ declare
   v_player_id integer;
   v_spec_label text;
   v_note text := nullif(btrim(p_note), '');
-  v_prior_live boolean;
+  v_member_id integer;
   v_prior_member_id integer;
 begin
   -- Read without a lock first, for the rows to lock below; the status is
@@ -54,35 +61,43 @@ begin
   -- which a signup main swap writes before it archives the old character;
   -- then the old character; then the request, which the trigger cancelling a
   -- waiting swap reaches last.
-  perform 1 from public.team_members
-   where id = (select team_member_id from public.players where id = v_request.from_player_id)
+  -- The raider is the person who asked (#1433), not whoever holds the old
+  -- character now: a claim removed and taken by someone else while the swap
+  -- waited would otherwise move the alt to them.
+  select id into v_member_id from public.team_members
+   where team_id = v_request.team_id and person_id = v_request.person_id and archived_at is null
      for share;
+  if v_member_id is null then
+    raise exception 'The raider who asked is no longer on this team';
+  end if;
   select * into v_from from public.players where id = v_request.from_player_id;
+  if v_from.team_member_id is distinct from v_member_id then
+    raise exception '% is no longer linked to the raider who asked', v_from.name_realm;
+  end if;
 
   if p_approve then
-    -- A row by that name on the roster as anyone else's character is refused
-    -- (#1433): it came on while the swap waited, and only an officer can say
-    -- whose it is. Held as the upsert below holds it.
-    select archived_at is null, team_member_id into v_prior_live, v_prior_member_id
+    -- A row by that name held by anyone else, on the roster or archived, is
+    -- refused (#1433): the row carries that person's history, and only an
+    -- officer can say whose the name is now. Held as the upsert below holds it.
+    select team_member_id into v_prior_member_id
       from public.players
      where team_id = v_request.team_id
        and name_realm_key = lower(replace(v_request.name_realm, ' ', ''))
        for no key update;
-    if v_prior_live and v_prior_member_id is not null
-       and v_prior_member_id is distinct from v_from.team_member_id then
-      raise exception '% is on the roster as someone else''s character', v_request.name_realm;
+    if v_prior_member_id is not null and v_prior_member_id <> v_member_id then
+      raise exception '% is someone else''s character on this team', v_request.name_realm;
     end if;
 
-    -- The character joins the roster, or comes back to it, as the raider's
-    -- (#1433), the way add_signup_to_roster() moves a revived row to the
-    -- signer. A character they played before keeps its id, so its loot and
-    -- raid history stay attached to it.
+    -- The character joins the roster, or comes back to it, as the raider's.
+    -- Same on-conflict shape as add_signup_to_roster(): a character they
+    -- played before keeps its id, so its loot and raid history stay attached
+    -- to it.
     insert into public.players (
       team_id, name_realm, class_spec_id, is_trial, join_date, is_backup_tank, is_backup_healer, team_member_id
     )
     values (
       v_request.team_id, v_request.name_realm, v_request.class_spec_id, v_from.is_trial, v_from.join_date,
-      v_from.is_backup_tank, v_from.is_backup_healer, v_from.team_member_id
+      v_from.is_backup_tank, v_from.is_backup_healer, v_member_id
     )
     on conflict (team_id, name_realm_key) do update
       set class_spec_id = excluded.class_spec_id,

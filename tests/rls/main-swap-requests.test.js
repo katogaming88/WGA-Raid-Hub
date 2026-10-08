@@ -712,9 +712,12 @@ describe('a waiting main swap is cancelled when its character leaves the roster'
   });
 });
 
-// #1433: the alt's roster row may already be someone else's. Archived, it comes
-// back as the raider's; on the roster, the approval is refused. Each case runs
-// on a team of its own, with a second member as the other person.
+// #1433: the alt's roster row may be someone else's, on the roster or
+// archived, and the approval refuses it either way: the row carries that
+// person's history, and only an officer can say whose the name is now. The
+// raider is the person on the request, so an old character that is no longer
+// theirs is refused too. Each case runs on a team of its own, with a second
+// member as the other person.
 describe('an approved swap and a row someone else held (#1433)', () => {
   const swapWithOther = async (q, asUser) => {
     const team = await seedTeam(q);
@@ -726,64 +729,107 @@ describe('an approved swap and a row someone else held (#1433)', () => {
   const rowOf = async (q, playerId) =>
     (await q('select team_member_id, class_spec_id, archived_at from public.players where id = $1', [playerId]))
       .rows[0];
-  const approvalsReadBy = async (asUser, uid) =>
-    (await asUser(uid, "select message from public.notifications where message like '%was approved%'")).rows;
-  const SOMEONE_ELSES = /^Swapalt-Illidan is on the roster as someone else's character$/;
+  const wholeRow = async (q, playerId) => (await q('select * from public.players where id = $1', [playerId])).rows[0];
+  const approvals = async (q) =>
+    (await q("select id from public.notifications where message like '%was approved%'")).rows;
+  const SOMEONE_ELSES = /^Swapalt-Illidan is someone else's character on this team$/;
+  const NOT_THEIRS = /is no longer linked to the raider who asked$/;
 
-  it("brings back an alt that was someone else's as the raider's, and tells only the raider", async () => {
+  // The swap stays waiting and nothing on the roster moves.
+  const expectRefused = async (q, asUser, { team, raiderPlayer, id }, theirs, message) => {
+    const before = await wholeRow(q, theirs);
+    await expect(review(asUser, team.officer.uid, id, true)).rejects.toThrow(message);
+    expect(await wholeRow(q, theirs)).toEqual(before);
+    expect((await rowOf(q, raiderPlayer)).archived_at).toBeNull();
+    expect((await statusOf(q, id)).status).toBe('pending');
+    expect(await approvals(q)).toEqual([]);
+  };
+
+  it("refuses an alt that was someone else's character and is archived", async () => {
     await withTxn(async ({ q, asUser }) => {
-      const { team, other, raiderPlayer, nameRealm, id } = await swapWithOther(q, asUser);
-      const revived = await seedPlayer(q, { memberId: other.memberId, nameRealm, archivedAt: '2026-01-01T00:00:00Z' });
-      const playerId = (await review(asUser, team.officer.uid, id, true)).rows[0].player_id;
-
-      expect(playerId).toBe(revived);
-      expect(await rowOf(q, revived)).toMatchObject({ team_member_id: team.raider.memberId, archived_at: null });
-      expect((await rowOf(q, raiderPlayer)).team_member_id).toBe(team.raider.memberId);
-      expect(await approvalsReadBy(asUser, team.raider.uid)).toHaveLength(1);
-      expect(await approvalsReadBy(asUser, other.uid)).toEqual([]);
+      const swap = await swapWithOther(q, asUser);
+      const theirs = await seedPlayer(q, {
+        memberId: swap.other.memberId,
+        nameRealm: swap.nameRealm,
+        archivedAt: '2026-01-01T00:00:00Z'
+      });
+      await expectRefused(q, asUser, swap, theirs, SOMEONE_ELSES);
     });
   });
 
-  it('links a revived alt to nobody when the raider has since lost the link to their character', async () => {
+  it("refuses an alt on the roster as someone else's character, in another letter case", async () => {
     await withTxn(async ({ q, asUser }) => {
-      const { team, other, raiderPlayer, nameRealm, id } = await swapWithOther(q, asUser);
-      const revived = await seedPlayer(q, { memberId: other.memberId, nameRealm, archivedAt: '2026-01-01T00:00:00Z' });
-      await q('update public.players set team_member_id = null where id = $1', [raiderPlayer]);
-      await review(asUser, team.officer.uid, id, true);
-      expect(await rowOf(q, revived)).toMatchObject({ team_member_id: null, archived_at: null });
+      const swap = await swapWithOther(q, asUser);
+      // Added while the swap waited, under the same name spelled differently.
+      const theirs = await seedPlayer(q, { memberId: swap.other.memberId, nameRealm: 'SWAPALT-Illidan' });
+      await expectRefused(q, asUser, swap, theirs, SOMEONE_ELSES);
     });
   });
 
-  it("refuses an alt on the roster as someone else's character, and changes nothing", async () => {
+  it('refuses it when that membership has ended', async () => {
     await withTxn(async ({ q, asUser }) => {
-      const { team, other, raiderPlayer, id } = await swapWithOther(q, asUser);
-      // Their own, added while the swap waited, under the same name in another case.
-      const theirs = await seedPlayer(q, { memberId: other.memberId, nameRealm: 'SWAPALT-Illidan' });
-      const whole = async () => (await q('select * from public.players where id = $1', [theirs])).rows[0];
-      const before = await whole();
-      await expect(review(asUser, team.officer.uid, id, true)).rejects.toThrow(SOMEONE_ELSES);
-      expect(await whole()).toEqual(before);
-      expect((await rowOf(q, raiderPlayer)).archived_at).toBeNull();
-      expect((await statusOf(q, id)).status).toBe('pending');
-    });
-  });
-
-  it('refuses it when that membership has ended, and when the raider has lost their own link', async () => {
-    await withTxn(async ({ q, asUser }) => {
-      const { team, other, raiderPlayer, nameRealm, id } = await swapWithOther(q, asUser);
-      const theirs = await seedPlayer(q, { memberId: other.memberId, nameRealm });
-      await asUser(team.officer.uid, 'select public.archive_team_member($1, $2, $3, $4)', [
-        team.teamId,
-        other.memberId,
+      const swap = await swapWithOther(q, asUser);
+      const theirs = await seedPlayer(q, { memberId: swap.other.memberId, nameRealm: swap.nameRealm });
+      await asUser(swap.team.officer.uid, 'select public.archive_team_member($1, $2, $3, $4)', [
+        swap.team.teamId,
+        swap.other.memberId,
         'moved_guilds',
         'Joined another guild'
       ]);
       // A direct un-archive leaves the row linked to the ended membership (#1434).
       await q('update public.players set archived_at = null where id = $1', [theirs]);
-      await expect(review(asUser, team.officer.uid, id, true)).rejects.toThrow(SOMEONE_ELSES);
+      await expectRefused(q, asUser, swap, theirs, SOMEONE_ELSES);
+    });
+  });
 
-      await q('update public.players set team_member_id = null where id = $1', [raiderPlayer]);
-      await expect(review(asUser, team.officer.uid, id, true)).rejects.toThrow(SOMEONE_ELSES);
+  it('refuses a swap whose old character is no longer linked to the raider', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const swap = await swapWithOther(q, asUser);
+      const alt = await seedPlayer(q, {
+        teamId: swap.team.teamId,
+        nameRealm: swap.nameRealm,
+        archivedAt: '2026-01-01T00:00:00Z'
+      });
+      // The Roster tab's Remove claim, then a claim by someone else.
+      await q('update public.players set team_member_id = null where id = $1', [swap.raiderPlayer]);
+      await expectRefused(q, asUser, swap, alt, NOT_THEIRS);
+      await q('update public.players set team_member_id = $1 where id = $2', [swap.other.memberId, swap.raiderPlayer]);
+      await expectRefused(q, asUser, swap, alt, NOT_THEIRS);
+    });
+  });
+
+  it('refuses a swap when the raider who asked has left the team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const swap = await swapWithOther(q, asUser);
+      // Archive Member cancels the swap through the trigger (#1428); the
+      // direct archive leaves it waiting, as a restore with triggers off would.
+      await q('update public.team_members set archived_at = now() where id = $1', [swap.team.raider.memberId]);
+      await expect(review(asUser, swap.team.officer.uid, swap.id, true)).rejects.toThrow(/is no longer on this team$/);
+      expect((await statusOf(q, swap.id)).status).toBe('pending');
+    });
+  });
+
+  it("brings back the raider's own archived alt as theirs", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { team, nameRealm, id } = await swapWithOther(q, asUser);
+      const own = await seedPlayer(q, {
+        memberId: team.raider.memberId,
+        nameRealm,
+        archivedAt: '2026-01-01T00:00:00Z'
+      });
+      const playerId = (await review(asUser, team.officer.uid, id, true)).rows[0].player_id;
+      expect(playerId).toBe(own);
+      expect(await rowOf(q, own)).toMatchObject({ team_member_id: team.raider.memberId, archived_at: null });
+    });
+  });
+
+  it('brings back an archived alt nobody holds, as the raider', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { team, nameRealm, id } = await swapWithOther(q, asUser);
+      const nobodys = await seedPlayer(q, { teamId: team.teamId, nameRealm, archivedAt: '2026-01-01T00:00:00Z' });
+      const playerId = (await review(asUser, team.officer.uid, id, true)).rows[0].player_id;
+      expect(playerId).toBe(nobodys);
+      expect(await rowOf(q, nobodys)).toMatchObject({ team_member_id: team.raider.memberId, archived_at: null });
     });
   });
 
