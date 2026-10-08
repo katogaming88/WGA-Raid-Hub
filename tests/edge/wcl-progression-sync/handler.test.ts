@@ -230,8 +230,9 @@ Deno.test('a team with raids and no seasonName syncs, stamped with the current t
 // raid before the launch and it was filed under the outgoing tier. Either way
 // the raid keeps the tier it is filed under, and its progress is rebuilt from
 // that tier's start with one more read of the guild's reports, so a window
-// that opens after its first kills cannot lose them (#1469). A raid not yet
-// on file takes the current tier and the current tier's reports.
+// that opens after its first kills cannot lose them (#1469). That read stops
+// where this tier's starts, so no report is read twice. A raid not yet on file
+// takes the current tier and the current tier's reports alone.
 const TIER3_START_MS = Date.UTC(2026, 10, 10, 5); // 2026-11-10, Eastern midnight
 const REPORT_N = {
   code: 'reportN',
@@ -242,6 +243,14 @@ const REPORT_N = {
     { id: 1, encounterID: 3003, difficulty: 4, kill: true, bossPercentage: 0 },
     { id: 2, encounterID: 3001, difficulty: 4, kill: true, bossPercentage: 0 }
   ]
+};
+// An earlier night with a pull on the new raid's boss, before the new raid's tier.
+const REPORT_M = {
+  code: 'reportM',
+  title: 'Phoenix Heroic 9/24',
+  startTime: REPORT_B_START + 7 * 86400000,
+  zone: { id: 45 },
+  fights: [{ id: 1, encounterID: 3003, difficulty: 4, kill: false, bossPercentage: 40 }]
 };
 
 Deno.test("a raid filed under an earlier tier keeps its tier and is read from that tier's start", async () => {
@@ -259,17 +268,17 @@ Deno.test("a raid filed under an earlier tier keeps its tier and is read from th
       reportsResponse([REPORT_N]),
       zoneResponse('Test Raid Zone', ENCOUNTERS),
       zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }]),
-      reportsResponse([...REPORTS, REPORT_N])
+      reportsResponse([...REPORTS, REPORT_M])
     ]
   });
   const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
-  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [], reports: 3 } });
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [], reports: 4 } });
 
-  // The current tier's reports, then the earlier tier's, read once.
+  // The current tier's reports, then the earlier tier's up to this one's start.
   const fetched = reportsCalls(calls);
   assertEquals(fetched.length, 2);
   assertMatch(fetched[0].body ?? '', new RegExp(`page: 1, startTime: ${TIER3_START_MS}\\)`));
-  assertMatch(fetched[1].body ?? '', new RegExp(`page: 1, startTime: ${TIER_START_MS}\\)`));
+  assertMatch(fetched[1].body ?? '', new RegExp(`page: 1, startTime: ${TIER_START_MS}, endTime: ${TIER3_START_MS}\\)`));
   assertEquals(
     db.calls.filter((c) => c.method === 'tierStart').map((c) => c.args),
     [['MID2']]
@@ -280,7 +289,8 @@ Deno.test("a raid filed under an earlier tier keeps its tier and is read from th
   );
 
   // The outgoing raid keeps its Mythic first kill from the earlier tier and
-  // takes the Heroic kill of this one; the new raid's comes from this tier.
+  // takes the Heroic kill of this one; the new raid's comes from this tier
+  // alone, so the earlier night's pull on its boss is not counted.
   const progress = db.calls
     .filter((c) => c.method === 'upsertProgress')
     .map((c) =>
@@ -313,16 +323,49 @@ Deno.test("a raid filed under an earlier tier keeps its tier and is read from th
     ]
   );
 
-  // Every report read is kept once, counted on both raids' bosses.
+  // Every report read is kept, counted on both raids' bosses.
   assertEquals(
     reportsWritten(db).map((rows) => rows.map((r) => [r.report_code, r.boss_pulls, r.boss_kills])),
     [
       [
-        ['reportN', 2, 2],
         ['reportA', 3, 1],
-        ['reportB', 2, 1]
+        ['reportB', 2, 1],
+        ['reportM', 1, 0],
+        ['reportN', 2, 2]
       ]
     ]
+  );
+});
+
+// Raids filed under two earlier tiers share one read, from the earlier of
+// the two starts up to this tier's.
+Deno.test("raids filed under two earlier tiers share one read, from the earlier start to this tier's", async () => {
+  const { deps, calls, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: { raidProgression: TWO_RAIDS.raidProgression } },
+      currentSeason: 'MID3',
+      seasonStart: '2026-11-10',
+      zones: { 44: 'MID1', 45: 'MID2' },
+      tiers: { MID1: '2026-03-03', MID2: '2026-08-11' }
+    },
+    responses: [
+      tokenResponse(),
+      reportsResponse([]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }]),
+      reportsResponse(REPORTS)
+    ]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [], reports: 2 } });
+  const fetched = reportsCalls(calls);
+  assertEquals(fetched.length, 2);
+  const mid1StartMs = Date.UTC(2026, 2, 3, 5); // 2026-03-03, Eastern midnight
+  assertMatch(fetched[1].body ?? '', new RegExp(`page: 1, startTime: ${mid1StartMs}, endTime: ${TIER3_START_MS}\\)`));
+  assertEquals(
+    db.calls.filter((c) => c.method === 'tierStart').map((c) => c.args),
+    [['MID1'], ['MID2']]
   );
 });
 
@@ -1024,8 +1067,9 @@ Deno.test('a raid with no bosses filed under an earlier tier costs no read', asy
   assertEquals(db.calls.filter((c) => c.method === 'tierStart').length, 0);
 });
 
-// An earlier tier with no start date reads every report, as the current one does.
-Deno.test('a raid filed under an earlier tier with no start date reads every report', async () => {
+// An earlier tier with no start date reads every report before this tier's
+// start, as a current tier with none reads every report.
+Deno.test('a raid filed under an earlier tier with no start date reads every report before this tier', async () => {
   const { deps, calls } = testDeps({
     state: { teams: [TEAM], configs: { 1: ONE_RAID }, zones: { 44: 'MID1' } },
     responses: [
@@ -1039,7 +1083,10 @@ Deno.test('a raid filed under an earlier tier with no start date reads every rep
   assertEquals(res.body.errors, []);
   const fetched = reportsCalls(calls);
   assertEquals(fetched.length, 2);
-  assertMatch(fetched[1].body ?? '', /reports\(guildID: 777, limit: 50, page: 1\)/);
+  assertMatch(
+    fetched[1].body ?? '',
+    new RegExp(`reports\\(guildID: 777, limit: 50, page: 1, endTime: ${TIER_START_MS}\\)`)
+  );
 });
 
 // A page of the earlier tier's reports Warcraft Logs does not return leaves a
