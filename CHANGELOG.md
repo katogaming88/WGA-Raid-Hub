@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.174.1] - 2026-10-08
+
+### Project
+
+- README's Roadmap section points at the open tracking issue by its label
+  instead of by number, so it stays right when a tracker is superseded; it
+  named #1155, closed since 2026-09-20 (#1285). `docs/ROADMAP.md` is gone:
+  it repeated the same pointer and nothing linked to it. PRODUCT.md calls
+  #1109 the rebuild's plan, since #1487 holds the build order now.
+
 ## [3.174.0] - 2026-10-08
 
 ### Backend
