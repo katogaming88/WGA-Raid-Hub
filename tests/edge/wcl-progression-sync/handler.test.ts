@@ -1,16 +1,17 @@
 // wcl-progression-sync's handler (#932, #933): the cron gate, the raid_zones
 // stamp taken from the current tier (current_season(), read once per run and
 // the same for every team since the season went app-wide on #1189) for a zone
-// the table does not hold yet, a zone filed under an earlier tier left as it
-// stands, and a day with no tier row writing nothing, which the foreign key
-// would refuse. Each team's reports are fetched once per run from the tier's
-// start, and every one is kept in team_raid_reports with the title rule's
-// verdict (#1469). The progress rows are the ones the pre-split aggregation
+// the table does not hold yet, a zone filed under an earlier tier keeping it,
+// and a day with no tier row writing nothing, which the foreign key would
+// refuse. Each team's reports are fetched once per run from the tier's start,
+// and once more from an earlier tier's start for a raid filed under it, and
+// every one is kept in team_raid_reports with the title rule's verdict
+// (#1469). The progress rows are the ones the pre-split aggregation
 // produced over this corpus, recorded before the split, so the move is
 // measured against what was deployed. The runner grants no permission: a path
 // that reached the platform fetch or Deno.env would throw into the catch-all
 // and fail the body assertion.
-import { assertEquals, assertMatch, assertNotMatch } from 'jsr:@std/assert@1';
+import { assertEquals, assertMatch } from 'jsr:@std/assert@1';
 import { type Deps, handle, type ReportRow } from '../../../supabase/functions/wcl-progression-sync/handler.ts';
 import { VERSION } from '../../../supabase/functions/wcl-progression-sync/version.ts';
 import { envOf } from '../_support/corpus.ts';
@@ -225,46 +226,101 @@ Deno.test('a team with raids and no seasonName syncs, stamped with the current t
 });
 
 // The tier boundary: the next tier has started and no officer has yet
-// replaced the outgoing raid in the team's list. The reports come from the new
-// tier's start, so a night of the outgoing raid after it would rebuild that
-// raid's progress from one report: its pulls cut to that night's and its
-// first kill dated to it. Its rows are left as the tier left them instead,
-// and it is neither duplicated under the new tier nor pulled into the new
-// tier's scope. The new raid takes the new tier when it is added (#1469).
-Deno.test('a raid filed under an earlier tier is left as it stands; a new raid takes the current tier', async () => {
+// replaced the outgoing raid in the team's list, or an officer added the new
+// raid before the launch and it was filed under the outgoing tier. Either way
+// the raid keeps the tier it is filed under, and its progress is rebuilt from
+// that tier's start with one more read of the guild's reports, so a window
+// that opens after its first kills cannot lose them (#1469). A raid not yet
+// on file takes the current tier and the current tier's reports.
+const TIER3_START_MS = Date.UTC(2026, 10, 10, 5); // 2026-11-10, Eastern midnight
+const REPORT_N = {
+  code: 'reportN',
+  title: 'Phoenix Heroic 11/12',
+  startTime: Date.UTC(2026, 10, 13, 1), // 20:00 ET on the 12th
+  zone: { id: 45 },
+  fights: [
+    { id: 1, encounterID: 3003, difficulty: 4, kill: true, bossPercentage: 0 },
+    { id: 2, encounterID: 3001, difficulty: 4, kill: true, bossPercentage: 0 }
+  ]
+};
+
+Deno.test("a raid filed under an earlier tier keeps its tier and is read from that tier's start", async () => {
   const { deps, calls, db } = testDeps({
     state: {
       teams: [TEAM],
       configs: { 1: { raidProgression: TWO_RAIDS.raidProgression } },
       currentSeason: 'MID3',
       seasonStart: '2026-11-10',
-      zones: { 44: 'MID2' }
+      zones: { 44: 'MID2' },
+      tiers: { MID2: '2026-08-11' }
     },
     responses: [
       tokenResponse(),
-      reportsResponse(REPORTS),
-      zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }])
+      reportsResponse([REPORT_N]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }]),
+      reportsResponse([...REPORTS, REPORT_N])
     ]
   });
   const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
-  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 1, errors: [], reports: 2 } });
-  assertEquals(calls.length, 3);
-  for (const call of calls) assertNotMatch(call.body ?? '', /zone\(id: 44\)/);
-  const stamps = db.calls
-    .filter((c) => c.method === 'upsertRaidZone')
-    .map((c) => (c.args[0] as { season: string }).season);
-  assertEquals(stamps, ['MID3']);
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [], reports: 3 } });
+
+  // The current tier's reports, then the earlier tier's, read once.
+  const fetched = reportsCalls(calls);
+  assertEquals(fetched.length, 2);
+  assertMatch(fetched[0].body ?? '', new RegExp(`page: 1, startTime: ${TIER3_START_MS}\\)`));
+  assertMatch(fetched[1].body ?? '', new RegExp(`page: 1, startTime: ${TIER_START_MS}\\)`));
   assertEquals(
-    db.calls.filter((c) => c.method === 'upsertProgress' || c.method === 'insertKills'),
-    []
+    db.calls.filter((c) => c.method === 'tierStart').map((c) => c.args),
+    [['MID2']]
   );
-  // The reports are still kept; none holds a pull of the new raid's boss.
+  assertEquals(
+    db.calls.filter((c) => c.method === 'upsertRaidZone').map((c) => (c.args[0] as { season: string }).season),
+    ['MID2', 'MID3']
+  );
+
+  // The outgoing raid keeps its Mythic first kill from the earlier tier and
+  // takes the Heroic kill of this one; the new raid's comes from this tier.
+  const progress = db.calls
+    .filter((c) => c.method === 'upsertProgress')
+    .map((c) =>
+      (c.args[0] as Array<Record<string, unknown>>).map((row) => [
+        row.encounter_id,
+        row.mythic_date,
+        row.mythic_pulls,
+        row.heroic_date,
+        row.heroic_pulls
+      ])
+    );
+  assertEquals(progress, [
+    [
+      [500, '2026-09-14', 3, '2026-11-12', 1],
+      [501, null, 0, null, 2]
+    ],
+    [[502, null, 0, '2026-11-12', 1]]
+  ]);
+  assertEquals(
+    killsWritten(db).map((rows) =>
+      (rows as Array<{ report_code: string; fight_id: number }>).map((k) => [k.report_code, k.fight_id])
+    ),
+    [
+      [
+        ['reportA', 2],
+        ['reportB', 1],
+        ['reportN', 2]
+      ],
+      [['reportN', 1]]
+    ]
+  );
+
+  // Every report read is kept once, counted on both raids' bosses.
   assertEquals(
     reportsWritten(db).map((rows) => rows.map((r) => [r.report_code, r.boss_pulls, r.boss_kills])),
     [
       [
-        ['reportA', 0, 0],
-        ['reportB', 0, 0]
+        ['reportN', 2, 2],
+        ['reportA', 3, 1],
+        ['reportB', 2, 1]
       ]
     ]
   );
