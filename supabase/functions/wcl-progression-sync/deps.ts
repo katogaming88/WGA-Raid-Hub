@@ -40,6 +40,11 @@ export function supabaseDb(): ProgressDb {
       if (tierError) throw new Error(tierError.message);
       return { code: code as string, startsAt: ((tier as { starts_at: string } | null)?.starts_at as string) ?? null };
     },
+    async tierStart(code) {
+      const { data, error } = await db().from('seasons').select('starts_at').eq('code', code).maybeSingle();
+      if (error) throw new Error(error.message);
+      return ((data as { starts_at: string } | null)?.starts_at as string) ?? null;
+    },
     async raidZoneSeason(wclZoneId) {
       // One row per zone under the app-wide season; the order covers a
       // second row left from the cycle era, taking the later tier's.

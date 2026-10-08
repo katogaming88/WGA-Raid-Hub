@@ -118,6 +118,8 @@ export interface ProgressDb {
   teamConfig(teamId: number): Promise<Record<string, unknown>>;
   // current_season() and its seasons.starts_at, null when no tier has started.
   currentSeason(): Promise<CurrentSeason | null>;
+  // A tier's seasons.starts_at by its code, null when it has none.
+  tierStart(code: string): Promise<string | null>;
   // The season a zone is already filed under, null when raid_zones has no row for it.
   raidZoneSeason(wclZoneId: number): Promise<string | null>;
   // Upserts on (wcl_zone_id, season); returns the row id.

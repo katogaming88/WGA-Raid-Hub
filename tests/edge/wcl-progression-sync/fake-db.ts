@@ -21,6 +21,8 @@ export type FakeDbState = {
   seasonStart?: string | null;
   // Zones already in raid_zones, by wcl_zone_id, with the season each is filed under.
   zones?: Record<number, string>;
+  // Other tiers' seasons.starts_at, by code.
+  tiers?: Record<string, string | null>;
 };
 
 export type DbCall = { method: keyof ProgressDb; args: unknown[] };
@@ -48,6 +50,10 @@ export function fakeDb(state: FakeDbState = {}): FakeDb {
       const code = state.currentSeason === undefined ? 'MID2' : state.currentSeason;
       const startsAt = state.seasonStart === undefined ? '2026-08-11' : state.seasonStart;
       return Promise.resolve(code === null ? null : { code, startsAt });
+    },
+    tierStart(code: string) {
+      record('tierStart', code);
+      return Promise.resolve(state.tiers?.[code] ?? null);
     },
     raidZoneSeason(wclZoneId: number) {
       record('raidZoneSeason', wclZoneId);
