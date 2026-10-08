@@ -47,8 +47,9 @@
 // that is live when it is first seen, whatever a team's own settings say
 // (#933), and a raid already on file keeps its tier. A raid's progress is
 // rebuilt from the reports since the start of the tier it is filed under
-// (#1469). The current tier's are read once per team; a raid filed under an
-// earlier tier costs one more read, from that tier's start. That is the
+// (#1469). The current tier's are read once per team; raids filed under an
+// earlier tier cost one more read, from the earliest such tier's start up to
+// the current tier's, so no report is read twice. That is the
 // outgoing raid on launch day, until an officer replaces it in the list, and
 // a new raid an officer added before the launch, which was filed under the
 // outgoing tier; read from the new tier's start, the first would lose its
@@ -226,9 +227,10 @@ async function wclQuery(deps: Deps, token: string, query: string): Promise<any |
 // smaller page costs a point per extra page and nothing else. #1470 asks for
 // ten fields per fight, which fit at 25 a page.
 const REPORT_LIMIT = 50;
-// 20 pages * 50/page = 1000 reports per team per run -- far beyond any real
-// tier's report count, just a guard against an unexpected has_more_pages
-// loop (e.g. a WCL response that never actually terminates).
+// 20 pages * 50/page = 1000 reports per read, the current tier's or the
+// earlier tiers' up to its start -- far beyond any real tier's report count,
+// just a guard against an unexpected has_more_pages loop (e.g. a WCL response
+// that never actually terminates).
 const MAX_REPORT_PAGES = 20;
 const MYTHIC_DIFF = 5;
 const HEROIC_DIFF = 4;
@@ -289,8 +291,9 @@ function zoneIdOf(raid: RaidConfigEntry): number | null {
   return !zoneId || Number.isNaN(zoneId) ? null : zoneId;
 }
 
-// Every report the guild has logged since a tier's start (every report, when
-// the tier has no start date), once per team and tier per run (#1469).
+// Every report the guild has logged between two instants (#1469): the current
+// tier's start and now, or an earlier tier's start and the current tier's.
+// No start reads from the guild's first report.
 //
 // No zoneID filter on the reports() query, deliberately -- confirmed live
 // that filtering by zoneID undercounted pulls relative to WCL's own guild
@@ -311,8 +314,15 @@ function zoneIdOf(raid: RaidConfigEntry): number | null {
 // going at the cap is a partial list too, and throws the same way. A report
 // uploaded while the pages are read pushes the list down by one, so a page
 // can repeat the last report of the page before it; it is kept once.
-async function fetchReports(deps: Deps, token: string, guildId: number, startMs: number | null): Promise<WclReport[]> {
-  const window = startMs === null ? '' : `, startTime: ${gqlInt(startMs)}`;
+async function fetchReports(
+  deps: Deps,
+  token: string,
+  guildId: number,
+  startMs: number | null,
+  endMs: number | null = null
+): Promise<WclReport[]> {
+  const window =
+    (startMs === null ? '' : `, startTime: ${gqlInt(startMs)}`) + (endMs === null ? '' : `, endTime: ${gqlInt(endMs)}`);
   const reports: WclReport[] = [];
   const seen = new Set<string>();
   for (let page = 1; ; page++) {
@@ -567,31 +577,39 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         const raids: RaidConfigEntry[] = Array.isArray(config.raidProgression) ? config.raidProgression : [];
         if (!raids.some((raid) => zoneIdOf(raid) !== null)) continue;
 
-        const reportsByTier = new Map<string, WclReport[]>([
-          [season.code, await fetchReports(deps, token, team.wcl_guild_id, startMs)]
-        ]);
+        const reports = await fetchReports(deps, token, team.wcl_guild_id, startMs);
         const zones: SyncedZone[] = [];
         for (let i = 0; i < raids.length; i++) {
           const zone = await prepareZone(deps, token, season.code, raids[i], i);
           if (zone) zones.push(zone);
         }
-        // A raid filed under an earlier tier, read from that tier's start (see
-        // the header); a raid with no bosses needs no reports.
+        // A raid filed under an earlier tier is read from that tier's start
+        // (see the header): one more read for the team, from the earliest such
+        // start up to this tier's, so no report is read twice. A raid with no
+        // bosses needs no reports.
+        const tierStarts = new Map<string, number | null>();
         for (const zone of zones) {
-          if (zone.encounterIdByWcl.size === 0 || reportsByTier.has(zone.season)) continue;
-          const tierStartMs = tierStartTimeMs(await deps.db.tierStart(zone.season));
-          reportsByTier.set(zone.season, await fetchReports(deps, token, team.wcl_guild_id, tierStartMs));
+          if (zone.encounterIdByWcl.size === 0 || zone.season === season.code || tierStarts.has(zone.season)) continue;
+          tierStarts.set(zone.season, tierStartTimeMs(await deps.db.tierStart(zone.season)));
         }
-
-        // The reports are the newest write, as the kills were: a failure is
-        // reported, and the progress the landing page reads still syncs. A
-        // report read in two tiers' windows is kept once.
-        const bossIds = new Set(zones.flatMap((zone) => [...zone.encounterIdByWcl.keys()]));
+        let earlier: WclReport[] = [];
+        if (tierStarts.size > 0) {
+          const starts = [...tierStarts.values()];
+          const from = starts.includes(null) ? null : Math.min(...(starts as number[]));
+          earlier = await fetchReports(deps, token, team.wcl_guild_id, from, startMs);
+        }
+        // Each report once, the earlier read's first; one starting on the
+        // boundary can come back from both.
         const read = new Map<string, WclReport>();
-        for (const report of [...reportsByTier.values()].flat()) {
+        for (const report of [...earlier, ...reports]) {
           if (!read.has(report.code)) read.set(report.code, report);
         }
-        const rows = reportRows(team.id, [...read.values()], bossIds);
+        const allReports = [...read.values()];
+
+        // The reports are the newest write, as the kills were: a failure is
+        // reported, and the progress the landing page reads still syncs.
+        const bossIds = new Set(zones.flatMap((zone) => [...zone.encounterIdByWcl.keys()]));
+        const rows = reportRows(team.id, allReports, bossIds);
         if (rows.length > 0) {
           try {
             await deps.db.upsertReports(rows);
@@ -603,8 +621,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         }
 
         for (const zone of zones) {
-          const reports = reportsByTier.get(zone.season) ?? [];
-          const killsError = await writeZoneProgress(deps, team.id, reports, zone.encounterIdByWcl);
+          const from = tierStarts.get(zone.season) ?? null;
+          const zoneReports =
+            zone.season === season.code
+              ? reports
+              : allReports.filter((report) => from === null || report.startTime >= from);
+          const killsError = await writeZoneProgress(deps, team.id, zoneReports, zone.encounterIdByWcl);
           synced++;
           if (killsError) errors.push({ teamId: team.id, error: `Kills not saved: ${killsError}` });
         }
