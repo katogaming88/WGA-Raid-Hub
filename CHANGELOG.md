@@ -12,6 +12,32 @@ answers to.
 
 ---
 
+## [3.174.0] - 2026-10-08
+
+### Backend
+
+- Every Warcraft Logs report the progression sync reads is now kept for its
+  team, saying whether its title marks it as an alt run (#1469). Nothing
+  reads the list yet: it is the first step toward officers choosing which
+  reports count as the team's raid. A report the sync no longer reads keeps
+  its row, and neither the site nor the sync can delete one.
+
+### Functions
+
+- The progression sync reads each team's reports once per run, from the
+  start of the current tier, instead of the guild's whole history once for
+  every raid on the team's list, which cuts its Warcraft Logs use (#1469).
+- A raid filed under an earlier tier, the outgoing raid on launch day or a
+  new raid an officer added before the launch, is read from the start of its
+  own tier, with one more read that stops where the current tier starts, so
+  its progress keeps its first kills.
+- A page of reports or a raid's boss list that Warcraft Logs does not
+  return, or a list still going at the page cap, is now that team's error
+  for the run, and nothing is written for the team, instead of its progress
+  being written from part of the list.
+- Attendance and the progression sync share one copy of the alt-run title
+  rule.
+
 ## [3.173.1] - 2026-10-08
 
 ### Project
