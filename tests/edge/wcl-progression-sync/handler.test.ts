@@ -369,6 +369,46 @@ Deno.test("raids filed under two earlier tiers share one read, from the earlier 
   );
 });
 
+// Each raid takes from that one read the reports since its own tier's start.
+// A report starting on the current tier's start can come back from both
+// reads; it is kept once.
+Deno.test("each raid counts the reports since its own tier's start, and a boundary report is kept once", async () => {
+  const REPORT_J = {
+    code: 'reportJ',
+    title: 'Phoenix Heroic 7/20',
+    startTime: Date.UTC(2026, 6, 21, 0), // 20:00 ET on 7/20, before the mini raid's tier
+    zone: { id: 45 },
+    fights: [{ id: 1, encounterID: 3003, difficulty: 4, kill: false, bossPercentage: 60 }]
+  };
+  const REPORT_EDGE = { code: 'reportEdge', title: 'Phoenix 11/10', startTime: TIER3_START_MS, zone: null, fights: [] };
+  const { deps, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: { raidProgression: TWO_RAIDS.raidProgression } },
+      currentSeason: 'MID3',
+      seasonStart: '2026-11-10',
+      zones: { 44: 'MID1', 45: 'MID2' },
+      tiers: { MID1: '2026-03-03', MID2: '2026-08-11' }
+    },
+    responses: [
+      tokenResponse(),
+      reportsResponse([REPORT_EDGE]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }]),
+      reportsResponse([REPORT_J, ...REPORTS, REPORT_EDGE])
+    ]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [], reports: 4 } });
+  // Report J is before the mini raid's tier, so the mini raid has no pull
+  // since its start and writes no progress; the raid from the tier before it does.
+  assertEquals(db.calls.filter((c) => c.method === 'upsertProgress').length, 1);
+  assertEquals(
+    reportsWritten(db).map((rows) => rows.map((r) => r.report_code)),
+    [['reportJ', 'reportA', 'reportB', 'reportEdge']]
+  );
+});
+
 Deno.test('a day with no current tier makes no zone call and writes nothing', async () => {
   const { deps, calls, db } = testDeps({
     state: { teams: [TEAM], configs: { 1: TWO_RAIDS }, currentSeason: null },
