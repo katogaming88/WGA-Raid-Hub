@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.174.2] - 2026-10-08
+
+### Project
+
+- The rules and design notes the closed tracking issues held now live in
+  the docs (#1492). CONTRIBUTING.md says a pull request that rebuilds a page
+  leaves the current site alone and lists the behaviour it changes on
+  purpose, that every new page state joins the app's browser tests, and the
+  accessibility rules for tabs, tables, colour, tooltips and loading
+  placeholders, and that a change to `build_rclc_export()` needs a matching
+  check in the addon repo. PRODUCT.md lists the design inputs the rebuild
+  builds from.
+
 ## [3.174.1] - 2026-10-08
 
 ### Project
