@@ -31,7 +31,7 @@ Loot priority is built from this team's own data and closed back into the raid: 
 
 ## Capabilities and Constraints
 
-- Being rebuilt as a single React + TypeScript app (tracking issue #1109), cutover targeted for January 2027. Backend is Supabase (Postgres, Auth, row-level security, Edge Functions).
+- Being rebuilt as a single React + TypeScript app (plan on #1109), cutover targeted for January 2027. Backend is Supabase (Postgres, Auth, row-level security, Edge Functions).
 - Per-team feature flags hide officer tools per team.
 - Roles: raider, officer, team leader, guild officer, BoE manager, site admin; what a person sees depends on these.
 - Difficulty and track matter everywhere loot appears (Heroic vs Mythic, upgrade tracks).
