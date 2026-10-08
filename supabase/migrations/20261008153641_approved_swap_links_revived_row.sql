@@ -1,6 +1,19 @@
--- Function public.review_main_swap_request: current definition, generated from the database.
--- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): authenticated
+-- #1433: an approved main swap puts the alt on the raider's membership.
+--
+-- The approval revived the alt's roster row with whatever link it already
+-- had. When the alt was once someone else's character on this team, the
+-- raider's old character was archived, the alt came back as the other
+-- person's, and the "approved" notice went to that person's inbox. A revived
+-- row now takes the raider's link, as a signup main swap already does.
+--
+-- A row by that name already on the roster as someone else's character is
+-- refused instead of taken over. The ask refuses a name on the roster, so the
+-- row came on while the swap waited: a name the raider no longer holds, freed
+-- by a deleted or renamed character and taken by someone else on the realm,
+-- or a typo on a signup or a claim. The database cannot tell which person the
+-- character belongs to now, so an officer removes or relinks that row first.
+-- The read that decides it holds the row the upsert holds next, so the lock
+-- order stays membership, new roster row, old character, request.
 
 CREATE OR REPLACE FUNCTION public.review_main_swap_request(p_request_id integer, p_approve boolean, p_note text DEFAULT NULL::text)
  RETURNS integer

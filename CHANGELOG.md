@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.174.3] - 2026-10-08
+
+### Backend
+
+- Approving a main swap to an alt someone else once played on the team now
+  puts it on the raider's own membership (#1433). It used to come back as
+  the other person's character, leaving the raider with nothing on the team
+  and sending the "approved" note to the other person. An alt that is on the
+  roster as someone else's character by the time of the approval is refused
+  instead, and the swap stays waiting for an officer to sort out whose it is.
+
 ## [3.174.2] - 2026-10-08
 
 ### Project

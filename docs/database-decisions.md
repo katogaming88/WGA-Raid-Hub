@@ -10,6 +10,21 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-08 -- an approved main swap puts the alt on the raider's membership (#1433)
+
+Shipped: 20261008153641_approved_swap_links_revived_row.sql
+
+Approving a main swap brought the alt's roster row back with the link it already had (`coalesce(players.team_member_id, excluded.team_member_id)`). An alt someone else once played on this team came back as their character: the raider's old character was archived, the raider held nothing on the team, and the "approved" notice went to the other person, since an inbox reads by the row's link. A main swap through a season signup already moved a revived row to the signer.
+
+- **A revived row takes the raider's link**, the one the raider's old character carries, whoever held the row before. Its earlier attendance, loot and RSVPs stay on the row and now read as the raider's, as after a signup main swap: the row is keyed on the name, and a name carries its past. When the old character has lost its link since the ask (a direct write, #1434), the row comes back linked to nobody rather than left as someone else's.
+- **A row by that name on the roster as someone else's character is refused**: "<alt> is on the roster as someone else's character", and the swap stays waiting (Russell, 2026-10-08). The ask refuses a name already on the roster, so the row came on while the swap waited. With no mistake by anyone, that is a name the raider no longer holds: they deleted, renamed or moved the character after asking, and once Blizzard freed the name someone else on the realm brought it onto the team, through the invite link, the Battle.net auto-link, a swap of their own or a signup. A typo on a signup or a Discord claim of an unlinked row by that name gets there too, and so does an officer re-adding the other person's archived row. `characters` is unique on the Blizzard id only, so two people can list one name and the database cannot say whose the character is now; an officer removes or relinks that row first. Taking the row over was rejected, since it would move a live character off its holder with no notice. It is refused also when that holder's membership has ended. An unlinked row on the roster, or the raider's own, is approved onto as before.
+- **The lock order does not change.** The read that decides the refusal holds the row the upsert holds next (`for no key update`), so the order stays membership, new roster row, old character, request (#1428). A row added after that read is the upsert's to meet, as before.
+- **The signup path is left as it is.** It moves a revived row only when the signer has a membership on the team, and links a new character to the old character's membership even when that membership has ended (found in #1432).
+
+[Full discussion -> #1433](https://github.com/katogaming88/WGA-Raid-Hub/issues/1433).
+
+---
+
 ## 2026-10-06 -- a row for every Warcraft Logs report, saying whether it is the team's raid (#1469)
 
 Shipped: 20261007145043_team_raid_reports.sql
@@ -221,7 +236,7 @@ Once the character a main swap is from is archived, the swap can never be approv
 - **Already done another way** (from the code review). A swap to a character that is on the roster by the time the old one leaves, unlinked or the raider's own, through a signup main swap to the same alt or by hand, closes as approved with that row as `approved_player_id`, "Already on the roster", and no notification: cancelling it would tell a raider their swap was cancelled just as they got it. Not when the membership was archived (they left, whatever is on the roster), and not for a row held by someone else's membership.
 - **Not revived.** Restoring the member or re-adding the character leaves the request cancelled. The raider asks again: a cancelled request does not block asking, and #1430, which blocks a declined one, leaves it that way.
 - **The review waits behind an archive.** Archive Member locks the membership, then the characters, then, through the trigger, the request; Remove and a signup main swap hold the membership for share first since #1432, then lock the character, then the request (a signup swap writes the new roster row before it archives the old one). The review takes the membership for share, which their share does not block, then the new roster row, then the old character, then the request, and checks the status again once it holds the request, so it waits behind any of them instead of deadlocking. It marks an approval approved before it archives the old character, so the trigger leaves that one alone. `request_main_swap()` holds the character it checked `for share` until the request is saved, so a removal cannot slip between the check and the insert. Remove or a signup main swap and Archive Member of the same raider at the same moment could deadlock with each other until #1432 put the membership first on both.
-- **The review still refuses** a swap waiting from a character already off the roster, which only a restore with triggers off could now leave (from the second code review), and a swap the old character was already renamed into, which would archive the row it approved. A backfill in the same migration cancels any swap already waiting from a character off the roster (none on production, 2026-10-03).
+- **The review still refuses** a swap waiting from a character already off the roster, which only a restore with triggers off could now leave (from the second code review), and a swap the old character was already renamed into, which would archive the row it approved. Since #1433 it also refuses an alt on the roster by then as someone else's character. A backfill in the same migration cancels any swap already waiting from a character off the roster (none on production, 2026-10-03).
 
 [Full discussion -> #1428](https://github.com/katogaming88/WGA-Raid-Hub/issues/1428).
 
