@@ -612,10 +612,13 @@ DISCORD_TEST_WEBHOOK_URL=http://host.docker.internal:8899/webhooks/test-channel
 OPTIONAL_RSVP_REMINDERS_SECRET=any-local-value
 ```
 
-A timed function also needs its outside service's client pair to do its work
-(`WCL_CLIENT_ID` and `WCL_CLIENT_SECRET`, `TWITCH_CLIENT_ID` and
-`TWITCH_CLIENT_SECRET`, `BLIZZARD_CLIENT_ID` and `BLIZZARD_CLIENT_SECRET`);
-those are real credentials from each service's developer site, not any value.
+A function that calls an outside service also needs that service's client
+pair, a real credential from its developer site rather than any value: the
+Warcraft Logs pair (`WCL_CLIENT_ID`, `WCL_CLIENT_SECRET`) for
+`wcl-progression-sync` and an officer's sync from Warcraft Logs (`wcl-sync`),
+the Twitch pair for `twitch-live-check`, and the Blizzard pair for
+`blizzard-gear-sync`, its nightly sweep and an officer's Refresh Equipped Gear
+alike.
 
 `host.docker.internal` rather than `127.0.0.1`: the functions runtime is a
 container and cannot see the machine's own localhost. To see the post in
