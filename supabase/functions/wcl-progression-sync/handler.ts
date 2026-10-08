@@ -370,7 +370,7 @@ async function prepareZone(
 
   const zoneQuery = `query { worldData { zone(id: ${gqlInt(zoneId)}) { name encounters { id name } } } }`;
   const zoneResult = await wclQuery(deps, token, zoneQuery);
-  if (!zoneResult) throw new Error(`Zone ${zoneId} not returned`);
+  if (!zoneResult) throw new Error('Zone ' + zoneId + ' not returned');
   const zone = zoneResult.data?.worldData?.zone;
   if (!zone) return null;
   const encounters: Array<{ id: number; name: string }> = zone.encounters || [];
