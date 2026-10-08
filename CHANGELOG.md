@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.173.1] - 2026-10-08
+
+### Project
+
+- The three settings templates a developer copies match what reads them.
+  `supabase/functions/.env.example` lists every setting the Edge Functions
+  read: seven were missing (the Blizzard and Twitch client pairs, and the
+  secrets three timed functions check), and a CI check now fails on a
+  setting a function reads that the template leaves out, or one it lists
+  that nothing reads. The root `.env.example` lists only the Blizzard pair
+  `scripts/fetch-item-stats.js` reads, and says where everything else lives.
+  A new `supabase/.env.example` holds the local stack's sign-in secrets
+  (Battle.net, and the switch for local Discord sign-in). The local setup
+  doc says Discord sign-in is switched on from `supabase/.env`, and which
+  functions need which client pair.
+
 ## [3.173.0] - 2026-10-07
 
 ### Project
