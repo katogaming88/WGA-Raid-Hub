@@ -1,15 +1,18 @@
 // wcl-progression-sync's handler (#932, #933): the cron gate, the raid_zones
 // stamp taken from the current tier (current_season(), read once per run and
 // the same for every team since the season went app-wide on #1189) for a zone
-// the table does not hold yet, a zone already filed keeping its tier, and a
-// day with no tier row writing nothing, which the foreign key would refuse. The
-// progress rows are the ones the pre-split aggregation produced over this corpus,
-// recorded before the split, so the move is measured against what was
-// deployed. The runner grants no permission: a path that reached the
-// platform fetch or Deno.env would throw into the catch-all and fail the
-// body assertion.
+// the table does not hold yet, a zone filed under an earlier tier keeping it,
+// and a day with no tier row writing nothing, which the foreign key would
+// refuse. Each team's reports are fetched once per run from the tier's start,
+// and once more from an earlier tier's start for a raid filed under it, and
+// every one is kept in team_raid_reports with the title rule's verdict
+// (#1469). The progress rows are the ones the pre-split aggregation
+// produced over this corpus, recorded before the split, so the move is
+// measured against what was deployed. The runner grants no permission: a path
+// that reached the platform fetch or Deno.env would throw into the catch-all
+// and fail the body assertion.
 import { assertEquals, assertMatch } from 'jsr:@std/assert@1';
-import { type Deps, handle } from '../../../supabase/functions/wcl-progression-sync/handler.ts';
+import { type Deps, handle, type ReportRow } from '../../../supabase/functions/wcl-progression-sync/handler.ts';
 import { VERSION } from '../../../supabase/functions/wcl-progression-sync/version.ts';
 import { envOf } from '../_support/corpus.ts';
 import { recordingFetch } from '../_support/fetch.ts';
@@ -47,8 +50,21 @@ const tokenResponse = () => wclJson({ access_token: 'wcl-token' });
 const zoneResponse = (name: string, encounters: Array<{ id: number; name: string }>) =>
   wclJson({ data: { worldData: { zone: { name, encounters } } } });
 const unknownZoneResponse = () => wclJson({ data: { worldData: { zone: null } } });
-const reportsResponse = (data: unknown[]) =>
-  wclJson({ data: { reportData: { reports: { data, has_more_pages: false } } } });
+const reportsPage = (data: unknown[], more: boolean) =>
+  wclJson({ data: { reportData: { reports: { data, has_more_pages: more } } } });
+const reportsResponse = (data: unknown[]) => reportsPage(data, false);
+const graphqlError = (message: string) => wclJson({ errors: [{ message }] });
+
+// The tier's start as the reports query takes it: 2026-08-11, Eastern midnight.
+const TIER_START_MS = Date.UTC(2026, 7, 11, 4);
+
+function reportsWritten(db: FakeDb) {
+  return db.calls.filter((c) => c.method === 'upsertReports').map((c) => c.args[0] as ReportRow[]);
+}
+
+function reportsCalls(calls: Array<{ body?: string | null }>) {
+  return calls.filter((c) => /reportData/.test(c.body ?? ''));
+}
 
 // The corpus the pre-split aggregation ran over (scratch pin, 2026-09-14).
 // Report A is an earlier night: a mythic wipe then a mythic kill on boss one,
@@ -60,7 +76,9 @@ const REPORT_B_START = 1789689600000; // 2026-09-18T00:00:00Z, 20:00 ET on the 1
 const REPORTS = [
   {
     code: 'reportA',
+    title: 'Phoenix Mythic 9/14',
     startTime: REPORT_A_START,
+    zone: { id: 44 },
     fights: [
       { id: 1, encounterID: 3001, difficulty: 5, kill: false, bossPercentage: 42.5 },
       { id: 2, encounterID: 3001, difficulty: 5, kill: true, bossPercentage: 0 },
@@ -69,7 +87,9 @@ const REPORTS = [
   },
   {
     code: 'reportB',
+    title: 'Phoenix Heroic 9/17',
     startTime: REPORT_B_START,
+    zone: { id: 44 },
     fights: [
       { id: 1, encounterID: 3001, difficulty: 5, kill: true, bossPercentage: 0 },
       { id: 2, encounterID: 3002, difficulty: 4, kill: false, bossPercentage: 8.25 },
@@ -149,7 +169,7 @@ Deno.test('a team with no raid list makes no WarcraftLogs zone call and writes n
     responses: [tokenResponse()]
   });
   const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
-  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 0, errors: [] } });
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 0, errors: [], reports: 0 } });
   assertEquals(
     db.calls.map((c) => c.method),
     ['teams', 'currentSeason', 'teamConfig']
@@ -159,16 +179,33 @@ Deno.test('a team with no raid list makes no WarcraftLogs zone call and writes n
   assertEquals(calls[0].body, 'grant_type=client_credentials');
 });
 
+Deno.test('a team whose raids have no usable zone id fetches no reports and writes nothing', async () => {
+  const { deps, calls, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: { raidProgression: [{ wclZoneId: 'not a zone', name: 'Test Raid' }, { name: 'Mini Raid' }] } }
+    },
+    responses: [tokenResponse()]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 0, errors: [], reports: 0 } });
+  assertEquals(
+    db.calls.map((c) => c.method),
+    ['teams', 'currentSeason', 'teamConfig']
+  );
+  assertEquals(calls.length, 1);
+});
+
 Deno.test('a team with raids and no seasonName syncs, stamped with the current tier', async () => {
   const { deps, db } = testDeps({
     state: {
       teams: [TEAM],
       configs: { 1: { raidProgression: [{ wclZoneId: 44, name: 'Test Raid' }], seasonName: '' } }
     },
-    responses: [tokenResponse(), zoneResponse('Test Raid Zone', ENCOUNTERS), reportsResponse(REPORTS)]
+    responses: [tokenResponse(), reportsResponse(REPORTS), zoneResponse('Test Raid Zone', ENCOUNTERS)]
   });
   const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
-  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 1, errors: [] } });
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 1, errors: [], reports: 2 } });
   assertEquals(
     db.calls.map((c) => c.method),
     [
@@ -178,6 +215,7 @@ Deno.test('a team with raids and no seasonName syncs, stamped with the current t
       'raidZoneSeason',
       'upsertRaidZone',
       'upsertEncounters',
+      'upsertReports',
       'upsertProgress',
       'insertKills'
     ]
@@ -187,32 +225,190 @@ Deno.test('a team with raids and no seasonName syncs, stamped with the current t
   ]);
 });
 
-// The tier boundary: the next tier's row has landed and no officer has yet
-// replaced the outgoing raid in the team's list. The raid keeps the tier it
-// was filed under, so it is neither duplicated under the new tier nor pulled
-// into the new tier's scope; the new raid takes the new tier when it is added.
-Deno.test('a zone already filed under an earlier tier keeps that tier; a new zone takes the current one', async () => {
+// The tier boundary: the next tier has started and no officer has yet
+// replaced the outgoing raid in the team's list, or an officer added the new
+// raid before the launch and it was filed under the outgoing tier. Either way
+// the raid keeps the tier it is filed under, and its progress is rebuilt from
+// that tier's start with one more read of the guild's reports, so a window
+// that opens after its first kills cannot lose them (#1469). That read stops
+// where this tier's starts, so no report is read twice. A raid not yet on file
+// takes the current tier and the current tier's reports alone.
+const TIER3_START_MS = Date.UTC(2026, 10, 10, 5); // 2026-11-10, Eastern midnight
+const REPORT_N = {
+  code: 'reportN',
+  title: 'Phoenix Heroic 11/12',
+  startTime: Date.UTC(2026, 10, 13, 1), // 20:00 ET on the 12th
+  zone: { id: 45 },
+  fights: [
+    { id: 1, encounterID: 3003, difficulty: 4, kill: true, bossPercentage: 0 },
+    { id: 2, encounterID: 3001, difficulty: 4, kill: true, bossPercentage: 0 }
+  ]
+};
+// An earlier night with a pull on the new raid's boss, before the new raid's tier.
+const REPORT_M = {
+  code: 'reportM',
+  title: 'Phoenix Heroic 9/24',
+  startTime: REPORT_B_START + 7 * 86400000,
+  zone: { id: 45 },
+  fights: [{ id: 1, encounterID: 3003, difficulty: 4, kill: false, bossPercentage: 40 }]
+};
+
+Deno.test("a raid filed under an earlier tier keeps its tier and is read from that tier's start", async () => {
+  const { deps, calls, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: { raidProgression: TWO_RAIDS.raidProgression } },
+      currentSeason: 'MID3',
+      seasonStart: '2026-11-10',
+      zones: { 44: 'MID2' },
+      tiers: { MID2: '2026-08-11' }
+    },
+    responses: [
+      tokenResponse(),
+      reportsResponse([REPORT_N]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }]),
+      reportsResponse([...REPORTS, REPORT_M])
+    ]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [], reports: 4 } });
+
+  // The current tier's reports, then the earlier tier's up to this one's start.
+  const fetched = reportsCalls(calls);
+  assertEquals(fetched.length, 2);
+  assertMatch(fetched[0].body ?? '', new RegExp(`page: 1, startTime: ${TIER3_START_MS}\\)`));
+  assertMatch(fetched[1].body ?? '', new RegExp(`page: 1, startTime: ${TIER_START_MS}, endTime: ${TIER3_START_MS}\\)`));
+  assertEquals(
+    db.calls.filter((c) => c.method === 'tierStart').map((c) => c.args),
+    [['MID2']]
+  );
+  assertEquals(
+    db.calls.filter((c) => c.method === 'upsertRaidZone').map((c) => (c.args[0] as { season: string }).season),
+    ['MID2', 'MID3']
+  );
+
+  // The outgoing raid keeps its Mythic first kill from the earlier tier and
+  // takes the Heroic kill of this one; the new raid's comes from this tier
+  // alone, so the earlier night's pull on its boss is not counted.
+  const progress = db.calls
+    .filter((c) => c.method === 'upsertProgress')
+    .map((c) =>
+      (c.args[0] as Array<Record<string, unknown>>).map((row) => [
+        row.encounter_id,
+        row.mythic_date,
+        row.mythic_pulls,
+        row.heroic_date,
+        row.heroic_pulls
+      ])
+    );
+  assertEquals(progress, [
+    [
+      [500, '2026-09-14', 3, '2026-11-12', 1],
+      [501, null, 0, null, 2]
+    ],
+    [[502, null, 0, '2026-11-12', 1]]
+  ]);
+  assertEquals(
+    killsWritten(db).map((rows) =>
+      (rows as Array<{ report_code: string; fight_id: number }>).map((k) => [k.report_code, k.fight_id])
+    ),
+    [
+      [
+        ['reportA', 2],
+        ['reportB', 1],
+        ['reportN', 2]
+      ],
+      [['reportN', 1]]
+    ]
+  );
+
+  // Every report read is kept, counted on both raids' bosses as the progress
+  // counts them: the earlier night's pull on the new raid's boss is before
+  // that raid's tier, so it counts in neither.
+  assertEquals(
+    reportsWritten(db).map((rows) => rows.map((r) => [r.report_code, r.boss_pulls, r.boss_kills])),
+    [
+      [
+        ['reportA', 3, 1],
+        ['reportB', 2, 1],
+        ['reportM', 0, 0],
+        ['reportN', 2, 2]
+      ]
+    ]
+  );
+});
+
+// Raids filed under two earlier tiers share one read, from the earlier of
+// the two starts up to this tier's.
+Deno.test("raids filed under two earlier tiers share one read, from the earlier start to this tier's", async () => {
+  const { deps, calls, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: { raidProgression: TWO_RAIDS.raidProgression } },
+      currentSeason: 'MID3',
+      seasonStart: '2026-11-10',
+      zones: { 44: 'MID1', 45: 'MID2' },
+      tiers: { MID1: '2026-03-03', MID2: '2026-08-11' }
+    },
+    responses: [
+      tokenResponse(),
+      reportsResponse([]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }]),
+      reportsResponse(REPORTS)
+    ]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [], reports: 2 } });
+  const fetched = reportsCalls(calls);
+  assertEquals(fetched.length, 2);
+  const mid1StartMs = Date.UTC(2026, 2, 3, 5); // 2026-03-03, Eastern midnight
+  assertMatch(fetched[1].body ?? '', new RegExp(`page: 1, startTime: ${mid1StartMs}, endTime: ${TIER3_START_MS}\\)`));
+  assertEquals(
+    db.calls.filter((c) => c.method === 'tierStart').map((c) => c.args),
+    [['MID1'], ['MID2']]
+  );
+});
+
+// Each raid takes from that one read the reports since its own tier's start.
+// A report starting on the current tier's start can come back from both
+// reads; it is kept once.
+Deno.test("each raid counts the reports since its own tier's start, and a boundary report is kept once", async () => {
+  const REPORT_J = {
+    code: 'reportJ',
+    title: 'Phoenix Heroic 7/20',
+    startTime: Date.UTC(2026, 6, 21, 0), // 20:00 ET on 7/20, before the mini raid's tier
+    zone: { id: 45 },
+    fights: [{ id: 1, encounterID: 3003, difficulty: 4, kill: false, bossPercentage: 60 }]
+  };
+  const REPORT_EDGE = { code: 'reportEdge', title: 'Phoenix 11/10', startTime: TIER3_START_MS, zone: null, fights: [] };
   const { deps, db } = testDeps({
     state: {
       teams: [TEAM],
       configs: { 1: { raidProgression: TWO_RAIDS.raidProgression } },
       currentSeason: 'MID3',
-      zones: { 44: 'MID2' }
+      seasonStart: '2026-11-10',
+      zones: { 44: 'MID1', 45: 'MID2' },
+      tiers: { MID1: '2026-03-03', MID2: '2026-08-11' }
     },
     responses: [
       tokenResponse(),
+      reportsResponse([REPORT_EDGE]),
       zoneResponse('Test Raid Zone', ENCOUNTERS),
-      reportsResponse(REPORTS),
       zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }]),
-      reportsResponse([])
+      reportsResponse([REPORT_J, ...REPORTS, REPORT_EDGE])
     ]
   });
   const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
-  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [] } });
-  const stamps = db.calls
-    .filter((c) => c.method === 'upsertRaidZone')
-    .map((c) => (c.args[0] as { season: string }).season);
-  assertEquals(stamps, ['MID2', 'MID3']);
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [], reports: 4 } });
+  // Report J is before the mini raid's tier, so the mini raid has no pull
+  // since its start and writes no progress; the raid from the tier before it does.
+  assertEquals(db.calls.filter((c) => c.method === 'upsertProgress').length, 1);
+  assertEquals(
+    reportsWritten(db).map((rows) => rows.map((r) => r.report_code)),
+    [['reportJ', 'reportA', 'reportB', 'reportEdge']]
+  );
 });
 
 Deno.test('a day with no current tier makes no zone call and writes nothing', async () => {
@@ -247,18 +443,21 @@ Deno.test("stamps raid_zones with the current tier's code and writes the pinned 
     state: { teams: [TEAM], configs: { 1: TWO_RAIDS } },
     responses: [
       tokenResponse(),
-      zoneResponse('Test Raid Zone', ENCOUNTERS),
       reportsResponse(REPORTS),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
       zoneResponse('Mini Raid Zone', [])
     ]
   });
   const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
-  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [] } });
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [], reports: 2 } });
 
-  // Token, zone 44, its reports, zone 45 (no encounters, so no reports call).
+  // Token, the team's reports from the tier start, zone 44, zone 45 (no encounters).
   assertEquals(calls.length, 4);
-  assertMatch(calls[1].body ?? '', /zone\(id: 44\)/);
-  assertMatch(calls[2].body ?? '', /reports\(guildID: 777, limit: 50, page: 1\)/);
+  assertMatch(
+    calls[1].body ?? '',
+    new RegExp(`reports\\(guildID: 777, limit: 50, page: 1, startTime: ${TIER_START_MS}\\)`)
+  );
+  assertMatch(calls[2].body ?? '', /zone\(id: 44\)/);
   assertMatch(calls[3].body ?? '', /zone\(id: 45\)/);
 
   assertEquals(
@@ -270,6 +469,8 @@ Deno.test("stamps raid_zones with the current tier's code and writes the pinned 
       'raidZoneSeason',
       'upsertRaidZone',
       'upsertEncounters',
+      'raidZoneSeason',
+      'upsertReports',
       'upsertProgress',
       'insertKills'
     ]
@@ -284,7 +485,7 @@ Deno.test("stamps raid_zones with the current tier's code and writes the pinned 
     ]
   ]);
 
-  const rows = (db.calls[6].args[0] as Array<Record<string, unknown>>).map((row) => {
+  const rows = (db.calls[8].args[0] as Array<Record<string, unknown>>).map((row) => {
     const { updated_at, ...rest } = row;
     assertMatch(String(updated_at), /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     return rest;
@@ -332,7 +533,7 @@ function killsWritten(db: FakeDb) {
 Deno.test("every Heroic and Mythic kill of the zone's bosses is stored, one row per fight", async () => {
   const { deps, db } = testDeps({
     state: { teams: [TEAM], configs: { 1: ONE_RAID } },
-    responses: [tokenResponse(), zoneResponse('Test Raid Zone', ENCOUNTERS), reportsResponse(REPORTS)]
+    responses: [tokenResponse(), reportsResponse(REPORTS), zoneResponse('Test Raid Zone', ENCOUNTERS)]
   });
   await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
   // Boss one twice, on two nights; the other zone's kill and the Normal kill are not kept.
@@ -366,7 +567,6 @@ Deno.test('a Heroic and a Mythic kill after midnight are both stored, on the nig
     state: { teams: [TEAM], configs: { 1: ONE_RAID } },
     responses: [
       tokenResponse(),
-      zoneResponse('Test Raid Zone', ENCOUNTERS),
       reportsResponse([
         {
           code: 'reportC',
@@ -376,7 +576,8 @@ Deno.test('a Heroic and a Mythic kill after midnight are both stored, on the nig
             { id: 9, encounterID: 3002, difficulty: 4, kill: true, bossPercentage: 0 }
           ]
         }
-      ])
+      ]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS)
     ]
   });
   await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
@@ -409,7 +610,6 @@ Deno.test('a night of wipes writes its progress and no kills', async () => {
     state: { teams: [TEAM], configs: { 1: ONE_RAID } },
     responses: [
       tokenResponse(),
-      zoneResponse('Test Raid Zone', ENCOUNTERS),
       reportsResponse([
         {
           code: 'reportD',
@@ -419,7 +619,8 @@ Deno.test('a night of wipes writes its progress and no kills', async () => {
             { id: 2, encounterID: 3002, difficulty: 4, kill: false, bossPercentage: 5 }
           ]
         }
-      ])
+      ]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS)
     ]
   });
   await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
@@ -434,16 +635,18 @@ Deno.test("a failed kills write is reported and the team's other raids still syn
   db.insertKills = () => Promise.reject(new Error('team_raid_kills is read-only tonight'));
   const { fetch } = recordingFetch([
     tokenResponse(),
-    zoneResponse('Test Raid Zone', ENCOUNTERS),
-    reportsResponse(REPORTS),
-    zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }]),
     reportsResponse([
+      ...REPORTS,
       {
         code: 'reportE',
+        title: 'Phoenix Mythic 9/17',
         startTime: REPORT_B_START,
+        zone: { id: 45 },
         fights: [{ id: 1, encounterID: 3003, difficulty: 5, kill: false, bossPercentage: 50 }]
       }
-    ])
+    ]),
+    zoneResponse('Test Raid Zone', ENCOUNTERS),
+    zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }])
   ]);
   const deps: Deps = { fetch, env: fullEnv(), db };
   const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
@@ -453,7 +656,8 @@ Deno.test("a failed kills write is reported and the team's other raids still syn
       success: true,
       teams: 1,
       synced: 2,
-      errors: [{ teamId: 1, error: 'Kills not saved: team_raid_kills is read-only tonight' }]
+      errors: [{ teamId: 1, error: 'Kills not saved: team_raid_kills is read-only tonight' }],
+      reports: 3
     }
   });
   assertEquals(db.calls.filter((c) => c.method === 'upsertProgress').length, 2);
@@ -465,13 +669,13 @@ Deno.test('a zone WarcraftLogs does not know is skipped and counted as not synce
       teams: [TEAM],
       configs: { 1: { raidProgression: [{ wclZoneId: 44, name: 'Test Raid' }], seasonName: SEASON_NAME } }
     },
-    responses: [tokenResponse(), unknownZoneResponse()]
+    responses: [tokenResponse(), reportsResponse([]), unknownZoneResponse()]
   });
   const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
-  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 0, errors: [] } });
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 0, errors: [], reports: 0 } });
   assertEquals(
     db.calls.map((c) => c.method),
-    ['teams', 'currentSeason', 'teamConfig']
+    ['teams', 'currentSeason', 'teamConfig', 'raidZoneSeason']
   );
 });
 
@@ -480,13 +684,556 @@ Deno.test('a write that fails is reported per team and the run goes on', async (
   failing.upsertRaidZone = () => Promise.reject(new Error('raid_zones is read-only tonight'));
   const { fetch } = recordingFetch([
     tokenResponse(),
-    zoneResponse('Test Raid Zone', ENCOUNTERS),
-    reportsResponse(REPORTS)
+    reportsResponse(REPORTS),
+    zoneResponse('Test Raid Zone', ENCOUNTERS)
   ]);
   const deps: Deps = { fetch, env: fullEnv(), db: failing };
   const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
   assertEquals(res, {
     status: 200,
-    body: { success: true, teams: 2, synced: 0, errors: [{ teamId: 1, error: 'raid_zones is read-only tonight' }] }
+    body: {
+      success: true,
+      teams: 2,
+      synced: 0,
+      errors: [{ teamId: 1, error: 'raid_zones is read-only tonight' }],
+      reports: 0
+    }
   });
+});
+
+// #1469: every report the sync reads is kept in team_raid_reports, one row per
+// team and report, with the title rule's verdict. The guild's reports are read
+// once per team, from the tier's start, whatever the length of the raid list.
+Deno.test("fetches a team's reports once per run, from the tier start, with each report's title and zone", async () => {
+  const { deps, calls } = testDeps({
+    state: { teams: [TEAM], configs: { 1: TWO_RAIDS } },
+    responses: [
+      tokenResponse(),
+      reportsResponse(REPORTS),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }])
+    ]
+  });
+  await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
+  const fetched = reportsCalls(calls);
+  assertEquals(fetched.length, 1);
+  assertMatch(fetched[0].body ?? '', new RegExp(`page: 1, startTime: ${TIER_START_MS}\\)`));
+  assertMatch(fetched[0].body ?? '', /\btitle\b/);
+  assertMatch(fetched[0].body ?? '', /zone \{ id \}/);
+});
+
+Deno.test('a tier with no start date fetches every report, as before the window', async () => {
+  const { deps, calls } = testDeps({
+    state: { teams: [TEAM], configs: { 1: ONE_RAID }, seasonStart: null },
+    responses: [tokenResponse(), reportsResponse(REPORTS), zoneResponse('Test Raid Zone', ENCOUNTERS)]
+  });
+  await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
+  assertMatch(reportsCalls(calls)[0].body ?? '', /reports\(guildID: 777, limit: 50, page: 1\)/);
+});
+
+Deno.test('writes a row for every report it read, before any progress or kill', async () => {
+  // A third night, a Heroic wipe and a Heroic kill on boss two.
+  const REPORT_H = {
+    code: 'reportH',
+    title: 'Phoenix Heroic 9/21',
+    startTime: REPORT_B_START + 4 * 86400000,
+    zone: { id: 44 },
+    fights: [
+      { id: 1, encounterID: 3002, difficulty: 4, kill: false, bossPercentage: 3 },
+      { id: 2, encounterID: 3002, difficulty: 4, kill: true, bossPercentage: 0 }
+    ]
+  };
+  const { deps, db } = testDeps({
+    state: { teams: [TEAM], configs: { 1: ONE_RAID } },
+    responses: [tokenResponse(), reportsResponse([...REPORTS, REPORT_H]), zoneResponse('Test Raid Zone', ENCOUNTERS)]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res.body.reports, 3);
+  const methods = db.calls.map((c) => c.method);
+  assertEquals(methods.slice(-3), ['upsertReports', 'upsertProgress', 'insertKills']);
+  // Pulls and kills count Heroic and Mythic fights on the raid's own bosses:
+  // report B's fight on another zone's boss and its Normal kill are not counted.
+  assertEquals(reportsWritten(db), [
+    [
+      {
+        team_id: 1,
+        report_code: 'reportA',
+        title: 'Phoenix Mythic 9/14',
+        started_at: '2026-09-15T00:00:00.000Z',
+        raid_date: '2026-09-14',
+        wcl_zone_id: 44,
+        boss_pulls: 3,
+        boss_kills: 1,
+        kind: 'main'
+      },
+      {
+        team_id: 1,
+        report_code: 'reportB',
+        title: 'Phoenix Heroic 9/17',
+        started_at: '2026-09-18T00:00:00.000Z',
+        raid_date: '2026-09-17',
+        wcl_zone_id: 44,
+        boss_pulls: 2,
+        boss_kills: 1,
+        kind: 'main'
+      },
+      {
+        team_id: 1,
+        report_code: 'reportH',
+        title: 'Phoenix Heroic 9/21',
+        started_at: '2026-09-22T00:00:00.000Z',
+        raid_date: '2026-09-21',
+        wcl_zone_id: 44,
+        boss_pulls: 2,
+        boss_kills: 1,
+        kind: 'main'
+      }
+    ]
+  ]);
+});
+
+Deno.test(
+  'the verdict is the title rule: Alt as its own word is an alt run, and a report with no title is not',
+  async () => {
+    const { deps, db } = testDeps({
+      state: { teams: [TEAM], configs: { 1: ONE_RAID } },
+      responses: [
+        tokenResponse(),
+        reportsResponse([
+          { code: 'alt', title: 'Phoenix Alt run', startTime: REPORT_A_START, zone: { id: 44 }, fights: [] },
+          {
+            code: 'altar',
+            title: 'Phoenix Heroic 8/27 - The Coiled Altar (Best 9.63% P3, 17 Pulls)',
+            startTime: REPORT_A_START,
+            zone: { id: 44 },
+            fights: []
+          },
+          { code: 'untitled', title: null, startTime: REPORT_B_START, zone: null, fights: [] }
+        ]),
+        zoneResponse('Test Raid Zone', ENCOUNTERS)
+      ]
+    });
+    await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
+    assertEquals(
+      reportsWritten(db)[0].map((r) => [r.report_code, r.kind, r.title, r.wcl_zone_id]),
+      [
+        ['alt', 'alt', 'Phoenix Alt run', 44],
+        ['altar', 'main', 'Phoenix Heroic 8/27 - The Coiled Altar (Best 9.63% P3, 17 Pulls)', 44],
+        ['untitled', 'main', null, null]
+      ]
+    );
+  }
+);
+
+Deno.test('a report renamed on Warcraft Logs carries its new title and verdict on the next run', async () => {
+  const db = fakeDb({ teams: [TEAM], configs: { 1: ONE_RAID } });
+  const run = async (reports: unknown[]) => {
+    const { fetch } = recordingFetch([
+      tokenResponse(),
+      reportsResponse(reports),
+      zoneResponse('Test Raid Zone', ENCOUNTERS)
+    ]);
+    await handle(post({ 'x-cron-secret': CRON_SECRET }), { fetch, env: fullEnv(), db });
+  };
+  await run(REPORTS);
+  await run([{ ...REPORTS[0], title: 'Phoenix Alt run 9/14' }]);
+  assertEquals(
+    reportsWritten(db).map((rows) => rows.map((r) => [r.report_code, r.title, r.kind])),
+    [
+      [
+        ['reportA', 'Phoenix Mythic 9/14', 'main'],
+        ['reportB', 'Phoenix Heroic 9/17', 'main']
+      ],
+      [['reportA', 'Phoenix Alt run 9/14', 'alt']]
+    ]
+  );
+});
+
+// A page Warcraft Logs refuses would leave a partial list, and progress
+// rebuilt from it can lose a kill date; the team writes nothing that run.
+Deno.test(
+  "a reports page that fails is the team's error: nothing is written for it and the next team syncs",
+  async () => {
+    const { deps, db } = testDeps({
+      state: { teams: [TEAM, { id: 2, wcl_guild_id: 778 }], configs: { 1: ONE_RAID, 2: ONE_RAID } },
+      responses: [
+        tokenResponse(),
+        reportsPage([REPORTS[0]], true),
+        graphqlError('Max query complexity should be 50000 but got 50401'),
+        reportsResponse([REPORTS[1]]),
+        zoneResponse('Test Raid Zone', ENCOUNTERS)
+      ]
+    });
+    const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+    assertEquals(res, {
+      status: 200,
+      body: {
+        success: true,
+        teams: 2,
+        synced: 1,
+        errors: [{ teamId: 1, error: 'Reports page 2 not returned' }],
+        reports: 1
+      }
+    });
+    assertEquals(
+      db.calls.map((c) => c.method),
+      [
+        'teams',
+        'currentSeason',
+        'teamConfig',
+        'teamConfig',
+        'raidZoneSeason',
+        'upsertRaidZone',
+        'upsertEncounters',
+        'upsertReports',
+        'upsertProgress',
+        'insertKills'
+      ]
+    );
+    assertEquals(
+      reportsWritten(db).map((rows) => rows.map((r) => r.team_id)),
+      [[2]]
+    );
+  }
+);
+
+// The steady state: every run after a raid's first finds it filed under the
+// current tier, and syncs it.
+Deno.test('a raid already filed under the current tier syncs as before', async () => {
+  const { deps, db } = testDeps({
+    state: { teams: [TEAM], configs: { 1: ONE_RAID }, zones: { 44: SEASON_CODE } },
+    responses: [tokenResponse(), reportsResponse(REPORTS), zoneResponse('Test Raid Zone', ENCOUNTERS)]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res.body.synced, 1);
+  assertEquals(
+    db.calls.filter((c) => c.method === 'upsertRaidZone').map((c) => (c.args[0] as { season: string }).season),
+    [SEASON_CODE]
+  );
+  assertEquals(db.calls.filter((c) => c.method === 'upsertProgress').length, 1);
+  assertEquals(killsWritten(db).length, 1);
+});
+
+// A report's counts take in the bosses of every raid on the list, not only
+// the first: a night that pulls the main raid and the mini raid counts both.
+Deno.test("a report's counts take in every raid on the team's list", async () => {
+  const { deps, db } = testDeps({
+    state: { teams: [TEAM], configs: { 1: TWO_RAIDS } },
+    responses: [
+      tokenResponse(),
+      reportsResponse([
+        {
+          code: 'both',
+          title: 'Phoenix Heroic 9/21',
+          startTime: REPORT_B_START,
+          zone: { id: 44 },
+          fights: [
+            { id: 1, encounterID: 3001, difficulty: 4, kill: true, bossPercentage: 0 },
+            { id: 2, encounterID: 3003, difficulty: 4, kill: false, bossPercentage: 20 }
+          ]
+        }
+      ]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }])
+    ]
+  });
+  await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
+  assertEquals(
+    reportsWritten(db).map((rows) => rows.map((r) => [r.report_code, r.boss_pulls, r.boss_kills])),
+    [[['both', 2, 1]]]
+  );
+});
+
+// Production's first team lists its raid twice: the report rows count each
+// pull once, whatever the list says.
+Deno.test('a raid listed twice counts its pulls once in the report rows', async () => {
+  const { deps, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: { raidProgression: [ONE_RAID.raidProgression[0], ONE_RAID.raidProgression[0]] } }
+    },
+    responses: [
+      tokenResponse(),
+      reportsResponse(REPORTS),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Test Raid Zone', ENCOUNTERS)
+    ]
+  });
+  await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
+  assertEquals(
+    reportsWritten(db).map((rows) => rows.map((r) => [r.report_code, r.boss_pulls, r.boss_kills])),
+    [
+      [
+        ['reportA', 3, 1],
+        ['reportB', 2, 1]
+      ]
+    ]
+  );
+});
+
+// A zone query Warcraft Logs does not answer is not a zone it does not know:
+// its bosses would drop out of every report's counts. Like a failed reports
+// page, it is the team's error and the team writes nothing that run.
+Deno.test("a zone query Warcraft Logs does not answer is the team's error, and nothing is written for it", async () => {
+  const { deps, db } = testDeps({
+    state: { teams: [TEAM], configs: { 1: ONE_RAID } },
+    responses: [tokenResponse(), reportsResponse(REPORTS), graphqlError('Internal server error')]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, {
+    status: 200,
+    body: { success: true, teams: 1, synced: 0, errors: [{ teamId: 1, error: 'Zone 44 not returned' }], reports: 0 }
+  });
+  assertEquals(
+    db.calls.map((c) => c.method),
+    ['teams', 'currentSeason', 'teamConfig', 'raidZoneSeason']
+  );
+});
+
+// The reports are the newest write, as the kills were: when they fail, the
+// progress the landing page reads and the kills still sync, and the run says so.
+Deno.test('a failed reports write is reported and the progress and kills still sync', async () => {
+  const db = fakeDb({ teams: [TEAM], configs: { 1: ONE_RAID } });
+  db.upsertReports = () => Promise.reject(new Error('team_raid_reports is read-only tonight'));
+  const { fetch } = recordingFetch([
+    tokenResponse(),
+    reportsResponse(REPORTS),
+    zoneResponse('Test Raid Zone', ENCOUNTERS)
+  ]);
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), { fetch, env: fullEnv(), db }));
+  assertEquals(res, {
+    status: 200,
+    body: {
+      success: true,
+      teams: 1,
+      synced: 1,
+      errors: [{ teamId: 1, error: 'Reports not saved: team_raid_reports is read-only tonight' }],
+      reports: 0
+    }
+  });
+  assertEquals(db.calls.map((c) => c.method).slice(-2), ['upsertProgress', 'insertKills']);
+});
+
+// A raid counts as synced once its progress is written, not before.
+Deno.test('a raid whose progress write fails is not counted as synced', async () => {
+  const db = fakeDb({ teams: [TEAM], configs: { 1: ONE_RAID } });
+  db.upsertProgress = () => Promise.reject(new Error('team_raid_progress is read-only tonight'));
+  const { fetch } = recordingFetch([
+    tokenResponse(),
+    reportsResponse(REPORTS),
+    zoneResponse('Test Raid Zone', ENCOUNTERS)
+  ]);
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), { fetch, env: fullEnv(), db }));
+  assertEquals(res, {
+    status: 200,
+    body: {
+      success: true,
+      teams: 1,
+      synced: 0,
+      errors: [{ teamId: 1, error: 'team_raid_progress is read-only tonight' }],
+      reports: 2
+    }
+  });
+});
+
+// A report uploaded while the pages are read pushes the list down by one, so
+// the next page repeats the last report of the one before it. One statement
+// cannot rewrite a row twice, and a repeated report would count its pulls twice.
+Deno.test('a report repeated across two pages is kept and counted once', async () => {
+  const { deps, db } = testDeps({
+    state: { teams: [TEAM], configs: { 1: ONE_RAID } },
+    responses: [
+      tokenResponse(),
+      reportsPage([REPORTS[0]], true),
+      reportsResponse([REPORTS[0], REPORTS[1]]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS)
+    ]
+  });
+  await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
+  assertEquals(
+    reportsWritten(db).map((rows) => rows.map((r) => r.report_code)),
+    [['reportA', 'reportB']]
+  );
+  const progress = db.calls.find((c) => c.method === 'upsertProgress')?.args[0] as Array<Record<string, unknown>>;
+  assertEquals(
+    progress.map((row) => row.mythic_pulls),
+    [3, 0]
+  );
+});
+
+// An earlier tier's reports are read once per team, however many of its
+// raids are still on the list.
+Deno.test('two raids filed under the same earlier tier share one read of its reports', async () => {
+  const { deps, calls, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: { raidProgression: TWO_RAIDS.raidProgression } },
+      currentSeason: 'MID3',
+      seasonStart: '2026-11-10',
+      zones: { 44: 'MID2', 45: 'MID2' },
+      tiers: { MID2: '2026-08-11' }
+    },
+    responses: [
+      tokenResponse(),
+      reportsResponse([]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }]),
+      reportsResponse(REPORTS)
+    ]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [], reports: 2 } });
+  assertEquals(reportsCalls(calls).length, 2);
+  assertEquals(db.calls.filter((c) => c.method === 'tierStart').length, 1);
+});
+
+// A raid with no bosses needs no reports, whatever tier it is filed under.
+Deno.test('a raid with no bosses filed under an earlier tier costs no read', async () => {
+  const { deps, calls, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: { raidProgression: [ONE_RAID.raidProgression[0], { wclZoneId: 57, name: 'Frozen Raid' }] } },
+      zones: { 57: 'MID1' },
+      tiers: { MID1: '2026-03-03' }
+    },
+    responses: [
+      tokenResponse(),
+      reportsResponse(REPORTS),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Frozen Raid Zone', [])
+    ]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [], reports: 2 } });
+  assertEquals(reportsCalls(calls).length, 1);
+  assertEquals(db.calls.filter((c) => c.method === 'tierStart').length, 0);
+});
+
+// An earlier tier with no start date reads every report before this tier's
+// start, as a current tier with none reads every report.
+Deno.test('a raid filed under an earlier tier with no start date reads every report before this tier', async () => {
+  const { deps, calls } = testDeps({
+    state: { teams: [TEAM], configs: { 1: ONE_RAID }, zones: { 44: 'MID1' } },
+    responses: [
+      tokenResponse(),
+      reportsResponse([]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      reportsResponse(REPORTS)
+    ]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res.body.errors, []);
+  const fetched = reportsCalls(calls);
+  assertEquals(fetched.length, 2);
+  assertMatch(
+    fetched[1].body ?? '',
+    new RegExp(`reports\\(guildID: 777, limit: 50, page: 1, endTime: ${TIER_START_MS}\\)`)
+  );
+});
+
+// A page of the earlier tier's reports Warcraft Logs does not return leaves a
+// partial list, as a page of the current tier's does.
+Deno.test(
+  "a failed read of an earlier tier's reports is the team's error, and no report, progress or kill is written",
+  async () => {
+    const { deps, db } = testDeps({
+      state: {
+        teams: [TEAM],
+        configs: { 1: ONE_RAID },
+        currentSeason: 'MID3',
+        seasonStart: '2026-11-10',
+        zones: { 44: 'MID2' },
+        tiers: { MID2: '2026-08-11' }
+      },
+      responses: [
+        tokenResponse(),
+        reportsResponse([REPORT_N]),
+        zoneResponse('Test Raid Zone', ENCOUNTERS),
+        graphqlError('Internal server error')
+      ]
+    });
+    const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+    assertEquals(res, {
+      status: 200,
+      body: {
+        success: true,
+        teams: 1,
+        synced: 0,
+        errors: [{ teamId: 1, error: 'Reports page 1 not returned' }],
+        reports: 0
+      }
+    });
+    assertEquals(
+      db.calls.filter((c) => ['upsertReports', 'upsertProgress', 'insertKills'].includes(c.method)),
+      []
+    );
+  }
+);
+
+// The page cap guards against a list that never ends; it is not a window. A
+// list still going at the cap is a partial list, the team's error like a page
+// that fails.
+Deno.test("a list still going at the page cap is the team's error, and nothing is written", async () => {
+  const pages = Array.from({ length: 20 }, (_, i) => reportsPage([{ ...REPORTS[0], code: `page${i + 1}` }], true));
+  const { deps, calls, db } = testDeps({
+    state: { teams: [TEAM], configs: { 1: ONE_RAID } },
+    responses: [tokenResponse(), ...pages, zoneResponse('Test Raid Zone', ENCOUNTERS)]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, {
+    status: 200,
+    body: {
+      success: true,
+      teams: 1,
+      synced: 0,
+      errors: [{ teamId: 1, error: 'Reports past page 20 not read' }],
+      reports: 0
+    }
+  });
+  assertEquals(reportsCalls(calls).length, 20);
+  assertEquals(
+    db.calls.map((c) => c.method),
+    ['teams', 'currentSeason', 'teamConfig']
+  );
+});
+
+// A zone filed under a tier that starts after the current one (a tier whose
+// date was moved later) is inside the current tier's read already: its
+// reports since its own start are a part of it, so it costs no second read.
+Deno.test('a raid filed under a tier that starts after the current one costs no second read', async () => {
+  const { deps, calls, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: ONE_RAID },
+      zones: { 44: 'MID3' },
+      tiers: { MID3: '2026-11-10' }
+    },
+    responses: [tokenResponse(), reportsResponse([...REPORTS, REPORT_N]), zoneResponse('Test Raid Zone', ENCOUNTERS)]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 1, errors: [], reports: 3 } });
+  assertEquals(reportsCalls(calls).length, 1);
+  // Only report N is since its tier's start: one Heroic kill of boss one.
+  assertEquals(
+    killsWritten(db).map((rows) => (rows as Array<{ report_code: string }>).map((k) => k.report_code)),
+    [['reportN']]
+  );
+});
+
+// With no start date on the current tier, its read is every report already,
+// so a raid filed under an earlier tier needs no second one.
+Deno.test('a current tier with no start date reads once, whatever the earlier raids on the list', async () => {
+  const { deps, calls } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: ONE_RAID },
+      seasonStart: null,
+      zones: { 44: 'MID1' },
+      tiers: { MID1: '2026-03-03' }
+    },
+    responses: [tokenResponse(), reportsResponse(REPORTS), zoneResponse('Test Raid Zone', ENCOUNTERS)]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 1, errors: [], reports: 2 } });
+  assertEquals(reportsCalls(calls).length, 1);
 });

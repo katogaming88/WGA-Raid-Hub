@@ -31,7 +31,7 @@
 | [public.notifications](public.notifications.md) | 6 |  | BASE TABLE |
 | [public.raid_zones](public.raid_zones.md) | 6 |  | BASE TABLE |
 | [public.raid_encounters](public.raid_encounters.md) | 6 |  | BASE TABLE |
-| [public.team_raid_progress](public.team_raid_progress.md) | 14 | Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt from every report on each wcl-progression-sync run. Every kill, by week, is in team_raid_kills. | BASE TABLE |
+| [public.team_raid_progress](public.team_raid_progress.md) | 14 | Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt on each wcl-progression-sync run from the reports since the start of the tier the boss's raid is filed under (#1469). Every kill, by week, is in team_raid_kills. | BASE TABLE |
 | [public.priority_order_live_first_prios](public.priority_order_live_first_prios.md) | 9 |  | VIEW |
 | [public.priority_order_first_prio_counts](public.priority_order_first_prio_counts.md) | 5 |  | VIEW |
 | [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
@@ -79,6 +79,7 @@
 | [public.team_schedule_settings](public.team_schedule_settings.md) | 3 | A team's own schedule settings (#1246): the raid difficulty every weekly or added night follows unless it sets its own. No row, or a null, means not set. Written by the officers who write raid_schedule. | BASE TABLE |
 | [public.removal_reasons](public.removal_reasons.md) | 8 | Every reason a character or a membership was removed for (#1427), never updated or deleted. A character's row comes from a trigger on player_officer_notes, a membership's from archive_team_member(). The notes row still holds the latest reason; this holds all of them. | BASE TABLE |
 | [public.names](public.names.md) | 6 | A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming, assigning and unclaiming update this row; a raider's first claim on a team also creates their membership (claim_name), and nothing merges memberships. A names row outlives its membership being archived. | BASE TABLE |
+| [public.team_raid_reports](public.team_raid_reports.md) | 15 | Every Warcraft Logs report the progression sync reads for a team (#1469), one row per team and report, rewritten on every run and never deleted. kind is the title rule's verdict, kind_override an officer's choice, effective_kind the one that counts. Written only by wcl-progression-sync. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -383,6 +384,8 @@ erDiagram
 "public.removal_reasons" }o--o| "public.people" : "FOREIGN KEY (removed_by) REFERENCES people(id) ON DELETE SET NULL"
 "public.names" |o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE"
 "public.names" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_raid_reports" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_raid_reports" }o--o| "public.people" : "FOREIGN KEY (kind_override_by) REFERENCES people(id) ON DELETE SET NULL"
 
 "public.attendance" {
   integer id
@@ -1134,6 +1137,23 @@ erDiagram
   integer team_member_id FK
   text role
   timestamp_with_time_zone created_at
+}
+"public.team_raid_reports" {
+  integer team_id FK
+  text report_code
+  text title
+  timestamp_with_time_zone started_at
+  date raid_date
+  integer wcl_zone_id
+  integer boss_pulls
+  integer boss_kills
+  text kind
+  text kind_override
+  integer kind_override_by FK
+  timestamp_with_time_zone kind_override_at
+  text effective_kind
+  timestamp_with_time_zone created_at
+  timestamp_with_time_zone updated_at
 }
 ```
 

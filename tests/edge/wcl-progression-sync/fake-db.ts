@@ -7,6 +7,7 @@ import type {
   ProgressDb,
   ProgressRow,
   RaidZoneRow,
+  ReportRow,
   SavedEncounter,
   TeamRow
 } from '../../../supabase/functions/wcl-progression-sync/handler.ts';
@@ -16,8 +17,12 @@ export type FakeDbState = {
   configs?: Record<number, Record<string, unknown>>;
   // The tier current_season() answers with; MID2 unless a test says otherwise.
   currentSeason?: string | null;
+  // That tier's seasons.starts_at; 2026-08-11 unless a test says otherwise.
+  seasonStart?: string | null;
   // Zones already in raid_zones, by wcl_zone_id, with the season each is filed under.
   zones?: Record<number, string>;
+  // Other tiers' seasons.starts_at, by code.
+  tiers?: Record<string, string | null>;
 };
 
 export type DbCall = { method: keyof ProgressDb; args: unknown[] };
@@ -42,7 +47,13 @@ export function fakeDb(state: FakeDbState = {}): FakeDb {
     },
     currentSeason() {
       record('currentSeason');
-      return Promise.resolve(state.currentSeason === undefined ? 'MID2' : state.currentSeason);
+      const code = state.currentSeason === undefined ? 'MID2' : state.currentSeason;
+      const startsAt = state.seasonStart === undefined ? '2026-08-11' : state.seasonStart;
+      return Promise.resolve(code === null ? null : { code, startsAt });
+    },
+    tierStart(code: string) {
+      record('tierStart', code);
+      return Promise.resolve(state.tiers?.[code] ?? null);
     },
     raidZoneSeason(wclZoneId: number) {
       record('raidZoneSeason', wclZoneId);
@@ -57,6 +68,10 @@ export function fakeDb(state: FakeDbState = {}): FakeDb {
       return Promise.resolve(
         rows.map((r): SavedEncounter => ({ id: nextEncounterId++, wcl_encounter_id: r.wcl_encounter_id }))
       );
+    },
+    upsertReports(rows: ReportRow[]) {
+      record('upsertReports', rows);
+      return Promise.resolve();
     },
     upsertProgress(rows: ProgressRow[]) {
       record('upsertProgress', rows);

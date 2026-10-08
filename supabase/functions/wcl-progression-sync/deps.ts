@@ -16,6 +16,11 @@ export function supabaseDb(): ProgressDb {
     }
     return service;
   };
+  const tierStart = async (code: string) => {
+    const { data, error } = await db().from('seasons').select('starts_at').eq('code', code).maybeSingle();
+    if (error) throw new Error(error.message);
+    return ((data as { starts_at: string } | null)?.starts_at as string) ?? null;
+  };
 
   return {
     async teams() {
@@ -29,10 +34,12 @@ export function supabaseDb(): ProgressDb {
       return ((data as any)?.config as Record<string, unknown>) || {};
     },
     async currentSeason() {
-      const { data, error } = await db().rpc('current_season');
+      const { data: code, error } = await db().rpc('current_season');
       if (error) throw new Error(error.message);
-      return (data as string | null) ?? null;
+      if (!code) return null;
+      return { code: code as string, startsAt: await tierStart(code as string) };
     },
+    tierStart,
     async raidZoneSeason(wclZoneId) {
       // One row per zone under the app-wide season; the order covers a
       // second row left from the cycle era, taking the later tier's.
@@ -62,6 +69,11 @@ export function supabaseDb(): ProgressDb {
         .select('id, wcl_encounter_id');
       if (error) throw new Error(error.message);
       return (data || []) as SavedEncounter[];
+    },
+    async upsertReports(rows) {
+      // Sets only the columns sent, so an officer's kind_override stands.
+      const { error } = await db().from('team_raid_reports').upsert(rows, { onConflict: 'team_id,report_code' });
+      if (error) throw new Error(error.message);
     },
     async upsertProgress(rows) {
       const { error } = await db().from('team_raid_progress').upsert(rows, { onConflict: 'team_id,encounter_id' });

@@ -3292,7 +3292,7 @@
     {
       "name": "public.team_raid_progress",
       "type": "BASE TABLE",
-      "comment": "Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt from every report on each wcl-progression-sync run. Every kill, by week, is in team_raid_kills.",
+      "comment": "Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt on each wcl-progression-sync run from the reports since the start of the tier the boss's raid is filed under (#1469). Every kill, by week, is in team_raid_kills.",
       "columns": [
         {
           "name": "id",
@@ -8985,6 +8985,200 @@
           "def": "CREATE TRIGGER names_check_team_member_same_team BEFORE INSERT OR UPDATE ON public.names FOR EACH ROW EXECUTE FUNCTION names_team_member_same_team()"
         }
       ]
+    },
+    {
+      "name": "public.team_raid_reports",
+      "type": "BASE TABLE",
+      "comment": "Every Warcraft Logs report the progression sync reads for a team (#1469), one row per team and report, rewritten on every run and never deleted. kind is the title rule's verdict, kind_override an officer's choice, effective_kind the one that counts. Written only by wcl-progression-sync.",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "report_code",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "nullable": true,
+          "comment": "The title as Warcraft Logs returns it; null when it has none. A report uploaded with no title gets a default one there, such as the raid's name."
+        },
+        {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false,
+          "comment": "The report's raid night: its start in Eastern time, a start before 6 a.m. counting as the night before, as on team_raid_kills and attendance."
+        },
+        {
+          "name": "wcl_zone_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The zone Warcraft Logs tags the report with, null when it has none. Not a key to raid_zones: a report can be of a raid no team lists."
+        },
+        {
+          "name": "boss_pulls",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "comment": "Heroic and Mythic fights in the report on the bosses of the raids the team lists, as the progression card counts them; counted again on every run that reads the report, against the list as it is then."
+        },
+        {
+          "name": "boss_kills",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "comment": "The kills among boss_pulls."
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "nullable": false,
+          "comment": "The title rule's verdict: alt when the title has \"Alt\" as its own word, main otherwise. Rewritten on every run that reads the report, so a report renamed on Warcraft Logs moves on the next one."
+        },
+        {
+          "name": "kind_override",
+          "type": "text",
+          "nullable": true,
+          "comment": "An officer's choice of main or alt (#1472), which the sync never writes; null leaves the verdict standing."
+        },
+        {
+          "name": "kind_override_by",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The person who set kind_override."
+        },
+        {
+          "name": "kind_override_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "When kind_override was set; set exactly when it is."
+        },
+        {
+          "name": "effective_kind",
+          "type": "text",
+          "nullable": true,
+          "extra_def": "GENERATED ALWAYS AS COALESCE(kind_override, kind) STORED",
+          "comment": "kind_override when set, else kind: whether the report counts as the team's raid."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()",
+          "comment": "The last run that read the report: each run rewrites every report it reads, changed or not."
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_raid_reports_pkey",
+          "def": "CREATE UNIQUE INDEX team_raid_reports_pkey ON public.team_raid_reports USING btree (team_id, report_code)",
+          "table": "public.team_raid_reports",
+          "columns": [
+            "team_id",
+            "report_code"
+          ]
+        },
+        {
+          "name": "team_raid_reports_team_date_idx",
+          "def": "CREATE INDEX team_raid_reports_team_date_idx ON public.team_raid_reports USING btree (team_id, raid_date DESC)",
+          "table": "public.team_raid_reports",
+          "columns": [
+            "team_id",
+            "raid_date"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_raid_reports_kind_check",
+          "type": "CHECK",
+          "def": "CHECK ((kind = ANY (ARRAY['main'::text, 'alt'::text])))",
+          "table": "public.team_raid_reports",
+          "referenced_table": "",
+          "columns": [
+            "kind"
+          ]
+        },
+        {
+          "name": "team_raid_reports_kind_override_check",
+          "type": "CHECK",
+          "def": "CHECK ((kind_override = ANY (ARRAY['main'::text, 'alt'::text])))",
+          "table": "public.team_raid_reports",
+          "referenced_table": "",
+          "columns": [
+            "kind_override"
+          ]
+        },
+        {
+          "name": "team_raid_reports_override_has_time",
+          "type": "CHECK",
+          "def": "CHECK (((kind_override IS NULL) = (kind_override_at IS NULL)))",
+          "table": "public.team_raid_reports",
+          "referenced_table": "",
+          "columns": [
+            "kind_override",
+            "kind_override_at"
+          ]
+        },
+        {
+          "name": "team_raid_reports_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_raid_reports",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_raid_reports_kind_override_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (kind_override_by) REFERENCES people(id) ON DELETE SET NULL",
+          "table": "public.team_raid_reports",
+          "referenced_table": "public.people",
+          "columns": [
+            "kind_override_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_raid_reports_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id, report_code)",
+          "table": "public.team_raid_reports",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "report_code"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_team_raid_reports_updated_at",
+          "def": "CREATE TRIGGER trg_team_raid_reports_updated_at BEFORE UPDATE ON public.team_raid_reports FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -10607,6 +10801,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_raid_reports",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_raid_reports",
+      "columns": [
+        "kind_override_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (kind_override_by) REFERENCES people(id) ON DELETE SET NULL"
     }
   ],
   "functions": [

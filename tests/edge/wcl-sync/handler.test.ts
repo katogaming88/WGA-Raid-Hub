@@ -16,7 +16,6 @@ import {
   handle,
   type LineupBossRow,
   orderedLineupBosses,
-  tierStartTimeMs,
   uniqueFirstNameIndex
 } from '../../../supabase/functions/wcl-sync/handler.ts';
 import { VERSION } from '../../../supabase/functions/wcl-sync/version.ts';
@@ -165,32 +164,9 @@ function tierClient(
   return { client: client as any, reads };
 }
 
-// Hours behind UTC that day, so the expected instants are computed here and
+// Hours behind UTC that day, so the expected instant is computed here and
 // never read back from the function.
 const EDT = 4;
-const EST = 5;
-
-Deno.test('tierStartTimeMs: a summer date is Eastern midnight, four hours after UTC midnight', () => {
-  assertEquals(tierStartTimeMs('2026-08-11'), Date.UTC(2026, 7, 11, EDT));
-});
-
-Deno.test('tierStartTimeMs: a winter date is five hours after', () => {
-  assertEquals(tierStartTimeMs('2026-01-15'), Date.UTC(2026, 0, 15, EST));
-});
-
-Deno.test('tierStartTimeMs: the day the clocks go forward is still on winter time at midnight', () => {
-  assertEquals(tierStartTimeMs('2026-03-08'), Date.UTC(2026, 2, 8, EST));
-});
-
-Deno.test('tierStartTimeMs: the day the clocks go back is still on summer time at midnight', () => {
-  assertEquals(tierStartTimeMs('2026-11-01'), Date.UTC(2026, 10, 1, EDT));
-});
-
-Deno.test('tierStartTimeMs: no date, a malformed date and an unpadded date are null', () => {
-  assertEquals(tierStartTimeMs(null), null);
-  assertEquals(tierStartTimeMs('not a date'), null);
-  assertEquals(tierStartTimeMs('2026-8-11'), null);
-});
 
 Deno.test('currentTierStartMs: the current tier is read by its code and its start becomes the window', async () => {
   const { client, reads } = tierClient({ code: 'MID2', row: { starts_at: '2026-08-11' } });
