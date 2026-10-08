@@ -440,14 +440,16 @@ reset.** Battle.net is a custom provider stored in the auth database, not in
 removes it, and the button then fails with "Unsupported provider: custom
 provider custom:battlenet not found". The command puts it back and does nothing
 when it is already there. It needs `BATTLENET_SIGNIN_CLIENT_SECRET=<the "WGA
-Raid Hub sign-in" client's secret>` in `supabase/.env` (git-ignored; the secret
-is on develop.battle.net). The seeded personas above do not need it.
+Raid Hub sign-in" client's secret>` in `supabase/.env` (copy
+`supabase/.env.example`; the file is git-ignored and the secret is on
+develop.battle.net). The seeded personas above do not need it.
 
 **Signing in as your real Discord self** is possible and not needed for most
-work. It takes a `[auth.external.discord]` block in `supabase/config.toml`
-reading its id and secret through `env()` from a root `.env` (already
-gitignored), plus `http://127.0.0.1:54321/auth/v1/callback` added to the redirect
-list of a Discord application. The seeded personas cover every role without it.
+work. The `[auth.external.discord]` block in `supabase/config.toml` is off
+until `supabase/.env` sets `SUPABASE_AUTH_EXTERNAL_DISCORD_ENABLED=true` and
+`SUPABASE_AUTH_EXTERNAL_DISCORD_SECRET` (both in `supabase/.env.example`), and
+it takes `http://127.0.0.1:54321/auth/v1/callback` in the redirect list of the
+Discord application too. The seeded personas cover every role without it.
 
 ## 10. Rehearse a migration PR end to end
 
@@ -601,12 +603,19 @@ to a live name, whatever the file holds. `discord-bot-webhook` is outside
 that rule until #959: it forwards to `BOT_WEBHOOK_URL`, so point that at the
 sink too if a rehearsal reaches it. Copy `supabase/functions/.env.example`
 to `supabase/functions/.env` (gitignored) and set that one variable to the
-sink, plus any value you like for `OPTIONAL_RSVP_REMINDERS_SECRET`:
+sink, plus any value you like for the secret of each timed function you will
+call (`OPTIONAL_RSVP_REMINDERS_SECRET`, `TWITCH_LIVE_CHECK_SECRET`,
+`WCL_PROGRESS_SYNC_SECRET`, `BLIZZARD_GEAR_SYNC_SECRET`):
 
 ```sh
 DISCORD_TEST_WEBHOOK_URL=http://host.docker.internal:8899/webhooks/test-channel
 OPTIONAL_RSVP_REMINDERS_SECRET=any-local-value
 ```
+
+A timed function also needs its outside service's client pair to do its work
+(`WCL_CLIENT_ID` and `WCL_CLIENT_SECRET`, `TWITCH_CLIENT_ID` and
+`TWITCH_CLIENT_SECRET`, `BLIZZARD_CLIENT_ID` and `BLIZZARD_CLIENT_SECRET`);
+those are real credentials from each service's developer site, not any value.
 
 `host.docker.internal` rather than `127.0.0.1`: the functions runtime is a
 container and cannot see the machine's own localhost. To see the post in
