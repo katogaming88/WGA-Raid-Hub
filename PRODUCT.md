@@ -43,6 +43,7 @@ Loot priority is built from this team's own data and closed back into the raid: 
 
 - The product is branded **WGA Raid Hub**. A guild or team using it appears as a subtitle under that brand, not as a replacement for it (Kat, 2026-09-13).
 - The current visual look (dark ground, gold accent, Cinzel headings, flame emoji team icons) is **not binding**; it is open to replacement (Kat, 2026-09-13). The rebuild's chosen look is recorded on #1101.
+- The rebuild builds that look directly rather than porting the current one, from these inputs (#1109): the design direction, a surface ladder and dense rows (#1043); the generic visual patterns to drop (#1036); skeleton loaders, tabular numbers and the radius scale (#1042); press and entrance feedback (#1040); and the profile, officer dashboard and roster layouts (#868, #869, #870). The decisions of the earlier redesign branch carry over: the sidebar, the roster layout and the stat tiles.
 - Existing assets: team header banners (`assets/banners/phoenix-header.png`, `hellfire-header.png`), officer bio photos (`assets/officers/`).
 
 ## Evidence on Hand

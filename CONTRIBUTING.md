@@ -243,6 +243,9 @@ are unsure.
 - Update `CHANGELOG.md` under the section for each piece the PR touches
   (`### Frontend`, `### Backend`, `### Functions`, `### Bot`, or `### Project`
   for everything else) per the versioning section above
+- A PR that rebuilds a page in `app/` leaves the current site's files alone,
+  and its description lists every behaviour it changes on purpose, so a
+  reviewer can tell an intended change from a slip (#1109)
 - `js/common.js` is type-checked (`// @ts-check` plus JSDoc annotations, no
   build step). If you touch a checked file, run `npm run typecheck`; CI runs
   the same check on every `js/` change. Add `// @ts-check` to more `js/`
@@ -324,7 +327,24 @@ are unsure.
   `app/dist` and answers every Supabase request from its harness, including
   signed-in states. There is no baseline: the app started clean, so any
   WCAG 2.1 AA violation, sideways scroll at 480px, missing focus ring, or
-  motion under `prefers-reduced-motion` fails. The App workflow runs it
+  motion under `prefers-reduced-motion` fails. The App workflow runs it.
+  Every new page state is added to `tests/browser-app/app.test.js`, and the
+  parts the app adds as its pages need them meet these rules when they
+  arrive (carried from #1101 and #1103):
+  - Tabs and sub-tabs use `role="tablist"`, `tab` and `tabpanel` with
+    `aria-selected`, and the arrow keys move between them. Filter chips are
+    `aria-pressed` toggles, not tabs (#439)
+  - A clickable row is a button, or `role="button"` with keyboard handling;
+    a sortable header sets `aria-sort`; a disabled item carries
+    `aria-disabled` rather than looking faded alone (#440)
+  - Nothing is signalled by colour alone: a bar shows its number, a BiS state
+    has a glyph and text, and Heroic and Mythic tags carry text (#442, #1039)
+  - Anything with a tooltip can take focus, item tooltips and the officer
+    stat cards included. The tip shows on focus as well as hover, stays
+    while hovered, and can be dismissed (WCAG 1.4.13, #827)
+  - A loading placeholder is shaped like the content it stands in for, and
+    is announced through the shared status region rather than left silent
+    (#1042)
 - `tests/browser/a11y-baseline.json` records every violation the site has
   today, compared for exact equality. A PR that fixes one has to delete its
   entries, and a PR that adds one fails. Refresh it with
@@ -551,6 +571,11 @@ A new definer function that is meant to be anon-callable is added to
 `ANON_DEFINER_ALLOWLIST` in that test file, in the same PR as its migration. The
 test asserts set equality, so an accidental grant and an accidental revoke both
 fail. `npm run test:rls` runs it.
+
+One function's output has a reader outside this repo. What
+`build_rclc_export()` returns is decoded by the addon in
+katogaming88/RCLootCouncil_PriorityLoot, so a change to it lands with a
+matching check in the addon repo (#1450).
 
 ### Security advisors
 
