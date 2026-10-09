@@ -1,6 +1,26 @@
--- Function public.review_main_swap_request: current definition, generated from the database.
--- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): authenticated
+-- #1433: an approved main swap refuses an alt that is someone else's.
+--
+-- The approval revived the alt's roster row with whatever link it already
+-- had. When the alt was once someone else's character on this team, the
+-- raider's old character was archived, the alt came back as the other
+-- person's, and the "approved" notice went to that person's inbox.
+--
+-- Moving the row to the raider was rejected: the row carries the other
+-- person's loot, attendance, inbox and notes, and the database cannot tell
+-- whether the name came back to its owner or was freed and taken by someone
+-- else. So a row by that name held by anyone else, on the roster or archived,
+-- is refused, and an officer declines the swap or sorts out the row. How a
+-- reused name keeps two people's history apart is decided separately. A row
+-- nobody holds, or the raider's own, is approved onto as before, and takes
+-- the raider's membership.
+--
+-- The raider is the person on the request. The old character's link used to
+-- stand in for them, and a claim removed and taken by someone else while the
+-- swap waited would have moved the alt, and the notice, to that person. An
+-- old character no longer linked to the raider is refused too.
+--
+-- The read that decides the refusal holds the row the upsert holds next, so
+-- the lock order stays membership, new roster row, old character, request.
 
 CREATE OR REPLACE FUNCTION public.review_main_swap_request(p_request_id integer, p_approve boolean, p_note text DEFAULT NULL::text)
  RETURNS integer
