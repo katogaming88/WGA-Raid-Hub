@@ -12,6 +12,24 @@ answers to.
 
 ---
 
+## [3.175.0] - 2026-10-10
+
+### Project
+
+- The new app's Roster gives officers one "Needs a look" box above the
+  roster (#1360, part 2 of 4), one line per person and hidden when nothing
+  is waiting. Trials past the thresholds in Settings (4 weeks on the roster
+  and 75% attendance unless changed) get a Promote to raider button, which
+  clears Trial the way the Player settings switch does. Main swap requests
+  move into the same box, still with Approve, Decline and a note, and now
+  read "Brakkus asks to raid as ...". Raiders who joined this season in the
+  last 30 days and have no wishlist yet get a line too, the same rules as
+  the current site's Trial Promotions and New Raider Onboarding cards. No
+  database change.
+- Browser tests: the main swap state becomes the Needs a look state, with a
+  ready trial, a main swap and a new raider with no wishlist, in both themes.
+- Revamp time log: the rest of #1360 part 1 (2026-10-07) and part 2's build.
+
 ## [3.174.3] - 2026-10-08
 
 ### Backend

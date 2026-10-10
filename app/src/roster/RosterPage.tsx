@@ -29,8 +29,10 @@ import { specIcon } from './specIcons';
 import { CharacterIcon } from '../characters/CharacterIcon';
 import { altCountLabel, altsOf, earlierOwners, type SavedCharacter } from '../characters/characters';
 import { useEarlierLoot, useTeamAlts } from '../characters/useCharacters';
-import { MainSwapReviews } from '../characters/MainSwapReviews';
+import { useGeneralSettings } from '../settings/useSettings';
+import { needsALook, newJoiners } from './lookLines';
 import { NameRowActions } from './NameRowActions';
+import { NeedsALook } from './NeedsALook';
 import { PlayerSettingsProvider, SettingsRowButton } from './PlayerSettings';
 import { useCreateName, useNames } from './useNames';
 import type { NameRow } from './names';
@@ -39,7 +41,8 @@ import {
   useRosterGear,
   useRosterOfficerData,
   useRosterPlayers,
-  useSignupSeasons
+  useSignupSeasons,
+  useWishlistsStarted
 } from './useRoster';
 import './roster.css';
 
@@ -237,6 +240,22 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
           earlierOwners(officerData.data[1].pairs)
         )
       : null;
+  // The Needs a look box (#1360): trials past the Settings thresholds, and
+  // new raiders with no wishlist yet. Officers only.
+  const trialRules = useGeneralSettings(team.id);
+  const joiners = officer && season.isSuccess ? newJoiners(players, season.data.start) : new Map<number, number>();
+  const wishlists = useWishlistsStarted([...joiners.keys()], season.isSuccess ? season.data.code : null);
+  const lookLines = officer
+    ? needsALook(
+        groups.flatMap((g) => g.raiders),
+        new Map(players.map((p) => [p.id, p.join_date ?? null])),
+        // Trials wait for the thresholds rather than guess at them.
+        trialRules.isSuccess ? stats : null,
+        { weeks: trialRules.data?.trialWeeks ?? 4, attend: trialRules.data?.trialAttend ?? 75 },
+        joiners,
+        wishlists.data ?? null
+      )
+    : [];
   // Alt rows start hidden (Kat, 2026-09-15), and nobody but officers reads them.
   const teamAlts = useTeamAlts(team.id, officer);
   const [showAlts, setShowAlts] = useState(false);
@@ -277,8 +296,8 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
   // the table rather than with the filter (Kat, 2026-09-14).
   const page = (
     <div className="roster-current">
-      {/* Main swaps waiting for an officer (#631), above the team they change. */}
-      <MainSwapReviews teamId={team.id} officer={officer} />
+      {/* Everything waiting on an officer (#1360), main swaps (#631) included. */}
+      {officer && <NeedsALook teamId={team.id} lines={lookLines} />}
       {namesQuery.isError && (
         <DataState query={namesQuery} label="the team's Names">
           {() => null}

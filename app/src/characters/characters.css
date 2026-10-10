@@ -354,9 +354,9 @@
   gap: var(--space-2);
 }
 
-/* The officer panel on the roster */
+/* The roster's Needs a look box (#1360), main swaps included */
 
-.main-swaps {
+.needs-a-look {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -364,7 +364,7 @@
   padding: var(--space-4) var(--space-5);
 }
 
-.main-swap-list {
+.look-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -373,7 +373,7 @@
   list-style: none;
 }
 
-.main-swap-row {
+.look-row {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -381,13 +381,17 @@
   gap: var(--space-3);
 }
 
-.main-swap-row + .main-swap-row {
+.look-row + .look-row {
   padding-top: var(--space-3);
   border-top: 1px solid var(--border);
 }
 
 .main-swap-text {
   min-width: 0;
+}
+
+.look-line {
+  margin: 0;
 }
 
 .main-swap-line {
