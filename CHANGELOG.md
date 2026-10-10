@@ -26,6 +26,8 @@ answers to.
   last 30 days and have no wishlist yet get a line too, the same rules as
   the current site's Trial Promotions and New Raider Onboarding cards. No
   database change.
+- Browser tests: the main swap state becomes the Needs a look state, with a
+  ready trial, a main swap and a new raider with no wishlist, in both themes.
 
 ## [3.174.3] - 2026-10-08
 
