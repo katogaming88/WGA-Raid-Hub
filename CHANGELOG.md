@@ -28,6 +28,7 @@ answers to.
   database change.
 - Browser tests: the main swap state becomes the Needs a look state, with a
   ready trial, a main swap and a new raider with no wishlist, in both themes.
+- Revamp time log: the rest of #1360 part 1 (2026-10-07) and part 2's build.
 
 ## [3.174.3] - 2026-10-08
 

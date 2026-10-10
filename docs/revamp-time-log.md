@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |      7 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     35 h 06 m |
-| Revamp 3: officer dashboard        |     16 h 04 m |
+| Revamp 3: officer dashboard        |     18 h 29 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **68 h 30 m** |
+| **All revamp work**                | **70 h 55 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -229,6 +229,13 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:18-11:56 AM | #1477 built and shipped as PR #1483: our own crash screen and page-not-found page; News moved to the sidebar's Site group; #1482 filed | Revamp 3 (#1477) | 40 m | ~30 m build, ~10 m Kat (localhost, the News move, #1482 decided, the folded error details, review and merge) | ~290,000 | Crash screen inside the frame, or on its own outside it; the 404 offers the team's home, guild page or site home. Kat asked mid-build to move News to Site; giving News, About and Help site addresses filed as #1482 (Multi-guild). |
 | 11:58 AM-12:32 PM | #1360 planned: player settings mocked up three ways on a design canvas, side panel picked; Needs a look box, Archived tab, accounts line and quick Claim mocked up and decided; plan posted on #1360; #1484 filed for Rex | Revamp 3 (#1360) | 35 m | ~20 m build, ~15 m Kat deciding | ~250,000 | Kat: settings must be clear and low-friction, not at the bottom of the whole profile card as on the current site. Buff coverage dropped from the Roster. Four PRs. |
 | 12:32-1:10 PM | #1360 part 1 built: player settings panel (gear on each row, saves as you go with Undo, arrows, Profile button, phones); Roster says "Member"; #1485 filed | Revamp 3 (#1360, #1485) | 40 m | ~30 m build, ~10 m Kat testing on localhost | ~615,000 | Kat moved the gear out of the "..." menu, then off the left edge to the row's right end; the page no longer reflows when the panel opens; the buttons close the panel too. The unclaimed old-site characters (22 on Immolation) became #1485: unclaimed Members at cutover. |
+| 1:10-2:31 PM | #1360 part 1 finished: browser accessibility fix, preflight, PR #1486 opened with screenshots, Kat's review and merge (merged 2:31) | Revamp 3 (#1360) | 80 m | split not known: build, then Kat's review and merge; Kat could not say how much was a break | ~460,000 | Logged on 2026-10-10. May include a break, so it may be high |
+
+### 2026-10-10
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 1:15-2:20 PM | #1360 part 2 built: one Needs a look box above the Roster (trials ready to promote with Promote to raider, main swap requests moved in, new raiders with no wishlist); PR #1498 opened with screenshots; one CI flake re-run | Revamp 3 (#1360) | 65 m | ~55 m build, ~10 m Kat | not read | Wishlist line kept to raiders who joined in the last 30 days, as on the current site: Immolation has no wishlists at all. Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
