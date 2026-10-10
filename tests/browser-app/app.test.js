@@ -236,6 +236,21 @@ const waitingSwap = (fromNameRealm) => [
   }
 ];
 
+// The Needs a look box (#1360): a trial past the thresholds, a main swap
+// waiting, and a raider who joined nine days ago with no wishlist.
+const needsALook = () => {
+  const base = rosterWithAlts();
+  const joined = { 4: '2026-08-10', 6: '2026-10-01' };
+  return {
+    ...base,
+    players: base.players.map((p) => ({ ...p, join_date: joined[p.id] ?? '2026-01-05' })),
+    seasons: [{ code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-08-01', ends_at: null }],
+    attendance: [{ player_id: 4, raid_date: '2026-08-12', status: 'Present', report_excluded: false }],
+    item_preferences: [],
+    main_swap_requests: waitingSwap(SCENARIO.players[0].name_realm)
+  };
+};
+
 // The same swap, declined (#1430): the alt says so, with the officer's note.
 const declinedSwap = (fromNameRealm, officerNote = 'We need your Death Knight for battle res this tier.') => [
   { ...waitingSwap(fromNameRealm)[0], status: 'declined', officer_note: officerNote }
@@ -1106,12 +1121,13 @@ const STATES = [
     tables: rosterWithNames()
   },
   {
-    label: 'roster, officer, a main swap waiting',
+    label: 'roster, officer, Needs a look',
     path: '/g/wga/t/phoenix/roster',
     sentinel: '.needs-a-look',
     session: OFFICER,
     who: 'officer',
-    tables: { ...rosterWithAlts(), main_swap_requests: waitingSwap(SCENARIO.players[0].name_realm) }
+    clock: '2026-10-10T16:00:00Z',
+    tables: needsALook()
   },
   profileState('my profile, ask to raid on an alt', 'torbjorn', 'torbjorn', {
     sentinel: 'main .character-ask',
