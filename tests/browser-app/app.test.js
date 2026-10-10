@@ -1108,7 +1108,7 @@ const STATES = [
   {
     label: 'roster, officer, a main swap waiting',
     path: '/g/wga/t/phoenix/roster',
-    sentinel: '.main-swaps',
+    sentinel: '.needs-a-look',
     session: OFFICER,
     who: 'officer',
     tables: { ...rosterWithAlts(), main_swap_requests: waitingSwap(SCENARIO.players[0].name_realm) }

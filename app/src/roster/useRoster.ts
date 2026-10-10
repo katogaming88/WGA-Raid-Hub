@@ -99,3 +99,22 @@ export function useRosterOfficerData(teamId: number, season: SeasonWindow | null
     { enabled: enabled && season !== null }
   );
 }
+
+// Which of these raiders have a wishlist row this season, for the Needs a
+// look box (#1360). Asked only for the few who joined in the last 30 days,
+// not the whole team.
+export function useWishlistsStarted(playerIds: number[], season: string | null) {
+  return useSupabaseQuery<Set<number>>(
+    ['wishlists-started', season, playerIds],
+    async (client) => {
+      const { data, error } = await client
+        .from('item_preferences')
+        .select('player_id')
+        .in('player_id', playerIds)
+        .eq('season', season!);
+      if (error) return { data: null, error };
+      return { data: new Set((data ?? []).map((r) => r.player_id as number)), error: null };
+    },
+    { enabled: playerIds.length > 0 && season !== null }
+  );
+}

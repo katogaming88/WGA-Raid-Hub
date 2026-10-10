@@ -462,6 +462,56 @@ describe('Roster page, officer columns', () => {
   });
 });
 
+// One box for everything waiting on an officer (#1360 part 2).
+describe('Roster page, Needs a look', () => {
+  const handlers = (role: string, trial: boolean) => {
+    const base = rosterHandlers({
+      players: [
+        player(1, 'Torbjorn-Illidan', 'Death Knight', 'Frost', 'Melee', { join_date: '2026-08-10', is_trial: trial })
+      ],
+      seasons: SEASON_ROWS,
+      team_settings: { trialWeeks: 4, trialAttend: 75 },
+      main_swap_requests: [],
+      attendance: [{ player_id: 1, raid_date: '2026-08-12', status: 'Present', report_excluded: false }],
+      rclc_loot: []
+    });
+    return {
+      ...base,
+      session: fakeSession({ battlenet: 'X#1', discord: { id: 'd', name: 'X' } }),
+      rpc(name: string, args: Record<string, unknown>) {
+        if (name === 'current_discord_id') return { data: 'discord-x' };
+        if (name === 'resolve_person')
+          return {
+            data: {
+              site_admin: false,
+              guild_officer: false,
+              boe_manager: false,
+              teams: [{ team_id: 1, team_member_id: 1, role, characters: [] }]
+            }
+          };
+        if (name === 'team_season_start') return { data: SEASON_START };
+        return base.rpc!(name, args);
+      }
+    };
+  };
+
+  it('offers an officer to promote a trial past the thresholds', async () => {
+    const { client } = renderApp('/g/wga/t/phoenix/roster', handlers('officer', true));
+    const box = await screen.findByRole('region', { name: /Needs a look/ });
+    expect(box).toHaveTextContent(/Torbjorn.*Trial for \d+ weeks at 100% attendance: ready to promote\./);
+    await userEvent.click(within(box).getByRole('button', { name: 'Promote to raider' }));
+    expect(client.writes).toContainEqual(
+      expect.objectContaining({ table: 'players', method: 'update', values: { is_trial: false } })
+    );
+  });
+
+  it('shows no box when nothing is waiting', async () => {
+    renderApp('/g/wga/t/phoenix/roster', handlers('officer', false));
+    await screen.findByRole('columnheader', { name: 'Attendance' });
+    expect(screen.queryByRole('region', { name: /Needs a look/ })).not.toBeInTheDocument();
+  });
+});
+
 // Alts under their raider (#942 step 5b): officers only, hidden until shown.
 describe('Roster page, alts', () => {
   const person = (role: string) => ({
