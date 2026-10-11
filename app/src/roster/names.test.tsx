@@ -965,6 +965,8 @@ describe('Roster page, quick Claim and accounts', () => {
     const user = userEvent.setup();
     const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers());
     const table = await screen.findByRole('table', { name: 'Current roster' });
+    // A bare Name with a role guess, in its role group, gets one too.
+    expect(within(table).getByRole('button', { name: 'Claim Needs A Tank' })).toBeInTheDocument();
     await user.click(within(table).getByRole('button', { name: 'Claim Bare Raider' }));
     expect(await screen.findByText('Claimed Bare Raider.')).toBeInTheDocument();
     expect(client.rpcs).toContainEqual(['claim_name', { p_team_id: 1, p_name_id: 1 }]);

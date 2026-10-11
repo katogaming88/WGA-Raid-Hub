@@ -597,6 +597,7 @@ function RosterTable({
                     teamId={teamId}
                     officer={officer}
                     links={raider.teamMemberId != null ? (accounts?.get(raider.teamMemberId) ?? null) : null}
+                    quickClaim={quickClaim}
                   />
                   {showAlts &&
                     raiderAlts.map((alt) => (
@@ -636,7 +637,8 @@ function RosterRow({
   altCount = 0,
   teamId,
   officer = false,
-  links = null
+  links = null,
+  quickClaim = false
 }: {
   raider: Raider;
   details: boolean;
@@ -650,11 +652,17 @@ function RosterRow({
   teamId?: number | undefined;
   officer?: boolean;
   links?: AccountLinks | null;
+  // A bare Name with a role guess sits in a role group (#1355) and gets
+  // Claim under it like any other unclaimed Member.
+  quickClaim?: boolean;
 }) {
   const icon = specIcon(raider.className, raider.spec);
+  const claimable = quickClaim && teamId !== undefined && raider.nameId != null && raider.teamMemberId == null;
   return (
     <tr>
-      <th scope="row" className="raider-cell">
+      {/* A row with Claim under it is named by the label alone, as an
+          unclaimed row is. */}
+      <th scope="row" className="raider-cell" aria-label={claimable ? raider.name : undefined}>
         {/* Decorative: the spec is written out below the name. */}
         {icon && <img className="spec-icon" src={icon} alt="" width={20} height={20} loading="lazy" />}
         {href ? (
@@ -675,6 +683,7 @@ function RosterRow({
           </span>
         )}
         {links && <AccountsLine links={links} />}
+        {claimable && <QuickClaim teamId={teamId} nameId={raider.nameId!} label={raider.name} />}
       </th>
       {details && (
         <>
