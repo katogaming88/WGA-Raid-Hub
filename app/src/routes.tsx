@@ -9,6 +9,7 @@ import { BossGroupsPage } from './calendar/BossGroupsPage';
 import { AttendanceManagePage } from './attendance/AttendanceManagePage';
 import { BenchFairnessPage, LootFairnessPage } from './reports/FairnessPages';
 import { RaidNightsPage, TierSetsPage } from './reports/TableReports';
+import { BisDemandPage, LootPacePage, PriorityHealthPage } from './reports/SeasonReports';
 import { GeneralSettingsPage } from './settings/GeneralSettingsPage';
 import { SeasonSettingsPage } from './settings/SeasonSettingsPage';
 import { ProgressionSettingsPage } from './settings/ProgressionSettingsPage';
@@ -51,6 +52,9 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   'officer/reports/bench-fairness': <BenchFairnessPage />,
   'officer/reports/raid-nights': <RaidNightsPage />,
   'officer/reports/tier-sets': <TierSetsPage />,
+  'officer/reports/bis-demand': <BisDemandPage />,
+  'officer/reports/loot-pace': <LootPacePage />,
+  'officer/reports/priority-health': <PriorityHealthPage />,
   history: <HistoryPage />,
   officers: <TeamOfficersPage />,
   signup: <SignUpPage />,
