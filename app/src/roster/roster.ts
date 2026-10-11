@@ -19,6 +19,8 @@ export type PlayerRow = {
   is_bench: boolean;
   is_rotator: boolean;
   tier_pieces_equipped: number | null;
+  // When the gear sync last counted them (#1359's Tier sets report).
+  tier_pieces_synced_at?: string | null;
   join_date?: string | null;
   team_member_id?: number | null;
   classes_specs: { class: string; spec: string; role: string | null } | null;

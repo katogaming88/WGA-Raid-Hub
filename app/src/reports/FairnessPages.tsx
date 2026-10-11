@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { earlierOwners } from '../characters/characters';
 import { useEarlierLoot } from '../characters/useCharacters';
 import { DataState } from '../components/DataState';
@@ -10,9 +10,7 @@ import { classColor, toRoster, type PlayerRow } from '../roster/roster';
 import { useNames } from '../roster/useNames';
 import { useRosterOfficerData, useRosterPlayers } from '../roster/useRoster';
 import { benchFairness, lootFairness, oneDecimal, type Fairness } from './fairness';
-// The Roster's toggle buttons (role-filter), shared rather than restyled.
-import '../roster/roster.css';
-import './reports.css';
+import { ReportPage } from './ReportPage';
 
 // Reports under the officer menu (#1359), one page each.
 
@@ -43,18 +41,6 @@ export function BenchFairnessPage() {
         {([players, season]) => <BenchFairness teamId={team.id} players={players} season={season} />}
       </DataState>
     </ReportPage>
-  );
-}
-
-function ReportPage({ title, intro, children }: { title: string; intro: string; children: ReactNode }) {
-  return (
-    <section className="page report-page" aria-labelledby="page-title">
-      <div className="page-header">
-        <h1 id="page-title">{title}</h1>
-        <p className="text-muted page-subtitle">{intro}</p>
-      </div>
-      {children}
-    </section>
   );
 }
 

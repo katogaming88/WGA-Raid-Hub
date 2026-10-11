@@ -89,3 +89,53 @@
   display: inline-block;
   height: 14px;
 }
+
+/* Sortable report tables (#1359 part 2): the header is a button, and the
+   sorted one says which way (aria-sort, #440). */
+.report-table {
+  width: 100%;
+}
+
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.sort-button:hover,
+.sort-button.sorted {
+  color: var(--text);
+}
+
+.sort-arrow {
+  min-width: 0.75em;
+}
+
+/* The number always shows; the tone only draws the eye. */
+.tone-bad {
+  color: var(--bad);
+  font-weight: 600;
+}
+
+.tone-warn {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.tone-good {
+  color: var(--good);
+  font-weight: 600;
+}
+
+.report-note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+}

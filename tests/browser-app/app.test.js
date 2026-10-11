@@ -661,13 +661,30 @@ const REPORT_TABLES = {
       report_excluded: false
     }))
   ),
-  names: []
+  names: [],
+  // Raid nights since last item and Tier sets (#1359 part 2).
+  rnlsi: SCENARIO.players.map((p, i) => ({
+    player_id: p.id,
+    last_award_at: i % 3 ? '2026-08-20T18:00:00Z' : null,
+    raid_nights_since_last_item: (i * 3) % 10
+  }))
 };
 const REPORT = {
   session: OFFICER,
   who: 'officer',
   sentinel: 'main .fairness-row',
   tables: REPORT_TABLES
+};
+const TABLE_REPORT = {
+  ...REPORT,
+  sentinel: 'main table.report-table tbody tr',
+  tables: {
+    ...REPORT_TABLES,
+    players: REPORT_TABLES.players.map((p, i) => ({
+      ...p,
+      tier_pieces_synced_at: i % 4 ? '2026-10-10T12:00:00Z' : null
+    }))
+  }
 };
 
 // Officer Settings (#1357, #1103 row 1): General, Season, Raid progression and
@@ -1040,6 +1057,20 @@ const STATES = [
     colorScheme: 'light'
   },
   { label: 'bench fairness', ...REPORT, path: '/g/wga/t/phoenix/officer/reports/bench-fairness' },
+  { label: 'raid nights since last item', ...TABLE_REPORT, path: '/g/wga/t/phoenix/officer/reports/raid-nights' },
+  {
+    label: 'raid nights since last item, light',
+    ...TABLE_REPORT,
+    path: '/g/wga/t/phoenix/officer/reports/raid-nights',
+    colorScheme: 'light'
+  },
+  { label: 'tier sets', ...TABLE_REPORT, path: '/g/wga/t/phoenix/officer/reports/tier-sets' },
+  {
+    label: 'tier sets, light',
+    ...TABLE_REPORT,
+    path: '/g/wga/t/phoenix/officer/reports/tier-sets',
+    colorScheme: 'light'
+  },
   {
     label: 'bench fairness, light',
     ...REPORT,
