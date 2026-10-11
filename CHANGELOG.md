@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.180.0] - 2026-10-11
+
+### Project
+
+- The last three officer reports in the new app (#1359, part 3 of 3), each
+  on its own page under Reports with a season picker that opens on the
+  current season. **BiS demand** lists the raid items the roster has
+  marked BiS, how many raiders want each and how many the team has
+  awarded, most wanted first, sortable by any column. **Loot pace** shows
+  items awarded each week next to the same week of the season before,
+  with Track and Slot filters. **Priority order health** lists entries for
+  raiders who have left, raiders with no entry at all, and Mythic #1s who
+  already received the Heroic copy. Each report asks the database for the
+  picked season only. No database change.
+- Browser tests: all three reports, in both themes.
+- Time log: #1359 part 2's review and merge, and part 3's build.
+
 ## [3.179.0] - 2026-10-11
 
 ### Project

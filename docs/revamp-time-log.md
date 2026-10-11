@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |      7 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     35 h 06 m |
-| Revamp 3: officer dashboard        |     19 h 59 m |
+| Revamp 3: officer dashboard        |     20 h 14 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **72 h 25 m** |
+| **All revamp work**                | **72 h 40 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -249,7 +249,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 3:36-3:46 PM | #1359 planned: three mockups on a design canvas, option A (each report in the sidebar) picked, plan posted; Performance trends filed as #1503 | Revamp 3 (#1359, #1503) | 10 m | ~5 m build, ~5 m Kat deciding | not read | Kat: performance trends from raw DPS and HPS, not parses; the page shape waits on examples |
 | 3:46-3:55 PM | #1359 part 1 built: Loot fairness and Bench fairness pages; the other reports and Performance trends added to the menu as empty pages | Revamp 3 (#1359) | 10 m | ~10 m build | not read | No database change. Review and merge in the next row |
 | 3:55-4:00 PM | PR #1504 reviewed and merged (merged 4:00); per-boss bench note added to #1247 | Revamp 3 (#1359, #1247) | 5 m | ~5 m Kat | not read | Kat: the per-boss sit-out view from #1247 belongs on Bench fairness, probably replacing the per-night bars |
-| 4:01-4:10 PM | #1359 part 2 built: Raid nights since last item and Tier sets, sortable tables with a role switch | Revamp 3 (#1359) | 10 m | ~10 m build | not read | No database change. Review and merge not yet counted |
+| 4:01-4:10 PM | #1359 part 2 built: Raid nights since last item and Tier sets, sortable tables with a role switch | Revamp 3 (#1359) | 10 m | ~10 m build | not read | No database change. Review and merge in the next row |
+| 4:10-4:15 PM | PR #1505 reviewed and merged (merged 4:15) | Revamp 3 (#1359) | 5 m | ~5 m Kat | not read | |
+| 4:16-4:25 PM | #1359 part 3 built: BiS demand, Loot pace and Priority order health, each with a season picker | Revamp 3 (#1359) | 10 m | ~10 m build | not read | Each read asks for the picked season only, so no report meets the 1000-row page limit. Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

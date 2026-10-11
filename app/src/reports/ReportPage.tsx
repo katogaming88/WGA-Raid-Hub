@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { ROLE_LABELS, ROLE_ORDER, type Role } from '../roster/roster';
 // The Roster's toggle buttons (role-filter), shared rather than restyled.
 import '../roster/roster.css';
@@ -32,6 +32,33 @@ export function RoleFilter({ value, onChange }: { value: Role | null; onChange: 
           {r ? ROLE_LABELS[r] : 'Everyone'}
         </button>
       ))}
+    </div>
+  );
+}
+
+// Which season a report shows (#1359 part 3), by the name on the season.
+export function SeasonPicker({
+  seasons,
+  value,
+  onChange
+}: {
+  seasons: { code: string; name: string }[];
+  value: string;
+  onChange: (code: string) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="field report-season">
+      <label className="field-label" htmlFor={id}>
+        Season
+      </label>
+      <select id={id} className="input" value={value} onChange={(e) => onChange(e.target.value)}>
+        {seasons.map((s) => (
+          <option key={s.code} value={s.code}>
+            {s.name}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

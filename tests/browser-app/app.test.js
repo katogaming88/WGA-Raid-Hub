@@ -667,7 +667,21 @@ const REPORT_TABLES = {
     player_id: p.id,
     last_award_at: i % 3 ? '2026-08-20T18:00:00Z' : null,
     raid_nights_since_last_item: (i * 3) % 10
-  }))
+  })),
+  // BiS demand, Loot pace and Priority order health (#1359 part 3).
+  bis_demand_vs_awards: [
+    { item_id: 1, item_name: 'Void Cleaver', slot: 'Two-Hand', demand_count: 5, awarded_count: 0 },
+    { item_id: 2, item_name: 'Ring of Ash', slot: 'Finger', demand_count: 3, awarded_count: 2 }
+  ],
+  season_loot_pace: [1, 2, 3].flatMap((week) => [
+    { season: 'MID2', season_week: week, track: 'Hero', slot: 'Head', items_awarded: 4 + week },
+    { season: 'MID2', season_week: week, track: 'Myth', slot: 'Hands', items_awarded: week }
+  ]),
+  priority_order_stale_entries: [
+    { priority_order_id: 1, item_name: 'Ring of Ash', track: 'Myth', rank: 2, name_realm: 'Gone-Illidan' }
+  ],
+  priority_order_gaps: [{ player_id: SCENARIO.players[0].id, name_realm: SCENARIO.players[0].name_realm }],
+  priority_order_stale_after_heroic: []
 };
 const REPORT = {
   session: OFFICER,
@@ -1065,6 +1079,33 @@ const STATES = [
     colorScheme: 'light'
   },
   { label: 'tier sets', ...TABLE_REPORT, path: '/g/wga/t/phoenix/officer/reports/tier-sets' },
+  { label: 'BiS demand', ...TABLE_REPORT, path: '/g/wga/t/phoenix/officer/reports/bis-demand' },
+  {
+    label: 'BiS demand, light',
+    ...TABLE_REPORT,
+    path: '/g/wga/t/phoenix/officer/reports/bis-demand',
+    colorScheme: 'light'
+  },
+  { label: 'loot pace', ...TABLE_REPORT, path: '/g/wga/t/phoenix/officer/reports/loot-pace' },
+  {
+    label: 'loot pace, light',
+    ...TABLE_REPORT,
+    path: '/g/wga/t/phoenix/officer/reports/loot-pace',
+    colorScheme: 'light'
+  },
+  {
+    label: 'priority order health',
+    ...TABLE_REPORT,
+    sentinel: 'main .report-section',
+    path: '/g/wga/t/phoenix/officer/reports/priority-health'
+  },
+  {
+    label: 'priority order health, light',
+    ...TABLE_REPORT,
+    sentinel: 'main .report-section',
+    path: '/g/wga/t/phoenix/officer/reports/priority-health',
+    colorScheme: 'light'
+  },
   {
     label: 'tier sets, light',
     ...TABLE_REPORT,

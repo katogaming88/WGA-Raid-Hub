@@ -229,3 +229,86 @@ describe('Tier sets page', () => {
     ).toHaveTextContent('4/5');
   });
 });
+
+// The season-picked reports (#1359 part 3).
+const SEASONS = [
+  { code: 'MID1', display_name: 'Midnight Season 1', starts_at: '2026-03-01', ends_at: '2026-07-17' },
+  { code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-07-18', ends_at: '2026-12-31' }
+];
+
+describe('BiS demand page', () => {
+  it('opens on the current season, most wanted first, and asks for that season only', async () => {
+    const { client } = renderApp(
+      '/g/wga/t/phoenix/officer/reports/bis-demand',
+      handlers({
+        ...TABLES,
+        seasons: SEASONS,
+        bis_demand_vs_awards: [
+          { item_id: 1, item_name: 'Ring of Ash', slot: 'Finger', demand_count: 2, awarded_count: 1 },
+          { item_id: 2, item_name: 'Void Cleaver', slot: 'Two-Hand', demand_count: 5, awarded_count: 0 }
+        ]
+      })
+    );
+    const table = await screen.findByRole('table', { name: 'BiS demand, Midnight Season 2' });
+    expect(
+      within(table)
+        .getAllByRole('rowheader')
+        .map((th) => th.textContent)
+    ).toEqual(['Void Cleaver', 'Ring of Ash']);
+    expect(screen.getByLabelText('Season')).toHaveValue('MID2');
+    const read = client.reads.find((r) => r.table === 'bis_demand_vs_awards')!;
+    expect(read.filters).toContainEqual(['eq', 'season', 'MID2']);
+  });
+});
+
+describe('Loot pace page', () => {
+  it('lines each week up against the season before, and narrows by track', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/officer/reports/loot-pace',
+      handlers({
+        ...TABLES,
+        seasons: SEASONS,
+        season_loot_pace: [
+          { season: 'MID2', season_week: 1, track: 'Hero', slot: 'Head', items_awarded: 4 },
+          { season: 'MID2', season_week: 1, track: 'Myth', slot: 'Head', items_awarded: 2 },
+          { season: 'MID2', season_week: 2, track: 'Hero', slot: 'Hands', items_awarded: 3 },
+          { season: 'MID1', season_week: 1, track: 'Hero', slot: 'Head', items_awarded: 5 }
+        ]
+      })
+    );
+    const table = await screen.findByRole('table', { name: 'Items awarded per week' });
+    const week = (n: number) =>
+      within(table)
+        .getByRole('rowheader', { name: `Week ${n}` })
+        .closest('tr')!;
+    expect(week(1)).toHaveTextContent('Week 165');
+    expect(week(2)).toHaveTextContent('Week 230');
+    await userEvent.selectOptions(screen.getByLabelText('Track'), 'Myth');
+    expect(week(1)).toHaveTextContent('Week 120');
+  });
+});
+
+describe('Priority order health page', () => {
+  it('lists raiders who have left, raiders with no entry, and Mythic #1s with the Heroic copy', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/officer/reports/priority-health',
+      handlers({
+        ...TABLES,
+        seasons: SEASONS,
+        priority_order_stale_entries: [
+          { priority_order_id: 1, item_name: 'Ring of Ash', track: 'Myth', rank: 2, name_realm: 'Gone-Illidan' }
+        ],
+        priority_order_gaps: [{ player_id: 2, name_realm: 'Zuggz-Illidan' }],
+        priority_order_stale_after_heroic: []
+      })
+    );
+    const left = await screen.findByRole('region', { name: /Raiders who have left/ });
+    expect(within(left).getByRole('rowheader', { name: 'Ring of Ash' }).closest('tr')).toHaveTextContent(
+      'Ring of AshMythic2Gone'
+    );
+    expect(screen.getByRole('region', { name: /Not in the priority order/ })).toHaveTextContent('Zuggz');
+    expect(screen.getByRole('region', { name: /already have the Heroic one/ })).toHaveTextContent(
+      'None for Midnight Season 2.'
+    );
+  });
+});
