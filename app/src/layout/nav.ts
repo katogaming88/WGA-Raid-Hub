@@ -96,7 +96,14 @@ function officerMenu(o: string): NavItem[] {
       to: `${o}/reports/loot-fairness`,
       pages: [
         { label: 'Loot fairness', to: `${o}/reports/loot-fairness` },
-        { label: 'Bench fairness', to: `${o}/reports/bench-fairness` }
+        { label: 'Bench fairness', to: `${o}/reports/bench-fairness` },
+        { label: 'Raid nights since last item', to: `${o}/reports/raid-nights` },
+        { label: 'BiS demand', to: `${o}/reports/bis-demand` },
+        { label: 'Loot pace', to: `${o}/reports/loot-pace` },
+        { label: 'Priority order health', to: `${o}/reports/priority-health` },
+        { label: 'Tier sets', to: `${o}/reports/tier-sets` },
+        // A placeholder until #1503 decides what it shows (Kat, 2026-10-11).
+        { label: 'Performance trends', to: `${o}/reports/performance` }
       ]
     },
     {
@@ -134,6 +141,12 @@ export const TEAM_PAGES: Record<string, string> = {
   'officer/groups': 'Boss groups',
   'officer/reports/loot-fairness': 'Loot fairness',
   'officer/reports/bench-fairness': 'Bench fairness',
+  'officer/reports/raid-nights': 'Raid nights since last item',
+  'officer/reports/bis-demand': 'BiS demand',
+  'officer/reports/loot-pace': 'Loot pace',
+  'officer/reports/priority-health': 'Priority order health',
+  'officer/reports/tier-sets': 'Tier sets',
+  'officer/reports/performance': 'Performance trends',
   'officer/settings': 'General settings',
   'officer/settings/season': 'Season settings',
   'officer/settings/progression': 'Raid progression',

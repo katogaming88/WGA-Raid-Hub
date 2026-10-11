@@ -637,6 +637,39 @@ const ATTENDANCE_MANAGE = {
   tables: ATTENDANCE_TABLES
 };
 
+// Loot fairness and Bench fairness (#1359): the roster's raiders with a
+// season of loot and some benched nights, so every bar, rate and the average
+// line are on the page axe measures.
+const REPORT_TABLES = {
+  ...ROSTER,
+  seasons: [{ code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-08-01', ends_at: null }],
+  rclc_loot: SCENARIO.players.flatMap((p, i) =>
+    Array.from({ length: i % 4 }, (_, k) => ({
+      id: p.id * 10 + k,
+      player_id: p.id,
+      track: k % 2 ? 'Myth' : 'Hero',
+      season: 'MID2',
+      awarded_at: '2026-08-20T18:00:00Z',
+      items: { name: 'X' }
+    }))
+  ),
+  attendance: SCENARIO.players.flatMap((p, i) =>
+    ['2026-08-05', '2026-08-07', '2026-08-12'].map((raid_date, k) => ({
+      player_id: p.id,
+      raid_date,
+      status: k < i % 3 ? 'Bench' : 'Present',
+      report_excluded: false
+    }))
+  ),
+  names: []
+};
+const REPORT = {
+  session: OFFICER,
+  who: 'officer',
+  sentinel: 'main .fairness-row',
+  tables: REPORT_TABLES
+};
+
 // Officer Settings (#1357, #1103 row 1): General, Season, Raid progression and
 // Danger zone, so every card state (a saved value, a closed tier's WCL
 // Performance Baseline row, a raid/boss row, and the Archive season control)
@@ -998,6 +1031,20 @@ const STATES = [
     label: 'boss groups, guild officer, editing a boss cap',
     ...BOSS_GROUPS_GUILD_OFFICER,
     click: 'role=button[name="Edit cap"]'
+  },
+  { label: 'loot fairness', ...REPORT, path: '/g/wga/t/phoenix/officer/reports/loot-fairness' },
+  {
+    label: 'loot fairness, light',
+    ...REPORT,
+    path: '/g/wga/t/phoenix/officer/reports/loot-fairness',
+    colorScheme: 'light'
+  },
+  { label: 'bench fairness', ...REPORT, path: '/g/wga/t/phoenix/officer/reports/bench-fairness' },
+  {
+    label: 'bench fairness, light',
+    ...REPORT,
+    path: '/g/wga/t/phoenix/officer/reports/bench-fairness',
+    colorScheme: 'light'
   },
   { label: 'attendance manage, officer', ...ATTENDANCE_MANAGE },
   { label: 'attendance manage, officer, light', ...ATTENDANCE_MANAGE, colorScheme: 'light' },

@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |      7 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     35 h 06 m |
-| Revamp 3: officer dashboard        |     19 h 09 m |
+| Revamp 3: officer dashboard        |     19 h 44 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **71 h 35 m** |
+| **All revamp work**                | **72 h 10 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -244,7 +244,10 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 2:43-3:05 PM | #1360 part 3 built: Archived (N) tab on the Roster for officers, with when and why, and Re-add to roster | Revamp 3 (#1360) | 20 m | ~20 m build | not read | No database change: restore_player() (#1133) already did the re-add. Review and merge in the next row |
 | 3:05-3:09 PM | PR #1499 reviewed and merged (merged 3:09) | Revamp 3 (#1360) | 5 m | ~5 m Kat | not read | Phone view left as is (the table scrolls sideways); Kat will file an issue if it causes trouble |
-| 3:10-3:20 PM | #1360 part 4 built: Battle.net and Discord logos under each member for officers, and a quick Claim link under unclaimed Members | Revamp 3 (#1360) | 10 m | ~10 m build | not read | Logos only (lit or "Not linked") until #1484 gives officers the account names. Review and merge not yet counted |
+| 3:10-3:20 PM | #1360 part 4 built: Battle.net and Discord logos under each member for officers, and a quick Claim link under unclaimed Members | Revamp 3 (#1360) | 10 m | ~10 m build | not read | Logos only (lit or "Not linked") until #1484 gives officers the account names. Review and merge in the next row |
+| 3:20-3:35 PM | PR #1501: Claim added under role-guess Members after the screenshots; account names split to #1502 (blocked by #1484); review and merge (merged 3:35) | Revamp 3 (#1360, #1502) | 15 m | ~5 m build, ~10 m Kat | not read | Kat chose to leave the account names to Rex rather than build #1484 here |
+| 3:36-3:46 PM | #1359 planned: three mockups on a design canvas, option A (each report in the sidebar) picked, plan posted; Performance trends filed as #1503 | Revamp 3 (#1359, #1503) | 10 m | ~5 m build, ~5 m Kat deciding | not read | Kat: performance trends from raw DPS and HPS, not parses; the page shape waits on examples |
+| 3:46-3:55 PM | #1359 part 1 built: Loot fairness and Bench fairness pages; the other reports and Performance trends added to the menu as empty pages | Revamp 3 (#1359) | 10 m | ~10 m build | not read | No database change. Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
