@@ -590,3 +590,58 @@ describe('Roster page, alts', () => {
     expect(client.rpcs.some(([name]) => name === 'earlier_characters')).toBe(false);
   });
 });
+
+// Everyone archived off the team, for officers (#1360 part 3).
+describe('Roster page, Archived', () => {
+  const handlers = (role: string) => {
+    const base = rosterHandlers({
+      players: [
+        player(1, 'Torbjorn-Illidan', 'Death Knight', 'Frost', 'Melee'),
+        {
+          ...player(2, 'Dodgey-Illidan', 'Monk', 'Windwalker', 'Melee', { nickname: 'Dodge' }),
+          archived_at: '2026-09-20T23:30:00Z',
+          player_officer_notes: { archived_reason: 'schedule_conflict', archived_reason_detail: 'New job, nights' }
+        }
+      ]
+    });
+    return {
+      ...base,
+      session: fakeSession({ battlenet: 'X#1', discord: { id: 'd', name: 'X' } }),
+      rpc(name: string, args: Record<string, unknown>) {
+        if (name === 'current_discord_id') return { data: 'discord-x' };
+        if (name === 'resolve_person')
+          return {
+            data: {
+              site_admin: false,
+              guild_officer: false,
+              boe_manager: false,
+              teams: [{ team_id: 1, team_member_id: 1, role, characters: [] }]
+            }
+          };
+        if (name === 'restore_player') return { data: false };
+        return base.rpc!(name, args);
+      }
+    };
+  };
+
+  it('lists who was archived, when and why, and re-adds one', async () => {
+    const { client } = renderApp('/g/wga/t/phoenix/roster', handlers('officer'));
+    await userEvent.click(await screen.findByRole('tab', { name: 'Archived (1)' }));
+    const table = screen.getByRole('table', { name: 'Archived' });
+    const row = within(table).getByRole('rowheader', { name: /Dodge/ }).closest('tr')!;
+    expect(row).toHaveTextContent('Windwalker Monk');
+    expect(row).toHaveTextContent('Sep 20, 2026');
+    expect(row).toHaveTextContent('Schedule conflict');
+    expect(row).toHaveTextContent('New job, nights');
+    expect(within(table).queryByText('Torbjorn')).not.toBeInTheDocument();
+    await userEvent.click(within(row).getByRole('button', { name: 'Re-add to roster: Dodge' }));
+    expect(client.rpcs).toContainEqual(['restore_player', { p_player_id: 2 }]);
+  });
+
+  it('shows a raider no Archived tab, and does not read it', async () => {
+    const { client } = renderApp('/g/wga/t/phoenix/roster', handlers('raider'));
+    await screen.findByRole('table', { name: 'Current roster' });
+    expect(screen.queryByRole('tab', { name: /Archived/ })).not.toBeInTheDocument();
+    expect(client.reads.some((r) => r.filters.some(([op]) => op === 'not.is'))).toBe(false);
+  });
+});

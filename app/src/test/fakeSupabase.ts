@@ -42,6 +42,16 @@ export type FakeHandlers = {
 // Every auth and function call a test might assert on, in order.
 export type AuthCall = [string, unknown];
 
+// `.is(col, null)` and `.not(col, 'is', null)` applied to a handler's rows,
+// so one players list answers both the roster read and the archived read.
+const nullFilters = (data: unknown, filters: Read['filters']) => {
+  if (!Array.isArray(data)) return data;
+  return filters.reduce<unknown[]>((rows, [op, column, value]) => {
+    if (value !== null || (op !== 'is' && op !== 'not.is')) return rows;
+    return rows.filter((row) => ((row as Record<string, unknown>)[column] == null) === (op === 'is'));
+  }, data);
+};
+
 export function fakeClient(
   handlers: FakeHandlers
 ): Client & { reads: Read[]; writes: Write[]; rpcs: [string, unknown][]; authCalls: AuthCall[] } {
@@ -112,6 +122,10 @@ export function fakeClient(
           read.filters.push(['is', column, value]);
           return builder;
         },
+        not(column: string, operator: string, value: unknown) {
+          read.filters.push([`not.${operator}`, column, value]);
+          return builder;
+        },
         in(column: string, values: unknown[]) {
           read.filters.push(['in', column, values]);
           return builder;
@@ -149,7 +163,9 @@ export function fakeClient(
             return settle(handlers.write ? handlers.write(write) : { data: null }).then(resolve, reject);
           }
           reads.push(read);
-          return settle(handlers.from ? handlers.from(read) : { data: null }).then(resolve, reject);
+          return settle(handlers.from ? handlers.from(read) : { data: null })
+            .then((r) => ({ ...r, data: nullFilters(r.data, read.filters) }))
+            .then(resolve, reject);
         }
       };
       return builder;

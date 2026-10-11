@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.176.0] - 2026-10-11
+
+### Project
+
+- The new app's Roster gives officers an "Archived (N)" tab next to Current
+  Roster (#1360, part 3 of 4). It lists every character archived off the
+  team, newest first, with their spec, the date they were archived, the
+  reason and the officer's words. "Re-add to roster" puts one back with the
+  same spec and join date, and brings back their membership if that was
+  archived too (`restore_player()`); why they left stays on record. Raiders
+  never see the tab, and it is not read for them. No database change.
+- Unit and browser test fakes now apply `is null` and `not is null` filters,
+  so one list of characters answers both the roster and the Archived tab.
+- Browser tests: the Archived tab, in both themes.
+- Time log: #1360 part 2's review and merge, and part 3's build.
+
 ## [3.175.0] - 2026-10-10
 
 ### Project

@@ -251,6 +251,32 @@ const needsALook = () => {
   };
 };
 
+// The Archived tab (#1360 part 3): one character archived with a reason and
+// the officer's words, one with no reason on record.
+const ARCHIVED_TAB = {
+  path: '/g/wga/t/phoenix/roster',
+  sentinel: 'table.roster-table',
+  session: OFFICER,
+  who: 'officer',
+  tables: {
+    ...rosterWithAlts(),
+    players: [
+      ...rosterWithAlts().players,
+      {
+        ...SCENARIO.players[0],
+        id: 90,
+        name_realm: 'Oldmain-Illidan',
+        nickname: 'Oldie',
+        archived_at: '2026-09-20T23:30:00Z',
+        player_officer_notes: { archived_reason: 'schedule_conflict', archived_reason_detail: 'New job, works nights' }
+      },
+      { ...SCENARIO.players[1], id: 91, name_realm: 'Quietone-Illidan', archived_at: '2026-08-02T01:00:00Z' }
+    ]
+  },
+  click: 'role=tab[name="Archived (2)"]',
+  afterClick: 'table.archived-table'
+};
+
 // The same swap, declined (#1430): the alt says so, with the officer's note.
 const declinedSwap = (fromNameRealm, officerNote = 'We need your Death Knight for battle res this tier.') => [
   { ...waitingSwap(fromNameRealm)[0], status: 'declined', officer_note: officerNote }
@@ -1120,6 +1146,11 @@ const STATES = [
     who: 'officer',
     tables: rosterWithNames()
   },
+  {
+    label: 'roster, officer, Archived tab',
+    ...ARCHIVED_TAB
+  },
+  { label: 'roster, officer, Archived tab, light', ...ARCHIVED_TAB, colorScheme: 'light' },
   {
     label: 'roster, officer, Needs a look',
     path: '/g/wga/t/phoenix/roster',

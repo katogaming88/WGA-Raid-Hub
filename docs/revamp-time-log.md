@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |      7 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     35 h 06 m |
-| Revamp 3: officer dashboard        |     18 h 29 m |
+| Revamp 3: officer dashboard        |     18 h 54 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **70 h 55 m** |
+| **All revamp work**                | **71 h 20 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -235,7 +235,14 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
-| 1:15-2:20 PM | #1360 part 2 built: one Needs a look box above the Roster (trials ready to promote with Promote to raider, main swap requests moved in, new raiders with no wishlist); PR #1498 opened with screenshots; one CI flake re-run | Revamp 3 (#1360) | 65 m | ~55 m build, ~10 m Kat | not read | Wishlist line kept to raiders who joined in the last 30 days, as on the current site: Immolation has no wishlists at all. Review and merge not yet counted |
+| 1:15-2:20 PM | #1360 part 2 built: one Needs a look box above the Roster (trials ready to promote with Promote to raider, main swap requests moved in, new raiders with no wishlist); PR #1498 opened with screenshots; one CI flake re-run | Revamp 3 (#1360) | 65 m | ~55 m build, ~10 m Kat | not read | Wishlist line kept to raiders who joined in the last 30 days, as on the current site: Immolation has no wishlists at all. Review and merge counted in the next row |
+| 2:20-2:27 PM | PR #1498 reviewed and merged (merged 2:27) | Revamp 3 (#1360) | 5 m | ~5 m Kat | not read | Logged on 2026-10-11 |
+
+### 2026-10-11
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 2:43-3:05 PM | #1360 part 3 built: Archived (N) tab on the Roster for officers, with when and why, and Re-add to roster | Revamp 3 (#1360) | 20 m | ~20 m build | not read | No database change: restore_player() (#1133) already did the re-add. Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

@@ -353,3 +353,14 @@ a.raider-name:hover {
 .settings-row-button {
   margin-left: auto;
 }
+
+/* Archived tab (#1360 part 3): the reason tag, then the officer's words. */
+.archived-why {
+  max-width: 28rem;
+}
+
+.archived-detail {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--text-muted);
+}
