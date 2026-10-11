@@ -31,12 +31,14 @@ import { altCountLabel, altsOf, earlierOwners, type SavedCharacter } from '../ch
 import { useEarlierLoot, useTeamAlts } from '../characters/useCharacters';
 import { useGeneralSettings } from '../settings/useSettings';
 import { needsALook, newJoiners } from './lookLines';
+import { ArchivedRoster } from './ArchivedRoster';
 import { NameRowActions } from './NameRowActions';
 import { NeedsALook } from './NeedsALook';
 import { PlayerSettingsProvider, SettingsRowButton } from './PlayerSettings';
 import { useCreateName, useNames } from './useNames';
 import type { NameRow } from './names';
 import {
+  useArchivedPlayers,
   useIncomingRoster,
   useRosterGear,
   useRosterOfficerData,
@@ -47,16 +49,40 @@ import {
 import './roster.css';
 
 type Filter = Role | 'All';
+type Tab = 'current' | 'incoming' | 'archived';
 
 export function RosterPage() {
   const team = useTeam();
   const current = bothQueries(useRosterPlayers(team.id), useRosterGear(team.id));
   const incoming = bothQueries(useIncomingRoster(team.id), useSignupSeasons(team.id));
-  const [tab, setTab] = useState<'current' | 'incoming'>('current');
+  const [tab, setTab] = useState<Tab>('current');
+  // Archived (#1360 part 3) is an officer tab: it carries why people left.
+  const officer = useIsOfficer(team.id);
+  const archived = useArchivedPlayers(team.id, officer);
 
   const incomingGroups = incoming.isSuccess ? toIncoming(incoming.data[0]) : [];
   const hasIncoming = incomingGroups.length > 0;
-  const showing = hasIncoming ? tab : 'current';
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'current', label: 'Current Roster' },
+    ...(hasIncoming
+      ? [
+          {
+            id: 'incoming' as const,
+            // Named after the tier when exactly one is open (#934); the
+            // season-agnostic label otherwise.
+            label:
+              incoming.data![1].length === 1
+                ? `${incoming.data![1][0]!.name} Roster (Tentative)`
+                : 'Next Season Roster (Tentative)'
+          }
+        ]
+      : []),
+    ...(officer
+      ? [{ id: 'archived' as const, label: archived.isSuccess ? `Archived (${archived.data.length})` : 'Archived' }]
+      : [])
+  ];
+  const showing = tabs.some((t) => t.id === tab) ? tab : 'current';
+  const hasTabs = tabs.length > 1;
 
   return (
     <section className="page roster-page" aria-labelledby="page-title">
@@ -67,24 +93,12 @@ export function RosterPage() {
         )}
       </div>
 
-      {hasIncoming && (
-        <RosterTabs
-          selected={showing}
-          onSelect={setTab}
-          incomingLabel={
-            // Named after the tier when exactly one is open (#934); the
-            // season-agnostic label otherwise.
-            incoming.data![1].length === 1
-              ? `${incoming.data![1][0]!.name} Roster (Tentative)`
-              : 'Next Season Roster (Tentative)'
-          }
-        />
-      )}
+      {hasTabs && <RosterTabs tabs={tabs} selected={showing} onSelect={setTab} />}
 
       <div
         id="roster-panel-current"
-        role={hasIncoming ? 'tabpanel' : undefined}
-        aria-labelledby={hasIncoming ? 'roster-tab-current' : undefined}
+        role={hasTabs ? 'tabpanel' : undefined}
+        aria-labelledby={hasTabs ? 'roster-tab-current' : undefined}
         hidden={showing !== 'current'}
       >
         <DataState query={current} label="the roster">
@@ -103,6 +117,19 @@ export function RosterPage() {
         </div>
       )}
 
+      {officer && (
+        <div
+          id="roster-panel-archived"
+          role="tabpanel"
+          aria-labelledby="roster-tab-archived"
+          hidden={showing !== 'archived'}
+        >
+          <DataState query={archived} label="archived raiders">
+            {(rows) => <ArchivedRoster teamId={team.id} rows={rows} />}
+          </DataState>
+        </div>
+      )}
+
       {incoming.isError && (
         <DataState query={incoming} label="next season’s roster">
           {() => null}
@@ -114,18 +141,14 @@ export function RosterPage() {
 
 // Tabs with arrow-key movement between them (#439).
 function RosterTabs({
+  tabs,
   selected,
-  onSelect,
-  incomingLabel
+  onSelect
 }: {
-  selected: 'current' | 'incoming';
-  onSelect: (tab: 'current' | 'incoming') => void;
-  incomingLabel: string;
+  tabs: { id: Tab; label: string }[];
+  selected: Tab;
+  onSelect: (tab: Tab) => void;
 }) {
-  const tabs = [
-    { id: 'current' as const, label: 'Current Roster' },
-    { id: 'incoming' as const, label: incomingLabel }
-  ];
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const onKeyDown = (event: KeyboardEvent, index: number) => {
     const last = tabs.length - 1;

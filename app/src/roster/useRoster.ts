@@ -1,4 +1,4 @@
-import { readAll, useSupabaseQuery } from '../data/query';
+import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { AttendanceRow, LootRow, SeasonWindow } from '../profile/profile';
 import type { GearRow, IncomingRow, PlayerRow } from './roster';
@@ -116,5 +116,59 @@ export function useWishlistsStarted(playerIds: number[], season: string | null) 
       return { data: new Set((data ?? []).map((r) => r.player_id as number)), error: null };
     },
     { enabled: playerIds.length > 0 && season !== null }
+  );
+}
+
+export type ArchivedRow = {
+  id: number;
+  name_realm: string;
+  nickname: string | null;
+  archived_at: string;
+  classes_specs: { class: string; spec: string } | null;
+  player_officer_notes: { archived_reason: string | null; archived_reason_detail: string | null } | null;
+};
+
+// Officers: every archived character on the team, newest first, with why it
+// left (#1360 part 3). The reason is officer-only, so nobody else reads it.
+export function useArchivedPlayers(teamId: number, enabled: boolean) {
+  return useSupabaseQuery<ArchivedRow[]>(
+    ['archived', teamId],
+    async (client) => {
+      const rows = await readAll<ArchivedRow>((from, to) =>
+        client
+          .from('players')
+          .select(
+            'id, name_realm, nickname, archived_at, classes_specs(class, spec), player_officer_notes(archived_reason, archived_reason_detail)'
+          )
+          .eq('team_id', teamId)
+          .not('archived_at', 'is', null)
+          .order('id')
+          .range(from, to)
+      );
+      if (rows.error) return rows;
+      return { data: rows.data.sort((a, b) => (a.archived_at < b.archived_at ? 1 : -1)), error: null };
+    },
+    { enabled }
+  );
+}
+
+// Officers: puts an archived character back on the roster as it was, and
+// brings back its membership if that was archived too (restore_player(),
+// #1133). Why it left stays on record.
+export function useRestorePlayer(teamId: number) {
+  return useSupabaseMutation<null, { playerId: number; name: string }>(
+    async (client, { playerId }) => {
+      const result = await client.rpc('restore_player', { p_player_id: playerId });
+      return { data: null, error: result.error };
+    },
+    {
+      key: ['restore-player', teamId],
+      refreshes: [
+        ['roster', teamId],
+        ['archived', teamId],
+        ['team-alts', teamId],
+        ['names', teamId]
+      ]
+    }
   );
 }

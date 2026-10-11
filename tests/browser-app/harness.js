@@ -265,7 +265,15 @@ export async function openApp(browser, port, state) {
         // its filters.
         const byId = url.searchParams.get('id')?.match(/^eq\.(\d+)$/)?.[1];
         const all = tables[rest];
-        const rows = byId && all.some((r) => 'id' in r) ? all.filter((r) => String(r.id) === byId) : all;
+        let rows = byId && all.some((r) => 'id' in r) ? all.filter((r) => String(r.id) === byId) : all;
+        // So are is.null and not.is.null, so one players list answers both the
+        // roster and the Archived tab (#1360); a row without the column reads
+        // as null.
+        for (const [column, value] of url.searchParams) {
+          if (value === 'is.null' || value === 'not.is.null') {
+            rows = rows.filter((r) => (r?.[column] == null) === (value === 'is.null'));
+          }
+        }
         // A count with no rows (Guild home's officer panel): the total is in
         // the Content-Range header.
         if (request.method() === 'HEAD') {
