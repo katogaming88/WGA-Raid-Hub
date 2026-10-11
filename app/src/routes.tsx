@@ -7,6 +7,7 @@ import { HomePage } from './home/HomePage';
 import { CalendarPage } from './calendar/CalendarPage';
 import { BossGroupsPage } from './calendar/BossGroupsPage';
 import { AttendanceManagePage } from './attendance/AttendanceManagePage';
+import { BenchFairnessPage, LootFairnessPage } from './reports/FairnessPages';
 import { GeneralSettingsPage } from './settings/GeneralSettingsPage';
 import { SeasonSettingsPage } from './settings/SeasonSettingsPage';
 import { ProgressionSettingsPage } from './settings/ProgressionSettingsPage';
@@ -45,6 +46,8 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   // already shows a raider's attendance pct and flagged nights, so a
   // dedicated Scores page has nothing Roster -> Profile doesn't.
   'officer/attendance': <AttendanceManagePage />,
+  'officer/reports/loot-fairness': <LootFairnessPage />,
+  'officer/reports/bench-fairness': <BenchFairnessPage />,
   history: <HistoryPage />,
   officers: <TeamOfficersPage />,
   signup: <SignUpPage />,

@@ -12,6 +12,25 @@ answers to.
 
 ---
 
+## [3.178.0] - 2026-10-11
+
+### Project
+
+- The new app gets its first two officer reports (#1359, part 1 of 3), each
+  on its own page under Reports in the menu. **Loot fairness** shows how
+  many items each raider has received this season, grouped by role, most
+  first, as bars with a line for the raid average, and switches between
+  everything, Heroic and Mythic. Items are counted the way the Roster's
+  Items column counts them, an earlier character's loot included. **Bench
+  fairness** shows the nights each raider sat on the bench this season and
+  their bench rate. No database change.
+- The Reports menu lists the rest too: Raid nights since last item, BiS
+  demand, Loot pace, Priority order health and Tier sets (#1359 parts 2 and
+  3), and Performance trends (#1503). They are empty pages for now.
+- Browser tests: both reports, in both themes.
+- Time log: #1360 part 4's review and merge, #1359's plan and part 1's
+  build.
+
 ## [3.177.0] - 2026-10-11
 
 ### Project
