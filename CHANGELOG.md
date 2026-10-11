@@ -12,6 +12,25 @@ answers to.
 
 ---
 
+## [3.177.0] - 2026-10-11
+
+### Project
+
+- The new app's Roster shows officers which accounts each member has
+  connected (#1360, part 4 of 4): the Battle.net and Discord logos under the
+  name, in color when connected and grey with "Not linked" when not. The
+  BattleTag and Discord username join them once officers can read those
+  (#1484). Raiders don't see the line, and it is not read for them.
+- An unclaimed Member gets a blue "Claim" link under the name, with the
+  Battle.net logo. Signed in, it claims in one click; signed out, it starts
+  Battle.net sign-in first. It is hidden for someone who already holds a
+  Member on the team, and Claim stays in the "..." menu too. No database
+  change.
+- Browser tests: the accounts line and Claim, in both themes. The test
+  harness answers `team_battlenet_connections()` with nobody unless a state
+  says otherwise.
+- Time log: #1360 part 3's review and merge, and part 4's build.
+
 ## [3.176.0] - 2026-10-11
 
 ### Project

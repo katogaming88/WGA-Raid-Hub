@@ -31,6 +31,7 @@ import { altCountLabel, altsOf, earlierOwners, type SavedCharacter } from '../ch
 import { useEarlierLoot, useTeamAlts } from '../characters/useCharacters';
 import { useGeneralSettings } from '../settings/useSettings';
 import { needsALook, newJoiners } from './lookLines';
+import { AccountsLine, QuickClaim } from './AccountsLine';
 import { ArchivedRoster } from './ArchivedRoster';
 import { NameRowActions } from './NameRowActions';
 import { NeedsALook } from './NeedsALook';
@@ -38,13 +39,15 @@ import { PlayerSettingsProvider, SettingsRowButton } from './PlayerSettings';
 import { useCreateName, useNames } from './useNames';
 import type { NameRow } from './names';
 import {
+  useAccountLinks,
   useArchivedPlayers,
   useIncomingRoster,
   useRosterGear,
   useRosterOfficerData,
   useRosterPlayers,
   useSignupSeasons,
-  useWishlistsStarted
+  useWishlistsStarted,
+  type AccountLinks
 } from './useRoster';
 import './roster.css';
 
@@ -300,6 +303,11 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
     : ownMember !== undefined
       ? new Set([ownMember])
       : null;
+  // The accounts line under each member (#1360 part 4), officers only.
+  const accountLinks = useAccountLinks(team.id, officer);
+  // Quick Claim is for someone who holds no Name on the team yet; signed out,
+  // that is unknown, and the link starts sign-in.
+  const holdsName = ownMember !== undefined && names.some((n) => n.team_member_id === ownMember);
   const nameRows = [...unclaimed, ...nameOnlyRows(names, players, current)].sort((a, b) =>
     a.label.localeCompare(b.label)
   );
@@ -376,6 +384,11 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
               {() => null}
             </DataState>
           )}
+          {officer && accountLinks.isError && (
+            <DataState query={accountLinks} label="connected accounts">
+              {() => null}
+            </DataState>
+          )}
           {officer && teamAlts.isError && (
             <DataState query={teamAlts} label="alts">
               {() => null}
@@ -394,6 +407,8 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
                 teamId={team.id}
                 officer={officer}
                 nameRows={shownNameRows}
+                accounts={accountLinks.data ?? null}
+                quickClaim={!holdsName}
               />
             </div>
             <RosterSummaryPanel summary={summary} />
@@ -504,7 +519,9 @@ function RosterTable({
   showAlts = false,
   teamId,
   officer = false,
-  nameRows = []
+  nameRows = [],
+  accounts = null,
+  quickClaim = false
 }: {
   groups: RoleGroup[];
   caption: string;
@@ -520,6 +537,10 @@ function RosterTable({
   teamId?: number | undefined;
   officer?: boolean;
   nameRows?: NameRow[];
+  // Officers: each member's connected accounts (#1360 part 4).
+  accounts?: Map<number, AccountLinks> | null;
+  // Whether unclaimed rows offer Claim under the name.
+  quickClaim?: boolean;
 }) {
   const columns = details ? (stats ? 6 : 4) : 1;
   return (
@@ -575,6 +596,7 @@ function RosterTable({
                     altCount={raiderAlts.length}
                     teamId={teamId}
                     officer={officer}
+                    links={raider.teamMemberId != null ? (accounts?.get(raider.teamMemberId) ?? null) : null}
                   />
                   {showAlts &&
                     raiderAlts.map((alt) => (
@@ -595,6 +617,8 @@ function RosterTable({
                 name={n}
                 details={details}
                 withStats={stats !== null}
+                links={n.team_member_id !== null ? (accounts?.get(n.team_member_id) ?? null) : null}
+                quickClaim={quickClaim}
               />
             ))}
           </tbody>
@@ -611,7 +635,8 @@ function RosterRow({
   stats,
   altCount = 0,
   teamId,
-  officer = false
+  officer = false,
+  links = null
 }: {
   raider: Raider;
   details: boolean;
@@ -624,6 +649,7 @@ function RosterRow({
   // incoming-roster table, which carries no Names.
   teamId?: number | undefined;
   officer?: boolean;
+  links?: AccountLinks | null;
 }) {
   const icon = specIcon(raider.className, raider.spec);
   return (
@@ -648,6 +674,7 @@ function RosterRow({
             {raider.spec} {raider.className}
           </span>
         )}
+        {links && <AccountsLine links={links} />}
       </th>
       {details && (
         <>
@@ -711,13 +738,17 @@ function NameOnlyRow({
   officer,
   name,
   details,
-  withStats
+  withStats,
+  links,
+  quickClaim
 }: {
   teamId: number;
   officer: boolean;
   name: NameRow;
   details: boolean;
   withStats: boolean;
+  links: AccountLinks | null;
+  quickClaim: boolean;
 }) {
   const claimed = name.team_member_id !== null;
   const none = (
@@ -728,8 +759,12 @@ function NameOnlyRow({
   );
   return (
     <tr className={claimed ? 'name-only-row' : 'unclaimed-row'}>
-      <th scope="row" className="raider-cell">
+      {/* Named by the label alone: the Claim and accounts under it are
+          controls and details, not what the row is called. */}
+      <th scope="row" className="raider-cell" aria-label={name.label}>
         <span className="raider-name">{name.label}</span>
+        {links && <AccountsLine links={links} />}
+        {!claimed && quickClaim && <QuickClaim teamId={teamId} nameId={name.id} label={name.label} />}
       </th>
       {details && (
         <>

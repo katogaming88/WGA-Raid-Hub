@@ -251,6 +251,27 @@ const needsALook = () => {
   };
 };
 
+// The accounts line and quick Claim (#1360 part 4): every member but one has
+// Battle.net, every other one Discord, and two bare Names offer Claim.
+const ACCOUNTS = {
+  path: '/g/wga/t/phoenix/roster',
+  sentinel: 'table.roster-table .accounts-line',
+  session: OFFICER,
+  who: 'officer',
+  tables: {
+    ...rosterWithNames(),
+    team_members: rosterWithNames().team_members.map((m, i) => ({
+      ...m,
+      discord_id: i % 2 ? null : `10000000${m.id}`
+    }))
+  },
+  rpc: {
+    team_battlenet_connections: rosterWithNames()
+      .team_members.slice(1)
+      .map((m) => ({ team_member_id: m.id }))
+  }
+};
+
 // The Archived tab (#1360 part 3): one character archived with a reason and
 // the officer's words, one with no reason on record.
 const ARCHIVED_TAB = {
@@ -1146,6 +1167,8 @@ const STATES = [
     who: 'officer',
     tables: rosterWithNames()
   },
+  { label: 'roster, officer, accounts and Claim', ...ACCOUNTS },
+  { label: 'roster, officer, accounts and Claim, light', ...ACCOUNTS, colorScheme: 'light' },
   {
     label: 'roster, officer, Archived tab',
     ...ARCHIVED_TAB
