@@ -158,3 +158,74 @@ describe('Bench fairness page', () => {
     expect(within(melee).getByText('Torbjorn').closest('li')).toHaveTextContent('Nights benched: 1 (50%)');
   });
 });
+
+// The sortable tables (#1359 part 2).
+const rowNames = (table: HTMLElement) =>
+  within(table)
+    .getAllByRole('rowheader')
+    .map((th) => th.querySelector('.raider-name')!.textContent);
+
+describe('Raid nights since last item page', () => {
+  const tables = {
+    ...TABLES,
+    rnlsi: [
+      { player_id: 1, last_award_at: '2026-08-20T18:00:00Z', raid_nights_since_last_item: 3 },
+      { player_id: 2, last_award_at: null, raid_nights_since_last_item: 9 },
+      { player_id: 3, last_award_at: '2026-09-01T18:00:00Z', raid_nights_since_last_item: 1 }
+    ]
+  };
+
+  it('lists the longest wait first, and sorts by a column when its header is clicked', async () => {
+    renderApp('/g/wga/t/phoenix/officer/reports/raid-nights', handlers(tables));
+    const table = await screen.findByRole('table', { name: 'Raid nights since last item' });
+    expect(rowNames(table)).toEqual(['Zuggz', 'Torbjorn', 'Fluphie']);
+    expect(within(table).getByRole('columnheader', { name: /Raid nights since/ })).toHaveAttribute(
+      'aria-sort',
+      'descending'
+    );
+    expect(within(table).getByRole('rowheader', { name: /Zuggz/ }).closest('tr')).toHaveTextContent('Never');
+
+    await userEvent.click(within(table).getByRole('button', { name: /Raider/ }));
+    expect(rowNames(table)).toEqual(['Fluphie', 'Torbjorn', 'Zuggz']);
+    expect(within(table).getByRole('columnheader', { name: /Raider/ })).toHaveAttribute('aria-sort', 'ascending');
+    expect(within(table).getByRole('columnheader', { name: /Raid nights since/ })).not.toHaveAttribute('aria-sort');
+
+    await userEvent.click(within(table).getByRole('button', { name: /Raider/ }));
+    expect(rowNames(table)).toEqual(['Zuggz', 'Torbjorn', 'Fluphie']);
+  });
+
+  it('narrows to one role', async () => {
+    renderApp('/g/wga/t/phoenix/officer/reports/raid-nights', handlers(tables));
+    const table = await screen.findByRole('table', { name: 'Raid nights since last item' });
+    await userEvent.click(screen.getByRole('button', { name: 'Tanks' }));
+    expect(rowNames(table)).toEqual(['Fluphie']);
+  });
+});
+
+describe('Tier sets page', () => {
+  it('lists the fewest pieces first, with a never-synced raider below 0/5', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/officer/reports/tier-sets',
+      handlers({
+        ...TABLES,
+        players: [
+          { ...PLAYERS[0]!, tier_pieces_equipped: 4, tier_pieces_synced_at: '2026-10-10T12:00:00Z' },
+          { ...PLAYERS[1]!, tier_pieces_equipped: 0, tier_pieces_synced_at: '2026-10-10T12:00:00Z' },
+          PLAYERS[2]
+        ]
+      })
+    );
+    const table = await screen.findByRole('table', { name: 'Tier sets' });
+    expect(rowNames(table)).toEqual(['Fluphie', 'Zuggz', 'Torbjorn']);
+    expect(
+      within(table)
+        .getByRole('rowheader', { name: /Fluphie/ })
+        .closest('tr')
+    ).toHaveTextContent('Not synced');
+    expect(
+      within(table)
+        .getByRole('rowheader', { name: /Torbjorn/ })
+        .closest('tr')
+    ).toHaveTextContent('4/5');
+  });
+});

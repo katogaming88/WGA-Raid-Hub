@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.179.0] - 2026-10-11
+
+### Project
+
+- Two more officer reports in the new app (#1359, part 2 of 3), each on
+  its own page under Reports. **Raid nights since last item** lists how
+  many of the team's raid nights each raider has gone without an item,
+  longest first, with the date of their last one. **Tier sets** lists the
+  tier pieces each raider has equipped and when their gear was last
+  synced, fewest first, with a raider never synced below 0/5. Both have a
+  role switch, and clicking a column header sorts by it; the sorted header
+  tells a screen reader which way (#440). No database change.
+- The Roster's read of each character now includes when its tier pieces
+  were last counted, for the Tier sets report.
+- Browser tests: both reports, in both themes.
+- Time log: #1359 part 1's review and merge, and part 2's build.
+
 ## [3.178.0] - 2026-10-11
 
 ### Project
