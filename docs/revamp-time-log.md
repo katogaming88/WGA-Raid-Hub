@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |      7 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     35 h 06 m |
-| Revamp 3: officer dashboard        |     18 h 54 m |
+| Revamp 3: officer dashboard        |     19 h 09 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **71 h 20 m** |
+| **All revamp work**                | **71 h 35 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -242,7 +242,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
-| 2:43-3:05 PM | #1360 part 3 built: Archived (N) tab on the Roster for officers, with when and why, and Re-add to roster | Revamp 3 (#1360) | 20 m | ~20 m build | not read | No database change: restore_player() (#1133) already did the re-add. Review and merge not yet counted |
+| 2:43-3:05 PM | #1360 part 3 built: Archived (N) tab on the Roster for officers, with when and why, and Re-add to roster | Revamp 3 (#1360) | 20 m | ~20 m build | not read | No database change: restore_player() (#1133) already did the re-add. Review and merge in the next row |
+| 3:05-3:09 PM | PR #1499 reviewed and merged (merged 3:09) | Revamp 3 (#1360) | 5 m | ~5 m Kat | not read | Phone view left as is (the table scrolls sideways); Kat will file an issue if it causes trouble |
+| 3:10-3:20 PM | #1360 part 4 built: Battle.net and Discord logos under each member for officers, and a quick Claim link under unclaimed Members | Revamp 3 (#1360) | 10 m | ~10 m build | not read | Logos only (lit or "Not linked") until #1484 gives officers the account names. Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

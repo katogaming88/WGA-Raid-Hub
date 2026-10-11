@@ -364,3 +364,49 @@ a.raider-name:hover {
   margin-top: var(--space-1);
   color: var(--text-muted);
 }
+
+/* Accounts under a member's name (#1360 part 4): the real logos, lit when
+   connected, grey with "Not linked" when not. */
+.accounts-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-dim);
+}
+
+.account {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.account-battlenet.linked {
+  color: #148eff;
+}
+
+.account-discord.linked {
+  color: #5865f2;
+}
+
+.quick-claim {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.quick-claim:hover {
+  text-decoration: underline;
+}
+
+.quick-claim svg {
+  color: #148eff;
+}

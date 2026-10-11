@@ -48,7 +48,7 @@ function namesHandlers(
     names?: NameRow[];
     players?: (typeof TORBJORN)[];
     // The memberships an officer's roster reads, with whether each ended.
-    members?: { id: number; person_id: number; archived_at: string | null }[];
+    members?: { id: number; person_id: number; archived_at: string | null; discord_id?: string | null }[];
     // The signed-in person's own membership on the team.
     teamMemberId?: number;
     write?: FakeHandlers['write'];
@@ -956,5 +956,64 @@ describe("the officers' membership read", () => {
     await waitFor(() => expect(client.reads.some((r) => r.table === 'team_members')).toBe(true));
     const read = client.reads.find((r) => r.table === 'team_members')!;
     expect(read.filters).toContainEqual(['is', 'archived_at', null]);
+  });
+});
+
+// Claim under an unclaimed Member, and the accounts line (#1360 part 4).
+describe('Roster page, quick Claim and accounts', () => {
+  it('claims a bare Name straight from the link under it', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers());
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    // A bare Name with a role guess, in its role group, gets one too.
+    expect(within(table).getByRole('button', { name: 'Claim Needs A Tank' })).toBeInTheDocument();
+    await user.click(within(table).getByRole('button', { name: 'Claim Bare Raider' }));
+    expect(await screen.findByText('Claimed Bare Raider.')).toBeInTheDocument();
+    expect(client.rpcs).toContainEqual(['claim_name', { p_team_id: 1, p_name_id: 1 }]);
+  });
+
+  it('offers no quick Claim to someone who already holds a Name on the team', async () => {
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ teamMemberId: 9 }));
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    await within(table).findByRole('rowheader', { name: 'Bare Raider' });
+    await waitFor(() => expect(within(table).queryByRole('button', { name: /^Claim / })).not.toBeInTheDocument());
+  });
+
+  it('sends a signed-out visitor through Battle.net sign-in first', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: null }));
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    await user.click(within(table).getByRole('button', { name: 'Claim Bare Raider' }));
+    expect(client.authCalls).toContainEqual([
+      'signInWithOAuth',
+      expect.objectContaining({ provider: 'custom:battlenet' })
+    ]);
+    expect(client.rpcs.some(([n]) => n === 'claim_name')).toBe(false);
+  });
+
+  it('shows an officer which accounts each member has connected', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/roster',
+      namesHandlers({
+        role: 'officer',
+        members: [{ id: 9, person_id: 70, archived_at: null, discord_id: null }],
+        rpc(name, args) {
+          if (name === 'team_battlenet_connections') return { data: [{ team_member_id: 9 }] };
+          return seededHandlers().rpc!(name, args);
+        }
+      })
+    );
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const raz = within(table).getByRole('rowheader', { name: /Raz/ });
+    await within(raz).findByText('Battle.net connected');
+    expect(raz).toHaveTextContent('Discord: Not linked');
+  });
+
+  it('shows a raider no accounts, and does not read them', async () => {
+    const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers());
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    await within(table).findByRole('rowheader', { name: /Raz/ });
+    expect(within(table).queryByText(/Not linked|connected/)).not.toBeInTheDocument();
+    expect(client.rpcs.some(([n]) => n === 'team_battlenet_connections')).toBe(false);
   });
 });
