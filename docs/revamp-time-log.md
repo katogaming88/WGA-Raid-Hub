@@ -12,12 +12,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 | Phase                              |   Time so far |
 | ---------------------------------- | ------------: |
-| Planning and design                |      7 h 50 m |
+| Planning and design                |      8 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     35 h 06 m |
 | Revamp 3: officer dashboard        |     20 h 54 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **73 h 20 m** |
+| **All revamp work**                | **74 h 10 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -257,7 +257,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
-| 9:45-10:25 AM | #1205 built on the new app's BoE page: shorter Record Sale warning with the finders in bold, and a Record on older find button; tried on localhost against the production backup | Revamp 3 (#1205) | 40 m | ~25 m build, ~15 m Kat testing | not read | Kat asked for the shorter wording, the older-find button, one row of buttons and bold names while testing. Review and merge not yet counted |
+| 8:59-9:47 AM | #1517 mockups on the design canvas: guild Members tab, guild Rank permissions, Teams tab, team Rank permissions, New team in the team picker menu; issue updated and status posted | Planning and design (#1517) | 50 m | ~30 m build, ~20 m Kat deciding | not read | Decided: new guild rank Team Lead (create a team, own bio card), no "start a new team" invites, creator is always Team Owner, See/Officer on every team set per person |
+| 9:47-10:25 AM | #1205 built on the new app's BoE page: shorter Record Sale warning with the finders in bold, and a Record on older find button; tried on localhost against the production backup | Revamp 3 (#1205) | 40 m | ~25 m build, ~15 m Kat testing | not read | Kat asked for the shorter wording, the older-find button, one row of buttons and bold names while testing. Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

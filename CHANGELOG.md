@@ -26,7 +26,7 @@ answers to.
   **Back** stay. When a find has no rank recorded, the warning says which.
 - Tests: the warning's wording, and a page test that each button records
   the sale on the right find.
-- Time log: #1205.
+- Time log: #1517 mockups and #1205.
 
 ## [3.180.0] - 2026-10-11
 
