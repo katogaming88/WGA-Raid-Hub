@@ -864,7 +864,7 @@ const CRASH = {
   sentinel: 'text=Something went wrong on this page',
   tables: { players: [null] }
 };
-const NEWS = { path: '/g/wga/news', sentinel: 'main:has(.news-entry)', news: NEWS_ENTRIES };
+const NEWS = { path: '/news', sentinel: 'main:has(.news-entry)', news: NEWS_ENTRIES };
 
 // The Streams page (#1102): the live players and the offline directory, which
 // between them carry every stream card state axe should measure (#796).
@@ -875,8 +875,8 @@ const STREAMS_PAGE = {
   tables: { streamers: DIRECTORY }
 };
 
-const HELP = { path: '/g/wga/help', sentinel: 'main:has(.help-card)' };
-const ABOUT = { path: '/g/wga/about', sentinel: 'main:has(.about-card)' };
+const HELP = { path: '/help', sentinel: 'main:has(.help-card)' };
+const ABOUT = { path: '/about', sentinel: 'main:has(.about-card)' };
 
 // The site front page and the create-your-guild page (#1226). The form only
 // shows once guild creation is open, so that state turns the switch on.
@@ -997,7 +997,7 @@ const SIGNUP_SUMMARY = {
 
 // Site admin (#1364): Staff only, with two admins listed and the switches off.
 const SITE_ADMIN = {
-  path: '/g/wga/site-admin',
+  path: '/site-admin',
   sentinel: 'main .siteadmin-list li',
   session: OFFICER,
   person: {

@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |      8 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     35 h 06 m |
-| Revamp 3: officer dashboard        |     21 h 34 m |
+| Revamp 3: officer dashboard        |     21 h 44 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **75 h 00 m** |
+| **All revamp work**                | **75 h 10 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -264,6 +264,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:56-11:01 AM | #1515 delete-or-hide put to Rex with Kat's lean (delete, typed-name confirm); #773 closed; #1487 rows updated | Revamp 3 (#1515, #773) | 5 m | ~3 m build, ~2 m Kat | not read | |
 | 11:01-11:09 AM, 11:21-11:25 AM | #1364 part 1 built: Site admin page with site admins, switches and the lookup; PR opened | Revamp 3 (#1364) | 10 m | ~10 m build | not read | Review and merge not yet counted |
 | 11:09-11:21 AM | How Staff are added: Discord ID box dropped; Staff ranks and a one-time invite link with approval filed as #1520 | Planning and design (#1520) | 10 m | ~5 m build, ~5 m Kat deciding | not read | Kat: Site Owner, Admin and two smaller ranks; adding Staff should feel separate |
+| 11:25-11:34 AM | PR #1521: screenshots taken, reviewed and merged (merged 11:33); #1364 closed with it and Remove a guild moved to #1515 | Revamp 3 (#1364, #1515) | 10 m | ~5 m build, ~5 m Kat | not read | |
 
 ## Not counted (same sessions, not revamp)
 
@@ -281,6 +282,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-10-06 | 6:27-6:54 PM | Bot switchover status: the new bot's Developer Team invite accepted and logo set; plan for #959 (dummy ping role, officers pick real roles in #994) posted on #959 | 25 m |
 | 2026-10-06 | 10:09-10:11 PM | Leftover local and remote branches deleted | 5 m |
 | 2026-10-07 | 11:10-11:18 AM | Where the work stood; Revamp 3 due date move to 10-31 tried (GitHub would not save milestone changes); #801, #871, #837, #649 closed | 10 m |
+| 2026-10-14 | 11:38-11:45 AM | #1482: News, About, Help and Site admin get site addresses (Multi-guild milestone); review and merge not yet counted | 10 m |
 
 ## Remaining in Revamp 1
 

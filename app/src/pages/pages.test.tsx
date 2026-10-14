@@ -30,7 +30,7 @@ describe('crash screen', () => {
     quietConsole();
     const reported: unknown[] = [];
     setErrorReporter((error, context) => reported.push([context.where, (error as Error).message]));
-    renderApp('/g/wga/about');
+    renderApp('/about');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Something went wrong on this page' })).toBeVisible();
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
