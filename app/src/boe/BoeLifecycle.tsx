@@ -13,6 +13,7 @@ import {
   formatGold,
   groupByStatus,
   olderOpenTwin,
+  twinWarning,
   parseGoldInput,
   finderPaid,
   guildKept,
@@ -612,7 +613,9 @@ function SaleDialog({ item, items, onClose }: { item: BoeItemRow; items: BoeItem
   const parsed = parseGoldInput(price);
   const twin = useMemo(() => olderOpenTwin(items, item), [items, item]);
 
-  const submit = (priceValue: number) => record.mutate({ id: item.id, price: priceValue }, { onSuccess: onClose });
+  const submit = (priceValue: number, rowId = item.id) =>
+    record.mutate({ id: rowId, price: priceValue }, { onSuccess: onClose });
+  const pendingOn = record.isPending ? record.variables?.id : null;
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -629,11 +632,13 @@ function SaleDialog({ item, items, onClose }: { item: BoeItemRow; items: BoeItem
     <Dialog title={`Record sale: ${item.item_name}`} onClose={onClose} busy={record.isPending}>
       {warned && twin ? (
         <>
-          <p role="alert">
-            An older {twin.item_name} on {twin.track || 'no track'} is still open:{' '}
-            {twin.finder_name || 'unknown finder'}, reported {boeDate(twin.found_at)}. Cuts go to the first finder at
-            the same rank. Record this sale anyway?
-          </p>
+          <div role="alert">
+            {twinWarning(twin, item).map((parts, i) => (
+              <p key={i}>
+                {parts.map((part, j) => (typeof part === 'string' ? part : <strong key={j}>{part.finder}</strong>))}
+              </p>
+            ))}
+          </div>
           {record.isError && (
             <p className="form-error" role="alert">
               {record.error.message}
@@ -643,13 +648,16 @@ function SaleDialog({ item, items, onClose }: { item: BoeItemRow; items: BoeItem
             <button type="button" className="button" onClick={() => setWarned(false)} disabled={record.isPending}>
               Back
             </button>
+            <button type="button" className="button" disabled={record.isPending} onClick={() => submit(parsed!)}>
+              {pendingOn === item.id ? 'Working…' : 'Record here anyway'}
+            </button>
             <button
               type="button"
               className="button button-primary"
               disabled={record.isPending}
-              onClick={() => submit(parsed!)}
+              onClick={() => submit(parsed!, twin.id)}
             >
-              {record.isPending ? 'Working…' : 'Record sale anyway'}
+              {pendingOn === twin.id ? 'Working…' : 'Record on older find'}
             </button>
           </div>
         </>

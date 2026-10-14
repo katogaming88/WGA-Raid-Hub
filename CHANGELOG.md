@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.180.1] - 2026-10-14
+
+### Project
+
+- New app, BoE page (#1205): when Record Sale finds an older unsold copy
+  of the same item at the same rank, the warning now says it plainly in
+  three short lines: who found the older one and when, that the first
+  finder gets the cut, and whose find this sale is going on. Both
+  finders' names are in bold. A new **Record on older find** button
+  records the sale, at the price already typed, on the older find, so
+  there is no going back to look for it. **Record here anyway** and
+  **Back** stay. When a find has no rank recorded, the warning says which.
+- Tests: the warning's wording, and a page test that each button records
+  the sale on the right find.
+- Time log: #1517 mockups and #1205.
+
 ## [3.180.0] - 2026-10-11
 
 ### Project
