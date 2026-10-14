@@ -8,14 +8,25 @@ import { useSession } from './session';
 // stays, so the page is still named; the body says why it is closed. The
 // database refuses the reads and writes on its own, so this is about showing
 // a clear message instead of an empty page.
-export function RequireAbility({ ability, title, children }: { ability: Ability; title: string; children: ReactNode }) {
+// `forWhom` names who the page is for in the closed message; officers by default.
+export function RequireAbility({
+  ability,
+  title,
+  forWhom,
+  children
+}: {
+  ability: Ability;
+  title: string;
+  forWhom?: string;
+  children: ReactNode;
+}) {
   const { user } = useSession();
   const { team } = useAddress();
   const access = useAccess();
 
   let body: ReactNode;
   if (!user) {
-    body = <p>Sign in to see this page. It is for officers.</p>;
+    body = <p>Sign in to see this page. It is for {forWhom ?? 'officers'}.</p>;
   } else if (access.isPending || access.isError) {
     body = (
       <DataState query={access} label="your access">
@@ -23,7 +34,7 @@ export function RequireAbility({ ability, title, children }: { ability: Ability;
       </DataState>
     );
   } else if (!can(access.data, ability, team?.id)) {
-    body = <p>This page is for officers of {team?.name ?? 'this team'}.</p>;
+    body = <p>This page is for {forWhom ?? `officers of ${team?.name ?? 'this team'}`}.</p>;
   } else {
     return <>{children}</>;
   }

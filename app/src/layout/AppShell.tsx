@@ -74,6 +74,7 @@ export function AppShell() {
     { team: `/g/${guildKey}/t/${navTeamKey}`, guild: `/g/${guildKey}` },
     {
       officer: can(access.data, 'viewOfficerTools', navTeam?.id),
+      siteAdmin: can(access.data, 'adminSite'),
       newsUnread: news.isSuccess && hasUnread(news.data, newsSeen),
       liveCount: streamers.isSuccess ? liveCount(streamers.data) : 0
     }

@@ -23,7 +23,7 @@ export type NavGroup = { heading: string; items: NavItem[] };
 // officer tools sit under /officer/ (#1100).
 export function navGroups(
   base: { team: string; guild: string },
-  show: { officer: boolean; newsUnread?: boolean; liveCount?: number }
+  show: { officer: boolean; siteAdmin?: boolean; newsUnread?: boolean; liveCount?: number }
 ): NavGroup[] {
   const groups: NavGroup[] = [
     {
@@ -57,7 +57,9 @@ export function navGroups(
       items: [
         { label: 'News', icon: 'news', to: `${base.guild}/news`, mark: show.newsUnread ?? false },
         { label: 'About', icon: 'info', to: `${base.guild}/about` },
-        { label: 'Help', icon: 'help', to: `${base.guild}/help` }
+        { label: 'Help', icon: 'help', to: `${base.guild}/help` },
+        // Last in Site, for Staff only (Kat, 2026-10-14, #1364).
+        ...(show.siteAdmin ? [{ label: 'Site admin', icon: 'gear' as const, to: `${base.guild}/site-admin` }] : [])
       ]
     }
   ];
@@ -164,5 +166,6 @@ export const GUILD_PAGES: Record<string, string> = {
   news: 'News',
   officers: 'Guild officers',
   about: 'About',
-  help: 'Help'
+  help: 'Help',
+  'site-admin': 'Site admin'
 };

@@ -26,6 +26,7 @@ import { SignUpPage } from './signup/SignUpPage';
 import { GuildOfficersPage } from './officers/GuildOfficersPage';
 import { TeamOfficersPage } from './officers/TeamOfficersPage';
 import { InviteLinkPage } from './invite/InviteLinkPage';
+import { SiteAdminPage } from './siteadmin/SiteAdminPage';
 import { CreateGuildPage } from './front/CreateGuildPage';
 import { FrontPage } from './front/FrontPage';
 import { JoinRoute } from './join/JoinRoute';
@@ -105,7 +106,14 @@ export const routes: RouteObject[] = [
           { index: true, element: <GuildHomePage />, handle: { title: 'Guild home' } satisfies RouteHandle },
           ...Object.entries(GUILD_PAGES).map(([path, title]) => ({
             path,
-            element: BUILT_GUILD_PAGES[path] ?? <PlaceholderPage title={title} />,
+            element:
+              path === 'site-admin' ? (
+                <RequireAbility ability="adminSite" title={title} forWhom="Staff">
+                  <SiteAdminPage />
+                </RequireAbility>
+              ) : (
+                (BUILT_GUILD_PAGES[path] ?? <PlaceholderPage title={title} />)
+              ),
             handle: { title } satisfies RouteHandle
           })),
           {
