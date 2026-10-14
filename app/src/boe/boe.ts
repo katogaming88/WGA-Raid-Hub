@@ -129,6 +129,38 @@ export function olderOpenTwin(items: BoeItemRow[], candidate: BoeItemRow): BoeIt
   return twin;
 }
 
+// The Record Sale warning when olderOpenTwin found a match (#1205), one
+// list of parts per paragraph; a { finder } part is a name the dialog shows in
+// bold, so the two finders stand apart at a glance. The rank is the reason the
+// two rows are one queue, so name it; a missing rank on either side is why a
+// row matched without one, so say which.
+export type WarningPart = string | { finder: string };
+
+function finderLabel(row: BoeItemRow): string {
+  return row.finder_name || 'the unknown finder';
+}
+
+export function twinWarning(twin: BoeItemRow, item: BoeItemRow): WarningPart[][] {
+  const first = { finder: finderLabel(twin) };
+  const second = { finder: finderLabel(item) };
+  const article = /^[aeiou]/i.test(twin.item_name) ? 'an' : 'a';
+  const rank = twin.upgrade_rank || item.upgrade_rank;
+  const where = (twin.track ? `at ${twin.track}` : 'with no track') + (rank ? ` ${rank}` : '');
+  let note = '';
+  if (!twin.upgrade_rank && !item.upgrade_rank)
+    note = ' Neither find has a rank recorded, so they count as the same rank.';
+  else if (!twin.upgrade_rank) note = ' Its rank wasn’t recorded, so it counts as the same rank.';
+  else if (!item.upgrade_rank) note = ' This find’s rank wasn’t recorded, so it counts as the same rank.';
+  return [
+    [
+      twin.finder_name ? first : 'Someone',
+      ` found ${article} ${twin.item_name} ${where} earlier (${boeDate(twin.found_at)}), and it hasn’t sold yet.${note}`
+    ],
+    ['The first finder of the same item at the same rank gets the cut, so this sale belongs on ', first, '’s find.'],
+    ['You’re recording it on ', second, `’s find (${boeDate(item.found_at)}).`]
+  ];
+}
+
 // A donated payout pays the finder nothing and the guild everything net of
 // the AH fee (the game kept that either way). The stored split stays the
 // policy record -- what Undo Payout puts back -- so this is a display rule.

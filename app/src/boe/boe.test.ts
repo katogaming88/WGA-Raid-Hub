@@ -11,6 +11,9 @@ import {
   guildKept,
   olderOpenTwin,
   parseGoldInput,
+  twinWarning,
+  type WarningPart,
+  boeDate,
   type BoeItemRow
 } from './boe';
 
@@ -167,6 +170,56 @@ describe('olderOpenTwin', () => {
     const oldest = boeRow({ id: 1, found_at: '2026-08-18T01:00:00Z' });
     const middle = boeRow({ id: 2, found_at: '2026-08-19T01:00:00Z' });
     expect(olderOpenTwin([middle, oldest, NEWER], NEWER)).toBe(oldest);
+  });
+});
+
+describe('twinWarning (#1205)', () => {
+  // Each paragraph as the dialog reads it, with the bold names marked *Name*.
+  const text = (lines: WarningPart[][]) =>
+    lines.map((parts) => parts.map((p) => (typeof p === 'string' ? p : `*${p.finder}*`)).join(''));
+  const older = (rank: string | null) =>
+    boeRow({
+      id: 1,
+      finder_name: 'Firstfinder-Dalaran',
+      track: 'Champion',
+      upgrade_rank: rank,
+      found_at: '2026-08-19T01:00:00Z'
+    });
+  const newer = (rank: string | null) =>
+    boeRow({
+      id: 2,
+      finder_name: 'Second-Illidan',
+      track: 'Champion',
+      upgrade_rank: rank,
+      found_at: '2026-08-20T01:00:00Z'
+    });
+
+  it('names the rank and older finder, says it has not sold, and names the row being sold', () => {
+    expect(text(twinWarning(older('2/6'), newer('2/6')))).toEqual([
+      `*Firstfinder-Dalaran* found a Voidglass Cloak at Champion 2/6 earlier (${boeDate('2026-08-19T01:00:00Z')}), and it hasn’t sold yet.`,
+      'The first finder of the same item at the same rank gets the cut, so this sale belongs on *Firstfinder-Dalaran*’s find.',
+      `You’re recording it on *Second-Illidan*’s find (${boeDate('2026-08-20T01:00:00Z')}).`
+    ]);
+  });
+
+  it('says which find has no rank recorded', () => {
+    expect(text(twinWarning(older(null), newer('2/6')))[0]).toContain('at Champion 2/6 earlier');
+    expect(text(twinWarning(older(null), newer('2/6')))[0]).toContain('Its rank wasn’t recorded');
+    expect(text(twinWarning(older('2/6'), newer(null)))[0]).toContain('This find’s rank wasn’t recorded');
+    expect(text(twinWarning(older(null), newer(null)))[0]).toContain('at Champion earlier');
+    expect(text(twinWarning(older(null), newer(null)))[0]).toContain('Neither find has a rank recorded');
+  });
+
+  it('keeps the no-track and unknown-finder fallbacks, and says "an" before a vowel', () => {
+    const msg = text(
+      twinWarning(
+        boeRow({ id: 1, item_name: 'Ashen Band', track: null, finder_name: null, found_at: '2026-08-19T01:00:00Z' }),
+        boeRow({ id: 2, item_name: 'Ashen Band', track: null, finder_name: null })
+      )
+    );
+    expect(msg[0]).toMatch(/^Someone found an Ashen Band with no track earlier/);
+    expect(msg[1]).toContain('belongs on *the unknown finder*’s find');
+    expect(msg[2]).toMatch(/^You’re recording it on \*the unknown finder\*’s find/);
   });
 });
 

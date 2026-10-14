@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |      7 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     35 h 06 m |
-| Revamp 3: officer dashboard        |     20 h 14 m |
+| Revamp 3: officer dashboard        |     20 h 54 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **72 h 40 m** |
+| **All revamp work**                | **73 h 20 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -252,6 +252,12 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 4:01-4:10 PM | #1359 part 2 built: Raid nights since last item and Tier sets, sortable tables with a role switch | Revamp 3 (#1359) | 10 m | ~10 m build | not read | No database change. Review and merge in the next row |
 | 4:10-4:15 PM | PR #1505 reviewed and merged (merged 4:15) | Revamp 3 (#1359) | 5 m | ~5 m Kat | not read | |
 | 4:16-4:25 PM | #1359 part 3 built: BiS demand, Loot pace and Priority order health, each with a season picker | Revamp 3 (#1359) | 10 m | ~10 m build | not read | Each read asks for the picked season only, so no report meets the 1000-row page limit. Review and merge not yet counted |
+
+### 2026-10-14
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 9:45-10:25 AM | #1205 built on the new app's BoE page: shorter Record Sale warning with the finders in bold, and a Record on older find button; tried on localhost against the production backup | Revamp 3 (#1205) | 40 m | ~25 m build, ~15 m Kat testing | not read | Kat asked for the shorter wording, the older-find button, one row of buttons and bold names while testing. Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
