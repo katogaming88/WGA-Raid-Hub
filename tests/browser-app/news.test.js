@@ -15,7 +15,7 @@ import {
 // site's News tab (tests/browser/news-recorded.test.js, #1102 step 1), plus
 // what the redesign changes on purpose.
 
-const STATE = { path: '/g/wga/news', sentinel: '.news-entry', news: ENTRIES };
+const STATE = { path: '/news', sentinel: '.news-entry', news: ENTRIES };
 
 // The shape tests/behavior/news.js describes, read from the new markup. The
 // date is the machine-readable one; the page writes it out (below).

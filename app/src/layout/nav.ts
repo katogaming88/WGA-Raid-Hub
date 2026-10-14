@@ -53,13 +53,14 @@ export function navGroups(
     },
     {
       heading: 'Site',
-      // News is about the site itself, not one guild (Kat, 2026-10-07).
+      // News is about the site itself, not one guild (Kat, 2026-10-07), so
+      // these pages have site addresses (#1482).
       items: [
-        { label: 'News', icon: 'news', to: `${base.guild}/news`, mark: show.newsUnread ?? false },
-        { label: 'About', icon: 'info', to: `${base.guild}/about` },
-        { label: 'Help', icon: 'help', to: `${base.guild}/help` },
+        { label: 'News', icon: 'news', to: '/news', mark: show.newsUnread ?? false },
+        { label: 'About', icon: 'info', to: '/about' },
+        { label: 'Help', icon: 'help', to: '/help' },
         // Last in Site, for Staff only (Kat, 2026-10-14, #1364).
-        ...(show.siteAdmin ? [{ label: 'Site admin', icon: 'gear' as const, to: `${base.guild}/site-admin` }] : [])
+        ...(show.siteAdmin ? [{ label: 'Site admin', icon: 'gear' as const, to: '/site-admin' }] : [])
       ]
     }
   ];
@@ -163,8 +164,13 @@ export const TEAM_PAGES: Record<string, string> = {
 export const GUILD_PAGES: Record<string, string> = {
   boe: 'BoE sales',
   streams: 'Streams',
+  officers: 'Guild officers'
+};
+
+// Pages about the site itself, at /<path> with no guild in the address (#1482).
+// Their old /g/<guild>/<path> addresses forward here.
+export const SITE_PAGES: Record<string, string> = {
   news: 'News',
-  officers: 'Guild officers',
   about: 'About',
   help: 'Help',
   'site-admin': 'Site admin'

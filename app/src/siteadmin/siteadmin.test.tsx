@@ -45,7 +45,7 @@ describe('the menu item', () => {
   it('is the last item in the Site group, for Staff', async () => {
     renderApp('/g/wga', signedIn(true));
     const link = await within(sidebar()).findByRole('link', { name: 'Site admin' });
-    expect(link).toHaveAttribute('href', '/g/wga/site-admin');
+    expect(link).toHaveAttribute('href', '/site-admin');
     const site = within(sidebar()).getByRole('heading', { name: 'Site' }).parentElement!;
     const labels = within(site)
       .getAllByRole('link')

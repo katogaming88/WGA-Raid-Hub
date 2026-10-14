@@ -19,6 +19,7 @@ import { ConnectPrompt } from '../auth/ConnectPrompt';
 import { AltsPickerProvider } from '../characters/AltsPicker';
 import { can, useAccess } from '../auth/access';
 import { navGroups, type NavItem } from './nav';
+import { defaultGuildKey, forgetGuild, lastGuildKey, rememberGuild } from './lastGuild';
 import { TeamSwitcher } from './TeamSwitcher';
 import { StreamWidget } from '../streams/StreamWidget';
 import { hasUnread } from '../news/news';
@@ -29,7 +30,17 @@ import type { RouteHandle } from '../routes';
 import './layout.css';
 
 export function AppShell() {
-  const { guildKey = '', teamKey } = useParams();
+  const params = useParams();
+  const { teamKey } = params;
+  // A site page (/news) has no guild in its address: its frame is the guild
+  // this browser was last on (#1482). A remembered guild that no longer
+  // resolves falls back to the default one.
+  const sitePage = params.guildKey === undefined;
+  const [siteGuild, setSiteGuild] = useState(lastGuildKey);
+  const guildKey = params.guildKey ?? siteGuild;
+  useEffect(() => {
+    if (params.guildKey) rememberGuild(params.guildKey);
+  }, [params.guildKey]);
   const location = useLocation();
   const [theme, setTheme] = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -133,11 +144,16 @@ export function AppShell() {
         {() => null}
       </DataState>
     );
+  } else if (!resolved && sitePage && guildKey !== defaultGuildKey()) {
+    forgetGuild();
+    setSiteGuild(defaultGuildKey());
+    content = null;
   } else if (!resolved) {
     // The guild or team key does not exist, so a link back to it would land
     // here again.
     content = <NotFoundPage home={wayOn()} />;
-  } else if (!resolved.isCanonical) {
+  } else if (!sitePage && !resolved.isCanonical) {
+    // A site page's address names no guild, so only guild addresses are put right.
     content = <Navigate to={canonicalPath(location.pathname, resolved) + location.search} replace />;
   } else if (guildQuery.isError || guildQuery.isPending) {
     content = (

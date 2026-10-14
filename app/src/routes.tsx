@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import type { RouteObject } from 'react-router';
+import { Navigate, useLocation, type RouteObject } from 'react-router';
 import { RosterPage } from './roster/RosterPage';
 import { MyProfilePage, PlayerProfilePage } from './profile/ProfilePage';
 import { AppShell } from './layout/AppShell';
@@ -34,7 +34,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { ErrorPage } from './pages/ErrorPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { RequireAbility } from './auth/RequireAbility';
-import { GUILD_PAGES, TEAM_PAGES } from './layout/nav';
+import { GUILD_PAGES, SITE_PAGES, TEAM_PAGES } from './layout/nav';
 
 export type RouteHandle = { title: string };
 
@@ -70,12 +70,27 @@ const BUILT_PAGES: Record<string, ReactElement> = {
 // Guild pages rebuilt so far (#1102), beside Guild home itself.
 const BUILT_GUILD_PAGES: Record<string, ReactElement> = {
   boe: <BoePage />,
-  news: <NewsPage />,
   streams: <StreamsPage />,
-  officers: <GuildOfficersPage />,
-  about: <AboutPage />,
-  help: <HelpPage />
+  officers: <GuildOfficersPage />
 };
+
+// The site pages (#1482), in the frame of the guild last visited.
+const BUILT_SITE_PAGES: Record<string, ReactElement> = {
+  news: <NewsPage />,
+  about: <AboutPage />,
+  help: <HelpPage />,
+  'site-admin': (
+    <RequireAbility ability="adminSite" title={SITE_PAGES['site-admin']!} forWhom="Staff">
+      <SiteAdminPage />
+    </RequireAbility>
+  )
+};
+
+// An old /g/<guild>/news address, posted in Discord before #1482, keeps working.
+function ToSitePage({ path }: { path: string }) {
+  const { search, hash } = useLocation();
+  return <Navigate to={`/${path}${search}${hash}`} replace />;
+}
 
 // Addresses from #1100: /g/<guild key>/t/<team key>/... for team pages,
 // /g/<guild key>/... for guild-wide ones. The keys are not looked up yet; that
@@ -95,6 +110,20 @@ export const routes: RouteObject[] = [
   { path: '/new-guild', element: <CreateGuildPage />, errorElement: crashed },
   { path: '/join/:code', element: <JoinRoute />, errorElement: crashed },
   {
+    element: <AppShell />,
+    errorElement: crashed,
+    children: [
+      {
+        errorElement: <ErrorPage siteFrame />,
+        children: Object.entries(SITE_PAGES).map(([path, title]) => ({
+          path: `/${path}`,
+          element: BUILT_SITE_PAGES[path],
+          handle: { title } satisfies RouteHandle
+        }))
+      }
+    ]
+  },
+  {
     path: '/g/:guildKey',
     element: <AppShell />,
     errorElement: crashed,
@@ -106,16 +135,10 @@ export const routes: RouteObject[] = [
           { index: true, element: <GuildHomePage />, handle: { title: 'Guild home' } satisfies RouteHandle },
           ...Object.entries(GUILD_PAGES).map(([path, title]) => ({
             path,
-            element:
-              path === 'site-admin' ? (
-                <RequireAbility ability="adminSite" title={title} forWhom="Staff">
-                  <SiteAdminPage />
-                </RequireAbility>
-              ) : (
-                (BUILT_GUILD_PAGES[path] ?? <PlaceholderPage title={title} />)
-              ),
+            element: BUILT_GUILD_PAGES[path] ?? <PlaceholderPage title={title} />,
             handle: { title } satisfies RouteHandle
           })),
+          ...Object.keys(SITE_PAGES).map((path) => ({ path, element: <ToSitePage path={path} /> })),
           {
             path: 't/:teamKey',
             children: [

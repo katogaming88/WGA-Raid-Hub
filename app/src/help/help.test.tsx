@@ -8,7 +8,7 @@ import { GUIDE } from './guide';
 
 describe('the Help page', () => {
   it('leads with the support Discord, opening in a new tab', async () => {
-    renderApp('/g/wga/help');
+    renderApp('/help');
     expect(await screen.findByRole('heading', { level: 1, name: 'Help' })).toBeInTheDocument();
     const main = within(screen.getByRole('main'));
     const link = main.getByRole('link', { name: /Join the support Discord/ });
@@ -18,7 +18,7 @@ describe('the Help page', () => {
   });
 
   it('has one card per task, each with its steps in order', async () => {
-    renderApp('/g/wga/help');
+    renderApp('/help');
     await screen.findByRole('heading', { level: 1, name: 'Help' });
     for (const card of GUIDE) {
       const article = within(screen.getByRole('heading', { level: 3, name: card.title }).closest('article')!);
@@ -29,7 +29,7 @@ describe('the Help page', () => {
   it('is reachable from the sidebar on any page, beside the support link', async () => {
     renderApp('/g/wga/t/phoenix/roster');
     const site = await screen.findByRole('complementary');
-    expect(within(site).getByRole('link', { name: 'Help' })).toHaveAttribute('href', '/g/wga/help');
+    expect(within(site).getByRole('link', { name: 'Help' })).toHaveAttribute('href', '/help');
     expect(within(site).getByRole('link', { name: /Support Discord/ })).toHaveAttribute('href', SUPPORT_DISCORD_URL);
   });
 });

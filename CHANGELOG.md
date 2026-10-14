@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.181.1] - 2026-10-14
+
+### Project
+
+- New app (#1482): News, About, Help and Site admin have site addresses,
+  `/news`, `/about`, `/help` and `/site-admin`, instead of one guild's.
+  They still show in the normal sidebar and top bar, for the guild this
+  browser was last on, or the default guild before any; a remembered
+  guild that no longer exists falls back to the default. The old
+  `/g/<guild>/news` style addresses forward to the new ones, so links
+  already posted in Discord keep working. The sidebar and Guild home's
+  "All news" link use the new addresses. A crash on one of these pages
+  offers the way back to that guild.
+- Tests: the forwards, the frame's guild, and the fallback; browser tests
+  moved to the new addresses.
+- Time log: #1521's screenshots, review and merge.
+
 ## [3.181.0] - 2026-10-14
 
 ### Project

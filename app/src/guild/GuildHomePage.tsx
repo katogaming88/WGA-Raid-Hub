@@ -276,7 +276,6 @@ function Attention({ teams }: { teams: TeamInput[] }) {
 }
 
 function News() {
-  const { guild } = useAddress();
   const titleId = useId();
   const news = useNews();
   return (
@@ -285,7 +284,7 @@ function News() {
         <h2 id={titleId} className="section-title">
           Latest news
         </h2>
-        <Link to={`/g/${guild.key}/news`}>All news</Link>
+        <Link to="/news">All news</Link>
       </div>
       <DataState query={news} label="the news">
         {(all) => {
