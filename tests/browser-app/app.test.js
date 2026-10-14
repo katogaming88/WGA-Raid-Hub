@@ -995,6 +995,24 @@ const SIGNUP_SUMMARY = {
   }
 };
 
+// Site admin (#1364): Staff only, with two admins listed and the switches off.
+const SITE_ADMIN = {
+  path: '/g/wga/site-admin',
+  sentinel: 'main .siteadmin-list li',
+  session: OFFICER,
+  person: {
+    discordId: 'discord-staff-1',
+    person: { site_admin: true, guild_officer: false, boe_manager: false, teams: [] }
+  },
+  rpc: {
+    admin_list_site_admins: [
+      { id: 1, discord_id: '111111111111111111', auth_user_id: null, display_name: 'Kat' },
+      { id: 2, discord_id: '222222222222222222', auth_user_id: null, display_name: 'Rex' }
+    ]
+  },
+  tables: { site_settings: [{ maintenance_mode: false, maintenance_message: null, guild_creation_open: false }] }
+};
+
 const STATES = [
   { label: 'help', ...HELP },
   { label: 'help, light', ...HELP, colorScheme: 'light' },
@@ -1144,6 +1162,8 @@ const STATES = [
   { label: 'settings progression, officer, light', ...SETTINGS_PROGRESSION, colorScheme: 'light' },
   { label: 'settings danger zone, officer', ...SETTINGS_DANGER },
   { label: 'settings danger zone, officer, light', ...SETTINGS_DANGER, colorScheme: 'light' },
+  { label: 'site admin, staff', ...SITE_ADMIN },
+  { label: 'site admin, staff, light', ...SITE_ADMIN, colorScheme: 'light' },
   { label: 'settings audit log, officer', ...SETTINGS_AUDIT_LOG },
   { label: 'settings audit log, officer, light', ...SETTINGS_AUDIT_LOG, colorScheme: 'light' },
   {

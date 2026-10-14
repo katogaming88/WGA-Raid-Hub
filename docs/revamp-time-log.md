@@ -12,12 +12,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 | Phase                              |   Time so far |
 | ---------------------------------- | ------------: |
-| Planning and design                |      8 h 40 m |
+| Planning and design                |      8 h 50 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     35 h 06 m |
-| Revamp 3: officer dashboard        |     20 h 54 m |
+| Revamp 3: officer dashboard        |     21 h 34 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **74 h 10 m** |
+| **All revamp work**                | **75 h 00 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -259,6 +259,11 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 8:59-9:47 AM | #1517 mockups on the design canvas: guild Members tab, guild Rank permissions, Teams tab, team Rank permissions, New team in the team picker menu; issue updated and status posted | Planning and design (#1517) | 50 m | ~30 m build, ~20 m Kat deciding | not read | Decided: new guild rank Team Lead (create a team, own bio card), no "start a new team" invites, creator is always Team Owner, See/Officer on every team set per person |
 | 9:47-10:25 AM | #1205 built on the new app's BoE page: shorter Record Sale warning with the finders in bold, and a Record on older find button; tried on localhost against the production backup | Revamp 3 (#1205) | 40 m | ~25 m build, ~15 m Kat testing | not read | Kat asked for the shorter wording, the older-find button, one row of buttons and bold names while testing. Review and merge not yet counted |
+| 10:27-10:49 AM | #1205 follow-ups: time log from the transcript; #1516 rewritten to keep the warning; leftover listing split to #1519 (Rex); current site left alone; PR #1518 reviewed and merged (merged 10:49) | Revamp 3 (#1205, #1516, #1519) | 20 m | ~10 m build, ~10 m Kat | not read | Kat: keep the warning rather than file sales on the oldest find automatically |
+| 10:50-10:56 AM | #1364 menu spot: three sidebar mockups, option A picked (last item under Site, Staff only) | Revamp 3 (#1364) | 5 m | ~3 m build, ~2 m Kat | not read | |
+| 10:56-11:01 AM | #1515 delete-or-hide put to Rex with Kat's lean (delete, typed-name confirm); #773 closed; #1487 rows updated | Revamp 3 (#1515, #773) | 5 m | ~3 m build, ~2 m Kat | not read | |
+| 11:01-11:09 AM, 11:21-11:25 AM | #1364 part 1 built: Site admin page with site admins, switches and the lookup; PR opened | Revamp 3 (#1364) | 10 m | ~10 m build | not read | Review and merge not yet counted |
+| 11:09-11:21 AM | How Staff are added: Discord ID box dropped; Staff ranks and a one-time invite link with approval filed as #1520 | Planning and design (#1520) | 10 m | ~5 m build, ~5 m Kat deciding | not read | Kat: Site Owner, Admin and two smaller ranks; adding Staff should feel separate |
 
 ## Not counted (same sessions, not revamp)
 

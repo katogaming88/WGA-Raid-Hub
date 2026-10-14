@@ -12,6 +12,25 @@ answers to.
 
 ---
 
+## [3.181.0] - 2026-10-14
+
+### Project
+
+- New app: a **Site admin** page for Staff (#1364, part 1 of 2), the last
+  item in the sidebar's Site group and shown only to Staff. It lists the
+  site admins, with Remove (never the last one). It has the two site
+  switches: maintenance mode, which asks before turning on and keeps an
+  editable message, and whether new guilds can sign up, shown as shut
+  until #1324. And **Look someone up** finds characters, teams and guilds
+  by part of their name, showing each character's team, guild, rank and
+  Discord ID with links to their pages. No database change. Adding
+  someone to Staff waits for Staff ranks and invite links (#1520), and
+  Remove a guild waits for #1515.
+- Tests: the page, the menu item, and the site admin page in the browser
+  accessibility run, light and dark.
+- Time log: the rest of #1205's follow-ups, #1364's menu decision and
+  part 1, #1515's question to Rex, and the Staff ranks discussion (#1520).
+
 ## [3.180.1] - 2026-10-14
 
 ### Project
