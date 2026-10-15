@@ -36,6 +36,8 @@ answers to.
   and retakes them from the browser tests' made-up data, with Katorrí as the
   one raider shown. CONTRIBUTING says when to run it.
 - Dialog gets a side variant, docked right at full height.
+- Sidebar: an Officer group opened by hand (Settings, say) closes when you
+  go to a page outside it, instead of staying open.
 - Tests: the page's sections, links that stay inside Help, guide addresses,
   the panel, a picture on disk for every guide that shows one, and
   accessibility for the page and an open guide in both themes and on a
