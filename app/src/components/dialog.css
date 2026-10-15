@@ -41,18 +41,6 @@
   border-radius: 0;
 }
 
-.dialog-side-full {
-  width: 100%;
-}
-
-/* Full view leaves the sidebar showing, undimmed; below 900px the sidebar is
-   a drawer, so full view takes the whole window. */
-@media (min-width: 901px) {
-  .dialog-host-side:has(.dialog-side-full) {
-    left: var(--sidebar-width);
-  }
-}
-
 .dialog:focus-visible {
   outline-offset: -2px;
 }

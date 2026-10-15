@@ -1024,7 +1024,7 @@ const STATES = [
     label: 'help, a guide in full view',
     ...HELP_GUIDE,
     click: 'role=button[name="Full view"]',
-    afterClick: '.dialog-side-full'
+    afterClick: '.help-guide-page'
   },
   { label: 'about', ...ABOUT },
   { label: 'about, light', ...ABOUT, colorScheme: 'light' },

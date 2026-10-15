@@ -195,15 +195,18 @@ a.help-setup-step:hover {
   margin: 0;
 }
 
-/* Full view: the title row and the guide stay one readable column,
-   centred, and the picture can be as big as the page it shows. */
-.dialog-side-full .dialog-header,
-.dialog-side-full .help-guide {
+/* Full view: the guide as the page itself, one readable column, and the
+   picture as big as the page it shows. */
+.help-guide-page {
   max-width: 1040px;
-  margin-inline: auto;
 }
 
-.dialog-side-full .help-picture {
+.help-back {
+  display: inline-block;
+  margin-bottom: var(--space-2);
+}
+
+.help-guide-page .help-picture {
   max-height: none;
 }
 

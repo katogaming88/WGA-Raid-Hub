@@ -15,8 +15,24 @@ export function HelpPage() {
   const { guideId } = useParams();
   const navigate = useNavigate();
   const open = guideId ? GUIDES.find((g) => g.id === guideId) : undefined;
+  // Full view shows the guide as the page itself, so the sidebar stays usable
+  // (a panel locks everything behind it). Leaving the guide resets it.
+  const [full, setFull] = useState(false);
+  if (!open && full) setFull(false);
   if (guideId && !open) return <Navigate to="/help" replace />;
   const guideHref = (id: string) => `/help/${id}`;
+
+  if (open && full) {
+    return (
+      <section className="page help-guide-page" aria-labelledby="page-title">
+        <Link to="/help" className="help-back">
+          All help
+        </Link>
+        <h1 id="page-title">{open.title}</h1>
+        <GuideBody guide={open} base={base} full onToggle={() => setFull(false)} />
+      </section>
+    );
+  }
 
   return (
     <section className="page help-page" aria-labelledby="page-title">
@@ -161,7 +177,11 @@ export function HelpPage() {
         </a>
       </div>
 
-      {open && <GuidePanel guide={open} base={base} onClose={() => void navigate('/help')} />}
+      {open && (
+        <Dialog title={open.title} onClose={() => void navigate('/help')} side>
+          <GuideBody guide={open} base={base} full={false} onToggle={() => setFull(true)} />
+        </Dialog>
+      )}
     </section>
   );
 }
@@ -170,43 +190,49 @@ function OfficersTag() {
   return <span className="help-tag">Officers</span>;
 }
 
-function GuidePanel({ guide, base, onClose }: { guide: Guide; base: Bases; onClose: () => void }) {
+function GuideBody({
+  guide,
+  base,
+  full,
+  onToggle
+}: {
+  guide: Guide;
+  base: Bases;
+  full: boolean;
+  onToggle: () => void;
+}) {
   const topic = TOPICS.find((t) => t.id === guide.topic)!;
   const inTopic = GUIDES.filter((g) => g.topic === guide.topic);
   const next = inTopic[inTopic.indexOf(guide) + 1];
-  // Full view widens the panel to the whole window, for a bigger picture.
-  const [full, setFull] = useState(false);
   return (
-    <Dialog title={guide.title} onClose={onClose} side full={full}>
-      <div className="help-guide">
-        <div className="help-panel-bar">
-          <p className="help-eyebrow">
-            {topic.title}
-            {guide.officers && ' · for officers'}
-          </p>
-          <button type="button" className="button help-full" aria-pressed={full} onClick={() => setFull(!full)}>
-            {full ? 'Side view' : 'Full view'}
-          </button>
-        </div>
-        <div className="help-quick">
-          <span className="help-eyebrow">Quick answer</span>
-          <p>{guide.quick}</p>
-        </div>
-        {guide.place && (
-          <Link className="button button-primary help-go" to={guide.place.to(base)}>
-            Take me there: {guide.place.label}
-          </Link>
-        )}
-        {guide.picture && <img className="help-picture" src={`/help-shots/${guide.id}.jpg`} alt={guide.picture} />}
-        <ol className="help-steps">
-          {guide.steps.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
-        <p className="help-next">
-          {next ? <Link to={`/help/${next.id}`}>Next guide: {next.title}</Link> : <Link to="/help">All help</Link>}
+    <div className="help-guide">
+      <div className="help-panel-bar">
+        <p className="help-eyebrow">
+          {topic.title}
+          {guide.officers && ' · for officers'}
         </p>
+        <button type="button" className="button help-full" aria-pressed={full} onClick={onToggle}>
+          {full ? 'Side view' : 'Full view'}
+        </button>
       </div>
-    </Dialog>
+      <div className="help-quick">
+        <span className="help-eyebrow">Quick answer</span>
+        <p>{guide.quick}</p>
+      </div>
+      {guide.place && (
+        <Link className="button button-primary help-go" to={guide.place.to(base)}>
+          Take me there: {guide.place.label}
+        </Link>
+      )}
+      {guide.picture && <img className="help-picture" src={`/help-shots/${guide.id}.jpg`} alt={guide.picture} />}
+      <ol className="help-steps">
+        {guide.steps.map((step) => (
+          <li key={step}>{step}</li>
+        ))}
+      </ol>
+      <p className="help-next">
+        {next ? <Link to={`/help/${next.id}`}>Next guide: {next.title}</Link> : <Link to="/help">All help</Link>}
+      </p>
+    </div>
   );
 }

@@ -24,7 +24,6 @@ export function Dialog({
   initialFocus,
   wide = false,
   side = false,
-  full = false,
   children
 }: {
   title: string;
@@ -34,8 +33,6 @@ export function Dialog({
   wide?: boolean;
   // Docked to the right edge, full height, for reading (a Help guide).
   side?: boolean;
-  // A side dialog widened to the whole window (a Help guide's full view).
-  full?: boolean;
   initialFocus?: React.RefObject<HTMLElement | null>;
   children: ReactNode;
 }) {
@@ -111,9 +108,7 @@ export function Dialog({
       <div className="dialog-backdrop" aria-hidden="true" onClick={() => !busy && onClose()} />
       <div
         ref={panel}
-        className={
-          side ? `dialog dialog-side${full ? ' dialog-side-full' : ''}` : wide ? 'dialog dialog-wide' : 'dialog'
-        }
+        className={side ? 'dialog dialog-side' : wide ? 'dialog dialog-wide' : 'dialog'}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

@@ -70,12 +70,12 @@ describe('the Help page', () => {
     expect(panel.getByText(/Mark one item BiS for each gear slot/)).toBeInTheDocument();
     expect(panel.getByRole('link', { name: /Take me there/ })).toHaveAttribute('href', '/g/wga/t/phoenix/me/wishlist');
     expect(panel.getAllByRole('listitem')).toHaveLength(GUIDES.find((g) => g.id === 'wishlist')!.steps.length);
-    const full = panel.getByRole('button', { name: 'Full view' });
-    await user.click(full);
-    expect(screen.getByRole('dialog')).toHaveClass('dialog-side-full');
-    expect(panel.getByRole('button', { name: 'Side view' })).toHaveAttribute('aria-pressed', 'true');
-    await user.click(panel.getByRole('button', { name: 'Side view' }));
-    expect(screen.getByRole('dialog')).not.toHaveClass('dialog-side-full');
+    // Full view: the guide as the page, no panel, so the sidebar still works.
+    await user.click(panel.getByRole('button', { name: 'Full view' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Set your wishlist' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Side view' }));
+    expect(await screen.findByRole('dialog', { name: 'Set your wishlist' })).toBeInTheDocument();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
