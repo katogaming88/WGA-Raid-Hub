@@ -1020,6 +1020,12 @@ const STATES = [
   { label: 'help, a guide open', ...HELP_GUIDE },
   { label: 'help, a guide open, light', ...HELP_GUIDE, colorScheme: 'light' },
   { label: 'help, a guide open, on a phone', ...HELP_GUIDE, viewport: NARROW },
+  {
+    label: 'help, a guide in full view',
+    ...HELP_GUIDE,
+    click: 'role=button[name="Full view"]',
+    afterClick: '.dialog-side-full'
+  },
   { label: 'about', ...ABOUT },
   { label: 'about, light', ...ABOUT, colorScheme: 'light' },
   { label: 'front page', ...FRONT },

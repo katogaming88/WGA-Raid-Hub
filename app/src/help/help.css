@@ -182,6 +182,30 @@ a.help-setup-step:hover {
 
 /* The guide panel. */
 
+.help-panel-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.help-panel-bar p {
+  margin: 0;
+}
+
+/* Full view: the reading column stays a readable width, centred, and the
+   picture can be as big as the page it shows. */
+.dialog-side-full > * {
+  max-width: 1040px;
+  margin-inline: auto;
+}
+
+.dialog-side-full .help-picture {
+  max-height: none;
+}
+
 .help-quick {
   margin-bottom: var(--space-3);
   padding: var(--space-3);

@@ -41,6 +41,10 @@
   border-radius: 0;
 }
 
+.dialog-side-full {
+  width: 100%;
+}
+
 .dialog:focus-visible {
   outline-offset: -2px;
 }

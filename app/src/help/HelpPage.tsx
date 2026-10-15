@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, Navigate, useNavigate, useOutletContext, useParams } from 'react-router';
 import { Dialog } from '../components/Dialog';
 import { SUPPORT_DISCORD_URL } from '../config';
@@ -173,12 +174,19 @@ function GuidePanel({ guide, base, onClose }: { guide: Guide; base: Bases; onClo
   const topic = TOPICS.find((t) => t.id === guide.topic)!;
   const inTopic = GUIDES.filter((g) => g.topic === guide.topic);
   const next = inTopic[inTopic.indexOf(guide) + 1];
+  // Full view widens the panel to the whole window, for a bigger picture.
+  const [full, setFull] = useState(false);
   return (
-    <Dialog title={guide.title} onClose={onClose} side>
-      <p className="help-eyebrow">
-        {topic.title}
-        {guide.officers && ' · for officers'}
-      </p>
+    <Dialog title={guide.title} onClose={onClose} side full={full}>
+      <div className="help-panel-bar">
+        <p className="help-eyebrow">
+          {topic.title}
+          {guide.officers && ' · for officers'}
+        </p>
+        <button type="button" className="button help-full" aria-pressed={full} onClick={() => setFull(!full)}>
+          {full ? 'Side view' : 'Full view'}
+        </button>
+      </div>
       <div className="help-quick">
         <span className="help-eyebrow">Quick answer</span>
         <p>{guide.quick}</p>
