@@ -337,7 +337,7 @@ export const SETUP: { title: string; text: string; guide?: string }[] = [
 export const QUESTIONS: { q: string; a: string }[] = [
   {
     q: 'Why do I need to connect both Battle.net and Discord?',
-    a: 'Battle.net is how you sign in, and it brings your characters with it, so nobody types them in by hand. Discord is how your team knows you: your team roles and raid notifications come from Discord. Once both are connected, either one signs you in to the same account.'
+    a: 'Battle.net is how you sign in, and it brings your characters with it, so nobody types them in by hand. Discord is how your team knows you, and the bot needs it to reach you: your team roles and raid notifications come through Discord, and the bot only sends you a direct message when something needs you. Once both are connected, either one signs you in to the same account.'
   },
   {
     q: 'Why am I not first for an item I marked BiS?',
