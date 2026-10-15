@@ -20,6 +20,13 @@ export type Guide = {
   // What the guide's picture shows, for anyone who can't see it; the picture
   // itself is app/public/help-shots/<id>.png, from `npm run help:shots`.
   picture?: string;
+  // The steps with an orange marker on the picture; the step list uses the
+  // same orange number for them. Kept in step with the picture's markers by a
+  // browser test.
+  marked?: number[];
+  // Step 1 opens a page from the sidebar: a small picture of that part of
+  // the sidebar with an orange 1 on the item, app/public/help-shots/<id>-menu.png.
+  menu?: string;
   steps: string[];
 };
 
@@ -49,6 +56,7 @@ export const GUIDES: Guide[] = [
     title: 'Sign in',
     quick: 'Sign in with Battle.net, then connect the Discord account you use in the guild.',
     picture: 'The sidebar, with the Sign in with Battle.net button marked.',
+    marked: [1],
     steps: [
       'Choose Sign in with Battle.net at the bottom of the sidebar. On a phone, open the menu first.',
       'A card then asks you to connect your Discord. Your team roles and raid notifications come from Discord, so connect the account you use in the guild.',
@@ -63,6 +71,7 @@ export const GUIDES: Guide[] = [
     quick: 'Give your guild’s name, region and realm. Its first team is made at the same time, and you run both.',
     place: { label: 'Create your guild', to: () => '/new-guild' },
     picture: 'The Create your guild form, with its fields and the Create guild button marked.',
+    marked: [2, 3],
     steps: [
       'Sign in with Battle.net and connect your Discord.',
       'Fill in your guild’s name, region and realm. The first team’s name is optional: leave it empty and the team takes the guild’s name.',
@@ -77,6 +86,8 @@ export const GUIDES: Guide[] = [
     quick: 'Officer Settings holds your Warcraft Logs guild, roster size targets and the raids you’re progressing.',
     place: { label: 'Settings', to: (b) => `${b.team}/officer/settings` },
     picture: 'The General settings page, with the Warcraft Logs guild address marked.',
+    marked: [1, 2],
+    menu: 'Settings in the sidebar’s Officer menu',
     steps: [
       'In the Officer menu, open Settings.',
       'On General, add your team’s Warcraft Logs guild page and the roster size targets, then choose Save.',
@@ -90,6 +101,8 @@ export const GUIDES: Guide[] = [
     officers: true,
     quick: 'Make one invite link and post it in your Discord. Anyone who opens it joins the team.',
     place: { label: 'Invite link', to: (b) => `${b.team}/officer/invite` },
+    menu: 'Invite link under Settings in the sidebar’s Officer menu',
+    marked: [1],
     steps: [
       'In the Officer menu, open Settings, then Invite link.',
       'Choose how long the link lasts (or No expiry), then Generate link, and copy it into your Discord.',
@@ -103,6 +116,8 @@ export const GUIDES: Guide[] = [
     title: 'Claim your spot on the roster',
     quick: 'Find your name on the Roster and choose Claim under it.',
     place: { label: 'Roster', to: (b) => `${b.team}/roster` },
+    menu: 'Roster in the sidebar',
+    marked: [1],
     steps: [
       'Open the Roster and find your name.',
       'Choose Claim under it. If you are signed out, this signs you in with Battle.net first.',
@@ -116,6 +131,8 @@ export const GUIDES: Guide[] = [
     quick: 'Mark one item BiS for each gear slot. Only BiS picks get a loot priority number.',
     place: { label: 'My profile, Wishlist', to: (b) => `${b.team}/me/wishlist` },
     picture: 'The Wishlist tab: a gear slot chosen on the left, and BiS and Pass marks beside its items.',
+    marked: [1, 2, 3],
+    menu: 'My profile in the sidebar',
     steps: [
       'Open My profile, then the Wishlist tab.',
       'Pick a gear slot, then mark one item BiS for it. Mark Pass on anything you would not take.',
@@ -129,6 +146,8 @@ export const GUIDES: Guide[] = [
     quick: 'My profile shows your place for every item you want, and your attendance below it.',
     place: PROFILE,
     picture: "My profile's Overview tab: the loot priority card, and the attendance card beside it.",
+    marked: [1, 2],
+    menu: 'My profile in the sidebar',
     steps: [
       'Open My profile. The Overview tab shows your loot priority, one row per item you want.',
       'Below it are your attendance and any flagged nights, the raid nights that counted less than in full.'
@@ -141,6 +160,8 @@ export const GUIDES: Guide[] = [
     quick: 'My profile’s Loot tab lists every item you received this season, newest first.',
     place: { label: 'My profile, Loot', to: (b) => `${b.team}/me/loot` },
     picture: 'My profile’s Loot tab, with the tab and the list of items marked.',
+    marked: [1, 2],
+    menu: 'My profile in the sidebar',
     steps: [
       'Open My profile, then the Loot tab.',
       'Each row is an item you received this season, newest first. Raid drops show up once an officer imports the night’s loot.'
@@ -153,6 +174,7 @@ export const GUIDES: Guide[] = [
     quick: 'Mark crafted, M+ or vault gear received from your loot priority list, so it stops counting.',
     place: PROFILE,
     picture: "The loot priority list on My profile, with an item's Mark received button marked.",
+    marked: [1],
     steps: [
       'On the loot priority list in My profile, choose Mark received next to the item.',
       'Pick the difficulty and how you got it, then send it. This is only for gear from outside a guild raid: raid drops show up on their own after the loot import.',
@@ -165,6 +187,8 @@ export const GUIDES: Guide[] = [
     title: 'Ask to stop running M+',
     quick: 'Once M+ has nothing left for you, ask to be excluded from the weekly M+ requirement.',
     place: PROFILE,
+    menu: 'My profile in the sidebar',
+    marked: [1],
     steps: [
       'Open My profile and find the M+ card. Once you have nothing left to gain from M+, choose Request M+ exclusion.',
       'Tick that you are 6/6 Myth in every slot M+ can fill, say how many of your helm, bracer and belt sockets are filled, and check your Raider.IO link.',
@@ -177,6 +201,8 @@ export const GUIDES: Guide[] = [
     title: 'Say if you’re coming',
     quick: 'On the Calendar, pick the night and give your answer. Anything but Present needs a note.',
     place: { label: 'Calendar', to: (b) => `${b.team}/calendar` },
+    menu: 'Calendar in the sidebar',
+    marked: [1],
     steps: [
       'Open the Calendar and pick the raid night.',
       'Under Your answer, choose Present, Late, Leaving early, Tentative or Absent. On an optional night, choose Attending to say you’re in.',
@@ -190,6 +216,8 @@ export const GUIDES: Guide[] = [
     quick: 'On a raid night in the Calendar, Your bosses tonight shows which bosses you’re in for.',
     place: { label: 'Calendar', to: (b) => `${b.team}/calendar` },
     picture: 'A raid night with the Your bosses tonight card marked: each boss with In or Sitting out.',
+    marked: [1, 2],
+    menu: 'Calendar in the sidebar',
     steps: [
       'Open the Calendar and pick the raid night.',
       'Your bosses tonight lists each boss with In or Sitting out. Not final yet means your officers may still change it.',
@@ -204,6 +232,8 @@ export const GUIDES: Guide[] = [
     quick: 'Boss groups holds the usual group for each boss. Every raid night starts as a copy of it.',
     place: { label: 'Boss groups', to: (b) => `${b.team}/officer/groups` },
     picture: 'The Boss groups page: a cell in the grid and the Save groups button marked.',
+    marked: [1, 2, 3],
+    menu: 'Boss groups under Attendance in the sidebar’s Officer menu',
     steps: [
       'In the Officer menu, open Attendance, then Boss groups. It needs a computer.',
       'Click a cell to put someone in a boss’s group or take them out. Needs a look lists anything short, such as a buff nobody brings.',
@@ -218,6 +248,8 @@ export const GUIDES: Guide[] = [
     quick: 'A raid night’s Boss lineup tab changes who’s in for each boss on that night only.',
     place: { label: 'Calendar', to: (b) => `${b.team}/calendar` },
     picture: 'A raid night’s Boss lineup tab: the tab, a cell in the grid and Save tonight marked.',
+    marked: [1, 3, 4],
+    menu: 'Calendar in the sidebar',
     steps: [
       'Open the Calendar, pick the raid night, then the Boss lineup tab. It needs a computer.',
       'If the night isn’t planned yet, choose Fill from the groups.',
@@ -234,6 +266,8 @@ export const GUIDES: Guide[] = [
     place: { label: 'Manage attendance', to: (b) => `${b.team}/officer/attendance` },
     picture:
       'The Manage attendance page: Refresh from WCL, the raid night picker, and Commit Attendance Scores, marked in order.',
+    marked: [1, 2, 3, 4],
+    menu: 'Manage under Attendance in the sidebar’s Officer menu',
     steps: [
       'In the Officer menu, open Attendance, then Manage.',
       'After each raid night, choose Refresh from WCL.',

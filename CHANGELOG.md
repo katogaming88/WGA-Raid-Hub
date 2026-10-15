@@ -22,7 +22,9 @@ answers to.
   topic, common questions, and the support Discord. Every link on the page
   opens a guide; a guide opens in a side panel at its own address
   (`/help/wishlist`) with a quick answer, a picture of the page with the
-  steps numbered on it (click it for full view), the steps, a "Take me there" button, and the next
+  steps numbered on it (click it for full view), the steps (a step
+  marked on the picture gets the same orange number in the list), a small
+  picture of the sidebar when step 1 opens a page from it, a "Take me there" button, and the next
   guide. Fifteen guides: sign in, create your guild, set up your team,
   invite your raiders, claim your spot, set your wishlist, check your
   priority and attendance, find what you got, mark an item you got outside

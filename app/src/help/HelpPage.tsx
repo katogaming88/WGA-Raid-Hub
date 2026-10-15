@@ -10,6 +10,9 @@ import './help.css';
 // questions, and the support Discord. A guide opens in a side panel at
 // /help/<guide>, so it can be linked. Every link on the page opens a guide;
 // only a guide's own "Take me there" goes off to the page (Kat, 2026-10-15).
+// Guide pictures are taken at twice the pixels and given only as a 2x
+// srcset, so every screen shows them at their real size (a plain src would
+// count as 1x and show them double on a normal screen).
 export function HelpPage() {
   const base = useOutletContext<Bases>();
   const { guideId } = useParams();
@@ -224,29 +227,29 @@ function GuideBody({
           Take me there: {guide.place.label}
         </Link>
       )}
+      {guide.menu && (
+        <img
+          className="help-picture help-menu-picture"
+          srcSet={`/help-shots/${guide.id}-menu.png 2x`}
+          alt={`Step 1: ${guide.menu}.`}
+        />
+      )}
       {guide.picture &&
         (full ? (
-          <img
-            className="help-picture"
-            src={`/help-shots/${guide.id}.png`}
-            srcSet={`/help-shots/${guide.id}.png 2x`}
-            alt={guide.picture}
-          />
+          <img className="help-picture" srcSet={`/help-shots/${guide.id}.png 2x`} alt={guide.picture} />
         ) : (
           // In the side panel the picture opens full view, to see it bigger.
           <button type="button" className="help-picture-button" onClick={onToggle}>
             <span className="visually-hidden">Open full view: </span>
-            <img
-              className="help-picture"
-              src={`/help-shots/${guide.id}.png`}
-              srcSet={`/help-shots/${guide.id}.png 2x`}
-              alt={guide.picture}
-            />
+            <img className="help-picture" srcSet={`/help-shots/${guide.id}.png 2x`} alt={guide.picture} />
           </button>
         ))}
       <ol className="help-steps">
-        {guide.steps.map((step) => (
-          <li key={step}>{step}</li>
+        {guide.steps.map((step, i) => (
+          <li key={step}>
+            <span className={guide.marked?.includes(i + 1) ? 'help-step-n is-marked' : 'help-step-n'}>{i + 1}</span>
+            <span>{step}</span>
+          </li>
         ))}
       </ol>
       <p className="help-next">

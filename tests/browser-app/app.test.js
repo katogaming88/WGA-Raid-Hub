@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { AxeBuilder } from '@axe-core/playwright';
+import { GUIDES } from '../../app/src/help/guide.ts';
 import { DIST, launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
 import { GUILD_TABLES, GUILD_TEAMS, WAITING } from './guild-fixtures.js';
 import { OFFICER_BIOS } from '../behavior/guild.js';
@@ -1760,7 +1761,7 @@ const HELP_SHOT_STATES = {
       }),
       { tierTokens: false }
     ),
-    markers: ['.wishlist-slot-tab[data-slot="Finger 2"]', '.mark-bis', '.mark-pass'],
+    markers: [null, '.wishlist-slot-tab[data-slot="Finger 2"]', '.mark-bis'],
     frame: 'main .card:has(.wishlist-slot-tabs)'
   },
   priority: {
@@ -1786,6 +1787,49 @@ const HELP_SHOT_STATES = {
     ]
   }
 };
+
+// A guide whose step 1 opens a page from the sidebar also gets a small picture
+// of that part of the sidebar, with an orange 1 on the item (Kat, 2026-10-15),
+// saved as <id>-menu.png. The state opens the page itself, so its Officer
+// group is already open.
+const katOnPage = (path, sentinel = 'main h1') => ({ ...katProfile(), path, sentinel });
+const HELP_MENU_SHOTS = {
+  'team-setup': { state: SETTINGS_GENERAL, item: '.sidebar >> text="Settings"' },
+  invite: {
+    state: { session: OFFICER, who: 'officer', path: '/g/wga/t/phoenix/officer/invite', sentinel: '.sidebar' },
+    item: '.sidebar >> role=link[name="Invite link"]'
+  },
+  claim: { state: katOnPage('/g/wga/t/phoenix/roster', '.sidebar'), item: '.sidebar >> role=link[name="Roster"]' },
+  wishlist: { state: katProfile(), item: '.sidebar >> role=link[name="My profile"]' },
+  priority: { state: katProfile(), item: '.sidebar >> role=link[name="My profile"]' },
+  'what-you-got': { state: katProfile(), item: '.sidebar >> role=link[name="My profile"]' },
+  mplus: { state: katProfile(), item: '.sidebar >> role=link[name="My profile"]' },
+  rsvp: { state: CAL_MONTH, item: '.sidebar >> role=link[name="Calendar"]' },
+  bench: { state: CAL_MONTH, item: '.sidebar >> role=link[name="Calendar"]' },
+  lineup: { state: CAL_MONTH, item: '.sidebar >> role=link[name="Calendar"]' },
+  'boss-groups': { state: BOSS_GROUPS, item: '.sidebar >> role=link[name="Boss groups"]' },
+  attendance: { state: ATTENDANCE_MANAGE, item: '.sidebar >> role=link[name="Manage"]' }
+};
+
+// The step list's orange numbers (guide.ts `marked`) are the steps the picture
+// marks, so a raider can match them up. Runs every time, unlike the pictures.
+describe('help guide picture markers', () => {
+  it('numbers the same steps orange in the text as on each picture', () => {
+    for (const [id, { markers }] of Object.entries(HELP_SHOT_STATES)) {
+      const marked = markers.flatMap((m, i) => (m || (i === 0 && HELP_MENU_SHOTS[id]) ? [i + 1] : []));
+      const guide = GUIDES.find((g) => g.id === id);
+      expect(guide?.marked, id).toEqual(marked);
+      expect(guide.steps, id).toHaveLength(markers.length);
+    }
+    for (const guide of GUIDES.filter((g) => g.picture)) expect(HELP_SHOT_STATES[guide.id], guide.id).toBeDefined();
+    for (const id of Object.keys(HELP_MENU_SHOTS)) {
+      const guide = GUIDES.find((g) => g.id === id);
+      expect(guide?.menu, id).toBeTruthy();
+      if (!HELP_SHOT_STATES[id]) expect(guide.marked, id).toEqual([1]);
+    }
+    for (const guide of GUIDES.filter((g) => g.menu)) expect(HELP_MENU_SHOTS[guide.id], guide.id).toBeDefined();
+  });
+});
 
 describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
   for (const [id, { state, markers, frame, minWidth = 0, pad = 40, viewport }] of Object.entries(HELP_SHOT_STATES)) {
@@ -1869,6 +1913,53 @@ describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
           path: `${DIST}/../public/help-shots/${id}.png`,
           fullPage: true,
           clip: { x: x0, y: y0, width: x1 - x0, height: Math.max(y1 - y0, 240) }
+        });
+      } finally {
+        await context.close();
+      }
+    });
+  }
+  for (const [id, { state, item }] of Object.entries(HELP_MENU_SHOTS)) {
+    it(`takes ${id}'s sidebar`, async () => {
+      const { context, page } = await openApp(browser, server.port, {
+        ...state,
+        scale: 2,
+        viewport: { width: 1000, height: 900 }
+      });
+      try {
+        await page.addStyleTag({ content: '.stream-widget { display: none !important; }' });
+        const target = page.locator(item).first();
+        await target.scrollIntoViewIfNeeded();
+        const box = await target.boundingBox();
+        const side = await page.locator('.sidebar').boundingBox();
+        await page.evaluate(
+          ({ x, y, w }) => {
+            const dot = document.createElement('div');
+            dot.textContent = '1';
+            Object.assign(dot.style, {
+              position: 'fixed',
+              // Just past the item's name, so it never covers the word.
+              left: `${x + w + 6}px`,
+              top: `${y + 5}px`,
+              width: '26px',
+              height: '26px',
+              borderRadius: '50%',
+              background: '#f2703f',
+              color: '#10141a',
+              font: '700 14px/26px system-ui, sans-serif',
+              textAlign: 'center',
+              boxShadow: '0 0 0 3px #0b0e13',
+              zIndex: '9999'
+            });
+            document.body.append(dot);
+          },
+          { x: box.x, y: box.y, w: Math.min(box.width, 150) }
+        );
+        // The sidebar around the item: its group above it, a little below.
+        const y0 = Math.max(0, box.y - 150);
+        await page.screenshot({
+          path: `${DIST}/../public/help-shots/${id}-menu.png`,
+          clip: { x: 0, y: y0, width: side.width, height: Math.min(box.y + box.height + 60, 900) - y0 }
         });
       } finally {
         await context.close();

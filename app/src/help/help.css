@@ -247,11 +247,37 @@ a.help-setup-step:hover {
 
 .help-steps {
   margin: 0 0 var(--space-3);
-  padding-left: var(--space-4);
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   line-height: 1.55;
+}
+
+.help-steps li {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* The step's number; orange like the picture's marker when the picture
+   marks this step. */
+.help-step-n {
+  flex: 0 0 24px;
+  height: 24px;
+  margin-top: 1px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--raised);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.help-step-n.is-marked {
+  background: #f2703f;
+  color: #10141a;
 }
 
 .help-next {

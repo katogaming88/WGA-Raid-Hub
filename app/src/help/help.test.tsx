@@ -81,6 +81,9 @@ describe('the Help page', () => {
   });
 
   it('has a picture on disk for every guide that shows one (npm run help:shots)', () => {
+    for (const guide of GUIDES.filter((g) => g.menu)) {
+      expect(existsSync(join(process.cwd(), 'public', 'help-shots', `${guide.id}-menu.png`)), guide.id).toBe(true);
+    }
     for (const guide of GUIDES.filter((g) => g.picture)) {
       expect(existsSync(join(process.cwd(), 'public', 'help-shots', `${guide.id}.png`)), guide.id).toBe(true);
     }
