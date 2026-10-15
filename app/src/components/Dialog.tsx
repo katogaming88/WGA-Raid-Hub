@@ -23,6 +23,7 @@ export function Dialog({
   busy = false,
   initialFocus,
   wide = false,
+  side = false,
   children
 }: {
   title: string;
@@ -30,6 +31,8 @@ export function Dialog({
   busy?: boolean;
   // For a dialog holding a table, such as the alts picker.
   wide?: boolean;
+  // Docked to the right edge, full height, for reading (a Help guide).
+  side?: boolean;
   initialFocus?: React.RefObject<HTMLElement | null>;
   children: ReactNode;
 }) {
@@ -101,11 +104,11 @@ export function Dialog({
   }, []);
 
   return createPortal(
-    <div ref={host} className="dialog-host">
+    <div ref={host} className={side ? 'dialog-host dialog-host-side' : 'dialog-host'}>
       <div className="dialog-backdrop" aria-hidden="true" onClick={() => !busy && onClose()} />
       <div
         ref={panel}
-        className={wide ? 'dialog dialog-wide' : 'dialog'}
+        className={side ? 'dialog dialog-side' : wide ? 'dialog dialog-wide' : 'dialog'}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

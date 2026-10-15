@@ -116,7 +116,9 @@ export const routes: RouteObject[] = [
       {
         errorElement: <ErrorPage siteFrame />,
         children: Object.entries(SITE_PAGES).map(([path, title]) => ({
-          path: `/${path}`,
+          // A guide open over the Help page has its own address, to post in
+          // Discord (#1526); one route, so the page stays put as guides open.
+          path: path === 'help' ? '/help/:guideId?' : `/${path}`,
           element: BUILT_SITE_PAGES[path],
           handle: { title } satisfies RouteHandle
         }))

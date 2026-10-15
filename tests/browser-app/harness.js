@@ -113,6 +113,9 @@ export async function openApp(browser, port, state) {
   const context = await browser.newContext({
     viewport: state.viewport ?? DESKTOP,
     reducedMotion: state.reducedMotion ?? 'no-preference',
+    // Pixels per CSS pixel: 2 for Help's guide pictures, so they stay sharp
+    // shrunk into the guide panel on a high-density screen.
+    deviceScaleFactor: state.scale ?? 1,
     colorScheme: state.colorScheme ?? 'dark',
     // A phone: a touch screen as the main pointer, so (pointer: coarse) matches.
     ...(state.touch ? { hasTouch: true, isMobile: true } : {})

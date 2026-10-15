@@ -95,6 +95,17 @@ describe('signed in', () => {
     expect(screen.queryByRole('link', { name: 'Reassign' })).not.toBeInTheDocument();
   });
 
+  it('closes an open officer group on leaving for a page outside it', async () => {
+    renderApp('/g/wga/t/phoenix/officer/priority', signedIn(OFFICER, person('officer')));
+    const settings = await screen.findByRole('button', { name: 'Settings' });
+    await userEvent.click(settings);
+    expect(settings).toHaveAttribute('aria-expanded', 'true');
+    await userEvent.click(within(sidebar()).getByRole('link', { name: 'Help' }));
+    await screen.findByRole('heading', { level: 1, name: 'Help' });
+    expect(screen.getByRole('button', { name: 'Settings' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: 'Loot' })).toHaveAttribute('aria-expanded', 'false');
+  });
+
   it('keeps officer pages closed to a raider, naming the team', async () => {
     renderApp('/g/wga/t/phoenix/officer/priority', signedIn(OFFICER, person('raider')));
     expect(await screen.findByText('This page is for officers of Phoenix.')).toBeInTheDocument();

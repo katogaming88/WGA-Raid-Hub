@@ -81,18 +81,19 @@ export function AppShell() {
   // The same cached read as the Streams page and the floating panel.
   const teamIds = teams.map((t) => t.id);
   const streamers = useGuildStreamers(teamIds);
-  const groups = navGroups(
-    { team: `/g/${guildKey}/t/${navTeamKey}`, guild: `/g/${guildKey}` },
-    {
-      officer: can(access.data, 'viewOfficerTools', navTeam?.id),
-      siteAdmin: can(access.data, 'adminSite'),
-      newsUnread: news.isSuccess && hasUnread(news.data, newsSeen),
-      liveCount: streamers.isSuccess ? liveCount(streamers.data) : 0
-    }
-  );
+  // Where the sidebar's links point; a Help guide's "Take me there" reads it
+  // from the outlet.
+  const base = { team: `/g/${guildKey}/t/${navTeamKey}`, guild: `/g/${guildKey}` };
+  const groups = navGroups(base, {
+    officer: can(access.data, 'viewOfficerTools', navTeam?.id),
+    siteAdmin: can(access.data, 'adminSite'),
+    newsUnread: news.isSuccess && hasUnread(news.data, newsSeen),
+    liveCount: streamers.isSuccess ? liveCount(streamers.data) : 0
+  });
 
-  // Officer menu: one group open at a time, and the one holding the current
-  // page opens itself when the page changes (#869).
+  // Officer menu: one group open at a time. On a page change the group holding
+  // the new page opens itself (#869), and a group left open by hand closes when
+  // the new page is outside it (Kat, 2026-10-15).
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [menuAt, setMenuAt] = useState('');
   const holder = groups.flatMap((g) => g.items).find((i) => i.pages?.some((p) => p.to === location.pathname));
@@ -101,6 +102,12 @@ export function AppShell() {
   if (holder && menuAt !== location.pathname) {
     setMenuAt(location.pathname);
     setOpenMenu(holder.label);
+  }
+  // Leaving for a page outside every group closes whatever was open.
+  const [leftFrom, setLeftFrom] = useState(location.pathname);
+  if (leftFrom !== location.pathname) {
+    setLeftFrom(location.pathname);
+    if (!holder) setOpenMenu(null);
   }
 
   // Following a link closes the drawer.
@@ -177,7 +184,7 @@ export function AppShell() {
       <AddressProvider value={address}>
         <AltsPickerProvider>
           <ConnectPrompt />
-          <Outlet />
+          <Outlet context={base} />
           {currentTeam && <StreamWidget teamId={currentTeam.id} teamIds={teamIds} />}
         </AltsPickerProvider>
       </AddressProvider>

@@ -12,6 +12,39 @@ answers to.
 
 ---
 
+## [3.182.0] - 2026-10-15
+
+### Project
+
+- New app (#1526): Help is one page for raiders and officers, with officer
+  jobs tagged. It has the steps for bringing a guild here, the raid week
+  (before raid, raid night, after raid), how Loot priority works, guides by
+  topic, common questions, and the support Discord. Every link on the page
+  opens a guide; a guide opens in a side panel at its own address
+  (`/help/wishlist`) with a quick answer, a picture of the page with the
+  steps numbered on it (click it for full view), the steps (a step
+  marked on the picture gets the same orange number in the list), a small
+  picture of the sidebar when step 1 opens a page from it, a "Take me there" button, and the next
+  guide. Fourteen guides: sign in, create your guild, set up your team,
+  invite your raiders, claim your spot, set your wishlist, check your
+  priority and attendance, find what you got, mark an item you got outside
+  the raid, say if you're coming, see if you're in or benched, plan who's
+  in for each boss, swap people in and out for one night, and mark
+  attendance. Raid-week jobs whose page isn't built yet
+  (Import, Reviews, Reassign) are plain text until their guide is written.
+- The guide pictures come from `npm run help:shots`, which builds the app
+  and retakes them from the browser tests' made-up data, with Katorrí as the
+  one raider shown. CONTRIBUTING says when to run it.
+- Dialog gets a side variant, docked right at full height.
+- Sidebar: an Officer group opened by hand (Settings, say) closes when you
+  go to a page outside it, instead of staying open.
+- Tests: the page's sections, links that stay inside Help, guide addresses,
+  the panel, a picture on disk for every guide that shows one, and
+  accessibility for the page and an open guide in both themes and on a
+  phone.
+- Time log: 2026-10-15's planning (#1503, #1526, #1226, #1531, #1532) and
+  the Help build, from the session transcript.
+
 ## [3.181.2] - 2026-10-15
 
 ### Project

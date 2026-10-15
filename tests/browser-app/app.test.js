@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { AxeBuilder } from '@axe-core/playwright';
-import { launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
+import { GUIDES } from '../../app/src/help/guide.ts';
+import { DIST, launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
 import { GUILD_TABLES, GUILD_TEAMS, WAITING } from './guild-fixtures.js';
 import { OFFICER_BIOS } from '../behavior/guild.js';
 import { ENTRIES as NEWS_ENTRIES } from '../behavior/news.js';
@@ -875,7 +876,8 @@ const STREAMS_PAGE = {
   tables: { streamers: DIRECTORY }
 };
 
-const HELP = { path: '/help', sentinel: 'main:has(.help-card)' };
+const HELP = { path: '/help', sentinel: 'main:has(.help-topic)' };
+const HELP_GUIDE = { path: '/help/wishlist', sentinel: '.dialog-side img' };
 const ABOUT = { path: '/about', sentinel: 'main:has(.about-card)' };
 
 // The site front page and the create-your-guild page (#1226). The form only
@@ -1016,6 +1018,15 @@ const SITE_ADMIN = {
 const STATES = [
   { label: 'help', ...HELP },
   { label: 'help, light', ...HELP, colorScheme: 'light' },
+  { label: 'help, a guide open', ...HELP_GUIDE },
+  { label: 'help, a guide open, light', ...HELP_GUIDE, colorScheme: 'light' },
+  { label: 'help, a guide open, on a phone', ...HELP_GUIDE, viewport: NARROW },
+  {
+    label: 'help, a guide in full view',
+    ...HELP_GUIDE,
+    click: 'role=button[name="Full view"]',
+    afterClick: '.help-guide-page'
+  },
   { label: 'about', ...ABOUT },
   { label: 'about, light', ...ABOUT, colorScheme: 'light' },
   { label: 'front page', ...FRONT },
@@ -1658,4 +1669,327 @@ describe('reduced motion', () => {
   it('runs no transition or animation longer than a frame when the system asks for less motion', async () => {
     expect(await movingElements('reduce')).toEqual([]);
   });
+});
+
+// Help's guide pictures (#1526): each guide with a picture is one of the
+// states above, with a numbered marker on what each step points at (null: a
+// step with nothing on that screen). `npm run help:shots` retakes them all
+// after a page changes; a normal run skips this block.
+// The raider every picture shows is Kat (her ask, 2026-10-15: "always"), on
+// the same made-up season of loot and attendance.
+// Any picture state signed in as a raider, made into Kat: her character on the
+// page, in the sidebar's account box and in the session. The class's tier
+// tokens follow only on a plain profile (the wishlist keeps its own items).
+const asKat = (state, { tierTokens = true } = {}) => {
+  const kat = {
+    ...state.tables.players[0],
+    name_realm: 'Katorrí-Stormrage',
+    nickname: '',
+    classes_specs: { class: 'Warlock', spec: 'Demonology', role: 'Ranged' }
+  };
+  // The sidebar's account box names her too, not the fixture's raider.
+  const team = state.person.person.teams[0];
+  const person = {
+    ...state.person,
+    person: {
+      ...state.person.person,
+      teams: [{ ...team, characters: [{ ...team.characters[0], name_realm: kat.name_realm }] }]
+    }
+  };
+  return {
+    ...state,
+    person,
+    session: storedSession({ battlenet: 'Katorrí#1', discord: 'Katorrí' }),
+    tables: {
+      ...state.tables,
+      players: [kat],
+      ...(tierTokens ? { tier_token_map: TIER_TOKEN_MAP.filter((r) => r.class === 'Warlock') } : {})
+    }
+  };
+};
+const katProfile = () => asKat(profileState('', 'torbjorn', 'torbjorn'));
+
+const HELP_SHOT_STATES = {
+  'team-setup': {
+    state: SETTINGS_GENERAL,
+    markers: [null, '#wcl-url-input'],
+    frame: '.settings-cards > :has(#wcl-url-input)'
+  },
+  'what-you-got': {
+    state: asKat(
+      profileState('', 'torbjorn', 'torbjorn', { path: '/g/wga/t/phoenix/me/loot', sentinel: 'main .loot-table' })
+    ),
+    markers: [null, '#profile-tab-loot', '.loot-table'],
+    viewport: { width: 700, height: 900 }
+  },
+  rsvp: {
+    state: { ...CAL_NIGHT_PAGE, sentinel: 'main .own-answer:visible' },
+    markers: [null, '.own-answer:visible fieldset', '.own-answer:visible button[type="submit"]'],
+    frame: '.own-answer:visible'
+  },
+  bench: { state: CAL_OWN_BOSSES, markers: [null, '.your-bosses:visible h2', null], frame: '.your-bosses:visible' },
+  'boss-groups': {
+    state: BOSS_GROUPS,
+    markers: [null, '.lineup-toggle', 'role=button[name="Save groups"]'],
+    frame: 'table:has(.lineup-toggle)',
+    viewport: { width: 700, height: 900 }
+  },
+  lineup: {
+    state: CAL_LINEUP,
+    markers: [null, 'role=link[name="Boss lineup"]', null, '.lineup-toggle', 'role=button[name="Save tonight"]'],
+    frame: 'main .night-tabs',
+    viewport: { width: 700, height: 900 }
+  },
+  'create-guild': {
+    state: NEW_GUILD,
+    markers: [null, '.front-form input >> nth=0', 'role=button[name="Create guild"]']
+  },
+  wishlist: {
+    // Editing open, so the marks are buttons rather than read-only.
+    state: asKat(
+      wishlistEditorState('', {
+        tables: { team_seasons: [{ season_code: SEASON.code, wishlist_open: true }] }
+      }),
+      { tierTokens: false }
+    ),
+    markers: [null, '.wishlist-slot-tab[data-slot="Finger 2"]', '.mark-bis'],
+    frame: 'main .card:has(.wishlist-slot-tabs)'
+  },
+  priority: {
+    state: katProfile(),
+    markers: [null, '#priority-title', '#attendance-title'],
+    viewport: { width: 700, height: 900 }
+  },
+  received: {
+    state: katProfile(),
+    markers: ['.priority-table tbody tr:nth-child(2) button', null, null],
+    // The table's own box, not the wider table it scrolls, and a window wide
+    // enough that the table doesn't scroll at all.
+    frame: '.card:has(.priority-table)',
+    viewport: { width: 700, height: 900 }
+  },
+  attendance: {
+    state: ATTENDANCE_MANAGE,
+    markers: [
+      null,
+      'role=button[name="Refresh from WCL"]',
+      '#attend-night-select',
+      'role=button[name="Commit Attendance Scores"]'
+    ]
+  }
+};
+
+// A guide whose step 1 opens a page from the sidebar also gets a small picture
+// of that part of the sidebar, with an orange 1 on the item (Kat, 2026-10-15),
+// one per item (guide.ts MENUS), shared by every guide that starts there:
+// menu-<item>.png. The state opens the page itself, so its Officer group is
+// already open.
+const katOnPage = (path, sentinel = 'main h1') => ({ ...katProfile(), path, sentinel });
+const HELP_MENU_SHOTS = {
+  // Signed out: the button at the bottom of the sidebar. Nobody live, so the
+  // sidebar's live count isn't mistaken for a marker.
+  'sign-in': {
+    state: {
+      path: '/g/wga/t/phoenix',
+      sentinel: 'main:has(.home-loot-table)',
+      tables: { ...HOME_TABLES, streamers: [] },
+      clock: TODAY
+    },
+    item: '.sidebar >> role=button[name="Sign in with Battle.net"]'
+  },
+  'officer-settings': { state: SETTINGS_GENERAL, item: '.sidebar >> text="Settings"' },
+  'officer-invite': {
+    state: { session: OFFICER, who: 'officer', path: '/g/wga/t/phoenix/officer/invite', sentinel: '.sidebar' },
+    item: '.sidebar >> role=link[name="Invite link"]'
+  },
+  roster: { state: katOnPage('/g/wga/t/phoenix/roster', '.sidebar'), item: '.sidebar >> role=link[name="Roster"]' },
+  'my-profile': { state: katProfile(), item: '.sidebar >> role=link[name="My profile"]' },
+  calendar: { state: CAL_MONTH, item: '.sidebar >> role=link[name="Calendar"]' },
+  'officer-boss-groups': { state: BOSS_GROUPS, item: '.sidebar >> role=link[name="Boss groups"]' },
+  'officer-manage': { state: ATTENDANCE_MANAGE, item: '.sidebar >> role=link[name="Manage"]' }
+};
+
+// A guide whose step happens in a pop-up also gets a picture of the pop-up,
+// open over the page (Kat, 2026-10-15), saved as <id>-popup.png. Same shape
+// as HELP_SHOT_STATES; its markers number the guide's steps the same way.
+const HELP_POPUP_SHOTS = {
+  received: {
+    state: {
+      ...katProfile(),
+      click: '.priority-table tbody tr:nth-child(2) button',
+      afterClick: '[role="dialog"]'
+    },
+    markers: [null, '[role="dialog"] select >> nth=0', null],
+    frame: '.dialog',
+    viewport: { width: 1000, height: 900 }
+  }
+};
+
+// The step list's orange numbers (guide.ts `marked`) are the steps the picture
+// marks, so a raider can match them up. Runs every time, unlike the pictures.
+describe('help guide picture markers', () => {
+  it('numbers the same steps orange in the text as on each picture', () => {
+    for (const [id, { markers }] of Object.entries(HELP_SHOT_STATES)) {
+      const guide = GUIDES.find((g) => g.id === id);
+      const popup = HELP_POPUP_SHOTS[id]?.markers ?? [];
+      const marked = markers.flatMap((m, i) => (m || popup[i] || (i === 0 && guide?.menu) ? [i + 1] : []));
+      expect(guide?.marked, id).toEqual(marked);
+      expect(guide.steps, id).toHaveLength(markers.length);
+      // Step 1 is on the sidebar picture, so the page picture never has a 1 too.
+      if (guide.menu) expect(markers[0], `${id}: a second 1`).toBeNull();
+    }
+    for (const guide of GUIDES.filter((g) => g.picture)) expect(HELP_SHOT_STATES[guide.id], guide.id).toBeDefined();
+    // Every sidebar item has its picture, and every picture is used.
+    const menus = new Set(GUIDES.flatMap((g) => (g.menu ? [g.menu] : [])));
+    expect([...menus].sort()).toEqual(Object.keys(HELP_MENU_SHOTS).sort());
+    for (const guide of GUIDES.filter((g) => g.menu && !HELP_SHOT_STATES[g.id] && !HELP_POPUP_SHOTS[g.id])) {
+      expect(guide.marked, guide.id).toEqual([1]);
+    }
+    for (const guide of GUIDES.filter((g) => g.popup)) expect(HELP_POPUP_SHOTS[guide.id], guide.id).toBeDefined();
+    for (const id of Object.keys(HELP_POPUP_SHOTS)) expect(GUIDES.find((g) => g.id === id)?.popup, id).toBeTruthy();
+  });
+});
+
+describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
+  const pictures = [
+    ...Object.entries(HELP_SHOT_STATES),
+    ...Object.entries(HELP_POPUP_SHOTS).map(([id, shot]) => [`${id}-popup`, shot])
+  ];
+  for (const [id, { state, markers, frame, minWidth = 0, pad = 40, viewport }] of pictures) {
+    it(`takes ${id}`, async () => {
+      const { context, page } = await openApp(browser, server.port, {
+        ...state,
+        // Twice the pixels, on a window just wide enough to keep the sidebar,
+        // so a picture is close to the size the guide panel shows it at.
+        scale: 2,
+        viewport: viewport ?? { width: 1000, height: 800 }
+      });
+      try {
+        // The floating streams box would sit over the page.
+        await page.addStyleTag({ content: '.stream-widget { display: none !important; }' });
+        const boxes = [];
+        for (const [i, selector] of markers.entries()) {
+          if (!selector) continue;
+          const target = page.locator(selector).first();
+          await target.scrollIntoViewIfNeeded();
+          const box = await target.evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            return { x: r.x + window.scrollX, y: r.y + window.scrollY, w: r.width, h: r.height };
+          });
+          boxes.push({ n: i + 1, ...box });
+        }
+        // The frame, when given, is in the picture too, so it shows the whole
+        // panel or table rather than just around the markers.
+        const frameBox = frame
+          ? await page
+              .locator(frame)
+              .first()
+              .evaluate((el) => {
+                const r = el.getBoundingClientRect();
+                return { x: r.x + window.scrollX, y: r.y + window.scrollY, w: r.width, h: r.height };
+              })
+          : null;
+        const area = frameBox ? [...boxes, frameBox] : boxes;
+        await page.evaluate((list) => {
+          // A wide target (a heading, a field) gets its marker just left of
+          // it; a small one (a button, a tab) on its top-right corner. Either
+          // way the marker never covers the words.
+          for (const { n, x, y, w, h } of list) {
+            const wide = w > 240 && x >= 36;
+            const dot = document.createElement('div');
+            dot.textContent = String(n);
+            Object.assign(dot.style, {
+              position: 'absolute',
+              left: `${wide ? x - 34 : x + w - 13}px`,
+              top: `${wide ? y + h / 2 - 13 : y - 13}px`,
+              width: '26px',
+              height: '26px',
+              borderRadius: '50%',
+              background: '#f2703f',
+              color: '#10141a',
+              font: '700 14px/26px system-ui, sans-serif',
+              textAlign: 'center',
+              boxShadow: '0 0 0 3px #0b0e13',
+              zIndex: '9999'
+            });
+            document.body.append(dot);
+          }
+        }, boxes);
+        // Just the part of the page the steps point at, so it reads at the
+        // guide panel's size.
+        const page_ = await page.evaluate(() => ({
+          w: document.documentElement.scrollWidth,
+          h: document.documentElement.scrollHeight
+        }));
+        let x0 = Math.min(...area.map((b) => b.x)) - pad;
+        let x1 = Math.max(...area.map((b) => b.x + b.w)) + pad;
+        const y0 = Math.max(0, Math.min(...area.map((b) => b.y)) - pad);
+        const y1 = Math.min(page_.h, Math.max(...area.map((b) => b.y + b.h)) + pad);
+        if (x1 - x0 < minWidth) {
+          const grow = (minWidth - (x1 - x0)) / 2;
+          x0 -= grow;
+          x1 += grow;
+        }
+        x0 = Math.max(0, x0);
+        x1 = Math.min(page_.w, x1);
+        await page.screenshot({
+          path: `${DIST}/../public/help-shots/${id}.png`,
+          fullPage: true,
+          clip: { x: x0, y: y0, width: x1 - x0, height: Math.max(y1 - y0, 240) }
+        });
+      } finally {
+        await context.close();
+      }
+    });
+  }
+  for (const [id, { state, item }] of Object.entries(HELP_MENU_SHOTS)) {
+    it(`takes ${id}'s sidebar`, async () => {
+      const { context, page } = await openApp(browser, server.port, {
+        ...state,
+        scale: 2,
+        viewport: { width: 1000, height: 900 }
+      });
+      try {
+        await page.addStyleTag({ content: '.stream-widget { display: none !important; }' });
+        const target = page.locator(item).first();
+        await target.scrollIntoViewIfNeeded();
+        const box = await target.boundingBox();
+        const side = await page.locator('.sidebar').boundingBox();
+        const button = await target.evaluate((el) => el.tagName === 'BUTTON');
+        await page.evaluate(
+          ({ x, y, w, button }) => {
+            const dot = document.createElement('div');
+            dot.textContent = '1';
+            Object.assign(dot.style, {
+              position: 'fixed',
+              // Just past the item's name, so it never covers the word.
+              // A link: just past its name. A button: on its top-right corner.
+              // Either way it never covers the words.
+              left: `${button ? x + w - 20 : x + w + 6}px`,
+              top: `${button ? y - 13 : y + 5}px`,
+              width: '26px',
+              height: '26px',
+              borderRadius: '50%',
+              background: '#f2703f',
+              color: '#10141a',
+              font: '700 14px/26px system-ui, sans-serif',
+              textAlign: 'center',
+              boxShadow: '0 0 0 3px #0b0e13',
+              zIndex: '9999'
+            });
+            document.body.append(dot);
+          },
+          { x: box.x, y: box.y, w: button ? box.width : Math.min(box.width, 150), button }
+        );
+        // The sidebar around the item: its group above it, a little below.
+        const y0 = Math.max(0, box.y - 150);
+        await page.screenshot({
+          path: `${DIST}/../public/help-shots/menu-${id}.png`,
+          clip: { x: 0, y: y0, width: side.width, height: Math.min(box.y + box.height + 60, 900) - y0 }
+        });
+      } finally {
+        await context.close();
+      }
+    });
+  }
 });
