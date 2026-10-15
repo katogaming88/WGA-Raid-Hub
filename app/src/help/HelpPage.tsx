@@ -244,6 +244,9 @@ function GuideBody({
             <img className="help-picture" srcSet={`/help-shots/${guide.id}.png 2x`} alt={guide.picture} />
           </button>
         ))}
+      {guide.popup && (
+        <img className="help-picture" srcSet={`/help-shots/${guide.id}-popup.png 2x`} alt={guide.popup} />
+      )}
       <ol className="help-steps">
         {guide.steps.map((step, i) => (
           <li key={step}>

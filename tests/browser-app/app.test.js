@@ -1771,7 +1771,7 @@ const HELP_SHOT_STATES = {
   },
   received: {
     state: katProfile(),
-    markers: ['.priority-table tbody button', null, null],
+    markers: ['.priority-table tbody tr:nth-child(2) button', null, null],
     // The table's own box, not the wider table it scrolls, and a window wide
     // enough that the table doesn't scroll at all.
     frame: '.card:has(.priority-table)',
@@ -1811,12 +1811,29 @@ const HELP_MENU_SHOTS = {
   attendance: { state: ATTENDANCE_MANAGE, item: '.sidebar >> role=link[name="Manage"]' }
 };
 
+// A guide whose step happens in a pop-up also gets a picture of the pop-up,
+// open over the page (Kat, 2026-10-15), saved as <id>-popup.png. Same shape
+// as HELP_SHOT_STATES; its markers number the guide's steps the same way.
+const HELP_POPUP_SHOTS = {
+  received: {
+    state: {
+      ...katProfile(),
+      click: '.priority-table tbody tr:nth-child(2) button',
+      afterClick: '[role="dialog"]'
+    },
+    markers: [null, '[role="dialog"] select >> nth=0', null],
+    frame: '.dialog',
+    viewport: { width: 1000, height: 900 }
+  }
+};
+
 // The step list's orange numbers (guide.ts `marked`) are the steps the picture
 // marks, so a raider can match them up. Runs every time, unlike the pictures.
 describe('help guide picture markers', () => {
   it('numbers the same steps orange in the text as on each picture', () => {
     for (const [id, { markers }] of Object.entries(HELP_SHOT_STATES)) {
-      const marked = markers.flatMap((m, i) => (m || (i === 0 && HELP_MENU_SHOTS[id]) ? [i + 1] : []));
+      const popup = HELP_POPUP_SHOTS[id]?.markers ?? [];
+      const marked = markers.flatMap((m, i) => (m || popup[i] || (i === 0 && HELP_MENU_SHOTS[id]) ? [i + 1] : []));
       const guide = GUIDES.find((g) => g.id === id);
       expect(guide?.marked, id).toEqual(marked);
       expect(guide.steps, id).toHaveLength(markers.length);
@@ -1830,11 +1847,17 @@ describe('help guide picture markers', () => {
       if (!HELP_SHOT_STATES[id]) expect(guide.marked, id).toEqual([1]);
     }
     for (const guide of GUIDES.filter((g) => g.menu)) expect(HELP_MENU_SHOTS[guide.id], guide.id).toBeDefined();
+    for (const guide of GUIDES.filter((g) => g.popup)) expect(HELP_POPUP_SHOTS[guide.id], guide.id).toBeDefined();
+    for (const id of Object.keys(HELP_POPUP_SHOTS)) expect(GUIDES.find((g) => g.id === id)?.popup, id).toBeTruthy();
   });
 });
 
 describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
-  for (const [id, { state, markers, frame, minWidth = 0, pad = 40, viewport }] of Object.entries(HELP_SHOT_STATES)) {
+  const pictures = [
+    ...Object.entries(HELP_SHOT_STATES),
+    ...Object.entries(HELP_POPUP_SHOTS).map(([id, shot]) => [`${id}-popup`, shot])
+  ];
+  for (const [id, { state, markers, frame, minWidth = 0, pad = 40, viewport }] of pictures) {
     it(`takes ${id}`, async () => {
       const { context, page } = await openApp(browser, server.port, {
         ...state,

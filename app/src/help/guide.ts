@@ -27,6 +27,8 @@ export type Guide = {
   // Step 1 opens a page from the sidebar: a small picture of that part of
   // the sidebar with an orange 1 on the item, app/public/help-shots/<id>-menu.png.
   menu?: string;
+  // A step happens in a pop-up: a picture of it open, help-shots/<id>-popup.png.
+  popup?: string;
   steps: string[];
 };
 
@@ -176,10 +178,11 @@ export const GUIDES: Guide[] = [
     quick: 'Mark crafted, M+ or vault gear received from your loot priority list, so it stops counting.',
     place: PROFILE,
     picture: "The loot priority list on My profile, with an item's Mark received button marked.",
-    marked: [1],
+    popup: 'The Mark received pop-up, with its difficulty choice marked.',
+    marked: [1, 2],
     steps: [
       'On the loot priority list in My profile, choose Mark received next to the item.',
-      'Pick the difficulty and how you got it, then send it. This is only for gear from outside a guild raid: raid drops show up on their own after the loot import.',
+      'Pick the difficulty and how you got it, then choose Mark received. This is only for gear from outside a guild raid: raid drops show up on their own after the loot import.',
       'Some are marked received right away and others go to an officer to review. The app tells you which.'
     ]
   },
