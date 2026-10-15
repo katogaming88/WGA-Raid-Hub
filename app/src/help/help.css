@@ -201,8 +201,12 @@ a.help-setup-step:hover {
 
 .help-picture {
   display: block;
-  width: 100%;
+  /* A tall, narrow picture stays a picture, not a wall of the page. */
+  max-width: 100%;
+  max-height: 360px;
+  width: auto;
   height: auto;
+  margin-inline: auto;
   margin-bottom: var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);

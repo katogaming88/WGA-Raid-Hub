@@ -1699,8 +1699,10 @@ const HELP_SHOT_STATES = {
       clock: TODAY
     },
     markers: ['role=button[name="Sign in with Battle.net"] >> nth=0', null, null],
-    frame: '.sidebar',
-    minWidth: 0
+    // The bottom of the sidebar, not all of it: the whole sidebar is too
+    // tall for the guide panel.
+    minWidth: 360,
+    pad: 140
   },
   'create-guild': {
     state: NEW_GUILD,
@@ -1732,7 +1734,7 @@ const HELP_SHOT_STATES = {
 };
 
 describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
-  for (const [id, { state, markers, frame, minWidth = 760 }] of Object.entries(HELP_SHOT_STATES)) {
+  for (const [id, { state, markers, frame, minWidth = 760, pad = 48 }] of Object.entries(HELP_SHOT_STATES)) {
     it(`takes ${id}`, async () => {
       const { context, page } = await openApp(browser, server.port, state);
       try {
@@ -1792,7 +1794,6 @@ describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
           w: document.documentElement.scrollWidth,
           h: document.documentElement.scrollHeight
         }));
-        const pad = 48;
         let x0 = Math.min(...area.map((b) => b.x)) - pad;
         let x1 = Math.max(...area.map((b) => b.x + b.w)) + pad;
         const y0 = Math.max(0, Math.min(...area.map((b) => b.y)) - pad);
