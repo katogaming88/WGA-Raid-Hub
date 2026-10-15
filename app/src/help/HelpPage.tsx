@@ -178,33 +178,35 @@ function GuidePanel({ guide, base, onClose }: { guide: Guide; base: Bases; onClo
   const [full, setFull] = useState(false);
   return (
     <Dialog title={guide.title} onClose={onClose} side full={full}>
-      <div className="help-panel-bar">
-        <p className="help-eyebrow">
-          {topic.title}
-          {guide.officers && ' · for officers'}
+      <div className="help-guide">
+        <div className="help-panel-bar">
+          <p className="help-eyebrow">
+            {topic.title}
+            {guide.officers && ' · for officers'}
+          </p>
+          <button type="button" className="button help-full" aria-pressed={full} onClick={() => setFull(!full)}>
+            {full ? 'Side view' : 'Full view'}
+          </button>
+        </div>
+        <div className="help-quick">
+          <span className="help-eyebrow">Quick answer</span>
+          <p>{guide.quick}</p>
+        </div>
+        {guide.place && (
+          <Link className="button button-primary help-go" to={guide.place.to(base)}>
+            Take me there: {guide.place.label}
+          </Link>
+        )}
+        {guide.picture && <img className="help-picture" src={`/help-shots/${guide.id}.jpg`} alt={guide.picture} />}
+        <ol className="help-steps">
+          {guide.steps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+        <p className="help-next">
+          {next ? <Link to={`/help/${next.id}`}>Next guide: {next.title}</Link> : <Link to="/help">All help</Link>}
         </p>
-        <button type="button" className="button help-full" aria-pressed={full} onClick={() => setFull(!full)}>
-          {full ? 'Side view' : 'Full view'}
-        </button>
       </div>
-      <div className="help-quick">
-        <span className="help-eyebrow">Quick answer</span>
-        <p>{guide.quick}</p>
-      </div>
-      {guide.place && (
-        <Link className="button button-primary help-go" to={guide.place.to(base)}>
-          Take me there: {guide.place.label}
-        </Link>
-      )}
-      {guide.picture && <img className="help-picture" src={`/help-shots/${guide.id}.jpg`} alt={guide.picture} />}
-      <ol className="help-steps">
-        {guide.steps.map((step) => (
-          <li key={step}>{step}</li>
-        ))}
-      </ol>
-      <p className="help-next">
-        {next ? <Link to={`/help/${next.id}`}>Next guide: {next.title}</Link> : <Link to="/help">All help</Link>}
-      </p>
     </Dialog>
   );
 }
