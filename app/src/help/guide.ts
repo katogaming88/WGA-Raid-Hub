@@ -37,6 +37,7 @@ export type MenuId = keyof typeof MENUS;
 
 // The sidebar pictures, one per item, and what each shows.
 export const MENUS = {
+  'sign-in': 'Sign in with Battle.net, at the bottom of the sidebar',
   'my-profile': 'My profile in the sidebar',
   calendar: 'Calendar in the sidebar',
   roster: 'Roster in the sidebar',
@@ -71,7 +72,7 @@ export const GUIDES: Guide[] = [
     topic: 'start',
     title: 'Sign in',
     quick: 'Sign in with Battle.net, then connect the Discord account you use in the guild.',
-    picture: 'The sidebar, with the Sign in with Battle.net button marked.',
+    menu: 'sign-in',
     marked: [1],
     steps: [
       'Choose Sign in with Battle.net at the bottom of the sidebar. On a phone, open the menu first.',
@@ -87,7 +88,8 @@ export const GUIDES: Guide[] = [
     quick: 'Give your guild’s name, region and realm. Its first team is made at the same time, and you run both.',
     place: { label: 'Create your guild', to: () => '/new-guild' },
     picture: 'The Create your guild form, with its fields and the Create guild button marked.',
-    marked: [2, 3],
+    menu: 'sign-in',
+    marked: [1, 2, 3],
     steps: [
       'Sign in with Battle.net and connect your Discord.',
       'Fill in your guild’s name, region and realm. The first team’s name is optional: leave it empty and the team takes the guild’s name.',

@@ -1740,20 +1740,6 @@ const HELP_SHOT_STATES = {
     frame: 'main .night-tabs',
     viewport: { width: 700, height: 900 }
   },
-  'sign-in': {
-    // Nobody live, so the sidebar's live count isn't mistaken for a marker.
-    state: {
-      path: '/g/wga/t/phoenix',
-      sentinel: 'main:has(.home-loot-table)',
-      tables: { ...HOME_TABLES, streamers: [] },
-      clock: TODAY
-    },
-    markers: ['role=button[name="Sign in with Battle.net"] >> nth=0', null, null],
-    // The bottom of the sidebar, not all of it: the whole sidebar is too
-    // tall for the guide panel.
-    minWidth: 360,
-    pad: 140
-  },
   'create-guild': {
     state: NEW_GUILD,
     markers: [null, '.front-form input >> nth=0', 'role=button[name="Create guild"]']
@@ -1800,6 +1786,17 @@ const HELP_SHOT_STATES = {
 // already open.
 const katOnPage = (path, sentinel = 'main h1') => ({ ...katProfile(), path, sentinel });
 const HELP_MENU_SHOTS = {
+  // Signed out: the button at the bottom of the sidebar. Nobody live, so the
+  // sidebar's live count isn't mistaken for a marker.
+  'sign-in': {
+    state: {
+      path: '/g/wga/t/phoenix',
+      sentinel: 'main:has(.home-loot-table)',
+      tables: { ...HOME_TABLES, streamers: [] },
+      clock: TODAY
+    },
+    item: '.sidebar >> role=button[name="Sign in with Battle.net"]'
+  },
   'officer-settings': { state: SETTINGS_GENERAL, item: '.sidebar >> text="Settings"' },
   'officer-invite': {
     state: { session: OFFICER, who: 'officer', path: '/g/wga/t/phoenix/officer/invite', sentinel: '.sidebar' },
@@ -1958,15 +1955,18 @@ describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
         await target.scrollIntoViewIfNeeded();
         const box = await target.boundingBox();
         const side = await page.locator('.sidebar').boundingBox();
+        const button = await target.evaluate((el) => el.tagName === 'BUTTON');
         await page.evaluate(
-          ({ x, y, w }) => {
+          ({ x, y, w, button }) => {
             const dot = document.createElement('div');
             dot.textContent = '1';
             Object.assign(dot.style, {
               position: 'fixed',
               // Just past the item's name, so it never covers the word.
-              left: `${x + w + 6}px`,
-              top: `${y + 5}px`,
+              // A link: just past its name. A button: on its top-right corner.
+              // Either way it never covers the words.
+              left: `${button ? x + w - 20 : x + w + 6}px`,
+              top: `${button ? y - 13 : y + 5}px`,
               width: '26px',
               height: '26px',
               borderRadius: '50%',
@@ -1979,7 +1979,7 @@ describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
             });
             document.body.append(dot);
           },
-          { x: box.x, y: box.y, w: Math.min(box.width, 150) }
+          { x: box.x, y: box.y, w: button ? box.width : Math.min(box.width, 150), button }
         );
         // The sidebar around the item: its group above it, a little below.
         const y0 = Math.max(0, box.y - 150);
