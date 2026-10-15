@@ -29,6 +29,18 @@
   width: min(100%, 780px);
 }
 
+.dialog-host-side {
+  place-items: stretch end;
+  padding: 0;
+}
+
+.dialog-side {
+  width: min(100%, 560px);
+  max-height: none;
+  border-width: 0 0 0 1px;
+  border-radius: 0;
+}
+
 .dialog:focus-visible {
   outline-offset: -2px;
 }

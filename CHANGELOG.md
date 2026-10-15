@@ -12,6 +12,31 @@ answers to.
 
 ---
 
+## [3.182.0] - 2026-10-15
+
+### Project
+
+- New app (#1526): Help is one page for raiders and officers, with officer
+  jobs tagged. It has the steps for bringing a guild here, the raid week
+  (before raid, raid night, after raid), how Loot priority works, guides by
+  topic, common questions, and the support Discord. Every link on the page
+  opens a guide; a guide opens in a side panel at its own address
+  (`/help/wishlist`) with a quick answer, a picture of the page with the
+  steps numbered on it, the steps, a "Take me there" button, and the next
+  guide. Ten guides: sign in, create your guild, invite your raiders, claim
+  your spot, set your wishlist, check your priority and attendance, mark an
+  item you got outside the raid, ask to stop running M+, say if you're
+  coming, and mark attendance. Raid-week jobs whose page isn't built yet
+  (Import, Reviews, Reassign) are plain text until their guide is written.
+- The guide pictures come from `npm run help:shots`, which builds the app
+  and retakes them from the browser tests' made-up data, with Katorrí as the
+  one raider shown. CONTRIBUTING says when to run it.
+- Dialog gets a side variant, docked right at full height.
+- Tests: the page's sections, links that stay inside Help, guide addresses,
+  the panel, a picture on disk for every guide that shows one, and
+  accessibility for the page and an open guide in both themes and on a
+  phone.
+
 ## [3.181.2] - 2026-10-15
 
 ### Project

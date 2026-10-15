@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { AxeBuilder } from '@axe-core/playwright';
-import { launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
+import { DIST, launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
 import { GUILD_TABLES, GUILD_TEAMS, WAITING } from './guild-fixtures.js';
 import { OFFICER_BIOS } from '../behavior/guild.js';
 import { ENTRIES as NEWS_ENTRIES } from '../behavior/news.js';
@@ -875,7 +875,8 @@ const STREAMS_PAGE = {
   tables: { streamers: DIRECTORY }
 };
 
-const HELP = { path: '/help', sentinel: 'main:has(.help-card)' };
+const HELP = { path: '/help', sentinel: 'main:has(.help-topic)' };
+const HELP_GUIDE = { path: '/help/wishlist', sentinel: '.dialog-side img' };
 const ABOUT = { path: '/about', sentinel: 'main:has(.about-card)' };
 
 // The site front page and the create-your-guild page (#1226). The form only
@@ -1016,6 +1017,9 @@ const SITE_ADMIN = {
 const STATES = [
   { label: 'help', ...HELP },
   { label: 'help, light', ...HELP, colorScheme: 'light' },
+  { label: 'help, a guide open', ...HELP_GUIDE },
+  { label: 'help, a guide open, light', ...HELP_GUIDE, colorScheme: 'light' },
+  { label: 'help, a guide open, on a phone', ...HELP_GUIDE, viewport: NARROW },
   { label: 'about', ...ABOUT },
   { label: 'about, light', ...ABOUT, colorScheme: 'light' },
   { label: 'front page', ...FRONT },
@@ -1658,4 +1662,158 @@ describe('reduced motion', () => {
   it('runs no transition or animation longer than a frame when the system asks for less motion', async () => {
     expect(await movingElements('reduce')).toEqual([]);
   });
+});
+
+// Help's guide pictures (#1526): each guide with a picture is one of the
+// states above, with a numbered marker on what each step points at (null: a
+// step with nothing on that screen). `npm run help:shots` retakes them all
+// after a page changes; a normal run skips this block.
+// The one raider a picture shows is Kat (her ask, 2026-10-15), on the same
+// made-up season of loot and attendance.
+const katProfile = () => {
+  const state = profileState('', 'torbjorn', 'torbjorn');
+  const kat = {
+    ...state.tables.players[0],
+    name_realm: 'Katorrí-Stormrage',
+    nickname: '',
+    classes_specs: { class: 'Warlock', spec: 'Demonology', role: 'Ranged' }
+  };
+  return {
+    ...state,
+    session: storedSession({ battlenet: 'Katorrí#1', discord: 'Katorrí-Stormrage' }),
+    tables: {
+      ...state.tables,
+      players: [kat],
+      tier_token_map: TIER_TOKEN_MAP.filter((r) => r.class === 'Warlock')
+    }
+  };
+};
+
+const HELP_SHOT_STATES = {
+  'sign-in': {
+    // Nobody live, so the sidebar's live count isn't mistaken for a marker.
+    state: {
+      path: '/g/wga/t/phoenix',
+      sentinel: 'main:has(.home-loot-table)',
+      tables: { ...HOME_TABLES, streamers: [] },
+      clock: TODAY
+    },
+    markers: ['role=button[name="Sign in with Battle.net"] >> nth=0', null, null],
+    frame: '.sidebar',
+    minWidth: 0
+  },
+  'create-guild': {
+    state: NEW_GUILD,
+    markers: [null, '.front-form input >> nth=0', 'role=button[name="Create guild"]']
+  },
+  wishlist: {
+    // Editing open, so the marks are buttons rather than read-only.
+    state: wishlistEditorState('', {
+      tables: { team_seasons: [{ season_code: SEASON.code, wishlist_open: true }] }
+    }),
+    markers: ['.wishlist-slot-tab[data-slot="Finger 2"]', '.mark-bis', '.mark-pass'],
+    frame: 'main .card:has(.wishlist-slot-tabs)'
+  },
+  priority: { state: katProfile(), markers: ['#priority-title', '#attendance-title'] },
+  received: {
+    state: katProfile(),
+    markers: ['.priority-table tbody button', null, null],
+    frame: '.priority-table'
+  },
+  attendance: {
+    state: ATTENDANCE_MANAGE,
+    markers: [
+      null,
+      'role=button[name="Refresh from WCL"]',
+      '#attend-night-select',
+      'role=button[name="Commit Attendance Scores"]'
+    ]
+  }
+};
+
+describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
+  for (const [id, { state, markers, frame, minWidth = 760 }] of Object.entries(HELP_SHOT_STATES)) {
+    it(`takes ${id}`, async () => {
+      const { context, page } = await openApp(browser, server.port, state);
+      try {
+        // The floating streams box would sit over the page.
+        await page.addStyleTag({ content: '.stream-widget { display: none !important; }' });
+        const boxes = [];
+        for (const [i, selector] of markers.entries()) {
+          if (!selector) continue;
+          const target = page.locator(selector).first();
+          await target.scrollIntoViewIfNeeded();
+          const box = await target.evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            return { x: r.x + window.scrollX, y: r.y + window.scrollY, w: r.width, h: r.height };
+          });
+          boxes.push({ n: i + 1, ...box });
+        }
+        // The frame, when given, is in the picture too, so it shows the whole
+        // panel or table rather than just around the markers.
+        const frameBox = frame
+          ? await page
+              .locator(frame)
+              .first()
+              .evaluate((el) => {
+                const r = el.getBoundingClientRect();
+                return { x: r.x + window.scrollX, y: r.y + window.scrollY, w: r.width, h: r.height };
+              })
+          : null;
+        const area = frameBox ? [...boxes, frameBox] : boxes;
+        await page.evaluate((list) => {
+          // A wide target (a heading, a field) gets its marker just left of
+          // it; a small one (a button, a tab) on its top-right corner. Either
+          // way the marker never covers the words.
+          for (const { n, x, y, w, h } of list) {
+            const wide = w > 240 && x >= 36;
+            const dot = document.createElement('div');
+            dot.textContent = String(n);
+            Object.assign(dot.style, {
+              position: 'absolute',
+              left: `${wide ? x - 34 : x + w - 13}px`,
+              top: `${wide ? y + h / 2 - 13 : y - 13}px`,
+              width: '26px',
+              height: '26px',
+              borderRadius: '50%',
+              background: '#f2703f',
+              color: '#10141a',
+              font: '700 14px/26px system-ui, sans-serif',
+              textAlign: 'center',
+              boxShadow: '0 0 0 3px #0b0e13',
+              zIndex: '9999'
+            });
+            document.body.append(dot);
+          }
+        }, boxes);
+        // Just the part of the page the steps point at, at least 760 wide,
+        // so it reads at the guide panel's size.
+        const page_ = await page.evaluate(() => ({
+          w: document.documentElement.scrollWidth,
+          h: document.documentElement.scrollHeight
+        }));
+        const pad = 48;
+        let x0 = Math.min(...area.map((b) => b.x)) - pad;
+        let x1 = Math.max(...area.map((b) => b.x + b.w)) + pad;
+        const y0 = Math.max(0, Math.min(...area.map((b) => b.y)) - pad);
+        const y1 = Math.min(page_.h, Math.max(...area.map((b) => b.y + b.h)) + pad);
+        if (x1 - x0 < minWidth) {
+          const grow = (minWidth - (x1 - x0)) / 2;
+          x0 -= grow;
+          x1 += grow;
+        }
+        x0 = Math.max(0, x0);
+        x1 = Math.min(page_.w, x1);
+        await page.screenshot({
+          path: `${DIST}/../public/help-shots/${id}.jpg`,
+          type: 'jpeg',
+          quality: 85,
+          fullPage: true,
+          clip: { x: x0, y: y0, width: x1 - x0, height: Math.max(y1 - y0, 240) }
+        });
+      } finally {
+        await context.close();
+      }
+    });
+  }
 });

@@ -331,6 +331,13 @@ are unsure.
   Every new page state is added to `tests/browser-app/app.test.js`, and the
   parts the app adds as its pages need them meet these rules when they
   arrive (carried from #1101 and #1103):
+  - Help guide pictures (#1526) come from the same states: `npm run
+    help:shots` builds the app and retakes every picture into
+    `app/public/help-shots/`, with a numbered marker on what each step points
+    at (`HELP_SHOT_STATES` in `app.test.js`). A change to a page a guide
+    shows retakes its picture in the same PR. Pictures use the made-up test
+    data, never a database snapshot, and the one raider a picture shows is
+    Katorrí-Stormrage.
   - Tabs and sub-tabs use `role="tablist"`, `tab` and `tabpanel` with
     `aria-selected`, and the arrow keys move between them. Filter chips are
     `aria-pressed` toggles, not tabs (#439)
