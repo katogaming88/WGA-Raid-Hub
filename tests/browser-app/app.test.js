@@ -1740,9 +1740,15 @@ const HELP_SHOT_STATES = {
 };
 
 describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
-  for (const [id, { state, markers, frame, minWidth = 760, pad = 48 }] of Object.entries(HELP_SHOT_STATES)) {
+  for (const [id, { state, markers, frame, minWidth = 0, pad = 40 }] of Object.entries(HELP_SHOT_STATES)) {
     it(`takes ${id}`, async () => {
-      const { context, page } = await openApp(browser, server.port, { ...state, scale: 2 });
+      const { context, page } = await openApp(browser, server.port, {
+        ...state,
+        // Twice the pixels, on a window just wide enough to keep the sidebar,
+        // so a picture is close to the size the guide panel shows it at.
+        scale: 2,
+        viewport: { width: 1000, height: 800 }
+      });
       try {
         // The floating streams box would sit over the page.
         await page.addStyleTag({ content: '.stream-widget { display: none !important; }' });
@@ -1794,8 +1800,8 @@ describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
             document.body.append(dot);
           }
         }, boxes);
-        // Just the part of the page the steps point at, at least 760 wide,
-        // so it reads at the guide panel's size.
+        // Just the part of the page the steps point at, so it reads at the
+        // guide panel's size.
         const page_ = await page.evaluate(() => ({
           w: document.documentElement.scrollWidth,
           h: document.documentElement.scrollHeight

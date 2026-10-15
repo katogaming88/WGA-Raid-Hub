@@ -240,6 +240,15 @@ a.help-setup-step:hover {
   border-radius: var(--radius-md);
 }
 
+.help-picture-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
 .help-steps {
   margin: 0 0 var(--space-3);
   padding-left: var(--space-4);

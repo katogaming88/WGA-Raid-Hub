@@ -22,7 +22,7 @@ answers to.
   topic, common questions, and the support Discord. Every link on the page
   opens a guide; a guide opens in a side panel at its own address
   (`/help/wishlist`) with a quick answer, a picture of the page with the
-  steps numbered on it, the steps, a "Take me there" button, and the next
+  steps numbered on it (click it for full view), the steps, a "Take me there" button, and the next
   guide. Ten guides: sign in, create your guild, invite your raiders, claim
   your spot, set your wishlist, check your priority and attendance, mark an
   item you got outside the raid, ask to stop running M+, say if you're
