@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.181.2] - 2026-10-15
+
+### Project
+
+- Docs and code comments stop naming Viserio as where things came from. The
+  item-fetching guide no longer says a Wowhead setting was found by looking
+  at another tool's network requests (the setting is Wowhead's and stays
+  documented), and two new-app comments describe the Roster's "..." menu and
+  Claim button without calling them "Viserio-style". Follows a read of the
+  WowUtils terms, which allow taking ideas but not reusing their design or
+  inspecting their app.
+
 ## [3.181.1] - 2026-10-14
 
 ### Project

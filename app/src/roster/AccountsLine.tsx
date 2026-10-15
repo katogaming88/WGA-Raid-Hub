@@ -31,7 +31,7 @@ function Account({ brand, label, linked }: { brand: 'battlenet' | 'discord'; lab
   );
 }
 
-// A blue Claim under an unclaimed Member (#1360 part 4), Viserio-style. The
+// A blue Claim under an unclaimed Member (#1360 part 4). The
 // "..." menu keeps its Claim too. Signed out, it starts Battle.net sign-in;
 // back on the Roster, the same link claims.
 export function QuickClaim({ teamId, nameId, label }: { teamId: number; nameId: number; label: string }) {
