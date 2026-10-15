@@ -12,12 +12,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 | Phase                              |   Time so far |
 | ---------------------------------- | ------------: |
-| Planning and design                |      8 h 50 m |
+| Planning and design                |     10 h 25 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     35 h 06 m |
+| Revamp 2: public pages             |     35 h 46 m |
 | Revamp 3: officer dashboard        |     21 h 44 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **75 h 10 m** |
+| **All revamp work**                | **77 h 25 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -266,6 +266,15 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:09-11:21 AM | How Staff are added: Discord ID box dropped; Staff ranks and a one-time invite link with approval filed as #1520 | Planning and design (#1520) | 10 m | ~5 m build, ~5 m Kat deciding | not read | Kat: Site Owner, Admin and two smaller ranks; adding Staff should feel separate |
 | 11:25-11:34 AM | PR #1521: screenshots taken, reviewed and merged (merged 11:33); #1364 closed with it and Remove a guild moved to #1515 | Revamp 3 (#1364, #1515) | 10 m | ~5 m build, ~5 m Kat | not read | |
 
+### 2026-10-15
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 8:45-9:13 AM | #1503 Performance trends: mockups (charts, table, a raider boss by boss, progression deaths), Viserio's stats page compared, trimmed to a first version; decision posted; the data part filed as #1524 (Rex) | Planning and design (#1503, #1524) | 30 m | ~15 m build, ~15 m Kat deciding | not read | First version: Season trend table and Progression deaths (one boss or All bosses), tanks in, "killed by" left out |
+| 9:13-9:48 AM | #1526 Help redesign: Viserio's help center compared, mockups (one page, the raid week, guides in a side panel with screenshots), question answers; #1525 (team-set attendance shares) and #1526 filed | Planning and design (#1526, #1525) | 35 m | ~20 m build, ~15 m Kat deciding | not read | Kat: one page for everyone with officer jobs tagged, screenshots welcome; attendance shares free and part of team setup |
+| 9:48-10:20 AM | #1226 front page redesign: Viserio and WoWUtils home pages compared, mockups (shown to everyone, the sidebar, raid-week cards, who makes it, sign-up closed); decision posted on #1226; #1527 (Terms, Privacy, Cookies) filed | Planning and design (#1226, #1527) | 30 m | ~15 m build, ~15 m Kat deciding | not read | The redirect for people on a team goes; Kat named, with a nod to the Guild Master |
+| 10:43-11:22 AM | #1526 built: one Help page, guides in a side panel with Take me there, full view as its own page, the screenshot script with numbered markers (`npm run help:shots`); PR #1530 opened | Revamp 2 (#1526) | 40 m | ~30 m build, ~10 m Kat testing | not read | Kat while testing: the Officers tag's colour and contrast, Help's links open guides first, picture size, full view leaving the sidebar usable, Katorrí as the raider shown. Review and merge not yet counted |
+
 ## Not counted (same sessions, not revamp)
 
 | Date       | Time (ET)         | Item                                                                                                                         | Elapsed |
@@ -283,6 +292,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-10-06 | 10:09-10:11 PM | Leftover local and remote branches deleted | 5 m |
 | 2026-10-07 | 11:10-11:18 AM | Where the work stood; Revamp 3 due date move to 10-31 tried (GitHub would not save milestone changes); #801, #871, #837, #649 closed | 10 m |
 | 2026-10-14 | 11:38-11:45 AM | #1482: News, About, Help and Site admin get site addresses (Multi-guild milestone); review and merge not yet counted | 10 m |
+| 2026-10-15 | 8:44-8:45 AM | Where the work stood | 5 m |
+| 2026-10-15 | 10:21-10:43 AM | WowUtils terms and API terms read; the new app checked for copied design; Viserio mentions dropped (PR #1528, merged 10:37); #1514's terms and #1527's cookie notes written up | 20 m |
 
 ## Remaining in Revamp 1
 
