@@ -1719,20 +1719,20 @@ const HELP_SHOT_STATES = {
       profileState('', 'torbjorn', 'torbjorn', { path: '/g/wga/t/phoenix/me/loot', sentinel: 'main .loot-table' })
     ),
     markers: ['#profile-tab-loot', '.loot-table'],
-    viewport: { width: 1280, height: 800 }
+    viewport: { width: 700, height: 900 }
   },
   bench: { state: CAL_OWN_BOSSES, markers: [null, '.your-bosses:visible h2', null], frame: '.your-bosses:visible' },
   'boss-groups': {
     state: BOSS_GROUPS,
     markers: [null, '.lineup-toggle', 'role=button[name="Save groups"]'],
     frame: 'table:has(.lineup-toggle)',
-    viewport: { width: 1280, height: 800 }
+    viewport: { width: 700, height: 900 }
   },
   lineup: {
     state: CAL_LINEUP,
     markers: ['role=link[name="Boss lineup"]', null, '.lineup-toggle', 'role=button[name="Save tonight"]'],
     frame: 'main .night-tabs',
-    viewport: { width: 1280, height: 800 }
+    viewport: { width: 700, height: 900 }
   },
   'sign-in': {
     // Nobody live, so the sidebar's live count isn't mistaken for a marker.
@@ -1766,7 +1766,7 @@ const HELP_SHOT_STATES = {
   priority: {
     state: katProfile(),
     markers: ['#priority-title', '#attendance-title'],
-    viewport: { width: 1280, height: 800 }
+    viewport: { width: 700, height: 900 }
   },
   received: {
     state: katProfile(),
@@ -1774,7 +1774,7 @@ const HELP_SHOT_STATES = {
     // The table's own box, not the wider table it scrolls, and a window wide
     // enough that the table doesn't scroll at all.
     frame: '.card:has(.priority-table)',
-    viewport: { width: 1280, height: 800 }
+    viewport: { width: 700, height: 900 }
   },
   attendance: {
     state: ATTENDANCE_MANAGE,

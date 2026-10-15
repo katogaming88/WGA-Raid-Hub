@@ -35,7 +35,7 @@
 }
 
 .dialog-side {
-  width: min(100%, 560px);
+  width: min(100%, 720px);
   max-height: none;
   border-width: 0 0 0 1px;
   border-radius: 0;
