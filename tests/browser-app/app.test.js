@@ -1712,7 +1712,7 @@ const katProfile = () => asKat(profileState('', 'torbjorn', 'torbjorn'));
 const HELP_SHOT_STATES = {
   'team-setup': {
     state: SETTINGS_GENERAL,
-    markers: [null, '#wcl-url-input', null],
+    markers: [null, '#wcl-url-input'],
     frame: '.settings-cards > :has(#wcl-url-input)'
   },
   'what-you-got': {

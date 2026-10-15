@@ -101,15 +101,14 @@ export const GUIDES: Guide[] = [
     topic: 'start',
     title: 'Set up your team',
     officers: true,
-    quick: 'Officer Settings holds your Warcraft Logs guild, roster size targets and the raids you’re progressing.',
+    quick: 'Officer Settings holds your team’s Warcraft Logs guild and roster size targets.',
     place: { label: 'Settings', to: (b) => `${b.team}/officer/settings` },
     picture: 'The General settings page, with the Warcraft Logs guild address marked.',
     marked: [1, 2],
     menu: 'officer-settings',
     steps: [
       'In the Officer menu, open Settings.',
-      'On General, add your team’s Warcraft Logs guild page and the roster size targets, then choose Save.',
-      'On Raid progression, add one block per raid this season, then choose Save Progression.'
+      'On General, add your team’s Warcraft Logs guild page and the roster size targets, then choose Save.'
     ]
   },
   {
@@ -342,7 +341,7 @@ export const SETUP: { title: string; text: string; guide?: string }[] = [
   { title: 'Create your guild', text: 'Name, realm, and your first team.', guide: 'create-guild' },
   {
     title: 'Set up your team',
-    text: 'Warcraft Logs guild, roster sizes and raid progression, in officer Settings.',
+    text: 'Warcraft Logs guild and roster sizes, in officer Settings.',
     guide: 'team-setup'
   },
   { title: 'Bring in your people', text: 'Send one invite link; raiders claim their name.', guide: 'invite' },
