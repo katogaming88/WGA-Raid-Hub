@@ -61,7 +61,7 @@ export const TOPICS: { id: TopicId; title: string; blurb: string }[] = [
     blurb: 'Picking your BiS and reading where you stand.'
   },
   { id: 'raid', title: 'Raid nights and attendance', blurb: 'Saying if you’re coming, and keeping attendance right.' },
-  { id: 'gear', title: 'Gear from outside the raid', blurb: 'Crafted, M+ and vault items, and asking to stop M+.' }
+  { id: 'gear', title: 'Gear from outside the raid', blurb: 'Crafted, M+ and vault items: marking them received.' }
 ];
 
 const PROFILE: Place = { label: 'My profile', to: (b) => `${b.team}/me` };
@@ -199,20 +199,6 @@ export const GUIDES: Guide[] = [
       'On the loot priority list in My profile, choose Mark received next to the item.',
       'Pick the difficulty and how you got it, then choose Mark received. This is only for gear from outside a guild raid: raid drops show up on their own after the loot import.',
       'Some are marked received right away and others go to an officer to review. The app tells you which.'
-    ]
-  },
-  {
-    id: 'mplus',
-    topic: 'gear',
-    title: 'Ask to stop running M+',
-    quick: 'Once M+ has nothing left for you, ask to be excluded from the weekly M+ requirement.',
-    place: PROFILE,
-    menu: 'my-profile',
-    marked: [1],
-    steps: [
-      'Open My profile and find the M+ card. Once you have nothing left to gain from M+, choose Request M+ exclusion.',
-      'Tick that you are 6/6 Myth in every slot M+ can fill, say how many of your helm, bracer and belt sockets are filled, and check your Raider.IO link.',
-      'An officer reviews the request. If it is rejected you can choose Request again with the details fixed.'
     ]
   },
   {
