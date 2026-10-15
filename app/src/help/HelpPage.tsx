@@ -226,12 +226,22 @@ function GuideBody({
       )}
       {guide.picture &&
         (full ? (
-          <img className="help-picture" src={`/help-shots/${guide.id}.png`} alt={guide.picture} />
+          <img
+            className="help-picture"
+            src={`/help-shots/${guide.id}.png`}
+            srcSet={`/help-shots/${guide.id}.png 2x`}
+            alt={guide.picture}
+          />
         ) : (
           // In the side panel the picture opens full view, to see it bigger.
           <button type="button" className="help-picture-button" onClick={onToggle}>
             <span className="visually-hidden">Open full view: </span>
-            <img className="help-picture" src={`/help-shots/${guide.id}.png`} alt={guide.picture} />
+            <img
+              className="help-picture"
+              src={`/help-shots/${guide.id}.png`}
+              srcSet={`/help-shots/${guide.id}.png 2x`}
+              alt={guide.picture}
+            />
           </button>
         ))}
       <ol className="help-steps">

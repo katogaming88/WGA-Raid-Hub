@@ -206,10 +206,6 @@ a.help-setup-step:hover {
   margin-bottom: var(--space-2);
 }
 
-.help-guide-page .help-picture {
-  max-height: none;
-}
-
 .help-quick {
   margin-bottom: var(--space-3);
   padding: var(--space-3);
@@ -229,9 +225,9 @@ a.help-setup-step:hover {
 
 .help-picture {
   display: block;
-  /* A tall, narrow picture stays a picture, not a wall of the page. */
+  /* Each picture at its own size (they're taken near the panel's width),
+     never wider than the panel. */
   max-width: 100%;
-  max-height: 360px;
   width: auto;
   height: auto;
   margin-inline: auto;
