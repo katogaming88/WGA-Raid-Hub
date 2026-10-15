@@ -5,7 +5,7 @@ import './menu.css';
 
 export type MenuAction = { label: string; onSelect: () => void; disabled?: boolean };
 
-// The "..." row-action menu (Viserio-style, Kat 2026-09-29): the one place
+// The "..." row-action menu (Kat 2026-09-29): the one place
 // this app hides secondary actions behind a trigger instead of inline
 // buttons. `label` names the menu for screen readers ("More actions for
 // Torbjorn"), not shown on screen.
