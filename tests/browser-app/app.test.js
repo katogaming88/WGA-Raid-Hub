@@ -1719,7 +1719,7 @@ const HELP_SHOT_STATES = {
     state: asKat(
       profileState('', 'torbjorn', 'torbjorn', { path: '/g/wga/t/phoenix/me/loot', sentinel: 'main .loot-table' })
     ),
-    markers: ['#profile-tab-loot', '.loot-table'],
+    markers: [null, '#profile-tab-loot', '.loot-table'],
     viewport: { width: 700, height: 900 }
   },
   bench: { state: CAL_OWN_BOSSES, markers: [null, '.your-bosses:visible h2', null], frame: '.your-bosses:visible' },
@@ -1731,7 +1731,7 @@ const HELP_SHOT_STATES = {
   },
   lineup: {
     state: CAL_LINEUP,
-    markers: ['role=link[name="Boss lineup"]', null, '.lineup-toggle', 'role=button[name="Save tonight"]'],
+    markers: [null, 'role=link[name="Boss lineup"]', null, '.lineup-toggle', 'role=button[name="Save tonight"]'],
     frame: 'main .night-tabs',
     viewport: { width: 700, height: 900 }
   },
@@ -1766,7 +1766,7 @@ const HELP_SHOT_STATES = {
   },
   priority: {
     state: katProfile(),
-    markers: ['#priority-title', '#attendance-title'],
+    markers: [null, '#priority-title', '#attendance-title'],
     viewport: { width: 700, height: 900 }
   },
   received: {
@@ -1820,6 +1820,8 @@ describe('help guide picture markers', () => {
       const guide = GUIDES.find((g) => g.id === id);
       expect(guide?.marked, id).toEqual(marked);
       expect(guide.steps, id).toHaveLength(markers.length);
+      // Step 1 is on the sidebar picture, so the page picture never has a 1 too.
+      if (HELP_MENU_SHOTS[id]) expect(markers[0], `${id}: a second 1`).toBeNull();
     }
     for (const guide of GUIDES.filter((g) => g.picture)) expect(HELP_SHOT_STATES[guide.id], guide.id).toBeDefined();
     for (const id of Object.keys(HELP_MENU_SHOTS)) {

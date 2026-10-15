@@ -146,10 +146,11 @@ export const GUIDES: Guide[] = [
     quick: 'My profile shows your place for every item you want, and your attendance below it.',
     place: PROFILE,
     picture: "My profile's Overview tab: the loot priority card, and the attendance card beside it.",
-    marked: [1, 2],
+    marked: [1, 2, 3],
     menu: 'My profile in the sidebar',
     steps: [
-      'Open My profile. The Overview tab shows your loot priority, one row per item you want.',
+      'Open My profile.',
+      'The Overview tab shows your loot priority, one row per item you want.',
       'Below it are your attendance and any flagged nights, the raid nights that counted less than in full.'
     ]
   },
@@ -160,10 +161,11 @@ export const GUIDES: Guide[] = [
     quick: 'My profile’s Loot tab lists every item you received this season, newest first.',
     place: { label: 'My profile, Loot', to: (b) => `${b.team}/me/loot` },
     picture: 'My profile’s Loot tab, with the tab and the list of items marked.',
-    marked: [1, 2],
+    marked: [1, 2, 3],
     menu: 'My profile in the sidebar',
     steps: [
-      'Open My profile, then the Loot tab.',
+      'Open My profile.',
+      'Choose the Loot tab.',
       'Each row is an item you received this season, newest first. Raid drops show up once an officer imports the night’s loot.'
     ]
   },
@@ -248,10 +250,11 @@ export const GUIDES: Guide[] = [
     quick: 'A raid night’s Boss lineup tab changes who’s in for each boss on that night only.',
     place: { label: 'Calendar', to: (b) => `${b.team}/calendar` },
     picture: 'A raid night’s Boss lineup tab: the tab, a cell in the grid and Save tonight marked.',
-    marked: [1, 3, 4],
+    marked: [1, 2, 4, 5],
     menu: 'Calendar in the sidebar',
     steps: [
-      'Open the Calendar, pick the raid night, then the Boss lineup tab. It needs a computer.',
+      'Open the Calendar and pick the raid night.',
+      'Choose the Boss lineup tab. It needs a computer.',
       'If the night isn’t planned yet, choose Fill from the groups.',
       'Click a cell to swap someone in or out for that boss.',
       'Choose Save tonight. Save to the group also makes it the usual group, so every coming night starts this way.'
