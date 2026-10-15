@@ -1684,9 +1684,19 @@ const katProfile = () => {
     nickname: '',
     classes_specs: { class: 'Warlock', spec: 'Demonology', role: 'Ranged' }
   };
+  // The sidebar's account box names her too, not the fixture's raider.
+  const team = state.person.person.teams[0];
+  const person = {
+    ...state.person,
+    person: {
+      ...state.person.person,
+      teams: [{ ...team, characters: [{ ...team.characters[0], name_realm: kat.name_realm }] }]
+    }
+  };
   return {
     ...state,
-    session: storedSession({ battlenet: 'Katorrí#1', discord: 'Katorrí-Stormrage' }),
+    person,
+    session: storedSession({ battlenet: 'Katorrí#1', discord: 'Katorrí' }),
     tables: {
       ...state.tables,
       players: [kat],
@@ -1722,11 +1732,18 @@ const HELP_SHOT_STATES = {
     markers: ['.wishlist-slot-tab[data-slot="Finger 2"]', '.mark-bis', '.mark-pass'],
     frame: 'main .card:has(.wishlist-slot-tabs)'
   },
-  priority: { state: katProfile(), markers: ['#priority-title', '#attendance-title'] },
+  priority: {
+    state: katProfile(),
+    markers: ['#priority-title', '#attendance-title'],
+    viewport: { width: 1280, height: 800 }
+  },
   received: {
     state: katProfile(),
     markers: ['.priority-table tbody button', null, null],
-    frame: '.priority-table'
+    // The table's own box, not the wider table it scrolls, and a window wide
+    // enough that the table doesn't scroll at all.
+    frame: '.card:has(.priority-table)',
+    viewport: { width: 1280, height: 800 }
   },
   attendance: {
     state: ATTENDANCE_MANAGE,
@@ -1740,14 +1757,14 @@ const HELP_SHOT_STATES = {
 };
 
 describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
-  for (const [id, { state, markers, frame, minWidth = 0, pad = 40 }] of Object.entries(HELP_SHOT_STATES)) {
+  for (const [id, { state, markers, frame, minWidth = 0, pad = 40, viewport }] of Object.entries(HELP_SHOT_STATES)) {
     it(`takes ${id}`, async () => {
       const { context, page } = await openApp(browser, server.port, {
         ...state,
         // Twice the pixels, on a window just wide enough to keep the sidebar,
         // so a picture is close to the size the guide panel shows it at.
         scale: 2,
-        viewport: { width: 1000, height: 800 }
+        viewport: viewport ?? { width: 1000, height: 800 }
       });
       try {
         // The floating streams box would sit over the page.
