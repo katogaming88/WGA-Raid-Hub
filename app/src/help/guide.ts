@@ -221,7 +221,8 @@ export const GUIDES: Guide[] = [
     quick: 'On the Calendar, pick the night and give your answer. Anything but Present needs a note.',
     place: { label: 'Calendar', to: (b) => `${b.team}/calendar` },
     menu: 'calendar',
-    marked: [1],
+    picture: 'A raid night’s Your answer box: the answers to choose from, the note, and Save.',
+    marked: [1, 2, 3],
     steps: [
       'Open the Calendar and pick the raid night.',
       'Under Your answer, choose Present, Late, Leaving early, Tentative or Absent. On an optional night, choose Attending to say you’re in.',

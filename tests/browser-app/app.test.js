@@ -1722,6 +1722,11 @@ const HELP_SHOT_STATES = {
     markers: [null, '#profile-tab-loot', '.loot-table'],
     viewport: { width: 700, height: 900 }
   },
+  rsvp: {
+    state: { ...CAL_NIGHT_PAGE, sentinel: 'main .own-answer:visible' },
+    markers: [null, '.own-answer:visible fieldset', '.own-answer:visible button[type="submit"]'],
+    frame: '.own-answer:visible'
+  },
   bench: { state: CAL_OWN_BOSSES, markers: [null, '.your-bosses:visible h2', null], frame: '.your-bosses:visible' },
   'boss-groups': {
     state: BOSS_GROUPS,
