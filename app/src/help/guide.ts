@@ -18,7 +18,7 @@ export type Guide = {
   quick: string;
   place?: Place;
   // What the guide's picture shows, for anyone who can't see it; the picture
-  // itself is app/public/help-shots/<id>.jpg, from `npm run help:shots`.
+  // itself is app/public/help-shots/<id>.png, from `npm run help:shots`.
   picture?: string;
   steps: string[];
 };

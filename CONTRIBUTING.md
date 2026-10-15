@@ -334,7 +334,8 @@ are unsure.
   - Help guide pictures (#1526) come from the same states: `npm run
     help:shots` builds the app and retakes every picture into
     `app/public/help-shots/`, with a numbered marker on what each step points
-    at (`HELP_SHOT_STATES` in `app.test.js`). A change to a page a guide
+    at (`HELP_SHOT_STATES` in `app.test.js`), as PNG at twice the pixels so
+    they stay sharp shrunk into the guide panel. A change to a page a guide
     shows retakes its picture in the same PR. Pictures use the made-up test
     data, never a database snapshot, and the one raider a picture shows is
     Katorrí-Stormrage.

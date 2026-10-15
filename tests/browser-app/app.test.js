@@ -1742,7 +1742,7 @@ const HELP_SHOT_STATES = {
 describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
   for (const [id, { state, markers, frame, minWidth = 760, pad = 48 }] of Object.entries(HELP_SHOT_STATES)) {
     it(`takes ${id}`, async () => {
-      const { context, page } = await openApp(browser, server.port, state);
+      const { context, page } = await openApp(browser, server.port, { ...state, scale: 2 });
       try {
         // The floating streams box would sit over the page.
         await page.addStyleTag({ content: '.stream-widget { display: none !important; }' });
@@ -1812,9 +1812,7 @@ describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
         x0 = Math.max(0, x0);
         x1 = Math.min(page_.w, x1);
         await page.screenshot({
-          path: `${DIST}/../public/help-shots/${id}.jpg`,
-          type: 'jpeg',
-          quality: 85,
+          path: `${DIST}/../public/help-shots/${id}.png`,
           fullPage: true,
           clip: { x: x0, y: y0, width: x1 - x0, height: Math.max(y1 - y0, 240) }
         });

@@ -224,7 +224,7 @@ function GuideBody({
           Take me there: {guide.place.label}
         </Link>
       )}
-      {guide.picture && <img className="help-picture" src={`/help-shots/${guide.id}.jpg`} alt={guide.picture} />}
+      {guide.picture && <img className="help-picture" src={`/help-shots/${guide.id}.png`} alt={guide.picture} />}
       <ol className="help-steps">
         {guide.steps.map((step) => (
           <li key={step}>{step}</li>
