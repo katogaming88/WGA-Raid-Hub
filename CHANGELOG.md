@@ -23,10 +23,12 @@ answers to.
   opens a guide; a guide opens in a side panel at its own address
   (`/help/wishlist`) with a quick answer, a picture of the page with the
   steps numbered on it (click it for full view), the steps, a "Take me there" button, and the next
-  guide. Ten guides: sign in, create your guild, invite your raiders, claim
-  your spot, set your wishlist, check your priority and attendance, mark an
-  item you got outside the raid, ask to stop running M+, say if you're
-  coming, and mark attendance. Raid-week jobs whose page isn't built yet
+  guide. Fifteen guides: sign in, create your guild, set up your team,
+  invite your raiders, claim your spot, set your wishlist, check your
+  priority and attendance, find what you got, mark an item you got outside
+  the raid, ask to stop running M+, say if you're coming, see if you're in
+  or benched, plan who's in for each boss, swap people in and out for one
+  night, and mark attendance. Raid-week jobs whose page isn't built yet
   (Import, Reviews, Reassign) are plain text until their guide is written.
 - The guide pictures come from `npm run help:shots`, which builds the app
   and retakes them from the browser tests' made-up data, with Katorrí as the

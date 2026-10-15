@@ -70,6 +70,20 @@ export const GUIDES: Guide[] = [
     ]
   },
   {
+    id: 'team-setup',
+    topic: 'start',
+    title: 'Set up your team',
+    officers: true,
+    quick: 'Officer Settings holds your Warcraft Logs guild, roster size targets and the raids you’re progressing.',
+    place: { label: 'Settings', to: (b) => `${b.team}/officer/settings` },
+    picture: 'The General settings page, with the Warcraft Logs guild address marked.',
+    steps: [
+      'In the Officer menu, open Settings.',
+      'On General, add your team’s Warcraft Logs guild page and the roster size targets, then choose Save.',
+      'On Raid progression, add one block per raid this season, then choose Save Progression.'
+    ]
+  },
+  {
     id: 'invite',
     topic: 'start',
     title: 'Invite your raiders',
@@ -121,6 +135,18 @@ export const GUIDES: Guide[] = [
     ]
   },
   {
+    id: 'what-you-got',
+    topic: 'loot',
+    title: 'Find what you got',
+    quick: 'My profile’s Loot tab lists every item you received this season, newest first.',
+    place: { label: 'My profile, Loot', to: (b) => `${b.team}/me/loot` },
+    picture: 'My profile’s Loot tab, with the tab and the list of items marked.',
+    steps: [
+      'Open My profile, then the Loot tab.',
+      'Each row is an item you received this season, newest first. Raid drops show up once an officer imports the night’s loot.'
+    ]
+  },
+  {
     id: 'received',
     topic: 'gear',
     title: 'Mark an item you got outside the raid',
@@ -158,6 +184,48 @@ export const GUIDES: Guide[] = [
     ]
   },
   {
+    id: 'bench',
+    topic: 'raid',
+    title: 'See if you’re in or benched',
+    quick: 'On a raid night in the Calendar, Your bosses tonight shows which bosses you’re in for.',
+    place: { label: 'Calendar', to: (b) => `${b.team}/calendar` },
+    picture: 'A raid night with the Your bosses tonight card marked: each boss with In or Sitting out.',
+    steps: [
+      'Open the Calendar and pick the raid night.',
+      'Your bosses tonight lists each boss with In or Sitting out. Not final yet means your officers may still change it.',
+      'If there’s no card, your team doesn’t plan that night boss by boss.'
+    ]
+  },
+  {
+    id: 'boss-groups',
+    topic: 'raid',
+    title: 'Plan who’s in for each boss',
+    officers: true,
+    quick: 'Boss groups holds the usual group for each boss. Every raid night starts as a copy of it.',
+    place: { label: 'Boss groups', to: (b) => `${b.team}/officer/groups` },
+    picture: 'The Boss groups page: a cell in the grid and the Save groups button marked.',
+    steps: [
+      'In the Officer menu, open Attendance, then Boss groups. It needs a computer.',
+      'Click a cell to put someone in a boss’s group or take them out. Needs a look lists anything short, such as a buff nobody brings.',
+      'Choose Save groups. Coming nights nobody has saved for those bosses follow the new groups.'
+    ]
+  },
+  {
+    id: 'lineup',
+    topic: 'raid',
+    title: 'Swap people in and out for one night',
+    officers: true,
+    quick: 'A raid night’s Boss lineup tab changes who’s in for each boss on that night only.',
+    place: { label: 'Calendar', to: (b) => `${b.team}/calendar` },
+    picture: 'A raid night’s Boss lineup tab: the tab, a cell in the grid and Save tonight marked.',
+    steps: [
+      'Open the Calendar, pick the raid night, then the Boss lineup tab. It needs a computer.',
+      'If the night isn’t planned yet, choose Fill from the groups.',
+      'Click a cell to swap someone in or out for that boss.',
+      'Choose Save tonight. Save to the group also makes it the usual group, so every coming night starts this way.'
+    ]
+  },
+  {
     id: 'attendance',
     topic: 'raid',
     title: 'Mark attendance',
@@ -187,18 +255,21 @@ export const WEEK: { title: string; jobs: WeekJob[] }[] = [
       { label: 'Say if you’re coming', guide: 'rsvp' },
       { label: 'Keep your wishlist current', guide: 'wishlist' },
       { label: 'Check where you stand for loot', guide: 'priority' },
-      { label: 'Plan who’s in for each boss', officers: true },
+      { label: 'Plan who’s in for each boss', officers: true, guide: 'boss-groups' },
       { label: 'Clear waiting reviews', officers: true }
     ]
   },
   {
     title: 'Raid night',
-    jobs: [{ label: 'See if you’re in or benched' }, { label: 'Swap people in and out by boss', officers: true }]
+    jobs: [
+      { label: 'See if you’re in or benched', guide: 'bench' },
+      { label: 'Swap people in and out by boss', officers: true, guide: 'lineup' }
+    ]
   },
   {
     title: 'After raid',
     jobs: [
-      { label: 'Find what you got' },
+      { label: 'Find what you got', guide: 'what-you-got' },
       { label: 'Log gear from M+, crafting or the vault', guide: 'received' },
       { label: 'Import the night’s loot', officers: true },
       { label: 'Fix a drop given to the wrong person', officers: true },
@@ -214,7 +285,8 @@ export const SETUP: { title: string; text: string; guide?: string }[] = [
   { title: 'Create your guild', text: 'Name, realm, and your first team.', guide: 'create-guild' },
   {
     title: 'Set up your team',
-    text: 'Warcraft Logs guild, roster sizes and raid progression, in officer Settings.'
+    text: 'Warcraft Logs guild, roster sizes and raid progression, in officer Settings.',
+    guide: 'team-setup'
   },
   { title: 'Bring in your people', text: 'Send one invite link; raiders claim their name.', guide: 'invite' },
   { title: 'Set up loot', text: 'Wishlists and the priority rules.', guide: 'wishlist' }
