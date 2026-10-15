@@ -1674,10 +1674,12 @@ describe('reduced motion', () => {
 // states above, with a numbered marker on what each step points at (null: a
 // step with nothing on that screen). `npm run help:shots` retakes them all
 // after a page changes; a normal run skips this block.
-// The one raider a picture shows is Kat (her ask, 2026-10-15), on the same
-// made-up season of loot and attendance.
-const katProfile = () => {
-  const state = profileState('', 'torbjorn', 'torbjorn');
+// The raider every picture shows is Kat (her ask, 2026-10-15: "always"), on
+// the same made-up season of loot and attendance.
+// Any picture state signed in as a raider, made into Kat: her character on the
+// page, in the sidebar's account box and in the session. The class's tier
+// tokens follow only on a plain profile (the wishlist keeps its own items).
+const asKat = (state, { tierTokens = true } = {}) => {
   const kat = {
     ...state.tables.players[0],
     name_realm: 'Katorrí-Stormrage',
@@ -1700,10 +1702,11 @@ const katProfile = () => {
     tables: {
       ...state.tables,
       players: [kat],
-      tier_token_map: TIER_TOKEN_MAP.filter((r) => r.class === 'Warlock')
+      ...(tierTokens ? { tier_token_map: TIER_TOKEN_MAP.filter((r) => r.class === 'Warlock') } : {})
     }
   };
 };
+const katProfile = () => asKat(profileState('', 'torbjorn', 'torbjorn'));
 
 const HELP_SHOT_STATES = {
   'sign-in': {
@@ -1726,9 +1729,12 @@ const HELP_SHOT_STATES = {
   },
   wishlist: {
     // Editing open, so the marks are buttons rather than read-only.
-    state: wishlistEditorState('', {
-      tables: { team_seasons: [{ season_code: SEASON.code, wishlist_open: true }] }
-    }),
+    state: asKat(
+      wishlistEditorState('', {
+        tables: { team_seasons: [{ season_code: SEASON.code, wishlist_open: true }] }
+      }),
+      { tierTokens: false }
+    ),
     markers: ['.wishlist-slot-tab[data-slot="Finger 2"]', '.mark-bis', '.mark-pass'],
     frame: 'main .card:has(.wishlist-slot-tabs)'
   },
