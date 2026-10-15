@@ -34,7 +34,7 @@ export const TOPICS: { id: TopicId; title: string; blurb: string }[] = [
   {
     id: 'loot',
     title: 'Wishlist and loot priority',
-    blurb: 'Picking your BiS, reading your priority, and gear that came from somewhere else.'
+    blurb: 'Picking your BiS and reading where you stand.'
   },
   { id: 'raid', title: 'Raid nights and attendance', blurb: 'Saying if you’re coming, and keeping attendance right.' },
   { id: 'gear', title: 'Gear from outside the raid', blurb: 'Crafted, M+ and vault items, and asking to stop M+.' }
