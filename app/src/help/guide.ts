@@ -336,6 +336,10 @@ export const SETUP: { title: string; text: string; guide?: string }[] = [
 
 export const QUESTIONS: { q: string; a: string }[] = [
   {
+    q: 'Why do I need to connect both Battle.net and Discord?',
+    a: 'Battle.net is how you sign in, and it brings your characters with it, so nobody types them in by hand. Discord is how your team knows you: your team roles and raid notifications come from Discord. Once both are connected, either one signs you in to the same account.'
+  },
+  {
     q: 'Why am I not first for an item I marked BiS?',
     a: 'On a team using Loot priority, your place comes from attendance, performance (damage dealers only) and the tier pieces you still need. Someone above you is ahead on one of those. Officers can also give a drop out of order, for example to spread loot around.'
   },
