@@ -85,7 +85,7 @@ describe('the Help page', () => {
       expect(existsSync(join(process.cwd(), 'public', 'help-shots', `${guide.id}-popup.png`)), guide.id).toBe(true);
     }
     for (const guide of GUIDES.filter((g) => g.menu)) {
-      expect(existsSync(join(process.cwd(), 'public', 'help-shots', `${guide.id}-menu.png`)), guide.id).toBe(true);
+      expect(existsSync(join(process.cwd(), 'public', 'help-shots', `menu-${guide.menu}.png`)), guide.id).toBe(true);
     }
     for (const guide of GUIDES.filter((g) => g.picture)) {
       expect(existsSync(join(process.cwd(), 'public', 'help-shots', `${guide.id}.png`)), guide.id).toBe(true);

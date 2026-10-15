@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, Navigate, useNavigate, useOutletContext, useParams } from 'react-router';
 import { Dialog } from '../components/Dialog';
 import { SUPPORT_DISCORD_URL } from '../config';
-import { GUIDES, QUESTIONS, SETUP, TOPICS, WEEK, type Bases, type Guide } from './guide';
+import { GUIDES, MENUS, QUESTIONS, SETUP, TOPICS, WEEK, type Bases, type Guide } from './guide';
 import './help.css';
 
 // The Help page (#1526): one page for everyone, officer jobs tagged. Setting
@@ -230,8 +230,8 @@ function GuideBody({
       {guide.menu && (
         <img
           className="help-picture help-menu-picture"
-          srcSet={`/help-shots/${guide.id}-menu.png 2x`}
-          alt={`Step 1: ${guide.menu}.`}
+          srcSet={`/help-shots/menu-${guide.menu}.png 2x`}
+          alt={`Step 1: ${MENUS[guide.menu]}.`}
         />
       )}
       {guide.picture &&

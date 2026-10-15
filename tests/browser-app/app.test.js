@@ -1790,25 +1790,21 @@ const HELP_SHOT_STATES = {
 
 // A guide whose step 1 opens a page from the sidebar also gets a small picture
 // of that part of the sidebar, with an orange 1 on the item (Kat, 2026-10-15),
-// saved as <id>-menu.png. The state opens the page itself, so its Officer
-// group is already open.
+// one per item (guide.ts MENUS), shared by every guide that starts there:
+// menu-<item>.png. The state opens the page itself, so its Officer group is
+// already open.
 const katOnPage = (path, sentinel = 'main h1') => ({ ...katProfile(), path, sentinel });
 const HELP_MENU_SHOTS = {
-  'team-setup': { state: SETTINGS_GENERAL, item: '.sidebar >> text="Settings"' },
-  invite: {
+  'officer-settings': { state: SETTINGS_GENERAL, item: '.sidebar >> text="Settings"' },
+  'officer-invite': {
     state: { session: OFFICER, who: 'officer', path: '/g/wga/t/phoenix/officer/invite', sentinel: '.sidebar' },
     item: '.sidebar >> role=link[name="Invite link"]'
   },
-  claim: { state: katOnPage('/g/wga/t/phoenix/roster', '.sidebar'), item: '.sidebar >> role=link[name="Roster"]' },
-  wishlist: { state: katProfile(), item: '.sidebar >> role=link[name="My profile"]' },
-  priority: { state: katProfile(), item: '.sidebar >> role=link[name="My profile"]' },
-  'what-you-got': { state: katProfile(), item: '.sidebar >> role=link[name="My profile"]' },
-  mplus: { state: katProfile(), item: '.sidebar >> role=link[name="My profile"]' },
-  rsvp: { state: CAL_MONTH, item: '.sidebar >> role=link[name="Calendar"]' },
-  bench: { state: CAL_MONTH, item: '.sidebar >> role=link[name="Calendar"]' },
-  lineup: { state: CAL_MONTH, item: '.sidebar >> role=link[name="Calendar"]' },
-  'boss-groups': { state: BOSS_GROUPS, item: '.sidebar >> role=link[name="Boss groups"]' },
-  attendance: { state: ATTENDANCE_MANAGE, item: '.sidebar >> role=link[name="Manage"]' }
+  roster: { state: katOnPage('/g/wga/t/phoenix/roster', '.sidebar'), item: '.sidebar >> role=link[name="Roster"]' },
+  'my-profile': { state: katProfile(), item: '.sidebar >> role=link[name="My profile"]' },
+  calendar: { state: CAL_MONTH, item: '.sidebar >> role=link[name="Calendar"]' },
+  'officer-boss-groups': { state: BOSS_GROUPS, item: '.sidebar >> role=link[name="Boss groups"]' },
+  'officer-manage': { state: ATTENDANCE_MANAGE, item: '.sidebar >> role=link[name="Manage"]' }
 };
 
 // A guide whose step happens in a pop-up also gets a picture of the pop-up,
@@ -1832,21 +1828,21 @@ const HELP_POPUP_SHOTS = {
 describe('help guide picture markers', () => {
   it('numbers the same steps orange in the text as on each picture', () => {
     for (const [id, { markers }] of Object.entries(HELP_SHOT_STATES)) {
-      const popup = HELP_POPUP_SHOTS[id]?.markers ?? [];
-      const marked = markers.flatMap((m, i) => (m || popup[i] || (i === 0 && HELP_MENU_SHOTS[id]) ? [i + 1] : []));
       const guide = GUIDES.find((g) => g.id === id);
+      const popup = HELP_POPUP_SHOTS[id]?.markers ?? [];
+      const marked = markers.flatMap((m, i) => (m || popup[i] || (i === 0 && guide?.menu) ? [i + 1] : []));
       expect(guide?.marked, id).toEqual(marked);
       expect(guide.steps, id).toHaveLength(markers.length);
       // Step 1 is on the sidebar picture, so the page picture never has a 1 too.
-      if (HELP_MENU_SHOTS[id]) expect(markers[0], `${id}: a second 1`).toBeNull();
+      if (guide.menu) expect(markers[0], `${id}: a second 1`).toBeNull();
     }
     for (const guide of GUIDES.filter((g) => g.picture)) expect(HELP_SHOT_STATES[guide.id], guide.id).toBeDefined();
-    for (const id of Object.keys(HELP_MENU_SHOTS)) {
-      const guide = GUIDES.find((g) => g.id === id);
-      expect(guide?.menu, id).toBeTruthy();
-      if (!HELP_SHOT_STATES[id]) expect(guide.marked, id).toEqual([1]);
+    // Every sidebar item has its picture, and every picture is used.
+    const menus = new Set(GUIDES.flatMap((g) => (g.menu ? [g.menu] : [])));
+    expect([...menus].sort()).toEqual(Object.keys(HELP_MENU_SHOTS).sort());
+    for (const guide of GUIDES.filter((g) => g.menu && !HELP_SHOT_STATES[g.id] && !HELP_POPUP_SHOTS[g.id])) {
+      expect(guide.marked, guide.id).toEqual([1]);
     }
-    for (const guide of GUIDES.filter((g) => g.menu)) expect(HELP_MENU_SHOTS[guide.id], guide.id).toBeDefined();
     for (const guide of GUIDES.filter((g) => g.popup)) expect(HELP_POPUP_SHOTS[guide.id], guide.id).toBeDefined();
     for (const id of Object.keys(HELP_POPUP_SHOTS)) expect(GUIDES.find((g) => g.id === id)?.popup, id).toBeTruthy();
   });
@@ -1983,7 +1979,7 @@ describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
         // The sidebar around the item: its group above it, a little below.
         const y0 = Math.max(0, box.y - 150);
         await page.screenshot({
-          path: `${DIST}/../public/help-shots/${id}-menu.png`,
+          path: `${DIST}/../public/help-shots/menu-${id}.png`,
           clip: { x: 0, y: y0, width: side.width, height: Math.min(box.y + box.height + 60, 900) - y0 }
         });
       } finally {
