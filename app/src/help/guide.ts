@@ -341,7 +341,7 @@ export const QUESTIONS: { q: string; a: string }[] = [
   },
   {
     q: 'Why am I not first for an item I marked BiS?',
-    a: 'On a team using Loot priority, your place comes from attendance, performance (damage dealers only) and the tier pieces you still need. Someone above you is ahead on one of those. Officers can also give a drop out of order, for example to spread loot around.'
+    a: 'On a team using Loot priority, your place comes from attendance, performance (damage dealers only) and the tier pieces you still need (only for actual tier pieces). Someone above you is ahead on one of those. Officers can also give a drop out of order, for example to spread loot around.'
   },
   {
     q: 'I got an item last night. Why is it still on my list?',
@@ -352,7 +352,7 @@ export const QUESTIONS: { q: string; a: string }[] = [
     a: 'Each raid night since you joined counts by how you were marked, using the share your team’s officers set for each mark. Depending on how your team has set them up, being absent, or late with or without notice, can bring it down. Every night that counted less than in full is listed under Flagged nights on My profile. If one looks wrong, ask an officer.'
   },
   {
-    q: 'Why is the item I marked received waiting?',
+    q: 'Why is the item I marked received showing as waiting?',
     a: 'Some items go to an officer to check before they count. Officers find them in Loot, Reviews.'
   },
   {
