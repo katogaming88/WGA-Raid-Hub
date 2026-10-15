@@ -12,12 +12,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 | Phase                              |   Time so far |
 | ---------------------------------- | ------------: |
-| Planning and design                |     10 h 25 m |
+| Planning and design                |     10 h 35 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     35 h 46 m |
+| Revamp 2: public pages             |     36 h 46 m |
 | Revamp 3: officer dashboard        |     21 h 44 m |
 | Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **77 h 25 m** |
+| **All revamp work**                | **78 h 35 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -274,6 +274,11 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:13-9:48 AM | #1526 Help redesign: Viserio's help center compared, mockups (one page, the raid week, guides in a side panel with screenshots), question answers; #1525 (team-set attendance shares) and #1526 filed | Planning and design (#1526, #1525) | 35 m | ~20 m build, ~15 m Kat deciding | not read | Kat: one page for everyone with officer jobs tagged, screenshots welcome; attendance shares free and part of team setup |
 | 9:48-10:20 AM | #1226 front page redesign: Viserio and WoWUtils home pages compared, mockups (shown to everyone, the sidebar, raid-week cards, who makes it, sign-up closed); decision posted on #1226; #1527 (Terms, Privacy, Cookies) filed | Planning and design (#1226, #1527) | 30 m | ~15 m build, ~15 m Kat deciding | not read | The redirect for people on a team goes; Kat named, with a nod to the Guild Master |
 | 10:43-11:22 AM | #1526 built: one Help page, guides in a side panel with Take me there, full view as its own page, the screenshot script with numbered markers (`npm run help:shots`); PR #1530 opened | Revamp 2 (#1526) | 40 m | ~30 m build, ~10 m Kat testing | not read | Kat while testing: the Officers tag's colour and contrast, Help's links open guides first, picture size, full view leaving the sidebar usable, Katorrí as the raider shown. Review and merge not yet counted |
+| 11:22 AM-12:06 PM | #1526 while Kat tested it: pictures sized for the guide panel and sharp, Katorrí as the raider in every picture, five more guides with pictures (team setup, find what you got, in or benched, boss groups, one night's lineup), orange step numbers that match the markers, one sidebar picture per sidebar item, the Mark received pop-up, the Your answer box, raid progression out of team setup | Revamp 2 (#1526) | 45 m | ~30 m build, ~15 m Kat testing | not read | Kat: no two 1s on a guide; pictures can differ in size if it keeps them readable |
+| 12:06-12:08 PM | Raid progression is site-wide: filed as #1531 | Planning and design (#1531) | 5 m | ~3 m build, ~2 m Kat | not read | |
+| 12:08-12:11 PM | Sidebar: an Officer group opened by hand closes when leaving it (in PR #1530) | Revamp 2 (#1530) | 5 m | ~4 m build, ~1 m Kat | not read | |
+| 12:11-12:14 PM | M+ exclusion guide removed; removing M+ exclusion filed as #1532 | Planning and design (#1532) | 5 m | ~3 m build, ~2 m Kat | not read | Kat: M+ exclusion is going away |
+| 12:14-12:25 PM | #1526: the Battle.net and Discord question, Kat's wording changes, the phone screenshot, these time log rows | Revamp 2 (#1526) | 10 m | ~7 m build, ~3 m Kat | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

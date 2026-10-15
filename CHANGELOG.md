@@ -42,8 +42,8 @@ answers to.
   the panel, a picture on disk for every guide that shows one, and
   accessibility for the page and an open guide in both themes and on a
   phone.
-- Time log: 2026-10-15's planning (#1503, #1526, #1226) and the Help build,
-  from the session transcript.
+- Time log: 2026-10-15's planning (#1503, #1526, #1226, #1531, #1532) and
+  the Help build, from the session transcript.
 
 ## [3.181.2] - 2026-10-15
 
