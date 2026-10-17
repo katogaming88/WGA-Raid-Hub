@@ -20,7 +20,8 @@ answers to.
   signed in or out, on a team or not. Someone on a team is no longer sent on
   to their guild's home. It now sits inside the app with the sidebar, like
   News and Help, and the WGA Raid Hub title at the top of the sidebar opens
-  it. Top to bottom: the headline and pitch over the Go Again ring, Create
+  it. Top to bottom: the logo and the site's name, the headline and pitch
+  over the Go Again ring, Create
   your guild and See what it does, a "Works with" row (RCLootCouncil links
   to our addon on CurseForge), the current season and the latest News post,
   "Got an invite link?" in three steps, "Built around your raid week" (four

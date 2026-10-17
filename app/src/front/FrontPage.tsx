@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { useAccess } from '../auth/access';
+import { LogoMark } from '../components/Icon';
 import { ADDON_URL, SUPPORT_DISCORD_URL } from '../config';
 import { useSeasons } from '../calendar/useCalendar';
 import { currentSeason } from '../profile/profile';
@@ -24,6 +25,11 @@ export function FrontPage() {
         <Banner />
         <div className="front-hero-inner">
           <div className="front-pitch">
+            {/* The site's name over the headline (Kat, 2026-10-17). */}
+            <p className="front-name">
+              <LogoMark size={44} />
+              WGA Raid Hub
+            </p>
             <h1 id="front-title">Your raid team’s loot, roster and raid nights, in one place.</h1>
             <p className="front-lede">
               Raiders see where they stand for loot and whether they’re in tonight. Officers run the season without a
@@ -117,8 +123,8 @@ export function FrontPage() {
         </div>
         <div className="front-who-text">
           <p>
-            WGA Raid Hub is built by Kat, an Officer in We Go Again-Tichondrius (NA), with help on the database side
-            from our Guild Master.
+            WGA Raid Hub is built by Katorri, an Officer in We Go Again-Tichondrius (NA). The WGA stands for We Go
+            Again.
           </p>
           <p>
             It started as one spreadsheet that pulled together three others: our roster, our attendance and our loot
