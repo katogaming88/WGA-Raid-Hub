@@ -133,7 +133,7 @@ describe('the front page and guild creation', () => {
 
   it('does not show it to a visitor while creation is closed', async () => {
     renderApp('/', handlers({ signedIn: false }));
-    await screen.findByRole('heading', { level: 1, name: 'WGA Raid Hub' });
+    await screen.findByText('New guilds can’t sign up yet');
     expect(screen.queryByRole('link', { name: 'Create your guild' })).not.toBeInTheDocument();
   });
 

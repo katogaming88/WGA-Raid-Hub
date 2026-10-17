@@ -44,16 +44,25 @@
   padding: 2px var(--space-2) 14px;
 }
 
-.brand-mark {
+.brand-link {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
   border-radius: 8px;
-  background: var(--brand-soft);
-  border: 1px solid var(--border-strong);
+}
+
+.brand-link:hover .brand-name,
+.brand-link[aria-current='page'] .brand-name {
   color: var(--brand);
+}
+
+.brand-mark {
+  display: flex;
+  flex-shrink: 0;
 }
 
 .brand-text {

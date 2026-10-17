@@ -88,7 +88,7 @@
   color: var(--badge-text);
 }
 
-.guild-tag-recruiting {
+.guild-tag-signups {
   border: 1px solid var(--good);
   color: var(--good);
 }

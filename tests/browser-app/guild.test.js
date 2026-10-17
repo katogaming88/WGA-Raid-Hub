@@ -134,7 +134,7 @@ describe('Guild home (new app), signed out', () => {
     const { page } = opened;
     await expect(page.getByRole('heading', { level: 1 }).textContent()).resolves.toBe('We Go Again');
     await expect(page.locator('.page-subtitle').textContent()).resolves.toBe(
-      'Three raid teams on Tichondrius. Pick yours, or find one to join.'
+      'Three raid teams on Tichondrius. Select yours.'
     );
     await expect(page.getByRole('link', { name: 'Guild home' }).getAttribute('aria-current')).resolves.toBe('page');
   });
@@ -163,12 +163,13 @@ describe('Guild home (new app), signed out', () => {
 });
 
 describe('Guild home (new app), other states', () => {
-  // The site front page (#1226): anyone not on a team sees it at the site
-  // address, and a raider on a team skips it.
+  // The site front page (#1226): everyone sees it at the site address, a
+  // raider on a team too (Kat, 2026-10-15).
+  const HEADLINE = 'Your raid team’s loot, roster and raid nights, in one place.';
   it('shows the site front page at the site address to someone not on a team', async () => {
     const { context, page, pageErrors, unexpected } = await open({ path: '/', sentinel: 'h1' });
     try {
-      await page.getByRole('heading', { level: 1, name: 'WGA Raid Hub' }).waitFor();
+      await page.getByRole('heading', { level: 1, name: HEADLINE }).waitFor();
       expect(new URL(page.url()).pathname).toBe('/');
       expect(pageErrors).toEqual([]);
       expect(unexpected).toEqual([]);
@@ -177,11 +178,16 @@ describe('Guild home (new app), other states', () => {
     }
   });
 
-  it('sends a raider on a team from the site address to their guild home', async () => {
-    const { context, page } = await open({ path: '/', ...signedIn, person: onTeam(MEMBER.teamId, 'raider') });
+  it('shows the front page to a raider on a team too, instead of sending them to their guild', async () => {
+    const { context, page } = await open({
+      path: '/',
+      sentinel: 'h1',
+      ...signedIn,
+      person: onTeam(MEMBER.teamId, 'raider')
+    });
     try {
-      await page.waitForURL('**/g/wga');
-      expect(new URL(page.url()).pathname).toBe('/g/wga');
+      await page.getByRole('heading', { level: 1, name: HEADLINE }).waitFor();
+      expect(new URL(page.url()).pathname).toBe('/');
     } finally {
       await context.close();
     }

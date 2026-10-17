@@ -40,11 +40,12 @@ export function guildLinks(guild: GuildRow): { raiderIo: string; armory: string 
 
 const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
 
-// "Three raid teams on Tichondrius. Pick yours, or find one to join."
+// "Three raid teams on Tichondrius. Select yours." Nothing about joining: a
+// guild page doesn't say which teams take new players (Kat, 2026-10-17).
 export function guildIntro(teamCount: number, realm: string | null): string {
   const count = COUNT_WORDS[teamCount] ?? String(teamCount);
   const teams = `${count} raid ${teamCount === 1 ? 'team' : 'teams'}`;
-  return `${teams}${realm ? ` on ${realm}` : ''}. Pick yours, or find one to join.`;
+  return `${teams}${realm ? ` on ${realm}` : ''}.${teamCount > 1 ? ' Select yours.' : ''}`;
 }
 
 // ---------------------------------------------------------------------------

@@ -14,10 +14,10 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |     10 h 35 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     36 h 46 m |
+| Revamp 2: public pages             |     36 h 51 m |
 | Revamp 3: officer dashboard        |     21 h 44 m |
-| Revamp 4: cutover                  |      2 h 35 m |
-| **All revamp work**                | **78 h 35 m** |
+| Revamp 4: cutover                  |      3 h 15 m |
+| **All revamp work**                | **79 h 20 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -279,6 +279,16 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:08-12:11 PM | Sidebar: an Officer group opened by hand closes when leaving it (in PR #1530) | Revamp 2 (#1530) | 5 m | ~4 m build, ~1 m Kat | not read | |
 | 12:11-12:14 PM | M+ exclusion guide removed; removing M+ exclusion filed as #1532 | Planning and design (#1532) | 5 m | ~3 m build, ~2 m Kat | not read | Kat: M+ exclusion is going away |
 | 12:14-12:25 PM | #1526: the Battle.net and Discord question, Kat's wording changes, the phone screenshot, these time log rows | Revamp 2 (#1526) | 10 m | ~7 m build, ~3 m Kat | not read | Review and merge not yet counted |
+| 12:25-12:29 PM | PR #1530 reviewed and merged (merged 12:29) | Revamp 2 (#1526) | 5 m | ~5 m Kat | not read | |
+
+### 2026-10-17
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 12:10-12:21 PM | #1226 front page built: inside the app frame for everyone (redirect gone), the sidebar title opens it, the mockup's layout, the sign-up-closed box, link preview tags | Revamp 4 (#1226) | 10 m | ~10 m build | not read | Kat started localhost to look at it |
+| 12:21-12:30 PM | #1226: the Go Again ring as the banner, the link preview picture (the hero), the cards' screenshots retaken sharp at card size, two cards a row | Revamp 4 (#1226) | 10 m | ~7 m build, ~3 m Kat | not read | Kat: the hero is fine as the preview picture; the first card pictures were blurry |
+| 12:30-12:40 PM | Guild home: "Recruiting" becomes "Signups open"; the subtitle drops "or find one to join" and says "Select yours" (in PR for #1226) | Revamp 4 (#1226) | 10 m | ~6 m build, ~4 m Kat | not read | Kat: signups open is not recruiting; no recruiting setting for now |
+| 12:40-12:50 PM | Go Again ring logo in the sidebar, browser tab and home-screen icon; stamp, changelog, these rows, PR opened | Revamp 4 (#1226) | 10 m | ~8 m build, ~2 m Kat | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
@@ -299,6 +309,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-10-14 | 11:38-11:45 AM | #1482: News, About, Help and Site admin get site addresses (Multi-guild milestone); review and merge not yet counted | 10 m |
 | 2026-10-15 | 8:44-8:45 AM | Where the work stood | 5 m |
 | 2026-10-15 | 10:21-10:43 AM | WowUtils terms and API terms read; the new app checked for copied design; Viserio mentions dropped (PR #1528, merged 10:37); #1514's terms and #1527's cookie notes written up | 20 m |
+| 2026-10-17 | 12:09-12:10 PM | Where the work stood | 5 m |
 
 ## Remaining in Revamp 1
 

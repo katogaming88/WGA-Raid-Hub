@@ -12,8 +12,7 @@ export function defaultTeamKey(): string {
   return /\/t\/([^/]+)/.exec(defaultPath())?.[1] ?? '';
 }
 
-// Where "/" lands: the default guild's home, until a site front page that
-// belongs to no guild exists (#1226).
+// The default guild's home.
 export function defaultGuildPath(): string {
   return /^\/g\/[^/]+/.exec(defaultPath())?.[0] ?? '/';
 }
@@ -21,3 +20,6 @@ export function defaultGuildPath(): string {
 // The support Discord, where people ask for help instead of messaging Kat or Rex
 // (Help, and the link at the bottom of the sidebar).
 export const SUPPORT_DISCORD_URL = 'https://discord.gg/ATBC8B4UYz';
+
+// Our RCLootCouncil addon, linked from the front page's "Works with" row.
+export const ADDON_URL = 'https://www.curseforge.com/wow/addons/wga-priority-loot';

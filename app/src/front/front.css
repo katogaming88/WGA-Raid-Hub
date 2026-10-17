@@ -1,4 +1,4 @@
-/* Site front page (#1226): belongs to no guild, so it sits outside the app shell. */
+/* The create-your-guild page (/new-guild, #1226), outside the app shell. */
 
 .front-page {
   max-width: 880px;
@@ -7,46 +7,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
-}
-
-.front-hero h1 {
-  margin: 0 0 var(--space-3);
-}
-
-.front-hero p {
-  margin: 0 0 var(--space-4);
-  max-width: 62ch;
-  line-height: 1.6;
-}
-
-.front-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
-
-.front-features {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.front-feature {
-  padding: var(--space-4);
-}
-
-.front-feature h3 {
-  margin: 0 0 var(--space-1);
-  font-size: var(--text-md, 1rem);
-}
-
-.front-feature p {
-  margin: 0;
-  color: var(--text-muted);
-  line-height: 1.5;
 }
 
 .front-next {
@@ -77,4 +37,397 @@
 
 .front-hint {
   margin: calc(var(--space-2) * -1) 0 0;
+}
+
+/* The site front page (#1226), inside the app frame. Layout from the
+   2026-10-15 mockups. */
+
+.front-home {
+  max-width: 1160px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.front-home h2 {
+  margin: 0;
+}
+
+.front-home p {
+  margin: 0;
+}
+
+.front-kicker {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.front-hero {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+
+/* The Go Again ring behind the headline (#1226). */
+.front-banner {
+  position: absolute;
+  right: -40px;
+  top: calc(50% - 260px);
+  width: 520px;
+  height: 520px;
+  pointer-events: none;
+}
+
+.front-banner g {
+  opacity: 0.28;
+}
+
+.front-ring {
+  fill: none;
+  stroke: var(--button);
+}
+
+.front-arrow {
+  fill: var(--button);
+}
+
+.front-disc {
+  fill: var(--brand);
+}
+
+.front-w {
+  fill: none;
+  stroke: var(--page);
+}
+
+/* Under the headline on a phone, so fainter still. */
+@media (max-width: 720px) {
+  .front-banner {
+    right: -180px;
+  }
+
+  .front-banner g {
+    opacity: 0.16;
+  }
+}
+
+.front-hero-inner {
+  position: relative;
+  padding: var(--space-6) 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  align-items: flex-start;
+}
+
+.front-pitch {
+  flex: 1 1 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.front-pitch h1 {
+  margin: 0;
+  font-size: clamp(32px, 5vw, 48px);
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  max-width: 640px;
+}
+
+.front-lede {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 560px;
+}
+
+.front-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.front-closed {
+  max-width: 560px;
+  padding: 16px 18px;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  line-height: 1.5;
+}
+
+.front-closed-title {
+  font-weight: 700;
+}
+
+.front-note {
+  font-size: var(--text-sm, 13px);
+}
+
+.front-works {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.front-works ul {
+  display: contents;
+  list-style: none;
+}
+
+.front-works li,
+.front-works a {
+  font-size: 13px;
+  padding: 5px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+}
+
+.front-works li:has(a) {
+  padding: 0;
+  border: 0;
+}
+
+.front-works a {
+  display: inline-block;
+  color: var(--text);
+  text-decoration: none;
+  border-color: var(--brand);
+}
+
+.front-works-extra {
+  color: var(--brand);
+}
+
+.front-side {
+  flex: 0 1 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.front-box {
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+a.front-box:hover {
+  background: var(--hover);
+}
+
+.front-box-more {
+  font-size: 13px;
+  color: var(--brand);
+}
+
+.front-invite {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.front-invite h2 {
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.front-invite ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex: 1 1 600px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.front-invite li {
+  display: flex;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.front-invite li > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.front-step {
+  flex: 0 0 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.front-week {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  scroll-margin-top: var(--space-5);
+}
+
+.front-week h2 {
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.front-cards {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(440px, 100%), 1fr));
+  gap: 16px;
+}
+
+.front-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.front-shot {
+  display: block;
+  width: 100%;
+  aspect-ratio: 600 / 214;
+  object-fit: cover;
+  object-position: top left;
+  border-bottom: 1px solid var(--border);
+  background: var(--raised);
+}
+
+.front-card-body {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.front-card .front-kicker {
+  color: var(--brand);
+}
+
+.front-card h3 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.front-card ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.front-who,
+.front-running {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px 32px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.front-who > div:first-child {
+  flex: 0 1 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.front-who .front-kicker {
+  color: var(--brand);
+}
+
+.front-who h2 {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.front-who-text {
+  flex: 1 1 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.front-who-text a {
+  align-self: flex-start;
+}
+
+.front-running {
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+}
+
+.front-running > div {
+  flex: 1 1 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.front-running h2 {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.front-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 20px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.front-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-left: auto;
+}
+
+.front-footer a {
+  color: var(--text-muted);
 }

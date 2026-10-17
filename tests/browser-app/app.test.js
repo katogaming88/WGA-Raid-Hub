@@ -1993,3 +1993,66 @@ describe.runIf(process.env.HELP_SHOTS)('help guide pictures', () => {
     });
   }
 });
+
+// The front page's pictures (#1226), taken with the Help guides' by
+// `npm run help:shots`: a strip of the real page for each raid-week card
+// (front-shots/<card>.png), and the link preview Discord shows for a pasted
+// address (og-banner.png, 1200x630: the front page's hero on its own).
+// `frame`: the part of the page shown, from its left edge; `at`, when given,
+// where the picture starts down the page, so it shows the page's working part
+// rather than its title (Kat, 2026-10-17).
+const FRONT_SHOTS = {
+  'before-raid': { state: CAL_MONTH, frame: '.month-grid-card', at: '.month-grid-card .night-chip' },
+  'raid-night': { state: katProfile(), frame: '.card:has(.priority-table)', at: '.priority-table thead' },
+  'after-raid': {
+    state: { ...REPORT, path: '/g/wga/t/phoenix/officer/reports/loot-fairness' },
+    frame: '.card.fairness'
+  },
+  'across-the-guild': { state: GUILD, frame: 'main', at: '.guild-team' }
+};
+const FRONT_FILLED = { ...FRONT, news: NEWS_ENTRIES, tables: { seasons: REPORT_TABLES.seasons } };
+
+describe.runIf(process.env.HELP_SHOTS)('front page pictures', () => {
+  for (const [id, { state, frame, at }] of Object.entries(FRONT_SHOTS)) {
+    it(`takes ${id}`, async () => {
+      const { context, page } = await openApp(browser, server.port, {
+        ...state,
+        scale: 2,
+        viewport: { width: 1000, height: 800 }
+      });
+      try {
+        await page.addStyleTag({ content: '.stream-widget { display: none !important; }' });
+        // A window a little wider than a card, so the words stay sharp
+        // rather than shrunk and blurry.
+        const box = await page.locator(frame).first().boundingBox();
+        const y = at ? (await page.locator(at).first().boundingBox()).y - 12 : box.y;
+        await page.screenshot({
+          path: `${DIST}/../public/front-shots/${id}.png`,
+          fullPage: true,
+          clip: { x: box.x, y: Math.max(box.y, y), width: Math.min(box.width, 600), height: 214 }
+        });
+      } finally {
+        await context.close();
+      }
+    });
+  }
+  it('takes the link preview', async () => {
+    const { context, page } = await openApp(browser, server.port, {
+      ...FRONT_FILLED,
+      viewport: { width: 1200, height: 630 }
+    });
+    try {
+      // Just the hero, filling the picture: no sidebar, top bar or prompt.
+      await page.addStyleTag({
+        content: `.sidebar, .topbar, .connect-card, .stream-widget { display: none !important; }
+          .shell { display: block !important; }
+          .content { padding: 48px 56px !important; }
+          .front-hero { border-bottom: 0; }
+          .front-home > :not(.front-hero) { display: none !important; }`
+      });
+      await page.screenshot({ path: `${DIST}/../public/og-banner.png` });
+    } finally {
+      await context.close();
+    }
+  });
+});

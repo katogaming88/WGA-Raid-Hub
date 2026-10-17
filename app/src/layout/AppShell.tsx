@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { Navigate, NavLink, Outlet, useLocation, useMatches, useParams } from 'react-router';
-import { FlameMark, Icon } from '../components/Icon';
+import { Link, Navigate, NavLink, Outlet, useLocation, useMatches, useParams } from 'react-router';
+import { Icon, LogoMark } from '../components/Icon';
 import { DataState } from '../components/DataState';
 import { useTheme } from '../theme/theme';
 import { defaultTeamKey, SUPPORT_DISCORD_URL } from '../config';
@@ -199,13 +199,17 @@ export function AppShell() {
 
       <aside id="sidebar" className="sidebar" ref={sidebar} aria-label="Site">
         <div className="brand">
-          <span className="brand-mark">
-            <FlameMark />
-          </span>
-          <span className="brand-text">
-            <span className="brand-name">WGA Raid Hub</span>
-            <span className="brand-guild">{guildQuery.data?.name ?? guildKey}</span>
-          </span>
+          {/* The title opens the site front page; there is no sidebar item for
+              it (Kat, 2026-10-15, #1226). */}
+          <Link to="/" className="brand-link" aria-current={location.pathname === '/' ? 'page' : undefined}>
+            <span className="brand-mark">
+              <LogoMark />
+            </span>
+            <span className="brand-text">
+              <span className="brand-name">WGA Raid Hub</span>
+              <span className="brand-guild">{guildQuery.data?.name ?? guildKey}</span>
+            </span>
+          </Link>
           <button type="button" className="drawer-close icon-button" aria-label="Close menu" onClick={closeDrawer}>
             <Icon name="close" />
           </button>

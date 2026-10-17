@@ -1,4 +1,5 @@
-// Retakes the Help guides' pictures (#1526) into app/public/help-shots/:
+// Retakes the Help guides' pictures (#1526) into app/public/help-shots/, and
+// the front page's (#1226) into app/public/front-shots/ and og-banner.png:
 // builds the app, then runs the "help guide pictures" block of the browser
 // tests, which opens each page on made-up data and numbers what each step
 // points at. Run it after a page a guide shows changes, and commit the
@@ -11,6 +12,10 @@ const run = (cmd, args, opts = {}) => {
 };
 
 run('npm', ['run', 'build'], { cwd: 'app' });
-run('npx', ['vitest', 'run', 'tests/browser-app/app.test.js', '-t', '"help guide pictures"', '--testTimeout=60000'], {
-  env: { ...process.env, HELP_SHOTS: '1' }
-});
+run(
+  'npx',
+  ['vitest', 'run', 'tests/browser-app/app.test.js', '-t', '"(help guide|front page) pictures"', '--testTimeout=60000'],
+  {
+    env: { ...process.env, HELP_SHOTS: '1' }
+  }
+);
