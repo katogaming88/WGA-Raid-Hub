@@ -2046,7 +2046,7 @@ describe.runIf(process.env.HELP_SHOTS)('front page pictures', () => {
       await page.addStyleTag({
         content: `.sidebar, .topbar, .connect-card, .stream-widget { display: none !important; }
           .shell { display: block !important; }
-          .content { padding: 48px 56px !important; }
+          .content { padding: 28px 56px !important; }
           .front-hero { border-bottom: 0; }
           .front-home > :not(.front-hero) { display: none !important; }`
       });

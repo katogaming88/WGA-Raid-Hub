@@ -12,6 +12,14 @@ answers to.
 
 ---
 
+## [3.183.1] - 2026-10-17
+
+### Project
+
+- New app (#1226): the link preview picture Discord shows is retaken, so it
+  has the site's name over the headline, with the whole "Works with" row in
+  the picture.
+
 ## [3.183.0] - 2026-10-17
 
 ### Project
