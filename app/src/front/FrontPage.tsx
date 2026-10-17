@@ -122,7 +122,7 @@ export function FrontPage() {
           <h2 id="front-who-title">Made by a raiding guild, for raiding guilds</h2>
         </div>
         <div className="front-who-text">
-          <p>WGA (We Go Again) Raid Hub is built by Katorri, an Officer in We Go Again-Tichondrius (NA).</p>
+          <p>WGA Raid Hub is built by Katorri, an Officer in We Go Again (WGA) on Tichondrius (NA).</p>
           <p>
             It started as one spreadsheet that pulled together three others: our roster, our attendance and our loot
             history. We built it to run our own Loot Priority system, an order for every drop based on who shows up, how
