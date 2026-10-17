@@ -26,12 +26,12 @@ const REGIONS = [
 export function CreateGuildPage() {
   const open = useGuildCreationOpen();
   return (
-    <main className="content front-page">
+    <div className="front-page">
       <h1>Create your guild</h1>
       <DataState query={open} label="guild creation">
         {(isOpen) => <Gate isOpen={isOpen} />}
       </DataState>
-    </main>
+    </div>
   );
 }
 

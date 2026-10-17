@@ -27,7 +27,8 @@ answers to.
   cards, each with a strip of the real page), who makes it, "Running a
   guild?", and a footer. While guild sign-up is switched off, Create your
   guild is replaced by a box pointing to the support Discord, with a line
-  for raiders that invite links work now.
+  for raiders that invite links work now. The Create your guild page
+  (`/new-guild`) sits in the app frame too, so it has the sidebar.
 - A link preview for Discord and other chat apps: title, one-line
   description and a picture of the front page's top section, from
   `npm run help:shots`, which now also takes the cards' pictures. The

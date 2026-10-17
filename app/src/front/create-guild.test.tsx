@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers } from '../test/fakeSupabase';
@@ -42,7 +42,8 @@ describe('the create-guild page', () => {
   it('points a signed-out visitor to the support Discord while creation is closed', async () => {
     renderApp('/new-guild', handlers({ signedIn: false }));
     expect(await screen.findByText(/set up by hand for now/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Sign in/ })).not.toBeInTheDocument();
+    // The sidebar has its own sign-in button; the page itself offers none.
+    expect(within(screen.getByRole('main')).queryByRole('button', { name: /Sign in/ })).not.toBeInTheDocument();
   });
 
   it('offers a signed-out visitor sign-in while creation is open', async () => {

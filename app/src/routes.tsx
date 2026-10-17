@@ -106,7 +106,6 @@ const standalone = (page: ReactElement) => (
 const crashed = standalone(<ErrorPage />);
 
 export const routes: RouteObject[] = [
-  { path: '/new-guild', element: <CreateGuildPage />, errorElement: crashed },
   { path: '/join/:code', element: <JoinRoute />, errorElement: crashed },
   {
     element: <AppShell />,
@@ -118,6 +117,11 @@ export const routes: RouteObject[] = [
           // The site front page (#1226), inside the frame like the other site
           // pages, for everyone (Kat, 2026-10-15).
           { path: '/', element: <FrontPage />, handle: { title: 'Front page' } satisfies RouteHandle },
+          {
+            path: '/new-guild',
+            element: <CreateGuildPage />,
+            handle: { title: 'Create your guild' } satisfies RouteHandle
+          },
           ...Object.entries(SITE_PAGES).map(([path, title]) => ({
             // A guide open over the Help page has its own address, to post in
             // Discord (#1526); one route, so the page stays put as guides open.
