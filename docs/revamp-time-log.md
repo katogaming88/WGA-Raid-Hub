@@ -16,8 +16,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     36 h 51 m |
 | Revamp 3: officer dashboard        |     21 h 44 m |
-| Revamp 4: cutover                  |      3 h 20 m |
-| **All revamp work**                | **79 h 25 m** |
+| Revamp 4: cutover                  |      3 h 40 m |
+| **All revamp work**                | **79 h 45 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -289,6 +289,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:21-12:30 PM | #1226: the Go Again ring as the banner, the link preview picture (the hero), the cards' screenshots retaken sharp at card size, two cards a row | Revamp 4 (#1226) | 10 m | ~7 m build, ~3 m Kat | not read | Kat: the hero is fine as the preview picture; the first card pictures were blurry |
 | 12:30-12:40 PM | Guild home: "Recruiting" becomes "Signups open"; the subtitle drops "or find one to join" and says "Select yours" (in PR for #1226) | Revamp 4 (#1226) | 10 m | ~6 m build, ~4 m Kat | not read | Kat: signups open is not recruiting; no recruiting setting for now |
 | 12:40-12:55 PM | Go Again ring logo in the sidebar, browser tab and home-screen icon; card pictures retaken on each page's working part; Create your guild moved into the app frame; stamp, changelog, these rows, PR opened | Revamp 4 (#1226) | 15 m | ~10 m build, ~5 m Kat testing | not read | Kat while testing: the card pictures showed no information; Create your guild had no sidebar. Review and merge not yet counted |
+| 12:55-1:10 PM | PR #1533 reviewed: phone screenshot cut to one screen, the site's name over the headline, "Who makes it" names Katorri and explains WGA where the guild is named; merged (merged 1:10) | Revamp 4 (#1226) | 15 m | ~5 m build, ~10 m Kat | not read | Kat: no Guild Master line; "WGA (We Go Again) Raid Hub" read badly, so WGA is explained after the guild's name |
+| 1:11-1:15 PM | Link preview picture retaken with the site's name (3.183.1) | Revamp 4 (#1226) | 5 m | ~4 m build, ~1 m Kat | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
