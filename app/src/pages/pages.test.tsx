@@ -11,9 +11,9 @@ vi.mock('../about/AboutPage', () => ({
     throw new Error('boom: secret detail');
   }
 }));
-vi.mock('../front/FrontPage', () => ({
-  FrontPage: () => {
-    throw new Error('front boom');
+vi.mock('../join/JoinRoute', () => ({
+  JoinRoute: () => {
+    throw new Error('join boom');
   }
 }));
 
@@ -49,7 +49,7 @@ describe('crash screen', () => {
   it('shows on its own for a page outside the frame', async () => {
     quietConsole();
     setErrorReporter(() => {});
-    renderApp('/');
+    renderApp('/join/abc');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Something went wrong on this page' })).toBeVisible();
     expect(screen.queryByRole('navigation', { name: 'Main' })).not.toBeInTheDocument();

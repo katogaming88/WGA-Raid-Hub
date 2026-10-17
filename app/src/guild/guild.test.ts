@@ -40,9 +40,9 @@ describe('guild links', () => {
   });
 
   it('counts the teams in the intro, and names the realm when there is one', () => {
-    expect(guildIntro(3, 'Tichondrius')).toBe('Three raid teams on Tichondrius. Pick yours, or find one to join.');
-    expect(guildIntro(1, null)).toBe('One raid team. Pick yours, or find one to join.');
-    expect(guildIntro(12, null)).toBe('12 raid teams. Pick yours, or find one to join.');
+    expect(guildIntro(3, 'Tichondrius')).toBe('Three raid teams on Tichondrius. Select yours.');
+    expect(guildIntro(1, null)).toBe('One raid team.');
+    expect(guildIntro(12, null)).toBe('12 raid teams. Select yours.');
   });
 });
 

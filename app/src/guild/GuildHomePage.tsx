@@ -110,7 +110,7 @@ function TeamCardView({ card }: { card: TeamCard }) {
             {card.name}
           </h2>
           {card.mine && <span className="guild-tag guild-tag-mine">Your team</span>}
-          {card.signup && <span className="guild-tag guild-tag-recruiting">Recruiting</span>}
+          {card.signup && <span className="guild-tag guild-tag-signups">Signups open</span>}
         </div>
         <p className="guild-team-schedule text-muted">
           {card.schedule}

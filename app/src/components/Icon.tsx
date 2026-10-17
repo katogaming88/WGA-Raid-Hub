@@ -57,10 +57,23 @@ export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
   );
 }
 
-export function FlameMark({ size = 18 }: { size?: number }) {
+// The WGA Raid Hub logo, the Go Again ring (picked 2026-09-18): the logo's
+// SVG master, in its own colors in both themes. Decorative: the name sits
+// beside it.
+export function LogoMark({ size = 34 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
-      <path d="M12 2c.6 3.2-1.2 5-2.8 6.8C7.7 10.5 6 12.4 6 15.2 6 18.9 8.7 22 12 22s6-3 6-6.6c0-2.6-1.3-4.3-2.6-5.6.1 1.6-.5 2.9-1.6 3.4.3-3.8-1-7.6-1.8-11.2Z" />
+    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+      <path d="M50 6 A44 44 0 1 1 11.9 28" fill="none" stroke="#f2703f" strokeWidth="7" strokeLinecap="round" />
+      <polygon points="15.9,19.9 18.0,33.1 4.8,26.1" fill="#f2703f" />
+      <circle cx="50" cy="50" r="33" fill="#255fc0" />
+      <polyline
+        points="32,39 41,63 50,46 59,63 68,39"
+        fill="none"
+        stroke="#ffffff"
+        strokeWidth="8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

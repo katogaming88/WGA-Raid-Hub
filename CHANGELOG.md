@@ -12,7 +12,36 @@ answers to.
 
 ---
 
-## [3.182.0] - 2026-10-15
+## [3.183.0] - 2026-10-17
+
+### Project
+
+- New app (#1226): the site front page is redesigned and shows for everyone,
+  signed in or out, on a team or not. Someone on a team is no longer sent on
+  to their guild's home. It now sits inside the app with the sidebar, like
+  News and Help, and the WGA Raid Hub title at the top of the sidebar opens
+  it. Top to bottom: the logo and the site's name, the headline and pitch
+  over the Go Again ring, Create
+  your guild and See what it does, a "Works with" row (RCLootCouncil links
+  to our addon on CurseForge), the current season and the latest News post,
+  "Got an invite link?" in three steps, "Built around your raid week" (four
+  cards, each with a strip of the real page), who makes it, "Running a
+  guild?", and a footer. While guild sign-up is switched off, Create your
+  guild is replaced by a box pointing to the support Discord, with a line
+  for raiders that invite links work now. The Create your guild page
+  (`/new-guild`) sits in the app frame too, so it has the sidebar.
+- A link preview for Discord and other chat apps: title, one-line
+  description and a picture of the front page's top section, from
+  `npm run help:shots`, which now also takes the cards' pictures. The
+  picture's address comes from the new `VITE_SITE_URL` setting.
+- The sidebar and the browser tab show the Go Again ring logo instead of
+  the placeholder flame, and saving the site to a phone's home screen uses
+  it too.
+- Guild home: a team taking signups shows "Signups open" instead of
+  "Recruiting" (signups are for next season, not for new players), and the
+  line under the guild's name reads "Select yours" without "or find one to
+  join".
+
 
 ### Project
 
