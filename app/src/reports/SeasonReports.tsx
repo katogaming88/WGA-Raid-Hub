@@ -54,7 +54,8 @@ export function SeasonReport({
   );
 }
 
-export const nameOf = (seasons: SeasonRow[], code: string) => seasons.find((s) => s.code === code)?.display_name ?? code;
+export const nameOf = (seasons: SeasonRow[], code: string) =>
+  seasons.find((s) => s.code === code)?.display_name ?? code;
 
 // BiS demand
 
