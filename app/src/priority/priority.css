@@ -51,6 +51,7 @@
 }
 
 .priority-split {
+  container-type: inline-size;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
@@ -243,11 +244,19 @@
   color: var(--bad);
 }
 
-@media (max-width: 640px) {
+/* Stacked, the picked item comes first, not under a hundred-item list. The
+   two stack below 300px + 480px + the gap, so this asks the split itself. */
+@container (max-width: 800px) {
+  .priority-panel {
+    order: -1;
+  }
+
   .priority-list {
     max-width: none;
   }
+}
 
+@media (max-width: 640px) {
   .priority-rank {
     grid-template-columns: 24px 1fr auto;
   }

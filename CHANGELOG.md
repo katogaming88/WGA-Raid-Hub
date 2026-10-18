@@ -30,7 +30,8 @@ answers to.
   read, now) with the morning read's status line, and Sync tier counts
   (each raider's tier pieces from Raider.IO, refused when the season has no
   tier tokens set up). Guild officers see the lists and the string, not the
-  gear buttons. Editing an order, Unmanaged and Contested items, Notes and
+  gear buttons. On a phone the picked item sits above the list. Editing an
+  order, Unmanaged and Contested items, Notes and
   Scoring come in later parts.
 - Tests: the page's rules (which items list, the row flags, the export
   string's bytes, tier counting, the gear status line), the page for an
