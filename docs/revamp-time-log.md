@@ -290,7 +290,15 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:30-12:40 PM | Guild home: "Recruiting" becomes "Signups open"; the subtitle drops "or find one to join" and says "Select yours" (in PR for #1226) | Revamp 4 (#1226) | 10 m | ~6 m build, ~4 m Kat | not read | Kat: signups open is not recruiting; no recruiting setting for now |
 | 12:40-12:55 PM | Go Again ring logo in the sidebar, browser tab and home-screen icon; card pictures retaken on each page's working part; Create your guild moved into the app frame; stamp, changelog, these rows, PR opened | Revamp 4 (#1226) | 15 m | ~10 m build, ~5 m Kat testing | not read | Kat while testing: the card pictures showed no information; Create your guild had no sidebar. Review and merge not yet counted |
 | 12:55-1:10 PM | PR #1533 reviewed: phone screenshot cut to one screen, the site's name over the headline, "Who makes it" names Katorri and explains WGA where the guild is named; merged (merged 1:10) | Revamp 4 (#1226) | 15 m | ~5 m build, ~10 m Kat | not read | Kat: no Guild Master line; "WGA (We Go Again) Raid Hub" read badly, so WGA is explained after the guild's name |
-| 1:11-1:15 PM | Link preview picture retaken with the site's name (3.183.1) | Revamp 4 (#1226) | 5 m | ~4 m build, ~1 m Kat | not read | Review and merge not yet counted |
+| 1:11-1:15 PM | Link preview picture retaken with the site's name (3.183.1) | Revamp 4 (#1226) | 5 m | ~4 m build, ~1 m Kat | not read | Review and merge in the next row |
+| 1:15-1:19 PM | PR #1534 reviewed and merged (merged 1:19) | Revamp 4 (#1226) | 5 m | ~5 m Kat | not read | |
+| 1:21-4:27 PM | Recruiting on Raid Hub designed: WGA's trial tickets talked through, the message to the main recruiter, mockups on a design canvas (apply page, application, after-send, Recruits, Recruiting settings, My recruits, the Discord ticket) with a Start here page, addresses and recruiter links, starter questions, reminder timings, trials in the ticket; filed as #1535-#1550 with tracking issue #1551 | Planning and design (#1551) | 3 h 5 m | ~1 h 45 m build, ~1 h 20 m Kat deciding | not read | Kat: Raid Hub keeps the record, Discord stays where people talk; notes only after someone applies; Recruiting its own officer menu item; waiting on the recruiters' feedback |
+
+### 2026-10-18
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 11:32 AM-END | #1247 built: the Boss lineups report (Raiders, Bosses and Nights views, each role's sit-out spread), tests from a fixture season, the browser test's accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1247) | ELAPSED | ~ELAPSED build | not read | Prod has no lineups yet (the planner is only in the new app); Kat: build it anyway. No database change. The per-boss view on Bench fairness and the loot view wait (see the PR). Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
@@ -312,6 +320,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-10-15 | 8:44-8:45 AM | Where the work stood | 5 m |
 | 2026-10-15 | 10:21-10:43 AM | WowUtils terms and API terms read; the new app checked for copied design; Viserio mentions dropped (PR #1528, merged 10:37); #1514's terms and #1527's cookie notes written up | 20 m |
 | 2026-10-17 | 12:09-12:10 PM | Where the work stood | 5 m |
+| 2026-10-18 | 11:29-11:32 AM | Where the work stood | 5 m |
 
 ## Remaining in Revamp 1
 
