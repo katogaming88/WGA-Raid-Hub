@@ -1,4 +1,5 @@
 import { readAll, useSupabaseQuery } from '../data/query';
+import type { KillRow, LineupData, NightBossRow, SeatRow } from './lineups';
 
 export type RaidNightsRow = {
   // A view's columns all read as nullable.
@@ -122,5 +123,63 @@ export function usePriorityHealth(teamId: number, season: string | null) {
       };
     },
     { enabled: season !== null }
+  );
+}
+
+// The Boss lineups report (#1247): one season of plans, recorded fights and
+// kills, up to today. A season is about 20 seats a boss, 8 bosses a night,
+// over 40 nights, so each read pages past PostgREST's 1000 rows.
+export function useLineupReport(teamId: number, start: string, end: string) {
+  return useSupabaseQuery<LineupData>(['lineup-report', teamId, start, end], async (client) => {
+    const seats = (table: 'raid_night_lineups' | 'raid_night_participation') =>
+      readAll<SeatRow>((from, to) =>
+        client
+          .from(table)
+          .select('raid_date, encounter_id, player_id')
+          .eq('team_id', teamId)
+          .gte('raid_date', start)
+          .lte('raid_date', end)
+          .order('id')
+          .range(from, to)
+      );
+    const [nightBosses, planned, played, kills] = await Promise.all([
+      readAll<NightBossRow>((from, to) =>
+        client
+          .from('raid_night_bosses')
+          .select('raid_date, encounter_id, position, skipped')
+          .eq('team_id', teamId)
+          .gte('raid_date', start)
+          .lte('raid_date', end)
+          .order('raid_date')
+          .order('position')
+          .range(from, to)
+      ),
+      seats('raid_night_lineups'),
+      seats('raid_night_participation'),
+      readAll<KillRow>((from, to) =>
+        client
+          .from('team_raid_kills')
+          .select('raid_date, encounter_id')
+          .eq('team_id', teamId)
+          .gte('raid_date', start)
+          .lte('raid_date', end)
+          .order('id')
+          .range(from, to)
+      )
+    ]);
+    const error = nightBosses.error ?? planned.error ?? played.error ?? kills.error;
+    if (error) return { data: null, error };
+    return {
+      data: { nightBosses: nightBosses.data!, planned: planned.data!, played: played.data!, kills: kills.data! },
+      error: null
+    };
+  });
+}
+
+// Each roster raider's bonus roll boss (players.bonus_roll_encounter_id).
+export function useBonusRolls(teamId: number) {
+  return useSupabaseQuery<{ id: number; bonus_roll_encounter_id: number | null }[]>(['bonus-rolls', teamId], (client) =>
+    // team-read-guard: one row per active character (80 on the largest team)
+    client.from('players').select('id, bonus_roll_encounter_id').eq('team_id', teamId).is('archived_at', null)
   );
 }

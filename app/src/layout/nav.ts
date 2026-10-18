@@ -100,6 +100,7 @@ function officerMenu(o: string): NavItem[] {
       pages: [
         { label: 'Loot fairness', to: `${o}/reports/loot-fairness` },
         { label: 'Bench fairness', to: `${o}/reports/bench-fairness` },
+        { label: 'Boss lineups', to: `${o}/reports/boss-lineups` },
         { label: 'Raid nights since last item', to: `${o}/reports/raid-nights` },
         { label: 'BiS demand', to: `${o}/reports/bis-demand` },
         { label: 'Loot pace', to: `${o}/reports/loot-pace` },
@@ -144,6 +145,7 @@ export const TEAM_PAGES: Record<string, string> = {
   'officer/groups': 'Boss groups',
   'officer/reports/loot-fairness': 'Loot fairness',
   'officer/reports/bench-fairness': 'Bench fairness',
+  'officer/reports/boss-lineups': 'Boss lineups',
   'officer/reports/raid-nights': 'Raid nights since last item',
   'officer/reports/bis-demand': 'BiS demand',
   'officer/reports/loot-pace': 'Loot pace',
