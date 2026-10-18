@@ -216,7 +216,7 @@ function Raiders({ data, today, groups, bosses, bonus }: Props) {
   ];
   return (
     <>
-      <p className="text-muted">
+      <p className="text-muted lineup-summary">
         {slots.length} boss {slots.length === 1 ? 'pull' : 'pulls'} so far. Played, Missed and Swapped in come from
         nights whose log is in.
       </p>
