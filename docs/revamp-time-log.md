@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     36 h 51 m |
-| Revamp 3: officer dashboard        |     22 h 34 m |
+| Revamp 3: officer dashboard        |     23 h 24 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **83 h 45 m** |
+| **All revamp work**                | **84 h 35 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -300,6 +300,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 11:32-11:49 AM | #1247 built: the Boss lineups report (Raiders, Bosses and Nights views, each role's sit-out spread), tests from a fixture season, the browser test's accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1247) | 15 m | ~15 m build | not read | Prod has no lineups yet (the planner is only in the new app); Kat: build it anyway. No database change. The per-boss view on Bench fairness and the loot view wait (see the PR) |
 | 11:49 AM-12:25 PM | Reports cut from nine sidebar items to three (Loot and Bench and lineups as tabbed pages); the sidebar folds sections instead of scrolling, only when they would not fit, Site open whenever it can; a folding loop Kat hit while testing fixed; browser tests for folding (in the #1247 PR) | Revamp 3 (#1247) | 35 m | ~25 m build, ~10 m Kat deciding and testing | not read | Kat: never a scrollbar on the sidebar; Tier sets goes with Loot; fold only when needed. Review and merge not yet counted |
+| 12:33-1:08 PM | #1362 planned: the old Priority, Contested and Scoring tabs read in full, decisions with Kat, a mockup canvas (the page, the side-panel editor, Sidegrade and notes on the wishlist, Scoring), and the cutover issues #1553, #1554 and addon #78 | Revamp 3 (#1362) | 35 m | ~20 m build, ~15 m Kat deciding on mockups | not read | Kat: one track switch for list and export; Scoring as a tab; check banners dropped for flags on the row; edit in a side panel, not a dialog, showing each raider's saved place after Suggest order; Sidegrade (info only) and notes back on the wishlist; scores out of 100 |
+| 1:08-1:25 PM | #1362 part 1 built: the Loot priority page (item list, the picked item's order and flags, one track switch, the RCLootCouncil string, Refresh equipped gear, Sync tier counts), tests, the browser test's accessibility states, checked on the production backup, stamp, changelog, these rows, PR opened | Revamp 3 (#1362) | 15 m | ~15 m build | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

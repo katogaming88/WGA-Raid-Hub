@@ -12,6 +12,31 @@ answers to.
 
 ---
 
+## [3.185.0] - 2026-10-18
+
+### Project
+
+- New app (#1362, part 1): the Loot priority page for officers, under Loot,
+  Priority. Items with a saved priority order for the season are listed on
+  the left, grouped by slot, each with who is #1 and how many are ranked,
+  with a search box, a boss filter and Hide empty. Picking one shows its
+  order on the right: each raider's wishlist mark, and a flag when they
+  already won this item on this track, already won another item for the
+  slot this season (a ring or trinket once both are filled), or have left
+  the roster. One Heroic/Mythic switch drives both the list and the
+  RCLootCouncil string, so the two can never disagree; Generate makes the
+  string for the track on screen and Copy copies it, and switching track
+  clears it. Officers also get Refresh equipped gear (the morning Armory
+  read, now) with the morning read's status line, and Sync tier counts
+  (each raider's tier pieces from Raider.IO, refused when the season has no
+  tier tokens set up). Guild officers see the lists and the string, not the
+  gear buttons. Editing an order, Unmanaged and Contested items, Notes and
+  Scoring come in later parts.
+- Tests: the page's rules (which items list, the row flags, the export
+  string's bytes, tier counting, the gear status line), the page for an
+  officer and a guild officer, and four accessibility states in a real
+  browser, including phone width and light mode.
+
 ## [3.184.0] - 2026-10-18
 
 ### Project

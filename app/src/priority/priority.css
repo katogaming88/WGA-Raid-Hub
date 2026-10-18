@@ -1,0 +1,263 @@
+/* Loot priority (#1362): the controls bar, then the item list on the left and
+   the picked item's order on the right (mockup 2B). On a narrow screen the
+   two stack, list first. */
+
+.priority-page {
+  width: 100%;
+  gap: var(--space-4);
+}
+
+.priority-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--space-4);
+}
+
+.priority-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.priority-control .field-label {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.priority-export {
+  flex: 1 1 26rem;
+}
+
+.priority-string {
+  flex: 1 1 10rem;
+  width: auto;
+  min-width: 8rem;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: var(--text-xs);
+}
+
+.priority-gear-status {
+  font-size: var(--text-sm);
+}
+
+.priority-gear-status.warn {
+  color: var(--warn);
+}
+
+.priority-split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.priority-list {
+  flex: 1 1 300px;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.priority-list-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.priority-list-filters .select {
+  flex: 1;
+  min-width: 0;
+}
+
+.priority-hide-empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+}
+
+.priority-section ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.priority-section-title {
+  margin: var(--space-2) 0 4px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.priority-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 36px;
+  padding: 6px var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.priority-item:hover {
+  background: var(--hover);
+}
+
+.priority-item[aria-current='true'] {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.priority-item-name {
+  color: var(--epic);
+  font-weight: 600;
+}
+
+.priority-item-count {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.priority-panel {
+  flex: 999 1 480px;
+  min-width: 0;
+}
+
+.priority-panel-empty {
+  padding: var(--space-6) var(--space-5);
+}
+
+.priority-panel-empty p {
+  margin: var(--space-2) 0 0;
+}
+
+.priority-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.priority-panel-title {
+  margin: 0;
+  color: var(--epic);
+  font-size: var(--text-lg);
+}
+
+.priority-panel-sub {
+  margin: 2px 0 0;
+  font-size: var(--text-sm);
+}
+
+.priority-panel-body {
+  margin: 0;
+  padding: var(--space-4);
+}
+
+.priority-ranks {
+  margin: 0;
+  padding: var(--space-2) 0;
+  list-style: none;
+}
+
+.priority-rank {
+  display: grid;
+  grid-template-columns: 28px minmax(100px, 180px) 60px 90px 1fr;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-4);
+}
+
+.priority-rank + .priority-rank {
+  border-top: 1px solid var(--raised);
+}
+
+.priority-rank-num {
+  color: var(--brand);
+  font-weight: 700;
+  text-align: right;
+}
+
+.priority-rank-name {
+  font-weight: 600;
+}
+
+.priority-rank-role {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.priority-mark {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.priority-mark-bis {
+  color: var(--warn);
+}
+
+.priority-flags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.priority-flag {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.priority-flag-good {
+  color: var(--good);
+  font-weight: 600;
+}
+
+.priority-flag-warn {
+  color: var(--bad);
+}
+
+@media (max-width: 640px) {
+  .priority-list {
+    max-width: none;
+  }
+
+  .priority-rank {
+    grid-template-columns: 24px 1fr auto;
+  }
+
+  .priority-rank-role {
+    display: none;
+  }
+
+  .priority-flags {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+}
