@@ -11,6 +11,7 @@ import { BenchFairnessPage, LootFairnessPage } from './reports/FairnessPages';
 import { RaidNightsPage, TierSetsPage } from './reports/TableReports';
 import { BisDemandPage, LootPacePage, PriorityHealthPage } from './reports/SeasonReports';
 import { LineupReportPage } from './reports/LineupReport';
+import { PriorityPage } from './priority/PriorityPage';
 import { GeneralSettingsPage } from './settings/GeneralSettingsPage';
 import { SeasonSettingsPage } from './settings/SeasonSettingsPage';
 import { ProgressionSettingsPage } from './settings/ProgressionSettingsPage';
@@ -45,6 +46,7 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   roster: <RosterPage />,
   calendar: <CalendarPage />,
   me: <MyProfilePage />,
+  'officer/priority': <PriorityPage />,
   'officer/groups': <BossGroupsPage />,
   // 'officer/attendance/scores' stays a placeholder (Kat, 2026-09-27): Profile
   // already shows a raider's attendance pct and flagged nights, so a

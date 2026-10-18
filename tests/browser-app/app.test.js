@@ -724,6 +724,58 @@ const TABLE_REPORT = {
   }
 };
 
+// Loot priority (#1362 part 1): two Back pieces and a ring saved with nobody
+// on it, one opened, so the list, the ranked rows and their flags, and the
+// gear status line are on the page axe measures.
+const PRIORITY_IDS = REPORT_TABLES.players.map((p) => p.id);
+const priorityItem = (id, name, slot) => ({
+  id,
+  name,
+  slot,
+  wcl_zone_id: 100,
+  is_placeholder: false,
+  source: 'raid',
+  item_seasons: []
+});
+const PRIORITY = {
+  session: OFFICER,
+  who: 'officer',
+  path: '/g/wga/t/phoenix/officer/priority?item=1',
+  sentinel: 'main .priority-rank',
+  rpc: { build_rclc_export: { players: {}, priority: {} } },
+  tables: {
+    players: REPORT_TABLES.players,
+    seasons: [{ code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-07-18', ends_at: null }],
+    team_settings: [{ team_id: 1, view: null, raidProgression: [] }],
+    team_seasons: [],
+    raid_zones: [{ wcl_zone_id: 100, season: 'MID2' }],
+    items: [
+      priorityItem(1, 'Silken Voodoo Drape', 'Back'),
+      priorityItem(2, 'Drape of the Dreadful Rite', 'Back'),
+      priorityItem(3, "Vile Alchemist's Band", 'Finger')
+    ],
+    priority_order: PRIORITY_IDS.slice(0, 5).map((player_id, i) => ({
+      item_id: 1,
+      track: 'Hero',
+      rank: i + 1,
+      player_id,
+      players: { name_realm: 'x' }
+    })),
+    priority_order_confirmed_empty: [{ item_id: 3, track: 'Hero' }],
+    item_preferences: [
+      { player_id: PRIORITY_IDS[0], item_id: 1, status: 'bis' },
+      { player_id: PRIORITY_IDS[1], item_id: 1, status: 'ok' }
+    ],
+    rclc_loot: [
+      { player_id: PRIORITY_IDS[0], item_id: 1, track: 'Hero', response: 'BiS' },
+      { player_id: PRIORITY_IDS[1], item_id: 2, track: 'Hero', response: 'BiS' }
+    ],
+    item_bosses: [{ item_id: 1, boss: 'The Coiled Altar' }],
+    tier_token_map: [],
+    site_settings: [{ id: 1, gear_sync_last_cron_run: { finished_at: '2026-10-18T06:00:00Z', synced: 76, skipped: 1 } }]
+  }
+};
+
 // Officer Settings (#1357, #1103 row 1): General, Season, Raid progression and
 // Danger zone, so every card state (a saved value, a closed tier's WCL
 // Performance Baseline row, a raid/boss row, and the Archive season control)
@@ -1114,6 +1166,15 @@ const STATES = [
     ...BOSS_GROUPS_GUILD_OFFICER,
     click: 'role=button[name="Edit cap"]'
   },
+  { label: 'loot priority, an item open', ...PRIORITY },
+  { label: 'loot priority, an item open, light', ...PRIORITY, colorScheme: 'light' },
+  {
+    label: 'loot priority, the RCLootCouncil string',
+    ...PRIORITY,
+    click: 'role=button[name="Generate Heroic string"]',
+    afterClick: 'main .priority-string'
+  },
+  { label: 'loot priority, on a phone', ...PRIORITY, viewport: NARROW },
   { label: 'loot fairness', ...REPORT, path: '/g/wga/t/phoenix/officer/reports/loot-fairness' },
   {
     label: 'loot fairness, light',
@@ -1269,14 +1330,14 @@ const STATES = [
   },
   {
     label: 'officer page, officer',
-    path: '/g/wga/t/phoenix/officer/priority',
+    path: '/g/wga/t/phoenix/officer/import',
     session: OFFICER,
     who: 'officer',
     sentinel: 'text=Not built yet'
   },
   {
     label: 'officer page, officer, light',
-    path: '/g/wga/t/phoenix/officer/priority',
+    path: '/g/wga/t/phoenix/officer/import',
     session: OFFICER,
     who: 'officer',
     sentinel: 'text=Not built yet',
