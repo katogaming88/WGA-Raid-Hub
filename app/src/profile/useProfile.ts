@@ -127,7 +127,10 @@ export function useMplusRefusal(teamId: number, playerId: number, enabled: boole
 // A raider reads only their own wishlist and receipts; officers read the team's.
 export function useWishlist(playerId: number) {
   return useSupabaseQuery<Pick[]>(['wishlist', playerId], (client) =>
-    client.from('item_preferences').select('id, item_id, status, slot, season, synced_bis').eq('player_id', playerId)
+    client
+      .from('item_preferences')
+      .select('id, item_id, status, slot, season, synced_bis, note')
+      .eq('player_id', playerId)
   );
 }
 
@@ -271,6 +274,21 @@ export function useMarkWishlist(playerId: number) {
       return { data: null, error: null };
     },
     { key: ['mark-wishlist', playerId], refreshes: [['wishlist', playerId]] }
+  );
+}
+
+// A raider's note on a marked item (#1362 part 4), written to every row that
+// carries the mark. An empty note is saved as none.
+export function useSaveWishlistNote(playerId: number) {
+  return useSupabaseMutation<null, { ids: number[]; note: string }>(
+    async (client, { ids, note }) => {
+      const { error } = await client
+        .from('item_preferences')
+        .update({ note: note.trim() || null })
+        .in('id', ids);
+      return { data: null, error };
+    },
+    { key: ['wishlist-note', playerId], refreshes: [['wishlist', playerId]] }
   );
 }
 

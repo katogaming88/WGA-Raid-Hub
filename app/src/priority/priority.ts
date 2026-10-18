@@ -21,7 +21,7 @@ export type OrderRow = {
 };
 // An item/track saved with nobody on it on purpose (save_priority_order()).
 export type EmptyRow = { item_id: number; track: string };
-export type PrefRow = { player_id: number; item_id: number; status: string };
+export type PrefRow = { id?: number; player_id: number; item_id: number; status: string; note?: string | null };
 export type TeamLootRow = {
   player_id: number | null;
   item_id: number | null;
@@ -598,3 +598,64 @@ export const move = (order: number[], from: number, to: number): number[] => {
 // Scores read out of 100 (Kat, 2026-10-18); they are stored out of 10 until
 // cutover (#1554).
 export const outOf100 = (score: number | null | undefined) => (score == null ? null : Math.round(score * 10));
+
+// -- Part 4: Sidegrade and notes ------------------------------------------
+
+// Raiders who marked the item Sidegrade and are not ranked on it: officers see
+// them, but only BiS gets a priority number (Kat, 2026-10-18).
+export function sidegradeNames(item: PriorityItem, data: PriorityData, players: PlayerRow[]): string[] {
+  const ids = new Set(
+    data.prefs
+      .filter((p) => p.item_id === item.itemId && p.status === 'ok' && !item.ranked.includes(p.player_id))
+      .map((p) => p.player_id)
+  );
+  return players
+    .filter((p) => ids.has(p.id))
+    .map((p) => p.nickname?.trim() || firstName(p.name_realm))
+    .sort((a, b) => a.localeCompare(b));
+}
+
+export type WishlistNote = {
+  // Every saved row with this text: a ring or trinket marked in both slots is
+  // two rows with one note, and Clear clears both.
+  ids: number[];
+  playerId: number;
+  name: string;
+  className: string | null;
+  spec: string | null;
+  mark: string;
+  note: string;
+};
+export type NotesForItem = { itemId: number; name: string; slot: string; notes: WishlistNote[] };
+
+// Raiders' notes on the items they marked (the current site's Notes tab), by
+// item A to Z. Raiders who left the roster and M+ or crafted stand-ins are
+// left out; the same raider's same text on one item shows once.
+export function wishlistNotes(data: PriorityData, catalog: CatalogItem[], players: PlayerRow[]): NotesForItem[] {
+  const roster = new Map(players.map((p) => [p.id, p]));
+  const byId = new Map(catalog.map((i) => [i.id, i]));
+  const byItem = new Map<number, NotesForItem>();
+  for (const pref of data.prefs) {
+    const text = pref.note?.trim();
+    const player = roster.get(pref.player_id);
+    const item = byId.get(pref.item_id);
+    if (!text || pref.id === undefined || !player || !item || item.is_placeholder) continue;
+    const entry = byItem.get(item.id) ?? { itemId: item.id, name: item.name, slot: item.slot, notes: [] };
+    byItem.set(item.id, entry);
+    const same = entry.notes.find((n) => n.playerId === player.id && n.note === text);
+    if (same) {
+      same.ids.push(pref.id);
+      continue;
+    }
+    entry.notes.push({
+      ids: [pref.id],
+      playerId: player.id,
+      name: player.nickname?.trim() || firstName(player.name_realm),
+      className: player.classes_specs?.class ?? null,
+      spec: player.classes_specs?.spec ?? null,
+      mark: pref.status,
+      note: text
+    });
+  }
+  return [...byItem.values()].sort((a, b) => a.name.localeCompare(b.name));
+}

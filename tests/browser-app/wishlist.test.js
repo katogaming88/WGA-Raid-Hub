@@ -332,6 +332,45 @@ describe('Wishlist (new app), marking, checked against the current site', () => 
   });
 });
 
+// Sidegrade and notes are the new app's own (Kat, 2026-10-18, #1362 part 4).
+describe('Wishlist (new app), Sidegrade and notes', () => {
+  it('turns a BiS pick into a Sidegrade in place', async () => {
+    const opened = await open();
+    try {
+      await showEditor(opened.page);
+      const writes = recordWrites(opened.page);
+      await (
+        await itemRow(opened.page, 'Head', 'Venom-Etched Greathelm')
+      )
+        .getByRole('button', { name: 'Sidegrade' })
+        .click();
+      await expect.poll(() => writes.length).toBe(1);
+      expect(writes[0]).toMatchObject({ method: 'PATCH', query: { id: 'eq.1' }, body: { status: 'ok' } });
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  it('saves a note on a marked item when the raider presses Enter', async () => {
+    const opened = await open();
+    try {
+      await showEditor(opened.page);
+      const writes = recordWrites(opened.page);
+      const row = await itemRow(opened.page, 'Head', 'Venom-Etched Greathelm');
+      await row.getByRole('textbox', { name: 'Note on Venom-Etched Greathelm' }).fill('BiS for Frost too');
+      await row.getByRole('textbox', { name: 'Note on Venom-Etched Greathelm' }).press('Enter');
+      await expect.poll(() => writes.length).toBe(1);
+      expect(writes[0]).toMatchObject({
+        method: 'PATCH',
+        query: { id: 'in.(1)' },
+        body: { note: 'BiS for Frost too' }
+      });
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
 // PINNED_ELSEWHERE in tests/behavior/wishlist.js, checked against the current
 // site. The earlier tier's switch is on too, and the raider is not offered it.
 describe('Wishlist (new app), with an officer’s Season View on another season, checked against the current site', () => {

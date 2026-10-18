@@ -9,6 +9,7 @@ import {
   useCatalog,
   useMarkWishlist,
   useRaidZones,
+  useSaveWishlistNote,
   useSeasonTierTokens,
   useWishlist,
   useWishlistSettings,
@@ -20,10 +21,12 @@ import { WishlistSummaryCard } from './LootPriorityCard';
 import {
   editorSeason,
   editorSlots,
+  MARKS,
   ownWishlistSeason,
   planMark,
   wishlistCandidates,
   type EditorInput,
+  type EditorRow,
   type EditorSlot,
   type Mark
 } from './wishlist';
@@ -121,7 +124,8 @@ export function WishlistTab({
   );
 }
 
-// The wishlist editor (#868 part 3): each slot's raid items, marked BiS or Pass.
+// The wishlist editor (#868 part 3): each slot's raid items, marked BiS,
+// Sidegrade or Pass, with an optional note on a marked item (#1362 part 4).
 // The raider edits their own while the team's wishlist is open, or when an
 // officer allowed them; everyone else who can open the profile reads it.
 function WishlistEditor({
@@ -152,7 +156,7 @@ function WishlistEditor({
   return (
     <section className="card profile-card" aria-labelledby="wishlist-editor-title">
       <h2 id="wishlist-editor-title" className="card-title">
-        BiS or Pass by slot
+        BiS, Sidegrade or Pass by slot
       </h2>
       <DataState query={bothQueries(bothQueries(season, tiers), bothQueries(picks, catalog))} label="the wishlist">
         {([, [p, c]]) => (
@@ -201,9 +205,11 @@ function Editor({
   touch: boolean;
 }) {
   const mark = useMarkWishlist(playerId);
+  const saveNote = useSaveWishlistNote(playerId);
   const slots = editorSlots(input);
   const set = (slot: string, itemId: number, next: Mark | null) =>
     mark.mutate(planMark({ ...input, teamId, playerId }, slot, itemId, next));
+  const error = mark.error ?? saveNote.error;
 
   return (
     <>
@@ -217,18 +223,26 @@ function Editor({
         </p>
       ) : editable ? (
         <p className="card-note text-muted">
-          Mark one item BiS for each slot, and Pass on anything you would not take. Click a mark again to clear it.
+          Mark one item BiS for each slot. Sidegrade is anything you would still take: officers see it, but only BiS
+          gets a priority number. Pass on anything you would not take. Click a mark again to clear it. Officers can read
+          a note you add to a marked item.
         </p>
       ) : null}
-      {mark.isError && (
+      {error && (
         <p className="wishlist-error" role="alert">
-          That did not save: {mark.error.message}
+          That did not save: {error.message}
         </p>
       )}
       {slots.length === 0 ? (
         <p className="text-muted card-note">No raid items are set up for this season yet.</p>
       ) : (
-        <SlotTabs slots={slots} disabled={!editable || mark.isPending} onMark={set} />
+        <SlotTabs
+          slots={slots}
+          disabled={!editable || mark.isPending}
+          editable={editable}
+          onMark={set}
+          onNote={(ids, note) => saveNote.mutate({ ids, note })}
+        />
       )}
     </>
   );
@@ -247,11 +261,15 @@ const tabId = (slot: string) => `wishlist-slot-${slot.toLowerCase().replace(/s+/
 function SlotTabs({
   slots,
   disabled,
-  onMark
+  editable,
+  onMark,
+  onNote
 }: {
   slots: EditorSlot[];
   disabled: boolean;
+  editable: boolean;
   onMark: (slot: string, itemId: number, next: Mark | null) => void;
+  onNote: (ids: number[], note: string) => void;
 }) {
   const [chosen, setChosen] = useState(slots[0]!.slot);
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -338,7 +356,7 @@ function SlotTabs({
                 <span className="wishlist-taken">Your {item.takenBy} BiS</span>
               ) : (
                 <span className="mark-buttons" role="group" aria-label={`${item.name}, ${current.slot}`}>
-                  {(['bis', 'pass'] as const).map((m) => (
+                  {MARKS.map(({ mark: m, label }) => (
                     <button
                       key={m}
                       type="button"
@@ -347,15 +365,45 @@ function SlotTabs({
                       disabled={disabled}
                       onClick={() => onMark(current.slot, item.itemId, item.mark === m ? null : m)}
                     >
-                      {m === 'bis' ? 'BiS' : 'Pass'}
+                      {label}
                     </button>
                   ))}
                 </span>
               )}
+              {item.mark && editable ? (
+                // Keyed on the saved note, so a save from elsewhere resets it.
+                <NoteField key={`${item.itemId}|${item.note ?? ''}`} item={item} onSave={onNote} />
+              ) : item.note ? (
+                <p className="wishlist-note">Note: {item.note}</p>
+              ) : null}
             </li>
           ))}
         </ul>
       </div>
     </>
+  );
+}
+
+// A note on a marked item, saved when the field loses focus or on Enter, as
+// the current site does.
+function NoteField({ item, onSave }: { item: EditorRow; onSave: (ids: number[], note: string) => void }) {
+  const [value, setValue] = useState(item.note ?? '');
+  const save = () => {
+    if (value.trim() !== (item.note ?? '')) onSave(item.noteIds, value);
+  };
+  return (
+    <input
+      className="input wishlist-note-input"
+      type="text"
+      maxLength={200}
+      placeholder="Note (optional)"
+      aria-label={`Note on ${item.name}`}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={save}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur();
+      }}
+    />
   );
 }

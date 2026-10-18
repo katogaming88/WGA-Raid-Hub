@@ -45,7 +45,7 @@ export function usePriorityData(teamId: number, season: string) {
       readAll<PrefRow>((from, to) =>
         client
           .from('item_preferences')
-          .select('player_id, item_id, status')
+          .select('id, player_id, item_id, status, note')
           .eq('team_id', teamId)
           .eq('season', season)
           .order('id')
@@ -220,5 +220,31 @@ export function useSaveOrder(teamId: number, season: string) {
         p_player_ids: order
       }),
     { key: ['save-order', teamId], refreshes: [['priority-data', teamId, season]] }
+  );
+}
+
+// Clear a raider's note (#1362 part 4). An officer may only set the note to
+// none (restrict_item_preferences_officer_update_to_note_clear()); the mark
+// stays. Logged like the current site's Clear Note.
+export function useClearNote(teamId: number, season: string) {
+  return useSupabaseMutation<null, { ids: number[]; playerId: number; detail: string }>(
+    async (client, { ids, playerId, detail }) => {
+      const { error } = await client.from('item_preferences').update({ note: null }).in('id', ids);
+      if (error) return { data: null, error };
+      // Best effort: a failed log entry does not undo the clear.
+      try {
+        await client.rpc('write_audit_log', {
+          p_team_id: teamId,
+          p_action: 'Wishlist Note Cleared',
+          p_target_type: 'players',
+          p_target_id: playerId,
+          p_detail: detail
+        });
+      } catch {
+        // The clear is already saved.
+      }
+      return { data: null, error: null };
+    },
+    { key: ['clear-note', teamId], refreshes: [['priority-data', teamId, season]] }
   );
 }

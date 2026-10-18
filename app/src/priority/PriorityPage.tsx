@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router';
 import { useAccess, can } from '../auth/access';
 import { useSeasons } from '../calendar/useCalendar';
 import { DataState } from '../components/DataState';
+import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
 import { useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
@@ -26,9 +27,13 @@ import {
   priorityItems,
   rankedRows,
   sections,
+  sidegradeNames,
+  wishlistNotes,
   TRACK_LABEL,
   type PriorityData,
   type Contested,
+  type NotesForItem,
+  type WishlistNote,
   type PriorityItem,
   unmanagedItems,
   type Track,
@@ -36,7 +41,14 @@ import {
 } from './priority';
 import { ConflictFlags } from './RowFlags';
 import { draftKey, ItemEditor, type Draft } from './ItemEditor';
-import { useExportString, useGearRuns, usePriorityData, useRefreshGear, useSyncTierCounts } from './usePriority';
+import {
+  useClearNote,
+  useExportString,
+  useGearRuns,
+  usePriorityData,
+  useRefreshGear,
+  useSyncTierCounts
+} from './usePriority';
 // The Roster's toggle buttons, shared rather than restyled.
 import '../roster/roster.css';
 import './priority.css';
@@ -81,7 +93,7 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
   const [params, setParams] = useSearchParams();
   const track: Track = params.get('track') === 'mythic' ? 'Myth' : 'Hero';
   const tabParam = params.get('tab');
-  const tab = tabParam === 'unmanaged' || tabParam === 'contested' ? tabParam : 'list';
+  const tab = tabParam === 'unmanaged' || tabParam === 'contested' || tabParam === 'notes' ? tabParam : 'list';
   const picked = Number(params.get('item')) || null;
   const access = useAccess();
   const officer = can(access.data, 'actAsOfficer', teamId);
@@ -112,6 +124,8 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
         const unmanaged = unmanagedItems(data, catalog, zones, season);
         const contested = contestedItems(data, catalog, zones, season, players);
         const flagged = flaggedItemIds(items, track, data, players, catalog);
+        const notes = wishlistNotes(data, catalog, players);
+        const noteCount = notes.reduce((n, i) => n + i.notes.length, 0);
         const managed = (id: number) =>
           [...data.order, ...data.empty].some((r) => r.item_id === id && r.track === track);
         const unsaved = new Set(
@@ -154,8 +168,19 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
               <Link to={linkTo({ tab: 'contested' })} replace aria-current={tab === 'contested' ? 'page' : undefined}>
                 Contested
               </Link>
+              <Link
+                to={linkTo({ tab: 'notes' })}
+                replace
+                aria-current={tab === 'notes' ? 'page' : undefined}
+                aria-label={noteCount ? `Notes, ${noteCount}` : undefined}
+              >
+                Notes
+                {noteCount > 0 && <span className="count-badge">{noteCount}</span>}
+              </Link>
             </nav>
-            {tab === 'contested' ? (
+            {tab === 'notes' ? (
+              <NotesList teamId={teamId} season={season} notes={notes} officer={officer} />
+            ) : tab === 'contested' ? (
               <ContestedList contested={contested} />
             ) : tab === 'unmanaged' ? (
               <UnmanagedList
@@ -208,6 +233,118 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
         );
       }}
     </DataState>
+  );
+}
+
+// Raiders' notes on the items they marked (the current site's Notes tab).
+// An officer can clear one; the raider's mark stays.
+function NotesList({
+  teamId,
+  season,
+  notes,
+  officer
+}: {
+  teamId: number;
+  season: string;
+  notes: NotesForItem[];
+  officer: boolean;
+}) {
+  const { announce } = useStatus();
+  const clear = useClearNote(teamId, season);
+  const [search, setSearch] = useState('');
+  const [clearing, setClearing] = useState<{ item: string; note: WishlistNote } | null>(null);
+  const searchId = useId();
+  if (notes.length === 0) {
+    return (
+      <div className="card placeholder">
+        <p>No wishlist notes yet.</p>
+      </div>
+    );
+  }
+  const term = search.trim().toLowerCase();
+  const shown = term ? notes.filter((i) => i.name.toLowerCase().includes(term)) : notes;
+  const confirm = () => {
+    if (!clearing) return;
+    const { item, note } = clearing;
+    clear.mutate(
+      { ids: note.ids, playerId: note.playerId, detail: `${note.name} -- ${item}` },
+      {
+        onSuccess: () => {
+          setClearing(null);
+          announce('success', `Cleared ${note.name}'s note on ${item}.`);
+        },
+        onError: (error) => announce('error', errorMessage(error))
+      }
+    );
+  };
+  return (
+    <div className="priority-notes">
+      <label className="visually-hidden" htmlFor={searchId}>
+        Search items
+      </label>
+      <input
+        id={searchId}
+        className="input priority-notes-search"
+        type="search"
+        placeholder="Search items"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+      {shown.length === 0 && <p className="text-muted">No notes on an item by that name.</p>}
+      {shown.map((i) => (
+        <section key={i.itemId} className="card priority-notes-item" aria-labelledby={`notes-${i.itemId}`}>
+          <h2 id={`notes-${i.itemId}`} className="priority-notes-title">
+            <span className="priority-item-name">{i.name}</span> <span className="text-muted">{i.slot}</span>
+          </h2>
+          <ul className="priority-notes-list">
+            {i.notes.map((n) => (
+              <li key={n.ids[0]} className="priority-note">
+                <div className="priority-note-head">
+                  <span
+                    className="priority-rank-name"
+                    style={n.className ? { color: classColor(n.className) } : undefined}
+                  >
+                    {n.name}
+                  </span>
+                  {n.spec && <span className="text-muted">{n.spec}</span>}
+                  <span className={n.mark === 'bis' ? 'priority-mark priority-mark-bis' : 'priority-mark'}>
+                    {MARK_LABEL[n.mark] ?? n.mark}
+                  </span>
+                </div>
+                <p className="priority-note-text">{n.note}</p>
+                {officer && (
+                  <button
+                    type="button"
+                    className="button priority-note-clear"
+                    aria-label={`Clear ${n.name}'s note on ${i.name}`}
+                    onClick={() => setClearing({ item: i.name, note: n })}
+                  >
+                    Clear note
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+      {clearing && (
+        <Dialog title="Clear this note?" onClose={() => setClearing(null)} busy={clear.isPending}>
+          <p>
+            {clearing.note.name}'s note on {clearing.item} will be removed. Their{' '}
+            {MARK_LABEL[clearing.note.mark] ?? clearing.note.mark} mark stays.
+          </p>
+          <blockquote className="priority-note-text">{clearing.note.note}</blockquote>
+          <div className="dialog-actions">
+            <button type="button" className="button" onClick={() => setClearing(null)} disabled={clear.isPending}>
+              Keep it
+            </button>
+            <button type="button" className="button button-danger" onClick={confirm} disabled={clear.isPending}>
+              {clear.isPending ? 'Clearing…' : 'Clear note'}
+            </button>
+          </div>
+        </Dialog>
+      )}
+    </div>
   );
 }
 
@@ -616,6 +753,7 @@ function ItemPanel({
   catalog: CatalogItem[];
 }) {
   const rows = rankedRows(item, track, data, players, catalog);
+  const sidegrade = sidegradeNames(item, data, players);
   return (
     <section className="card priority-panel" aria-labelledby="priority-item-title">
       <div className="priority-panel-head">
@@ -654,6 +792,11 @@ function ItemPanel({
             </li>
           ))}
         </ol>
+      )}
+      {sidegrade.length > 0 && (
+        <p className="text-muted priority-panel-body priority-sidegrade">
+          Sidegrade, not ranked: {sidegrade.join(', ')}
+        </p>
       )}
     </section>
   );
