@@ -659,3 +659,79 @@ export function wishlistNotes(data: PriorityData, catalog: CatalogItem[], player
   }
   return [...byItem.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
+
+// -- Part 5: Scoring --------------------------------------------------------
+
+// Warcraft Logs performance per raider (the current site's Scoring tab).
+// Stored out of 10 until cutover (#1554), shown out of 100.
+export type PerfRole = 'dps' | 'healer' | 'tank';
+export type PerfScore = {
+  playerId: number;
+  role: PerfRole;
+  recent: number | null;
+  trend: number | null;
+  best: number | null;
+  // No parse in the last 8 reports.
+  noData: boolean;
+  // No parse in the last 2, so Recent is the Trend score.
+  usedTrend: boolean;
+};
+export type ScoringRow = {
+  player_id: number;
+  recent_score: number | null;
+  trend_score: number | null;
+  best_score: number | null;
+  performance_score: number | null;
+};
+
+// The roster role, as wcl-sync's classRoleToScoringRole() reads it.
+export const perfRole = (role: string | null | undefined): PerfRole =>
+  role === 'Tank' ? 'tank' : role === 'Heal' ? 'healer' : 'dps';
+
+// What is saved, one row per raider on the roster. Recent is the score
+// Suggest order uses (performance_score).
+export function committedScores(players: PlayerRow[], rows: ScoringRow[]): PerfScore[] {
+  const byPlayer = new Map(rows.map((r) => [r.player_id, r]));
+  return players.map((p) => {
+    const row = byPlayer.get(p.id);
+    const recent = row ? (row.performance_score ?? row.recent_score) : null;
+    return {
+      playerId: p.id,
+      role: perfRole(p.classes_specs?.role),
+      recent,
+      trend: row?.trend_score ?? null,
+      best: row?.best_score ?? null,
+      noData: recent === null,
+      usedTrend: false
+    };
+  });
+}
+
+// Healers and tanks are left out of performance (2026-09-15): attendance only.
+export const scored = (s: PerfScore) => s.role === 'dps';
+
+// The current site's order: raiders with a score, best first, then no data,
+// then healers and tanks.
+export function sortScores(scores: PerfScore[]): PerfScore[] {
+  const rank = (s: PerfScore) => (!scored(s) ? 2 : s.recent === null ? 1 : 0);
+  return [...scores].sort((a, b) => rank(a) - rank(b) || (b.recent ?? 0) - (a.recent ?? 0));
+}
+
+// Whether a raider's Recent differs from what is saved, so Commit would
+// change it.
+export function pending(score: PerfScore, saved: ReadonlyMap<number, number | null>): boolean {
+  if (!scored(score) || score.recent === null) return false;
+  const was = saved.get(score.playerId);
+  return was == null || Math.round(was * 100) !== Math.round(score.recent * 100);
+}
+
+// A score typed out of 100, stored out of 10 to two places; null when it is
+// not a number from 0 to 100.
+export function parseOutOf100(text: string): number | null {
+  const n = Number(text.trim());
+  if (!text.trim() || !Number.isFinite(n) || n < 0 || n > 100) return null;
+  return Math.round(n * 10) / 100;
+}
+
+// Out of 100, one decimal, so nothing stored is hidden.
+export const showOutOf100 = (score: number | null) => (score === null ? '--' : (score * 10).toFixed(1));

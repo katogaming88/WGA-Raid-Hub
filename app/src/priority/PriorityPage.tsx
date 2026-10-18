@@ -40,6 +40,7 @@ import {
   type Unmanaged
 } from './priority';
 import { ConflictFlags } from './RowFlags';
+import { ScoringTab, type ScoreDraft } from './Scoring';
 import { draftKey, ItemEditor, type Draft } from './ItemEditor';
 import {
   useClearNote,
@@ -93,12 +94,16 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
   const [params, setParams] = useSearchParams();
   const track: Track = params.get('track') === 'mythic' ? 'Myth' : 'Hero';
   const tabParam = params.get('tab');
-  const tab = tabParam === 'unmanaged' || tabParam === 'contested' || tabParam === 'notes' ? tabParam : 'list';
+  const tab =
+    tabParam === 'unmanaged' || tabParam === 'contested' || tabParam === 'notes' || tabParam === 'scoring'
+      ? tabParam
+      : 'list';
   const picked = Number(params.get('item')) || null;
   const access = useAccess();
   const officer = can(access.data, 'actAsOfficer', teamId);
   // Unsaved orders, by item and track, kept while the officer looks around.
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [scoreDraft, setScoreDraft] = useState<ScoreDraft | null>(null);
 
   const withParams = (values: Record<string, string | null>) => {
     const next = new URLSearchParams(params);
@@ -177,8 +182,20 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
                 Notes
                 {noteCount > 0 && <span className="count-badge">{noteCount}</span>}
               </Link>
+              <Link to={linkTo({ tab: 'scoring' })} replace aria-current={tab === 'scoring' ? 'page' : undefined}>
+                Scoring
+              </Link>
             </nav>
-            {tab === 'notes' ? (
+            {tab === 'scoring' ? (
+              <ScoringTab
+                teamId={teamId}
+                season={season}
+                players={players}
+                officer={officer}
+                draft={scoreDraft}
+                onDraft={setScoreDraft}
+              />
+            ) : tab === 'notes' ? (
               <NotesList teamId={teamId} season={season} notes={notes} officer={officer} />
             ) : tab === 'contested' ? (
               <ContestedList contested={contested} />
