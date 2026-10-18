@@ -592,3 +592,58 @@
   grid-column: 1 / -1;
   justify-self: start;
 }
+
+/* Part 4: Sidegrade and the Notes tab */
+.priority-sidegrade {
+  margin-top: var(--space-3);
+}
+.priority-notes {
+  display: grid;
+  gap: var(--space-3);
+}
+.priority-notes-search {
+  max-width: 20rem;
+}
+.priority-notes-item {
+  padding: var(--space-3) var(--space-4);
+}
+.priority-notes-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-base, 1rem);
+}
+.priority-notes-title .text-muted {
+  font-weight: 400;
+  font-size: var(--text-sm);
+}
+.priority-notes-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.priority-note {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-1) var(--space-3);
+  align-items: start;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.priority-note-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.priority-note-text {
+  grid-column: 1;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.priority-note-clear {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+}

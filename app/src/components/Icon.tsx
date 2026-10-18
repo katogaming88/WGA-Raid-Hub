@@ -29,6 +29,7 @@ const PATHS = {
   lock: '<rect x="3.5" y="7" width="9" height="6.5" rx="1.2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/>',
   unlock: '<rect x="3.5" y="7" width="9" height="6.5" rx="1.2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 4.8-1"/>',
   plus: '<path d="M8 3.5v9M3.5 8h9"/>',
+  note: '<path d="M2.5 3.5h11v7.5h-7l-3 2.5V11h-1z"/><path d="M5 6.3h6M5 8.5h4"/>',
   shield: '<path d="M8 2 13 4v4c0 3.6-2.2 6-5 7-2.8-1-5-3.4-5-7V4z"/>',
   info: '<circle cx="8" cy="8" r="5.5"/><path d="M8 7.2v3.6"/><circle cx="8" cy="5.1" r="0.9" fill="currentColor" stroke="none"/>',
   help: '<circle cx="8" cy="8" r="5.5"/><path d="M6.1 6.3a2 2 0 1 1 2.9 1.8c-.7.4-1 .8-1 1.5"/><circle cx="8" cy="11.2" r="0.9" fill="currentColor" stroke="none"/>',

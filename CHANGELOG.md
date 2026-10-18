@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.188.0] - 2026-10-18
+
+### Project
+
+- New app (#1362, part 4): the wishlist has a third mark, Sidegrade, between
+  BiS and Pass, for an item a raider would still take. A slot can have any
+  number of Sidegrades; officers see them, but only BiS gets a priority
+  number (Kat, 2026-10-18). A raider can add a note to any item they have
+  marked: a note button beside the three marks opens a box for it, saved on
+  Enter or when they click away, and Escape closes it unsaved. The button
+  turns blue once the item has a note, and the note shows under the item. On the Priority
+  page a new Notes tab lists those notes by item, with a search, and an
+  officer can clear one after confirming; the mark stays and the clear is
+  logged, as on the current site. Raiders who marked an item Sidegrade and
+  are not ranked on it are named under its order. The red outline on a
+  button that removes something now works on every page, not only Settings.
+
 ## [3.187.0] - 2026-10-18
 
 ### Project

@@ -23,7 +23,9 @@ import {
   priorityItems,
   rankedRows,
   sections,
+  sidegradeNames,
   splitNameRealm,
+  wishlistNotes,
   tierPiecesEquipped,
   type PriorityData
 } from './priority';
@@ -177,6 +179,45 @@ describe('conflict flags and contested items', () => {
     expect(top!.wanters.map((w) => w.playerId).slice(0, 3)).toEqual([11, 10, 12]);
     // A raider who left the roster is not counted; five is not enough.
     expect(contestedItems(data, CATALOG, ZONES, 'MID2', roster.slice(0, 5))).toEqual([]);
+  });
+});
+
+describe('Sidegrade and notes', () => {
+  it('names the raiders who marked an item Sidegrade and are not ranked on it', () => {
+    const data = {
+      ...DATA,
+      prefs: [...DATA.prefs, { player_id: 12, item_id: 1, status: 'ok' }, { player_id: 99, item_id: 1, status: 'ok' }]
+    };
+    const drape = priorityItems(data, 'Hero', CATALOG, ZONES, 'MID2').find((i) => i.itemId === 1)!;
+    // Bbldrizzy is ranked, and player 99 left the roster.
+    expect(sidegradeNames(drape, data, PLAYERS)).toEqual(['Amazon']);
+  });
+
+  it('groups notes by item, once per raider and text, leaving out stand-ins and raiders who left', () => {
+    const data = {
+      ...DATA,
+      prefs: [
+        { id: 1, player_id: 10, item_id: 4, status: 'ok', note: 'BiS for Destro' },
+        { id: 2, player_id: 10, item_id: 4, status: 'ok', note: ' BiS for Destro ' },
+        { id: 3, player_id: 11, item_id: 1, status: 'bis', note: 'Need it for the haste' },
+        { id: 4, player_id: 11, item_id: 3, status: 'pass', note: '   ' },
+        { id: 5, player_id: 99, item_id: 1, status: 'bis', note: 'Gone' },
+        { id: 6, player_id: 10, item_id: 8, status: 'bis', note: 'M+ pick' }
+      ]
+    };
+    const notes = wishlistNotes(data, CATALOG, PLAYERS);
+    expect(notes.map((n) => n.name)).toEqual(['Silken Voodoo Drape', "Vile Alchemist's Band"]);
+    expect(notes[1]!.notes).toEqual([
+      {
+        ids: [1, 2],
+        playerId: 10,
+        name: 'Katorrí',
+        className: 'Warlock',
+        spec: 'Demonology',
+        mark: 'ok',
+        note: 'BiS for Destro'
+      }
+    ]);
   });
 });
 
@@ -585,6 +626,53 @@ describe('Loot priority page', () => {
     expect(screen.getByRole('list', { name: 'Drape of the Dreadful Rite, Heroic order' })).toHaveTextContent(
       'Also #1 on Silken Voodoo Drape, same boss'
     );
+  });
+
+  it('lists notes on the Notes tab, and an officer clears one after confirming', async () => {
+    const tables = {
+      ...TABLES,
+      item_preferences: [...DATA.prefs, { id: 7, player_id: 11, item_id: 1, status: 'ok', note: 'BiS for Balance' }]
+    };
+    const { client } = renderApp(`${PAGE}?tab=notes`, handlers(tables));
+    expect(await screen.findByRole('link', { name: 'Notes, 1' })).toBeInTheDocument();
+    expect(screen.getByText('BiS for Balance')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: "Clear Bbldrizzy's note on Silken Voodoo Drape" }));
+    const dialog = await screen.findByRole('dialog', { name: 'Clear this note?' });
+    expect(dialog).toHaveTextContent('Their Sidegrade mark stays.');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Clear note' }));
+    expect(await screen.findByText("Cleared Bbldrizzy's note on Silken Voodoo Drape.")).toBeInTheDocument();
+    expect(client.writes).toContainEqual({
+      table: 'item_preferences',
+      method: 'update',
+      values: { note: null },
+      filters: [['in', 'id', [7]]]
+    });
+    expect(client.rpcs).toContainEqual([
+      'write_audit_log',
+      {
+        p_team_id: 1,
+        p_action: 'Wishlist Note Cleared',
+        p_target_type: 'players',
+        p_target_id: 11,
+        p_detail: 'Bbldrizzy -- Silken Voodoo Drape'
+      }
+    ]);
+  });
+
+  it('shows a guild officer the notes without Clear', async () => {
+    const tables = {
+      ...TABLES,
+      item_preferences: [...DATA.prefs, { id: 7, player_id: 11, item_id: 1, status: 'ok', note: 'BiS for Balance' }]
+    };
+    renderApp(`${PAGE}?tab=notes`, handlers(tables, 'guild'));
+    expect(await screen.findByText('BiS for Balance')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Clear/ })).not.toBeInTheDocument();
+  });
+
+  it('names Sidegrade raiders who are not ranked under the order', async () => {
+    const tables = { ...TABLES, item_preferences: [...DATA.prefs, { player_id: 12, item_id: 1, status: 'ok' }] };
+    renderApp(`${PAGE}?item=1`, handlers(tables, 'guild'));
+    expect(await screen.findByText('Sidegrade, not ranked: Amazon')).toBeInTheDocument();
   });
 
   it('shows the Contested tab, empty until six raiders mark an item BiS', async () => {

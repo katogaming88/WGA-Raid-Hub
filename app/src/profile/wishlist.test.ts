@@ -207,7 +207,52 @@ describe('editorSlots', () => {
   });
 });
 
-const plan = (picks: Pick[], row: string, itemId: number, next: 'bis' | 'pass' | null) =>
+describe('Sidegrade and notes (#1362 part 4)', () => {
+  const row = (slots: ReturnType<typeof editorSlots>, slot: string, name: string) =>
+    slots.find((s) => s.slot === slot)!.items.find((i) => i.name === name)!;
+
+  it('reads Sidegrade marks, any number in a slot, beside a BiS', () => {
+    const slots = editorSlots(
+      input([pick(1, 'bis', null), pick(6, 'ok', 'Weapon'), pick(4, 'ok', 'Finger 1'), pick(5, 'ok', 'Finger 1')])
+    );
+    expect(row(slots, 'Head', 'Plate Helm').mark).toBe('bis');
+    expect(row(slots, 'Weapon', 'Axe').mark).toBe('ok');
+    expect(row(slots, 'Finger 1', 'Ring A').mark).toBe('ok');
+    expect(row(slots, 'Finger 1', 'Ring B').mark).toBe('ok');
+  });
+
+  it('reads a ring Sidegrade in both slots, with its note and every row carrying it', () => {
+    const one = pick(4, 'ok', 'Finger 1', { note: '  BiS for Unholy ' });
+    const two = pick(4, 'ok', 'Finger 2', { note: 'BiS for Unholy' });
+    const slots = editorSlots(input([one, two]));
+    for (const slot of ['Finger 1', 'Finger 2']) {
+      expect(row(slots, slot, 'Ring A')).toMatchObject({ mark: 'ok', note: 'BiS for Unholy' });
+      expect(row(slots, slot, 'Ring A').noteIds.sort()).toEqual([one.id, two.id]);
+    }
+  });
+
+  it('has no note or rows on an unmarked item', () => {
+    expect(row(editorSlots(input([])), 'Head', 'Plate Helm')).toMatchObject({ note: null, noteIds: [] });
+  });
+
+  it('leaves other Sidegrades and the BiS alone when marking one', () => {
+    const bis = pick(6, 'bis', 'Weapon');
+    const other = pick(7, 'ok', 'Weapon');
+    expect(planMark({ ...input([bis, other]), teamId: 1, playerId: 11 }, 'Weapon', 6, 'ok')).toEqual({
+      deletes: [],
+      update: { id: bis.id, status: 'ok', slot: 'Weapon' },
+      insert: null
+    });
+    expect(plan([bis, other], 'Weapon', 7, 'bis').deletes).toEqual([bis.id]);
+  });
+
+  it('replaces a ring Sidegrade saved in the other slot', () => {
+    const okOther = pick(5, 'ok', 'Finger 2');
+    expect(plan([okOther], 'Finger 1', 5, 'pass').deletes).toEqual([okOther.id]);
+  });
+});
+
+const plan = (picks: Pick[], row: string, itemId: number, next: 'bis' | 'ok' | 'pass' | null) =>
   planMark({ ...input(picks), teamId: 1, playerId: 11 }, row, itemId, next);
 
 describe('planMark', () => {

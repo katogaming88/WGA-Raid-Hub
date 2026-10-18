@@ -671,6 +671,48 @@
   color: var(--bad);
 }
 
+.mark-ok[aria-pressed='true'] {
+  color: var(--warn);
+}
+
+/* The marks and the note button beside them (#1362 part 4). */
+.wishlist-item-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Hidden keeps its space, so the marks line up on every row. */
+.wishlist-note-button {
+  display: inline-flex;
+  min-width: 32px;
+  min-height: 32px;
+  color: var(--text-muted);
+}
+
+.wishlist-note-button[hidden] {
+  visibility: hidden;
+}
+
+.wishlist-note-button[data-has-note] {
+  color: var(--brand);
+}
+
+/* A note on a marked item takes its own line under the item (#1362 part 4). */
+.wishlist-note-input {
+  flex-basis: 100%;
+  min-height: 30px;
+  font-size: var(--text-sm);
+}
+
+.wishlist-note {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
 .mark-button:disabled {
   cursor: default;
 }

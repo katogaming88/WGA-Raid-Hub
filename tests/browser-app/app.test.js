@@ -796,7 +796,16 @@ const PRIORITY_FLAGGED = {
       ...PRIORITY.tables.priority_order,
       { item_id: 2, track: 'Hero', rank: 1, player_id: PRIORITY_IDS[0], players: { name_realm: 'x' } }
     ],
-    item_preferences: PRIORITY_IDS.slice(0, 6).map((player_id) => ({ player_id, item_id: 1, status: 'bis' }))
+    item_preferences: [
+      ...PRIORITY_IDS.slice(0, 6).map((player_id, i) => ({
+        id: i + 1,
+        player_id,
+        item_id: 1,
+        status: 'bis',
+        note: i === 0 ? 'Big upgrade for my Mythic+ set too' : null
+      })),
+      { id: 7, player_id: PRIORITY_IDS[6], item_id: 2, status: 'ok', note: 'BiS for my other spec' }
+    ]
   }
 };
 
@@ -1236,6 +1245,21 @@ const STATES = [
     sentinel: 'main .priority-contested-item',
     click: 'main .priority-contested-item summary',
     afterClick: 'main .priority-contested-who'
+  },
+  {
+    label: 'loot priority, Notes',
+    ...PRIORITY_FLAGGED,
+    path: '/g/wga/t/phoenix/officer/priority?tab=notes',
+    sentinel: 'main .priority-note'
+  },
+  {
+    label: 'loot priority, Notes, light, clearing one',
+    ...PRIORITY_FLAGGED,
+    colorScheme: 'light',
+    path: '/g/wga/t/phoenix/officer/priority?tab=notes',
+    sentinel: 'main .priority-note',
+    click: 'main .priority-note-clear >> nth=0',
+    afterClick: '[role=dialog]'
   },
   { label: 'loot fairness', ...REPORT, path: '/g/wga/t/phoenix/officer/reports/loot-fairness' },
   {

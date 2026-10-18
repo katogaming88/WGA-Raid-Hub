@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { DataState } from '../components/DataState';
+import { Icon } from '../components/Icon';
 import { useTouchScreen } from '../lib/device';
 import { bothQueries } from '../data/query';
 import { useSeasons } from '../calendar/useCalendar';
@@ -9,6 +10,7 @@ import {
   useCatalog,
   useMarkWishlist,
   useRaidZones,
+  useSaveWishlistNote,
   useSeasonTierTokens,
   useWishlist,
   useWishlistSettings,
@@ -20,10 +22,12 @@ import { WishlistSummaryCard } from './LootPriorityCard';
 import {
   editorSeason,
   editorSlots,
+  MARKS,
   ownWishlistSeason,
   planMark,
   wishlistCandidates,
   type EditorInput,
+  type EditorRow,
   type EditorSlot,
   type Mark
 } from './wishlist';
@@ -121,7 +125,8 @@ export function WishlistTab({
   );
 }
 
-// The wishlist editor (#868 part 3): each slot's raid items, marked BiS or Pass.
+// The wishlist editor (#868 part 3): each slot's raid items, marked BiS,
+// Sidegrade or Pass, with an optional note on a marked item (#1362 part 4).
 // The raider edits their own while the team's wishlist is open, or when an
 // officer allowed them; everyone else who can open the profile reads it.
 function WishlistEditor({
@@ -152,7 +157,7 @@ function WishlistEditor({
   return (
     <section className="card profile-card" aria-labelledby="wishlist-editor-title">
       <h2 id="wishlist-editor-title" className="card-title">
-        BiS or Pass by slot
+        BiS, Sidegrade or Pass by slot
       </h2>
       <DataState query={bothQueries(bothQueries(season, tiers), bothQueries(picks, catalog))} label="the wishlist">
         {([, [p, c]]) => (
@@ -201,9 +206,11 @@ function Editor({
   touch: boolean;
 }) {
   const mark = useMarkWishlist(playerId);
+  const saveNote = useSaveWishlistNote(playerId);
   const slots = editorSlots(input);
   const set = (slot: string, itemId: number, next: Mark | null) =>
     mark.mutate(planMark({ ...input, teamId, playerId }, slot, itemId, next));
+  const error = mark.error ?? saveNote.error;
 
   return (
     <>
@@ -217,18 +224,26 @@ function Editor({
         </p>
       ) : editable ? (
         <p className="card-note text-muted">
-          Mark one item BiS for each slot, and Pass on anything you would not take. Click a mark again to clear it.
+          Mark one item BiS for each slot. Sidegrade is anything you would still take: officers see it, but only BiS
+          gets a priority number. Pass on anything you would not take. Click a mark again to clear it. Officers can read
+          a note you add to a marked item.
         </p>
       ) : null}
-      {mark.isError && (
+      {error && (
         <p className="wishlist-error" role="alert">
-          That did not save: {mark.error.message}
+          That did not save: {error.message}
         </p>
       )}
       {slots.length === 0 ? (
         <p className="text-muted card-note">No raid items are set up for this season yet.</p>
       ) : (
-        <SlotTabs slots={slots} disabled={!editable || mark.isPending} onMark={set} />
+        <SlotTabs
+          slots={slots}
+          disabled={!editable || mark.isPending}
+          editable={editable}
+          onMark={set}
+          onNote={(ids, note) => saveNote.mutate({ ids, note })}
+        />
       )}
     </>
   );
@@ -247,13 +262,20 @@ const tabId = (slot: string) => `wishlist-slot-${slot.toLowerCase().replace(/s+/
 function SlotTabs({
   slots,
   disabled,
-  onMark
+  editable,
+  onMark,
+  onNote
 }: {
   slots: EditorSlot[];
   disabled: boolean;
+  editable: boolean;
   onMark: (slot: string, itemId: number, next: Mark | null) => void;
+  onNote: (ids: number[], note: string) => void;
 }) {
   const [chosen, setChosen] = useState(slots[0]!.slot);
+  // The item whose note box is open: one at a time, opened by its note button.
+  const [noteOpen, setNoteOpen] = useState<string | null>(null);
+  const noteButtons = useRef(new Map<string, HTMLButtonElement | null>());
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const index = Math.max(
     0,
@@ -337,25 +359,107 @@ function SlotTabs({
               {item.takenBy ? (
                 <span className="wishlist-taken">Your {item.takenBy} BiS</span>
               ) : (
-                <span className="mark-buttons" role="group" aria-label={`${item.name}, ${current.slot}`}>
-                  {(['bis', 'pass'] as const).map((m) => (
+                <span className="wishlist-item-actions">
+                  <span className="mark-buttons" role="group" aria-label={`${item.name}, ${current.slot}`}>
+                    {MARKS.map(({ mark: m, label }) => (
+                      <button
+                        key={m}
+                        type="button"
+                        className={`mark-button mark-${m}`}
+                        aria-pressed={item.mark === m}
+                        disabled={disabled}
+                        onClick={() => onMark(current.slot, item.itemId, item.mark === m ? null : m)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </span>
+                  {editable && (
+                    // On every row, hidden until the item is marked, so the
+                    // mark buttons line up down the slot (Kat, 2026-10-18).
                     <button
-                      key={m}
+                      ref={(el) => {
+                        noteButtons.current.set(`${current.slot}|${item.itemId}`, el);
+                      }}
                       type="button"
-                      className={`mark-button mark-${m}`}
-                      aria-pressed={item.mark === m}
-                      disabled={disabled}
-                      onClick={() => onMark(current.slot, item.itemId, item.mark === m ? null : m)}
+                      className="icon-button wishlist-note-button"
+                      data-has-note={item.note ? true : undefined}
+                      hidden={!item.mark}
+                      aria-label={`${item.note ? 'Edit the note' : 'Add a note'} on ${item.name}`}
+                      aria-expanded={noteOpen === `${current.slot}|${item.itemId}`}
+                      title={item.note ? 'Edit note' : 'Add a note'}
+                      onClick={() =>
+                        setNoteOpen((open) =>
+                          open === `${current.slot}|${item.itemId}` ? null : `${current.slot}|${item.itemId}`
+                        )
+                      }
                     >
-                      {m === 'bis' ? 'BiS' : 'Pass'}
+                      <Icon name="note" />
                     </button>
-                  ))}
+                  )}
                 </span>
               )}
+              {item.mark && editable && noteOpen === `${current.slot}|${item.itemId}` ? (
+                <NoteField
+                  item={item}
+                  onSave={onNote}
+                  onDone={(refocus) => {
+                    setNoteOpen(null);
+                    if (refocus) noteButtons.current.get(`${current.slot}|${item.itemId}`)?.focus();
+                  }}
+                />
+              ) : item.note ? (
+                <p className="wishlist-note">Note: {item.note}</p>
+              ) : null}
             </li>
           ))}
         </ul>
       </div>
     </>
+  );
+}
+
+// A note on a marked item, opened by the note button beside the marks. Saved
+// when the field loses focus or on Enter; Escape closes it unsaved.
+function NoteField({
+  item,
+  onSave,
+  onDone
+}: {
+  item: EditorRow;
+  onSave: (ids: number[], note: string) => void;
+  onDone: (refocus: boolean) => void;
+}) {
+  const [value, setValue] = useState(item.note ?? '');
+  const cancelled = useRef(false);
+  const refocus = useRef(false);
+  const finish = () => {
+    if (!cancelled.current && value.trim() !== (item.note ?? '')) onSave(item.noteIds, value);
+    onDone(refocus.current);
+  };
+  return (
+    <input
+      className="input wishlist-note-input"
+      type="text"
+      maxLength={200}
+      placeholder="Note (optional)"
+      aria-label={`Note on ${item.name}`}
+      // Opened on purpose by its button, so it takes focus.
+      // eslint-disable-next-line jsx-a11y/no-autofocus
+      autoFocus
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={finish}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === 'Escape') {
+          // Focus goes back to the note button; without this the same Enter
+          // would press it and open the box again.
+          e.preventDefault();
+          cancelled.current = e.key === 'Escape';
+          refocus.current = true;
+          e.currentTarget.blur();
+        }
+      }}
+    />
   );
 }

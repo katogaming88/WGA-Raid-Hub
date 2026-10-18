@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     36 h 51 m |
-| Revamp 3: officer dashboard        |     24 h 34 m |
+| Revamp 3: officer dashboard        |     25 h 26 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **85 h 45 m** |
+| **All revamp work**                | **86 h 37 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -306,6 +306,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 1:51-2:10 PM | #1362 part 2 built: the side-panel editor (Suggest order with each raider's saved place, keyboard moves, lock, add from marked raiders or the roster, save, kept drafts), the Unmanaged tab, tests, the browser test's accessibility states, checked on the production backup, stamp, changelog, these rows, PR opened | Revamp 3 (#1362) | 20 m | ~20 m build, Kat's two notes mid-build | not read | Kat: drop the "Already has <slot>" flag; for rings, trinkets and weapons show only the raider's other BiS item already won. Review and merge not yet counted |
 | 2:10-2:16 PM | PR #1556 (#1362 part 2) reviewed and merged | Revamp 3 (#1362) | 5 m | ~5 m Kat reviewing | not read | Merged 2:16 PM |
 | 6:15-6:37 PM | #1362 part 3 built: a flag on a #1 who has the Heroic copy or is also #1 on another item from the same boss (list and editor), Needs a look and a dot in the item list, the Contested tab, the gear status line reworded for officers, tests, the browser test's accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1362) | 20 m | ~20 m build | not read | Review and merge not yet counted |
+| 6:37-7:19 PM | PR #1557 (#1362 part 3): screenshots on the production backup, Contested cards given padding, each raider as a tile, raiders sorted by their best priority number (Kat's two asks), review and merge | Revamp 3 (#1362) | 42 m | ~15 m build, ~27 m Kat reviewing | not read | Kat: Contested names were hard to read; sort them by priority number. Merged 7:19 PM |
+| 7:20-7:30 PM | #1362 part 4 built: Sidegrade on the wishlist (any number per slot, never ranked) and notes on a marked item, the Notes tab with Clear note, Sidegrade raiders named under an item's order, tests, browser tests and accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1362) | 10 m | ~10 m build | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

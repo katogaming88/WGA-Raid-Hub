@@ -332,6 +332,76 @@ describe('Wishlist (new app), marking, checked against the current site', () => 
   });
 });
 
+// Sidegrade and notes are the new app's own (Kat, 2026-10-18, #1362 part 4).
+describe('Wishlist (new app), Sidegrade and notes', () => {
+  it('turns a BiS pick into a Sidegrade in place', async () => {
+    const opened = await open();
+    try {
+      await showEditor(opened.page);
+      const writes = recordWrites(opened.page);
+      await (
+        await itemRow(opened.page, 'Head', 'Venom-Etched Greathelm')
+      )
+        .getByRole('button', { name: 'Sidegrade' })
+        .click();
+      await expect.poll(() => writes.length).toBe(1);
+      expect(writes[0]).toMatchObject({ method: 'PATCH', query: { id: 'eq.1' }, body: { status: 'ok' } });
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  it('opens a note box from the note button beside the marks, and saves the note on Enter', async () => {
+    const opened = await open();
+    try {
+      await showEditor(opened.page);
+      const writes = recordWrites(opened.page);
+      const row = await itemRow(opened.page, 'Head', 'Venom-Etched Greathelm');
+      const box = row.getByRole('textbox', { name: 'Note on Venom-Etched Greathelm' });
+      await expect(box.count()).resolves.toBe(0);
+      await row.getByRole('button', { name: 'Add a note on Venom-Etched Greathelm' }).click();
+      await box.fill('BiS for Frost too');
+      await box.press('Enter');
+      await expect.poll(() => writes.length).toBe(1);
+      expect(writes[0]).toMatchObject({
+        method: 'PATCH',
+        query: { id: 'in.(1)' },
+        body: { note: 'BiS for Frost too' }
+      });
+      // The box closes, and focus goes back to the button.
+      await expect.poll(() => box.count()).toBe(0);
+      await expect(opened.page.evaluate(() => document.activeElement?.getAttribute('aria-label'))).resolves.toMatch(
+        /note on Venom-Etched Greathelm$/
+      );
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  it('has no note button on an unmarked item, and Escape closes the box unsaved', async () => {
+    const opened = await open();
+    try {
+      await showEditor(opened.page);
+      const writes = recordWrites(opened.page);
+      await opened.page.click('main .wishlist-slot-tab[data-slot="Head"]');
+      // Hidden, keeping its space, on every unmarked row.
+      const visible = await opened.page
+        .locator('main .wishlist-item:not([data-mark]) .wishlist-note-button')
+        .evaluateAll((buttons) => buttons.filter((b) => getComputedStyle(b).visibility !== 'hidden').length);
+      expect(visible).toBe(0);
+      const row = await itemRow(opened.page, 'Head', 'Venom-Etched Greathelm');
+      await row.getByRole('button', { name: 'Add a note on Venom-Etched Greathelm' }).click();
+      const box = row.getByRole('textbox', { name: 'Note on Venom-Etched Greathelm' });
+      await box.fill('Never mind');
+      await box.press('Escape');
+      await expect.poll(() => box.count()).toBe(0);
+      expect(writes).toEqual([]);
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
 // PINNED_ELSEWHERE in tests/behavior/wishlist.js, checked against the current
 // site. The earlier tier's switch is on too, and the raider is not offered it.
 describe('Wishlist (new app), with an officer’s Season View on another season, checked against the current site', () => {

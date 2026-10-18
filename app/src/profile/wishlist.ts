@@ -3,7 +3,9 @@
 // as the current site's My Wishlist (js/wishlist.js), recorded in
 // tests/behavior/wishlist.js, with two changes Kat made on 2026-09-14: a slot
 // is marked BiS or Pass only (#1032), and a BiS pick that is replaced is
-// unmarked rather than kept as 2nd Choice. Notes are gone. Dungeon and crafted
+// unmarked rather than kept as 2nd Choice. Kat amended that on 2026-10-18
+// (#1362): Sidegrade (`ok`) is back as a middle mark officers see but that is
+// never ranked, any number per slot, and so are notes on a marked item. Dungeon and crafted
 // items are offered for the seasons item_seasons lists them in, tagged, and
 // never ranked (#1166).
 
@@ -11,8 +13,13 @@ import type { CatalogItem, WishlistRow, ZoneRow } from './lootPriority';
 import type { SeasonWindow } from './profile';
 import { WISHLIST_SLOTS, offRaid } from './lootPriority';
 
-export type Mark = 'bis' | 'pass';
-export type Pick = WishlistRow & { id: number; synced_bis: boolean };
+export type Mark = 'bis' | 'ok' | 'pass';
+export const MARKS: { mark: Mark; label: string }[] = [
+  { mark: 'bis', label: 'BiS' },
+  { mark: 'ok', label: 'Sidegrade' },
+  { mark: 'pass', label: 'Pass' }
+];
+export type Pick = WishlistRow & { id: number; synced_bis: boolean; note?: string | null };
 export type TokenRow = { token_item_id: number; resolved_item_id: number; class: string };
 export type Wearer = { className: string | null; spec: string | null; role: string | null };
 
@@ -22,6 +29,10 @@ export type EditorRow = {
   source: string;
   mark: Mark | null;
   takenBy: string | null;
+  // The raider's note on the mark, and the saved rows that carry the mark,
+  // which a note is written to.
+  note: string | null;
+  noteIds: number[];
 };
 export type EditorSlot = { slot: string; items: EditorRow[]; notFromRaid: string | null };
 
@@ -308,19 +319,34 @@ function pairHolders(ctx: Context, row: string): Record<string, number[]> {
 }
 
 // How `itemId` reads in `row`.
-function markFor(ctx: Context, row: string, itemId: number): { mark: Mark | null; takenBy: string | null } {
+type Reading = { mark: Mark | null; takenBy: string | null; note: string | null; noteIds: number[] };
+
+function markFor(ctx: Context, row: string, itemId: number): Reading {
   const own = picksFor(ctx.picks, ctx.byId, row, itemId);
   const pair = PAIR[row];
   const other = pair ? picksFor(ctx.picks, ctx.byId, pair, itemId) : [];
+  // A ring or trinket's rows in either slot carry its mark: a BiS held here
+  // is not held in the other slot, and a Sidegrade or Pass shows in both.
+  const carried = (mark: Mark): Reading => {
+    const rows = (pair ? [...own, ...other] : own).filter((p) => p.status === mark);
+    return {
+      mark,
+      takenBy: null,
+      note: rows.map((p) => p.note?.trim()).find((n) => !!n) ?? null,
+      noteIds: rows.map((p) => p.id)
+    };
+  };
   if (pair) {
     const held = pairHolders(ctx, row);
-    if (held[row]!.includes(itemId)) return { mark: 'bis', takenBy: null };
-    if (held[pair]!.includes(itemId)) return { mark: null, takenBy: pair };
+    if (held[row]!.includes(itemId)) return carried('bis');
+    if (held[pair]!.includes(itemId)) return { mark: null, takenBy: pair, note: null, noteIds: [] };
   } else if (own.some((p) => p.status === 'bis')) {
-    return { mark: 'bis', takenBy: null };
+    return carried('bis');
   }
-  if ([...own, ...other].some((p) => p.status === 'pass')) return { mark: 'pass', takenBy: null };
-  return { mark: null, takenBy: null };
+  for (const mark of ['ok', 'pass'] as const) {
+    if ([...own, ...other].some((p) => p.status === mark)) return carried(mark);
+  }
+  return { mark: null, takenBy: null, note: null, noteIds: [] };
 }
 
 export type EditorInput = {
@@ -424,9 +450,9 @@ export function planMark(
   };
 
   // Every other row marking the item here, and for a ring or trinket, its BiS
-  // and Pass rows in the other slot, which this mark replaces.
+  // Sidegrade and Pass rows in the other slot, which this mark replaces.
   for (const p of own) drop(p);
-  if (pair) for (const p of other) if (p.status === 'bis' || p.status === 'pass') drop(p);
+  if (pair) for (const p of other) if (p.status === 'bis' || p.status === 'ok' || p.status === 'pass') drop(p);
 
   if (next === 'bis') {
     // One BiS pick per slot: the raid item holding it this season, and an M+
