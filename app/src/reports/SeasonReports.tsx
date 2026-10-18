@@ -15,7 +15,7 @@ import { useBisDemand, useLootPace, usePriorityHealth, type BisDemandRow, type P
 
 // The season list, newest first, opening on the current one. A season with
 // nothing in a report still shows, so an officer can see it is clean.
-function SeasonReport({
+export function SeasonReport({
   title,
   intro,
   children
@@ -54,7 +54,8 @@ function SeasonReport({
   );
 }
 
-const nameOf = (seasons: SeasonRow[], code: string) => seasons.find((s) => s.code === code)?.display_name ?? code;
+export const nameOf = (seasons: SeasonRow[], code: string) =>
+  seasons.find((s) => s.code === code)?.display_name ?? code;
 
 // BiS demand
 

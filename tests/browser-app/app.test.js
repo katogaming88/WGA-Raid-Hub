@@ -682,7 +682,29 @@ const REPORT_TABLES = {
     { priority_order_id: 1, item_name: 'Ring of Ash', track: 'Myth', rank: 2, name_realm: 'Gone-Illidan' }
   ],
   priority_order_gaps: [{ player_id: SCENARIO.players[0].id, name_realm: SCENARIO.players[0].name_realm }],
-  priority_order_stale_after_heroic: []
+  priority_order_stale_after_heroic: [],
+  // Boss lineups (#1247): four nights over two bosses, the last without its log
+  // yet, with a kill, a swap-in, a miss and a late arrival on the page.
+  raid_encounters: [
+    { id: 101, name: "Nek'zali the Soulcoiler", sort_index: 1, cap: null, zone: { ...LINEUP_ZONE, season: 'MID2' } },
+    { id: 102, name: 'Sszorak', sort_index: 2, cap: null, zone: { ...LINEUP_ZONE, season: 'MID2' } }
+  ],
+  ...(() => {
+    const ids = SCENARIO.players.map((p) => p.id);
+    const dates = ['2026-08-05', '2026-08-07', '2026-08-12', '2026-08-14'];
+    const seat = (raid_date, encounter_id, list) => list.map((player_id) => ({ raid_date, encounter_id, player_id }));
+    const out = (i) => ids.filter((_, k) => k % dates.length !== i);
+    return {
+      raid_night_bosses: dates.flatMap((raid_date) =>
+        [101, 102].map((encounter_id, k) => ({ raid_date, encounter_id, position: k + 1, skipped: false }))
+      ),
+      raid_night_lineups: dates.flatMap((d, i) => [...seat(d, 101, out(i)), ...seat(d, 102, out((i + 1) % 4))]),
+      raid_night_participation: dates
+        .slice(0, 3)
+        .flatMap((d, i) => [...seat(d, 101, out(i).slice(1)), ...seat(d, 102, [...out((i + 1) % 4), ids[i]])]),
+      team_raid_kills: [{ raid_date: '2026-08-07', encounter_id: 101 }]
+    };
+  })()
 };
 const REPORT = {
   session: OFFICER,
@@ -1100,6 +1122,32 @@ const STATES = [
     colorScheme: 'light'
   },
   { label: 'bench fairness', ...REPORT, path: '/g/wga/t/phoenix/officer/reports/bench-fairness' },
+  { label: 'boss lineups, raiders', ...TABLE_REPORT, path: '/g/wga/t/phoenix/officer/reports/boss-lineups' },
+  {
+    label: 'boss lineups, raiders, light',
+    ...TABLE_REPORT,
+    path: '/g/wga/t/phoenix/officer/reports/boss-lineups',
+    colorScheme: 'light'
+  },
+  {
+    label: 'boss lineups, bosses',
+    ...TABLE_REPORT,
+    path: '/g/wga/t/phoenix/officer/reports/boss-lineups',
+    click: 'role=button[name="Bosses"]'
+  },
+  {
+    label: 'boss lineups, nights',
+    ...TABLE_REPORT,
+    path: '/g/wga/t/phoenix/officer/reports/boss-lineups',
+    click: 'role=button[name="Nights"]'
+  },
+  {
+    label: 'boss lineups, nights, light',
+    ...TABLE_REPORT,
+    path: '/g/wga/t/phoenix/officer/reports/boss-lineups',
+    click: 'role=button[name="Nights"]',
+    colorScheme: 'light'
+  },
   { label: 'raid nights since last item', ...TABLE_REPORT, path: '/g/wga/t/phoenix/officer/reports/raid-nights' },
   {
     label: 'raid nights since last item, light',
@@ -1492,6 +1540,71 @@ describe('narrow-screen drawer', () => {
       expect(await axe(page)).toEqual([]);
       await page.keyboard.press('Escape');
       await expect.poll(() => menu.evaluate((el) => el === document.activeElement)).toBe(true);
+    } finally {
+      await context.close();
+    }
+  });
+});
+
+// The sidebar never shows a scrollbar (Kat, 2026-10-18): every section open
+// while they fit, then the current page's section and Site, then the current
+// page's section only. Clicking through a folded sidebar once looped forever.
+describe('sidebar folding', () => {
+  const at = (height) => ({
+    ...TABLE_REPORT,
+    path: '/g/wga/t/phoenix/officer/reports/bis-demand',
+    viewport: { width: 1280, height }
+  });
+  const sidebarState = (page) =>
+    page.evaluate(() => {
+      const el = document.getElementById('sidebar');
+      return {
+        overflow: el.scrollHeight - el.clientHeight,
+        folds: document.querySelectorAll('.nav-section-toggle').length,
+        open: [...document.querySelectorAll('[id^="section-"]:not([hidden])')].map((ul) => ul.id.slice(8))
+      };
+    });
+
+  it('keeps every section open when they fit, with Loot current on any of its report tabs', async () => {
+    const { context, page } = await openApp(browser, server.port, at(1400));
+    try {
+      expect(await sidebarState(page)).toEqual({
+        overflow: 0,
+        folds: 0,
+        open: ['Guild', 'You', 'Team', 'Officer', 'Site']
+      });
+      const nav = page.locator('#sidebar nav');
+      expect(await nav.getByRole('link', { name: 'Loot', exact: true }).getAttribute('aria-current')).toBe('page');
+      const tabs = page.getByRole('navigation', { name: 'Reports on this page' });
+      expect(await tabs.getByRole('link', { name: 'BiS demand' }).getAttribute('aria-current')).toBe('page');
+    } finally {
+      await context.close();
+    }
+  });
+
+  it('folds to the current section and Site when they would not fit, and clicks through without looping', async () => {
+    const { context, page, pageErrors } = await openApp(browser, server.port, at(900));
+    try {
+      const nav = page.locator('#sidebar nav');
+      await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 4, open: ['Officer', 'Site'] });
+      await nav.getByRole('button', { name: 'Team', exact: true }).click();
+      await nav.getByRole('link', { name: 'Roster', exact: true }).click();
+      await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 4, open: ['Team', 'Site'] });
+      await nav.getByRole('button', { name: 'Officer', exact: true }).click();
+      await nav.getByRole('button', { name: 'Settings', exact: true }).click();
+      await nav.getByRole('link', { name: 'General', exact: true }).click();
+      await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 4, open: ['Officer', 'Site'] });
+      expect(pageErrors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+  it('folds Site too only when the window is too short for it', async () => {
+    const { context, page, pageErrors } = await openApp(browser, server.port, at(720));
+    try {
+      await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 5, open: ['Officer'] });
+      expect(pageErrors).toEqual([]);
     } finally {
       await context.close();
     }

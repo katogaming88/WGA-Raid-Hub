@@ -12,6 +12,34 @@ answers to.
 
 ---
 
+## [3.184.0] - 2026-10-18
+
+### Project
+
+- New app (#1247): a Boss lineups report under Reports, for officers. It
+  reads a season of the Calendar's boss lineups against who the logs say was
+  in each fight, with a season picker and three views. Raiders: how many of
+  the team's pulls each raider was planned for, sat out, their longest run
+  sat out, played, missed and swapped in, the kills they were in for, the
+  bosses they were never in for and their bonus roll boss, with each role's
+  sit-out spread above the table. Bosses: who is always in, the seats that
+  rotate, the average make-up of a pull, the first kill's lineup, and a grid
+  of how often each raider has been in for each boss. Nights: each boss
+  planned against the log, who swapped in, who missed it and who came late
+  for their first boss. A night whose log is not in yet counts from its plan.
+  Lineups only exist in the new app, so the report fills in once teams plan
+  their nights there.
+- New app: Reports in the sidebar go from nine items to three. Loot holds
+  Fairness, Nights since last item, BiS demand, Loot pace, Priority order
+  health and Tier sets as tabs on one page; Bench and lineups holds Bench
+  fairness and Boss lineups; Performance trends stays as it is. Each report
+  keeps its own address.
+- New app: the sidebar never shows a scrollbar. While every section fits,
+  all stay open as before. When they would not, the section headings become
+  fold buttons and only the current page's section and Site stay open; on a
+  window too short even for that, Site folds too. Opening an officer menu
+  opens the Officer section.
+
 ## [3.183.1] - 2026-10-17
 
 ### Project

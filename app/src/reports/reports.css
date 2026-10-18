@@ -1,6 +1,34 @@
 /* Reports (#1359): Loot fairness and Bench fairness, bars by role against
    the raid average, from the current site's fairness tabs. */
 
+/* Reports of a kind as tabs on one page (Kat, 2026-10-18), the night page's
+   tab look. */
+.report-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-5);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.report-tabs a {
+  padding: 10px 2px;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: var(--text-md);
+  text-decoration: none;
+}
+
+.report-tabs a:hover {
+  color: var(--text);
+}
+
+.report-tabs a[aria-current='page'] {
+  border-bottom-color: var(--brand);
+  color: var(--text);
+  font-weight: 600;
+}
+
 .report-page .role-filter {
   margin-bottom: var(--space-3);
 }
@@ -173,5 +201,51 @@
 }
 
 .report-item {
+  font-weight: 600;
+}
+
+/* Boss lineups (#1247). */
+.lineup-summary {
+  margin: 0 0 var(--space-2);
+}
+
+.lineup-load {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.lineup-kill summary {
+  cursor: pointer;
+}
+
+.lineup-grid-of {
+  font-weight: 400;
+}
+
+.lineup-night {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+}
+
+.lineup-night > * {
+  margin: 0;
+}
+
+.lineup-night-bosses {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.lineup-killed {
+  color: var(--good);
   font-weight: 600;
 }

@@ -25,4 +25,14 @@ if (typeof window !== 'undefined') {
         dispatchEvent: () => false
       }) as MediaQueryList;
   }
+
+  // jsdom has no ResizeObserver, and lays nothing out, so the sidebar always
+  // fits and never folds; the browser tests cover folding.
+  if (!window.ResizeObserver) {
+    window.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  }
 }
