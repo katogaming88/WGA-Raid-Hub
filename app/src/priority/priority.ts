@@ -292,6 +292,9 @@ export type Wanter = {
   // The best copy they already have.
   has: 'Mythic' | 'Heroic' | 'Normal' | null;
 };
+// A raider's best (lowest) spot on either track; unranked sort last.
+const best = (w: Wanter) => Math.min(w.heroic ?? Infinity, w.mythic ?? Infinity);
+
 export type Contested = { item: PriorityItem; wanters: Wanter[] };
 
 // Items CONTESTED_MIN or more raiders on the roster marked BiS, most wanted
@@ -337,7 +340,7 @@ export function contestedItems(
             has: o.mythic ? ('Mythic' as const) : o.heroic ? ('Heroic' as const) : o.normal ? ('Normal' as const) : null
           };
         })
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .sort((a, b) => best(a) - best(b) || a.name.localeCompare(b.name))
     });
   }
   return out.sort((a, b) => b.wanters.length - a.wanters.length || a.item.name.localeCompare(b.item.name));

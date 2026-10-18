@@ -173,6 +173,8 @@ describe('conflict flags and contested items', () => {
     const kat = top!.wanters.find((w) => w.playerId === 10)!;
     expect([kat.heroic, kat.mythic, kat.has]).toEqual([1, null, 'Heroic']);
     expect(top!.wanters.find((w) => w.playerId === 11)!.mythic).toBe(1);
+    // Best priority number first, unranked last.
+    expect(top!.wanters.map((w) => w.playerId).slice(0, 3)).toEqual([11, 10, 12]);
     // A raider who left the roster is not counted; five is not enough.
     expect(contestedItems(data, CATALOG, ZONES, 'MID2', roster.slice(0, 5))).toEqual([]);
   });
