@@ -741,8 +741,13 @@ const PRIORITY = {
   session: OFFICER,
   who: 'officer',
   path: '/g/wga/t/phoenix/officer/priority?item=1',
-  sentinel: 'main .priority-rank',
-  rpc: { build_rclc_export: { players: {}, priority: {} } },
+  sentinel: 'main .priority-rank-num',
+  rpc: {
+    build_rclc_export: { players: {}, priority: {} },
+    generate_priority_order: PRIORITY_IDS.slice(0, 4)
+      .reverse()
+      .map((player_id, i) => ({ player_id, weighted_total: 8 - i / 2, status_label: i ? '' : 'Has Champion' }))
+  },
   tables: {
     players: REPORT_TABLES.players,
     seasons: [{ code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-07-18', ends_at: null }],
@@ -772,6 +777,7 @@ const PRIORITY = {
     ],
     item_bosses: [{ item_id: 1, boss: 'The Coiled Altar' }],
     tier_token_map: [],
+    self_received_requests: [],
     site_settings: [{ id: 1, gear_sync_last_cron_run: { finished_at: '2026-10-18T06:00:00Z', synced: 76, skipped: 1 } }]
   }
 };
@@ -1175,6 +1181,25 @@ const STATES = [
     afterClick: 'main .priority-string'
   },
   { label: 'loot priority, on a phone', ...PRIORITY, viewport: NARROW },
+  {
+    label: 'loot priority, after Suggest order',
+    ...PRIORITY,
+    click: 'role=button[name="Suggest order"]',
+    afterClick: 'main .priority-was'
+  },
+  {
+    label: 'loot priority, after Suggest order, light',
+    ...PRIORITY,
+    colorScheme: 'light',
+    click: 'role=button[name="Suggest order"]',
+    afterClick: 'main .priority-was'
+  },
+  {
+    label: 'loot priority, Unmanaged',
+    ...PRIORITY,
+    path: '/g/wga/t/phoenix/officer/priority?tab=unmanaged',
+    sentinel: 'main .priority-unmanaged-row'
+  },
   { label: 'loot fairness', ...REPORT, path: '/g/wga/t/phoenix/officer/reports/loot-fairness' },
   {
     label: 'loot fairness, light',

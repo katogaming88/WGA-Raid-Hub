@@ -29,6 +29,8 @@ export type TeamLootRow = {
   response: string | null;
 };
 export type BossRow = { item_id: number; boss: string };
+// A receipt an officer approved (Mark Received): it counts as having the item.
+export type ReceivedRow = { player_id: number | null; self_item_id: number | null; track: string | null };
 export type TierPieceRow = {
   class: string;
   resolved_item_id: number;
@@ -42,6 +44,7 @@ export type PriorityData = {
   loot: TeamLootRow[];
   bosses: BossRow[];
   tierPieces: TierPieceRow[];
+  received: ReceivedRow[];
 };
 
 const norm = (s: string) =>
@@ -166,12 +169,24 @@ export type RankedRow = {
   mark: string | null;
   // Already won this item on this track this season.
   received: boolean;
-  // Other items for the same slot won this season. A ring or trinket only
-  // counts once both are filled.
-  sameSlot: string[];
+  // For a ring, trinket or weapon: another item for that slot the raider
+  // marked BiS and has already won this season (Kat, 2026-10-18). Any other
+  // win for the slot is not shown; it was noise.
+  otherBis: string[];
 };
 
-const DUAL_SLOTS = new Set(['Trinket', 'Finger']);
+// Slots a raider fills twice (or main hand and off hand), so having one BiS
+// already says how much the next one matters.
+const PAIRED_GROUP: Record<string, string> = {
+  Trinket: 'trinket',
+  Finger: 'ring',
+  'One-Hand': 'weapon',
+  'Two-Hand': 'weapon',
+  Ranged: 'weapon',
+  'Off Hand': 'weapon',
+  'Held In Off-hand': 'weapon'
+};
+export const pairedNoun = (slot: string) => PAIRED_GROUP[slot] ?? null;
 
 // One item's ranked raiders, each with the flags the current site's list
 // shows (buildPriorityTab()): the raider's best wishlist mark for the item,
@@ -192,14 +207,19 @@ export function rankedRows(
     const marks = data.prefs.filter((p) => p.player_id === playerId && p.item_id === item.itemId).map((p) => p.status);
     const mark = MARK_ORDER.find((m) => marks.includes(m)) ?? null;
     const own = wins.filter((l) => l.player_id === playerId);
-    const sameSlot = [
-      ...new Set(
-        own
-          .map((l) => (l.item_id === item.itemId ? undefined : slotOf.get(l.item_id ?? 0)))
-          .filter((other) => other?.slot === item.slot)
-          .map((other) => other!.name)
-      )
-    ];
+    const group = PAIRED_GROUP[item.slot];
+    const bis = new Set(data.prefs.filter((p) => p.player_id === playerId && p.status === 'bis').map((p) => p.item_id));
+    const otherBis = group
+      ? [
+          ...new Set(
+            own
+              .filter((l) => l.item_id !== null && l.item_id !== item.itemId && bis.has(l.item_id))
+              .map((l) => slotOf.get(l.item_id!))
+              .filter((other) => !!other && PAIRED_GROUP[other.slot] === group)
+              .map((other) => other!.name)
+          )
+        ]
+      : [];
     const nameRealm = player?.name_realm ?? names.get(playerId) ?? '';
     return {
       rank: i + 1,
@@ -210,7 +230,7 @@ export function rankedRows(
       left: !player,
       mark,
       received: own.some((l) => l.item_id === item.itemId && l.track === track),
-      sameSlot: DUAL_SLOTS.has(item.slot) && sameSlot.length < 2 ? [] : sameSlot
+      otherBis
     };
   });
 }
@@ -292,3 +312,179 @@ export function splitNameRealm(nameRealm: string): { name: string; realm: string
   const at = nameRealm.indexOf('-');
   return at === -1 ? { name: nameRealm, realm: '' } : { name: nameRealm.slice(0, at), realm: nameRealm.slice(at + 1) };
 }
+
+// -- Part 2: editing an order -------------------------------------------
+
+// Every in-season raid item, as a list entry, whether or not it has an order
+// on the track yet: Unmanaged items open here before they have one.
+export function itemFor(
+  itemId: number,
+  data: PriorityData,
+  track: Track,
+  catalog: CatalogItem[],
+  zones: ZoneRow[],
+  season: string
+): PriorityItem | null {
+  const listed = priorityItems(data, track, catalog, zones, season).find((i) => i.itemId === itemId);
+  if (listed) return listed;
+  const item = catalog.find((i) => i.id === itemId);
+  if (!item || !rankable(item, data, zones, season)) return null;
+  return {
+    itemId,
+    name: item.name,
+    slot: item.slot,
+    boss: data.bosses.find((b) => b.item_id === itemId)?.boss ?? null,
+    ranked: []
+  };
+}
+
+// A raid item of the season that gets a priority order: not a stand-in, not a
+// dungeon or crafted piece (never ranked, #1166), not a tier piece (the token
+// is ranked, #650).
+function rankable(item: CatalogItem, data: PriorityData, zones: ZoneRow[], season: string): boolean {
+  if (item.is_placeholder || offRaidSource(item)) return false;
+  if (data.tierPieces.some((t) => t.resolved_item_id === item.id)) return false;
+  return inSeasonZone(item, season, zones);
+}
+
+const offRaidSource = (item: CatalogItem) => !!item.source && item.source !== 'raid';
+
+export type Unmanaged = { item: PriorityItem; missing: Track[] };
+
+// Items with no order saved on one track or both (the current site's
+// Unmanaged Items). An order saved with nobody on it counts as managed.
+export function unmanagedItems(
+  data: PriorityData,
+  catalog: CatalogItem[],
+  zones: ZoneRow[],
+  season: string
+): Unmanaged[] {
+  const has = new Set([...data.order, ...data.empty].map((r) => `${r.item_id}|${r.track}`));
+  const out: Unmanaged[] = [];
+  for (const item of catalog) {
+    if (!rankable(item, data, zones, season)) continue;
+    const missing = (['Hero', 'Myth'] as const).filter((t) => !has.has(`${item.id}|${t}`));
+    if (missing.length === 0) continue;
+    out.push({
+      item: {
+        itemId: item.id,
+        name: item.name,
+        slot: item.slot,
+        boss: data.bosses.find((b) => b.item_id === item.id)?.boss ?? null,
+        ranked: []
+      },
+      missing
+    });
+  }
+  return out;
+}
+
+// What a raider already has of one item, as generate_priority_order()'s
+// exclusion reads it: a main-spec win this season, or a receipt an officer
+// approved. Champion (Normal) only informs; it never blocks.
+export type Owned = { normal: boolean; heroic: boolean; mythic: boolean };
+
+export function owned(playerId: number, itemId: number, data: PriorityData): Owned {
+  const tracks = [
+    ...data.loot.filter((l) => l.player_id === playerId && l.item_id === itemId && !isOffSpec(l.response)),
+    ...data.received.filter((r) => r.player_id === playerId && r.self_item_id === itemId)
+  ].map((r) => r.track);
+  return { normal: tracks.includes('Champion'), heroic: tracks.includes('Hero'), mythic: tracks.includes('Myth') };
+}
+
+// A Mythic copy takes a raider off both lists; a Heroic copy only off Heroic.
+export const blocked = (o: Owned, track: Track) => o.mythic || (track === 'Hero' && o.heroic);
+
+// Raiders who marked the item BiS, 2nd Choice or Sidegrade and are not ranked
+// yet, or with `wholeRoster` everyone on the roster. Alphabetical.
+const POOL_MARKS = new Set(['bis', 'good', 'ok']);
+
+export function poolFor(
+  itemId: number,
+  ranked: number[],
+  data: PriorityData,
+  players: PlayerRow[],
+  wholeRoster: boolean
+): PlayerRow[] {
+  const marked = new Set(
+    data.prefs.filter((p) => p.item_id === itemId && POOL_MARKS.has(p.status)).map((p) => p.player_id)
+  );
+  return players
+    .filter((p) => !ranked.includes(p.id) && (wholeRoster || marked.has(p.id)))
+    .sort((a, b) => a.name_realm.localeCompare(b.name_realm));
+}
+
+export type Suggested = { player_id: number; weighted_total: number | null; status_label: string | null };
+
+export type Suggestion = { order: number[]; promoted: { id: number; count: number } | null; keptLocked: number };
+
+// Suggest order's result, the current site's way (prioEditGenerate()):
+// - pressed again, a #1 who already holds a #1 on another item on this track
+//   gives way to the first raider holding fewer, unless they are locked;
+// - a locked raider keeps the spot they had, and everyone else flows round.
+export function applySuggestion(
+  previous: number[],
+  locked: ReadonlySet<number>,
+  suggested: number[],
+  firstCounts: ReadonlyMap<number, number>,
+  again: boolean
+): Suggestion {
+  let order = [...suggested];
+  let promoted: Suggestion['promoted'] = null;
+  if (again && order.length > 1 && !locked.has(order[0]!)) {
+    const top = firstCounts.get(order[0]!) ?? 0;
+    if (top > 0) {
+      let at = -1;
+      let fewest = top;
+      for (let i = 1; i < order.length; i++) {
+        const c = firstCounts.get(order[i]!) ?? 0;
+        if (c < fewest) {
+          at = i;
+          fewest = c;
+          if (c === 0) break;
+        }
+      }
+      if (at !== -1) {
+        const [id] = order.splice(at, 1);
+        order.unshift(id!);
+        promoted = { id: id!, count: fewest };
+      }
+    }
+  }
+  const keep = previous.map((id, idx) => ({ id, idx })).filter((p) => locked.has(p.id));
+  order = order.filter((id) => !locked.has(id));
+  for (const { id, idx } of keep) order.splice(Math.min(idx, order.length), 0, id);
+  return { order, promoted, keptLocked: keep.length };
+}
+
+// How many #1 spots each raider holds on other items on this track.
+export function firstCounts(data: PriorityData, track: Track, exceptItemId: number): Map<number, number> {
+  const counts = new Map<number, number>();
+  for (const r of data.order) {
+    if (r.track !== track || r.rank !== 1 || r.item_id === exceptItemId) continue;
+    counts.set(r.player_id, (counts.get(r.player_id) ?? 0) + 1);
+  }
+  return counts;
+}
+
+// Where a raider sat in the saved order, when it is not where they are now
+// (Kat, 2026-10-18): "new" for someone who was not on it.
+export type Was = { kind: 'up' | 'down'; rank: number } | { kind: 'new' } | null;
+
+export function wasRank(saved: number[], playerId: number, index: number): Was {
+  const at = saved.indexOf(playerId);
+  if (at === -1) return { kind: 'new' };
+  if (at === index) return null;
+  return { kind: at > index ? 'up' : 'down', rank: at + 1 };
+}
+
+export const move = (order: number[], from: number, to: number): number[] => {
+  const next = [...order];
+  const [id] = next.splice(from, 1);
+  next.splice(to, 0, id!);
+  return next;
+};
+
+// Scores read out of 100 (Kat, 2026-10-18); they are stored out of 10 until
+// cutover (#1554).
+export const outOf100 = (score: number | null | undefined) => (score == null ? null : Math.round(score * 10));

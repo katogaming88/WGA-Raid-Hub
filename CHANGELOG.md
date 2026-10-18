@@ -12,6 +12,31 @@ answers to.
 
 ---
 
+## [3.186.0] - 2026-10-18
+
+### Project
+
+- New app (#1362, part 2): officers edit a loot priority order on the
+  Priority page itself, in the panel beside the item list, in place of the
+  current site's dialog. Suggest order ranks the item with the same
+  generator as today; each raider then shows where they were in the saved
+  order ("▲ was #3", "▼ was #2", "new"), and a note says how many moved,
+  were added and were removed. Pressed again, a #1 who already holds a #1 on
+  another item gives way, as on the current site. Move up and Move down do by
+  keyboard what dragging does by mouse, each move is read out and keeps
+  focus on the row (#441), and Lock keeps a raider in their spot through
+  Suggest order. Raiders who marked the item can be added, or anyone from
+  the whole roster; one who already has the Mythic copy can't be added to
+  either list, and one with the Heroic copy can't be added to Heroic. Scores
+  read out of 100. An unsaved order is kept while the officer looks at other
+  items, marked Not saved in the list, with Undo changes. A new Unmanaged tab
+  lists items with no order on a track, and Set Heroic or Set Mythic opens
+  one with a suggestion ready to review and save.
+- New app: the "Already has <slot>" flag on a ranked raider is gone (Kat:
+  rarely useful). For a ring, trinket or weapon, a raider is now flagged only
+  with their own BiS item for that slot they already won, e.g. "Has BiS
+  trinket: Zul'jin's Guillotine Technique".
+
 ## [3.185.0] - 2026-10-18
 
 ### Project

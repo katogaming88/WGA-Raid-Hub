@@ -6,8 +6,17 @@ import { fakeSession, seededHandlers, type Read } from '../test/fakeSupabase';
 import type { CatalogItem } from '../profile/lootPriority';
 import type { PlayerRow } from '../roster/roster';
 import {
+  applySuggestion,
+  blocked,
   bossOptions,
   exportString,
+  firstCounts,
+  itemFor,
+  outOf100,
+  owned,
+  poolFor,
+  unmanagedItems,
+  wasRank,
   gearStatus,
   priorityItems,
   rankedRows,
@@ -94,7 +103,9 @@ const DATA: PriorityData = {
   prefs: [
     { player_id: 10, item_id: 1, status: 'bis' },
     { player_id: 11, item_id: 1, status: 'pass' },
-    { player_id: 11, item_id: 1, status: 'ok' }
+    { player_id: 11, item_id: 1, status: 'ok' },
+    { player_id: 10, item_id: 3, status: 'bis' },
+    { player_id: 12, item_id: 3, status: 'ok' }
   ],
   loot: [
     // Katorrí already won the drape on Heroic; Bbldrizzy won the other Back.
@@ -108,7 +119,9 @@ const DATA: PriorityData = {
     { item_id: 3, boss: 'The Twin Fangs' },
     { item_id: 4, boss: 'Vashnik the Malignant' }
   ],
-  tierPieces: [{ class: 'Warlock', resolved_item_id: 6, resolved: { wow_item_id: 5006, slot: 'Shoulder' } }]
+  tierPieces: [{ class: 'Warlock', resolved_item_id: 6, resolved: { wow_item_id: 5006, slot: 'Shoulder' } }],
+  // An officer approved Amazon's report of a Mythic amulet.
+  received: [{ player_id: 12, self_item_id: 3, track: 'Myth' }]
 };
 
 describe('priority list', () => {
@@ -140,7 +153,7 @@ describe('priority list', () => {
     expect(bossOptions(items, raids)).toEqual(['The Twin Fangs', 'The Coiled Altar', 'Vashnik the Malignant']);
   });
 
-  it("flags each raider's mark, a win of this item, another win for the slot, and a raider who left", () => {
+  it("flags each raider's mark, a win of this item, and a raider who left", () => {
     const rows = rankedRows(
       items.find((i) => i.itemId === 1)!,
       'Hero',
@@ -148,9 +161,10 @@ describe('priority list', () => {
       PLAYERS,
       CATALOG
     );
-    expect(rows.map((r) => [r.rank, r.name, r.mark, r.received, r.sameSlot, r.left])).toEqual([
+    // Bbldrizzy's other Back is not flagged: only rings, trinkets and weapons are.
+    expect(rows.map((r) => [r.rank, r.name, r.mark, r.received, r.otherBis, r.left])).toEqual([
       [1, 'Katorrí', 'bis', true, [], false],
-      [2, 'Bbldrizzy', 'ok', false, ['Drape of the Dreadful Rite'], false],
+      [2, 'Bbldrizzy', 'ok', false, [], false],
       [3, 'Gone', null, false, [], true]
     ]);
     // On Mythic, a Heroic win is not this track's.
@@ -160,13 +174,22 @@ describe('priority list', () => {
     ).toBe(false);
   });
 
-  it('flags a ring only once both are filled', () => {
+  it("flags a ring, trinket or weapon only with the raider's other BiS one they already won", () => {
     const ring = { itemId: 4, name: "Vile Alchemist's Band", slot: 'Finger', boss: null, ranked: [10] };
     const ringCatalog = [...CATALOG, item(20, 'Band A', 'Finger'), item(21, 'Band B', 'Finger')];
-    const one = { ...DATA, loot: [{ player_id: 10, item_id: 20, track: 'Hero', response: null }] };
-    expect(rankedRows(ring, 'Hero', one, PLAYERS, ringCatalog)[0]!.sameSlot).toEqual([]);
-    const two = { ...DATA, loot: [...one.loot, { player_id: 10, item_id: 21, track: 'Myth', response: null }] };
-    expect(rankedRows(ring, 'Hero', two, PLAYERS, ringCatalog)[0]!.sameSlot).toEqual(['Band A', 'Band B']);
+    // Katorri won both bands; only Band A is one she marked BiS.
+    const data = {
+      ...DATA,
+      prefs: [...DATA.prefs, { player_id: 10, item_id: 20, status: 'bis' }],
+      loot: [
+        { player_id: 10, item_id: 20, track: 'Hero', response: null },
+        { player_id: 10, item_id: 21, track: 'Myth', response: null }
+      ]
+    };
+    expect(rankedRows(ring, 'Hero', data, PLAYERS, ringCatalog)[0]!.otherBis).toEqual(['Band A']);
+    // Won with an off-spec roll, it does not count.
+    const offSpec = { ...data, loot: [{ ...data.loot[0]!, response: 'OS' }] };
+    expect(rankedRows(ring, 'Hero', offSpec, PLAYERS, ringCatalog)[0]!.otherBis).toEqual([]);
   });
 });
 
@@ -205,6 +228,71 @@ describe('gear reads', () => {
   });
 });
 
+describe('editing an order', () => {
+  it('lists the items with no order on a track, and opens one that has none', () => {
+    const list = unmanagedItems(DATA, CATALOG, ZONES, 'MID2');
+    expect(list.map((u) => [u.item.itemId, u.missing])).toEqual([
+      [2, ['Hero', 'Myth']],
+      [3, ['Myth']],
+      [4, ['Myth']]
+    ]);
+    expect(itemFor(2, DATA, 'Hero', CATALOG, ZONES, 'MID2')).toMatchObject({
+      name: 'Drape of the Dreadful Rite',
+      ranked: []
+    });
+    // A tier piece, an older raid's item and a stand-in never open.
+    expect([6, 7, 8].map((id) => itemFor(id, DATA, 'Hero', CATALOG, ZONES, 'MID2'))).toEqual([null, null, null]);
+  });
+
+  it('blocks a Mythic copy from both tracks and a Heroic one from Heroic, from wins and approved receipts', () => {
+    expect(owned(12, 3, DATA)).toEqual({ normal: false, heroic: false, mythic: true });
+    expect(blocked(owned(12, 3, DATA), 'Hero')).toBe(true);
+    expect(owned(10, 1, DATA)).toMatchObject({ heroic: true });
+    expect([blocked(owned(10, 1, DATA), 'Hero'), blocked(owned(10, 1, DATA), 'Myth')]).toEqual([true, false]);
+    // An off-spec roll is not a copy.
+    expect(owned(12, 2, DATA).heroic).toBe(false);
+  });
+
+  it('offers who marked the item and is not ranked, or the whole roster', () => {
+    expect(poolFor(3, [12], DATA, PLAYERS, false).map((p) => p.id)).toEqual([10]);
+    expect(poolFor(3, [12], DATA, PLAYERS, true).map((p) => p.id)).toEqual([11, 10]);
+  });
+
+  it('keeps locked raiders in their spot and, pressed again, spreads the #1s', () => {
+    const counts = new Map([
+      [10, 2],
+      [11, 1]
+    ]);
+    expect(applySuggestion([12, 10, 11], new Set([12]), [10, 11, 12], counts, false)).toEqual({
+      order: [12, 10, 11],
+      promoted: null,
+      keptLocked: 1
+    });
+    // Katorri holds two #1s elsewhere, Bbldrizzy one, Amazon none.
+    expect(applySuggestion([], new Set(), [10, 11, 12], counts, true).order).toEqual([12, 10, 11]);
+    expect(applySuggestion([], new Set(), [10, 11], counts, true)).toMatchObject({
+      order: [11, 10],
+      promoted: { id: 11, count: 1 }
+    });
+    // A locked #1 stays, #1s or not.
+    expect(applySuggestion([10], new Set([10]), [10, 11], counts, true).order).toEqual([10, 11]);
+    expect(firstCounts(DATA, 'Hero', 1)).toEqual(
+      new Map([
+        [12, 1],
+        [10, 2]
+      ])
+    );
+  });
+
+  it('says where a moved raider was in the saved order, and shows scores out of 100', () => {
+    expect(wasRank([10, 11, 12], 11, 0)).toEqual({ kind: 'up', rank: 2 });
+    expect(wasRank([10, 11, 12], 10, 1)).toEqual({ kind: 'down', rank: 1 });
+    expect(wasRank([10, 11], 12, 2)).toEqual({ kind: 'new' });
+    expect(wasRank([10, 11], 11, 1)).toBeNull();
+    expect([outOf100(8.4), outOf100(null)]).toEqual([84, null]);
+  });
+});
+
 // The page, for an officer (or a guild officer, who only views).
 function handlers(tables: Record<string, unknown>, role = 'officer', extra: Parameters<typeof seededHandlers>[0] = {}) {
   const base = seededHandlers();
@@ -223,6 +311,8 @@ function handlers(tables: Record<string, unknown>, role = 'officer', extra: Para
         };
       if (name === 'team_season_start') return { data: null };
       if (name === 'build_rclc_export') return { data: PAYLOAD };
+      if (name === 'generate_priority_order') return { data: SUGGESTED };
+      if (name === 'save_priority_order') return { data: 3 };
       return base.rpc!(name, args);
     },
     from(read: Read) {
@@ -232,6 +322,25 @@ function handlers(tables: Record<string, unknown>, role = 'officer', extra: Para
     ...extra
   });
 }
+
+const SUGGESTED = [
+  {
+    player_id: 12,
+    name_realm: 'Angryamazon-Wyrmrest Accord',
+    role: 'Ranged',
+    weighted_total: 8.4,
+    status_label: 'Has Champion',
+    wishlist_status: 'bis'
+  },
+  {
+    player_id: 10,
+    name_realm: 'Katorrí-Stormrage',
+    role: 'Ranged',
+    weighted_total: 7.9,
+    status_label: '',
+    wishlist_status: 'bis'
+  }
+];
 
 const PAYLOAD = { players: { 'Katorrí-Stormrage': { class: 'WARLOCK' } }, priority: {} };
 
@@ -251,6 +360,7 @@ const TABLES = {
   rclc_loot: DATA.loot,
   item_bosses: DATA.bosses,
   tier_token_map: DATA.tierPieces,
+  self_received_requests: DATA.received,
   site_settings: {
     gear_sync_last_cron_run: { finished_at: new Date().toISOString(), synced: 76, skipped: 0, players: 76 }
   }
@@ -277,7 +387,7 @@ describe('Loot priority page', () => {
     expect(rows[0]).toHaveTextContent('BiS');
     expect(rows[0]).toHaveTextContent('Received Heroic');
     expect(rows[1]).toHaveTextContent('Sidegrade');
-    expect(rows[1]).toHaveTextContent('Already has Back (Drape of the Dreadful Rite)');
+    expect(rows[1]).not.toHaveTextContent('Has BiS');
     expect(rows[2]).toHaveTextContent('Left the roster');
     expect(router.state.location.search).toBe('?item=1');
   });
@@ -336,9 +446,80 @@ describe('Loot priority page', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows a guild officer the lists and the export, not the gear buttons', async () => {
-    renderApp(PAGE, handlers(TABLES, 'guild'));
+  it('shows a guild officer the lists and the export, not the gear buttons or the editor', async () => {
+    renderApp(`${PAGE}?item=1`, handlers(TABLES, 'guild'));
     expect(await screen.findByRole('button', { name: 'Generate Heroic string' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Refresh equipped gear' })).not.toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Silken Voodoo Drape, Heroic order' })).toHaveTextContent('Katorrí');
+    expect(screen.queryByRole('button', { name: 'Suggest order' })).not.toBeInTheDocument();
+  });
+
+  it('moves a raider by keyboard, keeps the change while looking at another item, and saves it', async () => {
+    const { client } = renderApp(`${PAGE}?item=1`, handlers(TABLES));
+    const order = () => screen.getByRole('list', { name: 'Silken Voodoo Drape, Heroic order' });
+    await userEvent.click(await screen.findByRole('button', { name: 'Move Bbldrizzy up' }));
+    expect(screen.getByText('Moved Bbldrizzy to position 1 of 3.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Move Bbldrizzy down' })).toHaveFocus();
+    let rows = within(order()).getAllByRole('listitem');
+    expect(rows[0]).toHaveTextContent('Bbldrizzy');
+    expect(rows[0]).toHaveTextContent('was #2');
+    expect(rows[1]).toHaveTextContent('was #1');
+
+    const list = screen.getByRole('navigation', { name: 'Items' });
+    await userEvent.click(within(list).getByRole('button', { name: /Amulet of the Twin Fangs/ }));
+    expect(within(list).getByRole('button', { name: /Silken Voodoo Drape/ })).toHaveTextContent('Not saved');
+    await userEvent.click(within(list).getByRole('button', { name: /Silken Voodoo Drape/ }));
+    rows = within(order()).getAllByRole('listitem');
+    expect(rows[0]).toHaveTextContent('Bbldrizzy');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save priority' }));
+    expect(await screen.findByText('Saved the Heroic order for Silken Voodoo Drape.')).toBeInTheDocument();
+    expect(client.rpcs).toContainEqual([
+      'save_priority_order',
+      { p_team_id: 1, p_season: 'MID2', p_item_id: 1, p_track: 'Hero', p_player_ids: [11, 10, 99] }
+    ]);
+  });
+
+  it('suggests an order around a locked raider, with scores out of 100 and where each was', async () => {
+    renderApp(`${PAGE}?item=1`, handlers(TABLES));
+    const order = () => screen.getByRole('list', { name: 'Silken Voodoo Drape, Heroic order' });
+    await userEvent.click(await screen.findByRole('button', { name: 'Lock Katorrí at #1' }));
+    expect(screen.getByRole('button', { name: 'Lock Katorrí at #1' })).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(screen.getByRole('button', { name: 'Suggest order' }));
+    expect(
+      await screen.findByText('Suggested order loaded: 1 added, 2 removed, 1 locked spot kept. Not saved yet.', {
+        selector: '.priority-editor-note'
+      })
+    ).toBeInTheDocument();
+    const rows = within(order()).getAllByRole('listitem');
+    expect(rows.map((r) => r.textContent)).toEqual([
+      expect.stringContaining('Katorrí'),
+      expect.stringMatching(/Amazon.*new.*Has Champion.*Score 84/)
+    ]);
+    await userEvent.click(screen.getByRole('button', { name: 'Undo changes' }));
+    expect(within(order()).getAllByRole('listitem')).toHaveLength(3);
+  });
+
+  it('lists Unmanaged items, and Set Mythic opens one with a suggestion', async () => {
+    const { client, router } = renderApp(PAGE, handlers(TABLES));
+    await userEvent.click(await screen.findByRole('link', { name: 'Unmanaged, 3' }));
+    expect(screen.getByText('3 items have no order saved on one track or both.')).toBeInTheDocument();
+    expect(screen.getByText('No order on either track')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Set Mythic for Amulet of the Twin Fangs' }));
+    expect(await screen.findByRole('heading', { name: 'Amulet of the Twin Fangs' })).toBeInTheDocument();
+    expect(client.rpcs).toContainEqual([
+      'generate_priority_order',
+      { p_team_id: 1, p_season: 'MID2', p_item_id: 3, p_track: 'Myth' }
+    ]);
+    expect(router.state.location.search).toBe('?item=3&track=mythic');
+  });
+
+  it("adds a raider who marked the item, and won't add one who has it", async () => {
+    renderApp(`${PAGE}?item=3&track=mythic`, handlers(TABLES));
+    expect(await screen.findByText(/No Mythic order saved yet/)).toBeInTheDocument();
+    expect(screen.getByText('Has Mythic, can’t be added')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Add Katorrí' }));
+    expect(screen.getByText('Added Katorrí at position 1.')).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Amulet of the Twin Fangs, Mythic order' })).toHaveTextContent('Katorrí');
   });
 });
