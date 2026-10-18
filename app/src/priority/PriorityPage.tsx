@@ -282,9 +282,14 @@ function ContestedList({ contested }: { contested: Contested[] }) {
                 >
                   {w.name}
                 </span>
-                {w.heroic !== null && <span className="text-muted">#{w.heroic} H</span>}
-                {w.mythic !== null && <span className="text-muted">#{w.mythic} M</span>}
-                {w.has && <span className="priority-flag priority-flag-good">Has {w.has}</span>}
+                <span className="priority-contested-ranks text-muted">
+                  {w.heroic === null && w.mythic === null
+                    ? 'Not ranked'
+                    : [w.heroic !== null && `#${w.heroic} H`, w.mythic !== null && `#${w.mythic} M`]
+                        .filter(Boolean)
+                        .join('  ')}
+                </span>
+                {w.has && <span className="priority-flag priority-flag-good priority-contested-has">Has {w.has}</span>}
               </li>
             ))}
           </ul>

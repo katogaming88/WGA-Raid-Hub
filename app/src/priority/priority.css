@@ -572,9 +572,23 @@
 }
 .priority-contested-who {
   margin-top: var(--space-3);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
 }
 .priority-contested-who li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+}
+.priority-contested-who .priority-rank-name {
+  font-weight: 600;
+}
+.priority-contested-has {
+  grid-column: 1 / -1;
+  justify-self: start;
 }
