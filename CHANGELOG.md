@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.187.0] - 2026-10-18
+
+### Project
+
+- New app (#1362, part 3): the Priority page shows the two conflicts that
+  matter as flags on the #1 raider's row, in the list and the editor: "Has the
+  Heroic copy" on a Mythic order, and "Also #1 on <item>, same boss". They
+  replace the current site's check banners. A dot in the item list marks an
+  item whose #1 has a flag, and with nothing picked the right side lists
+  those items under "Needs a look", with how many items have nobody ranked.
+  A new Contested tab lists the items 6 or more raiders marked BiS, most
+  wanted first, and opens each to who wants it, where they rank on Heroic and
+  Mythic, and whether they already have a copy. The gear line for officers
+  now reads "Gear read 6h ago." and says plainly when raiders could not be
+  read, when the daily read has not run in 36 hours, or when it failed,
+  pointing to Refresh equipped gear.
+
 ## [3.186.0] - 2026-10-18
 
 ### Project

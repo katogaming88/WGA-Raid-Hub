@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     36 h 51 m |
-| Revamp 3: officer dashboard        |     24 h 09 m |
+| Revamp 3: officer dashboard        |     24 h 34 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **85 h 20 m** |
+| **All revamp work**                | **85 h 45 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -304,6 +304,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 1:08-1:25 PM | #1362 part 1 built: the Loot priority page (item list, the picked item's order and flags, one track switch, the RCLootCouncil string, Refresh equipped gear, Sync tier counts), tests, the browser test's accessibility states, checked on the production backup, stamp, changelog, these rows, PR opened | Revamp 3 (#1362) | 15 m | ~15 m build | not read | Review and merge not yet counted |
 | 1:25-1:50 PM | PR #1555 (#1362 part 1) reviewed and merged | Revamp 3 (#1362) | 25 m | ~25 m Kat reviewing | not read | Merged 1:50 PM |
 | 1:51-2:10 PM | #1362 part 2 built: the side-panel editor (Suggest order with each raider's saved place, keyboard moves, lock, add from marked raiders or the roster, save, kept drafts), the Unmanaged tab, tests, the browser test's accessibility states, checked on the production backup, stamp, changelog, these rows, PR opened | Revamp 3 (#1362) | 20 m | ~20 m build, Kat's two notes mid-build | not read | Kat: drop the "Already has <slot>" flag; for rings, trinkets and weapons show only the raider's other BiS item already won. Review and merge not yet counted |
+| 2:10-2:16 PM | PR #1556 (#1362 part 2) reviewed and merged | Revamp 3 (#1362) | 5 m | ~5 m Kat reviewing | not read | Merged 2:16 PM |
+| 6:15-6:37 PM | #1362 part 3 built: a flag on a #1 who has the Heroic copy or is also #1 on another item from the same boss (list and editor), Needs a look and a dot in the item list, the Contested tab, the gear status line reworded for officers, tests, the browser test's accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1362) | 20 m | ~20 m build | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

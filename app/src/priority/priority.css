@@ -537,3 +537,58 @@
     justify-content: flex-start;
   }
 }
+
+/* Part 3: row flags, Needs a look, Contested */
+.priority-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-left: var(--space-2);
+  border-radius: 50%;
+  background: currentColor;
+}
+.priority-look,
+.priority-contested-who {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.priority-contested {
+  display: grid;
+  gap: var(--space-3);
+}
+.priority-contested-item {
+  padding: var(--space-3) var(--space-4);
+}
+.priority-contested-item summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+}
+.priority-contested-who {
+  margin-top: var(--space-3);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+}
+.priority-contested-who li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+}
+.priority-contested-who .priority-rank-name {
+  font-weight: 600;
+}
+.priority-contested-has {
+  grid-column: 1 / -1;
+  justify-self: start;
+}

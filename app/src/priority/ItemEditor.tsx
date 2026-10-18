@@ -21,6 +21,7 @@ import {
   type PriorityItem,
   type Track
 } from './priority';
+import { ConflictFlags } from './RowFlags';
 import { useSaveOrder, useSuggestOrder } from './usePriority';
 
 // An order being changed and not saved yet. It is kept per item and track
@@ -265,11 +266,12 @@ export function ItemEditor({
                         <span aria-hidden="true">{was.kind === 'up' ? '▲' : '▼'}</span> was #{was.rank}
                       </span>
                     )}
-                    {track === 'Myth' && own.heroic && (
+                    {track === 'Myth' && own.heroic && !r.heroicCopy && (
                       <span className="priority-owned" title="Has the Heroic version">
                         Has Heroic
                       </span>
                     )}
+                    <ConflictFlags row={r} />
                     {own.normal && !(track === 'Myth' && own.heroic) && (
                       <span className="priority-owned" title="Has the Champion (Normal) version">
                         Has Normal
