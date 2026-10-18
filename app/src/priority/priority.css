@@ -560,6 +560,9 @@
   display: grid;
   gap: var(--space-3);
 }
+.priority-contested-item {
+  padding: var(--space-3) var(--space-4);
+}
 .priority-contested-item summary {
   display: flex;
   flex-wrap: wrap;
