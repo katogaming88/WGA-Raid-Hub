@@ -24,7 +24,8 @@ answers to.
   page a new Notes tab lists those notes by item, with a search, and an
   officer can clear one after confirming; the mark stays and the clear is
   logged, as on the current site. Raiders who marked an item Sidegrade and
-  are not ranked on it are named under its order.
+  are not ranked on it are named under its order. The red outline on a
+  button that removes something now works on every page, not only Settings.
 
 ## [3.187.0] - 2026-10-18
 

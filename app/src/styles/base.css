@@ -151,6 +151,17 @@ button {
   filter: brightness(1.06);
 }
 
+/* A button that removes something, used in confirmations app-wide. */
+.button-danger {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.button-danger:hover {
+  background: var(--bad);
+  color: var(--button-text, #fff);
+}
+
 /* A button that can't be used yet looks it (#1216: the boss lineup's Save
    tonight sat bright orange with nothing to save). */
 .button:disabled,
