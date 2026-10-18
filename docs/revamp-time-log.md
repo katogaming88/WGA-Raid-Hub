@@ -12,12 +12,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 | Phase                              |   Time so far |
 | ---------------------------------- | ------------: |
-| Planning and design                |     10 h 35 m |
+| Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     36 h 51 m |
-| Revamp 3: officer dashboard        |     21 h 44 m |
-| Revamp 4: cutover                  |      3 h 40 m |
-| **All revamp work**                | **79 h 45 m** |
+| Revamp 3: officer dashboard        |     22 h 34 m |
+| Revamp 4: cutover                  |      3 h 45 m |
+| **All revamp work**                | **83 h 45 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -298,7 +298,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
-| 11:32 AM-END | #1247 built: the Boss lineups report (Raiders, Bosses and Nights views, each role's sit-out spread), tests from a fixture season, the browser test's accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1247) | ELAPSED | ~ELAPSED build | not read | Prod has no lineups yet (the planner is only in the new app); Kat: build it anyway. No database change. The per-boss view on Bench fairness and the loot view wait (see the PR). Review and merge not yet counted |
+| 11:32-11:49 AM | #1247 built: the Boss lineups report (Raiders, Bosses and Nights views, each role's sit-out spread), tests from a fixture season, the browser test's accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1247) | 15 m | ~15 m build | not read | Prod has no lineups yet (the planner is only in the new app); Kat: build it anyway. No database change. The per-boss view on Bench fairness and the loot view wait (see the PR) |
+| 11:49 AM-12:25 PM | Reports cut from nine sidebar items to three (Loot and Bench and lineups as tabbed pages); the sidebar folds sections instead of scrolling, only when they would not fit, Site open whenever it can; a folding loop Kat hit while testing fixed; browser tests for folding (in the #1247 PR) | Revamp 3 (#1247) | 35 m | ~25 m build, ~10 m Kat deciding and testing | not read | Kat: never a scrollbar on the sidebar; Tier sets goes with Loot; fold only when needed. Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

@@ -280,7 +280,11 @@ describe('Guild home (new app), other states', () => {
       // and its groups stay in one order on a team page too (#1228).
       const headings = await page.locator('.nav-heading').allTextContents();
       expect(headings).toEqual(['Guild', 'You', 'Team', 'Officer', 'Site']);
-      await page.locator('#sidebar').getByRole('link', { name: 'Calendar' }).click();
+      // At this window height the sidebar folds sections it cannot fit.
+      const nav = page.locator('#sidebar nav');
+      const team = nav.getByRole('button', { name: 'Team', exact: true });
+      if (await team.isVisible()) await team.click();
+      await nav.getByRole('link', { name: 'Calendar' }).click();
       await page.getByRole('heading', { name: 'Calendar', level: 1 }).waitFor();
       expect(await page.locator('.nav-heading').allTextContents()).toEqual(headings);
     } finally {
