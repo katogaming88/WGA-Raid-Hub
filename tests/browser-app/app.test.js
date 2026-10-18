@@ -1330,14 +1330,14 @@ const STATES = [
   },
   {
     label: 'officer page, officer',
-    path: '/g/wga/t/phoenix/officer/priority',
+    path: '/g/wga/t/phoenix/officer/import',
     session: OFFICER,
     who: 'officer',
     sentinel: 'text=Not built yet'
   },
   {
     label: 'officer page, officer, light',
-    path: '/g/wga/t/phoenix/officer/priority',
+    path: '/g/wga/t/phoenix/officer/import',
     session: OFFICER,
     who: 'officer',
     sentinel: 'text=Not built yet',
