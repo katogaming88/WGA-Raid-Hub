@@ -1,13 +1,28 @@
 import { useId, type ReactNode } from 'react';
+import { Link, useLocation } from 'react-router';
+import { REPORT_KINDS, reportTabs } from '../layout/nav';
 import { ROLE_LABELS, ROLE_ORDER, type Role } from '../roster/roster';
 // The Roster's toggle buttons (role-filter), shared rather than restyled.
 import '../roster/roster.css';
 import './reports.css';
 
-// The frame every report page (#1359) shares: the title and what it shows.
+// The frame every report page (#1359) shares: the title and what it shows,
+// under tabs for the other reports of its kind when it has any.
 export function ReportPage({ title, intro, children }: { title: string; intro: string; children: ReactNode }) {
+  const { pathname } = useLocation();
+  const officer = pathname.slice(0, pathname.lastIndexOf('/reports/'));
+  const tabs = REPORT_KINDS.map((k) => reportTabs(officer, k)).find((t) => t.some((p) => p.to === pathname));
   return (
     <section className="page report-page" aria-labelledby="page-title">
+      {tabs && (
+        <nav className="report-tabs" aria-label="Reports on this page">
+          {tabs.map((t) => (
+            <Link key={t.to} to={t.to} aria-current={t.to === pathname ? 'page' : undefined}>
+              {t.label}
+            </Link>
+          ))}
+        </nav>
+      )}
       <div className="page-header">
         <h1 id="page-title">{title}</h1>
         <p className="text-muted page-subtitle">{intro}</p>

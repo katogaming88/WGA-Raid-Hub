@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Link, Navigate, NavLink, Outlet, useLocation, useMatches, useParams } from 'react-router';
 import { Icon, LogoMark } from '../components/Icon';
@@ -18,7 +18,7 @@ import { AccountPanel } from '../auth/AccountPanel';
 import { ConnectPrompt } from '../auth/ConnectPrompt';
 import { AltsPickerProvider } from '../characters/AltsPicker';
 import { can, useAccess } from '../auth/access';
-import { navGroups, type NavItem } from './nav';
+import { navGroups, pageHolds, type NavGroup, type NavItem } from './nav';
 import { defaultGuildKey, forgetGuild, lastGuildKey, rememberGuild } from './lastGuild';
 import { TeamSwitcher } from './TeamSwitcher';
 import { StreamWidget } from '../streams/StreamWidget';
@@ -96,7 +96,7 @@ export function AppShell() {
   // the new page is outside it (Kat, 2026-10-15).
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [menuAt, setMenuAt] = useState('');
-  const holder = groups.flatMap((g) => g.items).find((i) => i.pages?.some((p) => p.to === location.pathname));
+  const holder = groups.flatMap((g) => g.items).find((i) => i.pages?.some((p) => pageHolds(p, location.pathname)));
   // The Officer group appears once access loads, so wait for a holder before
   // marking this page as handled.
   if (holder && menuAt !== location.pathname) {
@@ -109,6 +109,46 @@ export function AppShell() {
     setLeftFrom(location.pathname);
     if (!holder) setOpenMenu(null);
   }
+
+  // The sidebar never shows a scrollbar (Kat, 2026-10-18), folding sections
+  // only as far as it must: every section open while they fit (level 0);
+  // then only the current page's section and Site (level 1); then only the
+  // current page's section (level 2). Site stays open whenever it can.
+  // Going up a level, the overflow is measured exactly and kept for this page
+  // and open group. Coming back down, the kept height (or an estimate before
+  // there is one) decides. An estimate that is short steps down once,
+  // overflows, and keeps the real height, so folding never loops.
+  const [level, setLevel] = useState<FoldLevel>(0);
+  const kept = useRef<{ key: string; heights: number[] }>({ key: '', heights: [] });
+  const layoutKey = `${location.pathname}|${openMenu}|${groups.length}`;
+  const here = sectionOf(groups, location.pathname);
+  const [openSection, setOpenSection] = useState<string | null>(here ?? 'Team');
+  const [sectionAt, setSectionAt] = useState('');
+  if (here && sectionAt !== location.pathname) {
+    setSectionAt(location.pathname);
+    setOpenSection(here);
+  }
+  useLayoutEffect(() => {
+    const el = sidebar.current;
+    if (!el) return;
+    const key = `${layoutKey}|${openSection}`;
+    if (kept.current.key !== key) kept.current = { key, heights: [] };
+    const check = () => {
+      if (el.scrollHeight > el.clientHeight && level < 2) {
+        kept.current.heights[level] = el.scrollHeight;
+        setLevel((level + 1) as FoldLevel);
+        return;
+      }
+      if (level === 0) return;
+      const below = (level - 1) as FoldLevel;
+      const height = kept.current.heights[below] ?? estimatedHeight(el, (h) => sectionShown(below, h, openSection));
+      if (height <= el.clientHeight) setLevel(below);
+    };
+    check();
+    const watch = new ResizeObserver(check);
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, [level, layoutKey, openSection]);
 
   // Following a link closes the drawer.
   if (drawerOpen && location.pathname !== openedAt) {
@@ -225,15 +265,33 @@ export function AppShell() {
         <nav aria-label="Main">
           {groups.map((group) => (
             <div key={group.heading} className="nav-group">
-              <h2 className="nav-heading">{group.heading}</h2>
-              <ul>
+              <h2 className="nav-heading">
+                {level > 0 && !sectionShown(level, group.heading, null) ? (
+                  <button
+                    type="button"
+                    className="nav-section-toggle"
+                    aria-expanded={openSection === group.heading}
+                    aria-controls={`section-${group.heading}`}
+                    onClick={() => setOpenSection(openSection === group.heading ? null : group.heading)}
+                  >
+                    {group.heading}
+                    <Icon name="chevronRight" size={12} />
+                  </button>
+                ) : (
+                  <span className="nav-section-label">{group.heading}</span>
+                )}
+              </h2>
+              <ul id={`section-${group.heading}`} hidden={!sectionShown(level, group.heading, openSection)}>
                 {group.items.map((item) =>
                   item.pages ? (
                     <NavDisclosure
                       key={item.label}
                       item={item}
                       open={openMenu === item.label}
-                      onToggle={() => setOpenMenu(openMenu === item.label ? null : item.label)}
+                      onToggle={() => {
+                        setOpenMenu(openMenu === item.label ? null : item.label);
+                        setOpenSection(group.heading);
+                      }}
                     />
                   ) : (
                     <li key={item.to}>
@@ -328,7 +386,42 @@ export function AppShell() {
   );
 }
 
+// The sidebar's height with every section open, estimated while folded: its
+// height now, plus a row for each link a folded section hides (a closed
+// officer group's pages stay hidden either way).
+type FoldLevel = 0 | 1 | 2;
+
+// Whether a section's links show at a fold level. With `open` null, whether
+// it shows whichever section is open: so its heading needs no fold button.
+function sectionShown(level: FoldLevel, heading: string, open: string | null): boolean {
+  return level === 0 || heading === open || (level === 1 && heading === 'Site');
+}
+
+// The sidebar's height at a lower fold level, estimated: its height now, plus
+// a row for each link a section folded now would show (a closed officer
+// group's pages stay hidden either way).
+function estimatedHeight(el: HTMLElement, shownBelow: (heading: string) => boolean): number {
+  const row = el.querySelector<HTMLElement>('nav .nav-item')?.offsetHeight ?? 0;
+  let hidden = 0;
+  for (const ul of el.querySelectorAll<HTMLElement>('nav [id^="section-"][hidden]')) {
+    if (!shownBelow(ul.id.slice('section-'.length))) continue;
+    hidden += ul.querySelectorAll('.nav-item').length - ul.querySelectorAll('.nav-sub[hidden] .nav-item').length;
+  }
+  return el.scrollHeight + hidden * row;
+}
+
+// The sidebar section holding a page: an item's address or one below it (an
+// `end` item only its own), or one of a group's pages or their tabs.
+function sectionOf(groups: NavGroup[], pathname: string): string | null {
+  const holds = (i: NavItem) =>
+    i.pages
+      ? i.pages.some((p) => pageHolds(p, pathname))
+      : pathname === i.to || (!i.end && pathname.startsWith(`${i.to}/`));
+  return groups.find((g) => g.items.some(holds))?.heading ?? null;
+}
+
 function NavDisclosure({ item, open, onToggle }: { item: NavItem; open: boolean; onToggle: () => void }) {
+  const { pathname } = useLocation();
   const panel = `menu-${item.label}`;
   return (
     <li>
@@ -346,9 +439,13 @@ function NavDisclosure({ item, open, onToggle }: { item: NavItem; open: boolean;
       <ul id={panel} className="nav-sub" hidden={!open}>
         {item.pages?.map((page) => (
           <li key={page.to}>
-            <NavLink to={page.to} end className={page.danger ? 'nav-item nav-danger' : 'nav-item'}>
+            <Link
+              to={page.to}
+              className={page.danger ? 'nav-item nav-danger' : 'nav-item'}
+              aria-current={pageHolds(page, pathname) ? 'page' : undefined}
+            >
               <span>{page.label}</span>
-            </NavLink>
+            </Link>
           </li>
         ))}
       </ul>

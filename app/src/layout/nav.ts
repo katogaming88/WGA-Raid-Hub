@@ -5,7 +5,9 @@ import type { IconName } from '../components/Icon';
 // `mark`: a dot saying there is something new behind the item (News).
 // `live`: a count of who is live behind the item (Streams); nothing when 0.
 // `pages`: the item is a group that opens to show these links (the Officer menu, #869).
-export type NavPage = { label: string; to: string; danger?: boolean };
+// `tabs`: the page is one of several reports shown as tabs on one page; the
+// item stays current on any of them.
+export type NavPage = { label: string; to: string; danger?: boolean; tabs?: NavPage[] };
 export type NavItem = {
   label: string;
   icon: IconName;
@@ -68,6 +70,32 @@ export function navGroups(
   return show.officer ? groups : groups.filter((g) => g.heading !== 'Officer');
 }
 
+const REPORT_TABS = {
+  loot: [
+    ['Fairness', 'loot-fairness'],
+    ['Nights since last item', 'raid-nights'],
+    ['BiS demand', 'bis-demand'],
+    ['Loot pace', 'loot-pace'],
+    ['Priority order health', 'priority-health'],
+    ['Tier sets', 'tier-sets']
+  ],
+  bench: [
+    ['Bench fairness', 'bench-fairness'],
+    ['Boss lineups', 'boss-lineups']
+  ]
+} as const;
+
+export type ReportKind = keyof typeof REPORT_TABS;
+export const REPORT_KINDS = Object.keys(REPORT_TABS) as ReportKind[];
+
+export function reportTabs(o: string, kind: ReportKind): NavPage[] {
+  return REPORT_TABS[kind].map(([label, path]) => ({ label, to: `${o}/reports/${path}` }));
+}
+
+// The page a sidebar page item stands for, when the address is it or one of its tabs.
+export const pageHolds = (page: NavPage, pathname: string) =>
+  page.to === pathname || !!page.tabs?.some((t) => t.to === pathname);
+
 // The officer menu from the #869 decision: similar pages in one group, one
 // group open at a time. Anything that changes the team as a whole is a setting.
 function officerMenu(o: string): NavItem[] {
@@ -97,15 +125,11 @@ function officerMenu(o: string): NavItem[] {
       label: 'Reports',
       icon: 'news',
       to: `${o}/reports/loot-fairness`,
+      // Reports of a kind share one item, each a tab on its page, so the
+      // sidebar stays short (Kat, 2026-10-18). Each keeps its own address.
       pages: [
-        { label: 'Loot fairness', to: `${o}/reports/loot-fairness` },
-        { label: 'Bench fairness', to: `${o}/reports/bench-fairness` },
-        { label: 'Boss lineups', to: `${o}/reports/boss-lineups` },
-        { label: 'Raid nights since last item', to: `${o}/reports/raid-nights` },
-        { label: 'BiS demand', to: `${o}/reports/bis-demand` },
-        { label: 'Loot pace', to: `${o}/reports/loot-pace` },
-        { label: 'Priority order health', to: `${o}/reports/priority-health` },
-        { label: 'Tier sets', to: `${o}/reports/tier-sets` },
+        { label: 'Loot', to: `${o}/reports/loot-fairness`, tabs: reportTabs(o, 'loot') },
+        { label: 'Bench and lineups', to: `${o}/reports/bench-fairness`, tabs: reportTabs(o, 'bench') },
         // A placeholder until #1503 decides what it shows (Kat, 2026-10-11).
         { label: 'Performance trends', to: `${o}/reports/performance` }
       ]
