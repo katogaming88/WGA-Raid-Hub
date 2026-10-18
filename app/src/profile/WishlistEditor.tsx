@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { DataState } from '../components/DataState';
+import { Icon } from '../components/Icon';
 import { useTouchScreen } from '../lib/device';
 import { bothQueries } from '../data/query';
 import { useSeasons } from '../calendar/useCalendar';
@@ -272,6 +273,9 @@ function SlotTabs({
   onNote: (ids: number[], note: string) => void;
 }) {
   const [chosen, setChosen] = useState(slots[0]!.slot);
+  // The item whose note box is open: one at a time, opened by its note button.
+  const [noteOpen, setNoteOpen] = useState<string | null>(null);
+  const noteButtons = useRef(new Map<string, HTMLButtonElement | null>());
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const index = Math.max(
     0,
@@ -355,24 +359,55 @@ function SlotTabs({
               {item.takenBy ? (
                 <span className="wishlist-taken">Your {item.takenBy} BiS</span>
               ) : (
-                <span className="mark-buttons" role="group" aria-label={`${item.name}, ${current.slot}`}>
-                  {MARKS.map(({ mark: m, label }) => (
+                <span className="wishlist-item-actions">
+                  <span className="mark-buttons" role="group" aria-label={`${item.name}, ${current.slot}`}>
+                    {MARKS.map(({ mark: m, label }) => (
+                      <button
+                        key={m}
+                        type="button"
+                        className={`mark-button mark-${m}`}
+                        aria-pressed={item.mark === m}
+                        disabled={disabled}
+                        onClick={() => onMark(current.slot, item.itemId, item.mark === m ? null : m)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </span>
+                  {editable && (
+                    // On every row, hidden until the item is marked, so the
+                    // mark buttons line up down the slot (Kat, 2026-10-18).
                     <button
-                      key={m}
+                      ref={(el) => {
+                        noteButtons.current.set(`${current.slot}|${item.itemId}`, el);
+                      }}
                       type="button"
-                      className={`mark-button mark-${m}`}
-                      aria-pressed={item.mark === m}
-                      disabled={disabled}
-                      onClick={() => onMark(current.slot, item.itemId, item.mark === m ? null : m)}
+                      className="icon-button wishlist-note-button"
+                      data-has-note={item.note ? true : undefined}
+                      hidden={!item.mark}
+                      aria-label={`${item.note ? 'Edit the note' : 'Add a note'} on ${item.name}`}
+                      aria-expanded={noteOpen === `${current.slot}|${item.itemId}`}
+                      title={item.note ? 'Edit note' : 'Add a note'}
+                      onClick={() =>
+                        setNoteOpen((open) =>
+                          open === `${current.slot}|${item.itemId}` ? null : `${current.slot}|${item.itemId}`
+                        )
+                      }
                     >
-                      {label}
+                      <Icon name="note" />
                     </button>
-                  ))}
+                  )}
                 </span>
               )}
-              {item.mark && editable ? (
-                // Keyed on the saved note, so a save from elsewhere resets it.
-                <NoteField key={`${item.itemId}|${item.note ?? ''}`} item={item} onSave={onNote} />
+              {item.mark && editable && noteOpen === `${current.slot}|${item.itemId}` ? (
+                <NoteField
+                  item={item}
+                  onSave={onNote}
+                  onDone={(refocus) => {
+                    setNoteOpen(null);
+                    if (refocus) noteButtons.current.get(`${current.slot}|${item.itemId}`)?.focus();
+                  }}
+                />
               ) : item.note ? (
                 <p className="wishlist-note">Note: {item.note}</p>
               ) : null}
@@ -384,12 +419,23 @@ function SlotTabs({
   );
 }
 
-// A note on a marked item, saved when the field loses focus or on Enter, as
-// the current site does.
-function NoteField({ item, onSave }: { item: EditorRow; onSave: (ids: number[], note: string) => void }) {
+// A note on a marked item, opened by the note button beside the marks. Saved
+// when the field loses focus or on Enter; Escape closes it unsaved.
+function NoteField({
+  item,
+  onSave,
+  onDone
+}: {
+  item: EditorRow;
+  onSave: (ids: number[], note: string) => void;
+  onDone: (refocus: boolean) => void;
+}) {
   const [value, setValue] = useState(item.note ?? '');
-  const save = () => {
-    if (value.trim() !== (item.note ?? '')) onSave(item.noteIds, value);
+  const cancelled = useRef(false);
+  const refocus = useRef(false);
+  const finish = () => {
+    if (!cancelled.current && value.trim() !== (item.note ?? '')) onSave(item.noteIds, value);
+    onDone(refocus.current);
   };
   return (
     <input
@@ -398,11 +444,21 @@ function NoteField({ item, onSave }: { item: EditorRow; onSave: (ids: number[], 
       maxLength={200}
       placeholder="Note (optional)"
       aria-label={`Note on ${item.name}`}
+      // Opened on purpose by its button, so it takes focus.
+      // eslint-disable-next-line jsx-a11y/no-autofocus
+      autoFocus
       value={value}
       onChange={(e) => setValue(e.target.value)}
-      onBlur={save}
+      onBlur={finish}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur();
+        if (e.key === 'Enter' || e.key === 'Escape') {
+          // Focus goes back to the note button; without this the same Enter
+          // would press it and open the box again.
+          e.preventDefault();
+          cancelled.current = e.key === 'Escape';
+          refocus.current = true;
+          e.currentTarget.blur();
+        }
       }}
     />
   );

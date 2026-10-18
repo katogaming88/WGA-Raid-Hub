@@ -351,20 +351,51 @@ describe('Wishlist (new app), Sidegrade and notes', () => {
     }
   });
 
-  it('saves a note on a marked item when the raider presses Enter', async () => {
+  it('opens a note box from the note button beside the marks, and saves the note on Enter', async () => {
     const opened = await open();
     try {
       await showEditor(opened.page);
       const writes = recordWrites(opened.page);
       const row = await itemRow(opened.page, 'Head', 'Venom-Etched Greathelm');
-      await row.getByRole('textbox', { name: 'Note on Venom-Etched Greathelm' }).fill('BiS for Frost too');
-      await row.getByRole('textbox', { name: 'Note on Venom-Etched Greathelm' }).press('Enter');
+      const box = row.getByRole('textbox', { name: 'Note on Venom-Etched Greathelm' });
+      await expect(box.count()).resolves.toBe(0);
+      await row.getByRole('button', { name: 'Add a note on Venom-Etched Greathelm' }).click();
+      await box.fill('BiS for Frost too');
+      await box.press('Enter');
       await expect.poll(() => writes.length).toBe(1);
       expect(writes[0]).toMatchObject({
         method: 'PATCH',
         query: { id: 'in.(1)' },
         body: { note: 'BiS for Frost too' }
       });
+      // The box closes, and focus goes back to the button.
+      await expect.poll(() => box.count()).toBe(0);
+      await expect(opened.page.evaluate(() => document.activeElement?.getAttribute('aria-label'))).resolves.toMatch(
+        /note on Venom-Etched Greathelm$/
+      );
+    } finally {
+      await opened.context.close();
+    }
+  });
+
+  it('has no note button on an unmarked item, and Escape closes the box unsaved', async () => {
+    const opened = await open();
+    try {
+      await showEditor(opened.page);
+      const writes = recordWrites(opened.page);
+      await opened.page.click('main .wishlist-slot-tab[data-slot="Head"]');
+      // Hidden, keeping its space, on every unmarked row.
+      const visible = await opened.page
+        .locator('main .wishlist-item:not([data-mark]) .wishlist-note-button')
+        .evaluateAll((buttons) => buttons.filter((b) => getComputedStyle(b).visibility !== 'hidden').length);
+      expect(visible).toBe(0);
+      const row = await itemRow(opened.page, 'Head', 'Venom-Etched Greathelm');
+      await row.getByRole('button', { name: 'Add a note on Venom-Etched Greathelm' }).click();
+      const box = row.getByRole('textbox', { name: 'Note on Venom-Etched Greathelm' });
+      await box.fill('Never mind');
+      await box.press('Escape');
+      await expect.poll(() => box.count()).toBe(0);
+      expect(writes).toEqual([]);
     } finally {
       await opened.context.close();
     }
