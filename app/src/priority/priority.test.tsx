@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
@@ -9,7 +9,9 @@ import {
   applySuggestion,
   blocked,
   bossOptions,
+  contestedItems,
   exportString,
+  flaggedItemIds,
   firstCounts,
   itemFor,
   outOf100,
@@ -124,6 +126,58 @@ const DATA: PriorityData = {
   received: [{ player_id: 12, self_item_id: 3, track: 'Myth' }]
 };
 
+describe('conflict flags and contested items', () => {
+  it('flags a #1 who is also #1 on another item from the same boss', () => {
+    const data = {
+      ...DATA,
+      bosses: [...DATA.bosses, { item_id: 2, boss: 'The Coiled Altar' }],
+      order: [
+        ...DATA.order,
+        order(2, 'Hero', 1, 10, 'Katorrí-Stormrage'),
+        order(2, 'Hero', 2, 11, 'Bbldrizzy-Nazjatar')
+      ]
+    };
+    const items = priorityItems(data, 'Hero', CATALOG, ZONES, 'MID2');
+    const drape = items.find((i) => i.itemId === 1)!;
+    const rows = rankedRows(drape, 'Hero', data, PLAYERS, CATALOG);
+    expect(rows[0]!.sameBoss).toEqual(['Drape of the Dreadful Rite']);
+    // Only the #1 carries it.
+    expect(rows[1]!.sameBoss).toEqual([]);
+    expect([...flaggedItemIds(items, 'Hero', data, PLAYERS, CATALOG)].sort()).toEqual([1, 2]);
+    // Nothing flagged without the shared boss.
+    expect(
+      flaggedItemIds(priorityItems(DATA, 'Hero', CATALOG, ZONES, 'MID2'), 'Hero', DATA, PLAYERS, CATALOG).size
+    ).toBe(0);
+  });
+
+  it('flags a Mythic #1 who already has the Heroic copy, and only on Mythic', () => {
+    const data = { ...DATA, loot: [{ player_id: 11, item_id: 1, track: 'Hero', response: 'BiS' }] };
+    const myth = priorityItems(data, 'Myth', CATALOG, ZONES, 'MID2')[0]!;
+    expect(rankedRows(myth, 'Myth', data, PLAYERS, CATALOG)[0]!.heroicCopy).toBe(true);
+    expect([...flaggedItemIds([myth], 'Myth', data, PLAYERS, CATALOG)]).toEqual([1]);
+    const hero = priorityItems(data, 'Hero', CATALOG, ZONES, 'MID2').find((i) => i.itemId === 1)!;
+    expect(rankedRows(hero, 'Hero', data, PLAYERS, CATALOG).some((r) => r.heroicCopy)).toBe(false);
+  });
+
+  it('lists items six or more raiders marked BiS, most wanted first, with ranks and what they have', () => {
+    const many = [10, 11, 12, 13, 14, 15].map((id) => ({ player_id: id, item_id: 1, status: 'bis' }));
+    const roster = [
+      ...PLAYERS,
+      ...[13, 14, 15].map((id) => player(id, `Raider${id}-Stormrage`, 'Mage', 'Fire', 'Ranged'))
+    ];
+    const data = { ...DATA, prefs: many };
+    const [top, ...rest] = contestedItems(data, CATALOG, ZONES, 'MID2', roster);
+    expect(rest).toEqual([]);
+    expect(top!.item.name).toBe('Silken Voodoo Drape');
+    expect(top!.wanters).toHaveLength(6);
+    const kat = top!.wanters.find((w) => w.playerId === 10)!;
+    expect([kat.heroic, kat.mythic, kat.has]).toEqual([1, null, 'Heroic']);
+    expect(top!.wanters.find((w) => w.playerId === 11)!.mythic).toBe(1);
+    // A raider who left the roster is not counted; five is not enough.
+    expect(contestedItems(data, CATALOG, ZONES, 'MID2', roster.slice(0, 5))).toEqual([]);
+  });
+});
+
 describe('priority list', () => {
   const items = priorityItems(DATA, 'Hero', CATALOG, ZONES, 'MID2');
 
@@ -205,15 +259,28 @@ describe('export string', () => {
 
 describe('gear reads', () => {
   const now = Date.parse('2026-10-18T12:00:00Z');
-  it('says when the morning read last ran, and warns when it is old or failed', () => {
-    expect(gearStatus(null, null, now)).toEqual({ text: 'No morning read recorded yet.', warn: true });
-    const cron = { finished_at: '2026-10-18T06:00:00Z', synced: 76, skipped: 1, players: 77 };
-    expect(gearStatus(cron, null, now).warn).toBe(false);
-    expect(gearStatus(cron, null, now).text).toContain('76 raiders updated, 1 could not be read.');
-    expect(gearStatus({ ...cron, finished_at: '2026-10-16T06:00:00Z' }, null, now).text).toContain(
-      'has not run in 36 hours'
+  // timeAgoLabel reads the clock itself.
+  beforeEach(() => vi.useFakeTimers({ toFake: ['Date'], now }));
+  afterEach(() => vi.useRealTimers());
+  it('says when the daily read last ran, and says plainly when it failed, is stuck or missed raiders', () => {
+    expect(gearStatus(null, null, now)).toEqual({ text: 'No gear read recorded yet.', warn: true });
+    const cron = { finished_at: '2026-10-18T06:00:00Z', synced: 76, skipped: 0, players: 76 };
+    expect(gearStatus(cron, null, now)).toEqual({ text: 'Gear read 6h ago.', warn: false });
+    expect(gearStatus({ ...cron, skipped: 1 }, null, now)).toEqual({
+      text: 'Gear read 6h ago. 1 raider could not be read.',
+      warn: false
+    });
+    expect(gearStatus({ ...cron, finished_at: '2026-10-16T06:00:00Z' }, null, now)).toMatchObject({
+      warn: true,
+      text: expect.stringContaining('has not run in 36 hours')
+    });
+    expect(gearStatus({ ...cron, error: 'Blizzard is down' }, null, now).text).toContain(
+      'failed: Blizzard is down. Use Refresh equipped gear.'
     );
     expect(gearStatus({ ...cron, synced: 0 }, null, now)).toMatchObject({ warn: true });
+    expect(gearStatus(cron, { finished_at: '2026-10-18T10:00:00Z' }, now).text).toBe(
+      'Gear read 6h ago. Refreshed by hand 2h ago.'
+    );
   });
 
   it("counts the class's tier pieces the raider has on, by Raider.IO's slot names", () => {
@@ -374,7 +441,9 @@ describe('Loot priority page', () => {
   it('lists the items and opens one to show its order and flags', async () => {
     const { router } = renderApp(PAGE, handlers(TABLES));
     expect(await screen.findByRole('heading', { name: 'Pick an item to see its priority order' })).toBeInTheDocument();
-    expect(screen.getByText(/Heroic track\. 3 items, 2 with someone ranked\./)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Heroic track\. 3 items, 2 with someone ranked, 1 with nobody ranked\./)
+    ).toBeInTheDocument();
     expect(screen.getByText('Midnight Season 2')).toBeInTheDocument();
 
     const list = screen.getByRole('navigation', { name: 'Items' });
@@ -407,7 +476,7 @@ describe('Loot priority page', () => {
   it('refreshes equipped gear for the team and says how it went', async () => {
     const invoke = vi.fn(() => ({ data: { success: true, synced: 24, skipped: 1 } }));
     const { client } = renderApp(PAGE, handlers(TABLES, 'officer', { invoke }));
-    expect(await screen.findByText(/Last morning read: just now, 76 raiders updated\./)).toBeInTheDocument();
+    expect(await screen.findByText(/Gear read just now\./)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Refresh equipped gear' }));
     expect(await screen.findByText('24 raiders updated, 1 could not be read.')).toBeInTheDocument();
     expect(client.authCalls).toContainEqual(['invoke', ['blizzard-gear-sync', { body: { teamId: 1 } }]]);
@@ -498,6 +567,29 @@ describe('Loot priority page', () => {
     ]);
     await userEvent.click(screen.getByRole('button', { name: 'Undo changes' }));
     expect(within(order()).getAllByRole('listitem')).toHaveLength(3);
+  });
+
+  it('lists the items with a flagged #1 when nothing is picked, and marks them in the list', async () => {
+    const tables = {
+      ...TABLES,
+      item_bosses: [...DATA.bosses, { item_id: 2, boss: 'The Coiled Altar' }],
+      priority_order: [...DATA.order, order(2, 'Hero', 1, 10, 'Katorrí-Stormrage')]
+    };
+    renderApp(PAGE, handlers(tables));
+    expect(await screen.findByRole('heading', { name: 'Needs a look (2)' })).toBeInTheDocument();
+    const list = screen.getByRole('navigation', { name: 'Items' });
+    expect(within(list).getByRole('button', { name: /Silken Voodoo Drape.*Needs a look/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Drape of the Dreadful Rite' }));
+    expect(screen.getByRole('list', { name: 'Drape of the Dreadful Rite, Heroic order' })).toHaveTextContent(
+      'Also #1 on Silken Voodoo Drape, same boss'
+    );
+  });
+
+  it('shows the Contested tab, empty until six raiders mark an item BiS', async () => {
+    renderApp(`${PAGE}?tab=contested`, handlers(TABLES));
+    expect(
+      await screen.findByText(/No contested items: nothing is marked BiS by 6 or more raiders/)
+    ).toBeInTheDocument();
   });
 
   it('lists Unmanaged items, and Set Mythic opens one with a suggestion', async () => {

@@ -173,6 +173,12 @@ export type RankedRow = {
   // marked BiS and has already won this season (Kat, 2026-10-18). Any other
   // win for the slot is not shown; it was noise.
   otherBis: string[];
+  // Only on the #1 row (Part 3). On a Mythic order: the raider already has
+  // the Heroic copy of this item.
+  heroicCopy: boolean;
+  // Only on the #1 row: other items from the same boss this raider is also #1
+  // on, on this track, in the saved orders.
+  sameBoss: string[];
 };
 
 // Slots a raider fills twice (or main hand and off hand), so having one BiS
@@ -221,6 +227,23 @@ export function rankedRows(
         ]
       : [];
     const nameRealm = player?.name_realm ?? names.get(playerId) ?? '';
+    const first = i === 0;
+    const sameBoss =
+      first && item.boss
+        ? [
+            ...new Set(
+              data.bosses
+                .filter((b) => b.boss === item.boss && b.item_id !== item.itemId)
+                .filter((b) =>
+                  data.order.some(
+                    (r) => r.item_id === b.item_id && r.track === track && r.rank === 1 && r.player_id === playerId
+                  )
+                )
+                .map((b) => slotOf.get(b.item_id)?.name)
+                .filter((n): n is string => !!n)
+            )
+          ]
+        : [];
     return {
       rank: i + 1,
       playerId,
@@ -230,9 +253,94 @@ export function rankedRows(
       left: !player,
       mark,
       received: own.some((l) => l.item_id === item.itemId && l.track === track),
-      otherBis
+      otherBis,
+      heroicCopy: first && track === 'Myth' && owned(playerId, item.itemId, data).heroic,
+      sameBoss
     };
   });
+}
+
+// Items whose #1 carries a flag: the ones "Needs a look" lists, and the dot in
+// the item list (Part 3).
+export function flaggedItemIds(
+  items: PriorityItem[],
+  track: Track,
+  data: PriorityData,
+  players: PlayerRow[],
+  catalog: CatalogItem[]
+): Set<number> {
+  const out = new Set<number>();
+  for (const item of items) {
+    const top = rankedRows({ ...item, ranked: item.ranked.slice(0, 1) }, track, data, players, catalog)[0];
+    if (top && (top.heroicCopy || top.sameBoss.length > 0)) out.add(item.itemId);
+  }
+  return out;
+}
+
+// -- Part 3: Contested items --------------------------------------------
+
+// The current site's bar (CONTESTED_ITEMS_MIN_PLAYERS): below it, wanting the
+// same item is too common to say anything.
+export const CONTESTED_MIN = 6;
+
+export type Wanter = {
+  playerId: number;
+  name: string;
+  className: string | null;
+  heroic: number | null;
+  mythic: number | null;
+  // The best copy they already have.
+  has: 'Mythic' | 'Heroic' | 'Normal' | null;
+};
+export type Contested = { item: PriorityItem; wanters: Wanter[] };
+
+// Items CONTESTED_MIN or more raiders on the roster marked BiS, most wanted
+// first, each with who wants it and where they rank on both tracks.
+export function contestedItems(
+  data: PriorityData,
+  catalog: CatalogItem[],
+  zones: ZoneRow[],
+  season: string,
+  players: PlayerRow[]
+): Contested[] {
+  const roster = new Map(players.map((p) => [p.id, p]));
+  const wanted = new Map<number, number[]>();
+  for (const p of data.prefs) {
+    if (p.status !== 'bis' || !roster.has(p.player_id)) continue;
+    const who = wanted.get(p.item_id) ?? [];
+    if (!who.includes(p.player_id)) wanted.set(p.item_id, [...who, p.player_id]);
+  }
+  const out: Contested[] = [];
+  for (const item of catalog) {
+    const who = wanted.get(item.id);
+    if (!who || who.length < CONTESTED_MIN || !rankable(item, data, zones, season)) continue;
+    const rank = (playerId: number, track: Track) =>
+      data.order.find((r) => r.item_id === item.id && r.track === track && r.player_id === playerId)?.rank ?? null;
+    out.push({
+      item: {
+        itemId: item.id,
+        name: item.name,
+        slot: item.slot,
+        boss: data.bosses.find((b) => b.item_id === item.id)?.boss ?? null,
+        ranked: []
+      },
+      wanters: who
+        .map((id) => {
+          const p = roster.get(id)!;
+          const o = owned(id, item.id, data);
+          return {
+            playerId: id,
+            name: p.nickname?.trim() || firstName(p.name_realm),
+            className: p.classes_specs?.class ?? null,
+            heroic: rank(id, 'Hero'),
+            mythic: rank(id, 'Myth'),
+            has: o.mythic ? ('Mythic' as const) : o.heroic ? ('Heroic' as const) : o.normal ? ('Normal' as const) : null
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name))
+    });
+  }
+  return out.sort((a, b) => b.wanters.length - a.wanters.length || a.item.name.localeCompare(b.item.name));
 }
 
 // The export string: the build_rclc_export() payload as JSON, UTF-8, base64,
@@ -263,24 +371,23 @@ export function gearReadCounts(updated: number | null | undefined, unread?: numb
 const GEAR_STALE_MS = 36 * 60 * 60 * 1000;
 
 export function gearStatus(cron: GearRun | null, byHand: GearRun | null, now = Date.now()) {
-  if (!cron) return { text: 'No morning read recorded yet.', warn: true };
-  let text = `Last morning read: ${timeAgoLabel(cron.finished_at) || 'unknown age'}, ${gearReadCounts(cron.synced, cron.skipped)}.`;
-  let warn = false;
-  if (cron.error) {
-    text += ` Error: ${cron.error}`;
-    warn = true;
-  } else if (!cron.synced && (cron.players ?? 0) > 0) {
-    text += ' Nothing was updated.';
-    warn = true;
-  }
+  if (!cron) return { text: 'No gear read recorded yet.', warn: true };
+  const ago = timeAgoLabel(cron.finished_at) || 'at an unknown time';
   const finished = Date.parse(cron.finished_at);
-  if (isNaN(finished) || now - finished > GEAR_STALE_MS) {
-    text += ' The morning read has not run in 36 hours.';
-    warn = true;
+  let text: string;
+  let warn = true;
+  if (cron.error) {
+    text = `The daily gear read failed: ${cron.error}. Use Refresh equipped gear.`;
+  } else if (isNaN(finished) || now - finished > GEAR_STALE_MS) {
+    text = `The daily gear read has not run in 36 hours (last ${ago}). Use Refresh equipped gear.`;
+  } else if (!cron.synced && (cron.players ?? 0) > 0) {
+    text = `The daily gear read ran ${ago} but updated nobody. Use Refresh equipped gear.`;
+  } else {
+    warn = false;
+    const unread = cron.skipped ?? 0;
+    text = `Gear read ${ago}.${unread ? ` ${unread} ${unread === 1 ? 'raider' : 'raiders'} could not be read.` : ''}`;
   }
-  if (byHand) {
-    text += ` Last refresh by hand: ${timeAgoLabel(byHand.finished_at) || 'unknown age'}, ${gearReadCounts(byHand.synced)}.`;
-  }
+  if (byHand) text += ` Refreshed by hand ${timeAgoLabel(byHand.finished_at) || 'at an unknown time'}.`;
   return { text, warn };
 }
 

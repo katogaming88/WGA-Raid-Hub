@@ -15,6 +15,9 @@ import { useProgressionSettings } from '../settings/useSettings';
 import type { CatalogItem } from '../profile/lootPriority';
 import {
   bossOptions,
+  CONTESTED_MIN,
+  contestedItems,
+  flaggedItemIds,
   itemFor,
   gearReadCounts,
   gearStatus,
@@ -25,11 +28,13 @@ import {
   sections,
   TRACK_LABEL,
   type PriorityData,
+  type Contested,
   type PriorityItem,
   unmanagedItems,
   type Track,
   type Unmanaged
 } from './priority';
+import { ConflictFlags } from './RowFlags';
 import { draftKey, ItemEditor, type Draft } from './ItemEditor';
 import { useExportString, useGearRuns, usePriorityData, useRefreshGear, useSyncTierCounts } from './usePriority';
 // The Roster's toggle buttons, shared rather than restyled.
@@ -75,7 +80,8 @@ export function PriorityPage() {
 function Priority({ teamId, season, seasonName }: { teamId: number; season: string; seasonName: string }) {
   const [params, setParams] = useSearchParams();
   const track: Track = params.get('track') === 'mythic' ? 'Myth' : 'Hero';
-  const tab = params.get('tab') === 'unmanaged' ? 'unmanaged' : 'list';
+  const tabParam = params.get('tab');
+  const tab = tabParam === 'unmanaged' || tabParam === 'contested' ? tabParam : 'list';
   const picked = Number(params.get('item')) || null;
   const access = useAccess();
   const officer = can(access.data, 'actAsOfficer', teamId);
@@ -104,6 +110,8 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
         const items = priorityItems(data, track, catalog, zones, season);
         const item = picked ? itemFor(picked, data, track, catalog, zones, season) : null;
         const unmanaged = unmanagedItems(data, catalog, zones, season);
+        const contested = contestedItems(data, catalog, zones, season, players);
+        const flagged = flaggedItemIds(items, track, data, players, catalog);
         const managed = (id: number) =>
           [...data.order, ...data.empty].some((r) => r.item_id === id && r.track === track);
         const unsaved = new Set(
@@ -143,8 +151,13 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
                 Unmanaged
                 {unmanaged.length > 0 && <span className="count-badge">{unmanaged.length}</span>}
               </Link>
+              <Link to={linkTo({ tab: 'contested' })} replace aria-current={tab === 'contested' ? 'page' : undefined}>
+                Contested
+              </Link>
             </nav>
-            {tab === 'unmanaged' ? (
+            {tab === 'contested' ? (
+              <ContestedList contested={contested} />
+            ) : tab === 'unmanaged' ? (
               <UnmanagedList
                 unmanaged={unmanaged}
                 officer={officer}
@@ -160,6 +173,7 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
                   picked={item?.itemId ?? null}
                   players={players}
                   unsaved={unsaved}
+                  flagged={flagged}
                   onPick={(id) => change({ item: String(id), suggest: null })}
                 />
                 {item && officer ? (
@@ -181,13 +195,12 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
                 ) : item ? (
                   <ItemPanel item={item} track={track} data={data} players={players} catalog={catalog} />
                 ) : (
-                  <div className="card priority-panel priority-panel-empty">
-                    <h2 className="section-title">Pick an item to see its priority order</h2>
-                    <p className="text-muted">
-                      {TRACK_LABEL[track]} track. {items.length} {items.length === 1 ? 'item' : 'items'},{' '}
-                      {items.filter((i) => i.ranked.length > 0).length} with someone ranked.
-                    </p>
-                  </div>
+                  <NeedsALook
+                    items={items}
+                    flagged={flagged}
+                    track={track}
+                    onPick={(id) => change({ item: String(id), suggest: null })}
+                  />
                 )}
               </div>
             )}
@@ -195,6 +208,89 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
         );
       }}
     </DataState>
+  );
+}
+
+// The right side with nothing picked: what to look at first.
+function NeedsALook({
+  items,
+  flagged,
+  track,
+  onPick
+}: {
+  items: PriorityItem[];
+  flagged: ReadonlySet<number>;
+  track: Track;
+  onPick: (id: number) => void;
+}) {
+  const look = items.filter((i) => flagged.has(i.itemId)).sort((a, b) => a.name.localeCompare(b.name));
+  const nobody = items.filter((i) => i.ranked.length === 0).length;
+  return (
+    <div className="card priority-panel priority-panel-empty">
+      <h2 className="section-title">Pick an item to see its priority order</h2>
+      <p className="text-muted">
+        {TRACK_LABEL[track]} track. {items.length} {items.length === 1 ? 'item' : 'items'}, {items.length - nobody} with
+        someone ranked{nobody > 0 ? `, ${nobody} with nobody ranked` : ''}.
+      </p>
+      <h3 className="priority-editor-label">Needs a look ({look.length})</h3>
+      {look.length === 0 ? (
+        <p className="text-muted">No flags on any #1.</p>
+      ) : (
+        <ul className="priority-look">
+          {look.map((i) => (
+            <li key={i.itemId}>
+              <button type="button" className="button" onClick={() => onPick(i.itemId)}>
+                {i.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// Items many raiders marked BiS, and who wants them (the current site's
+// Contested Items). Each opens to the raiders and where they rank.
+function ContestedList({ contested }: { contested: Contested[] }) {
+  if (contested.length === 0) {
+    return (
+      <div className="card placeholder">
+        <p>No contested items: nothing is marked BiS by {CONTESTED_MIN} or more raiders yet.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="priority-contested">
+      <p className="text-muted">
+        Items {CONTESTED_MIN} or more raiders marked BiS, most wanted first. H and M are where they rank on Heroic and
+        Mythic.
+      </p>
+      {contested.map((c) => (
+        <details key={c.item.itemId} className="card priority-contested-item">
+          <summary>
+            <span className="priority-item-name">{c.item.name}</span>
+            <span className="text-muted">{c.item.slot}</span>
+            <span className="count-badge">{c.wanters.length} raiders</span>
+          </summary>
+          <ul className="priority-contested-who">
+            {c.wanters.map((w) => (
+              <li key={w.playerId}>
+                <span
+                  className="priority-rank-name"
+                  style={w.className ? { color: classColor(w.className) } : undefined}
+                >
+                  {w.name}
+                </span>
+                {w.heroic !== null && <span className="text-muted">#{w.heroic} H</span>}
+                {w.mythic !== null && <span className="text-muted">#{w.mythic} M</span>}
+                {w.has && <span className="priority-flag priority-flag-good">Has {w.has}</span>}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ))}
+    </div>
   );
 }
 
@@ -401,7 +497,7 @@ function GearControls({
         {progress ?? 'Sync tier counts'}
       </button>
       <span className={status?.warn ? 'priority-gear-status warn' : 'priority-gear-status text-muted'}>
-        {runs.isError ? 'Could not load the last morning read.' : status?.text}
+        {runs.isError ? 'Could not load the last gear read.' : status?.text}
       </span>
     </div>
   );
@@ -413,6 +509,7 @@ function ItemList({
   picked,
   players,
   unsaved,
+  flagged,
   onPick
 }: {
   items: PriorityItem[];
@@ -420,6 +517,7 @@ function ItemList({
   picked: number | null;
   players: PlayerRow[];
   unsaved: ReadonlySet<number>;
+  flagged: ReadonlySet<number>;
   onPick: (id: number) => void;
 }) {
   const [search, setSearch] = useState('');
@@ -477,6 +575,12 @@ function ItemList({
                     <span className="priority-item-name">{i.name}</span>
                     <span className="visually-hidden">,</span>{' '}
                     {unsaved.has(i.itemId) && <span className="priority-unsaved">Not saved</span>}
+                    {flagged.has(i.itemId) && (
+                      <>
+                        <span className="priority-dot" aria-hidden="true" />
+                        <span className="visually-hidden">Needs a look </span>
+                      </>
+                    )}
                     <span className="priority-item-count">
                       {i.ranked.length
                         ? `#1 ${names.get(i.ranked[0]!) ?? 'left the roster'} · ${i.ranked.length}`
@@ -540,6 +644,7 @@ function ItemPanel({
                     Has BiS {pairedNoun(item.slot)}: {r.otherBis.join(', ')}
                   </span>
                 )}
+                <ConflictFlags row={r} />
               </span>
             </li>
           ))}

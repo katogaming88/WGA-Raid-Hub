@@ -537,3 +537,41 @@
     justify-content: flex-start;
   }
 }
+
+/* Part 3: row flags, Needs a look, Contested */
+.priority-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-left: var(--space-2);
+  border-radius: 50%;
+  background: currentColor;
+}
+.priority-look,
+.priority-contested-who {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.priority-contested {
+  display: grid;
+  gap: var(--space-3);
+}
+.priority-contested-item summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+}
+.priority-contested-who {
+  margin-top: var(--space-3);
+}
+.priority-contested-who li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

@@ -782,6 +782,24 @@ const PRIORITY = {
   }
 };
 
+// Part 3: the first raider #1 on two items from one boss, so Needs a look and
+// the row flag show; and six raiders marking item 1 BiS, so Contested lists it.
+const PRIORITY_FLAGGED = {
+  ...PRIORITY,
+  tables: {
+    ...PRIORITY.tables,
+    item_bosses: [
+      { item_id: 1, boss: 'The Coiled Altar' },
+      { item_id: 2, boss: 'The Coiled Altar' }
+    ],
+    priority_order: [
+      ...PRIORITY.tables.priority_order,
+      { item_id: 2, track: 'Hero', rank: 1, player_id: PRIORITY_IDS[0], players: { name_realm: 'x' } }
+    ],
+    item_preferences: PRIORITY_IDS.slice(0, 6).map((player_id) => ({ player_id, item_id: 1, status: 'bis' }))
+  }
+};
+
 // Officer Settings (#1357, #1103 row 1): General, Season, Raid progression and
 // Danger zone, so every card state (a saved value, a closed tier's WCL
 // Performance Baseline row, a raid/boss row, and the Archive season control)
@@ -1199,6 +1217,25 @@ const STATES = [
     ...PRIORITY,
     path: '/g/wga/t/phoenix/officer/priority?tab=unmanaged',
     sentinel: 'main .priority-unmanaged-row'
+  },
+  {
+    label: 'loot priority, Needs a look',
+    ...PRIORITY_FLAGGED,
+    path: '/g/wga/t/phoenix/officer/priority',
+    sentinel: 'main .priority-look'
+  },
+  {
+    label: 'loot priority, a flagged #1',
+    ...PRIORITY_FLAGGED,
+    sentinel: 'main .priority-flag-warn'
+  },
+  {
+    label: 'loot priority, Contested',
+    ...PRIORITY_FLAGGED,
+    path: '/g/wga/t/phoenix/officer/priority?tab=contested',
+    sentinel: 'main .priority-contested-item',
+    click: 'main .priority-contested-item summary',
+    afterClick: 'main .priority-contested-who'
   },
   { label: 'loot fairness', ...REPORT, path: '/g/wga/t/phoenix/officer/reports/loot-fairness' },
   {
