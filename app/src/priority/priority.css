@@ -244,6 +244,259 @@
   color: var(--bad);
 }
 
+/* Priority list | Unmanaged. */
+.priority-tabs {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border);
+}
+
+.priority-tabs a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.priority-tabs a:hover {
+  color: var(--text);
+}
+
+.priority-tabs a[aria-current='page'] {
+  color: var(--text);
+  border-bottom-color: var(--brand);
+}
+
+.priority-unsaved {
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--page);
+  color: var(--warn);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.priority-unmanaged {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.priority-unmanaged > p {
+  margin: 0;
+}
+
+.priority-unmanaged-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: 6px var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+
+.priority-unmanaged-what {
+  margin-right: auto;
+  font-size: var(--text-sm);
+}
+
+/* The editor (part 2): the picked item's order, editable. */
+.priority-editor .priority-panel-head {
+  align-items: center;
+}
+
+.priority-editor .priority-panel-head > div {
+  margin-right: auto;
+}
+
+.priority-editor-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.priority-editor-note {
+  margin: 0;
+  color: var(--good);
+  font-size: var(--text-sm);
+}
+
+.priority-editor-label {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.priority-edit-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.priority-edit-row {
+  display: grid;
+  grid-template-columns: 16px 24px minmax(0, 1fr) auto 64px auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+}
+
+.priority-edit-row.locked {
+  border-color: var(--warn);
+}
+
+.priority-edit-row.dragging {
+  opacity: 0.5;
+}
+
+.priority-grip {
+  color: var(--text-dim);
+  cursor: grab;
+  user-select: none;
+}
+
+.priority-edit-who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--space-2);
+  min-width: 0;
+}
+
+.priority-was {
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--page);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.priority-was.up {
+  color: var(--good);
+}
+
+.priority-was.down {
+  color: var(--warn);
+}
+
+.priority-was.new {
+  color: var(--brand);
+}
+
+.priority-owned {
+  color: var(--heroic);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.priority-score {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.priority-edit-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.priority-icon {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.priority-icon:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.priority-lock[aria-pressed='true'] {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+.priority-pool-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.priority-pool {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.priority-pool-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--page);
+}
+
+.priority-pool-add,
+.priority-pool-out {
+  margin-left: auto;
+}
+
+.priority-pool-out {
+  font-size: var(--text-xs);
+}
+
+.priority-editor-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.priority-editor-hint {
+  margin-right: auto;
+  font-size: var(--text-sm);
+}
+
+/* Save is the editor's main action, but Generate keeps the one orange button
+   on the page (Kat, 2026-09-13), so Save is outlined in the brand blue. */
+.priority-save:not(:disabled) {
+  border-color: var(--brand);
+  color: var(--brand);
+  font-weight: 600;
+}
+
 /* Stacked, the picked item comes first, not under a hundred-item list. The
    two stack below 300px + 480px + the gap, so this asks the split itself. */
 @container (max-width: 800px) {
@@ -257,6 +510,20 @@
 }
 
 @media (max-width: 640px) {
+  .priority-edit-row {
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+  }
+
+  .priority-grip,
+  .priority-score {
+    display: none;
+  }
+
+  .priority-edit-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
   .priority-rank {
     grid-template-columns: 24px 1fr auto;
   }

@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     36 h 51 m |
-| Revamp 3: officer dashboard        |     23 h 24 m |
+| Revamp 3: officer dashboard        |     24 h 09 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **84 h 35 m** |
+| **All revamp work**                | **85 h 20 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -302,6 +302,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:49 AM-12:25 PM | Reports cut from nine sidebar items to three (Loot and Bench and lineups as tabbed pages); the sidebar folds sections instead of scrolling, only when they would not fit, Site open whenever it can; a folding loop Kat hit while testing fixed; browser tests for folding (in the #1247 PR) | Revamp 3 (#1247) | 35 m | ~25 m build, ~10 m Kat deciding and testing | not read | Kat: never a scrollbar on the sidebar; Tier sets goes with Loot; fold only when needed. Review and merge not yet counted |
 | 12:33-1:08 PM | #1362 planned: the old Priority, Contested and Scoring tabs read in full, decisions with Kat, a mockup canvas (the page, the side-panel editor, Sidegrade and notes on the wishlist, Scoring), and the cutover issues #1553, #1554 and addon #78 | Revamp 3 (#1362) | 35 m | ~20 m build, ~15 m Kat deciding on mockups | not read | Kat: one track switch for list and export; Scoring as a tab; check banners dropped for flags on the row; edit in a side panel, not a dialog, showing each raider's saved place after Suggest order; Sidegrade (info only) and notes back on the wishlist; scores out of 100 |
 | 1:08-1:25 PM | #1362 part 1 built: the Loot priority page (item list, the picked item's order and flags, one track switch, the RCLootCouncil string, Refresh equipped gear, Sync tier counts), tests, the browser test's accessibility states, checked on the production backup, stamp, changelog, these rows, PR opened | Revamp 3 (#1362) | 15 m | ~15 m build | not read | Review and merge not yet counted |
+| 1:25-1:50 PM | PR #1555 (#1362 part 1) reviewed and merged | Revamp 3 (#1362) | 25 m | ~25 m Kat reviewing | not read | Merged 1:50 PM |
+| 1:51-2:10 PM | #1362 part 2 built: the side-panel editor (Suggest order with each raider's saved place, keyboard moves, lock, add from marked raiders or the roster, save, kept drafts), the Unmanaged tab, tests, the browser test's accessibility states, checked on the production backup, stamp, changelog, these rows, PR opened | Revamp 3 (#1362) | 20 m | ~20 m build, Kat's two notes mid-build | not read | Kat: drop the "Already has <slot>" flag; for rings, trinkets and weapons show only the raider's other BiS item already won. Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

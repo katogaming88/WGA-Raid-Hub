@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { useAccess, can } from '../auth/access';
 import { useSeasons } from '../calendar/useCalendar';
 import { DataState } from '../components/DataState';
@@ -15,17 +15,22 @@ import { useProgressionSettings } from '../settings/useSettings';
 import type { CatalogItem } from '../profile/lootPriority';
 import {
   bossOptions,
+  itemFor,
   gearReadCounts,
   gearStatus,
   MARK_LABEL,
+  pairedNoun,
   priorityItems,
   rankedRows,
   sections,
   TRACK_LABEL,
   type PriorityData,
   type PriorityItem,
-  type Track
+  unmanagedItems,
+  type Track,
+  type Unmanaged
 } from './priority';
+import { draftKey, ItemEditor, type Draft } from './ItemEditor';
 import { useExportString, useGearRuns, usePriorityData, useRefreshGear, useSyncTierCounts } from './usePriority';
 // The Roster's toggle buttons, shared rather than restyled.
 import '../roster/roster.css';
@@ -70,20 +75,23 @@ export function PriorityPage() {
 function Priority({ teamId, season, seasonName }: { teamId: number; season: string; seasonName: string }) {
   const [params, setParams] = useSearchParams();
   const track: Track = params.get('track') === 'mythic' ? 'Myth' : 'Hero';
+  const tab = params.get('tab') === 'unmanaged' ? 'unmanaged' : 'list';
   const picked = Number(params.get('item')) || null;
   const access = useAccess();
   const officer = can(access.data, 'actAsOfficer', teamId);
+  // Unsaved orders, by item and track, kept while the officer looks around.
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
 
-  const setParam = (name: string, value: string | null) =>
-    setParams(
-      (p) => {
-        const next = new URLSearchParams(p);
-        if (value === null) next.delete(name);
-        else next.set(name, value);
-        return next;
-      },
-      { replace: true }
-    );
+  const withParams = (values: Record<string, string | null>) => {
+    const next = new URLSearchParams(params);
+    for (const [name, value] of Object.entries(values)) {
+      if (value === null) next.delete(name);
+      else next.set(name, value);
+    }
+    return next;
+  };
+  const change = (values: Record<string, string | null>) => setParams(withParams(values), { replace: true });
+  const linkTo = (values: Record<string, string | null>) => `?${withParams(values).toString()}`;
 
   const reads = bothQueries(
     bothQueries(usePriorityData(teamId, season), useCatalog()),
@@ -94,7 +102,22 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
     <DataState query={reads} label="the priority lists">
       {([[data, catalog], [[zones, players], raids]]) => {
         const items = priorityItems(data, track, catalog, zones, season);
-        const item = items.find((i) => i.itemId === picked) ?? null;
+        const item = picked ? itemFor(picked, data, track, catalog, zones, season) : null;
+        const unmanaged = unmanagedItems(data, catalog, zones, season);
+        const managed = (id: number) =>
+          [...data.order, ...data.empty].some((r) => r.item_id === id && r.track === track);
+        const unsaved = new Set(
+          Object.keys(drafts)
+            .filter((k) => k.endsWith(`|${track}`))
+            .map((k) => Number(k.split('|')[0]))
+        );
+        const setDraft = (key: string, draft: Draft | null) =>
+          setDrafts((all) => {
+            const next = { ...all };
+            if (draft) next[key] = draft;
+            else delete next[key];
+            return next;
+          });
         return (
           <>
             <Controls
@@ -102,35 +125,139 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
               season={season}
               seasonName={seasonName}
               track={track}
-              onTrack={(t) => setParam('track', t === 'Myth' ? 'mythic' : null)}
+              onTrack={(t) => change({ track: t === 'Myth' ? 'mythic' : null })}
               officer={officer}
               players={players}
               data={data}
             />
-            <div className="priority-split">
-              <ItemList
-                items={items}
-                bosses={bossOptions(items, raids)}
-                picked={item?.itemId ?? null}
-                players={players}
-                onPick={(id) => setParam('item', String(id))}
+            <nav className="priority-tabs" aria-label="Priority views">
+              <Link to={linkTo({ tab: null })} replace aria-current={tab === 'list' ? 'page' : undefined}>
+                Priority list
+              </Link>
+              <Link
+                to={linkTo({ tab: 'unmanaged' })}
+                replace
+                aria-current={tab === 'unmanaged' ? 'page' : undefined}
+                aria-label={unmanaged.length ? `Unmanaged, ${unmanaged.length}` : undefined}
+              >
+                Unmanaged
+                {unmanaged.length > 0 && <span className="count-badge">{unmanaged.length}</span>}
+              </Link>
+            </nav>
+            {tab === 'unmanaged' ? (
+              <UnmanagedList
+                unmanaged={unmanaged}
+                officer={officer}
+                onSet={(id, t) =>
+                  change({ tab: null, item: String(id), track: t === 'Myth' ? 'mythic' : null, suggest: '1' })
+                }
               />
-              {item ? (
-                <ItemPanel item={item} track={track} data={data} players={players} catalog={catalog} />
-              ) : (
-                <div className="card priority-panel priority-panel-empty">
-                  <h2 className="section-title">Pick an item to see its priority order</h2>
-                  <p className="text-muted">
-                    {TRACK_LABEL[track]} track. {items.length} {items.length === 1 ? 'item' : 'items'},{' '}
-                    {items.filter((i) => i.ranked.length > 0).length} with someone ranked.
-                  </p>
-                </div>
-              )}
-            </div>
+            ) : (
+              <div className="priority-split">
+                <ItemList
+                  items={items}
+                  bosses={bossOptions(items, raids)}
+                  picked={item?.itemId ?? null}
+                  players={players}
+                  unsaved={unsaved}
+                  onPick={(id) => change({ item: String(id), suggest: null })}
+                />
+                {item && officer ? (
+                  <ItemEditor
+                    key={draftKey(item.itemId, track)}
+                    teamId={teamId}
+                    season={season}
+                    item={item}
+                    track={track}
+                    managed={managed(item.itemId)}
+                    data={data}
+                    players={players}
+                    catalog={catalog}
+                    draft={drafts[draftKey(item.itemId, track)] ?? null}
+                    onDraft={(d) => setDraft(draftKey(item.itemId, track), d)}
+                    autoSuggest={params.get('suggest') === '1'}
+                    onAutoSuggested={() => change({ suggest: null })}
+                  />
+                ) : item ? (
+                  <ItemPanel item={item} track={track} data={data} players={players} catalog={catalog} />
+                ) : (
+                  <div className="card priority-panel priority-panel-empty">
+                    <h2 className="section-title">Pick an item to see its priority order</h2>
+                    <p className="text-muted">
+                      {TRACK_LABEL[track]} track. {items.length} {items.length === 1 ? 'item' : 'items'},{' '}
+                      {items.filter((i) => i.ranked.length > 0).length} with someone ranked.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         );
       }}
     </DataState>
+  );
+}
+
+// Items with no order saved on a track (the current site's Unmanaged Items),
+// grouped like the list. Set Heroic or Set Mythic opens the item with a
+// suggestion to review and save.
+function UnmanagedList({
+  unmanaged,
+  officer,
+  onSet
+}: {
+  unmanaged: Unmanaged[];
+  officer: boolean;
+  onSet: (itemId: number, track: Track) => void;
+}) {
+  if (unmanaged.length === 0) {
+    return (
+      <div className="card placeholder">
+        <p>Every item this season has an order on both tracks.</p>
+      </div>
+    );
+  }
+  const missing = new Map(unmanaged.map((u) => [u.item.itemId, u.missing]));
+  const groups = sections(
+    unmanaged.map((u) => u.item),
+    { search: '', boss: '', hideEmpty: false }
+  );
+  return (
+    <div className="priority-unmanaged">
+      <p className="text-muted">
+        {unmanaged.length} {unmanaged.length === 1 ? 'item has' : 'items have'} no order saved on one track or both.
+      </p>
+      {groups.map((g) => (
+        <div key={g.label} className="priority-section">
+          <h2 className="priority-section-title">{g.label}</h2>
+          <ul>
+            {g.items.map((i) => {
+              const tracks = missing.get(i.itemId)!;
+              return (
+                <li key={i.itemId} className="priority-unmanaged-row">
+                  <span className="priority-item-name">{i.name}</span>
+                  <span className="text-muted priority-unmanaged-what">
+                    {tracks.length === 2 ? 'No order on either track' : `No ${TRACK_LABEL[tracks[0]!]} order`}
+                  </span>
+                  {officer &&
+                    tracks.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        className="button"
+                        aria-label={`Set ${TRACK_LABEL[t]} for ${i.name}`}
+                        onClick={() => onSet(i.itemId, t)}
+                      >
+                        Set {TRACK_LABEL[t]}
+                      </button>
+                    ))}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -285,12 +412,14 @@ function ItemList({
   bosses,
   picked,
   players,
+  unsaved,
   onPick
 }: {
   items: PriorityItem[];
   bosses: string[];
   picked: number | null;
   players: PlayerRow[];
+  unsaved: ReadonlySet<number>;
   onPick: (id: number) => void;
 }) {
   const [search, setSearch] = useState('');
@@ -347,6 +476,7 @@ function ItemList({
                   >
                     <span className="priority-item-name">{i.name}</span>
                     <span className="visually-hidden">,</span>{' '}
+                    {unsaved.has(i.itemId) && <span className="priority-unsaved">Not saved</span>}
                     <span className="priority-item-count">
                       {i.ranked.length
                         ? `#1 ${names.get(i.ranked[0]!) ?? 'left the roster'} · ${i.ranked.length}`
@@ -405,9 +535,9 @@ function ItemPanel({
               <span className="priority-flags">
                 {r.left && <span className="priority-flag">Left the roster</span>}
                 {r.received && <span className="priority-flag priority-flag-good">Received {TRACK_LABEL[track]}</span>}
-                {r.sameSlot.length > 0 && (
+                {r.otherBis.length > 0 && (
                   <span className="priority-flag priority-flag-warn">
-                    Already has {item.slot} ({r.sameSlot.join(', ')})
+                    Has BiS {pairedNoun(item.slot)}: {r.otherBis.join(', ')}
                   </span>
                 )}
               </span>

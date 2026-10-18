@@ -11,6 +11,8 @@ import {
   type OrderRow,
   type PrefRow,
   type PriorityData,
+  type ReceivedRow,
+  type Suggested,
   type TeamLootRow,
   type TierPieceRow,
   type Track
@@ -20,7 +22,7 @@ import {
 // the season's loot each pass 1000 rows on a full team, so they page.
 export function usePriorityData(teamId: number, season: string) {
   return useSupabaseQuery<PriorityData>(['priority-data', teamId, season], async (client) => {
-    const [order, empty, prefs, loot, bosses, tierPieces] = await Promise.all([
+    const [order, empty, prefs, loot, bosses, tierPieces, received] = await Promise.all([
       readAll<OrderRow>((from, to) =>
         client
           .from('priority_order')
@@ -64,9 +66,19 @@ export function usePriorityData(teamId: number, season: string) {
       client
         .from('tier_token_map')
         .select('class, resolved_item_id, resolved:items!tier_token_map_resolved_item_id_fkey(wow_item_id, slot)')
-        .eq('season', season)
+        .eq('season', season),
+      readAll<ReceivedRow>((from, to) =>
+        client
+          .from('self_received_requests')
+          .select('player_id, self_item_id, track')
+          .eq('team_id', teamId)
+          .eq('status', 'approved')
+          .order('id')
+          .range(from, to)
+      )
     ]);
-    const error = order.error ?? empty.error ?? prefs.error ?? loot.error ?? bosses.error ?? tierPieces.error;
+    const error =
+      order.error ?? empty.error ?? prefs.error ?? loot.error ?? bosses.error ?? tierPieces.error ?? received.error;
     if (error) return { data: null, error };
     return {
       data: {
@@ -75,7 +87,8 @@ export function usePriorityData(teamId: number, season: string) {
         prefs: prefs.data!,
         loot: loot.data!,
         bosses: bosses.data!,
-        tierPieces: (tierPieces.data ?? []) as unknown as TierPieceRow[]
+        tierPieces: (tierPieces.data ?? []) as unknown as TierPieceRow[],
+        received: received.data!
       },
       error: null
     };
@@ -177,5 +190,35 @@ export function useSyncTierCounts(teamId: number) {
       return { data: { synced, skipped }, error: null };
     },
     { key: ['sync-tier-counts', teamId], refreshes: [['roster', teamId]] }
+  );
+}
+
+// Suggest order: generate_priority_order() ranks the item for the track.
+export function useSuggestOrder(teamId: number) {
+  return useSupabaseMutation<Suggested[], { season: string; itemId: number; track: Track }>(
+    (client, { season, itemId, track }) =>
+      client.rpc('generate_priority_order', {
+        p_team_id: teamId,
+        p_season: season,
+        p_item_id: itemId,
+        p_track: track
+      }) as unknown as PromiseLike<{ data: Suggested[] | null; error: { message: string } | null }>,
+    { key: ['suggest-order', teamId], refreshes: [] }
+  );
+}
+
+// Save: the item's whole order on the track replaces what was there; an empty
+// one is saved as "nobody on purpose", which keeps it off Unmanaged.
+export function useSaveOrder(teamId: number, season: string) {
+  return useSupabaseMutation<unknown, { itemId: number; track: Track; order: number[] }>(
+    (client, { itemId, track, order }) =>
+      client.rpc('save_priority_order', {
+        p_team_id: teamId,
+        p_season: season,
+        p_item_id: itemId,
+        p_track: track,
+        p_player_ids: order
+      }),
+    { key: ['save-order', teamId], refreshes: [['priority-data', teamId, season]] }
   );
 }
