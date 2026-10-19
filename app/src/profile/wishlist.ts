@@ -11,7 +11,7 @@
 
 import type { CatalogItem, WishlistRow, ZoneRow } from './lootPriority';
 import type { SeasonWindow } from './profile';
-import { WISHLIST_SLOTS, offRaid } from './lootPriority';
+import { WISHLIST_SLOTS, itemLinkData, offRaid, type ItemLinkData } from './lootPriority';
 
 export type Mark = 'bis' | 'ok' | 'pass';
 export const MARKS: { mark: Mark; label: string }[] = [
@@ -27,6 +27,8 @@ export type EditorRow = {
   itemId: number;
   name: string;
   source: string;
+  // Its Wowhead page: for a tier token, the piece it becomes for the wearer.
+  link: ItemLinkData | null;
   mark: Mark | null;
   takenBy: string | null;
   // The raider's note on the mark, and the saved rows that carry the mark,
@@ -368,11 +370,11 @@ export function editorSlots(input: EditorInput): EditorSlot[] {
   // A tier piece is offered as its token, named for the wearer's class, since
   // the token is what drops and what priority is kept for.
   const resolvedIds = new Set(tokens.map((t) => t.resolved_item_id));
-  const tokenName = new Map(
-    tokens.filter((t) => t.class === wearer.className).map((t) => [t.token_item_id, byId.get(t.resolved_item_id)?.name])
+  const tokenPiece = new Map(
+    tokens.filter((t) => t.class === wearer.className).map((t) => [t.token_item_id, byId.get(t.resolved_item_id)])
   );
 
-  const offered = new Map<string, { itemId: number; name: string; source: string }[]>(
+  const offered = new Map<string, { itemId: number; name: string; source: string; link: ItemLinkData | null }[]>(
     WISHLIST_SLOTS.map((s) => [s, []])
   );
   for (const item of catalog) {
@@ -381,8 +383,9 @@ export function editorSlots(input: EditorInput): EditorSlot[] {
       if (!usable(item, row, wearer)) continue;
       offered.get(row)?.push({
         itemId: item.id,
-        name: tokenName.get(item.id) ?? item.name,
-        source: item.source ?? 'raid'
+        name: tokenPiece.get(item.id)?.name ?? item.name,
+        source: item.source ?? 'raid',
+        link: itemLinkData(tokenPiece.get(item.id)) ?? itemLinkData(item)
       });
     }
   }

@@ -143,7 +143,7 @@ export function useCatalog() {
         client
           .from('items')
           .select(
-            'id, name, slot, wcl_zone_id, is_placeholder, armor_type, main_stats, weapon_subtype, source, item_seasons(season)'
+            'id, name, slot, wcl_zone_id, is_placeholder, armor_type, main_stats, weapon_subtype, source, wow_item_id, is_ptr, icon, item_seasons(season)'
           )
           .order('id')
           .range(from, to)
@@ -192,7 +192,7 @@ export function useTierTokens(seasonCode: string | null, className: string | nul
     (client) =>
       client
         .from('tier_token_map')
-        .select('token_item_id, resolved:items!tier_token_map_resolved_item_id_fkey(name)')
+        .select('token_item_id, resolved:items!tier_token_map_resolved_item_id_fkey(name, wow_item_id, is_ptr, icon)')
         .eq('season', seasonCode!)
         .eq('class', className!),
     { enabled: seasonCode !== null && className !== null }

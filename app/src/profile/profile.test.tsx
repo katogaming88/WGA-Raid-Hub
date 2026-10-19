@@ -424,6 +424,29 @@ describe('lootPriority', () => {
     ]
   };
 
+  it('links each item to Wowhead: PTR items to the PTR site, a tier token to its class piece, a stand-in nowhere', () => {
+    const rows = lootPriority({
+      ...base,
+      catalog: [
+        { ...catalog[0]!, wow_item_id: 250001, icon: 'inv_gloves' },
+        { ...catalog[1]!, wow_item_id: 250002, is_ptr: true, icon: null },
+        { ...catalog[2]!, wow_item_id: null },
+        catalog[3]!,
+        catalog[4]!
+      ],
+      tierTokens: [
+        { token_item_id: 1, resolved: { name: 'Grave-Knight Deathgrips', wow_item_id: 260001, icon: 'inv_dk_gloves' } }
+      ],
+      wishlist: [pick(1, 'Hands'), pick(2, 'Finger 1'), pick(3, 'Wrist'), pick(5, 'Waist')]
+    });
+    expect(rows.map((r) => [r.item, r.link])).toEqual([
+      ['Crafted', null],
+      ['Grave-Knight Deathgrips', { wowId: 260001, ptr: false, icon: 'inv_dk_gloves' }],
+      ['Caustic Sash', null],
+      ['Band of the Hollow Choir', { wowId: 250002, ptr: true, icon: null }]
+    ]);
+  });
+
   it('lists this season’s BiS picks in slot order, once per ring, with standings and receipts', () => {
     const rows = lootPriority({
       ...base,
