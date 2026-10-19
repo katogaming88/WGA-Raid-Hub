@@ -3,7 +3,15 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, filterValue, seededHandlers, type Read } from '../test/fakeSupabase';
-import { attendance, characterLinks, equippedGear, formatJoinDate, seasonLoot, timeAgoLabel } from './profile';
+import {
+  attendance,
+  characterLinks,
+  COUNTED_LOOT,
+  equippedGear,
+  formatJoinDate,
+  seasonLoot,
+  timeAgoLabel
+} from './profile';
 import { latestSelfReceivedUpdate, lootPriority } from './lootPriority';
 import { wishlistSummary } from './wishlist';
 
@@ -244,15 +252,11 @@ describe('Profile page', () => {
     expect(mplus.filters).toContainEqual(['eq', 'player_id', 11]);
   });
 
-  // A disenchanter's shards and a bonus roll are not council awards.
-  it('leaves out loot handed over to disenchant and bonus rolls', async () => {
+  // Shards, bonus rolls, personal loot, transmog and pets are not council awards.
+  it('leaves out loot that is not a council award', async () => {
     const { client } = renderApp('/g/wga/t/phoenix/me', profileHandlers(person('raider', 11)));
     await waitFor(() =>
-      expect(client.reads.find((r) => r.table === 'rclc_loot')?.filters).toContainEqual([
-        'or',
-        '',
-        'response.is.null,response.not.in.(Disenchant,"Bonus Loot")'
-      ])
+      expect(client.reads.find((r) => r.table === 'rclc_loot')?.filters).toContainEqual(['or', '', COUNTED_LOOT])
     );
   });
 

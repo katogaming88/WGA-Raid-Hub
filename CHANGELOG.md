@@ -16,12 +16,12 @@ answers to.
 
 ### Project
 
-- New app: items given to the disenchanter and bonus-roll items no longer
-  count as items received. The disenchanter had been credited with every item
-  sharded for the raid, which put them far ahead on Loot fairness and filled
-  their profile's loot list. This covers the profile, roster, Loot fairness,
-  home feed, loot priority, and the loot carried over from an earlier
-  character.
+- New app: only loot council awards count as items received. Items given to
+  the disenchanter, bonus rolls, personal loot, transmog and pets no longer
+  count. The disenchanter had been credited with every item sharded for the
+  raid, which put them far ahead on Loot fairness and filled their profile's
+  loot list. This covers the profile, roster, Loot fairness, home feed, loot
+  priority, and the loot carried over from an earlier character.
 
 ## [3.189.4] - 2026-10-19
 
