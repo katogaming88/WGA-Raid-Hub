@@ -185,7 +185,7 @@ export function toRoster(players: PlayerRow[], gear: GearRow[], names: NameRow[]
   return groupByRole(raiders);
 }
 
-// Approved signups not yet on the roster: the next season's tentative roster.
+// Approved signups not yet on the roster: the next season's projected roster.
 export function toIncoming(rows: IncomingRow[]): RoleGroup[] {
   const raiders: Raider[] = [];
   for (const row of rows) {

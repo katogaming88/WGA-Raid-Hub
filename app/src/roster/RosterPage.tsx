@@ -71,12 +71,12 @@ export function RosterPage() {
       ? [
           {
             id: 'incoming' as const,
-            // Named after the tier when exactly one is open (#934); the
+            // Named after the season when exactly one is open (#934); the
             // season-agnostic label otherwise.
             label:
               incoming.data![1].length === 1
-                ? `${incoming.data![1][0]!.name} Roster (Tentative)`
-                : 'Next Season Roster (Tentative)'
+                ? `${incoming.data![1][0]!.name} Projected Roster`
+                : 'Next Season Projected Roster'
           }
         ]
       : []),
@@ -504,7 +504,7 @@ function IncomingRoster({ groups }: { groups: RoleGroup[] }) {
         {total} Pending Raider{total === 1 ? '' : 's'}
       </h2>
       <p className="text-muted">Approved signups for next season. Not final until the season starts.</p>
-      <RosterTable groups={groups} caption="Next season’s tentative roster" details={false} />
+      <RosterTable groups={groups} caption="Next season’s projected roster" details={false} />
     </div>
   );
 }

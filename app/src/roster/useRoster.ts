@@ -34,7 +34,7 @@ export function useRosterGear(teamId: number) {
   );
 }
 
-// Next season's tentative roster: signups approved for the team's signup
+// Next season's projected roster: signups approved for the team's signup
 // season that are not on the roster yet, and the name of that season.
 export function useIncomingRoster(teamId: number) {
   return useSupabaseQuery<IncomingRow[]>(['incoming-roster', teamId], (client) =>
