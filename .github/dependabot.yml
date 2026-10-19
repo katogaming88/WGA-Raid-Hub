@@ -53,6 +53,8 @@ updates:
   # so it needs its own entry (#1180). Same shape as bot/'s: dev tools grouped
   # into one PR, runtime dependencies (react, react-router, TanStack Query,
   # supabase-js) left ungrouped so each bump arrives alone to be read.
+  # The one exception is react and react-dom: React refuses to load when the
+  # two differ by even a patch, so a bump to either alone fails every test.
   - package-ecosystem: npm
     directory: /app
     schedule:
@@ -64,6 +66,11 @@ updates:
         dependency-type: development
         patterns:
           - '*'
+      react:
+        dependency-type: production
+        patterns:
+          - react
+          - react-dom
     ignore:
       # typescript-eslint has no TypeScript 7 support yet, which is why #1147
       # scaffolded the app on 6; take that major on deliberately.

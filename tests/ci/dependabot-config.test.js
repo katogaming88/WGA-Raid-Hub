@@ -206,10 +206,13 @@ describe('the Dependabot entry for app/ (#1180)', () => {
     expect(app).toMatch(/^\s+labels:\n\s+- chore$/m);
   });
 
-  it('its dev dependencies are grouped and its runtime dependencies are not', () => {
+  it('its dev dependencies are grouped and its runtime dependencies are not, except react and react-dom', () => {
     const app = entryFor('/app');
-    expect(groupNames(app)).toEqual(['app-dev-dependencies']);
+    expect(groupNames(app)).toEqual(['app-dev-dependencies', 'react']);
     expect(app).toMatch(/^\s+app-dev-dependencies:\n\s+dependency-type: development\n\s+patterns:\n\s+- '\*'$/m);
+    // React refuses to load when react and react-dom differ, so they move
+    // together (#1574, #1576); nothing else rides along in that group.
+    expect(app).toMatch(/^\s+react:\n\s+dependency-type: production\n\s+patterns:\n\s+- react\n\s+- react-dom$/m);
   });
 
   it.each(heldMajors)('$yamlName majors are ignored there, since $reason', ({ yamlName }) => {
