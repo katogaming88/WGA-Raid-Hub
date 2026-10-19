@@ -244,9 +244,11 @@ function MonthGrid({ month, dayHref }: { month: CalendarMonth; dayHref: (date: s
           const [y, m, d] = day.date.split('-').map(Number);
           const label = [
             calendarDay(new Date(y!, m! - 1, d!), 'long'),
+            // Straight after the date and written as shown ("18/20"), so the
+            // label contains the cell's visible text in order, for voice control.
+            day.raid.count ? `${day.raid.count} raiders expected` : null,
             day.today ? 'today' : null,
-            day.raid.status,
-            day.raid.count ? `${day.raid.count.replace('/', ' of ')} raiders expected` : null
+            day.raid.status
           ]
             .filter(Boolean)
             .join(', ');
@@ -258,7 +260,7 @@ function MonthGrid({ month, dayHref }: { month: CalendarMonth; dayHref: (date: s
                 aria-label={label}
                 aria-current={day.today ? 'date' : undefined}
               >
-                <span className="cal-daynum">{day.day}</span>
+                <span className="cal-daynum">{day.day}</span>{' '}
                 {day.raid.count && <span className="cal-count num">{day.raid.count}</span>}
                 <span className={`cal-marker cal-marker-${day.raid.tone}`} title={day.raid.status} />
               </Link>

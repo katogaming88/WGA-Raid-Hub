@@ -195,14 +195,14 @@ describe('the Home page’s progression and calendar', () => {
   it('leaves progression out when the season lists no raids', async () => {
     renderApp('/g/wga/t/phoenix', handlers({ raids: [] }));
     await region('Calendar');
-    await screen.findAllByRole('link', { name: /, Present,/ });
+    await screen.findAllByRole('link', { name: /, Present$/ });
     expect(screen.queryByRole('region', { name: 'Raid progression' })).not.toBeInTheDocument();
   });
 
   it('links each raid day to its day on the calendar, saying what it shows', async () => {
     renderApp('/g/wga/t/phoenix', handlers());
     const card = await region('Calendar');
-    const links = await card.findAllByRole('link', { name: /Present, 1 of 2 raiders expected/ });
+    const links = await card.findAllByRole('link', { name: /1\/2 raiders expected, Present/ });
     expect(links.length).toBeGreaterThanOrEqual(28);
     expect(links[0]).toHaveAttribute(
       'href',

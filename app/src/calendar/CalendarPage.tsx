@@ -267,12 +267,14 @@ function Month({
         <Link
           className="night-chip night-cancelled"
           to={`${base}?date=${entry.date}`}
-          aria-label={`${shortDay(entry.date)}, Raid night, cancelled`}
+          aria-label={`${shortDay(entry.date)}, Raid night, ${startTime(entry.cancelled)}, Cancelled`}
         >
+          {/* The spaces between pieces keep their words apart for voice
+              control: the label has to contain the visible words in order. */}
           <span className="night-chip-row">
-            <span className="night-title">Raid night</span>
+            <span className="night-title">Raid night</span>{' '}
             <span className="night-time">{startTime(entry.cancelled)}</span>
-          </span>
+          </span>{' '}
           <span className="night-cancelled-label">Cancelled</span>
         </Link>
       );
@@ -287,7 +289,8 @@ function Month({
       startTime(night),
       level?.label,
       counts ? `${counts.in} in${counts.out ? `, ${counts.out} out` : ''}` : null,
-      status ? `you: ${status.label}` : null
+      // In brackets, so the visible words stay a run the label contains.
+      status ? `${status.label} (your answer)` : null
     ]
       .filter(Boolean)
       .join(', ');
@@ -301,15 +304,15 @@ function Month({
         data-date={night.date}
       >
         <span className="night-chip-row">
-          <span className={`night-title ${titleClass}`.trim()}>{title}</span>
+          <span className={`night-title ${titleClass}`.trim()}>{title}</span>{' '}
           <span className="night-time">{startTime(night)}</span>
-        </span>
-        {level && <span className={`night-difficulty ${level.className}`}>{level.label}</span>}
+        </span>{' '}
+        {level && <span className={`night-difficulty ${level.className}`}>{level.label}</span>}{' '}
         {counts && (
           <span className="night-count num">
             <b>{counts.in}</b> in{counts.out ? ` · ${counts.out} out` : ''}
           </span>
-        )}
+        )}{' '}
         {status && (
           <span className="night-mine" data-status={status.label}>
             <Pill kind={status.kind}>{status.label}</Pill>

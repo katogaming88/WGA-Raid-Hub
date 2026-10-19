@@ -306,10 +306,15 @@ export function AppShell() {
                         <Icon name={item.icon} />
                         <span>{item.label}</span>
                         {item.mark && <span className="nav-mark" aria-hidden="true" />}
+                        {/* The space keeps "Streams" and the count apart for
+                            voice control: the label has to contain them in order. */}
                         {!!item.live && (
-                          <span className="count-badge" aria-hidden="true">
-                            {item.live}
-                          </span>
+                          <>
+                            {' '}
+                            <span className="count-badge" aria-hidden="true">
+                              {item.live}
+                            </span>
+                          </>
                         )}
                       </NavLink>
                     </li>
