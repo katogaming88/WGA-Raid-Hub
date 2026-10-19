@@ -32,15 +32,15 @@
     "db:rls": "psql \"postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable\" -f docs/rls_policies.sql"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.13.0",
-    "@supabase/supabase-js": "^2.117.3",
+    "@axe-core/playwright": "^4.14.0",
+    "@supabase/supabase-js": "^2.118.0",
     "acorn": "^8.19.0",
     "csv-parse": "^7.0.3",
     "eslint": "^8.57.0",
     "pg": "^8.23.1",
-    "playwright": "^1.64.0",
-    "prettier": "^3.9.9",
+    "playwright": "^1.64.1",
+    "prettier": "^3.9.10",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.5"
   }
 }
