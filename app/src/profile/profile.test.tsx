@@ -244,6 +244,18 @@ describe('Profile page', () => {
     expect(mplus.filters).toContainEqual(['eq', 'player_id', 11]);
   });
 
+  // A disenchanter's shards and a bonus roll are not council awards.
+  it('leaves out loot handed over to disenchant and bonus rolls', async () => {
+    const { client } = renderApp('/g/wga/t/phoenix/me', profileHandlers(person('raider', 11)));
+    await waitFor(() =>
+      expect(client.reads.find((r) => r.table === 'rclc_loot')?.filters).toContainEqual([
+        'or',
+        '',
+        'response.is.null,response.not.in.(Disenchant,"Bonus Loot")'
+      ])
+    );
+  });
+
   it('says so when the signed-in person has no character on the team', async () => {
     renderApp('/g/wga/t/phoenix/me', profileHandlers(person('raider', null)));
     expect(await screen.findByText('You don’t have a character on Phoenix yet.')).toBeInTheDocument();

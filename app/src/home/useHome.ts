@@ -1,5 +1,6 @@
 import { readAll, useSupabaseQuery } from '../data/query';
 import type { SeasonWindow } from '../profile/profile';
+import { COUNTED_LOOT } from '../profile/profile';
 import type { FeedLootRow } from './home';
 import type { ProgressRow, SettingsRaid } from './progression';
 import { monthRange, type ExceptionRow, type RsvpRow, type ScheduleRow } from '../calendar/nights';
@@ -16,7 +17,8 @@ export function useSeasonLoot(teamId: number, season: SeasonWindow | null) {
         let q = client
           .from('rclc_loot')
           .select('id, track, season, awarded_at, response, items(name), players(name_realm, nickname)')
-          .eq('team_id', teamId);
+          .eq('team_id', teamId)
+          .or(COUNTED_LOOT);
         if (season?.code) q = q.eq('season', season.code);
         return q.order('id').range(from, to);
       }),

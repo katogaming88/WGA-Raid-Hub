@@ -63,6 +63,12 @@ export const formatPct = (pct: number) => `${pct.toFixed(1)}%`;
 
 // Loot
 
+// PostgREST `.or()` filter for every loot read: drops items the loot council
+// handed to the disenchanter (that raider never kept them) and bonus rolls
+// (the raider's own roll, not a council award), so neither counts as an
+// item received. A null response (older imports) still counts.
+export const COUNTED_LOOT = 'response.is.null,response.not.in.(Disenchant,"Bonus Loot")';
+
 export type LootRow = {
   id: number;
   track: string | null;

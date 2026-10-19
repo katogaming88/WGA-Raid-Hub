@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.189.5] - 2026-10-19
+
+### Project
+
+- New app: items given to the disenchanter and bonus-roll items no longer
+  count as items received. The disenchanter had been credited with every item
+  sharded for the raid, which put them far ahead on Loot fairness and filled
+  their profile's loot list. This covers the profile, roster, Loot fairness,
+  home feed, loot priority, and the loot carried over from an earlier
+  character.
+
 ## [3.189.4] - 2026-10-19
 
 ### Project
