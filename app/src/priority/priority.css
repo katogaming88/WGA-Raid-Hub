@@ -245,13 +245,18 @@
 }
 
 /* Priority list | Unmanaged. */
+/* Five tabs pass a phone's width: they stay on one line and scroll sideways
+   inside their row, as the wishlist's slot tabs do. */
 .priority-tabs {
   display: flex;
   gap: var(--space-1);
+  overflow-x: auto;
   border-bottom: 1px solid var(--border);
 }
 
 .priority-tabs a {
+  flex-shrink: 0;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -724,7 +729,7 @@
   padding: 2px 10px;
   font-size: var(--text-xs);
 }
-.priority-score-input {
+.priority-scoring-table .priority-score-input {
   width: 6rem;
   min-height: 30px;
 }

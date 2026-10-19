@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useAccess, can } from '../auth/access';
 import { useSeasons } from '../calendar/useCalendar';
@@ -104,6 +104,14 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
   // Unsaved orders, by item and track, kept while the officer looks around.
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [scoreDraft, setScoreDraft] = useState<ScoreDraft | null>(null);
+  // On a phone the tabs scroll sideways; the open one is brought into view,
+  // so a link to Scoring doesn't land with its tab off the edge.
+  const [tabsNav, setTabsNav] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    tabsNav
+      ?.querySelector<HTMLElement>('[aria-current="page"]')
+      ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [tabsNav, tab]);
 
   const withParams = (values: Record<string, string | null>) => {
     const next = new URLSearchParams(params);
@@ -157,7 +165,7 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
               players={players}
               data={data}
             />
-            <nav className="priority-tabs" aria-label="Priority views">
+            <nav ref={setTabsNav} className="priority-tabs" aria-label="Priority views">
               <Link to={linkTo({ tab: null })} replace aria-current={tab === 'list' ? 'page' : undefined}>
                 Priority list
               </Link>

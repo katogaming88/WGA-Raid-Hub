@@ -26,6 +26,9 @@ answers to.
   Suggest order uses, and is logged. Healers and tanks are left out, as
   today. Unsaved scores are kept while the officer looks at other tabs. With
   this, every part of the current site's Priority tab is in the new app.
+- New app: on a phone, the Priority page's tabs stay on one line and scroll
+  sideways, with the open one brought into view; with five tabs they ran
+  off the edge.
 
 ## [3.188.0] - 2026-10-18
 
