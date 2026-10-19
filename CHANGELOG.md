@@ -12,6 +12,15 @@ answers to.
 
 ---
 
+## [3.189.4] - 2026-10-19
+
+### Project
+
+- New app: react and react-dom move to 19.3.1 together. Dependabot had
+  opened them as two PRs (#1574, #1576), and React refuses to load when the
+  two differ, so each failed every test on its own. They now come as one
+  grouped PR.
+
 ## [3.189.3] - 2026-10-19
 
 ### Project
