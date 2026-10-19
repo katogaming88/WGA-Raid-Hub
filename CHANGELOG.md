@@ -24,18 +24,6 @@ answers to.
   PTR), with its icon. A tier token links to the piece it becomes for the
   raider's class; M+ and Crafted picks have no link.
 
-## [3.189.1] - 2026-10-18
-
-### Project
-
-- New app: on a raider's profile, the BiS List & Loot priority card showed
-  each item's name in a bordered box. The Priority page's item buttons shared
-  its style name and overrode it everywhere; they have their own name now.
-- New app: item names on the profile's BiS List & Loot priority card and in
-  the wishlist link to the item on Wowhead (the PTR site for an item still on
-  PTR), with its icon. A tier token links to the piece it becomes for the
-  raider's class; M+ and Crafted picks have no link.
-
 ## [3.189.0] - 2026-10-18
 
 ### Project
