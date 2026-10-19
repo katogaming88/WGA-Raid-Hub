@@ -12,7 +12,7 @@ answers to.
 
 ---
 
-## [3.189.2] - 2026-10-19
+## [3.189.4] - 2026-10-19
 
 ### Project
 
@@ -20,6 +20,20 @@ answers to.
   opened them as two PRs (#1574, #1576), and React refuses to load when the
   two differ, so each failed every test on its own. They now come as one
   grouped PR.
+
+## [3.189.3] - 2026-10-19
+
+### Project
+
+- New app: buttons and links whose screen-reader name left out or reordered
+  the words shown on them now include those words, in order, so someone using
+  voice control can say what they see ("click Mark received"). Covers the
+  calendar's night chips and the Home calendar's days, the Priority page's
+  Unmanaged and Notes tabs and Clear note, the Streams menu item, Mark
+  received on the profile, and Move up, Move down and Remove officer on the
+  officer bios. Nothing looks different. The accessibility checker's update
+  (axe-core 4.14, #1568) started enforcing this, and it failed every new-app
+  PR's browser tests.
 
 ## [3.189.1] - 2026-10-18
 

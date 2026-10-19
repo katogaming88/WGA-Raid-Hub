@@ -691,7 +691,7 @@ describe('Loot priority page', () => {
     const { client } = renderApp(`${PAGE}?tab=notes`, handlers(tables));
     expect(await screen.findByRole('link', { name: 'Notes, 1' })).toBeInTheDocument();
     expect(screen.getByText('BiS for Balance')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: "Clear Bbldrizzy's note on Silken Voodoo Drape" }));
+    await userEvent.click(screen.getByRole('button', { name: 'Clear note from Bbldrizzy on Silken Voodoo Drape' }));
     const dialog = await screen.findByRole('dialog', { name: 'Clear this note?' });
     expect(dialog).toHaveTextContent('Their Sidegrade mark stays.');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Clear note' }));

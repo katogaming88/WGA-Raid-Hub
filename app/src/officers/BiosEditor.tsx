@@ -296,7 +296,7 @@ function BioCardEditor({
               type="button"
               className="button"
               disabled={position === 0}
-              aria-label={`Move ${label} up`}
+              aria-label={`Move up: ${label}`}
               onClick={() => onMove(-1)}
             >
               Move up
@@ -305,12 +305,17 @@ function BioCardEditor({
               type="button"
               className="button"
               disabled={position === count - 1}
-              aria-label={`Move ${label} down`}
+              aria-label={`Move down: ${label}`}
               onClick={() => onMove(1)}
             >
               Move down
             </button>
-            <button type="button" className="button bio-remove" aria-label={`Remove ${label}`} onClick={onRemove}>
+            <button
+              type="button"
+              className="button bio-remove"
+              aria-label={`Remove officer: ${label}`}
+              onClick={onRemove}
+            >
               Remove officer
             </button>
           </div>

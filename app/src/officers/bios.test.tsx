@@ -94,9 +94,9 @@ describe('editing Team officers', () => {
 
   it('moves and removes cards', async () => {
     const { user, client } = await editTeam();
-    expect(screen.getByRole('button', { name: 'Move Kat up' })).toBeDisabled();
-    await user.click(screen.getByRole('button', { name: 'Move Kat down' }));
-    await user.click(screen.getByRole('button', { name: 'Remove Rex' }));
+    expect(screen.getByRole('button', { name: 'Move up: Kat' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Move down: Kat' }));
+    await user.click(screen.getByRole('button', { name: 'Remove officer: Rex' }));
     await user.click(screen.getByRole('button', { name: 'Save officers' }));
     await vi.waitFor(() => expect(saved(client, 'set_team_officer_bios')).toEqual([{ p_team_id: 1, p_bios: [KAT] }]));
   });

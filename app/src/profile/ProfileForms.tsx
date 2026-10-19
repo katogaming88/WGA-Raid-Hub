@@ -35,7 +35,7 @@ export function MarkReceivedButton({ player, row }: { player: ProfilePlayer; row
       <button
         type="button"
         className="button mark-received"
-        aria-label={`Mark ${row.item} received`}
+        aria-label={`Mark received: ${row.item}`}
         onClick={() => setOpen(true)}
       >
         Mark received
