@@ -3,7 +3,15 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, filterValue, seededHandlers, type Read } from '../test/fakeSupabase';
-import { attendance, characterLinks, equippedGear, formatJoinDate, seasonLoot, timeAgoLabel } from './profile';
+import {
+  attendance,
+  characterLinks,
+  COUNTED_LOOT,
+  equippedGear,
+  formatJoinDate,
+  seasonLoot,
+  timeAgoLabel
+} from './profile';
 import { latestSelfReceivedUpdate, lootPriority } from './lootPriority';
 import { wishlistSummary } from './wishlist';
 
@@ -242,6 +250,14 @@ describe('Profile page', () => {
     // A raider reads their own M+ requests (20260914201423), and only theirs.
     const mplus = await waitFor(() => client.reads.find((r) => r.table === 'mplus_exclusion_requests')!);
     expect(mplus.filters).toContainEqual(['eq', 'player_id', 11]);
+  });
+
+  // Shards, bonus rolls, personal loot, transmog and pets are not council awards.
+  it('leaves out loot that is not a council award', async () => {
+    const { client } = renderApp('/g/wga/t/phoenix/me', profileHandlers(person('raider', 11)));
+    await waitFor(() =>
+      expect(client.reads.find((r) => r.table === 'rclc_loot')?.filters).toContainEqual(['or', '', COUNTED_LOOT])
+    );
   });
 
   it('says so when the signed-in person has no character on the team', async () => {

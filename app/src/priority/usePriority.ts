@@ -1,6 +1,6 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
-import { realmSlug } from '../profile/profile';
+import { COUNTED_LOOT, realmSlug } from '../profile/profile';
 import type { PlayerRow } from '../roster/roster';
 import {
   exportString,
@@ -60,6 +60,7 @@ export function usePriorityData(teamId: number, season: string) {
           .from('rclc_loot')
           .select('player_id, item_id, track, response')
           .eq('team_id', teamId)
+          .or(COUNTED_LOOT)
           .eq('season', season)
           .order('id')
           .range(from, to)

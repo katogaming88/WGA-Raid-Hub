@@ -1,7 +1,7 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { AttendanceRow, GearRow, LootRow, SeasonWindow } from './profile';
-import { currentSeason } from './profile';
+import { currentSeason, COUNTED_LOOT } from './profile';
 import type { CatalogItem, RankRow, SelfReceivedRow, TierTokenRow, ZoneRow } from './lootPriority';
 import type { NewPick, Pick, TokenRow, WritePlan } from './wishlist';
 
@@ -72,7 +72,12 @@ export function useAttendance(playerId: number) {
 
 export function useLoot(playerId: number) {
   return useSupabaseQuery<LootRow[]>(['loot', playerId], (client) =>
-    client.from('rclc_loot').select('id, track, season, awarded_at, items(name)').eq('player_id', playerId).order('id')
+    client
+      .from('rclc_loot')
+      .select('id, track, season, awarded_at, items(name)')
+      .eq('player_id', playerId)
+      .or(COUNTED_LOOT)
+      .order('id')
   );
 }
 

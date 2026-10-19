@@ -63,6 +63,14 @@ export const formatPct = (pct: number) => `${pct.toFixed(1)}%`;
 
 // Loot
 
+// PostgREST `.or()` filter for every loot read: drops loot council responses
+// that are not an item the raider kept from the council. Disenchant (sharded
+// for the raid), bonus rolls and personal loot (the raider's own, not an
+// award), and transmog and pets (not gear). A null response (older imports)
+// still counts.
+export const COUNTED_LOOT =
+  'response.is.null,response.not.in.(Disenchant,"Bonus Loot","Personal Loot - Non tradeable",Xmog,Pet)';
+
 export type LootRow = {
   id: number;
   track: string | null;

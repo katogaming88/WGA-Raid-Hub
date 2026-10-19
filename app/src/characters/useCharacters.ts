@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { LootRow, SeasonWindow } from '../profile/profile';
+import { COUNTED_LOOT } from '../profile/profile';
 import type { CharactersAnswer, EarlierPair, EarlierPlayer, SavedCharacter } from './characters';
 
 const CHARACTER_COLUMNS = 'id, person_id, name, realm, class_name, spec_name, item_level';
@@ -113,7 +114,8 @@ export function useEarlierLoot(teamId: number, season: SeasonWindow | null, enab
         let q = client
           .from('rclc_loot')
           .select('id, player_id, track, season, awarded_at, items(name)')
-          .in('player_id', ids);
+          .in('player_id', ids)
+          .or(COUNTED_LOOT);
         if (season?.code) q = q.eq('season', season.code);
         return q.order('id').range(from, to);
       });

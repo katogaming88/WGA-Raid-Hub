@@ -126,6 +126,10 @@ export function fakeClient(
           read.filters.push([`not.${operator}`, column, value]);
           return builder;
         },
+        or(expression: string) {
+          read.filters.push(['or', '', expression]);
+          return builder;
+        },
         ilike(column: string, pattern: string) {
           read.filters.push(['ilike', column, pattern]);
           return builder;

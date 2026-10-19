@@ -1,6 +1,7 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { AttendanceRow, LootRow, SeasonWindow } from '../profile/profile';
+import { COUNTED_LOOT } from '../profile/profile';
 import type { GearRow, IncomingRow, PlayerRow } from './roster';
 
 // The active roster, one row per character (80 on the largest team).
@@ -89,7 +90,8 @@ export function useRosterOfficerData(teamId: number, season: SeasonWindow | null
         let q = client
           .from('rclc_loot')
           .select('id, player_id, track, season, awarded_at, items(name)')
-          .eq('team_id', teamId);
+          .eq('team_id', teamId)
+          .or(COUNTED_LOOT);
         if (season?.code) q = q.eq('season', season.code);
         return q.order('id').range(from, to);
       });
