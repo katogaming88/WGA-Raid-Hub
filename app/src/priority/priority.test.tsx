@@ -9,6 +9,7 @@ import {
   applySuggestion,
   blocked,
   bossOptions,
+  committedScores,
   contestedItems,
   exportString,
   flaggedItemIds,
@@ -16,6 +17,8 @@ import {
   itemFor,
   outOf100,
   owned,
+  parseOutOf100,
+  pending,
   poolFor,
   unmanagedItems,
   wasRank,
@@ -23,7 +26,9 @@ import {
   priorityItems,
   rankedRows,
   sections,
+  showOutOf100,
   sidegradeNames,
+  sortScores,
   splitNameRealm,
   wishlistNotes,
   tierPiecesEquipped,
@@ -218,6 +223,56 @@ describe('Sidegrade and notes', () => {
         note: 'BiS for Destro'
       }
     ]);
+  });
+});
+
+describe('scoring', () => {
+  const saved = [
+    { player_id: 10, recent_score: 8.2, trend_score: 7.9, best_score: 9.1, performance_score: 8.41 },
+    { player_id: 12, recent_score: null, trend_score: null, best_score: null, performance_score: null }
+  ];
+
+  it("reads each raider's saved score, Recent being the one Suggest order uses", () => {
+    expect(committedScores(PLAYERS, saved)).toEqual([
+      { playerId: 10, role: 'dps', recent: 8.41, trend: 7.9, best: 9.1, noData: false, usedTrend: false },
+      { playerId: 11, role: 'healer', recent: null, trend: null, best: null, noData: true, usedTrend: false },
+      { playerId: 12, role: 'dps', recent: null, trend: null, best: null, noData: true, usedTrend: false }
+    ]);
+  });
+
+  it('sorts scored raiders best first, then no data, then healers and tanks', () => {
+    const scores = committedScores(PLAYERS, saved);
+    expect(sortScores(scores).map((s) => s.playerId)).toEqual([10, 12, 11]);
+  });
+
+  it('marks a score as not committed only when it differs from the saved one', () => {
+    const map = new Map([
+      [10, 8.41],
+      [12, null]
+    ]);
+    const dps = {
+      playerId: 10,
+      role: 'dps' as const,
+      recent: 8.41,
+      trend: null,
+      best: null,
+      noData: false,
+      usedTrend: false
+    };
+    expect(pending(dps, map)).toBe(false);
+    expect(pending({ ...dps, recent: 8.5 }, map)).toBe(true);
+    expect(pending({ ...dps, playerId: 12, recent: 6 }, map)).toBe(true);
+    expect(pending({ ...dps, role: 'healer', recent: 6 }, map)).toBe(false);
+  });
+
+  it('reads and shows scores out of 100, stored out of 10', () => {
+    expect(parseOutOf100('84.1')).toBe(8.41);
+    expect(parseOutOf100('100')).toBe(10);
+    expect(parseOutOf100('101')).toBeNull();
+    expect(parseOutOf100('')).toBeNull();
+    expect(parseOutOf100('abc')).toBeNull();
+    expect(showOutOf100(8.41)).toBe('84.1');
+    expect(showOutOf100(null)).toBe('--');
   });
 });
 
@@ -673,6 +728,127 @@ describe('Loot priority page', () => {
     const tables = { ...TABLES, item_preferences: [...DATA.prefs, { player_id: 12, item_id: 1, status: 'ok' }] };
     renderApp(`${PAGE}?item=1`, handlers(tables, 'guild'));
     expect(await screen.findByText('Sidegrade, not ranked: Amazon')).toBeInTheDocument();
+  });
+
+  it('shows the saved scores, fetches new ones, takes an edit, and commits them', async () => {
+    const invoke = vi.fn(() => ({
+      data: {
+        success: true,
+        updated: 1,
+        recentReports: 2,
+        trendReports: 8,
+        scores: [
+          {
+            playerId: 10,
+            name: 'Katorrí',
+            role: 'dps',
+            recent: 9,
+            trend: 8,
+            best: 9.5,
+            noData: false,
+            usedTrend: false
+          },
+          {
+            playerId: 11,
+            name: 'Bbldrizzy',
+            role: 'healer',
+            recent: null,
+            trend: null,
+            best: null,
+            noData: false,
+            usedTrend: false,
+            manual: true
+          },
+          {
+            playerId: 12,
+            name: 'Angryamazon',
+            role: 'dps',
+            recent: 6,
+            trend: 6,
+            best: 7,
+            noData: false,
+            usedTrend: true
+          }
+        ]
+      }
+    }));
+    const tables = {
+      ...TABLES,
+      scoring: [{ player_id: 10, recent_score: 8.2, trend_score: 7.9, best_score: 9.1, performance_score: 8.41 }]
+    };
+    const user = userEvent.setup();
+    const { client } = renderApp(`${PAGE}?tab=scoring`, handlers(tables, 'officer', { invoke }));
+    const table = await screen.findByRole('table', { name: 'Performance scores, out of 100' });
+    expect(within(table).getByRole('row', { name: /Katorrí/ })).toHaveTextContent('84.1');
+    expect(within(table).getByRole('row', { name: /Bbldrizzy/ })).toHaveTextContent('Left out (healer)');
+    expect(screen.getByRole('button', { name: 'Commit scores' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'Fetch from Warcraft Logs' }));
+    expect(
+      await screen.findByText(
+        '1 raider updated (2 recent / 8 trend reports, Item level bracket %). Not committed yet.',
+        {
+          selector: '.priority-scoring-note'
+        }
+      )
+    ).toBeInTheDocument();
+    expect(client.authCalls).toContainEqual([
+      'invoke',
+      ['wcl-sync', { body: { action: 'refreshPerformance', teamId: 1, scoringMetric: 'bracket' } }]
+    ]);
+    expect(within(table).getByRole('row', { name: /Amazon/ })).toHaveTextContent('(trend fallback)');
+
+    // Amazon's score typed by hand, out of 100.
+    await user.click(screen.getByRole('button', { name: "Edit Amazon's Recent score" }));
+    const box = screen.getByRole('spinbutton', { name: "Amazon's Recent score, out of 100" });
+    await user.clear(box);
+    await user.type(box, '72.5{Enter}');
+    expect(within(table).getByRole('row', { name: /Amazon/ })).toHaveTextContent('72.5');
+    expect(screen.getByRole('button', { name: "Edit Amazon's Recent score" })).toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: 'Commit 2 scores' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Commit performance scores?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Commit' }));
+    expect(await screen.findByText("Committed 2 raiders' scores. Suggest order uses them now.")).toBeInTheDocument();
+    expect(client.writes).toContainEqual({
+      table: 'scoring',
+      method: 'upsert',
+      values: [
+        {
+          team_id: 1,
+          player_id: 10,
+          season: 'MID2',
+          recent_score: 9,
+          trend_score: 8,
+          best_score: 9.5,
+          performance_score: 9
+        },
+        {
+          team_id: 1,
+          player_id: 12,
+          season: 'MID2',
+          recent_score: 7.25,
+          trend_score: 6,
+          best_score: 7,
+          performance_score: 7.25
+        }
+      ],
+      filters: []
+    });
+    expect(client.rpcs).toContainEqual([
+      'write_audit_log',
+      { p_team_id: 1, p_action: 'Performance Scores Committed', p_detail: '2 players' }
+    ]);
+  });
+
+  it('shows a guild officer the saved scores with nothing to change', async () => {
+    const tables = {
+      ...TABLES,
+      scoring: [{ player_id: 10, recent_score: 8.2, trend_score: 7.9, best_score: 9.1, performance_score: 8.41 }]
+    };
+    renderApp(`${PAGE}?tab=scoring`, handlers(tables, 'guild'));
+    expect(await screen.findByRole('table', { name: 'Performance scores, out of 100' })).toHaveTextContent('84.1');
+    expect(screen.queryByRole('button', { name: /Fetch|Commit|Edit|Use/ })).not.toBeInTheDocument();
   });
 
   it('shows the Contested tab, empty until six raiders mark an item BiS', async () => {

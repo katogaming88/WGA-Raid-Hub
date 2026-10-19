@@ -12,6 +12,24 @@ answers to.
 
 ---
 
+## [3.189.0] - 2026-10-18
+
+### Project
+
+- New app (#1362, part 5): the Priority page's Scoring tab, the current
+  site's Scoring tab rebuilt. It opens on each raider's saved Warcraft Logs
+  scores (Recent, Trend and Best), out of 100, where the current site showed
+  nothing until a refresh. Fetch from Warcraft Logs reads new ones, with the
+  same choice of item level bracket or overall percent; an officer can type a
+  Recent score by hand or use a raider's best, and each changed score is
+  marked Not committed. Commit, after a confirmation, saves them as the score
+  Suggest order uses, and is logged. Healers and tanks are left out, as
+  today. Unsaved scores are kept while the officer looks at other tabs. With
+  this, every part of the current site's Priority tab is in the new app.
+- New app: on a phone, the Priority page's tabs stay on one line and scroll
+  sideways, with the open one brought into view; with five tabs they ran
+  off the edge.
+
 ## [3.188.0] - 2026-10-18
 
 ### Project

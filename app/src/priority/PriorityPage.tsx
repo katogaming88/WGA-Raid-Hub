@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useAccess, can } from '../auth/access';
 import { useSeasons } from '../calendar/useCalendar';
@@ -40,6 +40,7 @@ import {
   type Unmanaged
 } from './priority';
 import { ConflictFlags } from './RowFlags';
+import { ScoringTab, type ScoreDraft } from './Scoring';
 import { draftKey, ItemEditor, type Draft } from './ItemEditor';
 import {
   useClearNote,
@@ -93,12 +94,24 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
   const [params, setParams] = useSearchParams();
   const track: Track = params.get('track') === 'mythic' ? 'Myth' : 'Hero';
   const tabParam = params.get('tab');
-  const tab = tabParam === 'unmanaged' || tabParam === 'contested' || tabParam === 'notes' ? tabParam : 'list';
+  const tab =
+    tabParam === 'unmanaged' || tabParam === 'contested' || tabParam === 'notes' || tabParam === 'scoring'
+      ? tabParam
+      : 'list';
   const picked = Number(params.get('item')) || null;
   const access = useAccess();
   const officer = can(access.data, 'actAsOfficer', teamId);
   // Unsaved orders, by item and track, kept while the officer looks around.
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [scoreDraft, setScoreDraft] = useState<ScoreDraft | null>(null);
+  // On a phone the tabs scroll sideways; the open one is brought into view,
+  // so a link to Scoring doesn't land with its tab off the edge.
+  const [tabsNav, setTabsNav] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    tabsNav
+      ?.querySelector<HTMLElement>('[aria-current="page"]')
+      ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [tabsNav, tab]);
 
   const withParams = (values: Record<string, string | null>) => {
     const next = new URLSearchParams(params);
@@ -152,7 +165,7 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
               players={players}
               data={data}
             />
-            <nav className="priority-tabs" aria-label="Priority views">
+            <nav ref={setTabsNav} className="priority-tabs" aria-label="Priority views">
               <Link to={linkTo({ tab: null })} replace aria-current={tab === 'list' ? 'page' : undefined}>
                 Priority list
               </Link>
@@ -177,8 +190,20 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
                 Notes
                 {noteCount > 0 && <span className="count-badge">{noteCount}</span>}
               </Link>
+              <Link to={linkTo({ tab: 'scoring' })} replace aria-current={tab === 'scoring' ? 'page' : undefined}>
+                Scoring
+              </Link>
             </nav>
-            {tab === 'notes' ? (
+            {tab === 'scoring' ? (
+              <ScoringTab
+                teamId={teamId}
+                season={season}
+                players={players}
+                officer={officer}
+                draft={scoreDraft}
+                onDraft={setScoreDraft}
+              />
+            ) : tab === 'notes' ? (
               <NotesList teamId={teamId} season={season} notes={notes} officer={officer} />
             ) : tab === 'contested' ? (
               <ContestedList contested={contested} />

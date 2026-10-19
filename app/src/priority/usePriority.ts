@@ -1,4 +1,5 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
+import type { Client } from '../lib/supabase';
 import { realmSlug } from '../profile/profile';
 import type { PlayerRow } from '../roster/roster';
 import {
@@ -9,9 +10,12 @@ import {
   type EmptyRow,
   type GearRun,
   type OrderRow,
+  type PerfRole,
+  type PerfScore,
   type PrefRow,
   type PriorityData,
   type ReceivedRow,
+  type ScoringRow,
   type Suggested,
   type TeamLootRow,
   type TierPieceRow,
@@ -231,20 +235,119 @@ export function useClearNote(teamId: number, season: string) {
     async (client, { ids, playerId, detail }) => {
       const { error } = await client.from('item_preferences').update({ note: null }).in('id', ids);
       if (error) return { data: null, error };
-      // Best effort: a failed log entry does not undo the clear.
-      try {
-        await client.rpc('write_audit_log', {
-          p_team_id: teamId,
-          p_action: 'Wishlist Note Cleared',
-          p_target_type: 'players',
-          p_target_id: playerId,
-          p_detail: detail
-        });
-      } catch {
-        // The clear is already saved.
-      }
+      await auditLog(client, teamId, 'Wishlist Note Cleared', detail, { type: 'players', id: playerId });
       return { data: null, error: null };
     },
     { key: ['clear-note', teamId], refreshes: [['priority-data', teamId, season]] }
   );
+}
+
+// The scores saved for the season (#1362 part 5).
+export function useScoring(teamId: number, season: string) {
+  return useSupabaseQuery<ScoringRow[]>(['scoring', teamId, season], (client) =>
+    readAll<ScoringRow>((from, to) =>
+      client
+        .from('scoring')
+        .select('player_id, recent_score, trend_score, best_score, performance_score')
+        .eq('team_id', teamId)
+        .eq('season', season)
+        .order('player_id')
+        .range(from, to)
+    )
+  );
+}
+
+export type Metric = 'bracket' | 'overall';
+export type Fetched = { scores: PerfScore[]; updated: number; recentReports: number; trendReports: number };
+
+// Fetch from Warcraft Logs: wcl-sync reads the guild's last 20 reports and
+// scores every raider. Nothing is saved until Commit.
+export function useFetchPerformance(teamId: number) {
+  return useSupabaseMutation<Fetched, Metric>(
+    async (client, metric) => {
+      const res = await client.functions.invoke('wcl-sync', {
+        body: { action: 'refreshPerformance', teamId, scoringMetric: metric }
+      });
+      if (res.error) return { data: null, error: { message: res.error.message } };
+      const result = (res.data ?? {}) as {
+        success?: boolean;
+        error?: string;
+        updated?: number;
+        recentReports?: number;
+        trendReports?: number;
+        scores?: {
+          playerId: number;
+          role: PerfRole;
+          recent: number | null;
+          trend: number | null;
+          best: number | null;
+          noData: boolean;
+          usedTrend: boolean;
+        }[];
+      };
+      if (!result.success) return { data: null, error: { message: result.error || 'The Warcraft Logs read failed.' } };
+      return {
+        data: {
+          scores: (result.scores ?? []).map(({ playerId, role, recent, trend, best, noData, usedTrend }) => ({
+            playerId,
+            role,
+            recent,
+            trend,
+            best,
+            noData,
+            usedTrend
+          })),
+          updated: result.updated ?? 0,
+          recentReports: result.recentReports ?? 0,
+          trendReports: result.trendReports ?? 0
+        },
+        error: null
+      };
+    },
+    { key: ['fetch-performance', teamId], refreshes: [] }
+  );
+}
+
+// Commit: Recent becomes performance_score, the score Suggest order uses, for
+// every DPS raider with one. Attendance columns are left as they are.
+export function useCommitPerformance(teamId: number, season: string) {
+  return useSupabaseMutation<number, PerfScore[]>(
+    async (client, scores) => {
+      const rows = scores.map((s) => ({
+        team_id: teamId,
+        player_id: s.playerId,
+        season,
+        recent_score: s.recent,
+        trend_score: s.trend,
+        best_score: s.best,
+        performance_score: s.recent
+      }));
+      if (rows.length === 0) return { data: 0, error: null };
+      const { error } = await client.from('scoring').upsert(rows, { onConflict: 'player_id,season' });
+      if (error) return { data: null, error };
+      await auditLog(client, teamId, 'Performance Scores Committed', `${rows.length} players`);
+      return { data: rows.length, error: null };
+    },
+    { key: ['commit-performance', teamId], refreshes: [['scoring', teamId, season]] }
+  );
+}
+
+// Best effort, as everywhere: a failed log entry does not undo the write.
+async function auditLog(
+  client: Client,
+  teamId: number,
+  action: string,
+  detail: string,
+  target?: { type: string; id: number }
+) {
+  try {
+    await client.rpc('write_audit_log', {
+      p_team_id: teamId,
+      p_action: action,
+      ...(target ? { p_target_type: target.type, p_target_id: target.id } : {}),
+      p_detail: detail
+    });
+  } catch {
+    // The write is already saved.
+  }
 }

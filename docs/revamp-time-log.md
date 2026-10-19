@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     36 h 51 m |
-| Revamp 3: officer dashboard        |     25 h 26 m |
+| Revamp 3: officer dashboard        |     25 h 55 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **86 h 37 m** |
+| **All revamp work**                | **87 h 06 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -308,6 +308,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 6:15-6:37 PM | #1362 part 3 built: a flag on a #1 who has the Heroic copy or is also #1 on another item from the same boss (list and editor), Needs a look and a dot in the item list, the Contested tab, the gear status line reworded for officers, tests, the browser test's accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1362) | 20 m | ~20 m build | not read | Review and merge not yet counted |
 | 6:37-7:19 PM | PR #1557 (#1362 part 3): screenshots on the production backup, Contested cards given padding, each raider as a tile, raiders sorted by their best priority number (Kat's two asks), review and merge | Revamp 3 (#1362) | 42 m | ~15 m build, ~27 m Kat reviewing | not read | Kat: Contested names were hard to read; sort them by priority number. Merged 7:19 PM |
 | 7:20-7:30 PM | #1362 part 4 built: Sidegrade on the wishlist (any number per slot, never ranked) and notes on a marked item, the Notes tab with Clear note, Sidegrade raiders named under an item's order, tests, browser tests and accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1362) | 10 m | ~10 m build | not read | Review and merge not yet counted |
+| 7:30-7:51 PM | PR #1558 (#1362 part 4): screenshots on the production backup, the red Clear button fixed outside Settings, the wishlist note box opened from a note button beside the marks (Kat's ask), review and merge | Revamp 3 (#1362) | 21 m | ~10 m build, ~11 m Kat reviewing | not read | Kat: the note box shows only after clicking an icon to the right of the three marks. Merged 7:51 PM |
+| 7:52-8:00 PM | #1362 part 5 built: the Scoring tab (saved scores, Fetch from Warcraft Logs, edit or use best, commit with a confirmation, out of 100), tests, browser accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1362) | 8 m | ~8 m build | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

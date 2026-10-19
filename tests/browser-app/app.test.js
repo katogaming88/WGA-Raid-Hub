@@ -809,6 +809,24 @@ const PRIORITY_FLAGGED = {
   }
 };
 
+// Part 5: saved scores for a few raiders, one with none, so the Scoring
+// table's every kind of row is on the page axe measures.
+const PRIORITY_SCORING = {
+  ...PRIORITY,
+  path: '/g/wga/t/phoenix/officer/priority?tab=scoring',
+  sentinel: 'main .priority-scoring-table',
+  tables: {
+    ...PRIORITY.tables,
+    scoring: PRIORITY_IDS.slice(0, 4).map((player_id, i) => ({
+      player_id,
+      recent_score: 8.6 - i * 1.5,
+      trend_score: 8 - i,
+      best_score: 9.4 - i,
+      performance_score: 8.6 - i * 1.5
+    }))
+  }
+};
+
 // Officer Settings (#1357, #1103 row 1): General, Season, Raid progression and
 // Danger zone, so every card state (a saved value, a closed tier's WCL
 // Performance Baseline row, a raid/boss row, and the Archive season control)
@@ -1261,6 +1279,15 @@ const STATES = [
     click: 'main .priority-note-clear >> nth=0',
     afterClick: '[role=dialog]'
   },
+  { label: 'loot priority, Scoring', ...PRIORITY_SCORING },
+  {
+    label: 'loot priority, Scoring, light, typing a score',
+    ...PRIORITY_SCORING,
+    colorScheme: 'light',
+    click: 'main .priority-scoring-small >> nth=0',
+    afterClick: 'main .priority-score-input'
+  },
+  { label: 'loot priority, Scoring, on a phone', ...PRIORITY_SCORING, viewport: NARROW },
   { label: 'loot fairness', ...REPORT, path: '/g/wga/t/phoenix/officer/reports/loot-fairness' },
   {
     label: 'loot fairness, light',
