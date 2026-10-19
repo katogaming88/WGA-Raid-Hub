@@ -101,7 +101,7 @@ const priorityRow = (page, name) =>
 async function openReport(page, name) {
   await page.waitForSelector('main .priority-table tbody tr');
   await priorityRow(page, name)
-    .getByRole('button', { name: /^Mark .* received$/ })
+    .getByRole('button', { name: /^Mark received: / })
     .click();
   return page.getByRole('dialog', { name: 'Mark received' });
 }
