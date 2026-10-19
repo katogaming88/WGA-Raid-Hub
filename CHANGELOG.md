@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.189.6] - 2026-10-19
+
+### Project
+
+- New app: the Roster page's tab for next season's approved signups now
+  says "Projected Roster" instead of "Roster (Tentative)", for example
+  "Midnight Season 3 Projected Roster", or "Next Season Projected Roster"
+  when there isn't exactly one season with signups open. This matches the
+  roster design. The current site keeps its old label.
+
 ## [3.189.5] - 2026-10-19
 
 ### Project

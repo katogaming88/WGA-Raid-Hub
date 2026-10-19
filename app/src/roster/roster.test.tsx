@@ -246,7 +246,7 @@ describe('Roster page', () => {
         incoming_roster: [
           { signup_id: 1, signup_name_realm: 'Gloamwing-Illidan', class: 'Shaman', spec: 'Elemental', role: 'Ranged' }
         ],
-        // One tier open names the tab (#934).
+        // One season open names the tab (#934).
         team_seasons: [
           {
             season_code: 'MID3',
@@ -260,14 +260,14 @@ describe('Roster page', () => {
     expect(current).toHaveAttribute('aria-selected', 'true');
     current.focus();
     await userEvent.keyboard('{ArrowRight}');
-    const next = screen.getByRole('tab', { name: 'Midnight Season 3 Roster (Tentative)' });
+    const next = screen.getByRole('tab', { name: 'Midnight Season 3 Projected Roster' });
     expect(next).toHaveAttribute('aria-selected', 'true');
     expect(next).toHaveFocus();
     expect(screen.getByRole('heading', { name: '1 Pending Raider' })).toBeInTheDocument();
-    expect(screen.getByRole('table', { name: 'Next season’s tentative roster' })).toHaveTextContent('Gloamwing');
+    expect(screen.getByRole('table', { name: 'Next season’s projected roster' })).toHaveTextContent('Gloamwing');
   });
 
-  it('names the tentative tab by the season name on file, whatever its code (#1388)', async () => {
+  it('names the projected tab by the season name on file, whatever its code (#1388)', async () => {
     renderApp(
       '/g/wga/t/phoenix/roster',
       rosterHandlers({
@@ -284,7 +284,7 @@ describe('Roster page', () => {
         ]
       })
     );
-    expect(await screen.findByRole('tab', { name: 'The Last Titan Season 1 Roster (Tentative)' })).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: 'The Last Titan Season 1 Projected Roster' })).toBeInTheDocument();
   });
 
   it('reads the team’s gear on its own team column, a page at a time', async () => {

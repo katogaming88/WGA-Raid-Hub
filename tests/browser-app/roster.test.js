@@ -80,11 +80,12 @@ describe('Roster page (new app), checked against the current site', () => {
   });
 
   it('offers next season’s roster, named for the signup season, with its approved signups', async () => {
-    const tab = opened.page.getByRole('tab', { name: EXPECTED_INCOMING.tabLabel });
+    // The current site still says "Roster (Tentative)"; the new app says "Projected Roster".
+    const tab = opened.page.getByRole('tab', { name: `${SCENARIO.signupSeasonName} Projected Roster` });
     await tab.click();
     const heading = opened.page.getByRole('main').getByRole('heading', { level: 2, name: EXPECTED_INCOMING.title });
     await expect(heading.count()).resolves.toBe(1);
-    const table = opened.page.getByRole('table', { name: 'Next season’s tentative roster' });
+    const table = opened.page.getByRole('table', { name: 'Next season’s projected roster' });
     expect(await readTable(table)).toEqual({ groups: EXPECTED_INCOMING.groups });
   });
 });
@@ -121,7 +122,7 @@ describe('Roster page (new app), with no tier open for signups', () => {
       tables: { ...ROSTER_TABLES, team_seasons: [] }
     });
     try {
-      await expect(opened.page.getByRole('tab', { name: 'Next Season Roster (Tentative)' }).count()).resolves.toBe(1);
+      await expect(opened.page.getByRole('tab', { name: 'Next Season Projected Roster' }).count()).resolves.toBe(1);
     } finally {
       await opened.context.close();
     }

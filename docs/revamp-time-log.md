@@ -14,10 +14,10 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     36 h 51 m |
+| Revamp 2: public pages             |     37 h 11 m |
 | Revamp 3: officer dashboard        |     25 h 55 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **87 h 06 m** |
+| **All revamp work**                | **87 h 26 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -310,6 +310,13 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 7:20-7:30 PM | #1362 part 4 built: Sidegrade on the wishlist (any number per slot, never ranked) and notes on a marked item, the Notes tab with Clear note, Sidegrade raiders named under an item's order, tests, browser tests and accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1362) | 10 m | ~10 m build | not read | Review and merge not yet counted |
 | 7:30-7:51 PM | PR #1558 (#1362 part 4): screenshots on the production backup, the red Clear button fixed outside Settings, the wishlist note box opened from a note button beside the marks (Kat's ask), review and merge | Revamp 3 (#1362) | 21 m | ~10 m build, ~11 m Kat reviewing | not read | Kat: the note box shows only after clicking an icon to the right of the three marks. Merged 7:51 PM |
 | 7:52-8:00 PM | #1362 part 5 built: the Scoring tab (saved scores, Fetch from Warcraft Logs, edit or use best, commit with a confirmation, out of 100), tests, browser accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1362) | 8 m | ~8 m build | not read | Review and merge not yet counted |
+
+### 2026-10-19
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 12:57-1:02 PM | Roster tab name: the new app's next-season tab checked against the roster design canvas, which says "Projected roster" | Revamp 2 (Roster) | 5 m | ~3 m build, ~2 m Kat deciding | not read | Kat: keep the season name and swap Tentative for Projected, "[Expansion] Season [n] Projected Roster" |
+| 2:41-2:56 PM | Roster tab renamed to "... Projected Roster" in the new app, unit and browser tests, stamp, changelog, these rows, PR opened | Revamp 2 (Roster) | 15 m | ~15 m build | not read | The current site keeps "(Tentative)". Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

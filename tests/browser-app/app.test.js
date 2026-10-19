@@ -1529,7 +1529,7 @@ const STATES = [
     path: '/g/wga/t/phoenix/roster',
     sentinel: 'table.roster-table',
     tables: ROSTER,
-    click: 'role=tab[name="Midnight Season 4 Roster (Tentative)"]'
+    click: 'role=tab[name="Midnight Season 4 Projected Roster"]'
   },
   {
     label: 'roster, officer, Names',
