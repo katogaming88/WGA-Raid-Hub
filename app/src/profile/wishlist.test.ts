@@ -207,6 +207,24 @@ describe('editorSlots', () => {
   });
 });
 
+describe('Wowhead links', () => {
+  it('links each offered item, and a tier token to the piece it becomes for the wearer', () => {
+    const linked = catalog.map((i) =>
+      i.id === 1
+        ? { ...i, wow_item_id: 250001, icon: 'inv_helm' }
+        : i.id === 13
+          ? { ...i, wow_item_id: 250013, is_ptr: true }
+          : i
+    );
+    const slots = editorSlots({ ...input([]), catalog: linked });
+    const row = (slot: string, name: string) => slots.find((s) => s.slot === slot)!.items.find((i) => i.name === name)!;
+    expect(row('Head', 'Plate Helm').link).toEqual({ wowId: 250001, ptr: false, icon: 'inv_helm' });
+    // The token shows as the Death Knight's gloves and links to them.
+    expect(row('Hands', 'Class Gloves').link).toEqual({ wowId: 250013, ptr: true, icon: null });
+    expect(row('Finger 1', 'Ring A').link).toBeNull();
+  });
+});
+
 describe('Sidegrade and notes (#1362 part 4)', () => {
   const row = (slots: ReturnType<typeof editorSlots>, slot: string, name: string) =>
     slots.find((s) => s.slot === slot)!.items.find((i) => i.name === name)!;

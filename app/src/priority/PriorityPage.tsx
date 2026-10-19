@@ -735,7 +735,7 @@ function ItemList({
                 <li key={i.itemId}>
                   <button
                     type="button"
-                    className="priority-item"
+                    className="priority-pick"
                     aria-current={i.itemId === picked ? 'true' : undefined}
                     onClick={() => onPick(i.itemId)}
                   >

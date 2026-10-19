@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { DataState } from '../components/DataState';
+import { ItemLink } from '../components/ItemLink';
 import { Icon } from '../components/Icon';
 import { useTouchScreen } from '../lib/device';
 import { bothQueries } from '../data/query';
@@ -353,7 +354,7 @@ function SlotTabs({
           {current.items.map((item) => (
             <li key={item.itemId} className="wishlist-item" data-mark={item.mark ?? undefined}>
               <span className="wishlist-item-name">
-                {item.name}
+                <ItemLink link={item.link}>{item.name}</ItemLink>
                 {sourceTag(item.source) && <span className="source-tag">{sourceTag(item.source)}</span>}
               </span>
               {item.takenBy ? (

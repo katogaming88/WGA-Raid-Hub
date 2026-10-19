@@ -1,0 +1,20 @@
+.item-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--epic);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+a.item-link:hover {
+  text-decoration: underline;
+}
+
+.item-link-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  flex: 0 0 auto;
+}

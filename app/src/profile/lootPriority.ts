@@ -30,7 +30,19 @@ export type CatalogItem = {
   // offered only in the seasons listed in item_seasons (#1166).
   source?: string | null;
   seasons?: string[];
+  // For the Wowhead link: Blizzard's item id, whether Wowhead files it under
+  // PTR, and the icon's name on Wowhead's image server.
+  wow_item_id?: number | null;
+  is_ptr?: boolean | null;
+  icon?: string | null;
 };
+
+// Where an item's name links to on Wowhead. A still-PTR item needs the ptr/
+// address, or Wowhead shows it with no stats (#561).
+export type ItemLinkData = { wowId: number; ptr: boolean; icon: string | null };
+
+export const itemLinkData = (item: Pick<CatalogItem, 'wow_item_id' | 'is_ptr' | 'icon'> | null | undefined) =>
+  item?.wow_item_id ? { wowId: item.wow_item_id, ptr: !!item.is_ptr, icon: item.icon ?? null } : null;
 
 // Not from a raid: never ranked, and in season only where item_seasons says.
 // The small tag a dungeon or crafted item wears; a raid item has none.
@@ -39,7 +51,10 @@ export const sourceTag = (source: string) => (source === 'dungeon' ? 'M+' : sour
 export const offRaid = (item: CatalogItem) => !!item.source && item.source !== 'raid';
 export type ZoneRow = { wcl_zone_id: number | null; season: string | null };
 export type RankRow = { item_id: number; track: string; rank: number; player_id: number };
-export type TierTokenRow = { token_item_id: number; resolved: { name: string } | null };
+export type TierTokenRow = {
+  token_item_id: number;
+  resolved: { name: string; wow_item_id?: number | null; is_ptr?: boolean | null; icon?: string | null } | null;
+};
 export type ReceivedLoot = { track: string | null; awarded_at: string; items: { name: string } | null };
 export type SelfReceivedRow = {
   track: string | null;
@@ -72,6 +87,8 @@ export type PriorityRow = {
   // The catalog's own name, which a report sends: a tier token's, not the
   // piece it shows as.
   itemName: string;
+  // The Wowhead link for what it shows as; none for an M+ or crafted stand-in.
+  link: ItemLinkData | null;
   placeholder: boolean;
   // raid, dungeon or crafted; the last two are never ranked (#1166).
   source: string;
@@ -174,14 +191,17 @@ export function lootPriority(input: {
     const slot = item.is_placeholder ? (pick.slot ?? '') : item.slot;
     const orderSlot = item.is_placeholder ? slot : (CATALOG_TO_WISHLIST_SLOT[item.slot] ?? item.slot);
     const order = WISHLIST_SLOTS.indexOf(orderSlot);
+    const piece = input.tierTokens.find((t) => t.token_item_id === item.id)?.resolved ?? null;
     rows.push({
       order: order === -1 ? WISHLIST_SLOTS.length : order,
       row: {
         key: `${item.id}-${item.is_placeholder ? slot : ''}`,
         itemId: item.id,
         slot,
-        item: input.tierTokens.find((t) => t.token_item_id === item.id)?.resolved?.name ?? item.name,
+        item: piece?.name ?? item.name,
         itemName: item.name,
+        // A tier token links to the piece it becomes for the raider's class.
+        link: item.is_placeholder ? null : (itemLinkData(piece) ?? itemLinkData(item)),
         placeholder: item.is_placeholder,
         source: item.source ?? 'raid',
         // Crafted and M+ picks are not council loot and are never ranked.
