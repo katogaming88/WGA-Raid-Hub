@@ -310,7 +310,12 @@ function BioCardEditor({
             >
               Move down
             </button>
-            <button type="button" className="button bio-remove" aria-label={`Remove officer: ${label}`} onClick={onRemove}>
+            <button
+              type="button"
+              className="button bio-remove"
+              aria-label={`Remove officer: ${label}`}
+              onClick={onRemove}
+            >
               Remove officer
             </button>
           </div>

@@ -175,8 +175,7 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
                 aria-current={tab === 'unmanaged' ? 'page' : undefined}
                 aria-label={unmanaged.length ? `Unmanaged, ${unmanaged.length}` : undefined}
               >
-                Unmanaged{' '}
-                {unmanaged.length > 0 && <span className="count-badge">{unmanaged.length}</span>}
+                Unmanaged {unmanaged.length > 0 && <span className="count-badge">{unmanaged.length}</span>}
               </Link>
               <Link to={linkTo({ tab: 'contested' })} replace aria-current={tab === 'contested' ? 'page' : undefined}>
                 Contested
@@ -187,8 +186,7 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
                 aria-current={tab === 'notes' ? 'page' : undefined}
                 aria-label={noteCount ? `Notes, ${noteCount}` : undefined}
               >
-                Notes{' '}
-                {noteCount > 0 && <span className="count-badge">{noteCount}</span>}
+                Notes {noteCount > 0 && <span className="count-badge">{noteCount}</span>}
               </Link>
               <Link to={linkTo({ tab: 'scoring' })} replace aria-current={tab === 'scoring' ? 'page' : undefined}>
                 Scoring
