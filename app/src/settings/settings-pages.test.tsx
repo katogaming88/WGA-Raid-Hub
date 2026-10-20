@@ -577,7 +577,34 @@ describe('What gets counted as loot received (#1561)', () => {
     });
   });
 
-  it('flags a used response the saved list leaves out, and Add it lists it as Off spec', async () => {
+  it('flags used responses the saved list leaves out; one is added as a button, one ignored', async () => {
+    const calls: unknown[] = [];
+    renderApp(
+      '/g/wga/t/phoenix/officer/settings/loot',
+      handlers({ buttons: [{ text: 'Upgrade', countsAs: 'main' }], groups: [], ignored: [] }, calls)
+    );
+    expect(await screen.findByText(/2 responses from your imports aren't on your list\./)).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Add a response as a button' }), 'OS/M+');
+    await userEvent.click(screen.getByRole('button', { name: 'Add as a button' }));
+    expect(screen.getByRole('combobox', { name: 'OS/M+ counts as' })).toHaveValue('off');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Ignore a response' }), 'Mythic+');
+    await userEvent.click(screen.getByRole('button', { name: 'Ignore' }));
+    expect(screen.getByRole('button', { name: 'Stop ignoring Mythic+' })).toBeInTheDocument();
+    expect(screen.queryByText(/aren't on your list|isn't on your list/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await expect.poll(() => calls.length).toBe(1);
+    expect(calls[0]).toMatchObject({
+      p_responses: {
+        buttons: [
+          { text: 'Upgrade', countsAs: 'main' },
+          { text: 'OS/M+', countsAs: 'off' }
+        ],
+        ignored: ['Mythic+']
+      }
+    });
+  });
+
+  it('a saved ignored response stays off the warning, and can be un-ignored', async () => {
     renderApp(
       '/g/wga/t/phoenix/officer/settings/loot',
       handlers({
@@ -585,15 +612,12 @@ describe('What gets counted as loot received (#1561)', () => {
           { text: 'Upgrade', countsAs: 'main' },
           { text: 'OS/M+', countsAs: 'off' }
         ],
-        groups: []
+        groups: [],
+        ignored: ['Mythic+']
       })
     );
-    expect(
-      await screen.findByText(/"Mythic\+" was used once but isn't listed\. It counts as Off spec until added\./)
-    ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Add it: Mythic+' }));
-    expect(screen.getByRole('combobox', { name: 'Mythic+ counts as' })).toHaveValue('off');
-    expect(screen.queryByText(/isn't listed/)).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('button', { name: 'Stop ignoring Mythic+' }));
+    expect(screen.getByText(/1 response from your imports isn't on your list\./)).toBeInTheDocument();
   });
 
   it('adds a button group with its own buttons, and reorders and removes buttons', async () => {

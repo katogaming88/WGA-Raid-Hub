@@ -932,11 +932,20 @@ const SETTINGS_LOOT = {
                 { text: 'OS', countsAs: 'off' }
               ]
             }
-          ]
+          ],
+          ignored: ['Candidate is not in the instance']
         }
       }
     ],
-    rclc_loot: ['Upgrade', 'Upgrade', 'OS/M+', '2/4 Set', 'Mythic+', 'Disenchant'].map((response, id) => ({
+    rclc_loot: [
+      'Upgrade',
+      'Upgrade',
+      'OS/M+',
+      '2/4 Set',
+      'Mythic+',
+      'Candidate is not in the instance',
+      'Disenchant'
+    ].map((response, id) => ({
       id,
       response
     }))

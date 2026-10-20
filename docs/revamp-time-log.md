@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     29 h 24 m |
+| Revamp 3: officer dashboard        |     29 h 33 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **91 h 59 m** |
+| **All revamp work**                | **92 h 08 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -325,6 +325,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:41-9:48 PM | Sidebar folds one section at a time from the top, only as many as needed, never the open one (Kat's ask, in PR #1587); sidebar tests rewritten | Revamp 2 (app frame) | 7 m | ~7 m build | not read | Review and merge not yet counted |
 | 9:48-9:51 PM | PR #1587 (Settings › Loot, sidebar folding) reviewed and merged | Revamp 3 (#1560) | 5 m | ~5 m Kat reviewing | not read | Merged 9:51 PM |
 | 9:53-10:10 PM | #1561 part 1 built: "What gets counted as loot received" (Kat's name for it) on Settings › Loot, buttons and button groups with what each counts as, a first list from the team's imports counted as today, unlisted responses flagged; set_loot_responses() for officers, database tests, docs, browser accessibility states, screenshots, stamp, changelog, these rows, PR opened | Revamp 3 (#1561) | 17 m | ~17 m build | not read | Real responses read from prod first (Hellfire's "Offspec/Greed" counted as main today). Review and merge not yet counted |
+| 10:10-10:19 PM | #1561 part 1, Kat's ask from testing: unlisted responses in one warning line with an add-as-button menu, and an Ignored responses chip box (WoWAudit-style); ignored count as Hidden (Kat's pick); tests, screenshots | Revamp 3 (#1561) | 9 m | ~6 m build, ~3 m Kat deciding | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

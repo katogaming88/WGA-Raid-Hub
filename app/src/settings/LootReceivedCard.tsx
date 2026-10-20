@@ -25,6 +25,8 @@ export function LootReceivedCard({ teamId, data, canEdit }: { teamId: number; da
   const [initial] = useState<ResponseList>(() => data.list ?? draftFromSeen(data.seen));
   const [list, setList] = useState(initial);
   const [newGroup, setNewGroup] = useState('');
+  const [toAdd, setToAdd] = useState('');
+  const [toIgnore, setToIgnore] = useState('');
   const save = useSaveLootResponses(teamId);
 
   const unlisted = unlistedResponses(list, data.seen);
@@ -43,7 +45,8 @@ export function LootReceivedCard({ teamId, data, canEdit }: { teamId: number; da
     }
     const trimmed: ResponseList = {
       buttons: list.buttons.map((b) => ({ ...b, text: b.text.trim() })),
-      groups: list.groups.map((g) => ({ ...g, buttons: g.buttons.map((b) => ({ ...b, text: b.text.trim() })) }))
+      groups: list.groups.map((g) => ({ ...g, buttons: g.buttons.map((b) => ({ ...b, text: b.text.trim() })) })),
+      ignored: list.ignored
     };
     save.mutate(trimmed, {
       onSuccess: () => announce('success', 'Saved!'),
@@ -164,25 +167,105 @@ export function LootReceivedCard({ teamId, data, canEdit }: { teamId: number; da
       <p className="text-muted">RCLootCouncil records these on its own; they are not buttons.</p>
 
       {unlisted.length > 0 && (
-        <ul className="loot-unlisted" aria-label="Responses not listed">
-          {unlisted.map((r) => (
-            <li key={r.text} className="loot-warning">
-              <span>
-                "{r.text}" was used {timesText(r.count)} but isn't listed. It counts as Off spec until added.
+        <div className="loot-warning">
+          <p>
+            {unlisted.length === 1
+              ? "1 response from your imports isn't on your list."
+              : `${unlisted.length} responses from your imports aren't on your list.`}{' '}
+            They count as Off spec until you add or ignore them.
+          </p>
+          {canEdit && (
+            <div className="settings-row">
+              <label className="visually-hidden" htmlFor="loot-add-unlisted">
+                Add a response as a button
+              </label>
+              <select
+                id="loot-add-unlisted"
+                className="select"
+                value={toAdd}
+                onChange={(e) => setToAdd(e.target.value)}
+              >
+                <option value="">Add a response as a button</option>
+                {unlisted.map((r) => (
+                  <option key={r.text} value={r.text}>
+                    {r.text} (used {timesText(r.count)})
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="button"
+                disabled={!toAdd}
+                onClick={() => {
+                  setButtons([...list.buttons, { text: toAdd, countsAs: 'off' }]);
+                  setToAdd('');
+                }}
+              >
+                Add as a button
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {(list.ignored.length > 0 || (canEdit && unlisted.length > 0)) && (
+        <div className="loot-ignored">
+          <h3 className="loot-subhead" id="loot-ignored-title">
+            Ignored responses
+          </h3>
+          <p className="text-muted">
+            Responses from your imports that aren't buttons. They count as Hidden: not counted and not shown to raiders.
+          </p>
+          <div className="loot-chips" role="group" aria-labelledby="loot-ignored-title">
+            {list.ignored.length === 0 && <span className="text-muted">None ignored.</span>}
+            {list.ignored.map((r) => (
+              <span key={r} className="loot-chip">
+                {r}
+                {canEdit && (
+                  <button
+                    type="button"
+                    className="loot-chip-remove"
+                    aria-label={`Stop ignoring ${r}`}
+                    onClick={() => setList({ ...list, ignored: list.ignored.filter((i) => i !== r) })}
+                  >
+                    <Icon name="close" size={12} />
+                  </button>
+                )}
               </span>
-              {canEdit && (
-                <button
-                  type="button"
-                  className="button"
-                  aria-label={`Add it: ${r.text}`}
-                  onClick={() => setButtons([...list.buttons, { text: r.text, countsAs: 'off' }])}
-                >
-                  Add it
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
+            ))}
+          </div>
+          {canEdit && unlisted.length > 0 && (
+            <div className="settings-row">
+              <label className="visually-hidden" htmlFor="loot-ignore">
+                Ignore a response
+              </label>
+              <select
+                id="loot-ignore"
+                className="select"
+                value={toIgnore}
+                onChange={(e) => setToIgnore(e.target.value)}
+              >
+                <option value="">Ignore a response</option>
+                {unlisted.map((r) => (
+                  <option key={r.text} value={r.text}>
+                    {r.text} (used {timesText(r.count)})
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="button"
+                disabled={!toIgnore}
+                onClick={() => {
+                  setList({ ...list, ignored: [...list.ignored, toIgnore] });
+                  setToIgnore('');
+                }}
+              >
+                Ignore
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {canEdit && (

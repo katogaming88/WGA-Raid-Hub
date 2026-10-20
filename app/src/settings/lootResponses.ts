@@ -10,7 +10,9 @@ import { isOffSpec } from '../home/home';
 export type CountsAs = 'main' | 'off' | 'none' | 'hidden';
 export type ResponseButton = { text: string; countsAs: CountsAs };
 export type ButtonGroup = { name: string; buttons: ResponseButton[] };
-export type ResponseList = { buttons: ResponseButton[]; groups: ButtonGroup[] };
+// `ignored`: responses the imports used that officers chose not to list.
+// They count as Hidden and are no longer flagged (Kat, 2026-10-19).
+export type ResponseList = { buttons: ResponseButton[]; groups: ButtonGroup[]; ignored: string[] };
 export type SeenResponse = { text: string; count: number };
 
 export const COUNTS_AS: { id: CountsAs; label: string }[] = [
@@ -50,14 +52,15 @@ function asButtons(raw: unknown): ResponseButton[] {
 // The saved list, or null when the team never saved one.
 export function asResponseList(raw: unknown): ResponseList | null {
   if (!raw || typeof raw !== 'object') return null;
-  const list = raw as { buttons?: unknown; groups?: unknown };
+  const list = raw as { buttons?: unknown; groups?: unknown; ignored?: unknown };
   return {
     buttons: asButtons(list.buttons),
     groups: Array.isArray(list.groups)
       ? list.groups
           .filter((g): g is { name: string; buttons: unknown } => typeof g?.name === 'string')
           .map((g) => ({ name: g.name, buttons: asButtons(g.buttons) }))
-      : []
+      : [],
+    ignored: Array.isArray(list.ignored) ? list.ignored.filter((r): r is string => typeof r === 'string') : []
   };
 }
 
@@ -85,7 +88,8 @@ export function seenResponses(responses: (string | null)[]): SeenResponse[] {
 export function draftFromSeen(seen: SeenResponse[]): ResponseList {
   return {
     buttons: seen.filter((s) => !isFixed(s.text)).map((s) => ({ text: s.text, countsAs: todaysCountsAs(s.text) })),
-    groups: []
+    groups: [],
+    ignored: []
   };
 }
 
@@ -93,10 +97,13 @@ export function timesUsed(seen: SeenResponse[], text: string): number {
   return seen.find((s) => responseKey(s.text) === responseKey(text))?.count ?? 0;
 }
 
-// Responses the imports used that a saved list does not name. They count as
-// Off spec until an officer adds them.
+// Responses the imports used that a saved list neither names nor ignores.
+// They count as Off spec until an officer adds or ignores them.
 export function unlistedResponses(list: ResponseList, seen: SeenResponse[]): SeenResponse[] {
-  const listed = new Set([...list.buttons, ...list.groups.flatMap((g) => g.buttons)].map((b) => responseKey(b.text)));
+  const listed = new Set([
+    ...[...list.buttons, ...list.groups.flatMap((g) => g.buttons)].map((b) => responseKey(b.text)),
+    ...list.ignored.map(responseKey)
+  ]);
   return seen.filter((s) => !isFixed(s.text) && !listed.has(responseKey(s.text)));
 }
 

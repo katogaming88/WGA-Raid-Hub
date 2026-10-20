@@ -19,7 +19,8 @@ answers to.
 - A new database function, `set_loot_responses()`, saves a team's
   RCLootCouncil buttons and what each counts as. The team's officers, its
   leader and site admins can save it; guild officers can't, the same as
-  for loot import. It checks every button has its text and a known choice.
+  for loot import. It checks every button has its text and a known choice,
+  and keeps the list of ignored responses.
   Nothing reads the list yet, so no loot count changes.
 
 ### Project
@@ -31,8 +32,11 @@ answers to.
   Trinket, Ring, Necklace) each list their own buttons. Each button shows
   how many imported awards used it. A team that hasn't saved a list
   starts from the buttons its imports used, filled in the way they count
-  today. Once saved, a button the imports used but the list leaves out is
-  flagged, with an Add it button.
+  today. Once saved, responses the imports used but the list leaves out
+  are flagged in one line, with a menu to add any of them as a button.
+  Officers can instead ignore a response, such as RCLootCouncil's own
+  "Candidate is not in the instance": it shows as a chip under Ignored
+  responses, counts as Hidden and stops being flagged.
 
 ## [3.190.0] - 2026-10-19
 
