@@ -76,14 +76,6 @@ describe('set_loot_responses: what it accepts', () => {
     const list = { buttons: [], groups: [{ name: 'Weapon', buttons: [{ text: 'Need', countsAs: 'maybe' }] }] };
     await expect(queryAs('authenticated', OFFICER_T1, ...save(list))).rejects.toThrow(/"Need" needs what it counts as/);
   });
-  it('keeps ignored responses, and refuses an ignored entry that is not a response text', async () => {
-    const list = { ...LIST, ignored: ['Candidate is not in the instance'] };
-    const res = await queryAs('authenticated', OFFICER_T1, ...save(list));
-    expect(res.rows[0].config.lootResponses.ignored).toEqual(['Candidate is not in the instance']);
-    await expect(queryAs('authenticated', OFFICER_T1, ...save({ ...LIST, ignored: [3] }))).rejects.toThrow(
-      /Ignored responses must be a list/
-    );
-  });
   it('refuses a group with no name', async () => {
     const list = { buttons: [], groups: [{ name: '', buttons: [] }] };
     await expect(queryAs('authenticated', OFFICER_T1, ...save(list))).rejects.toThrow(/needs a name/);

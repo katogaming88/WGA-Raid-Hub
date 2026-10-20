@@ -2721,8 +2721,6 @@ Decided with Kat 2026-10-18 and 2026-10-19. Whether a win counts was guessed fro
 
 **Matched by text, ignoring case.** RCLootCouncil records the response text on each award, and the button's position does not say what it means (Kat: in her Armor Token group the first three buttons are all upgrades). Upper and lower case differ across Phoenix's imports ("Track upgrade", "Track Upgrade"), so matching ignores it.
 
-**Ignored responses count as Hidden** (Kat, 2026-10-19). Some texts in the imports are not buttons an officer wants to list: RCLootCouncil's own status lines ("Candidate is not in the instance") and one-offs from old imports. The list's `ignored` holds those; an ignored response stops being flagged and counts as Hidden, not counted and not shown to raiders. Kat picked Hidden over Off spec: ignoring says the text is not a real award to show.
-
-**No list means today's rules.** A team that never saves one keeps the guessed rules above, so nothing moves until an officer saves. Once a list exists, a response it does not name counts as Off spec until an officer adds it, and the settings card flags it. This migration only adds the writer; the readers move over in later parts of #1561.
+**No list means today's rules.** A team that never saves one keeps the guessed rules above, so nothing moves until an officer saves. Once a list exists, a response it does not name counts as Hidden (Kat, 2026-10-19, replacing the issue's Off spec): leaving a response off is how officers hide RCLootCouncil's own status lines ("Candidate is not in the instance") and old one-offs, with no separate ignore list. The settings card offers every unlisted response to add, and a removed row goes back there. This migration only adds the writer; the readers move over in later parts of #1561.
 
 [Full discussion -> #1561](https://github.com/katogaming88/WGA-Raid-Hub/issues/1561).

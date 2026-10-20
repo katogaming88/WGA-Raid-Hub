@@ -27,20 +27,17 @@ describe('what gets counted as loot received (#1561)', () => {
         { text: 'Upgrade', countsAs: 'main' },
         { text: 'OS/M+', countsAs: 'off' }
       ],
-      groups: [],
-      ignored: []
+      groups: []
     });
   });
 
-  it('flags a used response a saved list does not name, in any list or group', () => {
+  it('finds a used response the list does not name, in any list or group', () => {
     const seen = seenResponses(['Upgrade', 'Mythic+', 'Mythic+', '2/4 Set', 'Disenchant']);
     const list = {
       buttons: [{ text: 'upgrade', countsAs: 'main' as const }],
-      groups: [{ name: 'Armor Token', buttons: [{ text: '2/4 Set', countsAs: 'main' as const }] }],
-      ignored: []
+      groups: [{ name: 'Armor Token', buttons: [{ text: '2/4 Set', countsAs: 'main' as const }] }]
     };
     expect(unlistedResponses(list, seen)).toEqual([{ text: 'Mythic+', count: 2 }]);
-    expect(unlistedResponses({ ...list, ignored: ['mythic+'] }, seen)).toEqual([]);
   });
 
   it('moves a button one place, and not past either end', () => {

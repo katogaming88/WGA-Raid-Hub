@@ -4,15 +4,13 @@
 --
 --   { "buttons": [{ "text": "Upgrade", "countsAs": "main" }, ...],
 --     "groups":  [{ "name": "Armor Token",
---                   "buttons": [{ "text": "2/4 Set", "countsAs": "main" }] }],
---     "ignored": ["Candidate is not in the instance"] }
+--                   "buttons": [{ "text": "2/4 Set", "countsAs": "main" }] }] }
 --
 -- countsAs is main (counts toward loot counts and priority), off (shown, not
 -- counted), none (not handed out: disenchant, personal loot) or hidden (not
 -- counted and not shown to raiders). Buttons are in the in-game order,
--- highest priority first. "ignored" holds responses the imports used that an
--- officer chose not to list (Kat, 2026-10-19): they count as hidden and stop
--- being flagged. A list saved before it existed has no "ignored" key.
+-- highest priority first. A response the list does not name counts as
+-- hidden (Kat, 2026-10-19): leaving it off is how an officer hides it.
 --
 -- team_settings' own write rule is team-leader-only, and this list is an
 -- officer's job (the officers run the imports), so it gets its own SECURITY
@@ -47,17 +45,6 @@ begin
     or jsonb_typeof(p_responses -> 'groups') is distinct from 'array'
   then
     raise exception 'The button list must have buttons and groups.';
-  end if;
-
-  if p_responses ? 'ignored' then
-    if jsonb_typeof(p_responses -> 'ignored') is distinct from 'array'
-      or exists (
-        select 1 from jsonb_array_elements(p_responses -> 'ignored') as i
-        where jsonb_typeof(i) is distinct from 'string' or length(btrim(i #>> '{}')) not between 1 and 100
-      )
-    then
-      raise exception 'Ignored responses must be a list of response texts.';
-    end if;
   end if;
 
   for v_group in select g from jsonb_array_elements(p_responses -> 'groups') as g loop

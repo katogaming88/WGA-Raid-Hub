@@ -932,8 +932,7 @@ const SETTINGS_LOOT = {
                 { text: 'OS', countsAs: 'off' }
               ]
             }
-          ],
-          ignored: ['Candidate is not in the instance']
+          ]
         }
       }
     ],

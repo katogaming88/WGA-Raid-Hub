@@ -577,47 +577,27 @@ describe('What gets counted as loot received (#1561)', () => {
     });
   });
 
-  it('flags used responses the saved list leaves out; one is added as a button, one ignored', async () => {
+  it('offers used responses the list leaves out, as Hidden, and a removed row comes back to add', async () => {
     const calls: unknown[] = [];
     renderApp(
       '/g/wga/t/phoenix/officer/settings/loot',
-      handlers({ buttons: [{ text: 'Upgrade', countsAs: 'main' }], groups: [], ignored: [] }, calls)
+      handlers({ buttons: [{ text: 'Upgrade', countsAs: 'main' }], groups: [] }, calls)
     );
-    expect(await screen.findByText(/2 responses from your imports aren't on your list\./)).toBeInTheDocument();
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Add a response as a button' }), 'OS/M+');
-    await userEvent.click(screen.getByRole('button', { name: 'Add as a button' }));
+    expect(
+      await screen.findByText(
+        "2 responses from your imports aren't on your list. They count as Hidden: not counted and not shown to raiders."
+      )
+    ).toBeInTheDocument();
+    const pick = screen.getByRole('combobox', { name: 'Add a response from your imports' });
+    await userEvent.selectOptions(pick, 'OS/M+');
+    await userEvent.click(screen.getByRole('button', { name: 'Add to list' }));
     expect(screen.getByRole('combobox', { name: 'OS/M+ counts as' })).toHaveValue('off');
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Ignore a response' }), 'Mythic+');
-    await userEvent.click(screen.getByRole('button', { name: 'Ignore' }));
-    expect(screen.getByRole('button', { name: 'Stop ignoring Mythic+' })).toBeInTheDocument();
-    expect(screen.queryByText(/aren't on your list|isn't on your list/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Upgrade' }));
+    expect(within(pick).getByRole('option', { name: 'Upgrade (used 2 times)' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     await expect.poll(() => calls.length).toBe(1);
-    expect(calls[0]).toMatchObject({
-      p_responses: {
-        buttons: [
-          { text: 'Upgrade', countsAs: 'main' },
-          { text: 'OS/M+', countsAs: 'off' }
-        ],
-        ignored: ['Mythic+']
-      }
-    });
-  });
-
-  it('a saved ignored response stays off the warning, and can be un-ignored', async () => {
-    renderApp(
-      '/g/wga/t/phoenix/officer/settings/loot',
-      handlers({
-        buttons: [
-          { text: 'Upgrade', countsAs: 'main' },
-          { text: 'OS/M+', countsAs: 'off' }
-        ],
-        groups: [],
-        ignored: ['Mythic+']
-      })
-    );
-    await userEvent.click(await screen.findByRole('button', { name: 'Stop ignoring Mythic+' }));
-    expect(screen.getByText(/1 response from your imports isn't on your list\./)).toBeInTheDocument();
+    expect(calls[0]).toMatchObject({ p_responses: { buttons: [{ text: 'OS/M+', countsAs: 'off' }], groups: [] } });
   });
 
   it('adds a button group with its own buttons, and reorders and removes buttons', async () => {
@@ -638,7 +618,7 @@ describe('What gets counted as loot received (#1561)', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Move OS/M+ up' }));
     await userEvent.click(screen.getByRole('button', { name: 'Remove Upgrade' }));
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Add a button group' }), 'Armor Token');
-    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add group' }));
     await userEvent.click(screen.getByRole('button', { name: /Add a button to Armor Token/ }));
     const group = screen.getByRole('region', { name: 'Button group: Armor Token' });
     await userEvent.type(within(group).getByRole('textbox', { name: 'Button 1 text' }), '2/4 Set');

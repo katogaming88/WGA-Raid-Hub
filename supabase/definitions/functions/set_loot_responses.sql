@@ -28,17 +28,6 @@ begin
     raise exception 'The button list must have buttons and groups.';
   end if;
 
-  if p_responses ? 'ignored' then
-    if jsonb_typeof(p_responses -> 'ignored') is distinct from 'array'
-      or exists (
-        select 1 from jsonb_array_elements(p_responses -> 'ignored') as i
-        where jsonb_typeof(i) is distinct from 'string' or length(btrim(i #>> '{}')) not between 1 and 100
-      )
-    then
-      raise exception 'Ignored responses must be a list of response texts.';
-    end if;
-  end if;
-
   for v_group in select g from jsonb_array_elements(p_responses -> 'groups') as g loop
     if jsonb_typeof(v_group -> 'name') is distinct from 'string'
       or length(btrim(v_group ->> 'name')) not between 1 and 60
