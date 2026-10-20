@@ -12,6 +12,24 @@ answers to.
 
 ---
 
+## [3.193.0] - 2026-10-20
+
+### Backend
+
+- Suggest order and the RCLootCouncil export follow the team's saved
+  RCLootCouncil button list. A win counts as "already has it" only when its
+  response is set to Main spec, so an Off spec, Not handed out or Hidden
+  win no longer takes a raider off an item's list. For example, once
+  Hellfire Rollers sets "Offspec/Greed" to Off spec, those wins stop
+  counting against raiders. A team with no list saved works exactly as
+  before. A new database function, `loot_response_counts_as()`, answers
+  what one response counts as for both.
+
+### Project
+
+- New app: the Priority page's win counts and "already has it" marks
+  follow the same list, so they match Suggest order.
+
 ## [3.192.0] - 2026-10-20
 
 ### Project

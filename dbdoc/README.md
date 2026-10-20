@@ -237,6 +237,7 @@
 | public.skip_killed_bosses | trigger |  | FUNCTION |
 | public.hold_team_member | void | p_team_member_id integer | FUNCTION |
 | public.set_loot_responses | jsonb | p_team_id integer, p_responses jsonb | FUNCTION |
+| public.loot_response_counts_as | text | p_team_id integer, p_response text | FUNCTION |
 
 ## Enums
 

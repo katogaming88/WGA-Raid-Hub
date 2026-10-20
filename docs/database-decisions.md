@@ -2724,3 +2724,15 @@ Decided with Kat 2026-10-18 and 2026-10-19. Whether a win counts was guessed fro
 **No list means today's rules.** A team that never saves one keeps the guessed rules above, so nothing moves until an officer saves. Once a list exists, a response it does not name counts as Hidden (Kat, 2026-10-19, replacing the issue's Off spec): leaving a response off is how officers hide RCLootCouncil's own status lines ("Candidate is not in the instance") and old one-offs, with no separate ignore list. The settings card offers every unlisted response to add, and a removed row goes back there. This migration only adds the writer; the readers move over in later parts of #1561.
 
 [Full discussion -> #1561](https://github.com/katogaming88/WGA-Raid-Hub/issues/1561).
+
+## #1561 part 3 -- Suggest order and the export follow the button list
+
+Shipped: 20261020123059_loot_responses_priority.sql
+
+Suggest order (`generate_priority_order()`) and the RCLootCouncil export (`build_rclc_export()`) count an award as "already has it" only when the team's saved list says its response is Main spec. The new app's readers moved over in part 2 (#1589).
+
+**One helper, `loot_response_counts_as(team_id, response)`, matched the way the app matches.** It reads the list from `team_settings.config -> 'lootResponses'` and answers main, off, none or hidden: button text ignoring case and outer spaces, normal and group buttons alike, an award with no response as main, Personal Loot and Disenchant always none, a response the list does not name hidden. It mirrors the app's `awardCountsAs()` so the Priority page and Suggest order agree. A plain SQL function, not SECURITY DEFINER: `team_settings` is public to read, so it needs no extra access. EXECUTE goes to `authenticated` only, like the two functions that call it.
+
+**Null for no list, and each caller keeps its own old rule.** The two functions disagreed before this change: Suggest order skipped OS and M+ rolls, while the export counted every award, OS included. Unifying them for teams with no list would have moved numbers nobody asked to move, against the "nothing changes until an officer saves" rule from part 1. So the helper answers null when there is no list, and each caller falls back to exactly what it did. Once a list is saved, both use Main spec only and agree. No team had saved a list when this shipped.
+
+[Full discussion -> #1561](https://github.com/katogaming88/WGA-Raid-Hub/issues/1561).

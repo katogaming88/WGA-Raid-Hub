@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { shownLoot } from '../settings/lootResponses';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
@@ -34,6 +35,13 @@ import {
   tierPiecesEquipped,
   type PriorityData
 } from './priority';
+
+// Loot as countedLoot() marks it for a team with no button list saved.
+const marked = (rows: { player_id: number; item_id: number; track: string; response: string | null }[]) =>
+  shownLoot(
+    rows.map((r) => ({ team_id: 1, ...r })),
+    new Map()
+  );
 
 // Loot priority (#1362 part 1), from a fixture season: two Back pieces, a
 // neck, a ring saved with nobody on it, and a tier piece and an older raid's
@@ -116,13 +124,13 @@ const DATA: PriorityData = {
     { player_id: 10, item_id: 3, status: 'bis' },
     { player_id: 12, item_id: 3, status: 'ok' }
   ],
-  loot: [
+  loot: marked([
     // Katorrí already won the drape on Heroic; Bbldrizzy won the other Back.
     { player_id: 10, item_id: 1, track: 'Hero', response: 'BiS' },
     { player_id: 11, item_id: 2, track: 'Hero', response: 'Upgrade' },
     // An off-spec roll is not an award for the main spec.
     { player_id: 12, item_id: 2, track: 'Hero', response: 'OS' }
-  ],
+  ]),
   bosses: [
     { item_id: 1, boss: 'The Coiled Altar' },
     { item_id: 3, boss: 'The Twin Fangs' },
@@ -158,7 +166,7 @@ describe('conflict flags and contested items', () => {
   });
 
   it('flags a Mythic #1 who already has the Heroic copy, and only on Mythic', () => {
-    const data = { ...DATA, loot: [{ player_id: 11, item_id: 1, track: 'Hero', response: 'BiS' }] };
+    const data = { ...DATA, loot: marked([{ player_id: 11, item_id: 1, track: 'Hero', response: 'BiS' }]) };
     const myth = priorityItems(data, 'Myth', CATALOG, ZONES, 'MID2')[0]!;
     expect(rankedRows(myth, 'Myth', data, PLAYERS, CATALOG)[0]!.heroicCopy).toBe(true);
     expect([...flaggedItemIds([myth], 'Myth', data, PLAYERS, CATALOG)]).toEqual([1]);
@@ -333,14 +341,14 @@ describe('priority list', () => {
     const data = {
       ...DATA,
       prefs: [...DATA.prefs, { player_id: 10, item_id: 20, status: 'bis' }],
-      loot: [
+      loot: marked([
         { player_id: 10, item_id: 20, track: 'Hero', response: null },
         { player_id: 10, item_id: 21, track: 'Myth', response: null }
-      ]
+      ])
     };
     expect(rankedRows(ring, 'Hero', data, PLAYERS, ringCatalog)[0]!.otherBis).toEqual(['Band A']);
     // Won with an off-spec roll, it does not count.
-    const offSpec = { ...data, loot: [{ ...data.loot[0]!, response: 'OS' }] };
+    const offSpec = { ...data, loot: marked([{ ...data.loot[0]!, response: 'OS' }]) };
     expect(rankedRows(ring, 'Hero', offSpec, PLAYERS, ringCatalog)[0]!.otherBis).toEqual([]);
   });
 });
@@ -481,6 +489,8 @@ function handlers(tables: Record<string, unknown>, role = 'officer', extra: Para
       return base.rpc!(name, args);
     },
     from(read: Read) {
+      // The loot readers' button-list read (#1561): no team saved one.
+      if (read.table === 'team_settings' && read.columns?.includes('lootResponses')) return { data: [] };
       if (read.table in tables) return { data: tables[read.table] };
       return base.from!(read);
     },

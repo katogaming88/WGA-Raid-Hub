@@ -96,8 +96,12 @@ begin
         and item_id = p_item_id
         and season = p_season
         and player_id is not null
-        and not coalesce(response ~* '\mos\M', false)
-        and not coalesce(response ~* 'm\+', false)
+        -- A Main spec award under the team's button list (#1561); with no
+        -- list saved, today's rule: anything but an OS or M+ roll.
+        and coalesce(
+          public.loot_response_counts_as(p_team_id, response) = 'main',
+          not coalesce(response ~* '\mos\M', false) and not coalesce(response ~* 'm\+', false)
+        )
       union all
       select player_id, track
       from public.self_received_requests
