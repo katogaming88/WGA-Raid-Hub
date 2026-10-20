@@ -5,28 +5,42 @@ import { DataState } from '../components/DataState';
 import { useStatus } from '../components/Status';
 import { errorMessage } from '../lib/errors';
 import { LOOT_SYSTEMS, type LootSystem } from './settings';
-import { useLootSettings, useSaveLootSystem } from './useSettings';
+import { useLootResponses, useLootSettings, useSaveLootSystem } from './useSettings';
+import { LootReceivedCard } from './LootReceivedCard';
 import './settings.css';
 
 // Settings > Loot (#1560): the team leader picks how the team hands out loot;
 // officers see the page read-only. set_team_setting is team-leader/site-admin
 // only by RLS, so hiding Save from an officer only saves them a refusal.
-// What counts as a win (#1561), bosses in reach (#1562) and the access card
-// come as their own cards.
+// What gets counted as loot received (#1561) is officer-run, so it has its
+// own card and save. Bosses in reach (#1562) and the access card come later.
 export function LootSettingsPage() {
   const team = useTeam();
   const query = useLootSettings(team.id);
   const access = useAccess();
   const canEdit = can(access.data, 'leadTeam', team.id);
+  const responses = useLootResponses(team.id);
 
   return (
     <section className="page settings-page" aria-labelledby="page-title">
       <div className="page-header">
         <h1 id="page-title">Loot settings</h1>
       </div>
-      <DataState query={query} label="loot settings">
-        {(saved) => <LootSystemCards key={saved} teamId={team.id} saved={saved} canEdit={canEdit} />}
-      </DataState>
+      <div className="settings-cards">
+        <DataState query={query} label="loot settings">
+          {(saved) => <LootSystemCards key={saved} teamId={team.id} saved={saved} canEdit={canEdit} />}
+        </DataState>
+        <DataState query={responses} label="loot buttons">
+          {(data) => (
+            <LootReceivedCard
+              key={JSON.stringify(data.list)}
+              teamId={team.id}
+              data={data}
+              canEdit={can(access.data, 'actAsOfficer', team.id)}
+            />
+          )}
+        </DataState>
+      </div>
     </section>
   );
 }
@@ -43,7 +57,7 @@ function LootSystemCards({ teamId, saved, canEdit }: { teamId: number; saved: Lo
     });
 
   return (
-    <div className="settings-cards">
+    <>
       <div className="card settings-card" role="radiogroup" aria-labelledby="loot-system-title">
         <h2 id="loot-system-title">Loot system</h2>
         <p className="text-muted">
@@ -86,7 +100,7 @@ function LootSystemCards({ teamId, saved, canEdit }: { teamId: number; saved: Lo
       {choice === 'priority' && <PriorityCard />}
       {choice === 'wishlist' && <WishlistCard />}
       {choice === 'council' && <CouncilCard />}
-    </div>
+    </>
   );
 }
 

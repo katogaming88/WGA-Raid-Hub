@@ -911,7 +911,44 @@ const SETTINGS_LOOT = {
   who: 'officer',
   path: '/g/wga/t/phoenix/officer/settings/loot',
   sentinel: 'main:has(.loot-systems)',
-  tables: { team_settings: [{ team_id: 1, lootSystem: 'priority' }] }
+  tables: {
+    team_settings: [
+      {
+        team_id: 1,
+        lootSystem: 'priority',
+        // What gets counted as loot received (#1561): a saved list with a
+        // button group, and one used response it leaves out.
+        lootResponses: {
+          buttons: [
+            { text: 'Upgrade', countsAs: 'main' },
+            { text: 'OS/M+', countsAs: 'off' },
+            { text: 'Xmog', countsAs: 'hidden' }
+          ],
+          groups: [
+            {
+              name: 'Armor Token',
+              buttons: [
+                { text: '2/4 Set', countsAs: 'main' },
+                { text: 'OS', countsAs: 'off' }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    rclc_loot: [
+      'Upgrade',
+      'Upgrade',
+      'OS/M+',
+      '2/4 Set',
+      'Mythic+',
+      'Candidate is not in the instance',
+      'Disenchant'
+    ].map((response, id) => ({
+      id,
+      response
+    }))
+  }
 };
 const SETTINGS_LOOT_LEADER = {
   ...SETTINGS_LOOT,

@@ -11735,6 +11735,12 @@
       "return_type": "void",
       "arguments": "p_team_member_id integer",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_loot_responses",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer, p_responses jsonb",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

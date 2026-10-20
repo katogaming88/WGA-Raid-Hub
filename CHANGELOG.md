@@ -12,6 +12,29 @@ answers to.
 
 ---
 
+## [3.191.0] - 2026-10-19
+
+### Backend
+
+- A new database function, `set_loot_responses()`, saves a team's
+  RCLootCouncil buttons and what each counts as. The team's officers, its
+  leader and site admins can save it; guild officers can't, the same as
+  for loot import. It checks every button has its text and a known choice.
+  Nothing reads the list yet, so no loot count changes.
+
+### Project
+
+- New app: Settings › Loot gets a "What gets counted as loot received"
+  card. Officers list their RCLootCouncil buttons as spelled in game,
+  highest priority first, and pick what each counts as: Main spec, Off
+  spec, Not handed out or Hidden. Button groups (Armor Token, Weapon,
+  Trinket, Ring, Necklace) each list their own buttons. Each button shows
+  how many imported awards used it. A team that hasn't saved a list
+  starts from the buttons its imports used, filled in the way they count
+  today. Once a list is saved, a response the imports used but the list
+  leaves out counts as Hidden, and a menu offers each one to add back. A
+  row an officer removes goes back to that menu.
+
 ## [3.190.0] - 2026-10-19
 
 ### Project

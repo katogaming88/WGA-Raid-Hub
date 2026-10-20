@@ -1,4 +1,5 @@
-import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
+import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
+import { asResponseList, seenResponses, type ResponseList, type SeenResponse } from './lootResponses';
 import type { Client } from '../lib/supabase';
 import type { Json } from '../../../js/database.types';
 import type { FullAttendanceRow } from '../attendance/attendance';
@@ -218,6 +219,49 @@ export function useSaveLootSystem(teamId: number) {
       return { data: null, error: null };
     },
     { key: ['save-loot-system', teamId], refreshes: [lootKey(teamId)] }
+  );
+}
+
+// What gets counted as loot received (#1561): the saved button list (null
+// until an officer saves one) and every response the team's imports used.
+// rclc_loot passes 1000 rows per team, so the read is paged.
+export type LootResponses = { list: ResponseList | null; seen: SeenResponse[] };
+
+const lootResponsesKey = (teamId: number) => ['loot-responses', teamId] as const;
+
+export function useLootResponses(teamId: number) {
+  return useSupabaseQuery<LootResponses>(lootResponsesKey(teamId), async (client) => {
+    const [settings, loot] = await Promise.all([
+      client.from('team_settings').select('lootResponses:config->lootResponses').eq('team_id', teamId).maybeSingle(),
+      readAll<{ response: string | null }>((from, to) =>
+        client.from('rclc_loot').select('response').eq('team_id', teamId).order('id').range(from, to)
+      )
+    ]);
+    if (settings.error) return { data: null, error: settings.error };
+    if (loot.error) return { data: null, error: loot.error };
+    return {
+      data: {
+        list: asResponseList((settings.data as { lootResponses?: unknown } | null)?.lootResponses),
+        seen: seenResponses(loot.data!.map((r) => r.response))
+      },
+      error: null
+    };
+  });
+}
+
+// set_loot_responses() writes its own audit entry, and admits officers, not
+// only the team leader as set_team_setting does.
+export function useSaveLootResponses(teamId: number) {
+  return useSupabaseMutation<null, ResponseList>(
+    async (client, list) => {
+      const result = await client.rpc('set_loot_responses', {
+        p_team_id: teamId,
+        p_responses: list as unknown as Json
+      });
+      if (result.error) return { data: null, error: result.error };
+      return { data: null, error: null };
+    },
+    { key: ['save-loot-responses', teamId], refreshes: [lootResponsesKey(teamId)] }
   );
 }
 

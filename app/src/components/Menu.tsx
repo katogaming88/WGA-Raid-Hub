@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from './Icon';
 import './menu.css';
@@ -14,7 +14,9 @@ export type MenuAction = { label: string; onSelect: () => void; disabled?: boole
 // .roster-table-wrap, whose horizontal scrollbar (overflow-x: auto) forces
 // overflow-y to auto too by the CSS spec's own rule, clipping anything a
 // plain absolutely-positioned panel would try to escape the row with.
-export function Menu({ label, actions }: { label: string; actions: MenuAction[] }) {
+// `trigger` swaps the "..." icon for visible button content (the loot card's
+// "+ Add a response" list, #1561); `label` then names the menu only.
+export function Menu({ label, actions, trigger }: { label: string; actions: MenuAction[]; trigger?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<{ top: number; right: number } | { bottom: number; right: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -103,14 +105,18 @@ export function Menu({ label, actions }: { label: string; actions: MenuAction[] 
       <button
         type="button"
         ref={triggerRef}
-        className="icon-button"
+        className={trigger ? 'button' : 'icon-button'}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         onClick={onTrigger}
       >
-        <Icon name="more" />
-        <span className="visually-hidden">{label}</span>
+        {trigger ?? (
+          <>
+            <Icon name="more" />
+            <span className="visually-hidden">{label}</span>
+          </>
+        )}
       </button>
       {open &&
         rect &&

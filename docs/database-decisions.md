@@ -2708,3 +2708,19 @@ Once a night has a per-boss lineup (#1216), the attendance sync's "was this raid
 **Written only by `record_raid_night_participation()`**, called from `wcl-sync`'s attendance refresh with the officer's own forwarded session (no service-role key, matching the rest of this function). A no-op, not an error, when the boss isn't on the night's list -- one boss with no plan (an older report, or a team not using lineups yet) shouldn't fail the whole sync run.
 
 [Full discussion -> #1242](https://github.com/katogaming88/WGA-Raid-Hub/issues/1242).
+
+## #1561 -- what gets counted as loot received: officers list their RCLootCouncil buttons
+
+Shipped: 20261019215457_loot_responses_officer_write.sql
+
+Decided with Kat 2026-10-18 and 2026-10-19. Whether a win counts was guessed from the response text: off spec when it contains "OS" or "M+" (the app's `isOffSpec()` and the same two patterns in `generate_priority_order()`), and five responses (Disenchant, Bonus Loot, Personal Loot, Xmog, Pet) left out of the new app's reads entirely (#1584). A team whose buttons say "Offspec/Greed" (Hellfire Rollers, on prod) had off-spec wins counted as main spec. Officers now list their buttons as spelled in game, in the in-game order, each one Main spec, Off spec, Not handed out or Hidden, with RCLootCouncil's per-item button groups (Armor Token and the like) each listing their own.
+
+**On `team_settings.config`, not a table.** The list is one small document per team, read whole and written whole, like the other per-team settings; nothing queries a single button. A key on the existing config row needs no table, no backfill and no new read rule.
+
+**Its own SECURITY DEFINER writer, `set_loot_responses()`.** `team_settings`' write rule is team-leader-only, and the officers run the imports, so the list gets an officer gate the way the officer bios did (`set_team_officer_bios()`): officer or team leader of that team, or a site admin. Guild officers are left out, as they are from loot import. The function checks the shape (buttons and groups as lists, each button's text and a counts-as it knows) so a reader never meets a half-formed list.
+
+**Matched by text, ignoring case.** RCLootCouncil records the response text on each award, and the button's position does not say what it means (Kat: in her Armor Token group the first three buttons are all upgrades). Upper and lower case differ across Phoenix's imports ("Track upgrade", "Track Upgrade"), so matching ignores it.
+
+**No list means today's rules.** A team that never saves one keeps the guessed rules above, so nothing moves until an officer saves. Once a list exists, a response it does not name counts as Hidden (Kat, 2026-10-19, replacing the issue's Off spec): leaving a response off is how officers hide RCLootCouncil's own status lines ("Candidate is not in the instance") and old one-offs, with no separate ignore list. The settings card offers every unlisted response to add, and a removed row goes back there. This migration only adds the writer; the readers move over in later parts of #1561.
+
+[Full discussion -> #1561](https://github.com/katogaming88/WGA-Raid-Hub/issues/1561).
