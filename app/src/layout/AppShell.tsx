@@ -111,14 +111,16 @@ export function AppShell() {
   }
 
   // The sidebar never shows a scrollbar (Kat, 2026-10-18), folding sections
-  // only as far as it must: every section open while they fit (level 0);
-  // then only the current page's section and Site (level 1); then only the
-  // current page's section (level 2). Site stays open whenever it can.
+  // only as far as it must, one at a time from the top (Kat, 2026-10-19):
+  // level N folds the top N sections, never the open one. Site is at the
+  // bottom, so it stays open whenever it can.
   // Going up a level, the overflow is measured exactly and kept for this page
   // and open group. Coming back down, the kept height (or an estimate before
   // there is one) decides. An estimate that is short steps down once,
   // overflows, and keeps the real height, so folding never loops.
-  const [level, setLevel] = useState<FoldLevel>(0);
+  const [level, setLevel] = useState(0);
+  const headings = groups.map((g) => g.heading);
+  const headingsKey = headings.join('|');
   const kept = useRef<{ key: string; heights: number[] }>({ key: '', heights: [] });
   const layoutKey = `${location.pathname}|${openMenu}|${groups.length}`;
   const here = sectionOf(groups, location.pathname);
@@ -133,22 +135,24 @@ export function AppShell() {
     if (!el) return;
     const key = `${layoutKey}|${openSection}`;
     if (kept.current.key !== key) kept.current = { key, heights: [] };
+    const order = headingsKey.split('|');
     const check = () => {
-      if (el.scrollHeight > el.clientHeight && level < 2) {
+      const foldable = order.filter((h) => h !== openSection).length;
+      if (el.scrollHeight > el.clientHeight && level < foldable) {
         kept.current.heights[level] = el.scrollHeight;
-        setLevel((level + 1) as FoldLevel);
+        setLevel(level + 1);
         return;
       }
       if (level === 0) return;
-      const below = (level - 1) as FoldLevel;
-      const height = kept.current.heights[below] ?? estimatedHeight(el, (h) => sectionShown(below, h, openSection));
+      const below = level - 1;
+      const height = kept.current.heights[below] ?? estimatedHeight(el, (h) => !folded(below, h, openSection, order));
       if (height <= el.clientHeight) setLevel(below);
     };
     check();
     const watch = new ResizeObserver(check);
     watch.observe(el);
     return () => watch.disconnect();
-  }, [level, layoutKey, openSection]);
+  }, [level, layoutKey, openSection, headingsKey]);
 
   // Following a link closes the drawer.
   if (drawerOpen && location.pathname !== openedAt) {
@@ -266,7 +270,8 @@ export function AppShell() {
           {groups.map((group) => (
             <div key={group.heading} className="nav-group">
               <h2 className="nav-heading">
-                {level > 0 && !sectionShown(level, group.heading, null) ? (
+                {folded(level, group.heading, openSection, headings) ||
+                (group.heading === openSection && folded(level, group.heading, null, headings)) ? (
                   <button
                     type="button"
                     className="nav-section-toggle"
@@ -281,7 +286,7 @@ export function AppShell() {
                   <span className="nav-section-label">{group.heading}</span>
                 )}
               </h2>
-              <ul id={`section-${group.heading}`} hidden={!sectionShown(level, group.heading, openSection)}>
+              <ul id={`section-${group.heading}`} hidden={folded(level, group.heading, openSection, headings)}>
                 {group.items.map((item) =>
                   item.pages ? (
                     <NavDisclosure
@@ -391,15 +396,13 @@ export function AppShell() {
   );
 }
 
-// The sidebar's height with every section open, estimated while folded: its
-// height now, plus a row for each link a folded section hides (a closed
-// officer group's pages stay hidden either way).
-type FoldLevel = 0 | 1 | 2;
-
-// Whether a section's links show at a fold level. With `open` null, whether
-// it shows whichever section is open: so its heading needs no fold button.
-function sectionShown(level: FoldLevel, heading: string, open: string | null): boolean {
-  return level === 0 || heading === open || (level === 1 && heading === 'Site');
+// Whether a section's links are folded away at a fold level: it is one of the
+// top `level` sections, counting past the open one. A folded section's
+// heading is a button that opens it, and so is the open section's when it
+// would fold if closed.
+function folded(level: number, heading: string, open: string | null, headings: string[]): boolean {
+  if (heading === open) return false;
+  return headings.filter((h) => h !== open).indexOf(heading) < level;
 }
 
 // The sidebar's height at a lower fold level, estimated: its height now, plus

@@ -23,6 +23,10 @@ answers to.
   explains how that system decides: for the Priority system, the real
   numbers it uses today. Switching keeps saved priority orders, so switching
   back brings them back.
+- New app: when the sidebar is too tall for the window, it now folds one
+  section at a time from the top (Guild first, then You, then Team), only as
+  many as it needs, instead of folding everything but the current section
+  and Site at once. The section you are in never folds, and Site folds last.
 
 ## [3.189.6] - 2026-10-19
 

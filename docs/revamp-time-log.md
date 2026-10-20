@@ -14,10 +14,10 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | ---------------------------------- | ------------: |
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     38 h 08 m |
+| Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     29 h 02 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **91 h 30 m** |
+| **All revamp work**                | **91 h 37 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -322,6 +322,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2:41-2:56 PM | Roster tab renamed to "... Projected Roster" in the new app, unit and browser tests, stamp, changelog, these rows, PR opened | Revamp 2 (Roster) | 15 m | ~15 m build | not read | The current site keeps "(Tentative)". Review and merge not yet counted |
 | 2:56-2:58 PM | PR #1586 (Projected Roster) reviewed and merged | Revamp 2 (Roster) | 5 m | ~5 m Kat reviewing | not read | Merged 2:58 PM |
 | 9:17-9:40 PM | #1560 built: Settings › Loot with the loot system picker (team leader saves, officers read-only, Council with sims Coming soon) and each system's card, the Priority system's real numbers checked against generate_priority_order(), tests, browser accessibility states, stamp, changelog, these rows, PR opened, screenshots | Revamp 3 (#1560) | 23 m | ~23 m build | not read | The access card waits on the database half (Rex). Review and merge not yet counted |
+| 9:41-9:48 PM | Sidebar folds one section at a time from the top, only as many as needed, never the open one (Kat's ask, in PR #1587); sidebar tests rewritten | Revamp 2 (app frame) | 7 m | ~7 m build | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
