@@ -4281,6 +4281,10 @@ export type Database = {
         Args: { p_boss_ids: number[] }
         Returns: undefined
       }
+      loot_response_counts_as: {
+        Args: { p_response: string; p_team_id: number }
+        Returns: string
+      }
       my_active_player_ids: { Args: never; Returns: number[] }
       my_leader_team_ids: { Args: never; Returns: number[] }
       my_officer_team_ids: { Args: never; Returns: number[] }

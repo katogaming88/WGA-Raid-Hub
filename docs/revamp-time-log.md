@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     30 h 34 m |
+| Revamp 3: officer dashboard        |     30 h 49 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **93 h 09 m** |
+| **All revamp work**                | **93 h 24 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -337,6 +337,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:57-12:03 PM | The menu moved next to "+ Add a button" (Kat's ask), test updated, lint and typecheck, pushed to PR #1588, these rows | Revamp 3 (#1561) | 6 m | ~5 m build, ~1 m Kat | not read | Review and merge not yet counted |
 | 12:03-12:11 PM | PR #1588: screenshots retaken (the phone one as one screen, Kat's ask), the schema docs check re-run after a Docker download limit, review and merge | Revamp 3 (#1561) | 8 m | ~3 m build, ~5 m Kat | not read | Merged 12:10 PM |
 | 12:11-12:25 PM | #1561 part 2 built: one rule for what an award counts as, each award by its own team's list; the profile, roster Items, home feed, Loot fairness and the BiS list's "received" follow it; Off spec tagged on the profile; tests, stamp, changelog, these rows, PR opened, screenshots (the tag kept whole on a phone) | Revamp 3 (#1561) | 14 m | ~14 m build | not read | Suggest order's page left for part 3 so it moves with generate_priority_order(). Review and merge not yet counted |
+| 12:25-12:29 PM | PR #1589 (#1561 part 2): the local dev server restarted after a stale reload ("COUNTED_LOOT is not defined"), review and merge | Revamp 3 (#1561) | 4 m | ~1 m build, ~3 m Kat | not read | Merged 12:29 PM |
+| 12:29-12:40 PM | #1561 part 3 built: loot_response_counts_as(), generate_priority_order() and build_rclc_export() follow the list with each keeping its old rule when there is none, the Priority page on the shared rule, database tests, decision log, docs, stamp, changelog, these rows, PR opened | Revamp 3 (#1561) | 11 m | ~11 m build | not read | Function-only migration. Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

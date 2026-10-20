@@ -2,7 +2,7 @@
 // one track, the RCLootCouncil export, and the two gear reads. The rules are
 // the current site's (js/tabs/tab-priority.js), recorded per function.
 
-import { isOffSpec } from '../home/home';
+import type { CountedLoot } from '../settings/lootResponses';
 import type { CatalogItem, ZoneRow } from '../profile/lootPriority';
 import { inSeasonZone } from '../profile/wishlist';
 import { timeAgoLabel } from '../profile/profile';
@@ -25,6 +25,7 @@ export type PrefRow = { id?: number; player_id: number; item_id: number; status:
 export type TeamLootRow = {
   player_id: number | null;
   item_id: number | null;
+  team_id: number | null;
   track: string | null;
   response: string | null;
 };
@@ -41,7 +42,8 @@ export type PriorityData = {
   order: OrderRow[];
   empty: EmptyRow[];
   prefs: PrefRow[];
-  loot: TeamLootRow[];
+  // Marked by countedLoot(): Off spec awards are not wins.
+  loot: (TeamLootRow & CountedLoot)[];
   bosses: BossRow[];
   tierPieces: TierPieceRow[];
   received: ReceivedRow[];
@@ -207,7 +209,7 @@ export function rankedRows(
   const byId = new Map(players.map((p) => [p.id, p]));
   const slotOf = new Map(catalog.map((i) => [i.id, { slot: i.slot, name: i.name }]));
   const names = new Map(data.order.map((r) => [r.player_id, r.players?.name_realm ?? '']));
-  const wins = data.loot.filter((l) => !isOffSpec(l.response));
+  const wins = data.loot.filter((l) => !l.offSpec);
   return item.ranked.map((playerId, i) => {
     const player = byId.get(playerId);
     const marks = data.prefs.filter((p) => p.player_id === playerId && p.item_id === item.itemId).map((p) => p.status);
@@ -496,7 +498,7 @@ export type Owned = { normal: boolean; heroic: boolean; mythic: boolean };
 
 export function owned(playerId: number, itemId: number, data: PriorityData): Owned {
   const tracks = [
-    ...data.loot.filter((l) => l.player_id === playerId && l.item_id === itemId && !isOffSpec(l.response)),
+    ...data.loot.filter((l) => l.player_id === playerId && l.item_id === itemId && !l.offSpec),
     ...data.received.filter((r) => r.player_id === playerId && r.self_item_id === itemId)
   ].map((r) => r.track);
   return { normal: tracks.includes('Champion'), heroic: tracks.includes('Hero'), mythic: tracks.includes('Myth') };

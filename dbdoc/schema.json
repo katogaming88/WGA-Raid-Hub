@@ -11741,6 +11741,12 @@
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_responses jsonb",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.loot_response_counts_as",
+      "return_type": "text",
+      "arguments": "p_team_id integer, p_response text",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

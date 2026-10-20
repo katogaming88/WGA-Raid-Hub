@@ -1,6 +1,7 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
-import { COUNTED_LOOT, realmSlug } from '../profile/profile';
+import { realmSlug } from '../profile/profile';
+import { countedLoot } from '../settings/useSettings';
 import type { PlayerRow } from '../roster/roster';
 import {
   exportString,
@@ -58,9 +59,8 @@ export function usePriorityData(teamId: number, season: string) {
       readAll<TeamLootRow>((from, to) =>
         client
           .from('rclc_loot')
-          .select('player_id, item_id, track, response')
+          .select('player_id, item_id, team_id, track, response')
           .eq('team_id', teamId)
-          .or(COUNTED_LOOT)
           .eq('season', season)
           .order('id')
           .range(from, to)
@@ -85,12 +85,16 @@ export function usePriorityData(teamId: number, season: string) {
     const error =
       order.error ?? empty.error ?? prefs.error ?? loot.error ?? bosses.error ?? tierPieces.error ?? received.error;
     if (error) return { data: null, error };
+    // Judged by the team's button list, as generate_priority_order() judges
+    // it (loot_response_counts_as(), #1561).
+    const wins = await countedLoot(client, loot.data!);
+    if (wins.error) return { data: null, error: wins.error };
     return {
       data: {
         order: order.data!,
         empty: empty.data!,
         prefs: prefs.data!,
-        loot: loot.data!,
+        loot: wins.data,
         bosses: bosses.data!,
         tierPieces: (tierPieces.data ?? []) as unknown as TierPieceRow[],
         received: received.data!

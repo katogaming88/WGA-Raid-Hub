@@ -93,6 +93,9 @@ begin
     where team_id = p_team_id
       and season = p_season
       and player_id is not null
+      -- Main spec awards only once the team saved a button list (#1561);
+      -- with none, every award, as today.
+      and coalesce(public.loot_response_counts_as(p_team_id, response) = 'main', true)
     group by player_id, item_id
   ),
   -- A rank's own player+item wishlist tier, when one actually exists --
