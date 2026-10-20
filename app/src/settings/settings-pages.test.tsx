@@ -588,13 +588,14 @@ describe('What gets counted as loot received (#1561)', () => {
         "2 responses from your imports aren't on your list. They count as Hidden: not counted and not shown to raiders."
       )
     ).toBeInTheDocument();
-    const pick = screen.getByRole('combobox', { name: 'Add a response from your imports' });
-    await userEvent.selectOptions(pick, 'OS/M+');
-    await userEvent.click(screen.getByRole('button', { name: 'Add to list' }));
+    const add = screen.getByRole('button', { name: 'Add a response from your imports' });
+    await userEvent.click(add);
+    await userEvent.click(screen.getByRole('menuitem', { name: /^OS\/M\+ \(used/ }));
     expect(screen.getByRole('combobox', { name: 'OS/M+ counts as' })).toHaveValue('off');
 
     await userEvent.click(screen.getByRole('button', { name: 'Remove Upgrade' }));
-    expect(within(pick).getByRole('option', { name: 'Upgrade (used 2 times)' })).toBeInTheDocument();
+    await userEvent.click(add);
+    expect(screen.getByRole('menuitem', { name: 'Upgrade (used 2 times)' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     await expect.poll(() => calls.length).toBe(1);
     expect(calls[0]).toMatchObject({ p_responses: { buttons: [{ text: 'OS/M+', countsAs: 'off' }], groups: [] } });

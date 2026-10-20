@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Icon } from '../components/Icon';
+import { Menu } from '../components/Menu';
 import { useStatus } from '../components/Status';
 import { errorMessage } from '../lib/errors';
 import {
@@ -26,7 +27,6 @@ export function LootReceivedCard({ teamId, data, canEdit }: { teamId: number; da
   const [initial] = useState<ResponseList>(() => data.list ?? draftFromSeen(data.seen));
   const [list, setList] = useState(initial);
   const [newGroup, setNewGroup] = useState('');
-  const [toAdd, setToAdd] = useState('');
   const save = useSaveLootResponses(teamId);
 
   const unlisted = unlistedResponses(list, data.seen);
@@ -88,6 +88,20 @@ export function LootReceivedCard({ teamId, data, canEdit }: { teamId: number; da
           <button type="button" className="button" onClick={() => setButtons([...list.buttons, newButton()])}>
             <Icon name="plus" /> Add a button
           </button>
+          {unlisted.length > 0 && (
+            <Menu
+              label="Responses from your imports"
+              trigger={
+                <>
+                  <Icon name="plus" /> Add a response from your imports
+                </>
+              }
+              actions={unlisted.map((r) => ({
+                label: `${r.text} (used ${timesText(r.count)})`,
+                onSelect: () => setButtons([...list.buttons, { text: r.text, countsAs: todaysCountsAs(r.text) }])
+              }))}
+            />
+          )}
         </div>
       )}
       {unlisted.length > 0 && (
@@ -96,32 +110,6 @@ export function LootReceivedCard({ teamId, data, canEdit }: { teamId: number; da
             ? "1 response from your imports isn't on your list. It counts as Hidden: not counted and not shown to raiders."
             : `${unlisted.length} responses from your imports aren't on your list. They count as Hidden: not counted and not shown to raiders.`}
         </p>
-      )}
-      {canEdit && unlisted.length > 0 && (
-        <div className="settings-row">
-          <label className="visually-hidden" htmlFor="loot-add-unlisted">
-            Add a response from your imports
-          </label>
-          <select id="loot-add-unlisted" className="select" value={toAdd} onChange={(e) => setToAdd(e.target.value)}>
-            <option value="">Add a response from your imports</option>
-            {unlisted.map((r) => (
-              <option key={r.text} value={r.text}>
-                {r.text} (used {timesText(r.count)})
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="button"
-            disabled={!toAdd}
-            onClick={() => {
-              setButtons([...list.buttons, { text: toAdd, countsAs: todaysCountsAs(toAdd) }]);
-              setToAdd('');
-            }}
-          >
-            Add to list
-          </button>
-        </div>
       )}
 
       {list.groups.map((group, index) => (
