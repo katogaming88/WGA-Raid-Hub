@@ -1779,7 +1779,7 @@ describe('sidebar folding', () => {
   });
 
   it('folds to the current section and Site when they would not fit, and clicks through without looping', async () => {
-    const { context, page, pageErrors } = await openApp(browser, server.port, at(900));
+    const { context, page, pageErrors } = await openApp(browser, server.port, at(940));
     try {
       const nav = page.locator('#sidebar nav');
       await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 4, open: ['Officer', 'Site'] });
