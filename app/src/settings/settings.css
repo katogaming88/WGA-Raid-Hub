@@ -187,14 +187,6 @@
 
 /* Loot settings (#1560) */
 
-.loot-legend {
-  float: left;
-  width: 100%;
-  padding: 0;
-  font-size: var(--text-lg);
-  font-weight: 700;
-}
-
 .loot-systems {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));

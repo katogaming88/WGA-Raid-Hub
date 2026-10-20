@@ -44,8 +44,8 @@ function LootSystemCards({ teamId, saved, canEdit }: { teamId: number; saved: Lo
 
   return (
     <div className="settings-cards">
-      <fieldset className="card settings-card loot-systems-card">
-        <legend className="loot-legend">Loot system</legend>
+      <div className="card settings-card" role="radiogroup" aria-labelledby="loot-system-title">
+        <h2 id="loot-system-title">Loot system</h2>
         <p className="text-muted">
           {canEdit
             ? 'Switching takes effect as soon as you save. Saved priority orders are kept, so switching back brings them back.'
@@ -82,7 +82,7 @@ function LootSystemCards({ teamId, saved, canEdit }: { teamId: number; saved: Lo
             </button>
           </div>
         )}
-      </fieldset>
+      </div>
       {choice === 'priority' && <PriorityCard />}
       {choice === 'wishlist' && <WishlistCard />}
       {choice === 'council' && <CouncilCard />}
