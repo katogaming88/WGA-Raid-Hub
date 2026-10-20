@@ -259,3 +259,22 @@ export function rosterSnapshot(
     };
   });
 }
+
+// -- Loot system (#1560) --------------------------------------------------
+
+// How a team hands out loot, saved as team_settings.config.lootSystem. A team
+// that never chose one, or holds a value this build does not know, is on the
+// Priority system, today's Suggest order. Council with sims is listed but not
+// pickable until the sims import (#1443) exists.
+export type LootSystem = 'council' | 'wishlist' | 'priority';
+
+export const LOOT_SYSTEMS: { id: LootSystem | 'sims'; name: string; description: string; comingSoon?: boolean }[] = [
+  { id: 'council', name: 'Loot council', description: 'Officers decide; no ranking.' },
+  { id: 'sims', name: 'Council with sims', description: 'Council, with sim gains shown.', comingSoon: true },
+  { id: 'wishlist', name: 'Wishlist ranking', description: 'BiS raiders, fewest items first.' },
+  { id: 'priority', name: 'Priority system', description: 'Suggested from scores.' }
+];
+
+export function asLootSystem(value: unknown): LootSystem {
+  return value === 'council' || value === 'wishlist' ? value : 'priority';
+}

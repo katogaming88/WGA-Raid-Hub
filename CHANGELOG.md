@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.190.0] - 2026-10-19
+
+### Project
+
+- New app: a Settings › Loot page where the team leader picks how the team
+  hands out loot: Loot council, Wishlist ranking or the Priority system
+  (today's Suggest order, still the default). Council with sims is listed as
+  Coming soon. Officers see the page read-only. Under the choice, the page
+  explains how that system decides: for the Priority system, the real
+  numbers it uses today. Switching keeps saved priority orders, so switching
+  back brings them back.
+
 ## [3.189.6] - 2026-10-19
 
 ### Project

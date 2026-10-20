@@ -3,7 +3,15 @@ import type { Client } from '../lib/supabase';
 import type { Json } from '../../../js/database.types';
 import type { FullAttendanceRow } from '../attendance/attendance';
 import type { PlayerRow } from '../roster/roster';
-import { normalizeRaids, rosterSnapshot, type Raid, type SettingsHistoryEntry } from './settings';
+import {
+  asLootSystem,
+  LOOT_SYSTEMS,
+  normalizeRaids,
+  rosterSnapshot,
+  type LootSystem,
+  type Raid,
+  type SettingsHistoryEntry
+} from './settings';
 
 // Officer Settings (#1357, #1103 row 1), ported from js/tabs/tab-season.js
 // and js/common.js's saveTeamSetting()/writeAuditLog(). Every write goes
@@ -180,6 +188,36 @@ export function useVerifyDiscordChannel(teamSlug: string) {
       };
     },
     { key: ['verify-discord-channel', teamSlug], refreshes: [] }
+  );
+}
+
+// -- Loot (#1560) --------------------------------------------------------
+
+const lootKey = (teamId: number) => ['loot-settings', teamId] as const;
+
+export function useLootSettings(teamId: number) {
+  return useSupabaseQuery<LootSystem>(lootKey(teamId), async (client) => {
+    const result = await client
+      .from('team_settings')
+      .select('lootSystem:config->>lootSystem')
+      .eq('team_id', teamId)
+      .maybeSingle();
+    if (result.error) return { data: null, error: result.error };
+    return { data: asLootSystem((result.data as { lootSystem?: unknown } | null)?.lootSystem), error: null };
+  });
+}
+
+// Only the loot system changes: saved priority orders are left in place, so
+// switching back to the Priority system shows them again unchanged.
+export function useSaveLootSystem(teamId: number) {
+  return useSupabaseMutation<null, LootSystem>(
+    async (client, lootSystem) => {
+      const result = await setTeamSetting(client, teamId, { lootSystem }, true);
+      if (result.error) return { data: null, error: result.error };
+      await writeAuditLog(client, teamId, 'Loot System Set', LOOT_SYSTEMS.find((s) => s.id === lootSystem)!.name);
+      return { data: null, error: null };
+    },
+    { key: ['save-loot-system', teamId], refreshes: [lootKey(teamId)] }
   );
 }
 
