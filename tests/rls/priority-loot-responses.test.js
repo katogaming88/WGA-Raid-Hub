@@ -27,10 +27,10 @@ const LIST = {
 async function withTxn(fn) {
   return withSharedTxn(async (t) => {
     await seedSeason(t.q, SEASON);
-    await t.q("insert into public.items (id, wow_item_id, name, slot) values ($1, $2, 'Seed Response Ring', 'Finger')", [
-      ITEM_ID,
-      WOW_ITEM_ID
-    ]);
+    await t.q(
+      "insert into public.items (id, wow_item_id, name, slot) values ($1, $2, 'Seed Response Ring', 'Finger')",
+      [ITEM_ID, WOW_ITEM_ID]
+    );
     for (const player of [1, 2]) {
       await t.q(
         'insert into public.scoring (player_id, team_id, season, performance_score, attendance_score) values ($1, 1, $2, 100, 100)',
