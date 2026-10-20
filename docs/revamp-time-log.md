@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     30 h 49 m |
+| Revamp 3: officer dashboard        |     31 h 35 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **93 h 24 m** |
+| **All revamp work**                | **94 h 10 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -339,6 +339,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:11-12:25 PM | #1561 part 2 built: one rule for what an award counts as, each award by its own team's list; the profile, roster Items, home feed, Loot fairness and the BiS list's "received" follow it; Off spec tagged on the profile; tests, stamp, changelog, these rows, PR opened, screenshots (the tag kept whole on a phone) | Revamp 3 (#1561) | 14 m | ~14 m build | not read | Suggest order's page left for part 3 so it moves with generate_priority_order(). Review and merge not yet counted |
 | 12:25-12:29 PM | PR #1589 (#1561 part 2): the local dev server restarted after a stale reload ("COUNTED_LOOT is not defined"), review and merge | Revamp 3 (#1561) | 4 m | ~1 m build, ~3 m Kat | not read | Merged 12:29 PM |
 | 12:29-12:40 PM | #1561 part 3 built: loot_response_counts_as(), generate_priority_order() and build_rclc_export() follow the list with each keeping its old rule when there is none, the Priority page on the shared rule, database tests, decision log, docs, stamp, changelog, these rows, PR opened | Revamp 3 (#1561) | 11 m | ~11 m build | not read | Function-only migration. Review and merge not yet counted |
+| 12:40-1:14 PM | PR #1590 (#1561 part 3): Kat's questions on the export and Suggest order rules with no list saved, and what a saved list is; review and merge | Revamp 3 (#1561) | 34 m | ~4 m build, ~30 m Kat | not read | Mismatch with no list left as is. Merged 1:14 PM; #1561 closed |
+| 1:15-1:20 PM | What next: the loot systems redrawn (Loot council = no wishlists, Wishlist = marks only, no ranking); #1563 and #1564 rewritten | Revamp 3 (#1563) | 5 m | ~2 m build, ~3 m Kat deciding | not read | Items-received ranking dropped (Kat) |
+| 1:20-1:27 PM | #1563 built: a Loot council team gets no Wishlist tab, wishlist cards, Priority page or wishlist reports; the profile says the council decides; the system descriptions on Settings › Loot; tests, browser accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1563) | 7 m | ~7 m build | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

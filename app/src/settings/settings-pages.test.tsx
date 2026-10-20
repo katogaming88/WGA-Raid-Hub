@@ -520,8 +520,8 @@ describe('Loot settings', () => {
     );
     const save = within(await screen.findByRole('radiogroup')).getByRole('button', { name: 'Save' });
     expect(save).toBeDisabled();
-    await userEvent.click(screen.getByRole('radio', { name: /Wishlist ranking/ }));
-    expect(screen.getByRole('heading', { name: 'Wishlist ranking' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: /^Wishlist/ }));
+    expect(screen.getByRole('heading', { name: 'Wishlist' })).toBeInTheDocument();
     await userEvent.click(save);
     await expect.poll(() => calls.length).toBe(1);
     expect(calls[0]).toMatchObject({ p_team_id: 1, p_updates: { lootSystem: 'wishlist' }, p_skip_audit: true });

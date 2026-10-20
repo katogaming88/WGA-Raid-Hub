@@ -5,14 +5,14 @@ import { useSeasons } from '../calendar/useCalendar';
 import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
-import { useTeam } from '../data/address';
+import { useAddress, useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
 import { errorMessage } from '../lib/errors';
 import { editorSeason } from '../profile/wishlist';
 import { useCatalog, useCurrentSeason, useRaidZones, useWishlistSettings } from '../profile/useProfile';
 import { classColor, type PlayerRow } from '../roster/roster';
 import { useRosterPlayers } from '../roster/useRoster';
-import { useProgressionSettings } from '../settings/useSettings';
+import { useLootCouncil, useProgressionSettings } from '../settings/useSettings';
 import type { CatalogItem } from '../profile/lootPriority';
 import {
   bossOptions,
@@ -60,7 +60,31 @@ import './priority.css';
 // the two can never disagree (#1035).
 export function PriorityPage() {
   const team = useTeam();
-  const where = bothQueries(bothQueries(useCurrentSeason(team.id), useWishlistSettings(team.id)), useSeasons());
+  const { guild } = useAddress();
+  // A Loot council team has no priority list (#1563); the page says so
+  // rather than vanish, for an old link or bookmark.
+  if (useLootCouncil(team.id)) {
+    return (
+      <section className="page priority-page" aria-labelledby="page-title">
+        <div className="page-header">
+          <h1 id="page-title">Loot priority</h1>
+        </div>
+        <div className="card placeholder">
+          <p>{team.name} decides loot by loot council, so there is no priority list.</p>
+          <p>
+            <Link to={`/g/${guild.key}/t/${team.key}/officer/settings/loot`}>
+              Change the loot system on Settings › Loot
+            </Link>
+          </p>
+        </div>
+      </section>
+    );
+  }
+  return <PriorityLists teamId={team.id} />;
+}
+
+function PriorityLists({ teamId }: { teamId: number }) {
+  const where = bothQueries(bothQueries(useCurrentSeason(teamId), useWishlistSettings(teamId)), useSeasons());
   return (
     <section className="page priority-page" aria-labelledby="page-title">
       <DataState query={where} label="the season">
@@ -76,7 +100,7 @@ export function PriorityPage() {
                 {seasonName && <p className="text-muted page-subtitle">{seasonName}</p>}
               </div>
               {season ? (
-                <Priority teamId={team.id} season={season} seasonName={seasonName ?? season} />
+                <Priority teamId={teamId} season={season} seasonName={seasonName ?? season} />
               ) : (
                 <div className="card placeholder">
                   <p>No season is set up yet.</p>

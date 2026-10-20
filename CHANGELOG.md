@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.194.0] - 2026-10-20
+
+### Project
+
+- New app: a team on the Loot council system doesn't use wishlists.
+  Raiders get no Wishlist tab and no BiS list card on their profile; it
+  says loot is decided by the loot council instead. Officers get no
+  Priority page (an old link says why and points to Settings › Loot),
+  and the BiS demand and Priority order health reports drop out of the
+  Reports menu. Loot import, history and items received work as before,
+  and saved marks and orders come back on switching to another system.
+  Settings › Loot describes the systems in these terms, and "Wishlist
+  ranking" is now "Wishlist": raiders' marks shown in game, no ranking.
+
 ## [3.193.0] - 2026-10-20
 
 ### Backend

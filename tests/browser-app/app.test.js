@@ -1281,6 +1281,14 @@ const STATES = [
     afterClick: 'main .priority-string'
   },
   { label: 'loot priority, on a phone', ...PRIORITY, viewport: NARROW },
+  // A Loot council team has no priority list (#1563).
+  {
+    label: 'loot priority, a Loot council team',
+    ...PRIORITY,
+    tables: { ...PRIORITY.tables, team_settings: [{ lootSystem: 'council' }] },
+    path: '/g/wga/t/phoenix/officer/priority',
+    sentinel: 'main .priority-page .placeholder'
+  },
   {
     label: 'loot priority, after Suggest order',
     ...PRIORITY,
@@ -1666,6 +1674,11 @@ const STATES = [
     }
   }),
   profileState('my profile, light', 'torbjorn', 'torbjorn', { colorScheme: 'light' }),
+  // A Loot council team: no Wishlist tab or wishlist cards (#1563).
+  profileState('my profile, a Loot council team', 'torbjorn', 'torbjorn', {
+    sentinel: 'main [aria-labelledby="council-title"]',
+    tables: { ...profileState('', 'torbjorn', 'torbjorn').tables, team_settings: [{ lootSystem: 'council' }] }
+  }),
   profileState('my profile, loot tab', 'torbjorn', 'torbjorn', {
     path: '/g/wga/t/phoenix/me/loot',
     sentinel: 'main .loot-table'

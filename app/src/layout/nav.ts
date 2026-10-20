@@ -25,7 +25,7 @@ export type NavGroup = { heading: string; items: NavItem[] };
 // officer tools sit under /officer/ (#1100).
 export function navGroups(
   base: { team: string; guild: string },
-  show: { officer: boolean; siteAdmin?: boolean; newsUnread?: boolean; liveCount?: number }
+  show: { officer: boolean; siteAdmin?: boolean; newsUnread?: boolean; liveCount?: number; council?: boolean }
 ): NavGroup[] {
   const groups: NavGroup[] = [
     {
@@ -51,7 +51,7 @@ export function navGroups(
     },
     {
       heading: 'Officer',
-      items: officerMenu(`${base.team}/officer`)
+      items: officerMenu(`${base.team}/officer`, show.council ?? false)
     },
     {
       heading: 'Site',
@@ -88,8 +88,14 @@ const REPORT_TABS = {
 export type ReportKind = keyof typeof REPORT_TABS;
 export const REPORT_KINDS = Object.keys(REPORT_TABS) as ReportKind[];
 
-export function reportTabs(o: string, kind: ReportKind): NavPage[] {
-  return REPORT_TABS[kind].map(([label, path]) => ({ label, to: `${o}/reports/${path}` }));
+// Reports read from wishlists and priority orders, left out for a Loot
+// council team (#1563), which uses neither.
+const WISHLIST_REPORTS: string[] = ['bis-demand', 'priority-health'];
+
+export function reportTabs(o: string, kind: ReportKind, council = false): NavPage[] {
+  return REPORT_TABS[kind]
+    .filter(([, path]) => !council || !WISHLIST_REPORTS.includes(path))
+    .map(([label, path]) => ({ label, to: `${o}/reports/${path}` }));
 }
 
 // The page a sidebar page item stands for, when the address is it or one of its tabs.
@@ -98,14 +104,15 @@ export const pageHolds = (page: NavPage, pathname: string) =>
 
 // The officer menu from the #869 decision: similar pages in one group, one
 // group open at a time. Anything that changes the team as a whole is a setting.
-function officerMenu(o: string): NavItem[] {
+// A Loot council team (#1563) has no Priority page.
+function officerMenu(o: string, council: boolean): NavItem[] {
   return [
     {
       label: 'Loot',
       icon: 'loot',
-      to: `${o}/priority`,
+      to: council ? `${o}/import` : `${o}/priority`,
       pages: [
-        { label: 'Priority', to: `${o}/priority` },
+        ...(council ? [] : [{ label: 'Priority', to: `${o}/priority` }]),
         { label: 'Import', to: `${o}/import` },
         { label: 'Reviews', to: `${o}/reviews` },
         { label: 'Reassign', to: `${o}/reassign` }
@@ -128,7 +135,7 @@ function officerMenu(o: string): NavItem[] {
       // Reports of a kind share one item, each a tab on its page, so the
       // sidebar stays short (Kat, 2026-10-18). Each keeps its own address.
       pages: [
-        { label: 'Loot', to: `${o}/reports/loot-fairness`, tabs: reportTabs(o, 'loot') },
+        { label: 'Loot', to: `${o}/reports/loot-fairness`, tabs: reportTabs(o, 'loot', council) },
         { label: 'Bench and lineups', to: `${o}/reports/bench-fairness`, tabs: reportTabs(o, 'bench') },
         // A placeholder until #1503 decides what it shows (Kat, 2026-10-11).
         { label: 'Performance trends', to: `${o}/reports/performance` }
