@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     29 h 44 m |
+| Revamp 3: officer dashboard        |     29 h 39 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **92 h 19 m** |
+| **All revamp work**                | **92 h 14 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -326,7 +326,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:48-9:51 PM | PR #1587 (Settings › Loot, sidebar folding) reviewed and merged | Revamp 3 (#1560) | 5 m | ~5 m Kat reviewing | not read | Merged 9:51 PM |
 | 9:53-10:10 PM | #1561 part 1 built: "What gets counted as loot received" (Kat's name for it) on Settings › Loot, buttons and button groups with what each counts as, a first list from the team's imports counted as today, unlisted responses flagged; set_loot_responses() for officers, database tests, docs, browser accessibility states, screenshots, stamp, changelog, these rows, PR opened | Revamp 3 (#1561) | 17 m | ~17 m build | not read | Real responses read from prod first (Hellfire's "Offspec/Greed" counted as main today). Review and merge not yet counted |
 | 10:10-10:19 PM | #1561 part 1, Kat's ask from testing: unlisted responses in one warning line with an add-as-button menu, and an Ignored responses chip box (WoWAudit-style); ignored count as Hidden (Kat's pick); tests, screenshots | Revamp 3 (#1561) | 9 m | ~6 m build, ~3 m Kat deciding | not read | Review and merge not yet counted |
-| 10:20-10:31 PM | #1561 part 1, Kat's second pass: no ignore list; a response not on the list counts as Hidden; one dropdown offers unlisted responses to add, and a removed row goes back to it; the yellow box gone; tests, docs, screenshots | Revamp 3 (#1561) | 11 m | ~9 m build, ~2 m Kat | not read | Review and merge not yet counted |
+| 10:20-10:26 PM | #1561 part 1, Kat's second pass: no ignore list; a response not on the list counts as Hidden; one dropdown offers unlisted responses to add, and a removed row goes back to it; the yellow box gone; tests, docs, screenshots | Revamp 3 (#1561) | 6 m | ~4 m build, ~2 m Kat | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
