@@ -498,7 +498,7 @@ describe('Loot settings', () => {
     expect(await screen.findByRole('radio', { name: /Loot council/ })).toBeChecked();
     expect(screen.getByText('Only the team leader can change this.')).toBeInTheDocument();
     for (const radio of screen.getAllByRole('radio')) expect(radio).toBeDisabled();
-    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(within(screen.getByRole('radiogroup')).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Loot council' })).toBeInTheDocument();
   });
 
@@ -518,12 +518,113 @@ describe('Loot settings', () => {
         }
       })
     );
-    const save = await screen.findByRole('button', { name: 'Save' });
+    const save = within(await screen.findByRole('radiogroup')).getByRole('button', { name: 'Save' });
     expect(save).toBeDisabled();
     await userEvent.click(screen.getByRole('radio', { name: /Wishlist ranking/ }));
     expect(screen.getByRole('heading', { name: 'Wishlist ranking' })).toBeInTheDocument();
     await userEvent.click(save);
     await expect.poll(() => calls.length).toBe(1);
     expect(calls[0]).toMatchObject({ p_team_id: 1, p_updates: { lootSystem: 'wishlist' }, p_skip_audit: true });
+  });
+});
+
+describe('What gets counted as loot received (#1561)', () => {
+  const LOOT = ['Upgrade', 'Upgrade', 'OS/M+', 'Disenchant', 'Mythic+'].map((response, id) => ({ id, response }));
+  const handlers = (lootResponses: unknown, calls: unknown[] = []) =>
+    officerHandlers({
+      from: (read) =>
+        read.table === 'team_settings'
+          ? { data: { lootSystem: null, lootResponses } }
+          : read.table === 'rclc_loot'
+            ? { data: LOOT }
+            : undefined,
+      rpc: (name, args) => {
+        if (name === 'set_loot_responses') {
+          calls.push(args);
+          return { data: {} };
+        }
+        return undefined;
+      }
+    });
+
+  it('starts a team with no list from its imports, counted as today, and an officer saves it', async () => {
+    const calls: unknown[] = [];
+    renderApp('/g/wga/t/phoenix/officer/settings/loot', handlers(null, calls));
+    await screen.findByRole('heading', { name: 'What gets counted as loot received' });
+    expect(screen.getByText(/Nothing saved yet/)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Upgrade counts as' })).toHaveValue('main');
+    expect(screen.getByRole('combobox', { name: 'OS/M+ counts as' })).toHaveValue('off');
+    expect(screen.getByText('used 2 times')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /Disenchant/ })).not.toBeInTheDocument();
+
+    const card = screen.getByRole('heading', { name: 'What gets counted as loot received' }).closest('.card')!;
+    await userEvent.selectOptions(
+      within(card as HTMLElement).getByRole('combobox', { name: 'Mythic+ counts as' }),
+      'off'
+    );
+    await userEvent.click(within(card as HTMLElement).getByRole('button', { name: 'Save' }));
+    await expect.poll(() => calls.length).toBe(1);
+    expect(calls[0]).toMatchObject({
+      p_team_id: 1,
+      p_responses: {
+        buttons: [
+          { text: 'Upgrade', countsAs: 'main' },
+          { text: 'Mythic+', countsAs: 'off' },
+          { text: 'OS/M+', countsAs: 'off' }
+        ],
+        groups: []
+      }
+    });
+  });
+
+  it('flags a used response the saved list leaves out, and Add it lists it as Off spec', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/officer/settings/loot',
+      handlers({
+        buttons: [
+          { text: 'Upgrade', countsAs: 'main' },
+          { text: 'OS/M+', countsAs: 'off' }
+        ],
+        groups: []
+      })
+    );
+    expect(
+      await screen.findByText(/"Mythic\+" was used once but isn't listed\. It counts as Off spec until added\./)
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Add it: Mythic+' }));
+    expect(screen.getByRole('combobox', { name: 'Mythic+ counts as' })).toHaveValue('off');
+    expect(screen.queryByText(/isn't listed/)).not.toBeInTheDocument();
+  });
+
+  it('adds a button group with its own buttons, and reorders and removes buttons', async () => {
+    const calls: unknown[] = [];
+    renderApp(
+      '/g/wga/t/phoenix/officer/settings/loot',
+      handlers(
+        {
+          buttons: [
+            { text: 'Upgrade', countsAs: 'main' },
+            { text: 'OS/M+', countsAs: 'off' }
+          ],
+          groups: []
+        },
+        calls
+      )
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Move OS/M+ up' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Upgrade' }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Add a button group' }), 'Armor Token');
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await userEvent.click(screen.getByRole('button', { name: /Add a button to Armor Token/ }));
+    const group = screen.getByRole('region', { name: 'Button group: Armor Token' });
+    await userEvent.type(within(group).getByRole('textbox', { name: 'Button 1 text' }), '2/4 Set');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await expect.poll(() => calls.length).toBe(1);
+    expect(calls[0]).toMatchObject({
+      p_responses: {
+        buttons: [{ text: 'OS/M+', countsAs: 'off' }],
+        groups: [{ name: 'Armor Token', buttons: [{ text: '2/4 Set', countsAs: 'main' }] }]
+      }
+    });
   });
 });

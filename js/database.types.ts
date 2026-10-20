@@ -4451,6 +4451,10 @@ export type Database = {
         Args: { p_healers: number; p_tanks: number; p_team_id: number }
         Returns: undefined
       }
+      set_loot_responses: {
+        Args: { p_responses: Json; p_team_id: number }
+        Returns: Json
+      }
       set_own_rsvp: {
         Args: {
           p_note?: string
