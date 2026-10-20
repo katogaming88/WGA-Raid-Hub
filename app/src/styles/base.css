@@ -112,6 +112,20 @@ button {
   color: var(--text-muted);
 }
 
+/* An Off spec award (home feed, profile): says in words why it is not
+   counted, so the tag is not colour alone. */
+.loot-offspec {
+  margin-left: var(--space-2);
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  /* Moves to the next line whole rather than breaking "Off / spec". */
+  display: inline-block;
+}
+
 /* Buttons: neutral by default. Only one .button-primary per screen (Kat, 2026-09-13). */
 .button {
   display: inline-flex;

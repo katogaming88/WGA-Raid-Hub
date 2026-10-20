@@ -24,10 +24,13 @@ const award = (
   season = 'MID3'
 ): FeedLootRow => ({
   id,
+  team_id: 1,
   track,
   season,
   awarded_at: awardedAt,
   response,
+  // As countedLoot() marks it for a team with no button list saved.
+  offSpec: isOffSpec(response),
   items: { name: item },
   players: { name_realm: nameRealm, nickname }
 });
@@ -207,7 +210,7 @@ describe('the Home page', () => {
     renderApp('/g/wga/t/phoenix', handlers(AWARDS));
     const card = await lootCard();
     const row = card.getByRole('row', { name: /Ashwarden Bulwark/ });
-    expect(row).toHaveTextContent('OS/M+');
+    expect(row).toHaveTextContent('Off spec');
     expect(row).toHaveTextContent('Heroic');
   });
 });

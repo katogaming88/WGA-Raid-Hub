@@ -1,7 +1,7 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { AttendanceRow, LootRow, SeasonWindow } from '../profile/profile';
-import { COUNTED_LOOT } from '../profile/profile';
+import { countedLoot } from '../settings/useSettings';
 import type { GearRow, IncomingRow, PlayerRow } from './roster';
 
 // The active roster, one row per character (80 on the largest team).
@@ -86,15 +86,18 @@ export function useRosterOfficerData(teamId: number, season: SeasonWindow | null
         return q.order('id').range(from, to);
       });
       if (nights.error) return { data: null, error: nights.error };
-      const loot = await readAll<LootRow & { player_id: number | null }>((from, to) => {
+      const read = await readAll<
+        LootRow & { player_id: number | null; team_id: number | null; response: string | null }
+      >((from, to) => {
         let q = client
           .from('rclc_loot')
-          .select('id, player_id, track, season, awarded_at, items(name)')
-          .eq('team_id', teamId)
-          .or(COUNTED_LOOT);
+          .select('id, player_id, team_id, response, track, season, awarded_at, items(name)')
+          .eq('team_id', teamId);
         if (season?.code) q = q.eq('season', season.code);
         return q.order('id').range(from, to);
       });
+      if (read.error) return { data: null, error: read.error };
+      const loot = await countedLoot(client, read.data!);
       if (loot.error) return { data: null, error: loot.error };
       return { data: { attendance: nights.data, loot: loot.data }, error: null };
     },

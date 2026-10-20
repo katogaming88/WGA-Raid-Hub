@@ -104,17 +104,6 @@
   font-weight: 500;
 }
 
-/* Says in words why the item is not counted, so the tag is not colour alone. */
-.loot-offspec {
-  margin-left: var(--space-2);
-  padding: 1px 6px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  color: var(--text-dim);
-  font-size: var(--text-xs);
-  font-weight: 600;
-}
-
 .loot-date {
   color: var(--text-muted);
 }

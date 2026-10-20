@@ -77,7 +77,8 @@ export function LootPriorityCard({
               season: s,
               ranks: r,
               tierTokens: t,
-              loot: l,
+              // An Off spec award is not received (#1561).
+              loot: l.filter((row) => row.counted !== false),
               selfReceived: sr
             })}
           />

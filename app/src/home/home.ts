@@ -22,7 +22,8 @@ export function raiderCount(players: { classes_specs: { role: string | null } | 
 }
 
 // An off-spec or Mythic+ roll, from the loot council response the import
-// recorded. Deliberately the current site's rule, character for character
+// recorded: what a response counts as for a team with no button list saved
+// (todaysCountsAs()). Deliberately the current site's rule, character for character
 // (isOffSpecLootResponse, js/common.js), so the feed tags exactly what it
 // tags today -- including the known gap where "Offspec/Greed" and "Mythic+"
 // match neither this nor the priority SQL. Widening it is its own decision,
@@ -33,6 +34,7 @@ export function isOffSpec(response: string | null | undefined): boolean {
 }
 
 export type FeedLootRow = LootRow & {
+  team_id: number | null;
   response: string | null;
   players: { name_realm: string; nickname: string | null } | null;
 };
@@ -45,8 +47,8 @@ function displayName(player: FeedLootRow['players']): string {
   return first ? first.charAt(0).toUpperCase() + first.slice(1) : 'Unknown';
 }
 
-// Every award this season, newest first. An off-spec roll stays in the feed
-// (tagged) but is left out of the stat above it: that number is what the team
+// Every award this season, newest first, as countedLoot() left them (#1561).
+// An Off spec award stays in the feed (tagged) but is left out of the stat above it: that number is what the team
 // won on its main specs.
 export function lootFeed(rows: FeedLootRow[], season: SeasonWindow): FeedRow[] {
   return rows
@@ -58,7 +60,7 @@ export function lootFeed(rows: FeedLootRow[], season: SeasonWindow): FeedRow[] {
       item: r.items?.name ?? 'Unknown Item',
       difficulty: difficultyOf(r.track),
       date: awardDate(r.awarded_at),
-      offSpec: isOffSpec(r.response)
+      offSpec: r.offSpec ?? false
     }));
 }
 

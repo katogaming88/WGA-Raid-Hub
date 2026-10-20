@@ -315,7 +315,7 @@ export function officerStats(
       p.id,
       {
         attendancePct: attendance(nights.get(p.id) ?? [], season, p.join_date ?? null).pct,
-        items: seasonLoot(loot.get(p.id) ?? [], season).awards.length
+        items: seasonLoot(loot.get(p.id) ?? [], season).count
       }
     ])
   );

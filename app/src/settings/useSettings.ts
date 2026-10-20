@@ -1,5 +1,5 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
-import { asResponseList, seenResponses, type ResponseList, type SeenResponse } from './lootResponses';
+import { asResponseList, seenResponses, shownLoot, type ResponseList, type SeenResponse } from './lootResponses';
 import type { Client } from '../lib/supabase';
 import type { Json } from '../../../js/database.types';
 import type { FullAttendanceRow } from '../attendance/attendance';
@@ -249,6 +249,33 @@ export function useLootResponses(teamId: number) {
   });
 }
 
+// Loot rows as every reader shows them: each award judged by its own team's
+// saved list (team_settings is public to read), Not handed out and Hidden
+// dropped. A team with no list keeps today's rules.
+export async function countedLoot<T extends { team_id: number | null; response: string | null }>(
+  client: Client,
+  rows: T[]
+) {
+  const teamIds = [...new Set(rows.map((r) => r.team_id).filter((id): id is number => id !== null))];
+  if (!teamIds.length) return { data: shownLoot(rows, new Map()), error: null };
+  const settings = await client
+    // team-read-guard: one row per team, a handful of teams
+    .from('team_settings')
+    .select('team_id, lootResponses:config->lootResponses')
+    .in('team_id', teamIds);
+  if (settings.error) return { data: null, error: settings.error };
+  const lists = new Map(
+    (settings.data as { team_id: number; lootResponses?: unknown }[]).map((s) => [
+      s.team_id,
+      asResponseList(s.lootResponses)
+    ])
+  );
+  return { data: shownLoot(rows, lists), error: null };
+}
+
+// Every loot read follows the list, so a save refreshes them all.
+const LOOT_READS = [['loot'], ['home-loot'], ['roster-officer-data'], ['earlier-loot']] as const;
+
 // set_loot_responses() writes its own audit entry, and admits officers, not
 // only the team leader as set_team_setting does.
 export function useSaveLootResponses(teamId: number) {
@@ -261,7 +288,7 @@ export function useSaveLootResponses(teamId: number) {
       if (result.error) return { data: null, error: result.error };
       return { data: null, error: null };
     },
-    { key: ['save-loot-responses', teamId], refreshes: [lootResponsesKey(teamId)] }
+    { key: ['save-loot-responses', teamId], refreshes: [lootResponsesKey(teamId), ...LOOT_READS] }
   );
 }
 

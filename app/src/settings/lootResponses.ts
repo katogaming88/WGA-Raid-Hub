@@ -40,6 +40,38 @@ export function todaysCountsAs(text: string): CountsAs {
   return isOffSpec(text) ? 'off' : 'main';
 }
 
+// What one award counts as under its team's list (null: none saved, today's
+// rules). An award with no response (older imports) counts as Main spec.
+export function awardCountsAs(list: ResponseList | null, response: string | null | undefined): CountsAs {
+  if (!response?.trim()) return 'main';
+  if (!list) return todaysCountsAs(response);
+  if (isFixed(response)) return 'none';
+  const key = responseKey(response);
+  const button = [...list.buttons, ...list.groups.flatMap((g) => g.buttons)].find((b) => responseKey(b.text) === key);
+  return button?.countsAs ?? 'hidden';
+}
+
+// `offSpec`: tagged Off spec. `counted`: counts toward items received. With no
+// list saved an off-spec win still counts there, as today (only the home feed
+// and Suggest order leave it out).
+export type CountedLoot = { offSpec: boolean; counted: boolean };
+
+// The awards shown anywhere (Main spec and Off spec), each marked. Not handed
+// out and Hidden are dropped. `lists` is keyed by each award's team.
+export function shownLoot<T extends { team_id: number | null; response: string | null }>(
+  rows: T[],
+  lists: Map<number, ResponseList | null>
+): (T & CountedLoot)[] {
+  const out: (T & CountedLoot)[] = [];
+  for (const row of rows) {
+    const list = (row.team_id !== null && lists.get(row.team_id)) || null;
+    const countsAs = awardCountsAs(list, row.response);
+    if (countsAs !== 'main' && countsAs !== 'off') continue;
+    out.push({ ...row, offSpec: countsAs === 'off', counted: countsAs === 'main' || !list });
+  }
+  return out;
+}
+
 const isCountsAs = (value: unknown): value is CountsAs => COUNTS_AS.some((c) => c.id === value);
 
 function asButtons(raw: unknown): ResponseButton[] {

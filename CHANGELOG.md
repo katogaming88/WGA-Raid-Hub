@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.192.0] - 2026-10-20
+
+### Project
+
+- New app: loot counts follow the team's saved RCLootCouncil button list
+  on the profile, the roster's Items column, the home page's loot feed,
+  Loot fairness and the BiS list's "received". An Off spec award still
+  shows on the profile and the feed, tagged "Off spec", but isn't counted.
+  Not handed out and Hidden awards don't show anywhere. Each award goes by
+  the list of the team it was won on. A team with no list saved counts
+  exactly as before. The feed's "OS/M+" tag now reads "Off spec". Suggest
+  order and its page follow the list in the next step, together with the
+  database.
+
 ## [3.191.0] - 2026-10-19
 
 ### Backend
