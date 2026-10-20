@@ -343,8 +343,8 @@ function RecentLoot({ season, feed }: { season: SeasonWindow; feed: FeedRow[] })
                   <td className="loot-item">
                     <span className="loot-name">{row.item}</span>
                     {row.offSpec && (
-                      <span className="loot-offspec" title="Won on an off-spec or Mythic+ roll, so it is not counted">
-                        OS/M+
+                      <span className="loot-offspec" title="Its response counts as Off spec, so it is not counted">
+                        Off spec
                       </span>
                     )}
                   </td>

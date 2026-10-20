@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { LootRow, SeasonWindow } from '../profile/profile';
-import { COUNTED_LOOT } from '../profile/profile';
+import { countedLoot } from '../settings/useSettings';
 import type { CharactersAnswer, EarlierPair, EarlierPlayer, SavedCharacter } from './characters';
 
 const CHARACTER_COLUMNS = 'id, person_id, name, realm, class_name, spec_name, item_level';
@@ -110,15 +110,19 @@ export function useEarlierLoot(teamId: number, season: SeasonWindow | null, enab
       if (players.error) return { data: null, error: players.error };
       // Paged, like the roster's own loot read: a season past 1000 rows would
       // otherwise stop counting silently.
-      const loot = await readAll<EarlierLoot['loot'][number]>((from, to) => {
-        let q = client
-          .from('rclc_loot')
-          .select('id, player_id, track, season, awarded_at, items(name)')
-          .in('player_id', ids)
-          .or(COUNTED_LOOT);
-        if (season?.code) q = q.eq('season', season.code);
-        return q.order('id').range(from, to);
-      });
+      const read = await readAll<EarlierLoot['loot'][number] & { team_id: number | null; response: string | null }>(
+        (from, to) => {
+          let q = client
+            .from('rclc_loot')
+            .select('id, player_id, team_id, response, track, season, awarded_at, items(name)')
+            .in('player_id', ids);
+          if (season?.code) q = q.eq('season', season.code);
+          return q.order('id').range(from, to);
+        }
+      );
+      if (read.error) return { data: null, error: read.error };
+      // Each award by the list of the team it was won on.
+      const loot = await countedLoot(client, read.data!);
       if (loot.error) return { data: null, error: loot.error };
       return {
         data: {

@@ -1,6 +1,6 @@
 import { readAll, useSupabaseQuery } from '../data/query';
 import type { SeasonWindow } from '../profile/profile';
-import { COUNTED_LOOT } from '../profile/profile';
+import { countedLoot } from '../settings/useSettings';
 import type { FeedLootRow } from './home';
 import type { ProgressRow, SettingsRaid } from './progression';
 import { monthRange, type ExceptionRow, type RsvpRow, type ScheduleRow } from '../calendar/nights';
@@ -12,16 +12,18 @@ import { monthRange, type ExceptionRow, type RsvpRow, type ScheduleRow } from '.
 export function useSeasonLoot(teamId: number, season: SeasonWindow | null) {
   return useSupabaseQuery<FeedLootRow[]>(
     ['home-loot', teamId, season?.code ?? null],
-    (client) =>
-      readAll<FeedLootRow>((from, to) => {
+    async (client) => {
+      const read = await readAll<FeedLootRow>((from, to) => {
         let q = client
           .from('rclc_loot')
-          .select('id, track, season, awarded_at, response, items(name), players(name_realm, nickname)')
-          .eq('team_id', teamId)
-          .or(COUNTED_LOOT);
+          .select('id, team_id, track, season, awarded_at, response, items(name), players(name_realm, nickname)')
+          .eq('team_id', teamId);
         if (season?.code) q = q.eq('season', season.code);
         return q.order('id').range(from, to);
-      }),
+      });
+      if (read.error) return { data: null, error: read.error };
+      return countedLoot(client, read.data!);
+    },
     { enabled: season !== null }
   );
 }

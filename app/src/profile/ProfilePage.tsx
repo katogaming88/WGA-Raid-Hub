@@ -338,7 +338,7 @@ function Profile({
                 label="Tier pieces"
                 value={player.tier_pieces_equipped === null ? '–' : `${player.tier_pieces_equipped}/5`}
               />
-              <Stat label="Items this season" value={seasonAwards ? String(seasonAwards.awards.length) : '–'} />
+              <Stat label="Items this season" value={seasonAwards ? String(seasonAwards.count) : '–'} />
             </dl>
 
             {/* Equipped gear on the Overview, full width so both columns fit without
@@ -425,7 +425,7 @@ function ItemsReceived({ loot }: { loot: ReturnType<typeof seasonLoot> }) {
   return (
     <>
       <p className="loot-summary">
-        <span className="num loot-count">{loot.awards.length}</span> {loot.awards.length === 1 ? 'item' : 'items'}
+        <span className="num loot-count">{loot.count}</span> {loot.count === 1 ? 'item' : 'items'}
         {loot.season && (
           <>
             {' '}
@@ -444,6 +444,7 @@ function ItemsReceived({ loot }: { loot: ReturnType<typeof seasonLoot> }) {
                 <span className="loot-name">{a.name}</span>{' '}
                 <span className={difficultyClass(a.difficulty)}>{a.difficulty}</span>
                 <ReceivedOn from={a.from} />
+                <NotCounted award={a} />
               </li>
             ))}
           </ul>
@@ -465,6 +466,7 @@ function ItemsReceived({ loot }: { loot: ReturnType<typeof seasonLoot> }) {
                 <th scope="row" className="loot-name">
                   {a.name}
                   <ReceivedOn from={a.from} />
+                  <NotCounted award={a} />
                 </th>
                 <td>
                   <span className={difficultyClass(a.difficulty)}>{a.difficulty}</span>
@@ -481,6 +483,15 @@ function ItemsReceived({ loot }: { loot: ReturnType<typeof seasonLoot> }) {
 
 // An item received on an earlier character: an old main, or a team the raider
 // left. Their own character's items carry no mark.
+// An Off spec award the team's button list leaves out of the count (#1561).
+function NotCounted({ award }: { award: Award }) {
+  return award.counted ? null : (
+    <span className="loot-offspec" title="Its response counts as Off spec, so it is not counted">
+      Off spec
+    </span>
+  );
+}
+
 function ReceivedOn({ from }: { from: string | null }) {
   return from ? (
     <>

@@ -1,7 +1,8 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { AttendanceRow, GearRow, LootRow, SeasonWindow } from './profile';
-import { currentSeason, COUNTED_LOOT } from './profile';
+import { currentSeason } from './profile';
+import { countedLoot } from '../settings/useSettings';
 import type { CatalogItem, RankRow, SelfReceivedRow, TierTokenRow, ZoneRow } from './lootPriority';
 import type { NewPick, Pick, TokenRow, WritePlan } from './wishlist';
 
@@ -71,14 +72,15 @@ export function useAttendance(playerId: number) {
 }
 
 export function useLoot(playerId: number) {
-  return useSupabaseQuery<LootRow[]>(['loot', playerId], (client) =>
-    client
+  return useSupabaseQuery<LootRow[]>(['loot', playerId], async (client) => {
+    const rows = await client
       .from('rclc_loot')
-      .select('id, track, season, awarded_at, items(name)')
+      .select('id, team_id, response, track, season, awarded_at, items(name)')
       .eq('player_id', playerId)
-      .or(COUNTED_LOOT)
-      .order('id')
-  );
+      .order('id');
+    if (rows.error) return { data: null, error: rows.error };
+    return countedLoot(client, rows.data);
+  });
 }
 
 // Equipped gear with each item's name. The sync stores Blizzard's item id,

@@ -63,7 +63,9 @@ export const formatPct = (pct: number) => `${pct.toFixed(1)}%`;
 
 // Loot
 
-// PostgREST `.or()` filter for every loot read: drops loot council responses
+// PostgREST `.or()` filter for Suggest order's loot read, which moves to the
+// team's button list (countedLoot()) with generate_priority_order() in #1561
+// part 3. It drops loot council responses
 // that are not an item the raider kept from the council. Disenchant (sharded
 // for the raid), bonus rolls and personal loot (the raider's own, not an
 // award), and transmog and pets (not gear). A null response (older imports)
@@ -80,6 +82,9 @@ export type LootRow = {
   // Where an earlier character received it (#942 step 5b): an old main's name,
   // or the team they left. Null or missing for the character's own loot.
   from?: string | null;
+  // Set by countedLoot() (#1561); missing means Main spec.
+  offSpec?: boolean;
+  counted?: boolean;
 };
 
 export type Difficulty = 'Mythic' | 'Heroic' | 'Normal' | 'Other';
@@ -90,12 +95,21 @@ export type Award = {
   date: string;
   awardedAt: string;
   from: string | null;
+  offSpec: boolean;
+  counted: boolean;
 };
 
 export const difficultyOf = (track: string | null): Difficulty =>
   track === 'Myth' ? 'Mythic' : track === 'Hero' ? 'Heroic' : track === 'Champion' ? 'Normal' : 'Other';
 
-export type SeasonLoot = { season: string; awards: Award[]; last: { date: string; awards: Award[] } | null };
+// `count` is the items received: Off spec awards are listed but, once the
+// team saved a list, not counted (#1561).
+export type SeasonLoot = {
+  season: string;
+  awards: Award[];
+  count: number;
+  last: { date: string; awards: Award[] } | null;
+};
 
 export function seasonLoot(rows: LootRow[], season: SeasonWindow): SeasonLoot {
   const awards = rows
@@ -106,13 +120,16 @@ export function seasonLoot(rows: LootRow[], season: SeasonWindow): SeasonLoot {
       difficulty: difficultyOf(r.track),
       date: awardDate(r.awarded_at),
       awardedAt: r.awarded_at,
-      from: r.from ?? null
+      from: r.from ?? null,
+      offSpec: r.offSpec ?? false,
+      counted: r.counted ?? true
     }))
     .sort((a, b) => (a.awardedAt < b.awardedAt ? 1 : a.awardedAt > b.awardedAt ? -1 : b.key - a.key));
   const newest = awards[0];
   return {
     season: season.name,
     awards,
+    count: awards.filter((a) => a.counted).length,
     last: newest ? { date: newest.date, awards: awards.filter((a) => a.date === newest.date) } : null
   };
 }

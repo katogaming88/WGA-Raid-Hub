@@ -3,15 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, filterValue, seededHandlers, type Read } from '../test/fakeSupabase';
-import {
-  attendance,
-  characterLinks,
-  COUNTED_LOOT,
-  equippedGear,
-  formatJoinDate,
-  seasonLoot,
-  timeAgoLabel
-} from './profile';
+import { attendance, characterLinks, equippedGear, formatJoinDate, seasonLoot, timeAgoLabel } from './profile';
 import { latestSelfReceivedUpdate, lootPriority } from './lootPriority';
 import { wishlistSummary } from './wishlist';
 
@@ -252,12 +244,49 @@ describe('Profile page', () => {
     expect(mplus.filters).toContainEqual(['eq', 'player_id', 11]);
   });
 
-  // Shards, bonus rolls, personal loot, transmog and pets are not council awards.
-  it('leaves out loot that is not a council award', async () => {
-    const { client } = renderApp('/g/wga/t/phoenix/me', profileHandlers(person('raider', 11)));
-    await waitFor(() =>
-      expect(client.reads.find((r) => r.table === 'rclc_loot')?.filters).toContainEqual(['or', '', COUNTED_LOOT])
+  // What gets counted as loot received (#1561): each award by its team's list.
+  const lootWith = (lootResponses: unknown) =>
+    profileHandlers(person('raider', 11), {
+      rclc_loot: () => ({
+        data: ['Upgrade', 'OS/M+', 'Disenchant', 'Xmog', null].map((response, i) => ({
+          id: i + 1,
+          team_id: 1,
+          response,
+          track: 'Hero',
+          season: 'MID2',
+          awarded_at: `2026-08-${10 + i}T18:00:00Z`,
+          items: { name: `Item ${response ?? 'older import'}` }
+        }))
+      }),
+      team_settings: () => ({ data: lootResponses ? [{ team_id: 1, lootResponses }] : [] })
+    });
+
+  it('with no list saved, counts loot the way it does today', async () => {
+    renderApp('/g/wga/t/phoenix/me/loot', lootWith(null));
+    expect(await screen.findByRole('rowheader', { name: 'Item OS/M+' })).toBeInTheDocument();
+    expect(screen.queryByRole('rowheader', { name: 'Item Disenchant' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('rowheader', { name: 'Item Xmog' })).not.toBeInTheDocument();
+    expect(document.querySelector('.loot-count')).toHaveTextContent('3');
+    expect(screen.queryByText('Off spec')).not.toBeInTheDocument();
+  });
+
+  it('follows the saved list: Off spec listed but not counted, unlisted responses hidden', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/me/loot',
+      lootWith({
+        buttons: [
+          { text: 'upgrade', countsAs: 'main' },
+          { text: 'OS/M+', countsAs: 'off' }
+        ],
+        groups: []
+      })
     );
+    const offSpec = await screen.findByRole('rowheader', { name: /^Item OS\/M\+/ });
+    expect(offSpec).toHaveTextContent('Off spec');
+    expect(screen.getByRole('rowheader', { name: 'Item Upgrade' })).toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: 'Item older import' })).toBeInTheDocument();
+    expect(screen.queryByRole('rowheader', { name: 'Item Xmog' })).not.toBeInTheDocument();
+    expect(document.querySelector('.loot-count')).toHaveTextContent('2');
   });
 
   it('says so when the signed-in person has no character on the team', async () => {

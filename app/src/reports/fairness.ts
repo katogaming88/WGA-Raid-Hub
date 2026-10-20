@@ -54,8 +54,9 @@ export function lootFairness(
     byPlayer.set(owner, [...(byPlayer.get(owner) ?? []), row]);
   }
   return grouped(groups, (id) => ({
-    value: seasonLoot(byPlayer.get(id) ?? [], season).awards.filter((a) => !difficulty || a.difficulty === difficulty)
-      .length
+    value: seasonLoot(byPlayer.get(id) ?? [], season).awards.filter(
+      (a) => a.counted && (!difficulty || a.difficulty === difficulty)
+    ).length
   }));
 }
 
