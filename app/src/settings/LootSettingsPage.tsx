@@ -138,15 +138,10 @@ function PriorityCard() {
 function WishlistCard() {
   return (
     <div className="card settings-card">
-      <h2>Wishlist ranking</h2>
-      <dl className="loot-rows">
-        <div className="loot-row">
-          <dt>Order</dt>
-          <dd>Fewest items received, then attendance</dd>
-        </div>
-      </dl>
+      <h2>Wishlist</h2>
       <p className="text-muted">
-        Raiders who marked the item BiS are ranked. Sidegrade raiders are listed after them, unranked.
+        Raiders mark items BiS or Sidegrade. The Priority page lists who wants each item by mark, with their notes, and
+        no ranks. In game, each candidate shows On wishlist: BiS, On wishlist: Sidegrade, or Not on wishlist.
       </p>
     </div>
   );
@@ -157,8 +152,9 @@ function CouncilCard() {
     <div className="card settings-card">
       <h2>Loot council</h2>
       <p className="text-muted">
-        The Priority page lists who wants each item, BiS then Sidegrade, with their notes. No ranks; the RCLootCouncil
-        string carries marks only.
+        Officers decide from the rolls in game. Raiders have no wishlist, and there is no Priority page or RCLootCouncil
+        string. Loot import, history and items received work as usual. Marks and orders already saved are kept and come
+        back if you switch.
       </p>
     </div>
   );

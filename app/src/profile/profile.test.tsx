@@ -289,6 +289,25 @@ describe('Profile page', () => {
     expect(document.querySelector('.loot-count')).toHaveTextContent('2');
   });
 
+  it('on a Loot council team, has no Wishlist tab or wishlist cards, and says the council decides (#1563)', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/me',
+      profileHandlers(person('raider', 11), {
+        team_settings: (read) => ({ data: read.columns?.includes('lootResponses') ? [] : { lootSystem: 'council' } })
+      })
+    );
+    expect(
+      await screen.findByText('Loot on this team is decided by the loot council, from the rolls in game.')
+    ).toBeInTheDocument();
+    const tabs = screen.getByRole('tablist', { name: 'Profile sections' });
+    expect(
+      within(tabs)
+        .getAllByRole('tab')
+        .map((t) => t.textContent)
+    ).toEqual(['Overview', 'Loot']);
+    expect(screen.queryByRole('heading', { name: /Loot priority/ })).not.toBeInTheDocument();
+  });
+
   it('says so when the signed-in person has no character on the team', async () => {
     renderApp('/g/wga/t/phoenix/me', profileHandlers(person('raider', null)));
     expect(await screen.findByText('You don’t have a character on Phoenix yet.')).toBeInTheDocument();

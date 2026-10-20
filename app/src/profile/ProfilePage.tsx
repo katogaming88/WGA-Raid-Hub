@@ -27,6 +27,7 @@ import {
   useRequestSettings,
   type ProfilePlayer
 } from './useProfile';
+import { useLootCouncil } from '../settings/useSettings';
 import { LootPriorityCard, WishlistSummaryCard } from './LootPriorityCard';
 import { WishlistTab } from './WishlistEditor';
 import { MplusRequestButton } from './ProfileForms';
@@ -47,7 +48,8 @@ export const PROFILE_TABS = [
   { key: 'wishlist', label: 'Wishlist' }
 ] as const;
 
-type TabKey = (typeof PROFILE_TABS)[number]['key'];
+type Tab = (typeof PROFILE_TABS)[number];
+type TabKey = Tab['key'];
 
 function Closed({ children }: { children: ReactNode }) {
   return (
@@ -163,17 +165,17 @@ function ProfileLoader({
 
 // Tabs as links, so each has an address, moved between with the arrow keys
 // (#439).
-function ProfileTabs({ base, current }: { base: string; current: TabKey }) {
+function ProfileTabs({ base, current, tabs }: { base: string; current: TabKey; tabs: readonly Tab[] }) {
   const navigate = useNavigate();
   const refs = useRef<(HTMLAnchorElement | null)[]>([]);
   const href = (key: TabKey) => (key ? `${base}/${key}` : base);
   const onKeyDown = (event: KeyboardEvent, index: number) => {
-    const last = PROFILE_TABS.length - 1;
+    const last = tabs.length - 1;
     const next =
       event.key === 'ArrowRight'
-        ? (index + 1) % PROFILE_TABS.length
+        ? (index + 1) % tabs.length
         : event.key === 'ArrowLeft'
-          ? (index - 1 + PROFILE_TABS.length) % PROFILE_TABS.length
+          ? (index - 1 + tabs.length) % tabs.length
           : event.key === 'Home'
             ? 0
             : event.key === 'End'
@@ -181,12 +183,12 @@ function ProfileTabs({ base, current }: { base: string; current: TabKey }) {
               : null;
     if (next === null) return;
     event.preventDefault();
-    void navigate(href(PROFILE_TABS[next]!.key));
+    void navigate(href(tabs[next]!.key));
     refs.current[next]?.focus();
   };
   return (
     <div className="profile-tabs" role="tablist" aria-label="Profile sections">
-      {PROFILE_TABS.map((t, i) => (
+      {tabs.map((t, i) => (
         <Link
           key={t.key || 'overview'}
           ref={(el) => {
@@ -238,6 +240,9 @@ function Profile({
     : [];
   const refusal = useMplusRefusal(teamId, player.id, (officerView || own) && !player.m_plus_excluded);
   const requests = useRequestSettings(teamId);
+  // A Loot council team doesn't use wishlists (#1563).
+  const council = useLootCouncil(teamId);
+  const tabs = council ? PROFILE_TABS.filter((t) => t.key !== 'wishlist') : PROFILE_TABS;
 
   const character = player.name_realm.split('-')[0]!.trim();
   const name = player.nickname?.trim() || character;
@@ -321,7 +326,7 @@ function Profile({
         {officerView && <PlayerSettingsButton teamId={teamId} target={{ playerId: player.id, name }} />}
       </header>
 
-      <ProfileTabs base={base} current={tab} />
+      <ProfileTabs base={base} current={tab} tabs={tabs} />
 
       <div
         id="profile-panel"
@@ -354,12 +359,16 @@ function Profile({
 
             <div className="profile-layout">
               <div className="profile-main">
-                <LootPriorityCard player={player} teamId={teamId} season={season} loot={loot} own={own} />
+                {council ? (
+                  <CouncilCard />
+                ) : (
+                  <LootPriorityCard player={player} teamId={teamId} season={season} loot={loot} own={own} />
+                )}
               </div>
 
               <aside className="profile-side" aria-label="Characters, wishlist, attendance and M+">
                 <CharactersCard player={player} itemLevel={itemLevel} own={own} />
-                <WishlistSummaryCard player={player} season={season} />
+                {!council && <WishlistSummaryCard player={player} season={season} />}
 
                 <section className="card profile-card" aria-labelledby="attendance-title">
                   <h2 id="attendance-title" className="card-title">
@@ -401,8 +410,22 @@ function Profile({
           </section>
         )}
 
-        {tab === 'wishlist' && <WishlistTab player={player} teamId={teamId} season={season} own={own} />}
+        {tab === 'wishlist' &&
+          (council ? <CouncilCard /> : <WishlistTab player={player} teamId={teamId} season={season} own={own} />)}
       </div>
+    </section>
+  );
+}
+
+// In place of the Loot priority card and the Wishlist tab on a Loot council
+// team (#1563).
+function CouncilCard() {
+  return (
+    <section className="card profile-card" aria-labelledby="council-title">
+      <h2 id="council-title" className="card-title">
+        Loot
+      </h2>
+      <p className="card-note">Loot on this team is decided by the loot council, from the rolls in game.</p>
     </section>
   );
 }

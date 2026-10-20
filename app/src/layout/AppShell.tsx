@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLootCouncil } from '../settings/useSettings';
 import { flushSync } from 'react-dom';
 import { Link, Navigate, NavLink, Outlet, useLocation, useMatches, useParams } from 'react-router';
 import { Icon, LogoMark } from '../components/Icon';
@@ -84,11 +85,13 @@ export function AppShell() {
   // Where the sidebar's links point; a Help guide's "Take me there" reads it
   // from the outlet.
   const base = { team: `/g/${guildKey}/t/${navTeamKey}`, guild: `/g/${guildKey}` };
+  const council = useLootCouncil(navTeam?.id ?? 0);
   const groups = navGroups(base, {
     officer: can(access.data, 'viewOfficerTools', navTeam?.id),
     siteAdmin: can(access.data, 'adminSite'),
     newsUnread: news.isSuccess && hasUnread(news.data, newsSeen),
-    liveCount: streamers.isSuccess ? liveCount(streamers.data) : 0
+    liveCount: streamers.isSuccess ? liveCount(streamers.data) : 0,
+    council
   });
 
   // Officer menu: one group open at a time. On a page change the group holding

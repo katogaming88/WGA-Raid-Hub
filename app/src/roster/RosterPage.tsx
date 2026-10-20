@@ -29,7 +29,7 @@ import { specIcon } from './specIcons';
 import { CharacterIcon } from '../characters/CharacterIcon';
 import { altCountLabel, altsOf, earlierOwners, type SavedCharacter } from '../characters/characters';
 import { useEarlierLoot, useTeamAlts } from '../characters/useCharacters';
-import { useGeneralSettings } from '../settings/useSettings';
+import { useGeneralSettings, useLootCouncil } from '../settings/useSettings';
 import { needsALook, newJoiners } from './lookLines';
 import { AccountsLine, QuickClaim } from './AccountsLine';
 import { ArchivedRoster } from './ArchivedRoster';
@@ -269,7 +269,10 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
   // The Needs a look box (#1360): trials past the Settings thresholds, and
   // new raiders with no wishlist yet. Officers only.
   const trialRules = useGeneralSettings(team.id);
-  const joiners = officer && season.isSuccess ? newJoiners(players, season.data.start) : new Map<number, number>();
+  // A Loot council team doesn't use wishlists (#1563), so no one is missing one.
+  const council = useLootCouncil(team.id);
+  const joiners =
+    officer && !council && season.isSuccess ? newJoiners(players, season.data.start) : new Map<number, number>();
   const wishlists = useWishlistsStarted([...joiners.keys()], season.isSuccess ? season.data.code : null);
   const lookLines = officer
     ? needsALook(

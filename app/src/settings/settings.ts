@@ -269,9 +269,9 @@ export function rosterSnapshot(
 export type LootSystem = 'council' | 'wishlist' | 'priority';
 
 export const LOOT_SYSTEMS: { id: LootSystem | 'sims'; name: string; description: string; comingSoon?: boolean }[] = [
-  { id: 'council', name: 'Loot council', description: 'Officers decide; no ranking.' },
+  { id: 'council', name: 'Loot council', description: 'Officers decide from the rolls; no wishlists.' },
   { id: 'sims', name: 'Council with sims', description: 'Council, with sim gains shown.', comingSoon: true },
-  { id: 'wishlist', name: 'Wishlist ranking', description: 'BiS raiders, fewest items first.' },
+  { id: 'wishlist', name: 'Wishlist', description: 'Raiders mark BiS or Sidegrade; shown in game.' },
   { id: 'priority', name: 'Priority system', description: 'Suggested from scores.' }
 ];
 

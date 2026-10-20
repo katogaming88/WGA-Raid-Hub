@@ -196,6 +196,13 @@ export function useVerifyDiscordChannel(teamSlug: string) {
 
 const lootKey = (teamId: number) => ['loot-settings', teamId] as const;
 
+// Loot council (#1563): the team doesn't use wishlists; officers decide in
+// game from the rolls. The wishlist and priority pages step aside for it.
+export function useLootCouncil(teamId: number): boolean {
+  const system = useLootSettings(teamId);
+  return system.isSuccess && system.data === 'council';
+}
+
 export function useLootSettings(teamId: number) {
   return useSupabaseQuery<LootSystem>(lootKey(teamId), async (client) => {
     const result = await client

@@ -1,6 +1,8 @@
 import { useId, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { REPORT_KINDS, reportTabs } from '../layout/nav';
+import { useTeam } from '../data/address';
+import { useLootCouncil } from '../settings/useSettings';
 import { ROLE_LABELS, ROLE_ORDER, type Role } from '../roster/roster';
 // The Roster's toggle buttons (role-filter), shared rather than restyled.
 import '../roster/roster.css';
@@ -11,7 +13,8 @@ import './reports.css';
 export function ReportPage({ title, intro, children }: { title: string; intro: string; children: ReactNode }) {
   const { pathname } = useLocation();
   const officer = pathname.slice(0, pathname.lastIndexOf('/reports/'));
-  const tabs = REPORT_KINDS.map((k) => reportTabs(officer, k)).find((t) => t.some((p) => p.to === pathname));
+  const council = useLootCouncil(useTeam().id);
+  const tabs = REPORT_KINDS.map((k) => reportTabs(officer, k, council)).find((t) => t.some((p) => p.to === pathname));
   return (
     <section className="page report-page" aria-labelledby="page-title">
       {tabs && (

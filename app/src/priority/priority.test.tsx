@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { navGroups, reportTabs } from '../layout/nav';
 import { shownLoot } from '../settings/lootResponses';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -546,6 +547,31 @@ const PAGE = '/g/wga/t/phoenix/officer/priority';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Loot priority page', () => {
+  it('says a Loot council team has no priority list, and its menus drop Priority and the wishlist reports (#1563)', async () => {
+    renderApp(PAGE, handlers({ ...TABLES, team_settings: { ...TABLES.team_settings, lootSystem: 'council' } }));
+    expect(
+      await screen.findByText('Phoenix decides loot by loot council, so there is no priority list.')
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Change the loot system on Settings › Loot' })).toHaveAttribute(
+      'href',
+      '/g/wga/t/phoenix/officer/settings/loot'
+    );
+
+    const loot = (council: boolean) =>
+      navGroups({ team: '/t', guild: '/g' }, { officer: true, council })
+        .find((g) => g.heading === 'Officer')!
+        .items.find((i) => i.label === 'Loot')!;
+    expect(loot(true).to).toBe('/t/officer/import');
+    expect(loot(true).pages!.map((p) => p.label)).toEqual(['Import', 'Reviews', 'Reassign']);
+    expect(loot(false).pages!.map((p) => p.label)).toContain('Priority');
+    expect(reportTabs('/o', 'loot', true).map((t) => t.label)).toEqual([
+      'Fairness',
+      'Nights since last item',
+      'Loot pace',
+      'Tier sets'
+    ]);
+  });
+
   it('lists the items and opens one to show its order and flags', async () => {
     const { router } = renderApp(PAGE, handlers(TABLES));
     expect(await screen.findByRole('heading', { name: 'Pick an item to see its priority order' })).toBeInTheDocument();
