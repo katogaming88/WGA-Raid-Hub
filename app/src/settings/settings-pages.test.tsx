@@ -26,6 +26,7 @@ function officerHandlers(
     from?: (read: Read) => unknown;
     rpc?: (name: string, args: Record<string, unknown>) => unknown;
     invoke?: (name: string, args: unknown) => unknown;
+    person?: typeof OFFICER_PERSON;
   } = {}
 ): FakeHandlers {
   const base = seededHandlers();
@@ -33,7 +34,7 @@ function officerHandlers(
     session: fakeSession({ battlenet: 'Aur#1', discord: { id: 'd', name: 'Aur' } }),
     rpc(name, args) {
       if (name === 'current_discord_id') return { data: 'd' };
-      if (name === 'resolve_person') return { data: OFFICER_PERSON };
+      if (name === 'resolve_person') return { data: overrides.person ?? OFFICER_PERSON };
       const custom = overrides.rpc?.(name, args);
       if (custom !== undefined) return custom as { data?: unknown };
       return base.rpc!(name, args);
@@ -471,5 +472,58 @@ describe('Danger zone', () => {
     await screen.findByRole('heading', { level: 2, name: 'Archive Season' });
     expect(screen.getByRole('button', { name: 'Archive season' })).toBeDisabled();
     expect(screen.getByText('Every tier that has ended is closed for this team.')).toBeInTheDocument();
+  });
+});
+
+// -- Loot (#1560) ------------------------------------------------------------
+
+describe('Loot settings', () => {
+  const LEADER_PERSON = {
+    ...OFFICER_PERSON,
+    teams: [{ ...OFFICER_PERSON.teams[0]!, role: 'team_leader' }]
+  };
+  const lootRow = (lootSystem: string | null) => (read: Read) =>
+    read.table === 'team_settings' ? { data: { lootSystem } } : undefined;
+
+  it('shows a team with no choice yet on the Priority system, with its numbers', async () => {
+    renderApp('/g/wga/t/phoenix/officer/settings/loot', officerHandlers({ from: lootRow(null) }));
+    expect(await screen.findByRole('radio', { name: /Priority system/ })).toBeChecked();
+    expect(screen.getByRole('heading', { name: 'How priority is worked out' })).toBeInTheDocument();
+    expect(screen.getByText('1.15× / 1.07× / 0.85×')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Council with sims/ })).toBeDisabled();
+  });
+
+  it('is read-only for an officer', async () => {
+    renderApp('/g/wga/t/phoenix/officer/settings/loot', officerHandlers({ from: lootRow('council') }));
+    expect(await screen.findByRole('radio', { name: /Loot council/ })).toBeChecked();
+    expect(screen.getByText('Only the team leader can change this.')).toBeInTheDocument();
+    for (const radio of screen.getAllByRole('radio')) expect(radio).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Loot council' })).toBeInTheDocument();
+  });
+
+  it('lets the team leader switch the system and save it', async () => {
+    const calls: unknown[] = [];
+    renderApp(
+      '/g/wga/t/phoenix/officer/settings/loot',
+      officerHandlers({
+        person: LEADER_PERSON,
+        from: lootRow('priority'),
+        rpc: (name, args) => {
+          if (name === 'set_team_setting') {
+            calls.push(args);
+            return { data: {} };
+          }
+          return undefined;
+        }
+      })
+    );
+    const save = await screen.findByRole('button', { name: 'Save' });
+    expect(save).toBeDisabled();
+    await userEvent.click(screen.getByRole('radio', { name: /Wishlist ranking/ }));
+    expect(screen.getByRole('heading', { name: 'Wishlist ranking' })).toBeInTheDocument();
+    await userEvent.click(save);
+    await expect.poll(() => calls.length).toBe(1);
+    expect(calls[0]).toMatchObject({ p_team_id: 1, p_updates: { lootSystem: 'wishlist' }, p_skip_audit: true });
   });
 });

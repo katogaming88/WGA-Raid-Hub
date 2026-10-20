@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { AxeBuilder } from '@axe-core/playwright';
 import { GUIDES } from '../../app/src/help/guide.ts';
-import { DIST, launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
+import { DIST, launchBrowser, openApp, startApp, storedSession, NARROW, PEOPLE } from './harness.js';
 import { GUILD_TABLES, GUILD_TEAMS, WAITING } from './guild-fixtures.js';
 import { OFFICER_BIOS } from '../behavior/guild.js';
 import { ENTRIES as NEWS_ENTRIES } from '../behavior/news.js';
@@ -904,6 +904,24 @@ const SETTINGS_PROGRESSION = {
   }
 };
 
+// Settings > Loot (#1560): an officer sees it read-only; the team leader
+// gets working choices and Save.
+const SETTINGS_LOOT = {
+  session: OFFICER,
+  who: 'officer',
+  path: '/g/wga/t/phoenix/officer/settings/loot',
+  sentinel: 'main:has(.loot-systems)',
+  tables: { team_settings: [{ team_id: 1, lootSystem: 'priority' }] }
+};
+const SETTINGS_LOOT_LEADER = {
+  ...SETTINGS_LOOT,
+  sentinel: 'main:has(.loot-systems) button:text("Save")',
+  person: {
+    discordId: PEOPLE.officer.discordId,
+    person: { ...PEOPLE.officer.person, teams: [{ ...PEOPLE.officer.person.teams[0], role: 'team_leader' }] }
+  }
+};
+
 const SETTINGS_DANGER = {
   session: OFFICER,
   who: 'officer',
@@ -1393,6 +1411,10 @@ const STATES = [
   },
   { label: 'settings progression, officer', ...SETTINGS_PROGRESSION },
   { label: 'settings progression, officer, light', ...SETTINGS_PROGRESSION, colorScheme: 'light' },
+  { label: 'settings loot, officer', ...SETTINGS_LOOT },
+  { label: 'settings loot, officer, light', ...SETTINGS_LOOT, colorScheme: 'light' },
+  { label: 'settings loot, team leader', ...SETTINGS_LOOT_LEADER },
+  { label: 'settings loot, team leader, light', ...SETTINGS_LOOT_LEADER, colorScheme: 'light' },
   { label: 'settings danger zone, officer', ...SETTINGS_DANGER },
   { label: 'settings danger zone, officer, light', ...SETTINGS_DANGER, colorScheme: 'light' },
   { label: 'site admin, staff', ...SITE_ADMIN },
@@ -1720,9 +1742,9 @@ describe('narrow-screen drawer', () => {
   });
 });
 
-// The sidebar never shows a scrollbar (Kat, 2026-10-18): every section open
-// while they fit, then the current page's section and Site, then the current
-// page's section only. Clicking through a folded sidebar once looped forever.
+// The sidebar never shows a scrollbar (Kat, 2026-10-18), folding one section
+// at a time from the top, never the open one (Kat, 2026-10-19), so Site at
+// the bottom folds last. Clicking through a folded sidebar once looped forever.
 describe('sidebar folding', () => {
   const at = (height) => ({
     ...TABLE_REPORT,
@@ -1756,18 +1778,33 @@ describe('sidebar folding', () => {
     }
   });
 
-  it('folds to the current section and Site when they would not fit, and clicks through without looping', async () => {
-    const { context, page, pageErrors } = await openApp(browser, server.port, at(900));
+  it('folds only the top section when that is enough', async () => {
+    const { context, page, pageErrors } = await openApp(browser, server.port, at(1000));
+    try {
+      await expect
+        .poll(() => sidebarState(page))
+        .toEqual({ overflow: 0, folds: 1, open: ['You', 'Team', 'Officer', 'Site'] });
+      expect(pageErrors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+  it('folds more sections from the top as needed, and clicks through without looping', async () => {
+    const { context, page, pageErrors } = await openApp(browser, server.port, at(940));
     try {
       const nav = page.locator('#sidebar nav');
-      await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 4, open: ['Officer', 'Site'] });
+      await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 3, open: ['Officer', 'Site'] });
       await nav.getByRole('button', { name: 'Team', exact: true }).click();
       await nav.getByRole('link', { name: 'Roster', exact: true }).click();
-      await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 4, open: ['Team', 'Site'] });
-      await nav.getByRole('button', { name: 'Officer', exact: true }).click();
+      // Roster closes the officer menus, so the sidebar is short enough to
+      // fold only Guild again.
+      await expect
+        .poll(() => sidebarState(page))
+        .toEqual({ overflow: 0, folds: 1, open: ['You', 'Team', 'Officer', 'Site'] });
       await nav.getByRole('button', { name: 'Settings', exact: true }).click();
       await nav.getByRole('link', { name: 'General', exact: true }).click();
-      await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 4, open: ['Officer', 'Site'] });
+      await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 3, open: ['Officer', 'Site'] });
       expect(pageErrors).toEqual([]);
     } finally {
       await context.close();
