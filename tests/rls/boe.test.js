@@ -8,7 +8,9 @@
 // team officer or leader for the row's own team via can_settle_boe(). The split formula
 // tests encode the guild policy pinned in the #745 comment (floor 20000,
 // pivot 100000, gross sale) as amended by #861: the game's 5% auction house
-// fee comes off the top and the finder is capped at the net. Uses the shared
+// fee comes off the top and the finder is capped at the net. A sale to a
+// guild member (#1593) takes no fee and figures the cut on the auction house
+// price. Uses the shared
 // withTxn from helpers.js, since these tests mix privileged setup with
 // impersonated RPC calls and expected raises.
 import { describe, it, expect, afterAll } from 'vitest';
@@ -449,8 +451,9 @@ describe('team officers settle payouts for their own team (#888)', () => {
     q(
       `insert into public.boe_items
          (team_id, item_name, finder_name, status, sold_at, sale_price, finder_payout, guild_cut, ah_fee,
-          payout_floor, payout_pivot)
-       values (2, 'Hellfire Sold Find', 'Nobody-Illidan', 'sold', now(), 100000, 20000, 75000, 5000, 20000, 100000)
+          payout_floor, payout_pivot, sale_channel)
+       values (2, 'Hellfire Sold Find', 'Nobody-Illidan', 'sold', now(), 100000, 20000, 75000, 5000, 20000, 100000,
+          'auction_house')
        returning id`
     ).then((res) => res.rows[0].id);
 
@@ -799,16 +802,35 @@ describe('the split formula (policy pinned on #745, the auction house fee per #8
         const id = inserted.rows[0].id;
         const res = await asUser(
           OFFICER_T1,
-          `select sale_price::int as sale_price, finder_payout::int as finder_payout, guild_cut::int as guild_cut, ah_fee::int as ah_fee from public.boe_record_sale(${id}, ${sale})`
+          `select sale_price::int as sale_price, finder_payout::int as finder_payout, guild_cut::int as guild_cut, ah_fee::int as ah_fee, sale_channel, ah_price, buyer_name, member_rate_pct from public.boe_record_sale(${id}, ${sale})`
         );
-        expect(res.rows[0]).toEqual({ sale_price: sale, finder_payout: finder, guild_cut: guild, ah_fee: fee });
+        expect(res.rows[0]).toEqual({
+          sale_price: sale,
+          finder_payout: finder,
+          guild_cut: guild,
+          ah_fee: fee,
+          sale_channel: 'auction_house',
+          ah_price: null,
+          buyer_name: null,
+          member_rate_pct: null
+        });
         const stored = (
           await q(
-            'select finder_payout::int as f, guild_cut::int as g, ah_fee::int as af, payout_floor::int as pf, payout_pivot::int as pp from public.boe_items where id = $1',
+            'select finder_payout::int as f, guild_cut::int as g, ah_fee::int as af, payout_floor::int as pf, payout_pivot::int as pp, sale_channel, ah_price, buyer_name, member_rate_pct from public.boe_items where id = $1',
             [id]
           )
         ).rows[0];
-        expect(stored).toEqual({ f: finder, g: guild, af: fee, pf: 20000, pp: 100000 });
+        expect(stored).toEqual({
+          f: finder,
+          g: guild,
+          af: fee,
+          pf: 20000,
+          pp: 100000,
+          sale_channel: 'auction_house',
+          ah_price: null,
+          buyer_name: null,
+          member_rate_pct: null
+        });
       });
     });
   }
@@ -816,7 +838,7 @@ describe('the split formula (policy pinned on #745, the auction house fee per #8
   it('the three cuts sum to the sale on every sold or paid row, by constraint', async () => {
     await withTxn(async ({ q }) => {
       const cols =
-        '(team_id, item_name, status, sold_at, sale_price, finder_payout, guild_cut, ah_fee, payout_floor, payout_pivot)';
+        '(team_id, item_name, status, sold_at, sale_price, finder_payout, guild_cut, ah_fee, payout_floor, payout_pivot, sale_channel)';
       // A refused insert aborts the transaction, so each one rides its own savepoint.
       const refused = async (values, re) => {
         await q('savepoint boe_sums');
@@ -824,15 +846,15 @@ describe('the split formula (policy pinned on #745, the auction house fee per #8
         await q('rollback to savepoint boe_sums');
       };
       await refused(
-        "(1, 'Bad Sums', 'sold', now(), 100000, 20000, 80000, 5000, 20000, 100000)",
+        "(1, 'Bad Sums', 'sold', now(), 100000, 20000, 80000, 5000, 20000, 100000, 'auction_house')",
         /boe_items_money_sums/
       );
       await refused(
-        "(1, 'No Fee', 'sold', now(), 100000, 20000, 80000, null, 20000, 100000)",
+        "(1, 'No Fee', 'sold', now(), 100000, 20000, 80000, null, 20000, 100000, 'auction_house')",
         /boe_items_money_complete_when_sold/
       );
       const ok = await q(
-        `insert into public.boe_items ${cols} values (1, 'Good Sums', 'sold', now(), 100000, 20000, 75000, 5000, 20000, 100000) returning id`
+        `insert into public.boe_items ${cols} values (1, 'Good Sums', 'sold', now(), 100000, 20000, 75000, 5000, 20000, 100000, 'auction_house') returning id`
       );
       expect(ok.rowCount).toBe(1);
     });
@@ -881,6 +903,266 @@ describe('the split formula (policy pinned on #745, the auction house fee per #8
   });
 });
 
+// A sale to a guild member (#1593): the officer enters what the raider paid
+// and what the item would have sold for on the auction house. Nothing goes
+// through the auction house, so there is no fee, and the finder's cut is
+// figured on the auction house price, never more than what came in.
+describe('a sale to a guild member (#1593)', () => {
+  const gold = (n) => n.toLocaleString('en-US');
+  const newFind = (q) =>
+    q("insert into public.boe_items (team_id, item_name) values (1, 'Member Sale Belt') returning id").then(
+      (res) => res.rows[0].id
+    );
+  const SALE =
+    'sale_price::int as sale_price, finder_payout::int as finder_payout, guild_cut::int as guild_cut, ah_fee::int as ah_fee, sale_channel, ah_price::int as ah_price, buyer_name, member_rate_pct';
+  const memberSale = (id, paid, ah, buyer = "'Buyer-Illidan'") =>
+    `select ${SALE} from public.boe_record_sale(${id}, ${paid}, null, ${buyer}, ${ah})`;
+
+  // [auction house price, paid, finder, guild]: the policy's own example; a
+  // sale at exactly 60% whose 20% rounds down, and a rounded deal below 60%;
+  // an auction house vector's cut, unchanged by the channel and rounding up;
+  // the floor; the floor with a paid price that rounded; the floor above
+  // what came in, where the guild takes nothing; and paying the full price.
+  const SPLITS = [
+    [190000, 114000, 38000, 76000],
+    [316667, 190000, 63333, 126667],
+    [320000, 190000, 64000, 126000],
+    [617518, 370511, 123504, 247007],
+    [95000, 57000, 20000, 37000],
+    [47999, 28799, 20000, 8799],
+    [30000, 18000, 18000, 0],
+    [100000, 100000, 20000, 80000]
+  ];
+
+  for (const [ah, paid, finder, guild] of SPLITS) {
+    it(`a ${gold(ah)}g item bought for ${gold(paid)}g splits ${gold(finder)} / ${gold(guild)} with no fee`, async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const id = await newFind(q);
+        const res = await asUser(OFFICER_T1, memberSale(id, paid, ah));
+        const expected = {
+          sale_price: paid,
+          finder_payout: finder,
+          guild_cut: guild,
+          ah_fee: 0,
+          sale_channel: 'guild_member',
+          ah_price: ah,
+          buyer_name: 'Buyer-Illidan',
+          member_rate_pct: 60
+        };
+        expect(res.rows[0]).toEqual(expected);
+        const stored = (
+          await q(
+            `select ${SALE}, status, payout_floor::int as pf, payout_pivot::int as pp from public.boe_items where id = $1`,
+            [id]
+          )
+        ).rows[0];
+        expect(stored).toEqual({ ...expected, status: 'sold', pf: 20000, pp: 100000 });
+      });
+    });
+  }
+
+  // Each refusal names its own guard, so the constraints behind it (below)
+  // cannot answer in its place.
+  const REFUSALS = [
+    ['a blank buyer', "114000, null, '   ', 190000", /Buyer name is required for a sale to a guild member/],
+    ['a buyer name past 100 characters', `114000, null, '${'x'.repeat(101)}', 190000`, /Buyer name is too long/],
+    [
+      'a buyer with no auction house price',
+      "114000, null, 'Buyer-Illidan', null",
+      /Auction house price must be positive/
+    ],
+    ['an auction house price of zero', "114000, null, 'Buyer-Illidan', 0", /Auction house price must be positive/],
+    ['an auction house price with no buyer', '114000, null, null, 190000', /An auction house price goes with a buyer/],
+    [
+      'paying more than the auction house price',
+      "190001, null, 'Buyer-Illidan', 190000",
+      /What they paid cannot be more than the auction house price/
+    ],
+    ['paying nothing', "0, null, 'Buyer-Illidan', 190000", /Sale price must be positive/]
+  ];
+
+  for (const [what, args, re] of REFUSALS) {
+    it(`refuses ${what}`, async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const id = await newFind(q);
+        await expect(asUser(OFFICER_T1, `select public.boe_record_sale(${id}, ${args})`)).rejects.toThrow(re);
+      });
+    });
+  }
+
+  it('stores the buyer trimmed, and honours the sold date', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const id = await newFind(q);
+      await asUser(
+        OFFICER_T1,
+        `select public.boe_record_sale(${id}, 114000, '2026-10-20T12:00:00Z', '  Buyer-Illidan ', 190000)`
+      );
+      const row = (await q('select buyer_name, sold_at from public.boe_items where id = $1', [id])).rows[0];
+      expect(row.buyer_name).toBe('Buyer-Illidan');
+      expect(row.sold_at.toISOString()).toBe('2026-10-20T12:00:00.000Z');
+    });
+  });
+
+  it('a changed floor applies to the auction house price', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await asUser(SITE_ADMIN, 'select public.set_boe_payout_settings(30000, 100000)');
+      const id = await newFind(q);
+      const res = await asUser(OFFICER_T1, memberSale(id, 57000, 95000));
+      expect(res.rows[0]).toMatchObject({ finder_payout: 30000, guild_cut: 27000 });
+    });
+  });
+
+  it('the rate is a site setting each guild member sale copies, and an auction house sale does not', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await asUser(SITE_ADMIN, 'select public.set_boe_payout_settings(20000, 100000, 55)');
+      const member = await newFind(q);
+      const res = await asUser(OFFICER_T1, memberSale(member, 104500, 190000));
+      expect(res.rows[0].member_rate_pct).toBe(55);
+      const auction = await newFind(q);
+      await asUser(OFFICER_T1, `select public.boe_record_sale(${auction}, 100000)`);
+      const row = (await q('select member_rate_pct from public.boe_items where id = $1', [auction])).rows[0];
+      expect(row.member_rate_pct).toBeNull();
+    });
+  });
+
+  it('set_boe_payout_settings leaves the rate alone when it is not given', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const rate = async () =>
+        (await q('select boe_member_rate_pct from public.site_settings where id = 1')).rows[0].boe_member_rate_pct;
+      expect(await rate()).toBe(60);
+      await asUser(SITE_ADMIN, 'select public.set_boe_payout_settings(20000, 100000, 55)');
+      expect(await rate()).toBe(55);
+      await asUser(SITE_ADMIN, 'select public.set_boe_payout_settings(30000, 100000)');
+      expect(await rate()).toBe(55);
+      const audit = (
+        await q(
+          "select detail from public.audit_log where action = 'boe_payout_settings_updated' order by id desc limit 1"
+        )
+      ).rows[0];
+      expect(audit.detail).toEqual({ floor: 30000, pivot: 100000, member_rate_pct: 55 });
+    });
+  });
+
+  it('set_boe_payout_settings refuses a rate outside 1 to 100, and a caller who is not a site admin', async () => {
+    await withTxn(async ({ asUser }) => {
+      for (const bad of [0, 101]) {
+        await expect(
+          asUser(SITE_ADMIN, `select public.set_boe_payout_settings(20000, 100000, ${bad})`)
+        ).rejects.toThrow(/Guild member rate must be between 1 and 100/);
+      }
+      await expect(asUser(OFFICER_T1, 'select public.set_boe_payout_settings(20000, 100000, 55)')).rejects.toThrow(
+        /Not authorized/
+      );
+    });
+  });
+
+  it('the rate column refuses a value outside 1 to 100 by constraint', async () => {
+    await withTxn(async ({ q }) => {
+      for (const bad of [0, 101]) {
+        await q('savepoint boe_rate');
+        await expect(q(`update public.site_settings set boe_member_rate_pct = ${bad} where id = 1`)).rejects.toThrow(
+          /site_settings_boe_member_rate_pct_range/
+        );
+        await q('rollback to savepoint boe_rate');
+      }
+    });
+  });
+
+  it('the shape of a guild member sale holds by constraint', async () => {
+    await withTxn(async ({ q }) => {
+      const cols =
+        '(team_id, item_name, status, sold_at, sale_price, finder_payout, guild_cut, ah_fee, payout_floor, payout_pivot, sale_channel, ah_price, buyer_name, member_rate_pct)';
+      const refused = async (values, re) => {
+        await q('savepoint boe_member');
+        await expect(q(`insert into public.boe_items ${cols} values ${values}`)).rejects.toThrow(re);
+        await q('rollback to savepoint boe_member');
+      };
+      const sold = "1, 'Shape Test', 'sold', now()";
+      // Every row below breaks one rule and keeps the rest.
+      await refused(
+        `(${sold}, 100000, 20000, 75000, 5000, 20000, 100000, null, null, null, null)`,
+        /money_complete_when_sold/
+      );
+      await refused(
+        "(1, 'Shape Test', 'found', null, null, null, null, null, null, null, 'auction_house', null, null, null)",
+        /money_only_when_sold/
+      );
+      await refused(
+        `(${sold}, 100000, 20000, 75000, 5000, 20000, 100000, 'ebay', null, null, null)`,
+        /sale_channel_check/
+      );
+      await refused(
+        `(${sold}, 100000, 20000, 75000, 5000, 20000, 100000, 'auction_house', null, 'Buyer-Illidan', null)`,
+        /member_cols_only_for_member/
+      );
+      await refused(
+        `(${sold}, 114000, 38000, 76000, 0, 20000, 100000, 'guild_member', null, 'Buyer-Illidan', 60)`,
+        /member_sale_shape/
+      );
+      await refused(
+        `(${sold}, 114000, 38000, 76000, 0, 20000, 100000, 'guild_member', 190000, null, 60)`,
+        /member_sale_shape/
+      );
+      await refused(
+        `(${sold}, 114000, 38000, 76000, 0, 20000, 100000, 'guild_member', 190000, 'Buyer-Illidan', null)`,
+        /member_sale_shape/
+      );
+      await refused(
+        `(${sold}, 114000, 38000, 71000, 5000, 20000, 100000, 'guild_member', 190000, 'Buyer-Illidan', 60)`,
+        /member_sale_shape/
+      );
+      await refused(
+        `(${sold}, 200000, 38000, 162000, 0, 20000, 100000, 'guild_member', 190000, 'Buyer-Illidan', 60)`,
+        /member_sale_shape/
+      );
+      await refused(
+        `(${sold}, 0, 0, 0, 0, 20000, 100000, 'guild_member', 0, 'Buyer-Illidan', 60)`,
+        /ah_price_positive/
+      );
+      for (const buyer of ["''", "' Buyer-Illidan'", `'${'x'.repeat(101)}'`]) {
+        await refused(
+          `(${sold}, 114000, 38000, 76000, 0, 20000, 100000, 'guild_member', 190000, ${buyer}, 60)`,
+          /buyer_name_shape/
+        );
+      }
+      for (const rate of [0, 101]) {
+        await refused(
+          `(${sold}, 114000, 38000, 76000, 0, 20000, 100000, 'guild_member', 190000, 'Buyer-Illidan', ${rate})`,
+          /member_rate_range/
+        );
+      }
+      const ok = await q(
+        `insert into public.boe_items ${cols} values (${sold}, 114000, 38000, 76000, 0, 20000, 100000, 'guild_member', 190000, 'Buyer-Illidan', 60) returning id`
+      );
+      expect(ok.rowCount).toBe(1);
+    });
+  });
+
+  it('a manager cannot set the buyer or the channel by a direct UPDATE', async () => {
+    await withTxn(async ({ asUser }) => {
+      await expect(
+        asUser(OFFICER_T1, "update public.boe_items set buyer_name = 'Buyer-Illidan' where id = 2")
+      ).rejects.toThrow(/go through the BoE RPCs/);
+      await expect(
+        asUser(OFFICER_T1, "update public.boe_items set sale_channel = 'guild_member' where id = 2")
+      ).rejects.toThrow(/go through the BoE RPCs/);
+    });
+  });
+
+  it('Undo Sale clears the buyer, the auction house price and the rate', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const id = await newFind(q);
+      await asUser(OFFICER_T1, memberSale(id, 114000, 190000));
+      const res = await asUser(OFFICER_T1, `select public.boe_revert(${id}) as status`);
+      expect(res.rows[0].status).toBe('found');
+      const row = (
+        await q('select sale_channel, ah_price, buyer_name, member_rate_pct from public.boe_items where id = $1', [id])
+      ).rows[0];
+      expect(row).toEqual({ sale_channel: null, ah_price: null, buyer_name: null, member_rate_pct: null });
+    });
+  });
+});
+
 describe('revert walks the correction edges', () => {
   it('paid reverts to sold, keeping the money but clearing the payout timestamp', async () => {
     await withTxn(async ({ q, asUser }) => {
@@ -889,10 +1171,16 @@ describe('revert walks the correction edges', () => {
       expect(res.rows[0].status).toBe('sold');
       const row = (
         await q(
-          'select status, payout_paid_at, sale_price::int as sp, ah_fee::int as af from public.boe_items where id = 2'
+          'select status, payout_paid_at, sale_price::int as sp, ah_fee::int as af, sale_channel from public.boe_items where id = 2'
         )
       ).rows[0];
-      expect(row).toMatchObject({ status: 'sold', payout_paid_at: null, sp: 150000, af: 7500 });
+      expect(row).toMatchObject({
+        status: 'sold',
+        payout_paid_at: null,
+        sp: 150000,
+        af: 7500,
+        sale_channel: 'auction_house'
+      });
     });
   });
 
@@ -902,7 +1190,7 @@ describe('revert walks the correction edges', () => {
       expect(res.rows[0].status).toBe('listed');
       const row = (
         await q(
-          'select status, sold_at, sale_price, finder_payout, guild_cut, ah_fee, payout_floor, payout_pivot from public.boe_items where id = 2'
+          'select status, sold_at, sale_price, finder_payout, guild_cut, ah_fee, payout_floor, payout_pivot, sale_channel, ah_price, buyer_name, member_rate_pct from public.boe_items where id = 2'
         )
       ).rows[0];
       expect(row).toEqual({
@@ -913,7 +1201,11 @@ describe('revert walks the correction edges', () => {
         guild_cut: null,
         ah_fee: null,
         payout_floor: null,
-        payout_pivot: null
+        payout_pivot: null,
+        sale_channel: null,
+        ah_price: null,
+        buyer_name: null,
+        member_rate_pct: null
       });
     });
   });
@@ -1109,6 +1401,20 @@ describe('the lifecycle RPCs write their own audit entry (#770)', () => {
         actor_id: RAIDER_T1,
         action: 'BoE Sale Recorded',
         detail: 'Seed Test Staff sold for 100,000g; finder payout 20,000g'
+      });
+    });
+  });
+
+  it('boe_record_sale to a guild member names the buyer and the auction house price', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await grantRaider(q);
+      await asUser(RAIDER_T1, "select public.boe_record_sale(1, 114000, null, 'Buyer-Illidan', 190000)");
+      const row = await lastAudit(q, 1);
+      expect(row).toMatchObject({
+        actor_id: RAIDER_T1,
+        action: 'BoE Sale Recorded',
+        detail:
+          'Seed Test Staff sold to Buyer-Illidan for 114,000g (auction house price 190,000g); finder payout 38,000g'
       });
     });
   });
