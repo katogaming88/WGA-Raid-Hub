@@ -1003,6 +1003,26 @@ describe('a sale to a guild member (#1593)', () => {
     });
   });
 
+  // A name pasted into a form can carry a tab or a line break, which would
+  // split the audit line and read as a different buyer later.
+  it('stores the buyer with tabs and line breaks folded into single spaces', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const id = await newFind(q);
+      await asUser(OFFICER_T1, 'select public.boe_record_sale($1, 114000, null, $2, 190000)', [id, '\tOld \n Man\r\n']);
+      const row = (await q('select buyer_name from public.boe_items where id = $1', [id])).rows[0];
+      expect(row.buyer_name).toBe('Old Man');
+    });
+  });
+
+  it('refuses a buyer made only of tabs and line breaks', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const id = await newFind(q);
+      await expect(
+        asUser(OFFICER_T1, 'select public.boe_record_sale($1, 114000, null, $2, 190000)', [id, ' \t\n '])
+      ).rejects.toThrow(/Buyer name is required for a sale to a guild member/);
+    });
+  });
+
   // Floor 30,000 over pivot 100,000 is a 30% rate. On the first sale 30% of
   // the auction house price (57,000) and 30% of what was paid (34,200) differ,
   // so it shows which price the changed settings reach; on the second, 30%
@@ -1130,7 +1150,7 @@ describe('a sale to a guild member (#1593)', () => {
         `(${sold}, 0, 0, 0, 0, 20000, 100000, 'guild_member', 0, 'Buyer-Illidan', 60)`,
         /ah_price_positive/
       );
-      for (const buyer of ["''", "' Buyer-Illidan'", `'${'x'.repeat(101)}'`]) {
+      for (const buyer of ["''", "' Buyer-Illidan'", "E'Buyer-Illidan\\n'", "'Old  Man'", `'${'x'.repeat(101)}'`]) {
         await refused(
           `(${sold}, 114000, 38000, 76000, 0, 20000, 100000, 'guild_member', 190000, ${buyer}, 60)`,
           /buyer_name_shape/
