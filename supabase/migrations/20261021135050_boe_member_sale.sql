@@ -90,12 +90,14 @@ alter table public.boe_items
 
 comment on column public.boe_items.sale_price is
   'What the buyer paid, whole gold: the auction house sale price, or on a guild member sale what the raider paid (#1593). Present iff sold/paid.';
+comment on column public.boe_items.ah_fee is
+  'The auction house fee the game kept on the sale, whole gold: round(sale_price * 5 / 100), half away from zero (#861), and 0 on a guild member sale, which never went through the auction house (#1593). Present iff sold/paid; finder_payout + guild_cut + ah_fee = sale_price by constraint.';
 comment on column public.boe_items.sale_channel is
   'Who bought it: auction_house, or guild_member when a raider bought it from the guild (#1593). Present iff sold/paid.';
 comment on column public.boe_items.ah_price is
   'On a guild member sale, what the item would have sold for on the auction house; the finder''s cut is figured on it (#1593). Null otherwise.';
 comment on column public.boe_items.buyer_name is
-  'On a guild member sale, who bought it, as the officer typed it, trimmed (#1593). Null otherwise.';
+  'On a guild member sale, who bought it, as the officer typed it with each run of whitespace folded to one space and the ends trimmed, at most 100 characters (#1593). Null otherwise.';
 comment on column public.boe_items.member_rate_pct is
   'On a guild member sale, the site''s rate (site_settings.boe_member_rate_pct) when it was recorded (#1593). Null otherwise.';
 
@@ -116,7 +118,8 @@ alter table public.boe_items add constraint boe_items_sale_channel_check
   check (sale_channel in ('auction_house', 'guild_member'));
 alter table public.boe_items add constraint boe_items_ah_price_positive check (ah_price > 0);
 alter table public.boe_items add constraint boe_items_buyer_name_shape
-  check (buyer_name = btrim(buyer_name) and buyer_name <> '' and char_length(buyer_name) <= 100);
+  check (buyer_name = btrim(regexp_replace(buyer_name, '\s+', ' ', 'g'))
+         and buyer_name <> '' and char_length(buyer_name) <= 100);
 alter table public.boe_items add constraint boe_items_member_rate_range check (member_rate_pct between 1 and 100);
 
 alter table public.boe_items drop constraint boe_items_money_only_when_sold;
@@ -208,7 +211,9 @@ begin
   end if;
 
   if p_buyer_name is not null then
-    v_buyer := btrim(p_buyer_name);
+    -- Any run of whitespace, a pasted tab or line break included, becomes one
+    -- space; btrim alone takes off spaces only.
+    v_buyer := btrim(regexp_replace(p_buyer_name, '\s+', ' ', 'g'));
     if v_buyer = '' then
       raise exception 'Buyer name is required for a sale to a guild member';
     end if;

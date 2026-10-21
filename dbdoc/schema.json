@@ -4242,7 +4242,7 @@
           "name": "ah_fee",
           "type": "bigint",
           "nullable": true,
-          "comment": "The auction house fee the game kept on the sale, whole gold: round(sale_price * 5 / 100), half away from zero (#861). Present iff sold/paid; finder_payout + guild_cut + ah_fee = sale_price by constraint."
+          "comment": "The auction house fee the game kept on the sale, whole gold: round(sale_price * 5 / 100), half away from zero (#861), and 0 on a guild member sale, which never went through the auction house (#1593). Present iff sold/paid; finder_payout + guild_cut + ah_fee = sale_price by constraint."
         },
         {
           "name": "finder_discord_id",
@@ -4272,7 +4272,7 @@
           "name": "buyer_name",
           "type": "text",
           "nullable": true,
-          "comment": "On a guild member sale, who bought it, as the officer typed it, trimmed (#1593). Null otherwise."
+          "comment": "On a guild member sale, who bought it, as the officer typed it with each run of whitespace folded to one space and the ends trimmed, at most 100 characters (#1593). Null otherwise."
         },
         {
           "name": "member_rate_pct",
@@ -4315,7 +4315,7 @@
         {
           "name": "boe_items_buyer_name_shape",
           "type": "CHECK",
-          "def": "CHECK (((buyer_name = btrim(buyer_name)) AND (buyer_name \u003c\u003e ''::text) AND (char_length(buyer_name) \u003c= 100)))",
+          "def": "CHECK (((buyer_name = btrim(regexp_replace(buyer_name, '\\s+'::text, ' '::text, 'g'::text))) AND (buyer_name \u003c\u003e ''::text) AND (char_length(buyer_name) \u003c= 100)))",
           "table": "public.boe_items",
           "referenced_table": "",
           "columns": [

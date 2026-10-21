@@ -41,7 +41,9 @@ begin
   end if;
 
   if p_buyer_name is not null then
-    v_buyer := btrim(p_buyer_name);
+    -- Any run of whitespace, a pasted tab or line break included, becomes one
+    -- space; btrim alone takes off spaces only.
+    v_buyer := btrim(regexp_replace(p_buyer_name, '\s+', ' ', 'g'));
     if v_buyer = '' then
       raise exception 'Buyer name is required for a sale to a guild member';
     end if;

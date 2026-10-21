@@ -27,12 +27,12 @@
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | payout_donated | boolean | false | false |  |  |  |
 | upgrade_rank | text |  | true |  |  | Upgrade rank as the tooltip shows it ("2/6"); with the track it is the identity of the item in the queue (#865). Null on rows imported from the sheets. |
-| ah_fee | bigint |  | true |  |  | The auction house fee the game kept on the sale, whole gold: round(sale_price * 5 / 100), half away from zero (#861). Present iff sold/paid; finder_payout + guild_cut + ah_fee = sale_price by constraint. |
+| ah_fee | bigint |  | true |  |  | The auction house fee the game kept on the sale, whole gold: round(sale_price * 5 / 100), half away from zero (#861), and 0 on a guild member sale, which never went through the auction house (#1593). Present iff sold/paid; finder_payout + guild_cut + ah_fee = sale_price by constraint. |
 | finder_discord_id | text |  | true |  |  | Discord id of the signed-in account that submitted the find, stamped by submit_boe_found() and never client-supplied (#889); null for a signed-out submit. Backfilled from the player chain for rows whose player reached a member. |
 | found_posted_at | timestamp with time zone |  | true |  |  | When the BoE Found Discord post for this row was sent (#956). Claimed by boe-webhook through the service role and cleared again if Discord refuses the post; null means the row has never been announced. |
 | sale_channel | text |  | true |  |  | Who bought it: auction_house, or guild_member when a raider bought it from the guild (#1593). Present iff sold/paid. |
 | ah_price | bigint |  | true |  |  | On a guild member sale, what the item would have sold for on the auction house; the finder's cut is figured on it (#1593). Null otherwise. |
-| buyer_name | text |  | true |  |  | On a guild member sale, who bought it, as the officer typed it, trimmed (#1593). Null otherwise. |
+| buyer_name | text |  | true |  |  | On a guild member sale, who bought it, as the officer typed it with each run of whitespace folded to one space and the ends trimmed, at most 100 characters (#1593). Null otherwise. |
 | member_rate_pct | integer |  | true |  |  | On a guild member sale, the site's rate (site_settings.boe_member_rate_pct) when it was recorded (#1593). Null otherwise. |
 
 ## Constraints
@@ -41,7 +41,7 @@
 | ---- | ---- | ---------- |
 | boe_items_ah_fee_nonneg | CHECK | CHECK ((ah_fee >= 0)) |
 | boe_items_ah_price_positive | CHECK | CHECK ((ah_price > 0)) |
-| boe_items_buyer_name_shape | CHECK | CHECK (((buyer_name = btrim(buyer_name)) AND (buyer_name <> ''::text) AND (char_length(buyer_name) <= 100))) |
+| boe_items_buyer_name_shape | CHECK | CHECK (((buyer_name = btrim(regexp_replace(buyer_name, '\s+'::text, ' '::text, 'g'::text))) AND (buyer_name <> ''::text) AND (char_length(buyer_name) <= 100))) |
 | boe_items_finder_payout_nonneg | CHECK | CHECK ((finder_payout >= 0)) |
 | boe_items_floor_nonneg | CHECK | CHECK ((payout_floor >= 0)) |
 | boe_items_guild_cut_nonneg | CHECK | CHECK ((guild_cut >= 0)) |
