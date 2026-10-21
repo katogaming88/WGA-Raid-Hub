@@ -1003,12 +1003,19 @@ describe('a sale to a guild member (#1593)', () => {
     });
   });
 
-  it('a changed floor applies to the auction house price', async () => {
+  // Floor 30,000 over pivot 100,000 is a 30% rate. On the first sale 30% of
+  // the auction house price (57,000) and 30% of what was paid (34,200) differ,
+  // so it shows which price the changed settings reach; on the second, 30%
+  // either way is under the new floor, which it pays.
+  it('changed finder settings apply to the auction house price, and the new floor holds', async () => {
     await withTxn(async ({ q, asUser }) => {
       await asUser(SITE_ADMIN, 'select public.set_boe_payout_settings(30000, 100000)');
-      const id = await newFind(q);
-      const res = await asUser(OFFICER_T1, memberSale(id, 57000, 95000));
-      expect(res.rows[0]).toMatchObject({ finder_payout: 30000, guild_cut: 27000 });
+      const above = await newFind(q);
+      const res = await asUser(OFFICER_T1, memberSale(above, 114000, 190000));
+      expect(res.rows[0]).toMatchObject({ finder_payout: 57000, guild_cut: 57000 });
+      const under = await newFind(q);
+      const floor = await asUser(OFFICER_T1, memberSale(under, 57000, 95000));
+      expect(floor.rows[0]).toMatchObject({ finder_payout: 30000, guild_cut: 27000 });
     });
   });
 
@@ -1018,6 +1025,10 @@ describe('a sale to a guild member (#1593)', () => {
       const member = await newFind(q);
       const res = await asUser(OFFICER_T1, memberSale(member, 104500, 190000));
       expect(res.rows[0].member_rate_pct).toBe(55);
+      // The stored copy, not only the reply: at the default 60 a fixed 60
+      // written to the row would pass every other case.
+      const stored = (await q('select member_rate_pct from public.boe_items where id = $1', [member])).rows[0];
+      expect(stored.member_rate_pct).toBe(55);
       const auction = await newFind(q);
       await asUser(OFFICER_T1, `select public.boe_record_sale(${auction}, 100000)`);
       const row = (await q('select member_rate_pct from public.boe_items where id = $1', [auction])).rows[0];
