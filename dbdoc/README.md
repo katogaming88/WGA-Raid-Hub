@@ -37,10 +37,10 @@
 | [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
 | [public.priority_order_stale_after_heroic](public.priority_order_stale_after_heroic.md) | 7 |  | VIEW |
 | [public.item_preferences](public.item_preferences.md) | 11 |  | BASE TABLE |
-| [public.site_settings](public.site_settings.md) | 10 |  | BASE TABLE |
+| [public.site_settings](public.site_settings.md) | 11 |  | BASE TABLE |
 | [public.incoming_roster](public.incoming_roster.md) | 7 |  | VIEW |
 | [public.tier_token_map](public.tier_token_map.md) | 6 |  | BASE TABLE |
-| [public.boe_items](public.boe_items.md) | 26 |  | BASE TABLE |
+| [public.boe_items](public.boe_items.md) | 30 |  | BASE TABLE |
 | [public.boe_listings](public.boe_listings.md) | 8 |  | BASE TABLE |
 | [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) | 8 | Officer-acknowledged Priority List same-boss conflicts (a player holding #1 on 2+ items behind one boss+track kill), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one. | BASE TABLE |
 | [public.player_equipped_gear](public.player_equipped_gear.md) | 9 | One row per player per physical gear slot (Blizzard API slot keys: HEAD, FINGER_1, FINGER_2, ...), synced from the Blizzard Character Equipment Summary endpoint. Feeds generate_priority_order()'s equipped-item-level fairness factor. | BASE TABLE |
@@ -133,7 +133,6 @@
 | public.boe_record_listing | void | p_id integer, p_price bigint, p_listed_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_note text DEFAULT NULL::text | FUNCTION |
 | public.boe_retire | void | p_id integer, p_note text DEFAULT NULL::text | FUNCTION |
 | public.boe_revert | text | p_id integer | FUNCTION |
-| public.set_boe_payout_settings | void | p_floor bigint, p_pivot bigint | FUNCTION |
 | public.delete_self_received_request | void | p_id integer | FUNCTION |
 | public.is_boe_manager | bool |  | FUNCTION |
 | public.is_any_team_officer | bool |  | FUNCTION |
@@ -146,7 +145,6 @@
 | public.boe_mark_paid | void | p_id integer, p_paid_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_donated boolean DEFAULT false | FUNCTION |
 | public.submit_boe_found | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_donate boolean DEFAULT false, p_upgrade_rank text DEFAULT NULL::text | FUNCTION |
 | public.set_own_rsvp | void | p_team_id integer, p_raid_date date, p_status text, p_note text DEFAULT NULL::text | FUNCTION |
-| public.boe_record_sale | record | p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone | FUNCTION |
 | public.can_settle_boe | bool | p_team_id integer | FUNCTION |
 | public.current_discord_id | text |  | FUNCTION |
 | public.admin_grant_team_role | uuid | p_team_id integer, p_discord_id text, p_role text | FUNCTION |
@@ -238,6 +236,8 @@
 | public.hold_team_member | void | p_team_member_id integer | FUNCTION |
 | public.set_loot_responses | jsonb | p_team_id integer, p_responses jsonb | FUNCTION |
 | public.loot_response_counts_as | text | p_team_id integer, p_response text | FUNCTION |
+| public.set_boe_payout_settings | void | p_floor bigint, p_pivot bigint, p_member_rate_pct integer DEFAULT NULL::integer | FUNCTION |
+| public.boe_record_sale | record | p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_buyer_name text DEFAULT NULL::text, p_ah_price bigint DEFAULT NULL::bigint | FUNCTION |
 
 ## Enums
 
@@ -763,6 +763,7 @@ erDiagram
   jsonb gear_sync_last_cron_run
   jsonb gear_sync_last_officer_run
   boolean guild_creation_open
+  integer boe_member_rate_pct
 }
 "public.incoming_roster" {
   integer signup_id
@@ -808,6 +809,10 @@ erDiagram
   bigint ah_fee
   text finder_discord_id
   timestamp_with_time_zone found_posted_at
+  text sale_channel
+  bigint ah_price
+  text buyer_name
+  integer member_rate_pct
 }
 "public.boe_listings" {
   integer id

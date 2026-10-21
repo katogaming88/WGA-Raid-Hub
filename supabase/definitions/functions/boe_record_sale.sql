@@ -2,8 +2,8 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.boe_record_sale(p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone)
- RETURNS TABLE(sale_price bigint, finder_payout bigint, guild_cut bigint, ah_fee bigint)
+CREATE OR REPLACE FUNCTION public.boe_record_sale(p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_buyer_name text DEFAULT NULL::text, p_ah_price bigint DEFAULT NULL::bigint)
+ RETURNS TABLE(sale_price bigint, finder_payout bigint, guild_cut bigint, ah_fee bigint, sale_channel text, ah_price bigint, buyer_name text, member_rate_pct integer)
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
@@ -18,6 +18,10 @@ declare
   v_item_name text;
   v_floor bigint;
   v_pivot bigint;
+  v_rate integer;
+  v_channel text;
+  v_buyer text;
+  v_base bigint;
   v_fee bigint;
   v_payout bigint;
 begin
@@ -36,19 +40,48 @@ begin
     raise exception 'Sale price must be positive';
   end if;
 
-  select s.boe_payout_floor, s.boe_payout_pivot into v_floor, v_pivot
+  if p_buyer_name is not null then
+    v_buyer := btrim(p_buyer_name);
+    if v_buyer = '' then
+      raise exception 'Buyer name is required for a sale to a guild member';
+    end if;
+    if char_length(v_buyer) > 100 then
+      raise exception 'Buyer name is too long (100 characters at most)';
+    end if;
+    if p_ah_price is null or p_ah_price <= 0 then
+      raise exception 'Auction house price must be positive for a sale to a guild member';
+    end if;
+    if p_sale_price > p_ah_price then
+      raise exception 'What they paid cannot be more than the auction house price';
+    end if;
+  elsif p_ah_price is not null then
+    raise exception 'An auction house price goes with a buyer name';
+  end if;
+
+  select s.boe_payout_floor, s.boe_payout_pivot, s.boe_member_rate_pct into v_floor, v_pivot, v_rate
   from public.site_settings s where s.id = 1;
 
-  -- Whole gold, half away from zero: silver and copper are ignored by
-  -- decision (a 47,999 sale carries a 2,399g 95s cut in game and 2,400 here),
-  -- the same rounding the payout uses.
-  v_fee := round(p_sale_price::numeric * c_ah_fee_pct / 100)::bigint;
+  if v_buyer is null then
+    -- Whole gold, half away from zero: silver and copper are ignored by
+    -- decision (a 47,999 sale carries a 2,399g 95s cut in game and 2,400
+    -- here), the same rounding the payout uses.
+    v_channel := 'auction_house';
+    v_fee := round(p_sale_price::numeric * c_ah_fee_pct / 100)::bigint;
+    v_base := p_sale_price;
+    v_rate := null;
+  else
+    -- Nothing went through the auction house, and the cut is figured on what
+    -- it would have sold for there (#1593).
+    v_channel := 'guild_member';
+    v_fee := 0;
+    v_base := p_ah_price;
+  end if;
 
   -- Guild policy (#745 comment): 20%-of-gross or the floor, whichever is
   -- larger, rounded to the nearest gold half away from zero, and never more
-  -- than the sale net of the fee (#861), so the guild is never out of pocket
-  -- on a sub-floor sale. The guild keeps what is left after the fee.
-  v_payout := least(p_sale_price - v_fee, greatest(v_floor, round(p_sale_price::numeric * v_floor / v_pivot)))::bigint;
+  -- than what came in net of the fee (#861), so the guild is never out of
+  -- pocket on a sub-floor sale. The guild keeps what is left after the fee.
+  v_payout := least(p_sale_price - v_fee, greatest(v_floor, round(v_base::numeric * v_floor / v_pivot)))::bigint;
 
   update public.boe_items b
   set status = 'sold',
@@ -58,13 +91,23 @@ begin
       guild_cut = p_sale_price - v_fee - v_payout,
       ah_fee = v_fee,
       payout_floor = v_floor,
-      payout_pivot = v_pivot
+      payout_pivot = v_pivot,
+      sale_channel = v_channel,
+      ah_price = p_ah_price,
+      buyer_name = v_buyer,
+      member_rate_pct = v_rate
   where b.id = p_id;
 
   insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (v_team_id, auth.uid(), 'BoE Sale Recorded', 'boe_items', p_id,
-    to_jsonb(v_item_name || ' sold for ' || public.format_boe_gold(p_sale_price) ||
-      'g; finder payout ' || public.format_boe_gold(v_payout) || 'g'));
+    to_jsonb(case when v_channel = 'guild_member'
+      then v_item_name || ' sold to ' || v_buyer || ' for ' || public.format_boe_gold(p_sale_price) ||
+        'g (auction house price ' || public.format_boe_gold(p_ah_price) || 'g); finder payout ' ||
+        public.format_boe_gold(v_payout) || 'g'
+      else v_item_name || ' sold for ' || public.format_boe_gold(p_sale_price) ||
+        'g; finder payout ' || public.format_boe_gold(v_payout) || 'g'
+    end));
 
-  return query select p_sale_price, v_payout, p_sale_price - v_fee - v_payout, v_fee;
+  return query select p_sale_price, v_payout, p_sale_price - v_fee - v_payout, v_fee,
+    v_channel, p_ah_price, v_buyer, v_rate;
 end $function$;

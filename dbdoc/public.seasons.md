@@ -181,6 +181,10 @@ erDiagram
   bigint ah_fee
   text finder_discord_id
   timestamp_with_time_zone found_posted_at
+  text sale_channel
+  bigint ah_price
+  text buyer_name
+  integer member_rate_pct
 }
 "public.priority_conflict_dismissals" {
   integer id
