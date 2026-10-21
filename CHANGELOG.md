@@ -12,6 +12,29 @@ answers to.
 
 ---
 
+## [Unreleased]
+
+### Backend
+
+- A BoE can now be recorded as sold to a guild member. Guild policy lets a
+  raider buy a BoE from the guild for 60% of what it would sell for on the
+  auction house, and the finder still gets their cut. The officer records
+  who bought it, the auction house price and what they paid; no auction
+  house fee is taken, and the finder's cut is figured on the auction house
+  price, never more than what came in. An item that would sell for 190,000g
+  goes for 114,000g: 38,000g to the finder and 76,000g to the guild bank.
+  The 60% is a site setting beside the finder's cut settings, and each sale
+  like this keeps the rate it used. Every earlier sale is marked as an
+  auction house sale. Recording one from the BoE Sales pages, the admin
+  field for the rate and the Discord post follow (#1594 to #1597).
+
+### Project
+
+- The BoE database tests cover sales to a guild member: the splits, each
+  refusal, the rules on the table, the rate setting, Undo Sale and the
+  audit entry. The officer walkthrough, the RLS notes, the schema reference
+  and the decisions log describe the new kind of sale.
+
 ## [3.194.0] - 2026-10-20
 
 ### Project

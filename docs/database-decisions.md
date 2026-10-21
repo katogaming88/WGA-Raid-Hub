@@ -10,6 +10,23 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-21 -- a BoE sold to a guild member, with the finder's cut on the auction house price (#1593)
+
+Shipped: 20261021135050_boe_member_sale.sql
+
+Guild policy lets a raider buy a BoE from the guild for 60% of what it would sell for on the auction house, and the finder still gets their cut. Until this shipped `boe_record_sale` knew only auction house sales, so the first one went in as an auction house sale with a fee nobody paid.
+
+- **The finder's cut is figured on the auction house price** (Russell, 2026-10-21): the cut an auction house sale would have paid, still never more than what came in, so the guild bank takes the whole discount. An item that would sell for 190,000 goes for 114,000: 38,000 to the finder and 76,000 to the bank. Figuring it on what was paid (22,800 and 91,200) was the other choice.
+- **The rate is a setting**, `site_settings.boe_member_rate_pct`, default 60 (Russell, 2026-10-21), beside the floor and pivot and written by the same `set_boe_payout_settings`, which takes it as an optional third argument so the admin page keeps working before it has a field for it (#1595). Each guild member sale copies it into `boe_items.member_rate_pct`, the way a sale copies the floor and pivot. The auction house fee stays a constant: it is the game's number, and the rate is the guild's.
+- **The officer enters both prices.** `boe_record_sale(id, sale_price, sold_at, buyer_name, ah_price)`: given a buyer and an auction house price together, `sale_price` is what the raider paid, the fee is 0, and the finder gets `least(sale_price, greatest(floor, round(ah_price * floor / pivot)))`. What was paid is not computed from the rate, so a rounded deal stays recordable, and the only check between the two prices is that nobody pays more than the auction house price. Without them nothing changes, and both BoE pages keep calling it with the id and the price.
+- **`sale_channel` is set on every sold or paid row**, `auction_house` or `guild_member`, and the migration names every earlier sale an auction house sale. There is no column default, which would have stamped found rows at insert. `boe_items_member_sale_shape` and `boe_items_member_cols_only_for_member` keep the buyer, the auction house price and the rate on guild member sales only, with no fee and `sale_price <= ah_price`; a zero fee alone does not mark one, since an auction house sale under 10 gold rounds to a zero fee. `finder_payout + guild_cut + ah_fee = sale_price` still holds on every row.
+- **Undo Sale clears all four**, and the audit entry names the buyer and the auction house price.
+- **A guild member sale recorded before this as an auction house sale** is corrected by hand through `boe_revert` (twice, when it is paid) and the new call, with the original sale date passed back in; each correction is recorded on #1593.
+
+[Full discussion -> #1593](https://github.com/katogaming88/WGA-Raid-Hub/issues/1593).
+
+---
+
 ## 2026-10-08 -- an approved main swap refuses an alt that is someone else's character (#1433)
 
 Shipped: 20261008153641_approved_swap_links_revived_row.sql

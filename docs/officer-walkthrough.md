@@ -572,5 +572,15 @@ a setting. Both constants and the fee are snapshotted onto each sold row, so edi
 later never rewrites what an earlier sale paid out. Awaiting Payout and History show the fee in
 its own column, and **Guild cut (net)** is what the bank actually receives.
 
+**A raider can buy a BoE from the guild** instead of it going on the auction house
+([#1593](https://github.com/katogaming88/WGA-Raid-Hub/issues/1593)). They pay the site's guild
+member rate of what it would sell for there (60%, a site setting beside the floor and pivot,
+whose field on the site admin dashboard is
+[#1595](https://github.com/katogaming88/WGA-Raid-Hub/issues/1595)), no auction house fee is taken, and the finder's cut is figured on the auction
+house price, never more than what came in: a belt that would sell for 190,000g goes for 114,000g,
+the finder gets 38,000g and the guild bank 76,000g. The row keeps the buyer, the auction house
+price and the rate. This page cannot record one yet
+([#1596](https://github.com/katogaming88/WGA-Raid-Hub/issues/1596)).
+
 Price fields take the formats people actually paste -- `250,000`, `250000g`, `1 000 000`.
 Anything else is refused with a message on the row rather than read as zero.
