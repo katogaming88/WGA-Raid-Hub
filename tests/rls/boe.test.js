@@ -9,8 +9,9 @@
 // tests encode the guild policy pinned in the #745 comment (floor 20000,
 // pivot 100000, gross sale) as amended by #861: the game's 5% auction house
 // fee comes off the top and the finder is capped at the net. A sale to a
-// guild member (#1593) takes no fee and figures the cut on the auction house
-// price. Uses the shared
+// guild member (#1593) is recorded at the auction house price; the buyer pays
+// the site's rate of it rounded down to the thousand, no fee is taken, and
+// the cut is figured on the auction house price. Uses the shared
 // withTxn from helpers.js, since these tests mix privileged setup with
 // impersonated RPC calls and expected raises.
 import { describe, it, expect, afterAll } from 'vitest';
@@ -903,10 +904,12 @@ describe('the split formula (policy pinned on #745, the auction house fee per #8
   });
 });
 
-// A sale to a guild member (#1593): the officer enters what the raider paid
-// and what the item would have sold for on the auction house. Nothing goes
-// through the auction house, so there is no fee, and the finder's cut is
-// figured on the auction house price, never more than what came in.
+// A sale to a guild member (#1593): the officer enters what the item would
+// have sold for on the auction house and who bought it, and the hub figures
+// what they pay: the site's rate of that price, rounded down to the thousand.
+// Nothing goes through the auction house, so there is no fee, and the
+// finder's cut is figured on the auction house price, never more than what
+// came in.
 describe('a sale to a guild member (#1593)', () => {
   const gold = (n) => n.toLocaleString('en-US');
   const newFind = (q) =>
@@ -915,30 +918,33 @@ describe('a sale to a guild member (#1593)', () => {
     );
   const SALE =
     'sale_price::int as sale_price, finder_payout::int as finder_payout, guild_cut::int as guild_cut, ah_fee::int as ah_fee, sale_channel, ah_price::int as ah_price, buyer_name, member_rate_pct';
-  const memberSale = (id, paid, ah, buyer = "'Buyer-Illidan'") =>
-    `select ${SALE} from public.boe_record_sale(${id}, ${paid}, null, ${buyer}, ${ah})`;
+  const memberSale = (id, ah, buyer = "'Buyer-Illidan'") =>
+    `select ${SALE} from public.boe_record_sale(${id}, ${ah}, null, ${buyer})`;
 
-  // [auction house price, paid, finder, guild]: the policy's own example; a
-  // sale at exactly 60% whose 20% rounds down, and a rounded deal below 60%;
-  // an auction house vector's cut, unchanged by the channel and rounding up;
-  // the floor; the floor with a paid price that rounded; the floor above
-  // what came in, where the guild takes nothing; and paying the full price.
+  // [auction house price, paid, finder, guild] at 60%: the policy's own
+  // example; 60% landing just over 190,000, where the 20% rounds down; the
+  // last price in the same thousand, where the 20% rounds up, and one gold
+  // past it, where what they pay steps to the next thousand; an auction house
+  // vector's cut, unchanged by the channel; the floor; the floor with 28,799
+  // rounded down to 28,000; the floor above what came in, where the guild
+  // takes nothing; and the smallest sale, one thousand.
   const SPLITS = [
     [190000, 114000, 38000, 76000],
     [316667, 190000, 63333, 126667],
-    [320000, 190000, 64000, 126000],
-    [617518, 370511, 123504, 247007],
+    [318333, 190000, 63667, 126333],
+    [318334, 191000, 63667, 127333],
+    [617518, 370000, 123504, 246496],
     [95000, 57000, 20000, 37000],
-    [47999, 28799, 20000, 8799],
+    [47999, 28000, 20000, 8000],
     [30000, 18000, 18000, 0],
-    [100000, 100000, 20000, 80000]
+    [1667, 1000, 1000, 0]
   ];
 
   for (const [ah, paid, finder, guild] of SPLITS) {
-    it(`a ${gold(ah)}g item bought for ${gold(paid)}g splits ${gold(finder)} / ${gold(guild)} with no fee`, async () => {
+    it(`a ${gold(ah)}g item goes for ${gold(paid)}g and splits ${gold(finder)} / ${gold(guild)} with no fee`, async () => {
       await withTxn(async ({ q, asUser }) => {
         const id = await newFind(q);
-        const res = await asUser(OFFICER_T1, memberSale(id, paid, ah));
+        const res = await asUser(OFFICER_T1, memberSale(id, ah));
         const expected = {
           sale_price: paid,
           finder_payout: finder,
@@ -964,21 +970,14 @@ describe('a sale to a guild member (#1593)', () => {
   // Each refusal names its own guard, so the constraints behind it (below)
   // cannot answer in its place.
   const REFUSALS = [
-    ['a blank buyer', "114000, null, '   ', 190000", /Buyer name is required for a sale to a guild member/],
-    ['a buyer name past 100 characters', `114000, null, '${'x'.repeat(101)}', 190000`, /Buyer name is too long/],
+    ['a blank buyer', "190000, null, '   '", /Buyer name is required for a sale to a guild member/],
+    ['a buyer name past 100 characters', `190000, null, '${'x'.repeat(101)}'`, /Buyer name is too long/],
+    ['an auction house price of zero', "0, null, 'Buyer-Illidan'", /Sale price must be positive/],
     [
-      'a buyer with no auction house price',
-      "114000, null, 'Buyer-Illidan', null",
-      /Auction house price must be positive/
-    ],
-    ['an auction house price of zero', "114000, null, 'Buyer-Illidan', 0", /Auction house price must be positive/],
-    ['an auction house price with no buyer', '114000, null, null, 190000', /An auction house price goes with a buyer/],
-    [
-      'paying more than the auction house price',
-      "190001, null, 'Buyer-Illidan', 190000",
-      /What they paid cannot be more than the auction house price/
-    ],
-    ['paying nothing', "0, null, 'Buyer-Illidan', 190000", /Sale price must be positive/]
+      'an auction house price whose 60% rounds down to nothing',
+      "1666, null, 'Buyer-Illidan'",
+      /What they pay rounds to zero at this rate/
+    ]
   ];
 
   for (const [what, args, re] of REFUSALS) {
@@ -995,7 +994,7 @@ describe('a sale to a guild member (#1593)', () => {
       const id = await newFind(q);
       await asUser(
         OFFICER_T1,
-        `select public.boe_record_sale(${id}, 114000, '2026-10-20T12:00:00Z', '  Buyer-Illidan ', 190000)`
+        `select public.boe_record_sale(${id}, 190000, '2026-10-20T12:00:00Z', '  Buyer-Illidan ')`
       );
       const row = (await q('select buyer_name, sold_at from public.boe_items where id = $1', [id])).rows[0];
       expect(row.buyer_name).toBe('Buyer-Illidan');
@@ -1008,7 +1007,7 @@ describe('a sale to a guild member (#1593)', () => {
   it('stores the buyer with tabs and line breaks folded into single spaces', async () => {
     await withTxn(async ({ q, asUser }) => {
       const id = await newFind(q);
-      await asUser(OFFICER_T1, 'select public.boe_record_sale($1, 114000, null, $2, 190000)', [id, '\tOld \n Man\r\n']);
+      await asUser(OFFICER_T1, 'select public.boe_record_sale($1, 190000, null, $2)', [id, '\tOld \n Man\r\n']);
       const row = (await q('select buyer_name from public.boe_items where id = $1', [id])).rows[0];
       expect(row.buyer_name).toBe('Old Man');
     });
@@ -1018,7 +1017,7 @@ describe('a sale to a guild member (#1593)', () => {
     await withTxn(async ({ q, asUser }) => {
       const id = await newFind(q);
       await expect(
-        asUser(OFFICER_T1, 'select public.boe_record_sale($1, 114000, null, $2, 190000)', [id, ' \t\n '])
+        asUser(OFFICER_T1, 'select public.boe_record_sale($1, 190000, null, $2)', [id, ' \t\n '])
       ).rejects.toThrow(/Buyer name is required for a sale to a guild member/);
     });
   });
@@ -1031,24 +1030,38 @@ describe('a sale to a guild member (#1593)', () => {
     await withTxn(async ({ q, asUser }) => {
       await asUser(SITE_ADMIN, 'select public.set_boe_payout_settings(30000, 100000)');
       const above = await newFind(q);
-      const res = await asUser(OFFICER_T1, memberSale(above, 114000, 190000));
-      expect(res.rows[0]).toMatchObject({ finder_payout: 57000, guild_cut: 57000 });
+      const res = await asUser(OFFICER_T1, memberSale(above, 190000));
+      expect(res.rows[0]).toMatchObject({ sale_price: 114000, finder_payout: 57000, guild_cut: 57000 });
       const under = await newFind(q);
-      const floor = await asUser(OFFICER_T1, memberSale(under, 57000, 95000));
-      expect(floor.rows[0]).toMatchObject({ finder_payout: 30000, guild_cut: 27000 });
+      const floor = await asUser(OFFICER_T1, memberSale(under, 95000));
+      expect(floor.rows[0]).toMatchObject({ sale_price: 57000, finder_payout: 30000, guild_cut: 27000 });
     });
   });
 
-  it('the rate is a site setting each guild member sale copies, and an auction house sale does not', async () => {
+  // 55% of 190,000 is 104,500, which rounds down to 104,000; at 100% the
+  // buyer pays the auction house price.
+  it('the rate is a site setting each guild member sale applies and copies, and an auction house sale does not', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await asUser(SITE_ADMIN, 'select public.set_boe_payout_settings(20000, 100000, 55)');
-      const member = await newFind(q);
-      const res = await asUser(OFFICER_T1, memberSale(member, 104500, 190000));
-      expect(res.rows[0].member_rate_pct).toBe(55);
-      // The stored copy, not only the reply: at the default 60 a fixed 60
-      // written to the row would pass every other case.
-      const stored = (await q('select member_rate_pct from public.boe_items where id = $1', [member])).rows[0];
-      expect(stored.member_rate_pct).toBe(55);
+      const storedSale = async (id) =>
+        (
+          await q(
+            'select sale_price::int as sale_price, finder_payout::int as finder_payout, guild_cut::int as guild_cut, member_rate_pct from public.boe_items where id = $1',
+            [id]
+          )
+        ).rows[0];
+      for (const [rate, paid, guild] of [
+        [55, 104000, 66000],
+        [100, 190000, 152000]
+      ]) {
+        await asUser(SITE_ADMIN, `select public.set_boe_payout_settings(20000, 100000, ${rate})`);
+        const member = await newFind(q);
+        const res = await asUser(OFFICER_T1, memberSale(member, 190000));
+        const expected = { sale_price: paid, finder_payout: 38000, guild_cut: guild, member_rate_pct: rate };
+        expect(res.rows[0]).toMatchObject(expected);
+        // The stored copy, not only the reply: at the default 60 a fixed 60
+        // written to the row would pass every other case.
+        expect(await storedSale(member)).toEqual(expected);
+      }
       const auction = await newFind(q);
       await asUser(OFFICER_T1, `select public.boe_record_sale(${auction}, 100000)`);
       const row = (await q('select member_rate_pct from public.boe_items where id = $1', [auction])).rows[0];
@@ -1142,10 +1155,20 @@ describe('a sale to a guild member (#1593)', () => {
         `(${sold}, 114000, 38000, 71000, 5000, 20000, 100000, 'guild_member', 190000, 'Buyer-Illidan', 60)`,
         /member_sale_shape/
       );
-      await refused(
-        `(${sold}, 200000, 38000, 162000, 0, 20000, 100000, 'guild_member', 190000, 'Buyer-Illidan', 60)`,
-        /member_sale_shape/
-      );
+      // What they pay is the rate of the auction house price rounded down to
+      // the thousand, and nothing else: one gold over, the price unrounded,
+      // and the full auction house price are each refused.
+      for (const [ah, paid, guild] of [
+        [190000, 114001, 76001],
+        [190000, 190000, 152000],
+        [47999, 28799, 8799]
+      ]) {
+        const finder = paid - guild;
+        await refused(
+          `(${sold}, ${paid}, ${finder}, ${guild}, 0, 20000, 100000, 'guild_member', ${ah}, 'Buyer-Illidan', 60)`,
+          /member_sale_shape/
+        );
+      }
       await refused(
         `(${sold}, 0, 0, 0, 0, 20000, 100000, 'guild_member', 0, 'Buyer-Illidan', 60)`,
         /ah_price_positive/
@@ -1156,16 +1179,26 @@ describe('a sale to a guild member (#1593)', () => {
           /buyer_name_shape/
         );
       }
-      for (const rate of [0, 101]) {
+      // What they pay matches each out-of-range rate, so the range is the
+      // only rule these rows break.
+      for (const [rate, paid, finder, guild] of [
+        [0, 0, 0, 0],
+        [101, 191000, 38000, 153000]
+      ]) {
         await refused(
-          `(${sold}, 114000, 38000, 76000, 0, 20000, 100000, 'guild_member', 190000, 'Buyer-Illidan', ${rate})`,
+          `(${sold}, ${paid}, ${finder}, ${guild}, 0, 20000, 100000, 'guild_member', 190000, 'Buyer-Illidan', ${rate})`,
           /member_rate_range/
         );
       }
-      const ok = await q(
-        `insert into public.boe_items ${cols} values (${sold}, 114000, 38000, 76000, 0, 20000, 100000, 'guild_member', 190000, 'Buyer-Illidan', 60) returning id`
-      );
-      expect(ok.rowCount).toBe(1);
+      for (const [ah, paid, finder, guild] of [
+        [190000, 114000, 38000, 76000],
+        [47999, 28000, 20000, 8000]
+      ]) {
+        const ok = await q(
+          `insert into public.boe_items ${cols} values (${sold}, ${paid}, ${finder}, ${guild}, 0, 20000, 100000, 'guild_member', ${ah}, 'Buyer-Illidan', 60) returning id`
+        );
+        expect(ok.rowCount).toBe(1);
+      }
     });
   });
 
@@ -1183,7 +1216,7 @@ describe('a sale to a guild member (#1593)', () => {
   it('Undo Sale clears the buyer, the auction house price and the rate', async () => {
     await withTxn(async ({ q, asUser }) => {
       const id = await newFind(q);
-      await asUser(OFFICER_T1, memberSale(id, 114000, 190000));
+      await asUser(OFFICER_T1, memberSale(id, 190000));
       const res = await asUser(OFFICER_T1, `select public.boe_revert(${id}) as status`);
       expect(res.rows[0].status).toBe('found');
       const row = (
@@ -1436,16 +1469,16 @@ describe('the lifecycle RPCs write their own audit entry (#770)', () => {
     });
   });
 
-  it('boe_record_sale to a guild member names the buyer and the auction house price', async () => {
+  it('boe_record_sale to a guild member names the buyer, the rate and the auction house price', async () => {
     await withTxn(async ({ q, asUser }) => {
       await grantRaider(q);
-      await asUser(RAIDER_T1, "select public.boe_record_sale(1, 114000, null, 'Buyer-Illidan', 190000)");
+      await asUser(RAIDER_T1, "select public.boe_record_sale(1, 190000, null, 'Buyer-Illidan')");
       const row = await lastAudit(q, 1);
       expect(row).toMatchObject({
         actor_id: RAIDER_T1,
         action: 'BoE Sale Recorded',
         detail:
-          'Seed Test Staff sold to Buyer-Illidan for 114,000g (auction house price 190,000g); finder payout 38,000g'
+          'Seed Test Staff sold to Buyer-Illidan for 114,000g (60% of the auction house price 190,000g, rounded down to the thousand); finder payout 38,000g'
       });
     });
   });
