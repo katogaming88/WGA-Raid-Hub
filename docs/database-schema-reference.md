@@ -433,9 +433,9 @@ One row per found Bind-on-Equip, carrying the lifecycle (found -> listed -> sold
 | `sold_at`        | timestamptz | Set on sale                                                            |
 | `payout_paid_at` | timestamptz | Set when the finder is paid                                            |
 | `retired_at`     | timestamptz | Set on retire                                                          |
-| `sale_price`     | int8        | What the buyer paid in gold: the gross auction house sale, or what a guild member paid (#1593); present iff sold/paid |
+| `sale_price`     | int8        | What the buyer paid in gold: the gross auction house sale, or on a guild member sale `member_rate_pct` of `ah_price` rounded down to the nearest 1,000g, by constraint (#1593); present iff sold/paid |
 | `sale_channel`   | text        | CHECK auction_house/guild_member, present iff sold/paid (#1593)        |
-| `ah_price`       | int8        | On a guild member sale, what it would have sold for on the auction house; the finder's cut is figured on it. Null otherwise (#1593) |
+| `ah_price`       | int8        | On a guild member sale, what it would have sold for on the auction house, as the officer entered it; what they paid and the finder's cut are figured from it. Null otherwise (#1593) |
 | `buyer_name`     | text        | On a guild member sale, who bought it, trimmed, at most 100 characters. Null otherwise (#1593) |
 | `member_rate_pct` | int4       | On a guild member sale, the site's rate (`site_settings.boe_member_rate_pct`) when it was recorded. Null otherwise (#1593) |
 | `finder_payout`  | int8        | The finder's cut, present iff sold/paid; never more than the sale net of the fee (#861); on a guild member sale figured on `ah_price` (#1593) |
