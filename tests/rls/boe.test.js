@@ -1483,6 +1483,20 @@ describe('the lifecycle RPCs write their own audit entry (#770)', () => {
     });
   });
 
+  // At the default rate a line that always printed 60% would pass the case
+  // above.
+  it('boe_record_sale to a guild member prints the rate in force', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await grantRaider(q);
+      await asUser(SITE_ADMIN, 'select public.set_boe_payout_settings(20000, 100000, 55)');
+      await asUser(RAIDER_T1, "select public.boe_record_sale(1, 190000, null, 'Buyer-Illidan')");
+      const row = await lastAudit(q, 1);
+      expect(row.detail).toBe(
+        'Seed Test Staff sold to Buyer-Illidan for 104,000g (55% of the auction house price 190,000g, rounded down to the thousand); finder payout 38,000g'
+      );
+    });
+  });
+
   it('boe_mark_paid, paid and donated wording', async () => {
     await withTxn(async ({ q, asUser }) => {
       await grantRaider(q);
