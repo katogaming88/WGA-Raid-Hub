@@ -4076,7 +4076,6 @@ export type Database = {
       }
       boe_record_sale: {
         Args: {
-          p_ah_price?: number
           p_buyer_name?: string
           p_id: number
           p_sale_price: number

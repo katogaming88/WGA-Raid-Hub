@@ -10,9 +10,10 @@
 -- never more than what came in, so the guild bank takes the whole discount.
 -- The rate is a site setting beside the payout floor and pivot, and each
 -- guild member sale copies it, the way a sold row copies the floor and pivot.
--- The officer enters both prices: what the raider paid is not derived from
--- the rate, so a rounded deal stays recordable, and the only check between
--- the two is that nobody pays more than the auction house price.
+-- The officer enters the auction house price and the buyer, and the hub
+-- figures what they pay: the rate of that price, rounded down to the nearest
+-- 1,000g, the guild taking the rounding along with the discount. A constraint
+-- holds every guild member row to that figure.
 --
 -- Order: the setting and its setter; the columns; a backfill naming every
 -- existing sold or paid row an auction house sale; then the constraints,
@@ -28,7 +29,7 @@ alter table public.site_settings
   add constraint site_settings_boe_member_rate_pct_range check (boe_member_rate_pct between 1 and 100);
 
 comment on column public.site_settings.boe_member_rate_pct is
-  'What a guild member pays for a BoE bought from the guild, as a whole percent of its auction house price (#1593). The pages suggest it; boe_record_sale copies it onto each guild member sale.';
+  'What a guild member pays for a BoE bought from the guild, as a whole percent of its auction house price, rounded down to the nearest 1,000g (#1593). boe_record_sale applies it and copies it onto each guild member sale.';
 
 -- The rate joins the setter as an optional third argument. Left out, the rate
 -- stays as it is, so the admin page keeps working before it has a field for
@@ -89,13 +90,13 @@ alter table public.boe_items
   add column member_rate_pct integer;
 
 comment on column public.boe_items.sale_price is
-  'What the buyer paid, whole gold: the auction house sale price, or on a guild member sale what the raider paid (#1593). Present iff sold/paid.';
+  'What the buyer paid, whole gold: the auction house sale price, or on a guild member sale member_rate_pct of ah_price rounded down to the nearest 1,000g (#1593). Present iff sold/paid.';
 comment on column public.boe_items.ah_fee is
   'The auction house fee the game kept on the sale, whole gold: round(sale_price * 5 / 100), half away from zero (#861), and 0 on a guild member sale, which never went through the auction house (#1593). Present iff sold/paid; finder_payout + guild_cut + ah_fee = sale_price by constraint.';
 comment on column public.boe_items.sale_channel is
   'Who bought it: auction_house, or guild_member when a raider bought it from the guild (#1593). Present iff sold/paid.';
 comment on column public.boe_items.ah_price is
-  'On a guild member sale, what the item would have sold for on the auction house; the finder''s cut is figured on it (#1593). Null otherwise.';
+  'On a guild member sale, what the item would have sold for on the auction house, as the officer entered it; what they paid and the finder''s cut are figured from it (#1593). Null otherwise.';
 comment on column public.boe_items.buyer_name is
   'On a guild member sale, who bought it, as the officer typed it with each run of whitespace folded to one space and the ends trimmed, at most 100 characters (#1593). Null otherwise.';
 comment on column public.boe_items.member_rate_pct is
@@ -138,32 +139,34 @@ alter table public.boe_items add constraint boe_items_money_complete_when_sold c
 );
 
 -- A guild member sale carries the auction house price, the buyer and the
--- rate, takes no fee, and nobody pays more than the auction house price. An
--- auction house sale carries none of the three. A zero fee alone does not
--- mark a guild member sale: an auction house sale under 10 gold rounds to one.
+-- rate, takes no fee, and the price paid is the rate of the auction house
+-- price rounded down to the nearest 1,000g, in whole-number arithmetic as
+-- boe_record_sale figures it. An auction house sale carries none of the
+-- three. A zero fee alone does not mark a guild member sale: an auction house
+-- sale under 10 gold rounds to one.
 alter table public.boe_items add constraint boe_items_member_sale_shape check (
   sale_channel is distinct from 'guild_member'
   or (ah_price is not null and buyer_name is not null and member_rate_pct is not null
-      and ah_fee = 0 and sale_price <= ah_price)
+      and ah_fee = 0 and sale_price = ah_price * member_rate_pct / 100000 * 1000)
 );
 alter table public.boe_items add constraint boe_items_member_cols_only_for_member check (
   sale_channel = 'guild_member'
   or (ah_price is null and buyer_name is null and member_rate_pct is null)
 );
 
--- boe_record_sale takes the buyer and the auction house price as two more
--- optional arguments, given together. Left out, the sale is an auction house
--- sale exactly as before, so both BoE pages keep calling it with the id and
--- the price alone. A new argument and new returned columns are a new
--- signature, hence drop and create, and the grants go with the old function.
+-- boe_record_sale takes the buyer as one more optional argument. Given, the
+-- sale is to a guild member and p_sale_price is what the item would have
+-- sold for on the auction house; left out, the sale is an auction house sale
+-- exactly as before, so both BoE pages keep calling it with the id and the
+-- price alone. A new argument and new returned columns are a new signature,
+-- hence drop and create, and the grants go with the old function.
 drop function public.boe_record_sale(integer, bigint, timestamptz);
 
 create function public.boe_record_sale(
   p_id integer,
   p_sale_price bigint,
   p_sold_at timestamptz default null,
-  p_buyer_name text default null,
-  p_ah_price bigint default null
+  p_buyer_name text default null
 ) returns table(
   sale_price bigint,
   finder_payout bigint,
@@ -183,6 +186,10 @@ declare
   -- mails. Not a setting: nothing reads it but this function and the
   -- backfill that introduced the column.
   c_ah_fee_pct constant numeric := 5;
+  -- Guild policy (#1593): what a guild member pays is rounded down to this,
+  -- and the guild takes the difference. boe_items_member_sale_shape holds
+  -- the same figure.
+  c_member_round_to constant bigint := 1000;
   v_team_id integer;
   v_status text;
   v_item_name text;
@@ -191,7 +198,8 @@ declare
   v_rate integer;
   v_channel text;
   v_buyer text;
-  v_base bigint;
+  v_ah bigint;
+  v_paid bigint;
   v_fee bigint;
   v_payout bigint;
 begin
@@ -220,14 +228,6 @@ begin
     if char_length(v_buyer) > 100 then
       raise exception 'Buyer name is too long (100 characters at most)';
     end if;
-    if p_ah_price is null or p_ah_price <= 0 then
-      raise exception 'Auction house price must be positive for a sale to a guild member';
-    end if;
-    if p_sale_price > p_ah_price then
-      raise exception 'What they paid cannot be more than the auction house price';
-    end if;
-  elsif p_ah_price is not null then
-    raise exception 'An auction house price goes with a buyer name';
   end if;
 
   select s.boe_payout_floor, s.boe_payout_pivot, s.boe_member_rate_pct into v_floor, v_pivot, v_rate
@@ -239,33 +239,40 @@ begin
     -- here), the same rounding the payout uses.
     v_channel := 'auction_house';
     v_fee := round(p_sale_price::numeric * c_ah_fee_pct / 100)::bigint;
-    v_base := p_sale_price;
+    v_ah := null;
+    v_paid := p_sale_price;
     v_rate := null;
   else
-    -- Nothing went through the auction house, and the cut is figured on what
-    -- it would have sold for there (#1593).
+    -- Nothing went through the auction house. The buyer pays the rate of
+    -- what it would have sold for there, rounded down to the thousand in
+    -- whole-number arithmetic, and the cut is figured on the auction house
+    -- price (#1593).
     v_channel := 'guild_member';
     v_fee := 0;
-    v_base := p_ah_price;
+    v_ah := p_sale_price;
+    v_paid := p_sale_price * v_rate / (100 * c_member_round_to) * c_member_round_to;
+    if v_paid <= 0 then
+      raise exception 'What they pay rounds to zero at this rate';
+    end if;
   end if;
 
   -- Guild policy (#745 comment): 20%-of-gross or the floor, whichever is
   -- larger, rounded to the nearest gold half away from zero, and never more
   -- than what came in net of the fee (#861), so the guild is never out of
   -- pocket on a sub-floor sale. The guild keeps what is left after the fee.
-  v_payout := least(p_sale_price - v_fee, greatest(v_floor, round(v_base::numeric * v_floor / v_pivot)))::bigint;
+  v_payout := least(v_paid - v_fee, greatest(v_floor, round(p_sale_price::numeric * v_floor / v_pivot)))::bigint;
 
   update public.boe_items b
   set status = 'sold',
       sold_at = coalesce(p_sold_at, now()),
-      sale_price = p_sale_price,
+      sale_price = v_paid,
       finder_payout = v_payout,
-      guild_cut = p_sale_price - v_fee - v_payout,
+      guild_cut = v_paid - v_fee - v_payout,
       ah_fee = v_fee,
       payout_floor = v_floor,
       payout_pivot = v_pivot,
       sale_channel = v_channel,
-      ah_price = p_ah_price,
+      ah_price = v_ah,
       buyer_name = v_buyer,
       member_rate_pct = v_rate
   where b.id = p_id;
@@ -273,20 +280,20 @@ begin
   insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (v_team_id, auth.uid(), 'BoE Sale Recorded', 'boe_items', p_id,
     to_jsonb(case when v_channel = 'guild_member'
-      then v_item_name || ' sold to ' || v_buyer || ' for ' || public.format_boe_gold(p_sale_price) ||
-        'g (auction house price ' || public.format_boe_gold(p_ah_price) || 'g); finder payout ' ||
-        public.format_boe_gold(v_payout) || 'g'
-      else v_item_name || ' sold for ' || public.format_boe_gold(p_sale_price) ||
+      then v_item_name || ' sold to ' || v_buyer || ' for ' || public.format_boe_gold(v_paid) ||
+        'g (' || v_rate || '% of the auction house price ' || public.format_boe_gold(v_ah) ||
+        'g, rounded down to the thousand); finder payout ' || public.format_boe_gold(v_payout) || 'g'
+      else v_item_name || ' sold for ' || public.format_boe_gold(v_paid) ||
         'g; finder payout ' || public.format_boe_gold(v_payout) || 'g'
     end));
 
-  return query select p_sale_price, v_payout, p_sale_price - v_fee - v_payout, v_fee,
-    v_channel, p_ah_price, v_buyer, v_rate;
+  return query select v_paid, v_payout, v_paid - v_fee - v_payout, v_fee,
+    v_channel, v_ah, v_buyer, v_rate;
 end $$;
 
-revoke all on function public.boe_record_sale(integer, bigint, timestamptz, text, bigint) from public;
-revoke execute on function public.boe_record_sale(integer, bigint, timestamptz, text, bigint) from anon;
-grant execute on function public.boe_record_sale(integer, bigint, timestamptz, text, bigint) to authenticated;
+revoke all on function public.boe_record_sale(integer, bigint, timestamptz, text) from public;
+revoke execute on function public.boe_record_sale(integer, bigint, timestamptz, text) from anon;
+grant execute on function public.boe_record_sale(integer, bigint, timestamptz, text) to authenticated;
 
 -- boe_revert's sold edge clears the whole receipt, which now includes the
 -- channel and the three guild member columns. Same signature, so create or

@@ -237,7 +237,7 @@
 | public.set_loot_responses | jsonb | p_team_id integer, p_responses jsonb | FUNCTION |
 | public.loot_response_counts_as | text | p_team_id integer, p_response text | FUNCTION |
 | public.set_boe_payout_settings | void | p_floor bigint, p_pivot bigint, p_member_rate_pct integer DEFAULT NULL::integer | FUNCTION |
-| public.boe_record_sale | record | p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_buyer_name text DEFAULT NULL::text, p_ah_price bigint DEFAULT NULL::bigint | FUNCTION |
+| public.boe_record_sale | record | p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_buyer_name text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 

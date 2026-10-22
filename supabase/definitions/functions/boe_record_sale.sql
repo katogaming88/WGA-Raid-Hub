@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.boe_record_sale(p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_buyer_name text DEFAULT NULL::text, p_ah_price bigint DEFAULT NULL::bigint)
+CREATE OR REPLACE FUNCTION public.boe_record_sale(p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_buyer_name text DEFAULT NULL::text)
  RETURNS TABLE(sale_price bigint, finder_payout bigint, guild_cut bigint, ah_fee bigint, sale_channel text, ah_price bigint, buyer_name text, member_rate_pct integer)
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -13,6 +13,10 @@ declare
   -- mails. Not a setting: nothing reads it but this function and the
   -- backfill that introduced the column.
   c_ah_fee_pct constant numeric := 5;
+  -- Guild policy (#1593): what a guild member pays is rounded down to this,
+  -- and the guild takes the difference. boe_items_member_sale_shape holds
+  -- the same figure.
+  c_member_round_to constant bigint := 1000;
   v_team_id integer;
   v_status text;
   v_item_name text;
@@ -21,7 +25,8 @@ declare
   v_rate integer;
   v_channel text;
   v_buyer text;
-  v_base bigint;
+  v_ah bigint;
+  v_paid bigint;
   v_fee bigint;
   v_payout bigint;
 begin
@@ -50,14 +55,6 @@ begin
     if char_length(v_buyer) > 100 then
       raise exception 'Buyer name is too long (100 characters at most)';
     end if;
-    if p_ah_price is null or p_ah_price <= 0 then
-      raise exception 'Auction house price must be positive for a sale to a guild member';
-    end if;
-    if p_sale_price > p_ah_price then
-      raise exception 'What they paid cannot be more than the auction house price';
-    end if;
-  elsif p_ah_price is not null then
-    raise exception 'An auction house price goes with a buyer name';
   end if;
 
   select s.boe_payout_floor, s.boe_payout_pivot, s.boe_member_rate_pct into v_floor, v_pivot, v_rate
@@ -69,33 +66,40 @@ begin
     -- here), the same rounding the payout uses.
     v_channel := 'auction_house';
     v_fee := round(p_sale_price::numeric * c_ah_fee_pct / 100)::bigint;
-    v_base := p_sale_price;
+    v_ah := null;
+    v_paid := p_sale_price;
     v_rate := null;
   else
-    -- Nothing went through the auction house, and the cut is figured on what
-    -- it would have sold for there (#1593).
+    -- Nothing went through the auction house. The buyer pays the rate of
+    -- what it would have sold for there, rounded down to the thousand in
+    -- whole-number arithmetic, and the cut is figured on the auction house
+    -- price (#1593).
     v_channel := 'guild_member';
     v_fee := 0;
-    v_base := p_ah_price;
+    v_ah := p_sale_price;
+    v_paid := p_sale_price * v_rate / (100 * c_member_round_to) * c_member_round_to;
+    if v_paid <= 0 then
+      raise exception 'What they pay rounds to zero at this rate';
+    end if;
   end if;
 
   -- Guild policy (#745 comment): 20%-of-gross or the floor, whichever is
   -- larger, rounded to the nearest gold half away from zero, and never more
   -- than what came in net of the fee (#861), so the guild is never out of
   -- pocket on a sub-floor sale. The guild keeps what is left after the fee.
-  v_payout := least(p_sale_price - v_fee, greatest(v_floor, round(v_base::numeric * v_floor / v_pivot)))::bigint;
+  v_payout := least(v_paid - v_fee, greatest(v_floor, round(p_sale_price::numeric * v_floor / v_pivot)))::bigint;
 
   update public.boe_items b
   set status = 'sold',
       sold_at = coalesce(p_sold_at, now()),
-      sale_price = p_sale_price,
+      sale_price = v_paid,
       finder_payout = v_payout,
-      guild_cut = p_sale_price - v_fee - v_payout,
+      guild_cut = v_paid - v_fee - v_payout,
       ah_fee = v_fee,
       payout_floor = v_floor,
       payout_pivot = v_pivot,
       sale_channel = v_channel,
-      ah_price = p_ah_price,
+      ah_price = v_ah,
       buyer_name = v_buyer,
       member_rate_pct = v_rate
   where b.id = p_id;
@@ -103,13 +107,13 @@ begin
   insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (v_team_id, auth.uid(), 'BoE Sale Recorded', 'boe_items', p_id,
     to_jsonb(case when v_channel = 'guild_member'
-      then v_item_name || ' sold to ' || v_buyer || ' for ' || public.format_boe_gold(p_sale_price) ||
-        'g (auction house price ' || public.format_boe_gold(p_ah_price) || 'g); finder payout ' ||
-        public.format_boe_gold(v_payout) || 'g'
-      else v_item_name || ' sold for ' || public.format_boe_gold(p_sale_price) ||
+      then v_item_name || ' sold to ' || v_buyer || ' for ' || public.format_boe_gold(v_paid) ||
+        'g (' || v_rate || '% of the auction house price ' || public.format_boe_gold(v_ah) ||
+        'g, rounded down to the thousand); finder payout ' || public.format_boe_gold(v_payout) || 'g'
+      else v_item_name || ' sold for ' || public.format_boe_gold(v_paid) ||
         'g; finder payout ' || public.format_boe_gold(v_payout) || 'g'
     end));
 
-  return query select p_sale_price, v_payout, p_sale_price - v_fee - v_payout, v_fee,
-    v_channel, p_ah_price, v_buyer, v_rate;
+  return query select v_paid, v_payout, v_paid - v_fee - v_payout, v_fee,
+    v_channel, v_ah, v_buyer, v_rate;
 end $function$;

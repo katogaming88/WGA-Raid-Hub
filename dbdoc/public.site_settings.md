@@ -14,7 +14,7 @@
 | gear_sync_last_cron_run | jsonb |  | true |  |  | Outcome of the last scheduled blizzard-gear-sync sweep, written by the function: trigger, started_at, finished_at, synced, skipped, teams, players, error (first message or null). |
 | gear_sync_last_officer_run | jsonb |  | true |  |  | Outcome of the last officer-triggered whole-team blizzard-gear-sync run (Sync Gear Levels Now), same shape as gear_sync_last_cron_run. A single-raider sync is not recorded. |
 | guild_creation_open | boolean | false | false |  |  | When true, any signed-in person with Discord connected can create a guild and its first team (create_guild()). When false, only a site admin can. Flipped by admin_set_guild_creation_open() (#1226). |
-| boe_member_rate_pct | integer | 60 | false |  |  | What a guild member pays for a BoE bought from the guild, as a whole percent of its auction house price (#1593). The pages suggest it; boe_record_sale copies it onto each guild member sale. |
+| boe_member_rate_pct | integer | 60 | false |  |  | What a guild member pays for a BoE bought from the guild, as a whole percent of its auction house price, rounded down to the nearest 1,000g (#1593). boe_record_sale applies it and copies it onto each guild member sale. |
 
 ## Constraints
 
