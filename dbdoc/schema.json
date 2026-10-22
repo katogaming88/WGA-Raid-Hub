@@ -3885,6 +3885,13 @@
           "nullable": false,
           "default": "false",
           "comment": "When true, any signed-in person with Discord connected can create a guild and its first team (create_guild()). When false, only a site admin can. Flipped by admin_set_guild_creation_open() (#1226)."
+        },
+        {
+          "name": "boe_member_rate_pct",
+          "type": "integer",
+          "nullable": false,
+          "default": "60",
+          "comment": "What a guild member pays for a BoE bought from the guild, as a whole percent of its auction house price, rounded down to the nearest 1,000g (#1593). boe_record_sale applies it and copies it onto each guild member sale."
         }
       ],
       "indexes": [
@@ -3898,6 +3905,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "site_settings_boe_member_rate_pct_range",
+          "type": "CHECK",
+          "def": "CHECK (((boe_member_rate_pct \u003e= 1) AND (boe_member_rate_pct \u003c= 100)))",
+          "table": "public.site_settings",
+          "referenced_table": "",
+          "columns": [
+            "boe_member_rate_pct"
+          ]
+        },
         {
           "name": "site_settings_boe_payout_floor_nonneg",
           "type": "CHECK",
@@ -4175,7 +4192,8 @@
         {
           "name": "sale_price",
           "type": "bigint",
-          "nullable": true
+          "nullable": true,
+          "comment": "What the buyer paid, whole gold: the auction house sale price, or on a guild member sale member_rate_pct of ah_price rounded down to the nearest 1,000g (#1593). Present iff sold/paid."
         },
         {
           "name": "finder_payout",
@@ -4224,7 +4242,7 @@
           "name": "ah_fee",
           "type": "bigint",
           "nullable": true,
-          "comment": "The auction house fee the game kept on the sale, whole gold: round(sale_price * 5 / 100), half away from zero (#861). Present iff sold/paid; finder_payout + guild_cut + ah_fee = sale_price by constraint."
+          "comment": "The auction house fee the game kept on the sale, whole gold: round(sale_price * 5 / 100), half away from zero (#861), and 0 on a guild member sale, which never went through the auction house (#1593). Present iff sold/paid; finder_payout + guild_cut + ah_fee = sale_price by constraint."
         },
         {
           "name": "finder_discord_id",
@@ -4237,6 +4255,30 @@
           "type": "timestamp with time zone",
           "nullable": true,
           "comment": "When the BoE Found Discord post for this row was sent (#956). Claimed by boe-webhook through the service role and cleared again if Discord refuses the post; null means the row has never been announced."
+        },
+        {
+          "name": "sale_channel",
+          "type": "text",
+          "nullable": true,
+          "comment": "Who bought it: auction_house, or guild_member when a raider bought it from the guild (#1593). Present iff sold/paid."
+        },
+        {
+          "name": "ah_price",
+          "type": "bigint",
+          "nullable": true,
+          "comment": "On a guild member sale, what the item would have sold for on the auction house, as the officer entered it; what they paid and the finder's cut are figured from it (#1593). Null otherwise."
+        },
+        {
+          "name": "buyer_name",
+          "type": "text",
+          "nullable": true,
+          "comment": "On a guild member sale, who bought it, as the officer typed it with each run of whitespace folded to one space and the ends trimmed, at most 100 characters (#1593). Null otherwise."
+        },
+        {
+          "name": "member_rate_pct",
+          "type": "integer",
+          "nullable": true,
+          "comment": "On a guild member sale, the site's rate (site_settings.boe_member_rate_pct) when it was recorded (#1593). Null otherwise."
         }
       ],
       "indexes": [
@@ -4258,6 +4300,26 @@
           "referenced_table": "",
           "columns": [
             "ah_fee"
+          ]
+        },
+        {
+          "name": "boe_items_ah_price_positive",
+          "type": "CHECK",
+          "def": "CHECK ((ah_price \u003e 0))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "ah_price"
+          ]
+        },
+        {
+          "name": "boe_items_buyer_name_shape",
+          "type": "CHECK",
+          "def": "CHECK (((buyer_name = btrim(regexp_replace(buyer_name, '\\s+'::text, ' '::text, 'g'::text))) AND (buyer_name \u003c\u003e ''::text) AND (char_length(buyer_name) \u003c= 100)))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "buyer_name"
           ]
         },
         {
@@ -4291,9 +4353,47 @@
           ]
         },
         {
+          "name": "boe_items_member_cols_only_for_member",
+          "type": "CHECK",
+          "def": "CHECK (((sale_channel = 'guild_member'::text) OR ((ah_price IS NULL) AND (buyer_name IS NULL) AND (member_rate_pct IS NULL))))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "sale_channel",
+            "ah_price",
+            "buyer_name",
+            "member_rate_pct"
+          ]
+        },
+        {
+          "name": "boe_items_member_rate_range",
+          "type": "CHECK",
+          "def": "CHECK (((member_rate_pct \u003e= 1) AND (member_rate_pct \u003c= 100)))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "member_rate_pct"
+          ]
+        },
+        {
+          "name": "boe_items_member_sale_shape",
+          "type": "CHECK",
+          "def": "CHECK (((sale_channel IS DISTINCT FROM 'guild_member'::text) OR ((ah_price IS NOT NULL) AND (buyer_name IS NOT NULL) AND (member_rate_pct IS NOT NULL) AND (ah_fee = 0) AND (sale_price = (((ah_price * member_rate_pct) / 100000) * 1000)))))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "sale_channel",
+            "ah_price",
+            "buyer_name",
+            "member_rate_pct",
+            "ah_fee",
+            "sale_price"
+          ]
+        },
+        {
           "name": "boe_items_money_complete_when_sold",
           "type": "CHECK",
-          "def": "CHECK (((status \u003c\u003e ALL (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NOT NULL) AND (finder_payout IS NOT NULL) AND (guild_cut IS NOT NULL) AND (ah_fee IS NOT NULL) AND (payout_floor IS NOT NULL) AND (payout_pivot IS NOT NULL))))",
+          "def": "CHECK (((status \u003c\u003e ALL (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NOT NULL) AND (finder_payout IS NOT NULL) AND (guild_cut IS NOT NULL) AND (ah_fee IS NOT NULL) AND (payout_floor IS NOT NULL) AND (payout_pivot IS NOT NULL) AND (sale_channel IS NOT NULL))))",
           "table": "public.boe_items",
           "referenced_table": "",
           "columns": [
@@ -4303,13 +4403,14 @@
             "guild_cut",
             "ah_fee",
             "payout_floor",
-            "payout_pivot"
+            "payout_pivot",
+            "sale_channel"
           ]
         },
         {
           "name": "boe_items_money_only_when_sold",
           "type": "CHECK",
-          "def": "CHECK (((status = ANY (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NULL) AND (finder_payout IS NULL) AND (guild_cut IS NULL) AND (ah_fee IS NULL) AND (payout_floor IS NULL) AND (payout_pivot IS NULL))))",
+          "def": "CHECK (((status = ANY (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NULL) AND (finder_payout IS NULL) AND (guild_cut IS NULL) AND (ah_fee IS NULL) AND (payout_floor IS NULL) AND (payout_pivot IS NULL) AND (sale_channel IS NULL) AND (ah_price IS NULL) AND (buyer_name IS NULL) AND (member_rate_pct IS NULL))))",
           "table": "public.boe_items",
           "referenced_table": "",
           "columns": [
@@ -4319,7 +4420,11 @@
             "guild_cut",
             "ah_fee",
             "payout_floor",
-            "payout_pivot"
+            "payout_pivot",
+            "sale_channel",
+            "ah_price",
+            "buyer_name",
+            "member_rate_pct"
           ]
         },
         {
@@ -4377,6 +4482,16 @@
           "columns": [
             "status",
             "retired_at"
+          ]
+        },
+        {
+          "name": "boe_items_sale_channel_check",
+          "type": "CHECK",
+          "def": "CHECK ((sale_channel = ANY (ARRAY['auction_house'::text, 'guild_member'::text])))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "sale_channel"
           ]
         },
         {
@@ -11119,12 +11234,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.set_boe_payout_settings",
-      "return_type": "void",
-      "arguments": "p_floor bigint, p_pivot bigint",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.delete_self_received_request",
       "return_type": "void",
       "arguments": "p_id integer",
@@ -11194,12 +11303,6 @@
       "name": "public.set_own_rsvp",
       "return_type": "void",
       "arguments": "p_team_id integer, p_raid_date date, p_status text, p_note text DEFAULT NULL::text",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.boe_record_sale",
-      "return_type": "record",
-      "arguments": "p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone",
       "type": "FUNCTION"
     },
     {
@@ -11746,6 +11849,18 @@
       "name": "public.loot_response_counts_as",
       "return_type": "text",
       "arguments": "p_team_id integer, p_response text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_boe_payout_settings",
+      "return_type": "void",
+      "arguments": "p_floor bigint, p_pivot bigint, p_member_rate_pct integer DEFAULT NULL::integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.boe_record_sale",
+      "return_type": "record",
+      "arguments": "p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_buyer_name text DEFAULT NULL::text",
       "type": "FUNCTION"
     }
   ],

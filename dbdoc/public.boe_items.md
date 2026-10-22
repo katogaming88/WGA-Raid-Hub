@@ -18,7 +18,7 @@
 | sold_at | timestamp with time zone |  | true |  |  |  |
 | payout_paid_at | timestamp with time zone |  | true |  |  |  |
 | retired_at | timestamp with time zone |  | true |  |  |  |
-| sale_price | bigint |  | true |  |  |  |
+| sale_price | bigint |  | true |  |  | What the buyer paid, whole gold: the auction house sale price, or on a guild member sale member_rate_pct of ah_price rounded down to the nearest 1,000g (#1593). Present iff sold/paid. |
 | finder_payout | bigint |  | true |  |  |  |
 | guild_cut | bigint |  | true |  |  |  |
 | payout_floor | bigint |  | true |  |  |  |
@@ -27,25 +27,35 @@
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | payout_donated | boolean | false | false |  |  |  |
 | upgrade_rank | text |  | true |  |  | Upgrade rank as the tooltip shows it ("2/6"); with the track it is the identity of the item in the queue (#865). Null on rows imported from the sheets. |
-| ah_fee | bigint |  | true |  |  | The auction house fee the game kept on the sale, whole gold: round(sale_price * 5 / 100), half away from zero (#861). Present iff sold/paid; finder_payout + guild_cut + ah_fee = sale_price by constraint. |
+| ah_fee | bigint |  | true |  |  | The auction house fee the game kept on the sale, whole gold: round(sale_price * 5 / 100), half away from zero (#861), and 0 on a guild member sale, which never went through the auction house (#1593). Present iff sold/paid; finder_payout + guild_cut + ah_fee = sale_price by constraint. |
 | finder_discord_id | text |  | true |  |  | Discord id of the signed-in account that submitted the find, stamped by submit_boe_found() and never client-supplied (#889); null for a signed-out submit. Backfilled from the player chain for rows whose player reached a member. |
 | found_posted_at | timestamp with time zone |  | true |  |  | When the BoE Found Discord post for this row was sent (#956). Claimed by boe-webhook through the service role and cleared again if Discord refuses the post; null means the row has never been announced. |
+| sale_channel | text |  | true |  |  | Who bought it: auction_house, or guild_member when a raider bought it from the guild (#1593). Present iff sold/paid. |
+| ah_price | bigint |  | true |  |  | On a guild member sale, what the item would have sold for on the auction house, as the officer entered it; what they paid and the finder's cut are figured from it (#1593). Null otherwise. |
+| buyer_name | text |  | true |  |  | On a guild member sale, who bought it, as the officer typed it with each run of whitespace folded to one space and the ends trimmed, at most 100 characters (#1593). Null otherwise. |
+| member_rate_pct | integer |  | true |  |  | On a guild member sale, the site's rate (site_settings.boe_member_rate_pct) when it was recorded (#1593). Null otherwise. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | boe_items_ah_fee_nonneg | CHECK | CHECK ((ah_fee >= 0)) |
+| boe_items_ah_price_positive | CHECK | CHECK ((ah_price > 0)) |
+| boe_items_buyer_name_shape | CHECK | CHECK (((buyer_name = btrim(regexp_replace(buyer_name, '\s+'::text, ' '::text, 'g'::text))) AND (buyer_name <> ''::text) AND (char_length(buyer_name) <= 100))) |
 | boe_items_finder_payout_nonneg | CHECK | CHECK ((finder_payout >= 0)) |
 | boe_items_floor_nonneg | CHECK | CHECK ((payout_floor >= 0)) |
 | boe_items_guild_cut_nonneg | CHECK | CHECK ((guild_cut >= 0)) |
-| boe_items_money_complete_when_sold | CHECK | CHECK (((status <> ALL (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NOT NULL) AND (finder_payout IS NOT NULL) AND (guild_cut IS NOT NULL) AND (ah_fee IS NOT NULL) AND (payout_floor IS NOT NULL) AND (payout_pivot IS NOT NULL)))) |
-| boe_items_money_only_when_sold | CHECK | CHECK (((status = ANY (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NULL) AND (finder_payout IS NULL) AND (guild_cut IS NULL) AND (ah_fee IS NULL) AND (payout_floor IS NULL) AND (payout_pivot IS NULL)))) |
+| boe_items_member_cols_only_for_member | CHECK | CHECK (((sale_channel = 'guild_member'::text) OR ((ah_price IS NULL) AND (buyer_name IS NULL) AND (member_rate_pct IS NULL)))) |
+| boe_items_member_rate_range | CHECK | CHECK (((member_rate_pct >= 1) AND (member_rate_pct <= 100))) |
+| boe_items_member_sale_shape | CHECK | CHECK (((sale_channel IS DISTINCT FROM 'guild_member'::text) OR ((ah_price IS NOT NULL) AND (buyer_name IS NOT NULL) AND (member_rate_pct IS NOT NULL) AND (ah_fee = 0) AND (sale_price = (((ah_price * member_rate_pct) / 100000) * 1000))))) |
+| boe_items_money_complete_when_sold | CHECK | CHECK (((status <> ALL (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NOT NULL) AND (finder_payout IS NOT NULL) AND (guild_cut IS NOT NULL) AND (ah_fee IS NOT NULL) AND (payout_floor IS NOT NULL) AND (payout_pivot IS NOT NULL) AND (sale_channel IS NOT NULL)))) |
+| boe_items_money_only_when_sold | CHECK | CHECK (((status = ANY (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NULL) AND (finder_payout IS NULL) AND (guild_cut IS NULL) AND (ah_fee IS NULL) AND (payout_floor IS NULL) AND (payout_pivot IS NULL) AND (sale_channel IS NULL) AND (ah_price IS NULL) AND (buyer_name IS NULL) AND (member_rate_pct IS NULL)))) |
 | boe_items_money_sums | CHECK | CHECK (((status <> ALL (ARRAY['sold'::text, 'paid'::text])) OR (((finder_payout + guild_cut) + ah_fee) = sale_price))) |
 | boe_items_paid_at_iff_paid | CHECK | CHECK (((status = 'paid'::text) = (payout_paid_at IS NOT NULL))) |
 | boe_items_payout_lte_sale | CHECK | CHECK ((finder_payout <= sale_price)) |
 | boe_items_pivot_positive | CHECK | CHECK ((payout_pivot > 0)) |
 | boe_items_retired_at_iff_retired | CHECK | CHECK (((status = 'retired'::text) = (retired_at IS NOT NULL))) |
+| boe_items_sale_channel_check | CHECK | CHECK ((sale_channel = ANY (ARRAY['auction_house'::text, 'guild_member'::text]))) |
 | boe_items_sale_price_nonneg | CHECK | CHECK ((sale_price >= 0)) |
 | boe_items_sold_at_iff_sold | CHECK | CHECK (((status = ANY (ARRAY['sold'::text, 'paid'::text])) = (sold_at IS NOT NULL))) |
 | boe_items_status_check | CHECK | CHECK ((status = ANY (ARRAY['found'::text, 'listed'::text, 'sold'::text, 'paid'::text, 'retired'::text]))) |
@@ -109,6 +119,10 @@ erDiagram
   bigint ah_fee
   text finder_discord_id
   timestamp_with_time_zone found_posted_at
+  text sale_channel
+  bigint ah_price
+  text buyer_name
+  integer member_rate_pct
 }
 "public.boe_listings" {
   integer id

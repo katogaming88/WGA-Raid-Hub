@@ -433,10 +433,14 @@ One row per found Bind-on-Equip, carrying the lifecycle (found -> listed -> sold
 | `sold_at`        | timestamptz | Set on sale                                                            |
 | `payout_paid_at` | timestamptz | Set when the finder is paid                                            |
 | `retired_at`     | timestamptz | Set on retire                                                          |
-| `sale_price`     | int8        | Gross sale in gold, present iff sold/paid                              |
-| `finder_payout`  | int8        | The finder's cut, present iff sold/paid; never more than the sale net of the fee (#861) |
+| `sale_price`     | int8        | What the buyer paid in gold: the gross auction house sale, or on a guild member sale `member_rate_pct` of `ah_price` rounded down to the nearest 1,000g, by constraint (#1593); present iff sold/paid |
+| `sale_channel`   | text        | CHECK auction_house/guild_member, present iff sold/paid (#1593)        |
+| `ah_price`       | int8        | On a guild member sale, what it would have sold for on the auction house, as the officer entered it; what they paid and the finder's cut are figured from it. Null otherwise (#1593) |
+| `buyer_name`     | text        | On a guild member sale, who bought it, trimmed, at most 100 characters. Null otherwise (#1593) |
+| `member_rate_pct` | int4       | On a guild member sale, the site's rate (`site_settings.boe_member_rate_pct`) when it was recorded. Null otherwise (#1593) |
+| `finder_payout`  | int8        | The finder's cut, present iff sold/paid; never more than the sale net of the fee (#861); on a guild member sale figured on `ah_price` (#1593) |
 | `guild_cut`      | int8        | `sale_price - ah_fee - finder_payout`, what the bank receives, present iff sold/paid (#861) |
-| `ah_fee`         | int8        | The game's fixed 5% auction house fee on the sale, whole gold, present iff sold/paid; `finder_payout + guild_cut + ah_fee = sale_price` by constraint (#861) |
+| `ah_fee`         | int8        | The game's fixed 5% auction house fee on the sale, whole gold, present iff sold/paid, 0 on a guild member sale (#1593); `finder_payout + guild_cut + ah_fee = sale_price` by constraint (#861) |
 | `payout_floor`   | int8        | Snapshot of the payout floor in force at sale                         |
 | `payout_pivot`   | int8        | Snapshot of the payout pivot in force at sale                         |
 | `payout_donated` | bool        | The finder's cut was, or is to be, kept by the guild (#862): the raider's intent at submit, the manager's decision at settle |

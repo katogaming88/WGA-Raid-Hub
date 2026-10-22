@@ -35,7 +35,8 @@ begin
       then 'listed' else 'found' end into v_new;
     update public.boe_items
     set status = v_new, sold_at = null, sale_price = null, finder_payout = null,
-        guild_cut = null, ah_fee = null, payout_floor = null, payout_pivot = null
+        guild_cut = null, ah_fee = null, payout_floor = null, payout_pivot = null,
+        sale_channel = null, ah_price = null, buyer_name = null, member_rate_pct = null
     where id = p_id;
   elsif v_status = 'listed' then
     if exists (select 1 from public.boe_listings l where l.boe_item_id = p_id) then

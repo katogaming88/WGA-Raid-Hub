@@ -215,6 +215,8 @@ export type Database = {
       boe_items: {
         Row: {
           ah_fee: number | null
+          ah_price: number | null
+          buyer_name: string | null
           created_at: string
           finder_discord_id: string | null
           finder_name: string | null
@@ -225,6 +227,7 @@ export type Database = {
           id: number
           item_id: number | null
           item_name: string
+          member_rate_pct: number | null
           note: string | null
           payout_donated: boolean
           payout_floor: number | null
@@ -232,6 +235,7 @@ export type Database = {
           payout_pivot: number | null
           player_id: number | null
           retired_at: string | null
+          sale_channel: string | null
           sale_price: number | null
           season: string | null
           sold_at: string | null
@@ -243,6 +247,8 @@ export type Database = {
         }
         Insert: {
           ah_fee?: number | null
+          ah_price?: number | null
+          buyer_name?: string | null
           created_at?: string
           finder_discord_id?: string | null
           finder_name?: string | null
@@ -253,6 +259,7 @@ export type Database = {
           id?: number
           item_id?: number | null
           item_name: string
+          member_rate_pct?: number | null
           note?: string | null
           payout_donated?: boolean
           payout_floor?: number | null
@@ -260,6 +267,7 @@ export type Database = {
           payout_pivot?: number | null
           player_id?: number | null
           retired_at?: string | null
+          sale_channel?: string | null
           sale_price?: number | null
           season?: string | null
           sold_at?: string | null
@@ -271,6 +279,8 @@ export type Database = {
         }
         Update: {
           ah_fee?: number | null
+          ah_price?: number | null
+          buyer_name?: string | null
           created_at?: string
           finder_discord_id?: string | null
           finder_name?: string | null
@@ -281,6 +291,7 @@ export type Database = {
           id?: number
           item_id?: number | null
           item_name?: string
+          member_rate_pct?: number | null
           note?: string | null
           payout_donated?: boolean
           payout_floor?: number | null
@@ -288,6 +299,7 @@ export type Database = {
           payout_pivot?: number | null
           player_id?: number | null
           retired_at?: string | null
+          sale_channel?: string | null
           sale_price?: number | null
           season?: string | null
           sold_at?: string | null
@@ -2703,6 +2715,7 @@ export type Database = {
       }
       site_settings: {
         Row: {
+          boe_member_rate_pct: number
           boe_payout_floor: number
           boe_payout_pivot: number
           gear_sync_last_cron_run: Json | null
@@ -2715,6 +2728,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          boe_member_rate_pct?: number
           boe_payout_floor?: number
           boe_payout_pivot?: number
           gear_sync_last_cron_run?: Json | null
@@ -2727,6 +2741,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          boe_member_rate_pct?: number
           boe_payout_floor?: number
           boe_payout_pivot?: number
           gear_sync_last_cron_run?: Json | null
@@ -4060,11 +4075,20 @@ export type Database = {
         Returns: undefined
       }
       boe_record_sale: {
-        Args: { p_id: number; p_sale_price: number; p_sold_at?: string }
+        Args: {
+          p_buyer_name?: string
+          p_id: number
+          p_sale_price: number
+          p_sold_at?: string
+        }
         Returns: {
           ah_fee: number
+          ah_price: number
+          buyer_name: string
           finder_payout: number
           guild_cut: number
+          member_rate_pct: number
+          sale_channel: string
           sale_price: number
         }[]
       }
@@ -4434,7 +4458,7 @@ export type Database = {
         Returns: number
       }
       set_boe_payout_settings: {
-        Args: { p_floor: number; p_pivot: number }
+        Args: { p_floor: number; p_member_rate_pct?: number; p_pivot: number }
         Returns: undefined
       }
       set_boss_group: {

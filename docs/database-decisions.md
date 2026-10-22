@@ -10,6 +10,24 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-21 -- a BoE sold to a guild member, with the finder's cut on the auction house price (#1593)
+
+Shipped: 20261021135050_boe_member_sale.sql
+
+Guild policy lets a raider buy a BoE from the guild for 60% of what it would sell for on the auction house, rounded down to the nearest 1,000g, and the finder still gets their cut. Until this shipped `boe_record_sale` knew only auction house sales, so the first one went in as an auction house sale with a fee nobody paid.
+
+- **The finder's cut is figured on the auction house price** (Russell, 2026-10-21): the cut an auction house sale would have paid, still never more than what came in, so the guild bank takes the whole discount. An item that would sell for 190,000 goes for 114,000: 38,000 to the finder and 76,000 to the bank. Figuring it on what was paid (22,800 and 91,200) was the other choice.
+- **The rate is a setting**, `site_settings.boe_member_rate_pct`, default 60 (Russell, 2026-10-21), beside the floor and pivot and written by the same `set_boe_payout_settings`, which takes it as an optional third argument so the admin page keeps working before it has a field for it (#1595). Each guild member sale applies it and copies it into `boe_items.member_rate_pct`, the way a sale copies the floor and pivot. The auction house fee stays a constant: it is the game's number, and the rate is the guild's.
+- **The officer enters the auction house price and the hub figures what they pay** (Russell, 2026-10-21): the rate of that price, rounded down to the nearest 1,000g, the guild taking the rounding along with the discount. `boe_record_sale(id, sale_price, sold_at, buyer_name)`: given a buyer, `sale_price` is what the item would have sold for on the auction house, stored as `ah_price`, and the row's `sale_price` is `ah_price * rate / 100000 * 1000` in whole-number arithmetic; the fee is 0, and the finder gets `least(paid, greatest(floor, round(ah_price * floor / pivot)))`. A price whose figure rounds to nothing (under 1,667g at 60%) is refused. Without a buyer nothing changes, and both BoE pages keep calling it with the id and the price. The first build took both prices as typed, with what was paid only checked against the auction house price; the policy is a rate and a rounding, so the hub applies both and no second typed number is left to check. The thousand is a constant in the function, like the fee, and becomes a setting only if the rounding changes.
+- **`sale_channel` is set on every sold or paid row**, `auction_house` or `guild_member`, and the migration names every earlier sale an auction house sale. There is no column default, which would have stamped found rows at insert. `boe_items_member_sale_shape` and `boe_items_member_cols_only_for_member` keep the buyer, the auction house price and the rate on guild member sales only, with no fee and `sale_price` equal to the figure above, so no guild member row can hold any other price, a hand correction included; a zero fee alone does not mark one, since an auction house sale under 10 gold rounds to a zero fee. `finder_payout + guild_cut + ah_fee = sale_price` still holds on every row.
+- **Undo Sale clears all four**, and the audit entry names the buyer, the rate and the auction house price.
+- **The buyer's name is read wherever the row is**: by the finder through their own-row read, by officers and BoE managers, and in the sold post to the BoE channel (#1594). No column-level rule hides it; a sale inside the guild is not private from the guild. The name is stored with each run of whitespace folded to one space, since a pasted tab or line break would split the audit line.
+- **A guild member sale recorded before this as an auction house sale** is corrected by hand through `boe_revert` (twice, when it is paid) and the new call, with the original sale date passed back in; each correction is recorded on #1593.
+
+[Full discussion -> #1593](https://github.com/katogaming88/WGA-Raid-Hub/issues/1593).
+
+---
+
 ## 2026-10-08 -- an approved main swap refuses an alt that is someone else's character (#1433)
 
 Shipped: 20261008153641_approved_swap_links_revived_row.sql
