@@ -959,6 +959,45 @@ const SETTINGS_LOOT_LEADER = {
   }
 };
 
+// Settings > Signups (#1342): the team leader with signups open for a season
+// starting in five days, so Close is live; the close confirm open over it.
+const dayFromNow = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const SETTINGS_SIGNUPS = {
+  session: OFFICER,
+  who: 'officer',
+  path: '/g/wga/t/phoenix/officer/settings/signups',
+  sentinel: 'main:has(.signup-settings-row) button:text("Close signups")',
+  person: SETTINGS_LOOT_LEADER.person,
+  tables: {
+    seasons: [
+      { code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-04-01', ends_at: dayFromNow(4) },
+      { code: 'MID3', display_name: 'Midnight Season 3', starts_at: dayFromNow(5), ends_at: null }
+    ],
+    team_seasons: [{ team_id: 1, season_code: 'MID3', signups_open: true }]
+  },
+  rpc: {
+    preview_signup_promotion: {
+      expected: 'abc123',
+      stays: [{ signup_id: 1, player_id: 1, name_realm: 'Katorrí-Stormrage' }],
+      joins: [{ signup_id: 2, name_realm: 'Brellik-Illidan' }],
+      swaps: [
+        { signup_id: 3, name_realm: 'Sorrelwind-Illidan', from_player_id: 7, from_name_realm: 'Sorrelmoon-Illidan' }
+      ],
+      first_mains: [{ signup_id: 5, name_realm: 'Yzuri-Illidan' }],
+      archives: [
+        { player_id: 8, name_realm: 'Quietone-Illidan' },
+        { player_id: 9, name_realm: 'Gonefishing-Illidan' }
+      ],
+      skipped: [{ signup_id: 4, name_realm: 'Twomains-Illidan', reason: 'several_characters' }]
+    }
+  }
+};
+const SETTINGS_SIGNUPS_CLOSE = {
+  ...SETTINGS_SIGNUPS,
+  click: 'button:text("Close signups")',
+  afterClick: 'role=dialog >> .close-signups-archive'
+};
+
 const SETTINGS_DANGER = {
   session: OFFICER,
   who: 'officer',
@@ -1542,6 +1581,9 @@ const STATES = [
   { label: 'settings loot, officer, light', ...SETTINGS_LOOT, colorScheme: 'light' },
   { label: 'settings loot, team leader', ...SETTINGS_LOOT_LEADER },
   { label: 'settings loot, team leader, light', ...SETTINGS_LOOT_LEADER, colorScheme: 'light' },
+  { label: 'settings signups, team leader', ...SETTINGS_SIGNUPS },
+  { label: 'settings signups, close confirm', ...SETTINGS_SIGNUPS_CLOSE },
+  { label: 'settings signups, close confirm, light', ...SETTINGS_SIGNUPS_CLOSE, colorScheme: 'light' },
   { label: 'settings danger zone, officer', ...SETTINGS_DANGER },
   { label: 'settings danger zone, officer, light', ...SETTINGS_DANGER, colorScheme: 'light' },
   { label: 'site admin, staff', ...SITE_ADMIN },
@@ -1684,6 +1726,23 @@ const STATES = [
     path: '/g/wga/t/phoenix/roster',
     sentinel: 'table.roster-table',
     tables: ROSTER,
+    click: 'role=tab[name="Midnight Season 4 Projected Roster"]'
+  },
+  {
+    label: 'roster, officer, next season tab with Trial and backup ticks',
+    path: '/g/wga/t/phoenix/roster',
+    sentinel: 'table.roster-table',
+    session: OFFICER,
+    who: 'officer',
+    tables: {
+      ...ROSTER,
+      season_signups: SCENARIO.incoming.map((r) => ({
+        id: r.signup_id,
+        is_trial: null,
+        is_backup_tank: false,
+        is_backup_healer: false
+      }))
+    },
     click: 'role=tab[name="Midnight Season 4 Projected Roster"]'
   },
   {

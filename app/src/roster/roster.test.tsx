@@ -263,8 +263,8 @@ describe('Roster page', () => {
     const next = screen.getByRole('tab', { name: 'Midnight Season 3 Projected Roster' });
     expect(next).toHaveAttribute('aria-selected', 'true');
     expect(next).toHaveFocus();
-    expect(screen.getByRole('heading', { name: '1 Pending Raider' })).toBeInTheDocument();
-    expect(screen.getByRole('table', { name: 'Next season’s projected roster' })).toHaveTextContent('Gloamwing');
+    expect(screen.getByRole('heading', { name: '1 signed up' })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Projected roster' })).toHaveTextContent('Gloamwing');
   });
 
   it('names the projected tab by the season name on file, whatever its code (#1388)', async () => {
@@ -643,5 +643,103 @@ describe('Roster page, Archived', () => {
     await screen.findByRole('table', { name: 'Current roster' });
     expect(screen.queryByRole('tab', { name: /Archived/ })).not.toBeInTheDocument();
     expect(client.reads.some((r) => r.filters.some(([op]) => op === 'not.is'))).toBe(false);
+  });
+});
+
+// Next season's Projected Roster (#1342): every signup, how it reads against
+// the current roster, and the officer's Trial, backup and Remove.
+describe('Projected Roster', () => {
+  const SIGNUPS = [
+    { signup_id: 1, signup_name_realm: 'Zuggz-Illidan', class: 'Warrior', spec: 'Arms', role: 'Melee' },
+    { signup_id: 2, signup_name_realm: 'Gloamwing-Illidan', class: 'Shaman', spec: 'Elemental', role: 'Ranged' },
+    {
+      signup_id: 3,
+      signup_name_realm: 'Sorrelwind-Illidan',
+      class: 'Druid',
+      spec: 'Restoration',
+      role: 'Heal',
+      swap_from_name_realm: 'Sorrelmoon-Illidan'
+    }
+  ];
+  const OPEN = [
+    { season_code: 'MID3', signups_open: true, seasons: { starts_at: '2099-01-01', display_name: 'Midnight Season 3' } }
+  ];
+  const handlers = (role: string | null, writes: unknown[] = []) => {
+    const base = rosterHandlers({
+      players: [
+        player(1, 'Zuggz-Illidan', 'Warrior', 'Arms', 'Melee'),
+        player(2, 'Sorrelmoon-Illidan', 'Druid', 'Restoration', 'Heal')
+      ],
+      incoming_roster: SIGNUPS,
+      team_seasons: OPEN,
+      season_signups: [
+        { id: 2, is_trial: null, is_backup_tank: false, is_backup_healer: false },
+        { id: 3, is_trial: false, is_backup_tank: false, is_backup_healer: true }
+      ]
+    });
+    if (role === null) return base;
+    return {
+      ...base,
+      session: fakeSession({ battlenet: 'X#1', discord: { id: 'd', name: 'X' } }),
+      rpc(name: string, args: Record<string, unknown>) {
+        if (name === 'current_discord_id') return { data: 'discord-x' };
+        if (name === 'resolve_person')
+          return {
+            data: {
+              site_admin: false,
+              guild_officer: false,
+              boe_manager: false,
+              teams: [{ team_id: 1, team_member_id: 1, role, characters: [] }]
+            }
+          };
+        return base.rpc!(name, args);
+      },
+      write(w: unknown) {
+        writes.push(w);
+        return { data: [{ id: 1 }] };
+      }
+    };
+  };
+  const openTab = async () =>
+    userEvent.click(await screen.findByRole('tab', { name: 'Midnight Season 3 Projected Roster' }));
+
+  it('marks who is new and who is changing character, for everyone', async () => {
+    renderApp('/g/wga/t/phoenix/roster', handlers(null));
+    await openTab();
+    const table = screen.getByRole('table', { name: 'Projected roster' });
+    const row = (name: RegExp) => within(table).getByRole('rowheader', { name }).closest('tr')!;
+    expect(row(/Gloamwing/)).toHaveTextContent('New');
+    expect(row(/Sorrelwind/)).toHaveTextContent('Changing from Sorrelmoon');
+    expect(row(/Zuggz/)).not.toHaveTextContent(/New|Changing/);
+    expect(within(table).queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(within(table).queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
+  });
+
+  it('lets an officer set Trial and the backup roles, an unset Trial reading as a trial', async () => {
+    const writes: unknown[] = [];
+    renderApp('/g/wga/t/phoenix/roster', handlers('officer', writes));
+    await openTab();
+    const trial = await screen.findByRole('checkbox', { name: 'Trial: Gloamwing' });
+    await expect.poll(() => (trial as HTMLInputElement).disabled).toBe(false);
+    expect(trial).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Trial: Sorrelwind' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Backup healer: Sorrelwind' })).toBeChecked();
+    // Staying on the same character keeps the roster row's own flags.
+    expect(screen.queryByRole('checkbox', { name: 'Trial: Zuggz' })).not.toBeInTheDocument();
+    await userEvent.click(trial);
+    await expect.poll(() => writes.length).toBe(1);
+    expect(writes[0]).toMatchObject({ table: 'season_signups', method: 'update', values: { is_trial: false } });
+  });
+
+  it('lets an officer remove a signup after confirming', async () => {
+    const writes: unknown[] = [];
+    renderApp('/g/wga/t/phoenix/roster', handlers('officer', writes));
+    await openTab();
+    const row = (await screen.findByRole('rowheader', { name: /Gloamwing/ })).closest('tr')!;
+    await userEvent.click(within(row).getByRole('button', { name: 'Remove' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Remove Gloamwing’s signup?' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Remove signup' }));
+    await expect.poll(() => writes.length).toBe(1);
+    expect(writes[0]).toMatchObject({ table: 'season_signups', method: 'update', values: { status: 'rejected' } });
   });
 });

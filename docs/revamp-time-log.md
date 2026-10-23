@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     36 h 14 m |
+| Revamp 3: officer dashboard        |     36 h 59 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **98 h 49 m** |
+| **All revamp work**                | **99 h 34 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -371,6 +371,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:35-12:50 PM | PR #1606 (#1467): fresh-agent review (one blocking item: a typed swap could archive another raider's character), the fix with red tests first, merged; #1607 filed for a Remove made while signups close | Revamp 3 (#1467) | 15 m | ~10 m build, ~5 m Kat | not read | Times approximate |
 | 12:50-1:00 PM | #1463 reworked with Kat: a first main is self-service, officers told in Discord, mistakes undone by an officer, swaps keep approval; closed rows taken off #1487; work goes in #1487's order | Revamp 3 (#1463) | 10 m | ~5 m build, ~5 m Kat deciding | not read | Times approximate |
 | 1:00-1:20 PM | #1342 part 1 built: Kat's answers (everyone sees the Projected Roster, close from 14 days out, signups close by themselves at season start archiving non-signers, edits on phones too); the public read lists waiting signups, closing refused before 14 days out (#648); #1608 filed for the automatic close; database tests red first, generated docs, decision log, stamp, changelog, these rows, PR opened | Revamp 3 (#1342) | 20 m | ~15 m build, ~5 m Kat deciding | not read | Part 2 (Settings › Signups and the Projected Roster tab) next. Review and merge not yet counted |
+| 1:20-1:45 PM | PR #1610 (#1342 part 1): wishlists for new mains filed as #1609; fresh-agent review, waiting signups narrowed to the team (Kat), a second review of that, security barrier; the cutover and #1517 notes corrected (Kat); the stalled browser check found (a slow Ubuntu mirror) and re-run; merged | Revamp 3 (#1342) | 25 m | ~15 m build, ~10 m Kat | not read | Times approximate |
+| 1:45-2:05 PM | #1342 part 2 built: Settings › Signups (open, close from two weeks out, the close confirm by name with a tick per non-signer) and the Projected Roster tab (New and Changing from, officer Trial and backup ticks, Remove); tests, browser accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1342) | 20 m | ~20 m build | not read | Screenshots and Kat's design review not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
