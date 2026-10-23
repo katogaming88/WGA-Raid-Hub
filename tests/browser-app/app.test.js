@@ -1020,6 +1020,34 @@ const IMPORT_LOOT = {
   }
 };
 
+// Reviews (#1363): one item waiting, one approved and one rejected with a
+// reason, so both decision colors are measured in each theme.
+const LOOT_REVIEWS = {
+  session: OFFICER,
+  who: 'officer',
+  path: '/g/wga/t/phoenix/officer/reviews',
+  sentinel: 'main:has(.loot-review-rejected)',
+  tables: {
+    self_received_requests: [
+      ['pending', null],
+      ['approved', null],
+      ['rejected', 'Not on your wishlist']
+    ].map(([status, officer_notes], i) => ({
+      id: i + 1,
+      status,
+      track: 'Hero',
+      source: 'Great Vault',
+      note: i === 0 ? 'From the vault this week' : null,
+      officer_notes,
+      slot: null,
+      submitted_at: '2026-10-20T02:00:00Z',
+      player_id: 5,
+      players: { name_realm: 'Torbjorn-Illidan', classes_specs: { class: 'Warrior' } },
+      items: { name: `Item ${i + 1}`, slot: 'Waist', wow_item_id: null, is_ptr: null, icon: null }
+    }))
+  }
+};
+
 // Audit log (#1358, #1103 row 1): one entry with no target (Trial Thresholds
 // Set) and one naming a player (Roster Targets Set), so both the actor-name
 // and target-name resolution are on the page axe measures.
@@ -1489,6 +1517,8 @@ const STATES = [
   { label: 'site admin, staff, light', ...SITE_ADMIN, colorScheme: 'light' },
   { label: 'import loot, officer', ...IMPORT_LOOT },
   { label: 'import loot, officer, light', ...IMPORT_LOOT, colorScheme: 'light' },
+  { label: 'loot reviews, officer', ...LOOT_REVIEWS },
+  { label: 'loot reviews, officer, light', ...LOOT_REVIEWS, colorScheme: 'light' },
   { label: 'settings audit log, officer', ...SETTINGS_AUDIT_LOG },
   { label: 'settings audit log, officer, light', ...SETTINGS_AUDIT_LOG, colorScheme: 'light' },
   {

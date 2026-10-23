@@ -38,6 +38,9 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 // current_season() reads.
 export const easternToday = (): string => EASTERN_ISO.format(new Date());
 
+// The Eastern date (YYYY-MM-DD) an instant falls on, for matching it to a season.
+export const easternDate = (instant: string): string => EASTERN_ISO.format(new Date(instant));
+
 // "Aug 27, 2026" for an award or received-at instant, on Eastern time.
 export const awardDate = (instant: string): string => AWARD.format(new Date(instant));
 

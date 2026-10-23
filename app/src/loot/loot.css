@@ -49,3 +49,138 @@
   padding-left: var(--space-3);
   color: var(--text-muted);
 }
+
+.loot-review-list,
+.loot-review-groups {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.loot-review {
+  border-bottom: 1px solid var(--border);
+  padding: var(--space-1) 0;
+}
+
+.loot-review:last-child {
+  border-bottom: 0;
+}
+
+/* One line per request; columns line up row to row, and wrap on a phone. */
+.loot-review-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+
+.loot-review-who {
+  flex: 0 0 8rem;
+}
+
+/* A row, so the slot centers on the name beside an icon instead of sitting
+   on the icon's baseline. */
+.loot-review-item {
+  flex: 1 1 16rem;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.loot-review-source {
+  flex: 0 0 11rem;
+}
+
+.loot-review-when {
+  flex: 0 0 6.5rem;
+}
+
+.loot-review-status {
+  flex: 0 0 5.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.loot-review-approved {
+  color: var(--good);
+}
+
+.loot-review-rejected {
+  color: var(--bad);
+}
+
+.loot-review-actions {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.loot-review-note {
+  margin: 2px 0 0;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+}
+
+/* Each raider is a band of its own, so their name reads as a heading over
+   their items rather than another row (Kat, 2026-10-22). */
+.loot-review-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.loot-review-groups summary {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3);
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.loot-review-groups summary:hover {
+  border-color: var(--border-strong);
+}
+
+.loot-review-groups summary strong {
+  font-size: 1.1rem;
+}
+
+.loot-review-groups summary::-webkit-details-marker {
+  display: none;
+}
+
+.loot-review-groups summary::before {
+  content: '▸';
+  color: var(--text-muted);
+}
+
+.loot-review-groups details[open] > summary::before {
+  content: '▾';
+}
+
+.loot-review-groups .loot-review-list {
+  margin: var(--space-1) 0 var(--space-2) var(--space-3);
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--border-strong);
+}
+
+@media (max-width: 640px) {
+  .loot-review-who,
+  .loot-review-source,
+  .loot-review-when,
+  .loot-review-status {
+    flex-basis: auto;
+  }
+}
+
+/* Outside a card, a select would otherwise fill the page's width. */
+.loot-season-row .select {
+  width: auto;
+}
