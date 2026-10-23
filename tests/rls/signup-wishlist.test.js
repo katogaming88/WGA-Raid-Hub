@@ -4,7 +4,7 @@
 // the signup: the team leader closing signups, an officer's single add, or the
 // automatic close (#1608).
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedMember, seedPlayer, OFFICER_T1, RAIDER_T1, RLS_DENIED } from './helpers.js';
+import { pool, withTxn, seedMember, seedPlayer, OFFICER_T1, RAIDER_T1, RAIDER_T2, RLS_DENIED } from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -73,11 +73,49 @@ describe('signup wishlist (#1609)', () => {
     });
   });
 
-  it('refuses a write while the season wishlist is closed', async () => {
-    await withTxn(async ({ q, asUser }) => {
-      await nextSeason(q, { wishlistOpen: false });
+  it("leaves the signer's row alone for anyone else: signed out, another team, another raider", async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      await nextSeason(q);
       const me = await signedUp(q);
-      await expect(mark(asUser, me.uid, me.signupId, await anItem(q))).rejects.toThrow(/wishlist editing is not open/);
+      const id = (await mark(asUser, me.uid, me.signupId, await anItem(q))).rows[0].id;
+      const before = await rowsOf(q, me.signupId);
+
+      // Signed out: no access to the table at all.
+      await expect(asAnon('select * from public.signup_item_preferences')).rejects.toMatchObject({ code: RLS_DENIED });
+      await expect(
+        asAnon("update public.signup_item_preferences set status = 'pass' where id = $1", [id])
+      ).rejects.toMatchObject({ code: RLS_DENIED });
+
+      // A raider on another team, and another raider on this one: nothing to
+      // read, and an update or delete reaches no row.
+      for (const uid of [RAIDER_T2, RAIDER_T1]) {
+        expect((await asUser(uid, 'select * from public.signup_item_preferences')).rows).toEqual([]);
+        await expect(mark(asUser, uid, me.signupId, await anItem(q, 1))).rejects.toMatchObject({ code: RLS_DENIED });
+        await asUser(uid, "update public.signup_item_preferences set status = 'pass', note = 'x' where id = $1", [id]);
+        await asUser(uid, 'delete from public.signup_item_preferences where id = $1', [id]);
+      }
+      expect(await rowsOf(q, me.signupId)).toEqual(before);
+    });
+  });
+
+  it('refuses an insert, update or delete while the season wishlist is closed', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await nextSeason(q);
+      const me = await signedUp(q);
+      const id = (await mark(asUser, me.uid, me.signupId, await anItem(q))).rows[0].id;
+      await q('update public.team_seasons set wishlist_open = false where team_id = 1 and season_code = $1', [SEASON]);
+      const before = await rowsOf(q, me.signupId);
+
+      await expect(mark(asUser, me.uid, me.signupId, await anItem(q, 1))).rejects.toThrow(
+        /wishlist editing is not open/
+      );
+      await expect(
+        asUser(me.uid, "update public.signup_item_preferences set status = 'pass' where id = $1", [id])
+      ).rejects.toThrow(/wishlist editing is not open/);
+      await expect(asUser(me.uid, 'delete from public.signup_item_preferences where id = $1', [id])).rejects.toThrow(
+        /wishlist editing is not open/
+      );
+      expect(await rowsOf(q, me.signupId)).toEqual(before);
     });
   });
 
