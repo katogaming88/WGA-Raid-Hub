@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     36 h 59 m |
+| Revamp 3: officer dashboard        |     37 h 40 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **99 h 34 m** |
+| **All revamp work**                | **100 h 15 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -373,6 +373,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 1:00-1:20 PM | #1342 part 1 built: Kat's answers (everyone sees the Projected Roster, close from 14 days out, signups close by themselves at season start archiving non-signers, edits on phones too); the public read lists waiting signups, closing refused before 14 days out (#648); #1608 filed for the automatic close; database tests red first, generated docs, decision log, stamp, changelog, these rows, PR opened | Revamp 3 (#1342) | 20 m | ~15 m build, ~5 m Kat deciding | not read | Part 2 (Settings › Signups and the Projected Roster tab) next. Review and merge not yet counted |
 | 1:20-1:45 PM | PR #1610 (#1342 part 1): wishlists for new mains filed as #1609; fresh-agent review, waiting signups narrowed to the team (Kat), a second review of that, security barrier; the cutover and #1517 notes corrected (Kat); the stalled browser check found (a slow Ubuntu mirror) and re-run; merged | Revamp 3 (#1342) | 25 m | ~15 m build, ~10 m Kat | not read | Times approximate |
 | 1:45-2:05 PM | #1342 part 2 built: Settings › Signups (open, close from two weeks out, the close confirm by name with a tick per non-signer) and the Projected Roster tab (New and Changing from, officer Trial and backup ticks, Remove); tests, browser accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1342) | 20 m | ~20 m build | not read | Screenshots and Kat's design review not yet counted |
+| 3:44-4:04 PM | #1609 reopened (#1611's body said "close: #1609", which GitHub closed on merge); built: signup_item_preferences, edited by the signer while the season's wishlist is open, moved onto the roster character when the signup is added and dropped when it is turned down or changes character; database tests red first, generated docs, decision log; a first editor on the Sign up page, which Kat moved to the profile | Revamp 3 (#1609) | 20 m | ~17 m build, ~3 m Kat deciding | not read | |
+| 4:04-4:25 PM | My profile for the signed-up character (Kat's asks mid-build): a switch beside the roster character, or the whole profile for someone new; the full profile rather than only the wishlist; attendance and join date are the Member's; tests, stamp, changelog, these rows, PR opened | Revamp 3 (#1609) | 21 m | ~16 m build, ~5 m Kat deciding | not read | Fresh-agent review, screenshots, review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
