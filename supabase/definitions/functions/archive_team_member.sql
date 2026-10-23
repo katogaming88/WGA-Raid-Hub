@@ -22,9 +22,9 @@ begin
     raise exception 'Not authorized';
   end if;
 
-  -- The same six player_officer_notes.archived_reason accepts.
+  -- The same seven player_officer_notes.archived_reason accepts.
   if p_reason is null or p_reason not in
-     ('schedule_conflict', 'performance', 'drama', 'moved_guilds', 'switching_mains', 'other') then
+     ('schedule_conflict', 'performance', 'drama', 'moved_guilds', 'switching_mains', 'other', 'no_signup') then
     raise exception 'That is not one of the reasons a membership can be archived for';
   end if;
 

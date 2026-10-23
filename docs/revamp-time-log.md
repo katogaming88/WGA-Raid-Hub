@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     34 h 53 m |
+| Revamp 3: officer dashboard        |     35 h 29 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **97 h 28 m** |
+| **All revamp work**                |  **98 h 4 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -366,6 +366,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:13-11:35 AM | #1602 built: slot tabs on the Priority item list in character sheet order (Kat's answers: Head first, tokens under the slot they give), search across every slot, tab marks for Needs a look and Not saved; Kat's asks mid-build: the same tabs on Unmanaged (with a boss filter) and Notes, and an All tab once a boss is picked; Reviews limited to the active roster (Kat's comment on #1602); tests, browser accessibility states, stamp, changelog, these rows, PR opened, screenshots | Revamp 3 (#1602) | 22 m | ~17 m build, ~5 m Kat deciding | not read | Phone layout left open; no database change. Review and merge not yet counted |
 | 11:35-11:41 AM | PR #1604 (#1602) reviewed and merged; the build order on #1487 updated (#1363 off, #858, #1365, #1564 and #1442 follow) | Revamp 3 (#1602) | 6 m | ~3 m Kat reviewing, ~3 m build | not read | Merged 11:38 AM |
 | 11:41-11:58 AM | #1465 built: season signups record the person and their saved character, one per person per team per tier, declare_season_signup() for the coming tier only, add_signup_to_roster() links the character to the signer, the officer's Trial and backup flags; database tests red first, generated docs, decision log, stamp, changelog, these rows, PR opened | Revamp 3 (#1465) | 17 m | ~14 m build, ~3 m Kat deciding | not read | Kat: no approval step in the new app; signups only for the coming tier. Rex had #1465 assigned and had not started. Review and merge not yet counted |
+| 11:58 AM-12:18 PM | PR #1605 (#1465): fresh-agent review, the fix it asked for (the add checks the character again before linking it), merged | Revamp 3 (#1465) | 20 m | ~10 m build, ~10 m Kat reviewing | not read | Merged 12:18 PM. Times from the git history |
+| 12:19-12:35 PM | #1467 built: preview_signup_promotion() and promote_season_signups() (who stays, joins, swaps, starts a first main, is skipped, and which characters nobody signed up for; one transaction, refuses a stale preview), the "Did not sign up" reason everywhere, lock order written out and tested; database tests, generated docs, decision log, stamp, changelog, these rows, PR opened | Revamp 3 (#1467) | 16 m | ~16 m build | not read | No page calls these yet (#1342). Fresh-agent review, then review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
