@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.196.0] - 2026-10-23
+
+### Project
+
+- New app: officers can review the items raiders say they got outside
+  the team's raids. Officer › Loot › Reviews lists them by season, the
+  current one first. Waiting for review has Approve and Reject (with an
+  optional reason the raider sees). Decided folds into one line per
+  raider, in their class color, with their items under it; one raider
+  opens at a time, and a search opens every raider it finds. Each
+  decided item can go back to waiting or be deleted. The raider is told
+  of each decision and the audit log records it, as on the current
+  site. A request's season is the one current on the day it was sent.
+
 ## [3.195.0] - 2026-10-22
 
 ### Project

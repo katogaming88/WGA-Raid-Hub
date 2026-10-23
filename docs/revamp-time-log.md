@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     31 h 49 m |
+| Revamp 3: officer dashboard        |     32 h 48 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **94 h 24 m** |
+| **All revamp work**                | **95 h 23 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -349,6 +349,15 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 10:56-10:58 PM | What next: which unbuilt pages need no database change; #1363 picked | Revamp 3 (#1363) | 2 m | ~2 m build | not read | M+ exclusions left out of Reviews, since #1532 removes them |
 | 10:58-11:10 PM | #1363 part 1 built: Officer › Loot › Import, the paste form and Past imports by season, tests, browser accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1363) | 12 m | ~12 m build | not read | Reviews and Reassign follow as parts 2 and 3. Review and merge not yet counted |
+| 11:10-11:48 PM | PR #1600 (#1363 part 1): a local sign-in link for Kat, the browser check re-run (the #1308 calendar flake), review and merge | Revamp 3 (#1363) | 38 m | ~3 m build, ~35 m Kat | not read | Merged 11:48 PM |
+| 11:49-11:55 PM | #1363 part 2 built: Officer › Loot › Reviews, approve, reject with a reason, back to waiting, delete, the raider told and the audit log written, tests, browser accessibility states | Revamp 3 (#1363) | 6 m | ~6 m build | not read | M+ exclusions left out (#1532) |
+| 11:55 PM-12:02 AM | Reviews reworked from Kat's localhost testing: decided grouped by raider in class colors as header bands, one raider open at a time with the clicked header kept in place, item and slot lined up, the whole page by season (picked from the date each request was sent) | Revamp 3 (#1363) | 7 m | ~4 m build, ~3 m Kat | not read | |
+
+### 2026-10-23
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 12:02-12:10 AM | #1363 part 2: stamp, changelog, these rows, checks, PR opened, screenshots | Revamp 3 (#1363) | 8 m | ~8 m build | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
