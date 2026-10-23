@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.198.0] - 2026-10-23
+
+### Project
+
+- New app: the Priority page goes one slot at a time. Slot tabs over
+  the item list follow the in-game character sheet (Head, Neck,
+  Shoulder, Back, Chest, Wrist, Hands, Waist, Legs, Feet, Finger,
+  Trinket, Weapon, Off Hand), Head first; a tier token sits under the
+  slot of the piece it gives, and a curio under Other. A tab marks a
+  slot with an item that needs a look or isn't saved. Picking a boss
+  narrows the tabs to what it drops and adds an All tab that shows all
+  of that boss's items at once. Search still finds any item across
+  every slot. Unmanaged (with its own boss filter) and Notes use the
+  same tabs.
+- New app: Reviews shows only raiders on the team's active roster. An
+  archived character, or one who has left the team, drops off.
+
 ## [3.197.0] - 2026-10-23
 
 ### Project

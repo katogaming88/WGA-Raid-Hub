@@ -606,6 +606,10 @@
   display: grid;
   gap: var(--space-3);
 }
+.priority-notes-items {
+  display: grid;
+  gap: var(--space-3);
+}
 .priority-notes-search {
   max-width: 20rem;
 }
@@ -732,4 +736,60 @@
 .priority-scoring-table .priority-score-input {
   width: 6rem;
   min-height: 30px;
+}
+
+/* The slot tabs (#1602), wrapping in the list's narrow column so every slot
+   shows at once, styled like the wishlist editor's. */
+.priority-slot-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.75rem, 1fr));
+  gap: 2px;
+  padding: 2px;
+  border-radius: 7px;
+  background: var(--sidebar);
+  border: 1px solid var(--border);
+}
+
+.priority-slot-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.priority-slot-tab:hover {
+  color: var(--text);
+}
+
+.priority-slot-tab[aria-selected='true'] {
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+
+.priority-slot-tab .priority-dot {
+  margin-left: 0;
+}
+
+/* Not saved: a hollow ring in the warning color beside the name. */
+.priority-slot-unsaved {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--warn);
+}
+
+.priority-unmanaged-filters {
+  max-width: 20rem;
 }

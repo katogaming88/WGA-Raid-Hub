@@ -1042,7 +1042,7 @@ const LOOT_REVIEWS = {
       slot: null,
       submitted_at: '2026-10-20T02:00:00Z',
       player_id: 5,
-      players: { name_realm: 'Torbjorn-Illidan', classes_specs: { class: 'Warrior' } },
+      players: { name_realm: 'Torbjorn-Illidan', team_id: 1, archived_at: null, classes_specs: { class: 'Warrior' } },
       items: { name: `Item ${i + 1}`, slot: 'Waist', wow_item_id: null, is_ptr: null, icon: null }
     }))
   }

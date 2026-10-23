@@ -56,18 +56,32 @@ const norm = (s: string) =>
     .toLowerCase()
     .trim();
 
-// The current site's slot groups (getItemGroup()), in its order.
-const ARMOR_SLOTS = ['Head', 'Shoulder', 'Chest', 'Hands', 'Legs', 'Back', 'Wrist', 'Waist', 'Feet'];
-const WEAPON_SLOTS = new Set(['One-Hand', 'Two-Hand', 'Ranged', 'Off Hand', 'Held In Off-hand']);
-const JEWELRY_SLOTS = new Set(['Neck', 'Finger']);
-const SECTION_ORDER = ['Trinkets', ...ARMOR_SLOTS, 'Weapons', 'Jewelry', 'Other'];
+// The slot tabs, in the in-game character sheet's order (Kat, 2026-10-23),
+// Head first. A tier token's catalog slot is the piece it gives, so tokens
+// sort with that piece; a curio, which gives any, goes under Other.
+export const SLOT_TABS = [
+  'Head',
+  'Neck',
+  'Shoulder',
+  'Back',
+  'Chest',
+  'Wrist',
+  'Hands',
+  'Waist',
+  'Legs',
+  'Feet',
+  'Finger',
+  'Trinket',
+  'Weapon',
+  'Off Hand',
+  'Other'
+];
+const WEAPONS = new Set(['One-Hand', 'Two-Hand', 'Ranged']);
 
-function sectionOf(slot: string): string {
-  if (slot === 'Trinket') return 'Trinkets';
-  if (ARMOR_SLOTS.includes(slot)) return slot;
-  if (WEAPON_SLOTS.has(slot)) return 'Weapons';
-  if (JEWELRY_SLOTS.has(slot)) return 'Jewelry';
-  return 'Other';
+export function slotTab(slot: string): string {
+  if (WEAPONS.has(slot)) return 'Weapon';
+  if (slot === 'Held In Off-hand') return 'Off Hand';
+  return SLOT_TABS.includes(slot) ? slot : 'Other';
 }
 
 export type PriorityItem = {
@@ -124,9 +138,9 @@ export function sections(items: PriorityItem[], filters: Filters): Section[] {
       (!filters.boss || i.boss === filters.boss) &&
       (!filters.hideEmpty || i.ranked.length > 0)
   );
-  return SECTION_ORDER.map((label) => ({
+  return SLOT_TABS.map((label) => ({
     label,
-    items: shown.filter((i) => sectionOf(i.slot) === label).sort((a, b) => a.name.localeCompare(b.name))
+    items: shown.filter((i) => slotTab(i.slot) === label).sort((a, b) => a.name.localeCompare(b.name))
   })).filter((s) => s.items.length > 0);
 }
 

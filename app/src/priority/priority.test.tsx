@@ -28,6 +28,7 @@ import {
   priorityItems,
   rankedRows,
   sections,
+  slotTab,
   showOutOf100,
   sidegradeNames,
   sortScores,
@@ -301,12 +302,23 @@ describe('priority list', () => {
 
   it('groups by slot in the current order and filters by name, boss and empty', () => {
     const all = { search: '', boss: '', hideEmpty: false };
-    expect(sections(items, all).map((s) => s.label)).toEqual(['Back', 'Jewelry']);
+    expect(sections(items, all).map((s) => s.label)).toEqual(['Neck', 'Back', 'Finger']);
     expect(sections(items, { ...all, search: 'AMULET' })[0]!.items.map((i) => i.itemId)).toEqual([3]);
     expect(sections(items, { ...all, boss: 'The Coiled Altar' }).flatMap((s) => s.items.map((i) => i.itemId))).toEqual([
       1
     ]);
-    expect(sections(items, { ...all, hideEmpty: true }).flatMap((s) => s.items.map((i) => i.itemId))).toEqual([1, 3]);
+    expect(sections(items, { ...all, hideEmpty: true }).flatMap((s) => s.items.map((i) => i.itemId))).toEqual([3, 1]);
+  });
+
+  it('puts every catalog slot under its character sheet tab', () => {
+    expect(['Head', 'Two-Hand', 'Ranged', 'Held In Off-hand', 'Finger', 'Curio'].map(slotTab)).toEqual([
+      'Head',
+      'Weapon',
+      'Weapon',
+      'Off Hand',
+      'Finger',
+      'Other'
+    ]);
   });
 
   it('orders the bosses by kill order, then any the setting does not list', () => {
@@ -581,7 +593,19 @@ describe('Loot priority page', () => {
     expect(screen.getByText('Midnight Season 2')).toBeInTheDocument();
 
     const list = screen.getByRole('navigation', { name: 'Items' });
+    // One slot at a time (#1602), in character sheet order; Head has nothing
+    // here, so the first slot with items opens.
+    expect(
+      within(list)
+        .getAllByRole('tab')
+        .map((t) => t.textContent)
+    ).toEqual(['Neck', 'Back', 'Finger']);
+    expect(within(list).getByRole('tab', { name: 'Neck' })).toHaveAttribute('aria-selected', 'true');
+    await userEvent.click(within(list).getByRole('tab', { name: 'Finger' }));
     expect(within(list).getByRole('button', { name: "Vile Alchemist's Band, Nobody ranked" })).toBeInTheDocument();
+    expect(within(list).queryByRole('button', { name: /Silken Voodoo Drape/ })).not.toBeInTheDocument();
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(within(list).getByRole('tab', { name: 'Back' })).toHaveFocus();
     await userEvent.click(within(list).getByRole('button', { name: 'Silken Voodoo Drape, #1 Katorrí · 3' }));
 
     const ranks = screen.getByRole('list', { name: 'Silken Voodoo Drape, Heroic order' });
@@ -593,6 +617,41 @@ describe('Loot priority page', () => {
     expect(rows[1]).not.toHaveTextContent('Has BiS');
     expect(rows[2]).toHaveTextContent('Left the roster');
     expect(router.state.location.search).toBe('?item=1');
+  });
+
+  it('searches across every slot, and narrows the tabs to a boss', async () => {
+    renderApp(PAGE, handlers(TABLES));
+    const list = await screen.findByRole('navigation', { name: 'Items' });
+    await userEvent.type(within(list).getByLabelText('Search items'), 'amulet');
+    expect(within(list).queryByRole('tablist')).not.toBeInTheDocument();
+    expect(within(list).getByRole('button', { name: /Amulet of the Twin Fangs/ })).toBeInTheDocument();
+    await userEvent.clear(within(list).getByLabelText('Search items'));
+    await userEvent.selectOptions(within(list).getByLabelText('Boss'), 'The Coiled Altar');
+    expect(
+      within(list)
+        .getAllByRole('tab')
+        .map((t) => t.textContent)
+    ).toEqual(['Back']);
+  });
+
+  it("shows all of a boss's items at once on the All tab", async () => {
+    renderApp(PAGE, handlers({ ...TABLES, item_bosses: [...DATA.bosses, { item_id: 3, boss: 'The Coiled Altar' }] }));
+    const list = await screen.findByRole('navigation', { name: 'Items' });
+    const tabs = () =>
+      within(list)
+        .getAllByRole('tab')
+        .map((t) => t.textContent);
+    expect(tabs()).not.toContain('All');
+    await userEvent.selectOptions(within(list).getByLabelText('Boss'), 'The Coiled Altar');
+    expect(tabs()).toEqual(['All', 'Neck', 'Back']);
+    await userEvent.click(within(list).getByRole('tab', { name: 'All' }));
+    expect(
+      within(list)
+        .getAllByRole('heading')
+        .map((h) => h.textContent)
+    ).toEqual(['Neck', 'Back']);
+    expect(within(list).getByRole('button', { name: /Amulet of the Twin Fangs/ })).toBeInTheDocument();
+    expect(within(list).getByRole('button', { name: /Silken Voodoo Drape/ })).toBeInTheDocument();
   });
 
   it('makes the string for the track on screen, and drops it when the track changes', async () => {
@@ -669,7 +728,10 @@ describe('Loot priority page', () => {
     expect(rows[1]).toHaveTextContent('was #1');
 
     const list = screen.getByRole('navigation', { name: 'Items' });
+    expect(within(list).getByRole('tab', { name: 'Back, not saved' })).toHaveAttribute('aria-selected', 'true');
+    await userEvent.click(within(list).getByRole('tab', { name: 'Neck' }));
     await userEvent.click(within(list).getByRole('button', { name: /Amulet of the Twin Fangs/ }));
+    await userEvent.click(within(list).getByRole('tab', { name: 'Back, not saved' }));
     expect(within(list).getByRole('button', { name: /Silken Voodoo Drape/ })).toHaveTextContent('Not saved');
     await userEvent.click(within(list).getByRole('button', { name: /Silken Voodoo Drape/ }));
     rows = within(order()).getAllByRole('listitem');
@@ -712,6 +774,7 @@ describe('Loot priority page', () => {
     renderApp(PAGE, handlers(tables));
     expect(await screen.findByRole('heading', { name: 'Needs a look (2)' })).toBeInTheDocument();
     const list = screen.getByRole('navigation', { name: 'Items' });
+    await userEvent.click(within(list).getByRole('tab', { name: 'Back, needs a look' }));
     expect(within(list).getByRole('button', { name: /Silken Voodoo Drape.*Needs a look/ })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Drape of the Dreadful Rite' }));
     expect(screen.getByRole('list', { name: 'Drape of the Dreadful Rite, Heroic order' })).toHaveTextContent(
@@ -898,7 +961,12 @@ describe('Loot priority page', () => {
     const { client, router } = renderApp(PAGE, handlers(TABLES));
     await userEvent.click(await screen.findByRole('link', { name: 'Unmanaged, 3' }));
     expect(screen.getByText('3 items have no order saved on one track or both.')).toBeInTheDocument();
-    expect(screen.getByText('No order on either track')).toBeInTheDocument();
+    // By slot (Neck opens first here), or by boss then slot.
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Neck', 'Back', 'Finger']);
+    await userEvent.selectOptions(screen.getByLabelText('Boss'), 'The Twin Fangs');
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Neck']);
+    await userEvent.selectOptions(screen.getByLabelText('Boss'), '');
+    expect(screen.getByRole('tab', { name: 'Neck' })).toHaveAttribute('aria-selected', 'true');
     await userEvent.click(screen.getByRole('button', { name: 'Set Mythic for Amulet of the Twin Fangs' }));
     expect(await screen.findByRole('heading', { name: 'Amulet of the Twin Fangs' })).toBeInTheDocument();
     expect(client.rpcs).toContainEqual([

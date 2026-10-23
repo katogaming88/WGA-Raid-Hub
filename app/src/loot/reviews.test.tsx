@@ -22,7 +22,7 @@ const row = (over: Partial<ReviewRow>): ReviewRow => ({
   slot: null,
   submitted_at: '2026-10-20T02:00:00Z',
   player_id: 5,
-  players: { name_realm: 'Katorrí-Stormrage', classes_specs: { class: 'Warlock' } },
+  players: { name_realm: 'Katorrí-Stormrage', team_id: 1, archived_at: null, classes_specs: { class: 'Warlock' } },
   items: { name: 'Voidbound Cinch', slot: 'Waist', wow_item_id: null, is_ptr: null, icon: null },
   ...over
 });
@@ -162,6 +162,34 @@ describe('Reviews page', () => {
     expect(client.rpcs).toContainEqual(['delete_self_received_request', { p_id: 1 }]);
   });
 
+  it('leaves out archived characters and raiders gone from the team', async () => {
+    renderApp(
+      PATH,
+      handlers([
+        row({ id: 1 }),
+        row({
+          id: 2,
+          player_id: 6,
+          players: {
+            name_realm: 'Archived-Illidan',
+            team_id: 1,
+            archived_at: '2026-10-01T00:00:00Z',
+            classes_specs: null
+          }
+        }),
+        row({
+          id: 3,
+          player_id: 7,
+          players: { name_realm: 'Moved-Illidan', team_id: 2, archived_at: null, classes_specs: null }
+        }),
+        row({ id: 4, player_id: null, players: null })
+      ])
+    );
+    expect(await screen.findByText('1 waiting.', { exact: false })).toBeInTheDocument();
+    expect(screen.queryByText('Archived')).not.toBeInTheDocument();
+    expect(screen.queryByText('Moved')).not.toBeInTheDocument();
+  });
+
   it('shows a guild officer from another team the list without buttons', async () => {
     renderApp(PATH, handlers([row({})], person(null, true)));
     expect(await screen.findByText('Voidbound Cinch')).toBeInTheDocument();
@@ -179,7 +207,7 @@ describe('Reviews page', () => {
             status: 'approved',
             submitted_at: '2025-12-01T02:00:00Z',
             player_id: 6,
-            players: { name_realm: 'Oldtimer-Illidan', classes_specs: null },
+            players: { name_realm: 'Oldtimer-Illidan', team_id: 1, archived_at: null, classes_specs: null },
             items: { name: 'Old Ring', slot: 'Finger', wow_item_id: null, is_ptr: null, icon: null }
           })
         ],
