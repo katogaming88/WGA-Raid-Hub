@@ -133,12 +133,32 @@ export function useMplusRefusal(teamId: number, playerId: number, enabled: boole
 
 // A raider reads only their own wishlist and receipts; officers read the team's.
 export function useWishlist(playerId: number) {
-  return useSupabaseQuery<Pick[]>(['wishlist', playerId], (client) =>
-    client
-      .from('item_preferences')
-      .select('id, item_id, status, slot, season, synced_bis, note')
-      .eq('player_id', playerId)
-  );
+  return useWishlistOf({ playerId });
+}
+
+// Whose wishlist the editor writes: a roster character's, or a signup's before
+// its character is on the roster (#1609). A signup is for one season, so its
+// rows carry none and take the signup's.
+export type WishlistOwner = { playerId: number } | { signupId: number; season: string };
+
+const wishlistKey = (owner: WishlistOwner) =>
+  'signupId' in owner ? ['signup-wishlist', owner.signupId] : ['wishlist', owner.playerId];
+
+// Either owner's picks. A signup's only its signer reads (#1609).
+export function useWishlistOf(owner: WishlistOwner) {
+  return useSupabaseQuery<Pick[]>(wishlistKey(owner), async (client) => {
+    if (!('signupId' in owner)) {
+      return client
+        .from('item_preferences')
+        .select('id, item_id, status, slot, season, synced_bis, note')
+        .eq('player_id', owner.playerId);
+    }
+    const { data, error } = await client
+      .from('signup_item_preferences')
+      .select('id, item_id, status, slot, synced_bis, note')
+      .eq('signup_id', owner.signupId);
+    return { data: data?.map((row) => ({ ...row, season: owner.season })) ?? null, error };
+  });
 }
 
 // The item catalog, shared by every profile. Paged: it passes 1000 rows within
@@ -258,44 +278,53 @@ export function useSeasonTierTokens(seasonCode: string | null) {
 
 // Applies a planMark() plan, one row at a time: deletes, then the kept row,
 // then a new one. The wishlist and everything read from it refresh after.
-export function useMarkWishlist(playerId: number) {
+export function useMarkWishlist(owner: WishlistOwner) {
+  const table = 'signupId' in owner ? 'signup_item_preferences' : 'item_preferences';
   return useSupabaseMutation<null, WritePlan>(
     async (client, plan) => {
       if (plan.deletes.length) {
-        const { error } = await client.from('item_preferences').delete().in('id', plan.deletes);
+        const { error } = await client.from(table).delete().in('id', plan.deletes);
         if (error) return { data: null, error };
       }
       if (plan.update) {
         const { id, status, slot } = plan.update;
-        const { error } = await client
-          .from('item_preferences')
-          .update({ status, slot, synced_bis: false })
-          .eq('id', id);
+        const { error } = await client.from(table).update({ status, slot, synced_bis: false }).eq('id', id);
         if (error) return { data: null, error };
       }
       if (plan.insert) {
         const row: NewPick = plan.insert;
-        const { error } = await client.from('item_preferences').insert(row);
+        const { error } =
+          'signupId' in owner
+            ? await client.from('signup_item_preferences').insert({
+                signup_id: owner.signupId,
+                item_id: row.item_id,
+                slot: row.slot,
+                status: row.status,
+                note: row.note,
+                synced_bis: row.synced_bis
+              })
+            : await client.from('item_preferences').insert(row);
         if (error) return { data: null, error };
       }
       return { data: null, error: null };
     },
-    { key: ['mark-wishlist', playerId], refreshes: [['wishlist', playerId]] }
+    { key: ['mark-wishlist', ...wishlistKey(owner)], refreshes: [wishlistKey(owner)] }
   );
 }
 
 // A raider's note on a marked item (#1362 part 4), written to every row that
 // carries the mark. An empty note is saved as none.
-export function useSaveWishlistNote(playerId: number) {
+export function useSaveWishlistNote(owner: WishlistOwner) {
+  const table = 'signupId' in owner ? 'signup_item_preferences' : 'item_preferences';
   return useSupabaseMutation<null, { ids: number[]; note: string }>(
     async (client, { ids, note }) => {
       const { error } = await client
-        .from('item_preferences')
+        .from(table)
         .update({ note: note.trim() || null })
         .in('id', ids);
       return { data: null, error };
     },
-    { key: ['wishlist-note', playerId], refreshes: [['wishlist', playerId]] }
+    { key: ['wishlist-note', ...wishlistKey(owner)], refreshes: [wishlistKey(owner)] }
   );
 }
 

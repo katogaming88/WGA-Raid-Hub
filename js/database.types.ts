@@ -2730,6 +2730,71 @@ export type Database = {
           },
         ]
       }
+      signup_item_preferences: {
+        Row: {
+          created_at: string
+          id: number
+          item_id: number
+          note: string | null
+          signup_id: number
+          slot: string | null
+          status: string
+          synced_bis: boolean
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          item_id: number
+          note?: string | null
+          signup_id: number
+          slot?: string | null
+          status: string
+          synced_bis?: boolean
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          item_id?: number
+          note?: string | null
+          signup_id?: number
+          slot?: string | null
+          status?: string
+          synced_bis?: boolean
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signup_item_preferences_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signup_item_preferences_signup_id_fkey"
+            columns: ["signup_id"]
+            isOneToOne: false
+            referencedRelation: "incoming_roster"
+            referencedColumns: ["signup_id"]
+          },
+          {
+            foreignKeyName: "signup_item_preferences_signup_id_fkey"
+            columns: ["signup_id"]
+            isOneToOne: false
+            referencedRelation: "pending_roster"
+            referencedColumns: ["signup_id"]
+          },
+          {
+            foreignKeyName: "signup_item_preferences_signup_id_fkey"
+            columns: ["signup_id"]
+            isOneToOne: false
+            referencedRelation: "season_signups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_settings: {
         Row: {
           boe_payout_floor: number
@@ -4332,6 +4397,7 @@ export type Database = {
       my_person_id: { Args: never; Returns: number }
       my_player_ids: { Args: never; Returns: number[] }
       my_team_role: { Args: { p_team_id: number }; Returns: string }
+      my_wishlist_signup_ids: { Args: never; Returns: number[] }
       new_url_code: { Args: never; Returns: string }
       notify_player: {
         Args: { p_message: string; p_player_id: number }
@@ -4575,6 +4641,7 @@ export type Database = {
         Args: { p_season: string; p_team_id: number }
         Returns: Json
       }
+      signup_wishlist_open: { Args: { p_signup_id: number }; Returns: boolean }
       submit_bis_link: {
         Args: {
           p_bis_link: string

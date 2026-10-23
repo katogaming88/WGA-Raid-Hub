@@ -26,6 +26,7 @@ const HELPERS = [
   'my_leader_team_ids',
   'my_active_player_ids',
   'my_player_ids',
+  'my_wishlist_signup_ids',
   'is_site_admin',
   'is_guild_officer',
   'is_boe_manager',

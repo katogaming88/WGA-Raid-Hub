@@ -876,3 +876,101 @@ describe('Characters card and alts picker', () => {
     expect(document.querySelector('.loot-count')).toHaveTextContent('3');
   });
 });
+
+// The character someone signed up with for next season, before it is on the
+// roster (#1609): a new person's profile shows it, and a raider with a roster
+// character switches to it.
+const SIGNUP = {
+  id: 7,
+  signup_name_realm: 'Katlock-Stormrage',
+  class: null,
+  spec: null,
+  off_specs: null,
+  main_swap: true,
+  swap_class: 'Warlock',
+  swap_spec: 'Demonology',
+  swap_from_name_realm: 'X-Illidan',
+  player_note: null,
+  status: 'pending',
+  season: 'MID3',
+  submitted_at: '2026-10-20T00:00:00Z'
+};
+
+function withSignup(who: ReturnType<typeof person>, wishlistOpen = true) {
+  const base = profileHandlers(who, {
+    team_seasons: () => ({ data: [{ season_code: 'MID3', wishlist_open: wishlistOpen }] }),
+    signup_item_preferences: () => ({ data: [] }),
+    items: () => ({
+      data: [
+        {
+          id: 10,
+          name: 'Crown of the Next Tier',
+          slot: 'Head',
+          wcl_zone_id: 99,
+          is_placeholder: false,
+          armor_type: 'Cloth',
+          main_stats: null,
+          weapon_subtype: null,
+          source: null,
+          wow_item_id: 1010,
+          is_ptr: false,
+          icon: null,
+          item_seasons: []
+        }
+      ]
+    }),
+    raid_zones: () => ({ data: [{ wcl_zone_id: 99, season: 'MID3' }] }),
+    tier_token_map: () => ({ data: [] })
+  });
+  return {
+    ...base,
+    rpc: (name: string, args: Record<string, unknown>) =>
+      name === 'get_own_signup' ? { data: [SIGNUP] } : base.rpc!(name, args)
+  } as typeof base;
+}
+
+describe('Profile, the character signed up for next season', () => {
+  it("shows a new person's signed-up character as its profile, without attendance or alts yet", async () => {
+    renderApp('/g/wga/t/phoenix/me', withSignup(person('raider', null)));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Katlock' })).toBeInTheDocument();
+    expect(screen.getByText(/Joins the roster when signups close/)).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Wishlist' })).toBeInTheDocument();
+    expect(await screen.findByText('Counts from when it joins the roster.')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Characters' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'M+ exclusion' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Character' })).not.toBeInTheDocument();
+  });
+
+  it("edits next season's wishlist on the signup while it is open", async () => {
+    const { client } = renderApp('/g/wga/t/phoenix/me/wishlist', withSignup(person('raider', null)));
+    expect(await screen.findByText(/It moves onto Katlock-Stormrage when signups close/)).toBeInTheDocument();
+    const helm = await screen.findByRole('group', { name: 'Crown of the Next Tier, Head' });
+    await userEvent.click(within(helm).getByRole('button', { name: 'BiS' }));
+    await waitFor(() =>
+      expect(client.writes).toContainEqual({
+        table: 'signup_item_preferences',
+        method: 'insert',
+        values: { signup_id: 7, item_id: 10, slot: null, status: 'bis', note: null, synced_bis: false },
+        filters: []
+      })
+    );
+  });
+
+  it('reads it only while the season is not open', async () => {
+    renderApp('/g/wga/t/phoenix/me/wishlist', withSignup(person('raider', null), false));
+    expect(await screen.findByText(/Wishlist editing is closed/)).toBeInTheDocument();
+  });
+
+  it('switches between the roster character and the signed-up one', async () => {
+    renderApp('/g/wga/t/phoenix/me', withSignup(person('raider', 11)));
+    const roster = await screen.findByRole('button', { name: 'X-Illidan' });
+    expect(roster).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(screen.getByRole('button', { name: 'Katlock-Stormrage, next season' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Katlock' })).toBeInTheDocument();
+    // Attendance is the Member's, and moves across with the swap.
+    expect(await screen.findByText(/this season/, { selector: '.attendance-pct' })).toBeInTheDocument();
+    expect(screen.queryByText('Counts from when it joins the roster.')).not.toBeInTheDocument();
+    await userEvent.click(roster);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Raz' })).toBeInTheDocument();
+  });
+});

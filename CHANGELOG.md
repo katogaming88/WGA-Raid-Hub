@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.203.0] - 2026-10-23
+
+### Frontend
+
+- New app: My profile shows the character someone signed up with for
+  next season, before it is on the roster (#1609). A raider changing
+  character switches to it from beside their roster character; someone
+  new sees it as their profile. It reads like any profile, with the
+  Member's attendance and join date, and its Wishlist tab takes next
+  season's picks while an officer has that season's wishlist open.
+
+### Backend
+
+- A signup's wishlist (#1609): new mains, swaps and first mains fill in
+  next season's wishlist before signups close. The picks are kept on the
+  signup and become the character's wishlist when it goes on the roster,
+  by the team leader closing signups, an officer's add, or the automatic
+  close. A turned-down signup, or one moved to another character, drops
+  them. Only the signer reads or edits them, and only while the season's
+  wishlist is open.
+
 ## [3.202.0] - 2026-10-23
 
 ### Frontend

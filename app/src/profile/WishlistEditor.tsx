@@ -14,8 +14,10 @@ import {
   useSaveWishlistNote,
   useSeasonTierTokens,
   useWishlist,
+  useWishlistOf,
   useWishlistSettings,
   type ProfilePlayer,
+  type WishlistOwner,
   type WishlistSettings
 } from './useProfile';
 import { sourceTag } from './lootPriority';
@@ -178,7 +180,7 @@ function WishlistEditor({
                   }
                 }}
                 teamId={teamId}
-                playerId={player.id}
+                owner={{ playerId: player.id }}
                 editable={own && planned != null && (open || player.wishlist_allowed) && !touch}
                 closed={own && (planned == null || (!open && !player.wishlist_allowed))}
                 touch={own && touch}
@@ -191,24 +193,102 @@ function WishlistEditor({
   );
 }
 
+// The Wishlist tab for the character someone signed up with, before it is on
+// the roster (#1609): next season's picks, kept on the signup and moved onto
+// the character when signups close. Editable while the team has that season
+// open, as a roster character's is.
+export function SignupWishlistTab({
+  player,
+  teamId,
+  season,
+  signup
+}: {
+  player: ProfilePlayer;
+  teamId: number;
+  season: UseQueryResult<SeasonWindow>;
+  signup: { id: number; season: string };
+}) {
+  const tiers = bothQueries(useWishlistSettings(teamId), useSeasons());
+  const owner = { signupId: signup.id, season: signup.season };
+  const name = tiers.isSuccess
+    ? (tiers.data[1].find((t) => t.code === signup.season)?.display_name ?? signup.season)
+    : null;
+  const open = tiers.isSuccess && tiers.data[0].openSeasons.includes(signup.season);
+  const picks = useWishlistOf(owner);
+  const catalog = useCatalog();
+  const zones = useRaidZones();
+  const tokens = useSeasonTierTokens(signup.season);
+  const touch = useTouchScreen();
+
+  return (
+    <div className="profile-wishlist">
+      {name && (
+        <p className="wishlist-season-name">
+          Wishlist for <strong>{name}</strong>. It moves onto {player.name_realm} when signups close.
+        </p>
+      )}
+      <WishlistSummaryCard
+        player={player}
+        season={season}
+        owner={owner}
+        seasonOf={{ reads: tiers, code: signup.season, name }}
+      />
+      <section className="card profile-card" aria-labelledby="wishlist-editor-title">
+        <h2 id="wishlist-editor-title" className="card-title">
+          BiS, Sidegrade or Pass by slot
+        </h2>
+        <DataState
+          query={bothQueries(bothQueries(tiers, picks), bothQueries(catalog, bothQueries(zones, tokens)))}
+          label="the wishlist"
+        >
+          {([[, p], [c, [z, t]]]) => (
+            <Editor
+              input={{
+                picks: p,
+                catalog: c,
+                zones: z,
+                seasonCode: signup.season,
+                tokens: t,
+                wearer: {
+                  className: player.classes_specs?.class ?? null,
+                  spec: player.classes_specs?.spec ?? null,
+                  role: player.classes_specs?.role ?? null
+                }
+              }}
+              teamId={teamId}
+              owner={owner}
+              editable={open && !touch}
+              closed={!open}
+              touch={touch}
+            />
+          )}
+        </DataState>
+      </section>
+    </div>
+  );
+}
+
 function Editor({
   input,
   teamId,
-  playerId,
+  owner,
   editable,
   closed,
   touch
 }: {
   input: EditorInput;
   teamId: number;
-  playerId: number;
+  owner: WishlistOwner;
   editable: boolean;
   closed: boolean;
   touch: boolean;
 }) {
-  const mark = useMarkWishlist(playerId);
-  const saveNote = useSaveWishlistNote(playerId);
+  const mark = useMarkWishlist(owner);
+  const saveNote = useSaveWishlistNote(owner);
   const slots = editorSlots(input);
+  // planMark() writes a roster row; a signup's insert keeps only the pick
+  // and adds the signup, so its player id is never read.
+  const playerId = 'playerId' in owner ? owner.playerId : 0;
   const set = (slot: string, itemId: number, next: Mark | null) =>
     mark.mutate(planMark({ ...input, teamId, playerId }, slot, itemId, next));
   const error = mark.error ?? saveNote.error;
