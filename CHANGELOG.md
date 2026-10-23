@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.194.1] - 2026-10-22
+
+### Project
+
+- Every migration pull request now gets a review from a fresh agent
+  session that did not write it, following a new "Reviewing a migration"
+  checklist in CONTRIBUTING.md, then Kat's OK to merge. The checklist
+  lists what CI cannot catch, each item a real miss from an earlier
+  review. No pull request waits on Rex any more.
+- A new CI check fails a migration that creates a table without
+  granting its own access in the same file. From October 30 Supabase
+  stops granting new tables automatically, and the local stack would
+  have hidden that until production answered "permission denied".
+- CodeRabbit reviews database pull requests (`supabase/`, `tests/rls/`)
+  as a second outside opinion, with the same checklist as its
+  instructions.
+
 ## [3.194.0] - 2026-10-20
 
 ### Project

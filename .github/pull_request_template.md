@@ -43,7 +43,9 @@ existing data is rewritten or removed. -->
 ## Review
 
 - [ ] Design review by Kat (anything that changes how something looks)
-- [ ] Database / devops review by Rex (big migrations, policies, deploys, CI)
+- [ ] Migration review by a fresh agent that did not write it, posted on this
+      PR ("Reviewing a migration" in CONTRIBUTING.md)
+- [ ] Deploy / CI review by Rex if he is around (nothing waits on him)
 
 ## Checklist
 

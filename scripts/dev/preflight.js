@@ -65,7 +65,11 @@ export const CHECKS = [
   {
     name: 'ledger',
     when: (f) => starts(f, ['supabase/migrations/', 'docs/database-decisions.md']),
-    steps: ['node scripts/ci/decision-log-check.js', 'node scripts/ci/migration-ledger-check.js']
+    steps: [
+      'node scripts/ci/decision-log-check.js',
+      'node scripts/ci/new-table-grants-check.js',
+      'node scripts/ci/migration-ledger-check.js'
+    ]
   },
   {
     name: 'app',

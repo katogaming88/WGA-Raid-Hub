@@ -1,0 +1,60 @@
+# CodeRabbit: a second, outside review on database pull requests (2026-10-22).
+# It does not replace the fresh-agent review in CONTRIBUTING.md
+# ("Reviewing a migration"); it is one more pair of eyes on the same diff.
+# Reviews only the database side, so frontend pull requests get no comments.
+language: en-US
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  sequence_diagrams: false
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - 'supabase/**'
+    - 'tests/rls/**'
+    # Generated from the migrations; reviewing them twice is noise.
+    - '!supabase/definitions/**'
+  path_instructions:
+    - path: 'supabase/migrations/**'
+      instructions: |
+        Postgres migrations for a Supabase app, applied to production on merge.
+        Write findings in plain language for a non-developer: what a raider or
+        officer would see go wrong, then the fix. Skip style nits.
+        Check, for every function and table this file adds or changes:
+        - Permissions: a SECURITY DEFINER function checks who is calling AND
+          whose row it changes (an officer must not be able to act on the team
+          leader). Identity comes from auth.uid(), never a parameter; a
+          character named as text is checked against the caller's own saved
+          characters. It pins set search_path = public and revokes execute
+          from public and anon unless anon is meant to call it.
+        - A new table in public has `revoke all ... from public, anon,
+          authenticated, service_role` and then explicit grants in this same
+          file. Supabase no longer grants new tables by default.
+        - Reviving an archived row resets officer-granted flags; readers of
+          "what is this person on this team" skip archived rows.
+        - A trigger guard fires on every insert and update, not only when one
+          column changes.
+        - Officer writes call write_audit_log() inside the function.
+        - An unknown id gets a plain error message, not a raw foreign key error.
+        - No assumption that there is only one guild or one team.
+        - A data rewrite (especially of jsonb) keeps every key that real rows
+          hold, and a new unique or check constraint cannot fail on existing
+          production rows.
+        - Function volatility (immutable/stable) matches what it calls.
+        - Lock order is consistent with the existing functions it touches.
+    - path: 'supabase/functions/**'
+      instructions: |
+        Deno Edge Functions. Check that the caller's identity comes from their
+        own token, every route requires a credential suited to its caller, and
+        a service-role client is never used for a read the caller could not
+        make themselves. Plain language, no style nits.
+    - path: 'tests/rls/**'
+      instructions: |
+        Database tests. Check that every allowed case has a matching refused
+        case (wrong team, wrong role, signed out), so a function that silently
+        does nothing cannot pass.
+chat:
+  auto_reply: true
