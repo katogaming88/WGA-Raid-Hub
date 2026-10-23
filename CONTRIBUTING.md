@@ -229,12 +229,13 @@ A change nobody can see (logic, data, tests) needs no screenshots.
 
 | The pull request mainly changes | Reviewer |
 |--------------------------------|----------|
-| The database (big migrations, policies, data fixes), deploys, CI, hosting | Rex |
+| The database (migrations, policies, data fixes) | A fresh agent session that did not write it ([Reviewing a migration](#reviewing-a-migration)), then Kat |
+| Deploys, CI, hosting | Rex if he is around, else Kat |
 | How the site or the new app looks or works (frontend, design) | Kat |
 
-A pull request with both halves gets both reviewers. Small database changes
-that ride along with a frontend feature can stay with Kat, but ask Rex if you
-are unsure.
+A pull request with both halves gets both reviews. No pull request waits on
+Rex (2026-10-22): tag him so he sees it, and a comment that arrives after the
+merge becomes a follow-up.
 
 ## Pull requests
 
@@ -710,6 +711,90 @@ PRs that change `supabase/migrations/` must also:
   test seed), then `npm run test:rls`. CI runs the same suite on every
   supabase/ or tests/ change. If a policy legitimately changed, update the
   matching assertions in `tests/rls/` and the matrix in docs/RLS.md together
+- A new table grants its own access in the migration that creates it:
+  `revoke all on table public.<name> from public, anon, authenticated, service_role;`
+  then a `grant` for each role that needs it.
+  `20261007145043_team_raid_reports.sql` is the shape. From 2026-10-30 Supabase
+  no longer grants the API roles on a new table in `public`, and this repo's
+  own default grants (`20260706190427`, `20260724100000`) still re-run on a
+  local `supabase db reset`, so without it a table can work locally and answer
+  "permission denied" on production.
+  `scripts/ci/new-table-grants-check.js` fails a migration that leaves either
+  half out
+- Get the review in [Reviewing a migration](#reviewing-a-migration) before
+  it merges
+
+### Reviewing a migration
+
+Every pull request that adds a migration gets this review before it merges.
+**The reviewer is never the one who wrote it**: a fresh agent session that
+gets only the diff, the issue and this section, or a person. Then Kat's OK
+merges it. Rex can be tagged so he sees it, but no pull request waits on him
+(2026-10-22): a comment that arrives after the merge becomes a follow-up.
+
+Everything below is something CI cannot catch. Each item is a real miss,
+most of them found in Rex's reviews.
+
+**Run it, don't just read it.**
+
+1. `supabase db reset` applies the whole chain clean.
+2. Call the new or changed functions, and read the new tables, as each kind of
+   person, inside `withTxn` or a transaction that rolls back: a raider, an
+   officer, the team leader, someone from another team, a guild officer, a site
+   admin, and signed out. Every allow has a refusal beside it, so a quiet no-op
+   cannot pass for a result.
+3. When the migration rewrites data or rebuilds a table from another, rehearse
+   it on `npm run db:snapshot` and compare the numbers a page shows before and
+   after.
+4. Anything the migration assumes about production data (no duplicates before
+   a unique rule, no rows in the state a check forbids) is counted read-only on
+   production first. A new unique rule or check on existing rows fails the
+   deploy otherwise.
+
+**What to look for.**
+
+- **Who it acts on, not only who calls.** A function that checks the caller
+  is an officer has to ask whose row it changes too. An officer could archive
+  the team leader (#1382).
+- **Identity comes from the account, never from what the caller types.** A
+  character named by text has to be checked against the caller's own saved
+  characters, the way `request_main_swap()` does. A stranger with an invite
+  code could take over a departed raider's history (#1318).
+- **A revived row resets what it should.** Bringing an archived row back
+  keeps its history, not its officer-granted flags (#1318).
+- **A trigger guard runs on every insert and update**, not only when the
+  column it was written for changes. Changing `team_id` alone skipped the
+  team check (#1437).
+- **An officer write records who did it**, with `write_audit_log()` inside
+  the function (#1316, #770).
+- **Tests pin behaviour**, not only the catalog. A new table or function gets
+  a file under `tests/rls/` with its refusals; a line on the anon allowlist
+  says nothing about what the function does (#1316).
+- **An unknown id gets a plain answer**, not a raw foreign key error (#1256,
+  #1437).
+- **No one-guild or one-team assumption.** `only_guild_id()` stopped grants
+  for every guild the day a second one existed (#1323).
+- **Archived rows.** Every reader that answers "what is this person on this
+  team" skips archived memberships and characters, and every revive path is
+  one the archive rules allow (#1382, #1434).
+- **A read of a whole table pages.** `fetchAllPaged()` covers reads by
+  `team_id`; a catalog read with no filter stops at 1000 rows just as quietly
+  (#1330).
+- **Rewriting a structured value keeps every key.** List every key actually in
+  production's rows, not only the ones the issue names. The audit log lost its
+  TARGET for good (#377).
+- **A function's label matches what it calls.** A function calling a `stable`
+  one cannot be `immutable` (#1306).
+- **The docs say what the code now does.** `docs/RLS.md`, the table count and
+  coverage map in `docs/backup-restore.md` (missed at least six times),
+  `README.md`, and comments in `js/` and `app/src` that name the old rule
+  (#1197, #1199, #1202). A claim in the decisions log is checked, not repeated
+  (#1306).
+- **The app's gate names the same people as the database's.** An officer-only
+  page and the function behind it check the same roles (#1340).
+
+The review is posted on the pull request: what was run, what was measured,
+what was found, and what holds.
 
 **The `test:rls` script runs the files in parallel, and that holds only while
 no two files write the same row

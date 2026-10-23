@@ -12,12 +12,18 @@ name: Decision log check
 # proves the name exists, never that the object is live on production. The
 # ledger check is the other half (does prod hold what the files say) and runs
 # in its own workflow because it needs the production credential.
+#
+# The second step rides here because it has the same shape (no secret, no
+# npm ci, a migration change triggers it): from 2026-10-30 Supabase stops
+# granting the API roles on a new public table, so a migration that creates
+# one revokes and grants in the same file.
 on:
   pull_request:
     paths:
       - 'docs/database-decisions.md'
       - 'supabase/migrations/**'
       - 'scripts/ci/decision-log-check.js'
+      - 'scripts/ci/new-table-grants-check.js'
       - '.github/workflows/decision-log-check.yml'
 
 concurrency:
@@ -34,3 +40,5 @@ jobs:
           node-version: '20'
       - name: Every Shipped line names a migration that exists
         run: node scripts/ci/decision-log-check.js
+      - name: Every new table grants its own access
+        run: node scripts/ci/new-table-grants-check.js
