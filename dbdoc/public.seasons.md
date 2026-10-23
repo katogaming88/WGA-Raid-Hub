@@ -124,6 +124,11 @@ erDiagram
   timestamp_with_time_zone updated_at
   text swap_from_name_realm
   uuid auth_user_id FK
+  integer person_id FK
+  integer character_id FK
+  boolean is_trial
+  boolean is_backup_tank
+  boolean is_backup_healer
 }
 "public.raid_zones" {
   integer id

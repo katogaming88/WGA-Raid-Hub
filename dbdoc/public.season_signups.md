@@ -22,6 +22,11 @@
 | updated_at | timestamp with time zone |  | true |  |  |  |
 | swap_from_name_realm | text |  | true |  |  |  |
 | auth_user_id | uuid |  | true |  |  |  |
+| person_id | integer |  | true |  | [public.people](public.people.md) | The person who signed up (#1465). Set by declare_season_signup(); null on rows submit_season_signup() wrote, which carry auth_user_id instead. |
+| character_id | integer |  | true |  | [public.characters](public.characters.md) | The saved character the signer picked (#1465). Emptied if that character row goes, for example when the person chooses alts again (#1430); signup_name_realm stays the name of record. |
+| is_trial | boolean |  | true |  |  | The officer's Trial flag from the Projected Roster (#1342), applied when signups close (#1467). Null until an officer sets it. |
+| is_backup_tank | boolean | false | false |  |  | The officer's backup-tank flag from the Projected Roster (#1342), applied when signups close (#1467). |
+| is_backup_healer | boolean | false | false |  |  | The officer's backup-healer flag from the Projected Roster (#1342), applied when signups close (#1467). |
 
 ## Constraints
 
@@ -36,13 +41,16 @@
 | signups_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | season_signups_reviewed_by_fkey | FOREIGN KEY | FOREIGN KEY (reviewed_by) REFERENCES team_members(id) ON DELETE SET NULL |
 | signups_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
+| season_signups_person_id_fkey | FOREIGN KEY | FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE SET NULL |
 | season_signups_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(code) |
+| season_signups_character_id_fkey | FOREIGN KEY | FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | signups_pkey | CREATE UNIQUE INDEX signups_pkey ON public.season_signups USING btree (id) |
+| season_signups_one_per_person | CREATE UNIQUE INDEX season_signups_one_per_person ON public.season_signups USING btree (person_id, team_id, season) WHERE (status <> 'rejected'::text) |
 
 ## Triggers
 
@@ -61,6 +69,8 @@ erDiagram
 "public.season_signups" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.season_signups" }o--o| "public.team_members" : "FOREIGN KEY (reviewed_by) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.season_signups" }o--o| "public.players" : "FOREIGN KEY (approved_player_id) REFERENCES players(id) ON DELETE SET NULL"
+"public.season_signups" }o--o| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE SET NULL"
+"public.season_signups" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
 
 "public.season_signups" {
   integer id
@@ -81,6 +91,11 @@ erDiagram
   timestamp_with_time_zone updated_at
   text swap_from_name_realm
   uuid auth_user_id FK
+  integer person_id FK
+  integer character_id FK
+  boolean is_trial
+  boolean is_backup_tank
+  boolean is_backup_healer
 }
 "public.teams" {
   integer id
@@ -140,6 +155,27 @@ erDiagram
   timestamp_with_time_zone bis_link_updated_at
   text url_code
   text name_realm_key
+}
+"public.people" {
+  integer id
+  uuid auth_user_id FK
+  text discord_id
+  timestamp_with_time_zone created_at
+}
+"public.characters" {
+  integer id
+  integer person_id FK
+  bigint blizzard_id
+  text name
+  text realm
+  text realm_slug
+  text name_realm
+  text name_realm_key
+  text class_name
+  text spec_name
+  integer level
+  integer item_level
+  timestamp_with_time_zone saved_at
 }
 ```
 

@@ -39,11 +39,13 @@ begin
    where p.team_id = v_signup.team_id
      and p.name_realm_key = lower(replace(v_signup.signup_name_realm, ' ', ''));
 
-  if v_signup.auth_user_id is not null then
+  if v_signup.person_id is not null or v_signup.auth_user_id is not null then
     select tm.id, tm.archived_at is not null into v_signer_member_id, v_signer_archived
       from public.team_members tm
       join public.people pe on pe.id = tm.person_id
-     where tm.team_id = v_signup.team_id and pe.auth_user_id = v_signup.auth_user_id;
+     where tm.team_id = v_signup.team_id
+       and (pe.id = v_signup.person_id
+            or (v_signup.person_id is null and pe.auth_user_id = v_signup.auth_user_id));
   end if;
 
   if p_archive_player_id is not null then
@@ -113,6 +115,14 @@ begin
      and v_prior_team_member_id <> v_signer_member_id then
     update public.players set team_member_id = v_signer_member_id
      where id = v_player_id;
+  end if;
+
+  -- A declared signup's character is one Battle.net confirmed is the
+  -- signer's (#1465), so a row nobody holds becomes theirs now rather than
+  -- waiting for a claim. A row someone else holds is left alone.
+  if v_signup.character_id is not null and v_signer_member_id is not null then
+    update public.players set team_member_id = v_signer_member_id
+     where id = v_player_id and team_member_id is null;
   end if;
 
   if p_archive_player_id is not null then

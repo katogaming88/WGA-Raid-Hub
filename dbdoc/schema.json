@@ -1855,6 +1855,38 @@
           "name": "auth_user_id",
           "type": "uuid",
           "nullable": true
+        },
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The person who signed up (#1465). Set by declare_season_signup(); null on rows submit_season_signup() wrote, which carry auth_user_id instead."
+        },
+        {
+          "name": "character_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The saved character the signer picked (#1465). Emptied if that character row goes, for example when the person chooses alts again (#1430); signup_name_realm stays the name of record."
+        },
+        {
+          "name": "is_trial",
+          "type": "boolean",
+          "nullable": true,
+          "comment": "The officer's Trial flag from the Projected Roster (#1342), applied when signups close (#1467). Null until an officer sets it."
+        },
+        {
+          "name": "is_backup_tank",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "The officer's backup-tank flag from the Projected Roster (#1342), applied when signups close (#1467)."
+        },
+        {
+          "name": "is_backup_healer",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "The officer's backup-healer flag from the Projected Roster (#1342), applied when signups close (#1467)."
         }
       ],
       "indexes": [
@@ -1864,6 +1896,16 @@
           "table": "public.season_signups",
           "columns": [
             "id"
+          ]
+        },
+        {
+          "name": "season_signups_one_per_person",
+          "def": "CREATE UNIQUE INDEX season_signups_one_per_person ON public.season_signups USING btree (person_id, team_id, season) WHERE (status \u003c\u003e 'rejected'::text)",
+          "table": "public.season_signups",
+          "columns": [
+            "person_id",
+            "team_id",
+            "season"
           ]
         }
       ],
@@ -1978,6 +2020,19 @@
           ]
         },
         {
+          "name": "season_signups_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE SET NULL",
+          "table": "public.season_signups",
+          "referenced_table": "public.people",
+          "columns": [
+            "person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
           "name": "season_signups_season_fkey",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
@@ -1988,6 +2043,19 @@
           ],
           "referenced_columns": [
             "code"
+          ]
+        },
+        {
+          "name": "season_signups_character_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL",
+          "table": "public.season_signups",
+          "referenced_table": "public.characters",
+          "columns": [
+            "character_id"
+          ],
+          "referenced_columns": [
+            "id"
           ]
         }
       ],
@@ -9588,6 +9656,19 @@
     {
       "table": "public.season_signups",
       "columns": [
+        "person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.season_signups",
+      "columns": [
         "season"
       ],
       "cardinality": "zero_or_more",
@@ -9597,6 +9678,19 @@
       ],
       "parent_cardinality": "zero_or_one",
       "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
+      "table": "public.season_signups",
+      "columns": [
+        "character_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.characters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
     },
     {
       "table": "public.self_received_requests",
@@ -11746,6 +11840,12 @@
       "name": "public.loot_response_counts_as",
       "return_type": "text",
       "arguments": "p_team_id integer, p_response text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.declare_season_signup",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_season text, p_character_id integer, p_class_spec_id integer, p_off_specs text DEFAULT NULL::text, p_note text DEFAULT NULL::text",
       "type": "FUNCTION"
     }
   ],

@@ -16,7 +16,7 @@
 | [public.players](public.players.md) | 25 |  | BASE TABLE |
 | [public.priority_order](public.priority_order.md) | 8 |  | BASE TABLE |
 | [public.scoring](public.scoring.md) | 11 |  | BASE TABLE |
-| [public.season_signups](public.season_signups.md) | 18 |  | BASE TABLE |
+| [public.season_signups](public.season_signups.md) | 23 |  | BASE TABLE |
 | [public.self_received_requests](public.self_received_requests.md) | 12 |  | BASE TABLE |
 | [public.team_members](public.team_members.md) | 9 |  | BASE TABLE |
 | [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
@@ -238,6 +238,7 @@
 | public.hold_team_member | void | p_team_member_id integer | FUNCTION |
 | public.set_loot_responses | jsonb | p_team_id integer, p_responses jsonb | FUNCTION |
 | public.loot_response_counts_as | text | p_team_id integer, p_response text | FUNCTION |
+| public.declare_season_signup | int4 | p_team_id integer, p_season text, p_character_id integer, p_class_spec_id integer, p_off_specs text DEFAULT NULL::text, p_note text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 
@@ -293,7 +294,9 @@ erDiagram
 "public.season_signups" }o--o| "public.players" : "FOREIGN KEY (approved_player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.season_signups" }o--o| "public.team_members" : "FOREIGN KEY (reviewed_by) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.season_signups" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.season_signups" }o--o| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE SET NULL"
 "public.season_signups" }o--o| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_signups" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
 "public.self_received_requests" }o--|| "public.items" : "FOREIGN KEY (self_item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.self_received_requests" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.self_received_requests" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
@@ -549,6 +552,11 @@ erDiagram
   timestamp_with_time_zone updated_at
   text swap_from_name_realm
   uuid auth_user_id FK
+  integer person_id FK
+  integer character_id FK
+  boolean is_trial
+  boolean is_backup_tank
+  boolean is_backup_healer
 }
 "public.self_received_requests" {
   integer id
