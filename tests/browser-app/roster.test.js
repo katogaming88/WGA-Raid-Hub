@@ -83,9 +83,12 @@ describe('Roster page (new app), checked against the current site', () => {
     // The current site still says "Roster (Tentative)"; the new app says "Projected Roster".
     const tab = opened.page.getByRole('tab', { name: `${SCENARIO.signupSeasonName} Projected Roster` });
     await tab.click();
-    const heading = opened.page.getByRole('main').getByRole('heading', { level: 2, name: EXPECTED_INCOMING.title });
+    // The new app counts who has signed up (#1342); the current site's
+    // "Pending Raiders" title is the same number.
+    const signedUp = EXPECTED_INCOMING.groups.reduce((n, g) => n + g.count, 0);
+    const heading = opened.page.getByRole('main').getByRole('heading', { level: 2, name: `${signedUp} signed up` });
     await expect(heading.count()).resolves.toBe(1);
-    const table = opened.page.getByRole('table', { name: 'Next season’s projected roster' });
+    const table = opened.page.getByRole('table', { name: 'Projected roster' });
     expect(await readTable(table)).toEqual({ groups: EXPECTED_INCOMING.groups });
   });
 });

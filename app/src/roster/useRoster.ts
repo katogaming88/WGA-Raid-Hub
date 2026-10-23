@@ -39,7 +39,88 @@ export function useRosterGear(teamId: number) {
 export function useIncomingRoster(teamId: number) {
   return useSupabaseQuery<IncomingRow[]>(['incoming-roster', teamId], (client) =>
     // team-read-guard: signups not on the roster yet, dozens at most
-    client.from('incoming_roster').select('signup_id, signup_name_realm, class, spec, role').eq('team_id', teamId)
+    client
+      .from('incoming_roster')
+      .select('signup_id, signup_name_realm, class, spec, role, swap_from_name_realm')
+      .eq('team_id', teamId)
+  );
+}
+
+export type SignupFlags = { id: number; is_trial: boolean | null; is_backup_tank: boolean; is_backup_healer: boolean };
+export type SignupFlag = 'is_trial' | 'is_backup_tank' | 'is_backup_healer';
+
+// Officers: the Trial and backup flags on each signup (#1465), applied when
+// signups close (#1467). season_signups is officers' only, so nobody else
+// reads it.
+export function useSignupFlags(teamId: number, signupIds: number[], enabled: boolean) {
+  return useSupabaseQuery<Map<number, SignupFlags>>(
+    ['signup-flags', teamId, signupIds],
+    async (client) => {
+      const { data, error } = await client
+        .from('season_signups')
+        .select('id, is_trial, is_backup_tank, is_backup_healer')
+        .in('id', signupIds);
+      if (error) return { data: null, error };
+      return { data: new Map((data ?? []).map((r) => [r.id, r])), error: null };
+    },
+    { enabled: enabled && signupIds.length > 0 }
+  );
+}
+
+const GONE = { message: 'That signup is no longer waiting. Reload the page to see it as it is now.' };
+
+// Officers: flip one flag on a signup still waiting to go on the roster.
+export function useSetSignupFlag(teamId: number) {
+  return useSupabaseMutation<null, { signupId: number; flag: SignupFlag; value: boolean }>(
+    async (client, { signupId, flag, value }) => {
+      const result = await client
+        .from('season_signups')
+        .update({ [flag]: value } as Record<SignupFlag, boolean>)
+        .eq('id', signupId)
+        .in('status', ['pending', 'approved'])
+        .select('id');
+      if (result.error) return result;
+      if (result.data?.length === 0) return { data: null, error: GONE };
+      return { data: null, error: null };
+    },
+    { key: ['set-signup-flag', teamId], refreshes: [['signup-flags', teamId]] }
+  );
+}
+
+// Officers: a signup that should not count comes off the Projected Roster.
+// It is turned down rather than deleted, so the signer can sign up again.
+export function useRemoveSignup(teamId: number) {
+  return useSupabaseMutation<null, { signupId: number; name: string }>(
+    async (client, { signupId, name }) => {
+      const result = await client
+        .from('season_signups')
+        .update({ status: 'rejected' })
+        .eq('id', signupId)
+        .in('status', ['pending', 'approved'])
+        .select('id');
+      if (result.error) return result;
+      if (result.data?.length === 0) return { data: null, error: GONE };
+      // Best-effort, as elsewhere: the removal stands if the log entry fails.
+      try {
+        await client.rpc('write_audit_log', {
+          p_team_id: teamId,
+          p_action: 'Signup Removed',
+          p_target_type: 'season_signups',
+          p_target_id: signupId,
+          p_detail: name
+        });
+      } catch {
+        // Recorded either way.
+      }
+      return { data: null, error: null };
+    },
+    {
+      key: ['remove-signup', teamId],
+      refreshes: [
+        ['incoming-roster', teamId],
+        ['signup-flags', teamId]
+      ]
+    }
   );
 }
 

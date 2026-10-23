@@ -16,7 +16,7 @@ import {
   officerStats,
   summarize,
   summaryLine,
-  toIncoming,
+  toProjected,
   toRoster,
   type GearRow,
   type OfficerStats,
@@ -35,6 +35,7 @@ import { AccountsLine, QuickClaim } from './AccountsLine';
 import { ArchivedRoster } from './ArchivedRoster';
 import { NameRowActions } from './NameRowActions';
 import { NeedsALook } from './NeedsALook';
+import { ProjectedRoster } from './ProjectedRoster';
 import { PlayerSettingsProvider, SettingsRowButton } from './PlayerSettings';
 import { useCreateName, useNames } from './useNames';
 import type { NameRow } from './names';
@@ -62,8 +63,20 @@ export function RosterPage() {
   // Archived (#1360 part 3) is an officer tab: it carries why people left.
   const officer = useIsOfficer(team.id);
   const archived = useArchivedPlayers(team.id, officer);
+  // Trial, backup and Remove on the Projected Roster are officer writes, so
+  // a guild officer looking in (#607) reads it as the team does.
+  const access = useAccess();
+  const canActAsOfficer = access.isSuccess && can(access.data, 'actAsOfficer', team.id);
 
-  const incomingGroups = incoming.isSuccess ? toIncoming(incoming.data[0]) : [];
+  // Who is staying on a character they already play reads off the current
+  // roster, so the tab waits for it.
+  const incomingGroups =
+    incoming.isSuccess && current.isSuccess
+      ? toProjected(
+          incoming.data[0],
+          current.data[0].map((p) => p.name_realm)
+        )
+      : [];
   const hasIncoming = incomingGroups.length > 0;
   const tabs: { id: Tab; label: string }[] = [
     { id: 'current', label: 'Current Roster' },
@@ -116,7 +129,7 @@ export function RosterPage() {
           aria-labelledby="roster-tab-incoming"
           hidden={showing !== 'incoming'}
         >
-          <IncomingRoster groups={incomingGroups} />
+          <ProjectedRoster teamId={team.id} groups={incomingGroups} officer={canActAsOfficer} />
         </div>
       )}
 
@@ -496,19 +509,6 @@ function CreateNameForm({ teamId }: { teamId: number }) {
         {create.isPending ? 'Adding…' : 'Add Member'}
       </button>
     </form>
-  );
-}
-
-function IncomingRoster({ groups }: { groups: RoleGroup[] }) {
-  const total = groups.reduce((n, g) => n + g.raiders.length, 0);
-  return (
-    <div className="roster-main">
-      <h2 className="section-title">
-        {total} Pending Raider{total === 1 ? '' : 's'}
-      </h2>
-      <p className="text-muted">Approved signups for next season. Not final until the season starts.</p>
-      <RosterTable groups={groups} caption="Next season’s projected roster" details={false} />
-    </div>
   );
 }
 

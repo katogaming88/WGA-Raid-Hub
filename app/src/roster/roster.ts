@@ -34,7 +34,53 @@ export type IncomingRow = {
   class: string | null;
   spec: string | null;
   role: string | null;
+  swap_from_name_realm?: string | null;
 };
+
+// How a signup reads on the Projected Roster (#1342): a character already on
+// the roster stays, one replacing theirs is a change, anything else is new.
+export type SignupKind = 'stays' | 'swap' | 'new';
+
+export type ProjectedRaider = {
+  signupId: number;
+  name: string;
+  nameRealm: string;
+  className: string;
+  spec: string;
+  role: Role;
+  kind: SignupKind;
+  // The character it replaces, on a swap.
+  swapFrom: string | null;
+};
+
+export type ProjectedGroup = { role: Role; label: string; raiders: ProjectedRaider[] };
+
+const nameKey = (nameRealm: string) => nameRealm.toLowerCase().replace(/\s/g, '');
+
+export function toProjected(rows: IncomingRow[], rosterNames: string[]): ProjectedGroup[] {
+  const onRoster = new Set(rosterNames.map(nameKey));
+  const raiders: ProjectedRaider[] = [];
+  for (const row of rows) {
+    const nameRealm = row.signup_name_realm?.trim();
+    if (!nameRealm || row.signup_id == null || !isRole(row.role)) continue;
+    const kind: SignupKind = onRoster.has(nameKey(nameRealm)) ? 'stays' : row.swap_from_name_realm ? 'swap' : 'new';
+    raiders.push({
+      signupId: row.signup_id,
+      name: firstName(nameRealm),
+      nameRealm,
+      className: row.class ?? '',
+      spec: row.spec ?? '',
+      role: row.role,
+      kind,
+      swapFrom: kind === 'swap' ? firstName(row.swap_from_name_realm!) : null
+    });
+  }
+  return ROLE_ORDER.map((role) => ({
+    role,
+    label: ROLE_LABELS[role],
+    raiders: raiders.filter((r) => r.role === role).sort((a, b) => a.name.localeCompare(b.name))
+  })).filter((group) => group.raiders.length > 0);
+}
 
 export type Status = 'Trial' | 'Bench' | 'Rotator';
 
