@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- select (site roles): anon, authenticated
 
-create or replace view public.incoming_roster as
+create or replace view public.incoming_roster with (security_barrier=true) as
  SELECT s.id AS signup_id,
     s.team_id,
     s.signup_name_realm,

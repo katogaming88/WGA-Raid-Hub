@@ -11,8 +11,9 @@
 -- site's public roster, which keeps reading only those (js/common.js filters
 -- on the status). The view runs as its owner, so these checks read the
 -- caller's own auth.uid(); my_team_role() is null for an ended membership.
+-- security_barrier, so a caller's own filter never runs ahead of these checks.
 
-create or replace view public.incoming_roster as
+create or replace view public.incoming_roster with (security_barrier = true) as
  SELECT s.id AS signup_id,
     s.team_id,
     s.signup_name_realm,
