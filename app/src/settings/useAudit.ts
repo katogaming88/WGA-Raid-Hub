@@ -7,7 +7,7 @@ import { formatAuditDetail, type AuditEntry } from './audit';
 // at 944 of the 1000-row cap when this was paged on the current site (#707),
 // so the read goes through readAll() here too.
 
-type AuditRow = {
+export type AuditRow = {
   id: number;
   actor_id: string | null;
   action: string | null;
@@ -57,7 +57,11 @@ function uniqueNonNull<T>(values: (T | null)[]): T[] {
 // lookup (the caller isn't authorized for this team, or the actor no longer
 // resolves to anything) degrades to a blank name rather than blocking the
 // rest of the log from rendering.
-async function resolveActorNames(client: Client, rows: AuditRow[], teamId: number): Promise<Record<string, string>> {
+export async function resolveActorNames(
+  client: Client,
+  rows: AuditRow[],
+  teamId: number
+): Promise<Record<string, string>> {
   const ids = uniqueNonNull(rows.map((r) => r.actor_id));
   if (!ids.length) return {};
   const results = await Promise.all(
@@ -72,7 +76,11 @@ async function resolveActorNames(client: Client, rows: AuditRow[], teamId: numbe
 // target_type = 'players' is the only kind any officer write flow logs today
 // -- extend this when a new target_type shows up in practice instead of
 // guessing at a generic resolver now.
-async function resolveTargetNames(client: Client, rows: AuditRow[], teamId: number): Promise<Record<number, string>> {
+export async function resolveTargetNames(
+  client: Client,
+  rows: AuditRow[],
+  teamId: number
+): Promise<Record<number, string>> {
   const ids = uniqueNonNull(rows.filter((r) => r.target_type === 'players').map((r) => r.target_id));
   if (!ids.length) return {};
   const result = await client.from('players').select('id, name_realm').eq('team_id', teamId).in('id', ids);

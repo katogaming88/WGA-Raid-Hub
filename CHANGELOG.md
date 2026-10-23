@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.195.0] - 2026-10-22
+
+### Project
+
+- New app: officers can import loot. Officer › Loot › Import takes an
+  RCLootCouncil JSON export pasted in, files it under the current
+  season, and says how many awards were added, how many were already on
+  file and how many have an item the hub doesn't know. Below it, Past
+  imports lists each paste by season with who ran it and how many items
+  it had; opening one shows who got what. A guild officer from another
+  team sees the list but not the form. Reviews and Reassign follow in
+  their own pull requests.
+
 ## [3.194.1] - 2026-10-22
 
 ### Project

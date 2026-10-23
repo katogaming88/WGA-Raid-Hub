@@ -1,0 +1,36 @@
+.loot-import-paste {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.loot-import-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.loot-import-list > li {
+  border-bottom: 1px solid var(--border);
+  padding: var(--space-1) 0;
+}
+
+.loot-import-list summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  cursor: pointer;
+}
+
+.loot-import-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0 var(--space-1) var(--space-3);
+}
+
+.loot-import-detail ul {
+  margin: 0;
+  padding-left: var(--space-3);
+  color: var(--text-muted);
+}

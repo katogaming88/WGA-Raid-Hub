@@ -997,6 +997,29 @@ const SETTINGS_DANGER = {
   }
 };
 
+// Import loot (#1363): the paste form under the current season, and one past
+// import of two awards to one raider.
+const IMPORT_LOOT = {
+  session: OFFICER,
+  who: 'officer',
+  path: '/g/wga/t/phoenix/officer/import',
+  sentinel: 'main:has(.loot-import-list)',
+  rpc: { resolve_actor_name: 'Aurelith' },
+  tables: {
+    seasons: [{ code: 'MID1', display_name: 'Midnight Season 1', starts_at: '2026-01-01', ends_at: null }],
+    audit_log: [1, 2].map((id) => ({
+      id,
+      actor_id: 'actor-1',
+      action: 'Loot Imported (RCLC)',
+      target_type: 'players',
+      target_id: 5,
+      detail: { summary: `Hero - Item ${id}`, season: 'MID1' },
+      created_at: '2026-09-02T02:00:00Z'
+    })),
+    players: [{ id: 5, name_realm: 'Torbjorn-Illidan' }]
+  }
+};
+
 // Audit log (#1358, #1103 row 1): one entry with no target (Trial Thresholds
 // Set) and one naming a player (Roster Targets Set), so both the actor-name
 // and target-name resolution are on the page axe measures.
@@ -1464,6 +1487,8 @@ const STATES = [
   { label: 'settings danger zone, officer, light', ...SETTINGS_DANGER, colorScheme: 'light' },
   { label: 'site admin, staff', ...SITE_ADMIN },
   { label: 'site admin, staff, light', ...SITE_ADMIN, colorScheme: 'light' },
+  { label: 'import loot, officer', ...IMPORT_LOOT },
+  { label: 'import loot, officer, light', ...IMPORT_LOOT, colorScheme: 'light' },
   { label: 'settings audit log, officer', ...SETTINGS_AUDIT_LOG },
   { label: 'settings audit log, officer, light', ...SETTINGS_AUDIT_LOG, colorScheme: 'light' },
   {
@@ -1510,14 +1535,14 @@ const STATES = [
   },
   {
     label: 'officer page, officer',
-    path: '/g/wga/t/phoenix/officer/import',
+    path: '/g/wga/t/phoenix/officer/reports/performance',
     session: OFFICER,
     who: 'officer',
     sentinel: 'text=Not built yet'
   },
   {
     label: 'officer page, officer, light',
-    path: '/g/wga/t/phoenix/officer/import',
+    path: '/g/wga/t/phoenix/officer/reports/performance',
     session: OFFICER,
     who: 'officer',
     sentinel: 'text=Not built yet',
