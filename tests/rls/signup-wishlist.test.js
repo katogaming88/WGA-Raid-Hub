@@ -149,13 +149,9 @@ describe('signup wishlist (#1609)', () => {
     await withTxn(async ({ q, asUser }) => {
       await nextSeason(q);
       const me = await signedUp(q, { status: 'approved' });
+      // No wishlist of their own, so only the name check stops the move.
       const otherId = await seedPlayer(q, { nameRealm: 'Someoneelse-Illidan' });
-      const [signupItem, otherItem] = [await anItem(q), await anItem(q, 1)];
-      await mark(asUser, me.uid, me.signupId, signupItem);
-      await q(
-        "insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, $1, $2, 'bis', $3)",
-        [otherId, otherItem, SEASON]
-      );
+      await mark(asUser, me.uid, me.signupId, await anItem(q));
 
       await asUser(
         OFFICER_T1,
@@ -163,7 +159,7 @@ describe('signup wishlist (#1609)', () => {
         [me.signupId, otherId]
       );
       const items = await q('select item_id from public.item_preferences where player_id = $1', [otherId]);
-      expect(items.rows.map((r) => r.item_id)).toEqual([otherItem]);
+      expect(items.rows).toEqual([]);
     });
   });
 
