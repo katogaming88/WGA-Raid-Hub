@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     32 h 48 m |
+| Revamp 3: officer dashboard        |     33 h 26 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **95 h 23 m** |
+| **All revamp work**                | **96 h 01 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -342,6 +342,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:40-1:14 PM | PR #1590 (#1561 part 3): Kat's questions on the export and Suggest order rules with no list saved, and what a saved list is; review and merge | Revamp 3 (#1561) | 34 m | ~4 m build, ~30 m Kat | not read | Mismatch with no list left as is. Merged 1:14 PM; #1561 closed |
 | 1:15-1:20 PM | What next: the loot systems redrawn (Loot council = no wishlists, Wishlist = marks only, no ranking); #1563 and #1564 rewritten | Revamp 3 (#1563) | 5 m | ~2 m build, ~3 m Kat deciding | not read | Items-received ranking dropped (Kat) |
 | 1:20-1:27 PM | #1563 built: a Loot council team gets no Wishlist tab, wishlist cards, Priority page or wishlist reports; the profile says the council decides; the system descriptions on Settings › Loot; tests, browser accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1563) | 7 m | ~7 m build | not read | Review and merge not yet counted |
+| 1:27-1:36 PM | PR #1591 (#1563) reviewed and merged | Revamp 3 (#1563) | 9 m | ~9 m Kat reviewing | not read | Merged 1:36 PM. Row added 10-23 from the handoff note |
+| 1:36-1:45 PM | #1564 checked against the addon; RCPL #79 filed for the addon side | Revamp 3 (#1564) | 9 m | ~9 m build | not read | End time approximate, from the handoff note |
 
 ### 2026-10-22
 
@@ -358,6 +360,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 12:02-12:10 AM | #1363 part 2: stamp, changelog, these rows, checks, PR opened, screenshots | Revamp 3 (#1363) | 8 m | ~8 m build | not read | Review and merge not yet counted |
+| 12:10-12:17 AM | PR #1601 (#1363 part 2) reviewed and merged; #1602 (Priority slot tabs) filed | Revamp 3 (#1363) | 7 m | ~7 m Kat reviewing | not read | Merged 12:17 AM |
+| 10:17-10:30 AM | Where the work stood; #1363 part 3 built: Officer › Loot › Reassign (pick who an item is credited to, move it to another raider, logged), tests, browser accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1363) | 13 m | ~13 m build | not read | No database change. Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

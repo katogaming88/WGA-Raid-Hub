@@ -1048,6 +1048,18 @@ const LOOT_REVIEWS = {
   }
 };
 
+// Reassign (#1363): the raider picker, filled from the roster. The loot list
+// under it needs a pick, which a state cannot make; reassign.test.tsx covers it.
+const LOOT_REASSIGN = {
+  session: OFFICER,
+  who: 'officer',
+  path: '/g/wga/t/phoenix/officer/reassign',
+  sentinel: 'main .settings-row select',
+  tables: {
+    players: [{ id: 5, name_realm: 'Torbjorn-Illidan', nickname: null, classes_specs: { class: 'Warrior' } }]
+  }
+};
+
 // Audit log (#1358, #1103 row 1): one entry with no target (Trial Thresholds
 // Set) and one naming a player (Roster Targets Set), so both the actor-name
 // and target-name resolution are on the page axe measures.
@@ -1519,6 +1531,8 @@ const STATES = [
   { label: 'import loot, officer, light', ...IMPORT_LOOT, colorScheme: 'light' },
   { label: 'loot reviews, officer', ...LOOT_REVIEWS },
   { label: 'loot reviews, officer, light', ...LOOT_REVIEWS, colorScheme: 'light' },
+  { label: 'loot reassign, officer', ...LOOT_REASSIGN },
+  { label: 'loot reassign, officer, light', ...LOOT_REASSIGN, colorScheme: 'light' },
   { label: 'settings audit log, officer', ...SETTINGS_AUDIT_LOG },
   { label: 'settings audit log, officer, light', ...SETTINGS_AUDIT_LOG, colorScheme: 'light' },
   {

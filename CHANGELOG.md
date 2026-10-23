@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.197.0] - 2026-10-23
+
+### Project
+
+- New app: officers can reassign loot. Officer › Loot › Reassign is for
+  an item loot council gave one raider that was then traded in game to
+  someone else: pick who has it on file, find the item (newest first,
+  any season), and choose who to give it to. The raider's received
+  items, the roster, the home feed and the Priority page follow the
+  change, and the audit log records it, as on the current site. A guild
+  officer from another team is told it is for the team's officers.
+
 ## [3.196.0] - 2026-10-23
 
 ### Project
