@@ -22,7 +22,7 @@ Every reason a character or a membership was removed for (#1427), never updated 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | removal_reasons_about_someone | CHECK | CHECK (((player_id IS NOT NULL) OR (team_member_id IS NOT NULL))) |
-| removal_reasons_reason_check | CHECK | CHECK ((reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text]))) |
+| removal_reasons_reason_check | CHECK | CHECK ((reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text, 'no_signup'::text]))) |
 | removal_reasons_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) |
 | removal_reasons_team_member_id_fkey | FOREIGN KEY | FOREIGN KEY (team_member_id) REFERENCES team_members(id) |
 | removal_reasons_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |

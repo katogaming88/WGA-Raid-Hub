@@ -2758,3 +2758,25 @@ Decided with Kat 2026-09-28 (#1342) and 2026-10-23. A signup was a name typed on
 **`add_signup_to_roster()` links a declared signup's character to the signer.** The signer is the signup's person when it has one, else the account as before. A new roster row from a declared signup that nobody holds takes the signer's membership; a row someone else holds is left alone. The add checks the character again rather than trusting the signup: it must still be the signup person's, under the roster row's own name. The signer can still retype `signup_name_realm` through `update_own_signup()`, and without that check a retyped name would hand an unclaimed row, with its loot and attendance, to the signer (found in the fresh-agent review). A typed signup's character still waits for a claim or the Battle.net link.
 
 [Full discussion -> #1465](https://github.com/katogaming88/WGA-Raid-Hub/issues/1465).
+
+## #1467 -- closing signups puts the declared mains on the roster and takes non-signers off
+
+Shipped: 20261023122233_season_signup_promotion.sql
+
+Decided 2026-10-06 (#1342): closing signups archives the rostered raiders who did not sign up, behind a confirm that says what will happen and lets the officer keep anyone by unticking them. Promotion ties to closing signups, not to `close_season()`. Only roster characters are archived, never the membership; a first main (#1463) brings them back with an officer's approval.
+
+**Two functions, a preview and the act.** `preview_signup_promotion()` lists by name who stays, joins, swaps (and from which character), starts a first main, is skipped and why, and which roster characters will be archived. `promote_season_signups()` takes back the preview's `expected` (an md5 of the plan) and the characters left ticked, and refuses with nothing changed when the plan reads differently now or a ticked character is not in it. Both read one plan, `signup_promotion_plan()`, so they cannot disagree.
+
+**Who goes where is decided from the roster now, not from what the signup recorded.** The signer is the signup's person, or the account for a current-site signup. A signup naming a character on the roster stays; a signer with one roster character swaps from it; with none, a first main if they are on the team, else a join. A signer with more than one roster character who names another is skipped, for the officer to settle by hand. A current-site signup whose signer has no linked character swaps from the character it named, only if that character is unlinked or theirs. Two signups that would use the same character (both swapping from it, or one swapping from a character another names) are both skipped as `character_taken` (fresh-agent review: a typed swap-from name could otherwise archive another raider's character they had signed up to keep).
+
+**Signed up** means a signup names the character, by name or as the one it swaps from (as Missing Signups matches today), or its person sent a signup. Rejected signups do not count; added ones count but are not promoted again.
+
+**Trial when unset.** `is_trial` null means a trial, `add_signup_to_roster()`'s own default. A character already on the roster keeps its flags, as an add always has.
+
+**`no_signup`, "Did not sign up"**, is the seventh removal reason, with the season's display name as the detail, in both checks, `archive_team_member()`, the current site's Remove list and the new app's.
+
+**Lock order:** the season's signups `FOR UPDATE`, then every membership on the team with an active character or a signup `FOR SHARE`, lowest id first, then the plan, then the adds and archives, then the `team_seasons` row. Every membership is held before any character, the order `archive_team_member()` takes (#1432). Not closed: a signup committed in the same instant by a caller that read signups as open stays pending after they close; it shows on the Projected Roster.
+
+**Only the team leader and site admins** run either, as for opening signups.
+
+[Full discussion -> #1467](https://github.com/katogaming88/WGA-Raid-Hub/issues/1467).

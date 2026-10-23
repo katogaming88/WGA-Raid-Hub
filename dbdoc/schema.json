@@ -5966,7 +5966,7 @@
         {
           "name": "player_officer_notes_archived_reason_check",
           "type": "CHECK",
-          "def": "CHECK (((archived_reason IS NULL) OR (archived_reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text]))))",
+          "def": "CHECK (((archived_reason IS NULL) OR (archived_reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text, 'no_signup'::text]))))",
           "table": "public.player_officer_notes",
           "referenced_table": "",
           "columns": [
@@ -8831,7 +8831,7 @@
         {
           "name": "removal_reasons_reason_check",
           "type": "CHECK",
-          "def": "CHECK ((reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text])))",
+          "def": "CHECK ((reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text, 'no_signup'::text])))",
           "table": "public.removal_reasons",
           "referenced_table": "",
           "columns": [
@@ -11846,6 +11846,24 @@
       "name": "public.declare_season_signup",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_season text, p_character_id integer, p_class_spec_id integer, p_off_specs text DEFAULT NULL::text, p_note text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.signup_promotion_plan",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer, p_season text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.preview_signup_promotion",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer, p_season text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.promote_season_signups",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_season text, p_expected text, p_archive_player_ids integer[] DEFAULT '{}'::integer[]",
       "type": "FUNCTION"
     }
   ],

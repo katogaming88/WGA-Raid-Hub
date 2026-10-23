@@ -19,7 +19,7 @@ Officer-only annotations on a roster slot (#925): the private officer note, and 
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| player_officer_notes_archived_reason_check | CHECK | CHECK (((archived_reason IS NULL) OR (archived_reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text])))) |
+| player_officer_notes_archived_reason_check | CHECK | CHECK (((archived_reason IS NULL) OR (archived_reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text, 'no_signup'::text])))) |
 | player_officer_notes_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
 | player_officer_notes_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | player_officer_notes_pkey | PRIMARY KEY | PRIMARY KEY (player_id) |

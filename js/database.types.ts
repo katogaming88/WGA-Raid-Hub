@@ -4361,6 +4361,19 @@ export type Database = {
         Args: { p_raid_date: string; p_team_id: number }
         Returns: number
       }
+      preview_signup_promotion: {
+        Args: { p_season: string; p_team_id: number }
+        Returns: Json
+      }
+      promote_season_signups: {
+        Args: {
+          p_archive_player_ids?: number[]
+          p_expected: string
+          p_season: string
+          p_team_id: number
+        }
+        Returns: undefined
+      }
       raid_night_info: {
         Args: { p_raid_date: string; p_team_id: number }
         Returns: {
@@ -4555,6 +4568,10 @@ export type Database = {
       }
       set_team_setting: {
         Args: { p_skip_audit?: boolean; p_team_id: number; p_updates: Json }
+        Returns: Json
+      }
+      signup_promotion_plan: {
+        Args: { p_season: string; p_team_id: number }
         Returns: Json
       }
       submit_bis_link: {

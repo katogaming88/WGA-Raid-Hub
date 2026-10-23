@@ -120,7 +120,7 @@ export function useClaimName(teamId: number, done?: (variables: { nameId: number
   );
 }
 
-// The six reasons archive_team_member() and archive_player() both take
+// The seven reasons archive_team_member() and archive_player() both take
 // (player_officer_notes.archived_reason), so a membership and its
 // characters are archived with the same vocabulary.
 export const ARCHIVE_REASONS: { value: string; label: string }[] = [
@@ -129,6 +129,7 @@ export const ARCHIVE_REASONS: { value: string; label: string }[] = [
   { value: 'drama', label: 'Drama' },
   { value: 'moved_guilds', label: 'Moved guilds' },
   { value: 'switching_mains', label: 'Switching mains' },
+  { value: 'no_signup', label: 'Did not sign up' },
   { value: 'other', label: 'Other' }
 ];
 

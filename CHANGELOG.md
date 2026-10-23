@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.200.0] - 2026-10-23
+
+### Backend
+
+- Closing a season's signups can now put the signups on the roster and
+  take off the raiders who did not sign up, in one step (#1467).
+  `preview_signup_promotion()` lists by name who stays, joins, swaps
+  (and from which character), starts a first main, is skipped, and which
+  roster characters nobody signed up for. `promote_season_signups()` does
+  exactly that: each signup goes on the roster with its Trial and backup
+  flags, the characters the officer left ticked are archived as "Did not
+  sign up", and signups close. It refuses, changing nothing, if anything
+  changed since the preview was read. Only the team leader and site
+  admins can run either. Only characters are archived, never the
+  membership. No page calls these yet (#1342).
+
+### Frontend
+
+- "Did not sign up" is a new reason in the Roster tab's Remove list and
+  the new app's Archive Member, with the six already there.
+
 ## [3.199.0] - 2026-10-23
 
 ### Backend
