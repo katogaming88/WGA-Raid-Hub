@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useAccess, can } from '../auth/access';
 import { useSeasons } from '../calendar/useCalendar';
@@ -27,6 +27,8 @@ import {
   priorityItems,
   rankedRows,
   sections,
+  slotTab,
+  SLOT_TABS,
   sidegradeNames,
   wishlistNotes,
   TRACK_LABEL,
@@ -232,6 +234,10 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
             ) : tab === 'unmanaged' ? (
               <UnmanagedList
                 unmanaged={unmanaged}
+                bosses={bossOptions(
+                  unmanaged.map((u) => u.item),
+                  raids
+                )}
                 officer={officer}
                 onSet={(id, t) =>
                   change({ tab: null, item: String(id), track: t === 'Myth' ? 'mythic' : null, suggest: '1' })
@@ -301,6 +307,12 @@ function NotesList({
   const [search, setSearch] = useState('');
   const [clearing, setClearing] = useState<{ item: string; note: WishlistNote } | null>(null);
   const searchId = useId();
+  // One slot at a time, as on the item list; a search looks across them all.
+  const groups = SLOT_TABS.map((label) => ({
+    label,
+    items: notes.filter((n) => slotTab(n.slot) === label)
+  })).filter((g) => g.items.length > 0);
+  const [tab, setChosen] = useSlotTab(groups);
   if (notes.length === 0) {
     return (
       <div className="card placeholder">
@@ -309,7 +321,9 @@ function NotesList({
     );
   }
   const term = search.trim().toLowerCase();
-  const shown = term ? notes.filter((i) => i.name.toLowerCase().includes(term)) : notes;
+  const shown = term
+    ? notes.filter((i) => i.name.toLowerCase().includes(term))
+    : (groups.find((g) => g.label === tab)?.items ?? []);
   const confirm = () => {
     if (!clearing) return;
     const { item, note } = clearing;
@@ -337,43 +351,46 @@ function NotesList({
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
+      {!term && <SlotTabs groups={groups} chosen={tab!} onChoose={setChosen} />}
       {shown.length === 0 && <p className="text-muted">No notes on an item by that name.</p>}
-      {shown.map((i) => (
-        <section key={i.itemId} className="card priority-notes-item" aria-labelledby={`notes-${i.itemId}`}>
-          <h2 id={`notes-${i.itemId}`} className="priority-notes-title">
-            <span className="priority-item-name">{i.name}</span> <span className="text-muted">{i.slot}</span>
-          </h2>
-          <ul className="priority-notes-list">
-            {i.notes.map((n) => (
-              <li key={n.ids[0]} className="priority-note">
-                <div className="priority-note-head">
-                  <span
-                    className="priority-rank-name"
-                    style={n.className ? { color: classColor(n.className) } : undefined}
-                  >
-                    {n.name}
-                  </span>
-                  {n.spec && <span className="text-muted">{n.spec}</span>}
-                  <span className={n.mark === 'bis' ? 'priority-mark priority-mark-bis' : 'priority-mark'}>
-                    {MARK_LABEL[n.mark] ?? n.mark}
-                  </span>
-                </div>
-                <p className="priority-note-text">{n.note}</p>
-                {officer && (
-                  <button
-                    type="button"
-                    className="button priority-note-clear"
-                    aria-label={`Clear note from ${n.name} on ${i.name}`}
-                    onClick={() => setClearing({ item: i.name, note: n })}
-                  >
-                    Clear note
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      <div className="priority-notes-items" {...(term ? {} : slotPanel(tab!))}>
+        {shown.map((i) => (
+          <section key={i.itemId} className="card priority-notes-item" aria-labelledby={`notes-${i.itemId}`}>
+            <h2 id={`notes-${i.itemId}`} className="priority-notes-title">
+              <span className="priority-item-name">{i.name}</span> <span className="text-muted">{i.slot}</span>
+            </h2>
+            <ul className="priority-notes-list">
+              {i.notes.map((n) => (
+                <li key={n.ids[0]} className="priority-note">
+                  <div className="priority-note-head">
+                    <span
+                      className="priority-rank-name"
+                      style={n.className ? { color: classColor(n.className) } : undefined}
+                    >
+                      {n.name}
+                    </span>
+                    {n.spec && <span className="text-muted">{n.spec}</span>}
+                    <span className={n.mark === 'bis' ? 'priority-mark priority-mark-bis' : 'priority-mark'}>
+                      {MARK_LABEL[n.mark] ?? n.mark}
+                    </span>
+                  </div>
+                  <p className="priority-note-text">{n.note}</p>
+                  {officer && (
+                    <button
+                      type="button"
+                      className="button priority-note-clear"
+                      aria-label={`Clear note from ${n.name} on ${i.name}`}
+                      onClick={() => setClearing({ item: i.name, note: n })}
+                    >
+                      Clear note
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
       {clearing && (
         <Dialog title="Clear this note?" onClose={() => setClearing(null)} busy={clear.isPending}>
           <p>
@@ -488,10 +505,12 @@ function ContestedList({ contested }: { contested: Contested[] }) {
 // suggestion to review and save.
 function UnmanagedList({
   unmanaged,
+  bosses,
   officer,
   onSet
 }: {
   unmanaged: Unmanaged[];
+  bosses: string[];
   officer: boolean;
   onSet: (itemId: number, track: Track) => void;
 }) {
@@ -502,46 +521,81 @@ function UnmanagedList({
       </div>
     );
   }
+  return <UnmanagedSlots unmanaged={unmanaged} bosses={bosses} officer={officer} onSet={onSet} />;
+}
+
+function UnmanagedSlots({
+  unmanaged,
+  bosses,
+  officer,
+  onSet
+}: {
+  unmanaged: Unmanaged[];
+  bosses: string[];
+  officer: boolean;
+  onSet: (itemId: number, track: Track) => void;
+}) {
+  const [boss, setBoss] = useState('');
+  const bossId = useId();
   const missing = new Map(unmanaged.map((u) => [u.item.itemId, u.missing]));
+  // By slot, or by boss then slot, as on the item list (Kat, 2026-10-23).
   const groups = sections(
     unmanaged.map((u) => u.item),
-    { search: '', boss: '', hideEmpty: false }
+    { search: '', boss, hideEmpty: false }
   );
+  const tabs = withAll(groups, boss);
+  const [tab, setChosen] = useSlotTab(tabs);
   return (
     <div className="priority-unmanaged">
       <p className="text-muted">
         {unmanaged.length} {unmanaged.length === 1 ? 'item has' : 'items have'} no order saved on one track or both.
       </p>
-      {groups.map((g) => (
-        <div key={g.label} className="priority-section">
-          <h2 className="priority-section-title">{g.label}</h2>
-          <ul>
-            {g.items.map((i) => {
-              const tracks = missing.get(i.itemId)!;
-              return (
-                <li key={i.itemId} className="priority-unmanaged-row">
-                  <span className="priority-item-name">{i.name}</span>
-                  <span className="text-muted priority-unmanaged-what">
-                    {tracks.length === 2 ? 'No order on either track' : `No ${TRACK_LABEL[tracks[0]!]} order`}
-                  </span>
-                  {officer &&
-                    tracks.map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        className="button"
-                        aria-label={`Set ${TRACK_LABEL[t]} for ${i.name}`}
-                        onClick={() => onSet(i.itemId, t)}
-                      >
-                        Set {TRACK_LABEL[t]}
-                      </button>
-                    ))}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+      <div className="priority-list-filters priority-unmanaged-filters">
+        <label className="visually-hidden" htmlFor={bossId}>
+          Boss
+        </label>
+        <select id={bossId} className="select" value={boss} onChange={(e) => setBoss(e.target.value)}>
+          <option value="">All bosses</option>
+          {bosses.map((b) => (
+            <option key={b} value={b}>
+              {b}
+            </option>
+          ))}
+        </select>
+      </div>
+      <SlotTabs groups={tabs} chosen={tab!} onChoose={setChosen} />
+      <div {...slotPanel(tab!)}>
+        {slotGroups(groups, tab).map((g) => (
+          <div key={g.label} className="priority-section">
+            {tab === ALL && <h2 className="priority-section-title">{g.label}</h2>}
+            <ul>
+              {g.items.map((i) => {
+                const tracks = missing.get(i.itemId)!;
+                return (
+                  <li key={i.itemId} className="priority-unmanaged-row">
+                    <span className="priority-item-name">{i.name}</span>
+                    <span className="text-muted priority-unmanaged-what">
+                      {tracks.length === 2 ? 'No order on either track' : `No ${TRACK_LABEL[tracks[0]!]} order`}
+                    </span>
+                    {officer &&
+                      tracks.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          className="button"
+                          aria-label={`Set ${TRACK_LABEL[t]} for ${i.name}`}
+                          onClick={() => onSet(i.itemId, t)}
+                        >
+                          Set {TRACK_LABEL[t]}
+                        </button>
+                      ))}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -715,7 +769,20 @@ function ItemList({
   const searchId = useId();
   const bossId = useId();
   const names = new Map(players.map((p) => [p.id, p.nickname?.trim() || p.name_realm.split('-')[0]!]));
-  const shown = sections(items, { search, boss, hideEmpty });
+  // One slot at a time, as in the wishlist editor (#1602). The tabs are the
+  // slots the boss filter and Hide empty leave; a search looks across them all.
+  const groups = sections(items, { search: '', boss, hideEmpty });
+  const tabs = withAll(groups, boss);
+  const pickedTab = slotTabOf(items, picked);
+  const [tab, setChosen] = useSlotTab(tabs, pickedTab ?? 'Head');
+  // An item picked from elsewhere (Needs a look, Contested) opens its slot.
+  const [lastPicked, setLastPicked] = useState(picked);
+  if (picked !== lastPicked) {
+    setLastPicked(picked);
+    if (pickedTab) setChosen(pickedTab);
+  }
+  const searching = search.trim() !== '';
+  const shown = searching ? sections(items, { search, boss, hideEmpty }) : slotGroups(groups, tab);
 
   return (
     <nav className="priority-list" aria-label="Items">
@@ -746,43 +813,155 @@ function ItemList({
           <input type="checkbox" checked={hideEmpty} onChange={(e) => setHideEmpty(e.target.checked)} /> Hide empty
         </label>
       </div>
+      {!searching && groups.length > 0 && (
+        <SlotTabs groups={tabs} chosen={tab!} unsaved={unsaved} flagged={flagged} onChoose={setChosen} />
+      )}
       {shown.length === 0 ? (
         <p className="text-muted">{items.length ? 'No items match.' : 'No priority lists saved for this track yet.'}</p>
       ) : (
-        shown.map((s) => (
-          <div key={s.label} className="priority-section">
-            <h2 className="priority-section-title">{s.label}</h2>
-            <ul>
-              {s.items.map((i) => (
-                <li key={i.itemId}>
-                  <button
-                    type="button"
-                    className="priority-pick"
-                    aria-current={i.itemId === picked ? 'true' : undefined}
-                    onClick={() => onPick(i.itemId)}
-                  >
-                    <span className="priority-item-name">{i.name}</span>
-                    <span className="visually-hidden">,</span>{' '}
-                    {unsaved.has(i.itemId) && <span className="priority-unsaved">Not saved</span>}
-                    {flagged.has(i.itemId) && (
-                      <>
-                        <span className="priority-dot" aria-hidden="true" />
-                        <span className="visually-hidden">Needs a look </span>
-                      </>
-                    )}
-                    <span className="priority-item-count">
-                      {i.ranked.length
-                        ? `#1 ${names.get(i.ranked[0]!) ?? 'left the roster'} · ${i.ranked.length}`
-                        : 'Nobody ranked'}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))
+        <div {...(searching ? {} : slotPanel(tab!))}>
+          {shown.map((s) => (
+            <div key={s.label} className="priority-section">
+              {(searching || tab === ALL) && <h2 className="priority-section-title">{s.label}</h2>}
+              <ul>
+                {s.items.map((i) => (
+                  <li key={i.itemId}>
+                    <button
+                      type="button"
+                      className="priority-pick"
+                      aria-current={i.itemId === picked ? 'true' : undefined}
+                      onClick={() => onPick(i.itemId)}
+                    >
+                      <span className="priority-item-name">{i.name}</span>
+                      <span className="visually-hidden">,</span>{' '}
+                      {unsaved.has(i.itemId) && <span className="priority-unsaved">Not saved</span>}
+                      {flagged.has(i.itemId) && (
+                        <>
+                          <span className="priority-dot" aria-hidden="true" />
+                          <span className="visually-hidden">Needs a look </span>
+                        </>
+                      )}
+                      <span className="priority-item-count">
+                        {i.ranked.length
+                          ? `#1 ${names.get(i.ranked[0]!) ?? 'left the roster'} · ${i.ranked.length}`
+                          : 'Nobody ranked'}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
       )}
     </nav>
+  );
+}
+
+const slotTabOf = (items: PriorityItem[], id: number | null) => {
+  const item = id === null ? undefined : items.find((i) => i.itemId === id);
+  return item ? slotTab(item.slot) : null;
+};
+
+const slotTabId = (label: string) => `priority-slot-${label.toLowerCase().replace(/\s+/g, '-')}`;
+
+type SlotGroup = { label: string; items: { itemId: number }[] };
+const NONE: ReadonlySet<number> = new Set();
+
+// With a boss picked, an All tab first shows everything that boss drops at
+// once, under slot headings (Kat, 2026-10-23). Without one there is no All:
+// every item at once is the long list the tabs replaced.
+const ALL = 'All';
+const withAll = <G extends SlotGroup>(groups: G[], boss: string): SlotGroup[] =>
+  boss && groups.length > 1 ? [{ label: ALL, items: groups.flatMap((g) => g.items) }, ...groups] : groups;
+const slotGroups = <G extends SlotGroup>(groups: G[], tab: string | null) =>
+  tab === ALL ? groups : groups.filter((g) => g.label === tab);
+const slotPanel = (tab: string) => ({
+  role: 'tabpanel',
+  id: 'priority-slot-panel',
+  'aria-labelledby': slotTabId(tab)
+});
+
+// The open slot: the one chosen if it has items, else the first that does.
+// Head opens first (Kat, 2026-10-23).
+function useSlotTab(groups: SlotGroup[], initial = 'Head') {
+  const [chosen, setChosen] = useState(initial);
+  const tab = groups.find((g) => g.label === chosen)?.label ?? groups[0]?.label ?? null;
+  return [tab, setChosen, chosen] as const;
+}
+
+// The slot tabs over the item list, Unmanaged and Notes, wrapping so every
+// slot shows at once. On the item list each carries the page's own marks, so
+// a slot with work left shows without opening it. Arrow keys, Home and End
+// move between slots, as in the wishlist editor. Only one tab of the page
+// shows at a time, so the ids stay unique.
+function SlotTabs({
+  groups,
+  chosen,
+  unsaved = NONE,
+  flagged = NONE,
+  onChoose
+}: {
+  groups: SlotGroup[];
+  chosen: string;
+  unsaved?: ReadonlySet<number>;
+  flagged?: ReadonlySet<number>;
+  onChoose: (label: string) => void;
+}) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const index = Math.max(
+    0,
+    groups.findIndex((g) => g.label === chosen)
+  );
+  const onKeyDown = (event: KeyboardEvent) => {
+    const last = groups.length - 1;
+    const next =
+      event.key === 'ArrowRight'
+        ? (index + 1) % groups.length
+        : event.key === 'ArrowLeft'
+          ? (index - 1 + groups.length) % groups.length
+          : event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? last
+              : null;
+    if (next === null) return;
+    event.preventDefault();
+    onChoose(groups[next]!.label);
+    refs.current[next]?.focus();
+  };
+  return (
+    <div className="priority-slot-tabs" role="tablist" aria-label="Slots">
+      {groups.map((g, i) => {
+        const needsLook = g.items.some((it) => flagged.has(it.itemId));
+        const notSaved = g.items.some((it) => unsaved.has(it.itemId));
+        return (
+          <button
+            key={g.label}
+            ref={(el) => {
+              refs.current[i] = el;
+            }}
+            type="button"
+            role="tab"
+            id={slotTabId(g.label)}
+            aria-selected={g.label === chosen}
+            aria-controls="priority-slot-panel"
+            tabIndex={g.label === chosen ? 0 : -1}
+            className="priority-slot-tab"
+            onClick={() => onChoose(g.label)}
+            onKeyDown={onKeyDown}
+          >
+            {g.label}
+            {notSaved && <span className="priority-slot-unsaved" aria-hidden="true" title="Not saved" />}
+            {needsLook && <span className="priority-dot" aria-hidden="true" />}
+            <span className="visually-hidden">
+              {notSaved ? ', not saved' : ''}
+              {needsLook ? ', needs a look' : ''}
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

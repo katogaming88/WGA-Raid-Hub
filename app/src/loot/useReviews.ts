@@ -21,14 +21,17 @@ export function useReviews(teamId: number) {
       client
         .from('self_received_requests')
         .select(
-          'id, status, track, source, note, officer_notes, slot, submitted_at, player_id, players(name_realm, classes_specs(class)), items(name, slot, wow_item_id, is_ptr, icon)'
+          'id, status, track, source, note, officer_notes, slot, submitted_at, player_id, players(name_realm, team_id, archived_at, classes_specs(class)), items(name, slot, wow_item_id, is_ptr, icon)'
         )
         .eq('team_id', teamId)
         .order('id')
         .range(from, to)
     );
     if (rows.error) return rows;
-    return { data: rows.data!.sort((a, b) => (a.submitted_at < b.submitted_at ? 1 : -1)), error: null };
+    // Only raiders on the team's active roster (Kat, 2026-10-23, #1602): an
+    // archived character, or one gone from the team, drops off the page.
+    const active = rows.data!.filter((r) => r.players && r.players.archived_at == null && r.players.team_id === teamId);
+    return { data: active.sort((a, b) => (a.submitted_at < b.submitted_at ? 1 : -1)), error: null };
   });
 }
 

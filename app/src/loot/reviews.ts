@@ -15,7 +15,12 @@ export type ReviewRow = {
   slot: string | null;
   submitted_at: string;
   player_id: number | null;
-  players: { name_realm: string; classes_specs: { class: string } | null } | null;
+  players: {
+    name_realm: string;
+    team_id?: number | null;
+    archived_at?: string | null;
+    classes_specs: { class: string } | null;
+  } | null;
   items: {
     name: string;
     slot: string | null;
