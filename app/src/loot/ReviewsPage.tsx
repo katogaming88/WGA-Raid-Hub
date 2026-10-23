@@ -106,7 +106,7 @@ function Reviews({
 
   return (
     <>
-      <div className="settings-row">
+      <div className="settings-row loot-season-row">
         <label htmlFor={seasonId}>Season</label>
         <select id={seasonId} className="select" value={season ?? ''} onChange={(e) => setPicked(e.target.value)}>
           {seasonList.map((s) => (

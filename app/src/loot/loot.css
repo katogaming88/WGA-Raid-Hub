@@ -179,3 +179,8 @@
     flex-basis: auto;
   }
 }
+
+/* Outside a card, a select would otherwise fill the page's width. */
+.loot-season-row .select {
+  width: auto;
+}
