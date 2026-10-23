@@ -23,8 +23,9 @@ answers to.
   with the count, difficulty, date, Off spec tag and item tooltips). A
   search box narrows the buttons and also finds items by name, showing
   who each one counts for now. Reassign on an item asks who to give it
-  to. Past reassignments lists every move so far, the current
-  site's included, with who made it and when. The raider's received
+  to with the same raider buttons and a box to narrow them. Past
+  reassignments lists every move so far, the current site's included,
+  with who made it and when. The raider's received
   items, the roster, the home feed and the Priority page follow the
   change, and the audit log records it, as on the current site. A guild
   officer from another team sees the history but not the form.

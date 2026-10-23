@@ -169,29 +169,7 @@ function Reassign({ teamId, roster }: { teamId: number; roster: PlayerRow[] }) {
       />
       {/* Every raider at once, by role and in class color, so picking one is a
           single click (Kat, 2026-10-23: the dropdown was slow to go through). */}
-      {shown.length > 0 && (
-        <div className="loot-reassign-roles">
-          {raidersByRole(shown).map(({ label, raiders }) => (
-            <div key={label} role="group" aria-label={label} className="loot-reassign-role">
-              <span className="loot-reassign-role-label text-muted" aria-hidden="true">
-                {label}
-              </span>
-              {raiders.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className="button loot-reassign-raider"
-                  aria-pressed={p.id === playerId}
-                  style={{ color: classColor(p.classes_specs?.class ?? '') }}
-                  onClick={() => setPlayerId(p.id === playerId ? null : p.id)}
-                >
-                  {pickerName(p)}
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
+      <RaiderButtons players={shown} picked={playerId} onPick={(id) => setPlayerId(id === playerId ? null : id)} />
       <DataState query={loot} label="the team's loot">
         {(rows) => {
           // Items whose name matches, whoever has them, newest first.
@@ -306,6 +284,44 @@ function Reassign({ teamId, roster }: { teamId: number; roster: PlayerRow[] }) {
   );
 }
 
+// Every raider at once, by role and in class color, so picking one is a single
+// click (Kat, 2026-10-23: the dropdown was slow to go through). The page and
+// the move dialog both pick with it.
+function RaiderButtons({
+  players,
+  picked,
+  onPick
+}: {
+  players: PlayerRow[];
+  picked: number | null;
+  onPick: (id: number) => void;
+}) {
+  if (!players.length) return null;
+  return (
+    <div className="loot-reassign-roles">
+      {raidersByRole(players).map(({ label, raiders }) => (
+        <div key={label} role="group" aria-label={label} className="loot-reassign-role">
+          <span className="loot-reassign-role-label text-muted" aria-hidden="true">
+            {label}
+          </span>
+          {raiders.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className="button loot-reassign-raider"
+              aria-pressed={p.id === picked}
+              style={{ color: classColor(p.classes_specs?.class ?? '') }}
+              onClick={() => onPick(p.id)}
+            >
+              {pickerName(p)}
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // The roster's role groups, in its order; a raider with no role set goes last.
 function raidersByRole(players: PlayerRow[]) {
   const groups = ROLE_ORDER.map((role) => ({
@@ -351,23 +367,29 @@ function MoveDialog({
   onClose: () => void;
   onMove: (to: PlayerRow) => void;
 }) {
-  const [to, setTo] = useState('');
-  const toId = useId();
-  const target = others.find((p) => String(p.id) === to);
+  const [to, setTo] = useState<number | null>(null);
+  const [filter, setFilter] = useState('');
+  const filterId = useId();
+  const target = others.find((p) => p.id === to);
+  const f = filter.trim().toLowerCase();
+  const shown = f ? others.filter((p) => pickerName(p).toLowerCase().includes(f)) : others;
   return (
     <Dialog title={`Reassign ${itemName(row)}?`} onClose={onClose} busy={busy}>
-      <label className="field-label" htmlFor={toId}>
+      <label className="field-label" htmlFor={filterId}>
         Give it to
       </label>
-      <select id={toId} className="select" value={to} onChange={(e) => setTo(e.target.value)}>
-        <option value="">Pick a raider</option>
-        {others.map((p) => (
-          <option key={p.id} value={p.id}>
-            {pickerName(p)}
-          </option>
-        ))}
-      </select>
+      <input
+        id={filterId}
+        type="search"
+        className="input"
+        placeholder="Type to narrow the raiders"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <RaiderButtons players={shown} picked={to} onPick={setTo} />
+      {!shown.length && <p className="text-muted">No raider matches.</p>}
       <div className="dialog-actions">
+        {target && <span className="text-muted">Gives it to {pickerName(target)}.</span>}
         <span className="grow" />
         <button type="button" className="button" onClick={onClose} disabled={busy}>
           Cancel

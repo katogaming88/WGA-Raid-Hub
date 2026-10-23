@@ -131,8 +131,8 @@ describe('Reassign page', () => {
     const confirm = within(dialog).getByRole('button', { name: 'Reassign' });
     expect(confirm).toBeDisabled();
     // The raider who has it now is not offered.
-    expect(within(dialog).queryByRole('option', { name: 'Kat (Katorrí)' })).not.toBeInTheDocument();
-    await userEvent.selectOptions(within(dialog).getByLabelText('Give it to'), '6');
+    expect(within(dialog).queryByRole('button', { name: 'Kat (Katorrí)' })).not.toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Brakkus' }));
     await userEvent.click(confirm);
     expect(await screen.findAllByText('Voidbound Cinch now counts for Brakkus.')).not.toHaveLength(0);
     expect(writes[0]).toMatchObject({ table: 'rclc_loot', method: 'update', values: { player_id: 6 } });
