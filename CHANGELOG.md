@@ -18,8 +18,8 @@ answers to.
 
 - New app: Settings › Signups (#1342). The team leader opens signups for
   a coming season, and closes them from two weeks before it starts. The
-  close shows first, by name, who joins, who changes character, who
-  starts a first main, who is left for an officer to settle, and every
+  close shows first, by name, who joins the roster, who changes
+  character, who is left for an officer to settle, and every
   raider who did not sign up, each ticked to come off the roster;
   unticking keeps them. Officers see the page read-only.
 - New app: the Roster's Projected Roster lists everyone who has signed

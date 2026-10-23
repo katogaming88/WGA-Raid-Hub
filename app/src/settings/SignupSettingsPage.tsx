@@ -210,8 +210,12 @@ function CloseSignupsBody({
           ? 'Nobody has signed up yet.'
           : `${adding} ${adding === 1 ? 'raider joins' : 'raiders join'} or ${adding === 1 ? 'changes' : 'change'} character, and ${preview.stays.length} ${preview.stays.length === 1 ? 'stays' : 'stay'} as they are.`}
       </p>
-      <EntryList title="Joining the team" entries={preview.joins} />
-      <EntryList title="First character on the team" entries={preview.first_mains} />
+      {/* New to the team or on it with no character yet: either way their
+          first character goes on the roster (Kat). */}
+      <EntryList
+        title="Joining the roster"
+        entries={[...preview.joins, ...preview.first_mains].sort((a, b) => a.name_realm.localeCompare(b.name_realm))}
+      />
       <EntryList
         title="Changing character"
         entries={preview.swaps}
