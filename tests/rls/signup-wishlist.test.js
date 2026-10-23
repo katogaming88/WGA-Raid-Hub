@@ -73,7 +73,7 @@ describe('signup wishlist (#1609)', () => {
     });
   });
 
-  it("leaves the signer's row alone for anyone else: signed out, another team, another raider", async () => {
+  it("leaves the signer's row alone for anyone else: signed out, another team, another raider, an officer", async () => {
     await withTxn(async ({ q, asUser, asAnon }) => {
       await nextSeason(q);
       const me = await signedUp(q);
@@ -86,9 +86,9 @@ describe('signup wishlist (#1609)', () => {
         asAnon("update public.signup_item_preferences set status = 'pass' where id = $1", [id])
       ).rejects.toMatchObject({ code: RLS_DENIED });
 
-      // A raider on another team, and another raider on this one: nothing to
-      // read, and an update or delete reaches no row.
-      for (const uid of [RAIDER_T2, RAIDER_T1]) {
+      // A raider on another team, another raider on this one, and this team's
+      // officer: nothing to read, and an update or delete reaches no row.
+      for (const uid of [RAIDER_T2, RAIDER_T1, OFFICER_T1]) {
         expect((await asUser(uid, 'select * from public.signup_item_preferences')).rows).toEqual([]);
         await expect(mark(asUser, uid, me.signupId, await anItem(q, 1))).rejects.toMatchObject({ code: RLS_DENIED });
         await asUser(uid, "update public.signup_item_preferences set status = 'pass', note = 'x' where id = $1", [id]);
