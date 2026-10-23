@@ -114,7 +114,13 @@ export function useRemoveSignup(teamId: number) {
       }
       return { data: null, error: null };
     },
-    { key: ['remove-signup', teamId], refreshes: [['incoming-roster', teamId], ['signup-flags', teamId]] }
+    {
+      key: ['remove-signup', teamId],
+      refreshes: [
+        ['incoming-roster', teamId],
+        ['signup-flags', teamId]
+      ]
+    }
   );
 }
 

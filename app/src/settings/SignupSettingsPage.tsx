@@ -70,7 +70,7 @@ function SignupsCard({ teamId, seasons, canEdit }: { teamId: number; seasons: Si
     );
 
   return (
-    <div className="card settings-card">
+    <div className="card settings-card signup-settings-card">
       <h2>Signups</h2>
       <p className="text-muted">
         Raiders sign up for a season on the Sign up page, and everyone who has signed up shows on the{' '}
@@ -79,11 +79,13 @@ function SignupsCard({ teamId, seasons, canEdit }: { teamId: number; seasons: Si
         </Link>
         . Closing signups puts them on the roster.
       </p>
-      <div className="signup-settings-row">
-        <div className="field">
-          <label className="field-label" htmlFor={`${id}-season`}>
-            Season
-          </label>
+      <div className="field">
+        <label className="field-label" htmlFor={`${id}-season`}>
+          Season
+        </label>
+        {/* The state sits beside the dropdown, centred on it, not on the
+            label above. */}
+        <div className="signup-settings-row">
           <select id={`${id}-season`} className="input" value={season.code} onChange={(e) => setCode(e.target.value)}>
             {seasons.map((s) => (
               <option key={s.code} value={s.code}>
@@ -91,10 +93,10 @@ function SignupsCard({ teamId, seasons, canEdit }: { teamId: number; seasons: Si
               </option>
             ))}
           </select>
+          <span className={`signup-state ${season.open ? 'signup-state-open' : ''}`}>
+            {season.open ? 'Open' : 'Closed'}
+          </span>
         </div>
-        <span className={`signup-state ${season.open ? 'signup-state-open' : ''}`}>
-          {season.open ? 'Open' : 'Closed'}
-        </span>
       </div>
       <p className="text-muted">
         {hasStarted(season, today)

@@ -369,9 +369,18 @@
 }
 
 /* Settings > Signups (#1342). */
+.signup-settings-card {
+  max-width: 40rem;
+}
+
+/* The card is a flex column, which would stretch its buttons edge to edge. */
+.signup-settings-card > .button {
+  align-self: flex-start;
+}
+
 .signup-settings-row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
 }
@@ -389,7 +398,6 @@
   border-radius: 999px;
   border: 1px solid var(--border);
   color: var(--text-muted);
-  margin-bottom: var(--space-1);
 }
 
 .signup-state-open {

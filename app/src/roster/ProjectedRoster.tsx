@@ -107,8 +107,7 @@ function ProjectedRow({
   const [removing, setRemoving] = useState(false);
 
   // An unset Trial means a trial, as the promotion reads it.
-  const checked = (flag: SignupFlag) =>
-    flag === 'is_trial' ? (flags?.is_trial ?? true) : (flags?.[flag] ?? false);
+  const checked = (flag: SignupFlag) => (flag === 'is_trial' ? (flags?.is_trial ?? true) : (flags?.[flag] ?? false));
 
   return (
     <tr>

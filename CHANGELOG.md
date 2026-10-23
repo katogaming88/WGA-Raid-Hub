@@ -27,6 +27,11 @@ answers to.
   set Trial and the backup roles on each signup, applied when signups
   close, and can remove a signup that should not count.
 
+### Project
+
+- Browser accessibility states for Settings › Signups, its close
+  confirm, and the officer's Projected Roster (#1342).
+
 ## [3.201.0] - 2026-10-23
 
 ### Backend
