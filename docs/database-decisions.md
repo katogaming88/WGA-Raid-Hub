@@ -2794,3 +2794,17 @@ Decided with Kat 2026-10-23.
 **Signups also close by themselves when the season starts,** archiving everyone who did not sign up, as a leader closing with every tick left on would (Kat). That is #1608: it runs with nobody signed in, and it must not act on a season that started before it ships (Midnight Season 2's signups are still switched on for Phoenix and Hellfire).
 
 [Full discussion -> #1342](https://github.com/katogaming88/WGA-Raid-Hub/issues/1342).
+
+## #1609 -- a new main or swap fills in next season's wishlist before signups close
+
+Shipped: 20261023154954_signup_wishlist.sql
+
+Decided with Kat 2026-10-23: with signups closing as late as the season's start (#1608), someone signed up on a character that is not on the roster yet would start the season with no wishlist.
+
+**A table of its own, not a nullable `player_id`.** The signup's picks live in `signup_item_preferences`, keyed by the signup, with the same mark, slot and note columns as `item_preferences` and no season column (a signup is for one season). Letting `item_preferences.player_id` be null would have put rows with no roster character in front of every reader of that table: priority, the RCLootCouncil export, BiS demand, setup status, five current-site tabs and the new app. None of them should see a signup's picks before the season starts, and a separate table means none of them changed.
+
+**Who can edit.** The signer, by person or (for a current-site signup) by account, while the signup is pending or approved and its character is not on the team's roster; a character already there has its own wishlist. Writes need the team's wishlist switch for the season, refused out loud by a trigger as on `item_preferences`. Nobody else reads them, officers included: nothing uses a signup's picks until it is on the roster.
+
+**They move when the signup is added.** A trigger on `season_signups` moves the rows onto `approved_player_id` for the signup's season when the status becomes `added`, so every path that adds a signup carries them: the team leader closing signups, an officer's single add, and the automatic close (#1608). They replace any rows the character already held for that season, which only a character revived from the archive can have. A swap's old character keeps its own. Turned down, or moved to a different character (the name key changes), the rows go; deleting the signup takes them by cascade.
+
+[Full discussion -> #1609](https://github.com/katogaming88/WGA-Raid-Hub/issues/1609).

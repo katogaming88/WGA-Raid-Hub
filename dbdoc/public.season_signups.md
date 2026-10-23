@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('signups_id_seq'::regclass) | false |  |  |  |
+| id | integer | nextval('signups_id_seq'::regclass) | false | [public.signup_item_preferences](public.signup_item_preferences.md) |  |  |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | signup_name_realm | text |  | false |  |  |  |
 | class_spec_id | integer |  | true |  | [public.classes_specs](public.classes_specs.md) |  |
@@ -57,12 +57,14 @@
 | Name | Definition |
 | ---- | ---------- |
 | trg_season_signups_updated_at | CREATE TRIGGER trg_season_signups_updated_at BEFORE UPDATE ON public.season_signups FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+| season_signups_carry_wishlist | CREATE TRIGGER season_signups_carry_wishlist AFTER UPDATE OF status, signup_name_realm ON public.season_signups FOR EACH ROW WHEN (((new.status IS DISTINCT FROM old.status) OR (new.signup_name_realm IS DISTINCT FROM old.signup_name_realm))) EXECUTE FUNCTION carry_signup_wishlist() |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
+"public.signup_item_preferences" }o--|| "public.season_signups" : "FOREIGN KEY (signup_id) REFERENCES season_signups(id) ON DELETE CASCADE"
 "public.season_signups" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.season_signups" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.season_signups" }o--o| "public.classes_specs" : "FOREIGN KEY (swap_class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
@@ -96,6 +98,17 @@ erDiagram
   boolean is_trial
   boolean is_backup_tank
   boolean is_backup_healer
+}
+"public.signup_item_preferences" {
+  integer id
+  integer signup_id FK
+  integer item_id FK
+  text status
+  text slot
+  text note
+  boolean synced_bis
+  timestamp_with_time_zone created_at
+  timestamp_with_time_zone updated_at
 }
 "public.teams" {
   integer id

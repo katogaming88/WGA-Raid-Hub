@@ -147,6 +147,8 @@ self_received_requests,Claude readers read self_received_requests,claude_readers
 self_received_requests,Officers read self_received_requests,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 self_received_requests,Officers update self_received_requests,public,UPDATE,PERMISSIVE,((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_officer_team_ids() AS my_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 self_received_requests,Raiders read own self_received_requests,public,SELECT,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),
+signup_item_preferences,Claude readers read signup_item_preferences,claude_readers,SELECT,PERMISSIVE,true,
+signup_item_preferences,Raiders manage own signup_item_preferences,public,ALL,PERMISSIVE,(signup_id = ANY (( SELECT my_wishlist_signup_ids() AS my_wishlist_signup_ids)::integer[])),(signup_id = ANY (( SELECT my_wishlist_signup_ids() AS my_wishlist_signup_ids)::integer[]))
 site_settings,Claude readers read site_settings,claude_readers,SELECT,PERMISSIVE,true,
 site_settings,Public read site_settings,public,SELECT,PERMISSIVE,true,
 streamers,Claude readers read streamers,claude_readers,SELECT,PERMISSIVE,true,

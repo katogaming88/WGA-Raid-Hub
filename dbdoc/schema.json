@@ -2063,6 +2063,10 @@
         {
           "name": "trg_season_signups_updated_at",
           "def": "CREATE TRIGGER trg_season_signups_updated_at BEFORE UPDATE ON public.season_signups FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "season_signups_carry_wishlist",
+          "def": "CREATE TRIGGER season_signups_carry_wishlist AFTER UPDATE OF status, signup_name_realm ON public.season_signups FOR EACH ROW WHEN (((new.status IS DISTINCT FROM old.status) OR (new.signup_name_realm IS DISTINCT FROM old.signup_name_realm))) EXECUTE FUNCTION carry_signup_wishlist()"
         }
       ]
     },
@@ -9252,6 +9256,137 @@
           "def": "CREATE TRIGGER trg_team_raid_reports_updated_at BEFORE UPDATE ON public.team_raid_reports FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
+    },
+    {
+      "name": "public.signup_item_preferences",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "signup_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "item_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "slot",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "synced_bis",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "signup_item_preferences_pkey",
+          "def": "CREATE UNIQUE INDEX signup_item_preferences_pkey ON public.signup_item_preferences USING btree (id)",
+          "table": "public.signup_item_preferences",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "signup_item_preferences_no_dupe_item_key",
+          "def": "CREATE UNIQUE INDEX signup_item_preferences_no_dupe_item_key ON public.signup_item_preferences USING btree (signup_id, item_id, COALESCE(slot, ''::text))",
+          "table": "public.signup_item_preferences",
+          "columns": [
+            "signup_id",
+            "item_id",
+            "coalesce"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "signup_item_preferences_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['bis'::text, 'good'::text, 'ok'::text, 'catalyst'::text, 'pass'::text])))",
+          "table": "public.signup_item_preferences",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "signup_item_preferences_item_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE",
+          "table": "public.signup_item_preferences",
+          "referenced_table": "public.items",
+          "columns": [
+            "item_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "signup_item_preferences_signup_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (signup_id) REFERENCES season_signups(id) ON DELETE CASCADE",
+          "table": "public.signup_item_preferences",
+          "referenced_table": "public.season_signups",
+          "columns": [
+            "signup_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "signup_item_preferences_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.signup_item_preferences",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_signup_item_preferences_updated_at",
+          "def": "CREATE TRIGGER trg_signup_item_preferences_updated_at BEFORE UPDATE ON public.signup_item_preferences FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_signup_item_preferences_wishlist_open",
+          "def": "CREATE TRIGGER trg_signup_item_preferences_wishlist_open BEFORE INSERT OR DELETE OR UPDATE ON public.signup_item_preferences FOR EACH ROW EXECUTE FUNCTION restrict_signup_item_preferences_to_open_wishlist()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -10926,6 +11061,32 @@
       ],
       "parent_cardinality": "zero_or_one",
       "def": "FOREIGN KEY (kind_override_by) REFERENCES people(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.signup_item_preferences",
+      "columns": [
+        "item_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.items",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.signup_item_preferences",
+      "columns": [
+        "signup_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.season_signups",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (signup_id) REFERENCES season_signups(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -11869,6 +12030,30 @@
       "name": "public.promote_season_signups",
       "return_type": "void",
       "arguments": "p_team_id integer, p_season text, p_expected text, p_archive_player_ids integer[] DEFAULT '{}'::integer[]",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_wishlist_signup_ids",
+      "return_type": "_int4",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.signup_wishlist_open",
+      "return_type": "bool",
+      "arguments": "p_signup_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.restrict_signup_item_preferences_to_open_wishlist",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.carry_signup_wishlist",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],

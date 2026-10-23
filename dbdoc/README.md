@@ -80,6 +80,7 @@
 | [public.removal_reasons](public.removal_reasons.md) | 8 | Every reason a character or a membership was removed for (#1427), never updated or deleted. A character's row comes from a trigger on player_officer_notes, a membership's from archive_team_member(). The notes row still holds the latest reason; this holds all of them. | BASE TABLE |
 | [public.names](public.names.md) | 6 | A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming, assigning and unclaiming update this row; a raider's first claim on a team also creates their membership (claim_name), and nothing merges memberships. A names row outlives its membership being archived. | BASE TABLE |
 | [public.team_raid_reports](public.team_raid_reports.md) | 15 | Every Warcraft Logs report the progression sync reads for a team (#1469), one row per team and report, rewritten on every run and never deleted. kind is the title rule's verdict, kind_override an officer's choice, effective_kind the one that counts. Written only by wcl-progression-sync. | BASE TABLE |
+| [public.signup_item_preferences](public.signup_item_preferences.md) | 9 |  | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -242,6 +243,10 @@
 | public.signup_promotion_plan | jsonb | p_team_id integer, p_season text | FUNCTION |
 | public.preview_signup_promotion | jsonb | p_team_id integer, p_season text | FUNCTION |
 | public.promote_season_signups | void | p_team_id integer, p_season text, p_expected text, p_archive_player_ids integer[] DEFAULT '{}'::integer[] | FUNCTION |
+| public.my_wishlist_signup_ids | _int4 |  | FUNCTION |
+| public.signup_wishlist_open | bool | p_signup_id integer | FUNCTION |
+| public.restrict_signup_item_preferences_to_open_wishlist | trigger |  | FUNCTION |
+| public.carry_signup_wishlist | trigger |  | FUNCTION |
 
 ## Enums
 
@@ -394,6 +399,8 @@ erDiagram
 "public.names" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_raid_reports" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_raid_reports" }o--o| "public.people" : "FOREIGN KEY (kind_override_by) REFERENCES people(id) ON DELETE SET NULL"
+"public.signup_item_preferences" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
+"public.signup_item_preferences" }o--|| "public.season_signups" : "FOREIGN KEY (signup_id) REFERENCES season_signups(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -1166,6 +1173,17 @@ erDiagram
   integer kind_override_by FK
   timestamp_with_time_zone kind_override_at
   text effective_kind
+  timestamp_with_time_zone created_at
+  timestamp_with_time_zone updated_at
+}
+"public.signup_item_preferences" {
+  integer id
+  integer signup_id FK
+  integer item_id FK
+  text status
+  text slot
+  text note
+  boolean synced_bis
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
 }
