@@ -8,7 +8,7 @@ One row per human (#942). auth_user_id is their sign-in account, null for a Disc
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer |  | false | [public.team_members](public.team_members.md) [public.guild_grants](public.guild_grants.md) [public.characters](public.characters.md) [public.main_swap_requests](public.main_swap_requests.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.removal_reasons](public.removal_reasons.md) [public.team_raid_reports](public.team_raid_reports.md) |  |  |
+| id | integer |  | false | [public.season_signups](public.season_signups.md) [public.team_members](public.team_members.md) [public.guild_grants](public.guild_grants.md) [public.characters](public.characters.md) [public.main_swap_requests](public.main_swap_requests.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.removal_reasons](public.removal_reasons.md) [public.team_raid_reports](public.team_raid_reports.md) |  |  |
 | auth_user_id | uuid |  | true |  |  |  |
 | discord_id | text |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
@@ -42,6 +42,7 @@ One row per human (#942). auth_user_id is their sign-in account, null for a Disc
 ```mermaid
 erDiagram
 
+"public.season_signups" }o--o| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE SET NULL"
 "public.team_members" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.guild_grants" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.characters" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
@@ -56,6 +57,31 @@ erDiagram
   uuid auth_user_id FK
   text discord_id
   timestamp_with_time_zone created_at
+}
+"public.season_signups" {
+  integer id
+  integer team_id FK
+  text signup_name_realm
+  integer class_spec_id FK
+  text off_specs
+  boolean main_swap
+  text player_note
+  timestamp_with_time_zone submitted_at
+  text status
+  integer swap_class_spec_id FK
+  text season FK
+  timestamp_with_time_zone reviewed_at
+  integer reviewed_by FK
+  text signup_officer_note
+  integer approved_player_id FK
+  timestamp_with_time_zone updated_at
+  text swap_from_name_realm
+  uuid auth_user_id FK
+  integer person_id FK
+  integer character_id FK
+  boolean is_trial
+  boolean is_backup_tank
+  boolean is_backup_healer
 }
 "public.team_members" {
   integer id

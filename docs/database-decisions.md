@@ -2736,3 +2736,25 @@ Suggest order (`generate_priority_order()`) and the RCLootCouncil export (`build
 **Null for no list, and each caller keeps its own old rule.** The two functions disagreed before this change: Suggest order skipped OS and M+ rolls, while the export counted every award, OS included. Unifying them for teams with no list would have moved numbers nobody asked to move, against the "nothing changes until an officer saves" rule from part 1. So the helper answers null when there is no list, and each caller falls back to exactly what it did. Once a list is saved, both use Main spec only and agree. No team had saved a list when this shipped.
 
 [Full discussion -> #1561](https://github.com/katogaming88/WGA-Raid-Hub/issues/1561).
+
+## #1465 -- a season signup records who signed up and which of their characters
+
+Shipped: 20261023114714_season_signup_person.sql
+
+Decided with Kat 2026-09-28 (#1342) and 2026-10-23. A signup was a name typed on a sheet: `signup_name_realm` as text and the signer's account id. It now carries the person (`person_id`) and the saved character they picked (`character_id`), and `declare_season_signup()` is how the new app signs someone up. In the new app a signup goes straight onto the Projected Roster with no approval step (Kat); the current site keeps `submit_season_signup()`, the Signups tab and Pending Roster until cutover, so a declared signup is stored as `pending` and shows there like any other.
+
+**One signup per person per team per tier, while not rejected.** A partial unique index on `(person_id, team_id, season) where status <> 'rejected'`. It covers rows with a person, which is every declared signup. Rows the current site wrote have no person and are not filled in: two signers on Hellfire each have two `added` MID2 rows from June and July, and backfilling would break the rule. `declare_season_signup()` still finds such a row by the signer's account, so signing up again replaces it.
+
+**Signing up again replaces, unless it is already on the roster.** The replaced row goes back to `pending` with the new character, spec, off-specs and note; the officer's note and flags stay. A signup an officer has already put on the roster is refused rather than rewritten, since it is linked to a roster character. In practice that is only this tier's current-site rows.
+
+**For the coming tier only.** Signups are for the next tier and close before it starts (Kat, 2026-10-23), so the function refuses a tier whose `starts_at` is today or earlier (Eastern), even while its `team_seasons` switch is on. MID2's switch is still on for Phoenix and Hellfire.
+
+**Ownership is proved by the character row**, as in `request_main_swap()`: the character id must be one of the caller's saved characters, and the spec must be its class. When the signer already has a different character on the team's roster, the signup is stored as a main swap from it (`main_swap`, `swap_from_name_realm`, `swap_class_spec_id`), the shape `submit_season_signup()` writes, so the current site reads both alike.
+
+**`character_id` empties if the character row goes** (`on delete set null`), for example when the person chooses alts again (#1430); `signup_name_realm` stays the name of record. `person_id` empties the same way.
+
+**The officer's Trial and backup flags live on the signup** (`is_trial`, `is_backup_tank`, `is_backup_healer`), set on the Projected Roster (#1342) and applied when signups close (#1467). `is_trial` is null until an officer sets it. Officers write them through the table's existing officer update rule.
+
+**`add_signup_to_roster()` links a declared signup's character to the signer.** The signer is the signup's person when it has one, else the account as before. A new roster row from a declared signup that nobody holds takes the signer's membership; a row someone else holds is left alone. The add checks the character again rather than trusting the signup: it must still be the signup person's, under the roster row's own name. The signer can still retype `signup_name_realm` through `update_own_signup()`, and without that check a retyped name would hand an unclaimed row, with its loot and attendance, to the signer (found in the fresh-agent review). A typed signup's character still waits for a claim or the Battle.net link.
+
+[Full discussion -> #1465](https://github.com/katogaming88/WGA-Raid-Hub/issues/1465).

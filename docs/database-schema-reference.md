@@ -116,7 +116,7 @@ Ordered loot priority lists managed by officers -- who gets the next drop for a 
 
 ## `season_signups`
 
-Applications submitted by players (or prospective members) to join a raid team for a season.
+Applications submitted by players (or prospective members) to join a raid team for a season. From #1465 the new app signs a person up with `declare_season_signup()`: one of their own saved characters, one signup per person per team per tier (signing up again replaces it), for a tier not yet started.
 
 Lifecycle: `pending` -> `approved` -> `added` (or `rejected` at review). The "Pending Roster" from the old sheet is not a table: it is the set of rows with `status = 'approved'` and `approved_player_id` still NULL, exposed to the officer UI through the `pending_roster` view. No `players` row exists until an officer promotes the signup with `add_signup_to_roster(signup_id, is_trial, archive_player_id)`, which creates (or unarchives) the player, optionally archives a main-swap predecessor, brings the signer's membership back as a raider if it was archived (#1402), and sets `status = 'added'` plus `approved_player_id` in one transaction. The `season_signups_player_only_when_added` CHECK enforces that only `added` rows link to a player. See [database-decisions.md](database-decisions.md) for why this is a signup state rather than a flag on `players`.
 
@@ -139,6 +139,12 @@ Lifecycle: `pending` -> `approved` -> `added` (or `rejected` at review). The "Pe
 | `approved_player_id`  | int4        | FK -> `players.id` ON DELETE SET NULL -- the player row created when the signup is added to the roster (status `added`) |
 | `updated_at`          | timestamptz | Auto-set on every UPDATE via trigger                                             |
 | `swap_from_name_realm` | text       | The old character's name-realm for a verified-claim mainswap (`js/signup.js`'s `discordSession.nameRealm` when the typed name differs from the applicant's Discord claim); null for the free-typed "I'm switching mains" case, which has no claim backing it |
+| `auth_user_id`        | uuid        | FK -> `auth.users.id` ON DELETE SET NULL -- the signer's account |
+| `person_id`           | int4        | FK -> `people.id` ON DELETE SET NULL -- the signer (#1465); set by `declare_season_signup()`, null on rows the current site wrote |
+| `character_id`        | int4        | FK -> `characters.id` ON DELETE SET NULL -- the saved character picked (#1465); `signup_name_realm` stays the name of record |
+| `is_trial`            | bool        | Officer's Trial flag from the Projected Roster (#1342), applied when signups close (#1467); null until set |
+| `is_backup_tank`      | bool        | Officer's backup-tank flag from the Projected Roster, applied when signups close |
+| `is_backup_healer`    | bool        | Officer's backup-healer flag from the Projected Roster, applied when signups close |
 
 ---
 

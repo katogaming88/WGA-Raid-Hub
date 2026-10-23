@@ -39,7 +39,7 @@ CREATE VIEW incoming_roster AS (
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
-| [public.season_signups](public.season_signups.md) | 18 |  | BASE TABLE |
+| [public.season_signups](public.season_signups.md) | 23 |  | BASE TABLE |
 | [public.team_seasons](public.team_seasons.md) | 6 | A team's two switches per tier (#939): whether raiders can sign up and whether they can edit their wishlist. No row means both closed. Written only by set_team_season(). | BASE TABLE |
 | [public.classes_specs](public.classes_specs.md) | 4 |  | BASE TABLE |
 

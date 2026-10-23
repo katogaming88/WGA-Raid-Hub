@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.199.0] - 2026-10-23
+
+### Backend
+
+- A season signup now records who signed up and which of their saved
+  characters they picked (#1465). `declare_season_signup()` signs the
+  signed-in person up with one of their own Battle.net-confirmed
+  characters for a team's coming tier, while its signups are open and
+  before it starts. One signup per person per team per tier: signing up
+  again replaces it, unless an officer has already put it on the roster.
+  When they already have another character on the roster, it is stored
+  as a main swap from it. Signups also gain the officer's Trial and
+  backup-role flags for the Projected Roster. `add_signup_to_roster()`
+  links a declared signup's new character to the signer. The current
+  site's signup form, Signups tab and Pending Roster are unchanged.
+
 ## [3.198.0] - 2026-10-23
 
 ### Project

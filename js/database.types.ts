@@ -2451,10 +2451,15 @@ export type Database = {
         Row: {
           approved_player_id: number | null
           auth_user_id: string | null
+          character_id: number | null
           class_spec_id: number | null
           id: number
+          is_backup_healer: boolean
+          is_backup_tank: boolean
+          is_trial: boolean | null
           main_swap: boolean
           off_specs: string | null
+          person_id: number | null
           player_note: string | null
           reviewed_at: string | null
           reviewed_by: number | null
@@ -2471,10 +2476,15 @@ export type Database = {
         Insert: {
           approved_player_id?: number | null
           auth_user_id?: string | null
+          character_id?: number | null
           class_spec_id?: number | null
           id?: number
+          is_backup_healer?: boolean
+          is_backup_tank?: boolean
+          is_trial?: boolean | null
           main_swap?: boolean
           off_specs?: string | null
+          person_id?: number | null
           player_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: number | null
@@ -2491,10 +2501,15 @@ export type Database = {
         Update: {
           approved_player_id?: number | null
           auth_user_id?: string | null
+          character_id?: number | null
           class_spec_id?: number | null
           id?: number
+          is_backup_healer?: boolean
+          is_backup_tank?: boolean
+          is_trial?: boolean | null
           main_swap?: boolean
           off_specs?: string | null
+          person_id?: number | null
           player_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: number | null
@@ -2529,6 +2544,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rnlsi"
             referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "season_signups_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "season_signups_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "season_signups_reviewed_by_fkey"
@@ -4149,6 +4178,17 @@ export type Database = {
       }
       danger_clear_self_received_requests: {
         Args: { p_team_id: number }
+        Returns: number
+      }
+      declare_season_signup: {
+        Args: {
+          p_character_id: number
+          p_class_spec_id: number
+          p_note?: string
+          p_off_specs?: string
+          p_season: string
+          p_team_id: number
+        }
         Returns: number
       }
       delete_self_received_request: {

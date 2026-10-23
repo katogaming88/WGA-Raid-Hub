@@ -8,7 +8,7 @@ Characters a person chose to show from their Battle.net account (#942 step 5, #1
 
 | Name | Type | Default | Nullable | Extra Definition | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | ---------------- | -------- | ------- | ------- |
-| id | integer |  | false |  | [public.main_swap_requests](public.main_swap_requests.md) |  |  |
+| id | integer |  | false |  | [public.season_signups](public.season_signups.md) [public.main_swap_requests](public.main_swap_requests.md) |  |  |
 | person_id | integer |  | false |  |  | [public.people](public.people.md) |  |
 | blizzard_id | bigint |  | false |  |  |  |  |
 | name | text |  | false |  |  |  |  |
@@ -43,6 +43,7 @@ Characters a person chose to show from their Battle.net account (#942 step 5, #1
 ```mermaid
 erDiagram
 
+"public.season_signups" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
 "public.main_swap_requests" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
 "public.characters" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
 
@@ -60,6 +61,31 @@ erDiagram
   integer level
   integer item_level
   timestamp_with_time_zone saved_at
+}
+"public.season_signups" {
+  integer id
+  integer team_id FK
+  text signup_name_realm
+  integer class_spec_id FK
+  text off_specs
+  boolean main_swap
+  text player_note
+  timestamp_with_time_zone submitted_at
+  text status
+  integer swap_class_spec_id FK
+  text season FK
+  timestamp_with_time_zone reviewed_at
+  integer reviewed_by FK
+  text signup_officer_note
+  integer approved_player_id FK
+  timestamp_with_time_zone updated_at
+  text swap_from_name_realm
+  uuid auth_user_id FK
+  integer person_id FK
+  integer character_id FK
+  boolean is_trial
+  boolean is_backup_tank
+  boolean is_backup_healer
 }
 "public.main_swap_requests" {
   integer id
