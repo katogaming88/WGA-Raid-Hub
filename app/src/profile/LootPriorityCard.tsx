@@ -14,7 +14,9 @@ import {
   useSelfReceived,
   useTierTokens,
   useWishlist,
-  type ProfilePlayer
+  useWishlistOf,
+  type ProfilePlayer,
+  type WishlistOwner
 } from './useProfile';
 
 // A read that may be switched off (nothing to ask yet) counts as an empty
@@ -191,14 +193,20 @@ function PriorityTable({
 export function WishlistSummaryCard({
   player,
   season,
+  owner,
   seasonOf
 }: {
   player: ProfilePlayer;
   season: UseQueryResult<SeasonWindow>;
+  // A signup's picks in place of the character's (#1609).
+  owner?: WishlistOwner;
   seasonOf?: { reads: UseQueryResult<unknown>; code: string | null; name: string | null };
 }) {
   const reads = bothQueries(
-    bothQueries(bothQueries(season, useWishlist(player.id)), bothQueries(useCatalog(), useRaidZones())),
+    bothQueries(
+      bothQueries(season, useWishlistOf(owner ?? { playerId: player.id })),
+      bothQueries(useCatalog(), useRaidZones())
+    ),
     // The Overview has nothing more to wait for.
     seasonOf ? seasonOf.reads : season
   );

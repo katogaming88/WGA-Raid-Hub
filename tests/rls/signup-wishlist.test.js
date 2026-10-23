@@ -13,13 +13,14 @@ const SEASON = 'wish-season';
 // A tier that has not started, with the team's wishlist switch for it.
 async function nextSeason(q, { wishlistOpen = true } = {}) {
   await q("update public.seasons set ends_at = '2098-12-31' where ends_at is null");
-  await q("insert into public.seasons (code, display_name, starts_at, ends_at) values ($1, $1, '2099-01-01', '2099-03-01')", [
-    SEASON
-  ]);
-  await q('insert into public.team_seasons (team_id, season_code, signups_open, wishlist_open) values (1, $1, true, $2)', [
-    SEASON,
-    wishlistOpen
-  ]);
+  await q(
+    "insert into public.seasons (code, display_name, starts_at, ends_at) values ($1, $1, '2099-01-01', '2099-03-01')",
+    [SEASON]
+  );
+  await q(
+    'insert into public.team_seasons (team_id, season_code, signups_open, wishlist_open) values (1, $1, true, $2)',
+    [SEASON, wishlistOpen]
+  );
 }
 
 // A raider on Phoenix with no character on the roster, signed up on one.
@@ -54,14 +55,18 @@ describe('signup wishlist (#1609)', () => {
       const item = await anItem(q);
       const id = (await mark(asUser, me.uid, me.signupId, item)).rows[0].id;
 
-      await asUser(me.uid, "update public.signup_item_preferences set status = 'pass', note = 'Meh' where id = $1", [id]);
+      await asUser(me.uid, "update public.signup_item_preferences set status = 'pass', note = 'Meh' where id = $1", [
+        id
+      ]);
       const mine = await asUser(me.uid, 'select status, note from public.signup_item_preferences');
       expect(mine.rows).toEqual([{ status: 'pass', note: 'Meh' }]);
 
       // Another raider, and an officer, neither read it nor write to it.
       expect((await asUser(RAIDER_T1, 'select * from public.signup_item_preferences')).rows).toEqual([]);
       expect((await asUser(OFFICER_T1, 'select * from public.signup_item_preferences')).rows).toEqual([]);
-      await expect(mark(asUser, RAIDER_T1, me.signupId, await anItem(q, 1))).rejects.toMatchObject({ code: RLS_DENIED });
+      await expect(mark(asUser, RAIDER_T1, me.signupId, await anItem(q, 1))).rejects.toMatchObject({
+        code: RLS_DENIED
+      });
 
       await asUser(me.uid, 'delete from public.signup_item_preferences where id = $1', [id]);
       expect(await rowsOf(q, me.signupId)).toEqual([]);
@@ -122,17 +127,19 @@ describe('signup wishlist (#1609)', () => {
       const me = await signedUp(q, { status: 'approved' });
       const oldId = await seedPlayer(q, { memberId: me.memberId, nameRealm: 'Oldmain-Illidan' });
       const [oldItem, newItem] = [await anItem(q), await anItem(q, 1)];
-      await q("insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, $1, $2, 'bis', $3)", [
-        oldId,
-        oldItem,
-        SEASON
-      ]);
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, $1, $2, 'bis', $3)",
+        [oldId, oldItem, SEASON]
+      );
       await mark(asUser, me.uid, me.signupId, newItem);
 
-      const newId = (await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1, true, $2) as id', [me.signupId, oldId]))
-        .rows[0].id;
+      const newId = (
+        await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1, true, $2) as id', [me.signupId, oldId])
+      ).rows[0].id;
       const items = async (playerId) =>
-        (await q('select item_id from public.item_preferences where player_id = $1', [playerId])).rows.map((r) => r.item_id);
+        (await q('select item_id from public.item_preferences where player_id = $1', [playerId])).rows.map(
+          (r) => r.item_id
+        );
       expect(await items(oldId)).toEqual([oldItem]);
       expect(await items(newId)).toEqual([newItem]);
     });
@@ -145,7 +152,9 @@ describe('signup wishlist (#1609)', () => {
 
       const rejected = await signedUp(q);
       await mark(asUser, rejected.uid, rejected.signupId, item);
-      await asUser(OFFICER_T1, "update public.season_signups set status = 'rejected' where id = $1", [rejected.signupId]);
+      await asUser(OFFICER_T1, "update public.season_signups set status = 'rejected' where id = $1", [
+        rejected.signupId
+      ]);
       expect(await rowsOf(q, rejected.signupId)).toEqual([]);
 
       const redeclared = await signedUp(q, { nameRealm: 'Firstpick-Illidan' });

@@ -1,5 +1,5 @@
 import { PlayerSettingsButton } from '../roster/PlayerSettings';
-import { useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { DataState } from '../components/DataState';
 import { bothQueries } from '../data/query';
@@ -29,7 +29,10 @@ import {
 } from './useProfile';
 import { useLootCouncil } from '../settings/useSettings';
 import { LootPriorityCard, WishlistSummaryCard } from './LootPriorityCard';
-import { WishlistTab } from './WishlistEditor';
+import { SignupWishlistTab, WishlistTab } from './WishlistEditor';
+import { useOwnSignup, type OwnSignupRow } from '../signup/useSignup';
+import { useClassSpecs } from '../characters/useMainSwaps';
+import { useSeasons } from '../calendar/useCalendar';
 import { MplusRequestButton } from './ProfileForms';
 import { CharactersCard } from '../characters/CharactersCard';
 import { withEarlierLoot } from '../characters/characters';
@@ -66,6 +69,8 @@ export function MyProfilePage() {
   const { guild } = useAddress();
   const team = useTeam();
   const access = useAccess();
+  const signup = useOwnSignup(team.id, null);
+  const [showProjected, setShowProjected] = useState(false);
   const base = `/g/${guild.key}/t/${team.key}/me`;
   if (!user) {
     return (
@@ -83,7 +88,19 @@ export function MyProfilePage() {
       </Closed>
     );
   }
-  const own = charactersOn(access.data, team.id)[0];
+  const characters = charactersOn(access.data, team.id);
+  const own = characters[0];
+  // The character they signed up with for the coming season, while it is not
+  // one of theirs on the roster yet (#1609): a new person's first, a new main.
+  const key = (nameRealm: string) => nameRealm.toLowerCase().replace(/ /g, '');
+  const projected =
+    signup.data &&
+    (signup.data.status === 'pending' || signup.data.status === 'approved') &&
+    !characters.some((c) => key(c.nameRealm) === key(signup.data!.signup_name_realm))
+      ? signup.data
+      : null;
+  if (!own && projected)
+    return <ProjectedProfile teamId={team.id} signup={projected} base={base} rosterPlayer={null} />;
   if (!own) {
     return (
       <Closed>
@@ -91,7 +108,108 @@ export function MyProfilePage() {
       </Closed>
     );
   }
-  return <ProfileLoader teamId={team.id} by={{ id: own.playerId }} base={base} own />;
+  if (!projected) return <ProfileLoader teamId={team.id} by={{ id: own.playerId }} base={base} own />;
+  return (
+    <>
+      <div className="profile-switch" role="group" aria-label="Character">
+        {[
+          { label: own.nameRealm, value: false },
+          { label: `${projected.signup_name_realm}, next season`, value: true }
+        ].map((o) => (
+          <button
+            key={o.label}
+            type="button"
+            className={`button${showProjected === o.value ? ' is-chosen' : ''}`}
+            aria-pressed={showProjected === o.value}
+            onClick={() => setShowProjected(o.value)}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {showProjected ? (
+        <ProjectedWithRoster teamId={team.id} signup={projected} base={base} rosterPlayerId={own.playerId} />
+      ) : (
+        <ProfileLoader teamId={team.id} by={{ id: own.playerId }} base={base} own />
+      )}
+    </>
+  );
+}
+
+// The character someone signed up with, before it is on the roster (#1609),
+// shown as its profile will be once it is: built from the signup, so what
+// belongs to a character (gear, loot) reads as none yet, and the wishlist is
+// the signup's for next season. Attendance and the join date belong to the
+// Member and move across with a swap, so they are the roster character's.
+function ProjectedWithRoster({
+  rosterPlayerId,
+  ...props
+}: {
+  teamId: number;
+  signup: OwnSignupRow;
+  base: string;
+  rosterPlayerId: number;
+}) {
+  const roster = useProfilePlayer(props.teamId, { id: rosterPlayerId });
+  return (
+    <DataState query={roster} label="the profile">
+      {(rosterPlayer) => <ProjectedProfile {...props} rosterPlayer={rosterPlayer} />}
+    </DataState>
+  );
+}
+
+function ProjectedProfile({
+  teamId,
+  signup,
+  base,
+  rosterPlayer
+}: {
+  teamId: number;
+  signup: OwnSignupRow;
+  base: string;
+  rosterPlayer: ProfilePlayer | null;
+}) {
+  const specs = useClassSpecs();
+  const { tab = '' } = useParams();
+  if (!PROFILE_TABS.some((t) => t.key === tab)) return <Navigate to={base} replace />;
+  const className = signup.main_swap ? signup.swap_class : signup.class;
+  const spec = signup.main_swap ? signup.swap_spec : signup.spec;
+  return (
+    <DataState query={specs} label="the profile">
+      {(rows) => {
+        const role = rows.find((r) => r.class === className && r.spec === spec)?.role ?? null;
+        const player: ProfilePlayer = {
+          // No roster row yet, and no id one could have.
+          id: -signup.id,
+          name_realm: signup.signup_name_realm,
+          nickname: null,
+          url_code: null,
+          is_trial: false,
+          is_bench: false,
+          is_rotator: false,
+          is_backup_tank: false,
+          is_backup_healer: false,
+          wishlist_allowed: false,
+          m_plus_excluded: false,
+          m_plus_note: null,
+          join_date: rosterPlayer?.join_date ?? null,
+          tier_pieces_equipped: null,
+          classes_specs: className && spec ? { class: className, spec, role } : null
+        };
+        return (
+          <Profile
+            player={player}
+            teamId={teamId}
+            own
+            base={base}
+            tab={tab as TabKey}
+            signup={signup}
+            attendanceOf={rosterPlayer?.id ?? null}
+          />
+        );
+      }}
+    </DataState>
+  );
 }
 
 // Someone's profile by its address code, for its raider or an officer.
@@ -213,20 +331,30 @@ function ProfileTabs({ base, current, tabs }: { base: string; current: TabKey; t
 function Profile({
   player,
   teamId,
-  officerView,
+  officerView = false,
   own,
   base,
-  tab
+  tab,
+  signup,
+  attendanceOf = player.id
 }: {
   player: ProfilePlayer;
   teamId: number;
-  officerView: boolean;
+  officerView?: boolean;
   own: boolean;
   base: string;
   tab: TabKey;
+  // The character someone signed up with, not on the roster yet (#1609), and
+  // the Member's roster character whose attendance it carries, if any.
+  signup?: OwnSignupRow;
+  attendanceOf?: number | null;
 }) {
   const season = useCurrentSeason(teamId);
-  const attendanceRows = useAttendance(player.id);
+  const seasons = useSeasons();
+  const signupSeason = signup
+    ? (seasons.data?.find((s) => s.code === signup.season)?.display_name ?? signup.season)
+    : null;
+  const attendanceRows = useAttendance(attendanceOf ?? player.id);
   const loot = useLoot(player.id);
   const gear = useEquippedGear(player.id);
   // Officers read every request; a raider reads their own (20260914201423).
@@ -251,8 +379,9 @@ function Profile({
   const tags = profileTags(player);
 
   const itemLevel = gear.isSuccess ? equippedItemLevel(gear.data.rows) : null;
+  // A new person has no nights yet, rather than full credit.
   const attend =
-    season.isSuccess && attendanceRows.isSuccess
+    attendanceOf !== null && season.isSuccess && attendanceRows.isSuccess
       ? attendance(attendanceRows.data, season.data, player.join_date)
       : null;
   const allLoot = bothQueries(loot, earlier);
@@ -306,6 +435,12 @@ function Profile({
                 </span>
               ))}
               {player.join_date && <span className="profile-joined">Joined {formatJoinDate(player.join_date)}</span>}
+            </p>
+          )}
+          {signup && (
+            <p className="profile-meta">
+              <span className="status-tag profile-tag">Next season</span>
+              <span className="profile-joined">Signed up for {signupSeason}. Joins the roster when signups close.</span>
             </p>
           )}
         </div>
@@ -367,33 +502,53 @@ function Profile({
               </div>
 
               <aside className="profile-side" aria-label="Characters, wishlist, attendance and M+">
-                <CharactersCard player={player} itemLevel={itemLevel} own={own} />
-                {!council && <WishlistSummaryCard player={player} season={season} />}
+                {/* Alts are chosen for a roster character. */}
+                {!signup && <CharactersCard player={player} itemLevel={itemLevel} own={own} />}
+                {!council &&
+                  (signup ? (
+                    <WishlistSummaryCard
+                      player={player}
+                      season={season}
+                      owner={{ signupId: signup.id, season: signup.season }}
+                      seasonOf={{ reads: seasons, code: signup.season, name: signupSeason }}
+                    />
+                  ) : (
+                    <WishlistSummaryCard player={player} season={season} />
+                  ))}
 
                 <section className="card profile-card" aria-labelledby="attendance-title">
                   <h2 id="attendance-title" className="card-title">
                     Attendance
                   </h2>
                   <DataState query={bothQueries(season, attendanceRows)} label="attendance">
-                    {([s, rows]) => <AttendanceCard attend={attendance(rows, s, player.join_date)} />}
+                    {([s, rows]) =>
+                      attendanceOf === null ? (
+                        <p className="text-muted card-note">Counts from when it joins the roster.</p>
+                      ) : (
+                        <AttendanceCard attend={attendance(rows, s, player.join_date)} />
+                      )
+                    }
                   </DataState>
                 </section>
 
-                <section className="card profile-card" aria-labelledby="mplus-title">
-                  <h2 id="mplus-title" className="card-title">
-                    M+ exclusion
-                  </h2>
-                  <MplusStatus
-                    excluded={player.m_plus_excluded}
-                    note={player.m_plus_note}
-                    refusal={refusal.isSuccess ? refusal.data : null}
-                    request={
-                      own && requests.isSuccess && !player.m_plus_excluded
-                        ? { open: requests.data.mplusOpen, player, raiderIoUrl: links?.raiderIo ?? '' }
-                        : null
-                    }
-                  />
-                </section>
+                {/* An exclusion is asked for a roster character. */}
+                {!signup && (
+                  <section className="card profile-card" aria-labelledby="mplus-title">
+                    <h2 id="mplus-title" className="card-title">
+                      M+ exclusion
+                    </h2>
+                    <MplusStatus
+                      excluded={player.m_plus_excluded}
+                      note={player.m_plus_note}
+                      refusal={refusal.isSuccess ? refusal.data : null}
+                      request={
+                        own && requests.isSuccess && !player.m_plus_excluded
+                          ? { open: requests.data.mplusOpen, player, raiderIoUrl: links?.raiderIo ?? '' }
+                          : null
+                      }
+                    />
+                  </section>
+                )}
               </aside>
             </div>
           </>
@@ -411,7 +566,13 @@ function Profile({
         )}
 
         {tab === 'wishlist' &&
-          (council ? <CouncilCard /> : <WishlistTab player={player} teamId={teamId} season={season} own={own} />)}
+          (council ? (
+            <CouncilCard />
+          ) : signup ? (
+            <SignupWishlistTab player={player} teamId={teamId} season={season} signup={signup} />
+          ) : (
+            <WishlistTab player={player} teamId={teamId} season={season} own={own} />
+          ))}
       </div>
     </section>
   );
