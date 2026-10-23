@@ -109,6 +109,42 @@ describe('preview_signup_promotion()', () => {
     });
   });
 
+  it("never swaps a current-site signup from someone else's character", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const s = await scene(q);
+      // The outsider's typed swap names the raider's own character, which the
+      // raider signed up to stay on.
+      await q('update public.season_signups set swap_from_name_realm = $1 where id = $2', [s.n.stay, s.signups.join]);
+      const p = await preview(asUser, s.team.leader.uid, s);
+      expect(p.swaps.map((x) => x.from_player_id)).toEqual([s.ids.oldId]);
+      expect(p.joins.map((x) => x.signup_id)).toEqual([s.signups.join]);
+      await promote(asUser, s.team.leader.uid, s, p.expected, []);
+      expect((await player(q, s.n.stay, s.team.teamId)).archived_at).toBeNull();
+    });
+  });
+
+  it('skips two signups that would swap from the same character', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const s = await scene(q);
+      const second = (
+        await q(
+          `insert into public.season_signups (team_id, season, signup_name_realm, class_spec_id, status, swap_from_name_realm)
+           values ($1, $2, $3, 1, 'pending', $4) returning id`,
+          [s.team.teamId, s.season, name('Second'), s.n.gone]
+        )
+      ).rows[0].id;
+      await q('update public.season_signups set swap_from_name_realm = $1 where id = $2', [s.n.gone, s.signups.join]);
+      const p = await preview(asUser, s.team.leader.uid, s);
+      expect(
+        p.skipped
+          .filter((x) => x.reason === 'character_taken')
+          .map((x) => x.signup_id)
+          .sort()
+      ).toEqual([s.signups.join, second].sort());
+      expect(p.swaps.map((x) => x.from_player_id)).toEqual([s.ids.oldId]);
+    });
+  });
+
   it('is refused to a plain officer and allowed to a site admin', async () => {
     await withTxn(async ({ q, asUser }) => {
       const s = await scene(q);

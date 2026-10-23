@@ -116,12 +116,16 @@ comment on function public.archive_team_member(integer, integer, text, text) is
 -- signed up for, sorted so the same state always reads the same:
 --
 --   stays        the signup names a character already on the roster
---   skipped      the signer has more than one character on the roster and
---                names another: which one it replaces is the officer's call
+--   skipped      the officer's call (reason): the signer has more than one
+--                character on the roster and names another
+--                (several_characters), or the character it would swap from
+--                is another signup's too (character_taken)
 --   swaps        the signer's one character on the roster is replaced
 --                (from_player_id); a current-site signup whose signer has
---                none linked swaps from the character it named
---   first_mains  the signer is on the team with no character on the roster
+--                none linked swaps from the character it named, if nobody
+--                else holds that character
+--   first_mains  the signer is or was on the team (an archived membership
+--                comes back) with no character on the roster
 --   joins        the signer is not on the team
 --   archives     a character on the roster that no signup names, by name or
 --                as the one it swaps from, and whose person sent none
@@ -160,19 +164,30 @@ as $$
            (select count(*) from active a where a.team_member_id = sig.member_id) as held,
            coalesce(
              (select min(a.id) from active a where a.team_member_id = sig.member_id having count(*) = 1),
-             (select a.id from active a where a.name_realm_key = sig.from_key)
+             (select a.id from active a
+               where a.name_realm_key = sig.from_key
+                 and (a.team_member_id is null or a.team_member_id = sig.member_id))
            ) as from_id
       from sig
      where sig.status in ('pending', 'approved')
   ),
   plan as (
-    select case when same_id is not null then 'stays'
-                when held > 1 then 'skipped'
-                when from_id is not null then 'swaps'
-                when member_id is not null then 'first_mains'
+    select case when t.same_id is not null then 'stays'
+                when t.held > 1 or taken then 'skipped'
+                when t.from_id is not null then 'swaps'
+                when t.member_id is not null then 'first_mains'
                 else 'joins' end as kind,
-           id, signup_name_realm, same_id, from_id
-      from todo
+           case when t.same_id is not null then null
+                when t.held > 1 then 'several_characters'
+                when taken then 'character_taken' end as reason,
+           t.id, t.signup_name_realm, t.same_id, t.from_id
+      from todo t
+     cross join lateral (
+       select t.from_id is not null and exists (
+                select 1 from todo o
+                 where o.id <> t.id and (o.from_id = t.from_id or o.same_id = t.from_id)
+              ) as taken
+     ) x
   )
   select coalesce(jsonb_agg(r order by r.kind, r.name_realm, r.signup_id, r.player_id), '[]'::jsonb)
     from (
@@ -182,7 +197,7 @@ as $$
              pl.signup_name_realm as name_realm,
              case when pl.kind = 'swaps' then pl.from_id end as from_player_id,
              case when pl.kind = 'swaps' then (select a.name_realm from active a where a.id = pl.from_id) end as from_name_realm,
-             case when pl.kind = 'skipped' then 'several_characters' end as reason
+             pl.reason
         from plan pl
       union all
       select 'archives', null, a.id, a.name_realm, null, null, null
@@ -262,8 +277,8 @@ grant execute on function public.preview_signup_promotion(integer, text) to auth
 --   3. The plan is read under those locks and checked against p_expected.
 --   4. Per signup, lowest id first: the signup row (status; held in 1), then
 --      add_signup_to_roster(): its own holds on the memberships (held in 2),
---      a restore of an archived signer (FOR NO KEY UPDATE on a membership
---      held FOR SHARE in 2), the character (insert or update; its foreign key
+--      a restore of an archived signer (FOR UPDATE on a membership held
+--      FOR SHARE in 2), the character (insert or update; its foreign key
 --      to the membership a KEY SHARE, covered by 2), the old character on a
 --      swap, its attendance, the audit rows.
 --   5. Per ticked character, lowest id first: archive_player(): the

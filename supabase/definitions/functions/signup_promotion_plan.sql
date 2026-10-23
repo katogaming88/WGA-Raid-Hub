@@ -33,19 +33,30 @@ AS $function$
            (select count(*) from active a where a.team_member_id = sig.member_id) as held,
            coalesce(
              (select min(a.id) from active a where a.team_member_id = sig.member_id having count(*) = 1),
-             (select a.id from active a where a.name_realm_key = sig.from_key)
+             (select a.id from active a
+               where a.name_realm_key = sig.from_key
+                 and (a.team_member_id is null or a.team_member_id = sig.member_id))
            ) as from_id
       from sig
      where sig.status in ('pending', 'approved')
   ),
   plan as (
-    select case when same_id is not null then 'stays'
-                when held > 1 then 'skipped'
-                when from_id is not null then 'swaps'
-                when member_id is not null then 'first_mains'
+    select case when t.same_id is not null then 'stays'
+                when t.held > 1 or taken then 'skipped'
+                when t.from_id is not null then 'swaps'
+                when t.member_id is not null then 'first_mains'
                 else 'joins' end as kind,
-           id, signup_name_realm, same_id, from_id
-      from todo
+           case when t.same_id is not null then null
+                when t.held > 1 then 'several_characters'
+                when taken then 'character_taken' end as reason,
+           t.id, t.signup_name_realm, t.same_id, t.from_id
+      from todo t
+     cross join lateral (
+       select t.from_id is not null and exists (
+                select 1 from todo o
+                 where o.id <> t.id and (o.from_id = t.from_id or o.same_id = t.from_id)
+              ) as taken
+     ) x
   )
   select coalesce(jsonb_agg(r order by r.kind, r.name_realm, r.signup_id, r.player_id), '[]'::jsonb)
     from (
@@ -55,7 +66,7 @@ AS $function$
              pl.signup_name_realm as name_realm,
              case when pl.kind = 'swaps' then pl.from_id end as from_player_id,
              case when pl.kind = 'swaps' then (select a.name_realm from active a where a.id = pl.from_id) end as from_name_realm,
-             case when pl.kind = 'skipped' then 'several_characters' end as reason
+             pl.reason
         from plan pl
       union all
       select 'archives', null, a.id, a.name_realm, null, null, null
