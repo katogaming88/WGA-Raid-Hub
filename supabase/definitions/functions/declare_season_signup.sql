@@ -54,7 +54,8 @@ begin
     raise exception '% is a %, not a %', v_character.name, v_character.class_name, v_spec_class;
   end if;
 
-  -- Their character on this team's roster now, if any.
+  -- Their character on this team's roster now, if any. Picking one already
+  -- there is not a swap, even when they have a second one on it.
   select p.name_realm into v_current
     from public.players p
     join public.team_members tm on tm.id = p.team_member_id
@@ -62,19 +63,21 @@ begin
      and p.archived_at is null
      and tm.archived_at is null
      and tm.person_id = v_person_id
-   order by p.id
+   order by p.name_realm_key = v_character.name_realm_key desc, p.id
    limit 1;
   v_swap := v_current is not null and lower(replace(v_current, ' ', '')) <> v_character.name_realm_key;
 
   -- Their signup for the tier already, by person or, for one the current site
-  -- took, by account. An added one first, so it is never passed over.
+  -- took, by account. An added one first, so it is never passed over; then
+  -- their own declared one, so an older current-site row turned back from
+  -- rejected never takes its place and trips the one-per-person index.
   select * into v_existing
     from public.season_signups s
    where s.team_id = p_team_id
      and s.season = p_season
      and s.status <> 'rejected'
      and (s.person_id = v_person_id or (s.person_id is null and s.auth_user_id = v_uid))
-   order by s.status = 'added' desc, s.id
+   order by s.status = 'added' desc, s.person_id is not null desc, s.id
    limit 1
      for update;
 

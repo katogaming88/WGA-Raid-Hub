@@ -2755,6 +2755,6 @@ Decided with Kat 2026-09-28 (#1342) and 2026-10-23. A signup was a name typed on
 
 **The officer's Trial and backup flags live on the signup** (`is_trial`, `is_backup_tank`, `is_backup_healer`), set on the Projected Roster (#1342) and applied when signups close (#1467). `is_trial` is null until an officer sets it. Officers write them through the table's existing officer update rule.
 
-**`add_signup_to_roster()` links a declared signup's character to the signer.** The signer is the signup's person when it has one, else the account as before. A new roster row from a declared signup that nobody holds takes the signer's membership; a row someone else holds is left alone. A typed signup's character still waits for a claim or the Battle.net link.
+**`add_signup_to_roster()` links a declared signup's character to the signer.** The signer is the signup's person when it has one, else the account as before. A new roster row from a declared signup that nobody holds takes the signer's membership; a row someone else holds is left alone. The add checks the character again rather than trusting the signup: it must still be the signup person's, under the roster row's own name. The signer can still retype `signup_name_realm` through `update_own_signup()`, and without that check a retyped name would hand an unclaimed row, with its loot and attendance, to the signer (found in the fresh-agent review). A typed signup's character still waits for a claim or the Battle.net link.
 
 [Full discussion -> #1465](https://github.com/katogaming88/WGA-Raid-Hub/issues/1465).

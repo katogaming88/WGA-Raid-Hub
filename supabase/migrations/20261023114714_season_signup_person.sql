@@ -107,7 +107,8 @@ begin
     raise exception '% is a %, not a %', v_character.name, v_character.class_name, v_spec_class;
   end if;
 
-  -- Their character on this team's roster now, if any.
+  -- Their character on this team's roster now, if any. Picking one already
+  -- there is not a swap, even when they have a second one on it.
   select p.name_realm into v_current
     from public.players p
     join public.team_members tm on tm.id = p.team_member_id
@@ -115,19 +116,21 @@ begin
      and p.archived_at is null
      and tm.archived_at is null
      and tm.person_id = v_person_id
-   order by p.id
+   order by p.name_realm_key = v_character.name_realm_key desc, p.id
    limit 1;
   v_swap := v_current is not null and lower(replace(v_current, ' ', '')) <> v_character.name_realm_key;
 
   -- Their signup for the tier already, by person or, for one the current site
-  -- took, by account. An added one first, so it is never passed over.
+  -- took, by account. An added one first, so it is never passed over; then
+  -- their own declared one, so an older current-site row turned back from
+  -- rejected never takes its place and trips the one-per-person index.
   select * into v_existing
     from public.season_signups s
    where s.team_id = p_team_id
      and s.season = p_season
      and s.status <> 'rejected'
      and (s.person_id = v_person_id or (s.person_id is null and s.auth_user_id = v_uid))
-   order by s.status = 'added' desc, s.id
+   order by s.status = 'added' desc, s.person_id is not null desc, s.id
    limit 1
      for update;
 
@@ -313,10 +316,21 @@ begin
 
   -- A declared signup's character is one Battle.net confirmed is the
   -- signer's (#1465), so a row nobody holds becomes theirs now rather than
-  -- waiting for a claim. A row someone else holds is left alone.
+  -- waiting for a claim. A row someone else holds is left alone. The
+  -- character is checked again here, not taken from the signup: the signer
+  -- can still retype signup_name_realm through update_own_signup(), and the
+  -- character can move to another person while the signup waits. Only a
+  -- character still theirs, by the roster row's own name, is linked.
   if v_signup.character_id is not null and v_signer_member_id is not null then
-    update public.players set team_member_id = v_signer_member_id
-     where id = v_player_id and team_member_id is null;
+    update public.players p set team_member_id = v_signer_member_id
+     where p.id = v_player_id
+       and p.team_member_id is null
+       and exists (
+         select 1 from public.characters c
+          where c.id = v_signup.character_id
+            and c.person_id = v_signup.person_id
+            and c.name_realm_key = p.name_realm_key
+       );
   end if;
 
   if p_archive_player_id is not null then

@@ -97,6 +97,21 @@ describe('declare_season_signup()', () => {
     });
   });
 
+  it('is not a swap when the picked character is one of two already on the roster', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await openSignups(q);
+      const personId = await personOf(q);
+      for (const name of ['Firstmain-Illidan', 'Nextmain-Illidan']) {
+        await q(
+          'insert into public.players (team_id, name_realm, class_spec_id, team_member_id) values (1, $1, 1, $2)',
+          [name, PHOENIX_RAIDER_MEMBER]
+        );
+      }
+      const id = (await declare(asUser, RAIDER_T1, await character(q, personId))).rows[0].id;
+      expect(await signup(q, id)).toMatchObject({ main_swap: false, class_spec_id: FROST_MAGE });
+    });
+  });
+
   it("replaces the signer's earlier signup for the tier instead of adding a second", async () => {
     await withTxn(async ({ q, asUser }) => {
       await openSignups(q);
@@ -195,6 +210,37 @@ describe('add_signup_to_roster() with a declared character', () => {
       const playerId = (await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1) as id', [id])).rows[0].id;
       const player = await q('select name_realm, team_member_id from public.players where id = $1', [playerId]);
       expect(player.rows[0]).toEqual({ name_realm: 'Nextmain-Illidan', team_member_id: PHOENIX_RAIDER_MEMBER });
+    });
+  });
+
+  // Found in the fresh-agent review: the signer can still retype the name
+  // through update_own_signup(), so the add checks the character again.
+  it('does not link a roster row whose name the signer retyped after signing up', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await openSignups(q);
+      const id = (await declare(asUser, RAIDER_T1, await character(q, await personOf(q)))).rows[0].id;
+      const unclaimed = await q(
+        "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Unclaimed-Illidan', 1) returning id"
+      );
+      await asUser(RAIDER_T1, "select public.update_own_signup($1, 'Unclaimed-Illidan', 'Mage', 'Frost')", [id]);
+      await q("update public.season_signups set status = 'approved' where id = $1", [id]);
+      const playerId = (await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1) as id', [id])).rows[0].id;
+      expect(playerId).toBe(unclaimed.rows[0].id);
+      const player = await q('select team_member_id from public.players where id = $1', [playerId]);
+      expect(player.rows[0].team_member_id).toBeNull();
+    });
+  });
+
+  it('does not link a character that has moved to someone else since the signup', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await openSignups(q);
+      const characterId = await character(q, await personOf(q));
+      const id = (await declare(asUser, RAIDER_T1, characterId)).rows[0].id;
+      await q('update public.characters set person_id = $1 where id = $2', [await personOf(q, 1), characterId]);
+      await q("update public.season_signups set status = 'approved' where id = $1", [id]);
+      const playerId = (await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1) as id', [id])).rows[0].id;
+      const player = await q('select team_member_id from public.players where id = $1', [playerId]);
+      expect(player.rows[0].team_member_id).toBeNull();
     });
   });
 
