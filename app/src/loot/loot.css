@@ -209,3 +209,32 @@
   font-size: 1rem;
   font-weight: 400;
 }
+
+/* The raider buttons, one row per role as on the roster. */
+.loot-reassign-roles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.loot-reassign-role {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.loot-reassign-role-label {
+  flex: 0 0 5rem;
+  font-size: 0.85rem;
+}
+
+.loot-reassign-raider {
+  font-weight: 600;
+}
+
+.loot-reassign-raider[aria-pressed='true'] {
+  background: var(--raised);
+  border-color: currentColor;
+}

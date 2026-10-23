@@ -1048,16 +1048,23 @@ const LOOT_REVIEWS = {
   }
 };
 
-// Reassign (#1363): the raider picker, filled from the roster, and two past
-// reassignments. The loot list under the picker needs a pick, which a state
-// cannot make; reassign.test.tsx covers it.
+// Reassign (#1363): the search, a raider button in class color, and two past
+// reassignments. A raider's loot needs a click, which reassign.test.tsx covers.
 const LOOT_REASSIGN = {
   session: OFFICER,
   who: 'officer',
   path: '/g/wga/t/phoenix/officer/reassign',
   sentinel: 'main .loot-reassign-move',
   tables: {
-    players: [{ id: 5, name_realm: 'Torbjorn-Illidan', nickname: null, classes_specs: { class: 'Warrior' } }],
+    players: [
+      {
+        id: 5,
+        name_realm: 'Torbjorn-Illidan',
+        nickname: null,
+        classes_specs: { class: 'Warrior', spec: 'Arms', role: 'Melee' }
+      }
+    ],
+    rclc_loot: [],
     audit_log: [1, 2].map((id) => ({
       id,
       actor_id: 'actor-1',

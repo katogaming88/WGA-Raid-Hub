@@ -7,18 +7,18 @@ import { ItemLink } from '../components/ItemLink';
 import { useStatus } from '../components/Status';
 import { can, useAccess } from '../auth/access';
 import { errorMessage } from '../lib/errors';
-import { formatInstant, formatInstantShort, localTimeZoneNote } from '../lib/dates';
+import { awardDate, formatInstant, formatInstantShort, localTimeZoneNote } from '../lib/dates';
 import { formatAuditDetail } from '../settings/audit';
 import { itemLinkData } from '../profile/lootPriority';
-import { seasonLoot, type SeasonRow } from '../profile/profile';
+import { difficultyOf, seasonLoot, type SeasonRow } from '../profile/profile';
 import { difficultyClass, NotCounted } from '../profile/ProfilePage';
-import { firstName, type PlayerRow } from '../roster/roster';
+import { classColor, firstName, ROLE_LABELS, ROLE_ORDER, type PlayerRow, type Role } from '../roster/roster';
 import { useRosterPlayers } from '../roster/useRoster';
 import {
   parseMove,
-  useRaiderLoot,
   useReassign,
   useReassignHistory,
+  useTeamLoot,
   type ReassignHistory,
   type ReassignRow
 } from './useReassign';
@@ -45,8 +45,8 @@ export function ReassignPage() {
       <div className="page-header">
         <h1 id="page-title">Reassign loot</h1>
         <p className="text-muted page-subtitle">
-          For an item loot council gave one raider that was then traded in game to someone else. Pick who has it now on
-          file, find the item, and move it. Everywhere received items show follows the change.
+          For an item loot council gave one raider that was then traded in game to someone else. Find the raider who has
+          it on file, or the item itself, and move it. Everywhere received items show follows the change.
         </p>
       </div>
       {can(access.data, 'actAsOfficer', team.id) ? (
@@ -114,16 +114,22 @@ function HistoryCard({ history }: { history: ReassignHistory }) {
 function Reassign({ teamId, roster }: { teamId: number; roster: PlayerRow[] }) {
   const { announce } = useStatus();
   const [playerId, setPlayerId] = useState<number | null>(null);
+  const [search, setSearch] = useState('');
   const [moving, setMoving] = useState<ReassignRow | null>(null);
-  const loot = useRaiderLoot(teamId, playerId);
+  const loot = useTeamLoot(teamId);
   const seasons = useSeasons();
   const reassign = useReassign(teamId);
-  const pickId = useId();
+  const searchId = useId();
   const sorted = [...roster].sort((a, b) => pickerName(a).localeCompare(pickerName(b)));
-  const from = roster.find((p) => p.id === playerId);
+  const byId = new Map(roster.map((p) => [p.id, p]));
+  const picked = playerId === null ? undefined : byId.get(playerId);
+  const q = search.trim().toLowerCase();
+  const shown = q ? sorted.filter((p) => pickerName(p).toLowerCase().includes(q)) : sorted;
+  const holder = (row: ReassignRow) => (row.player_id === null ? undefined : byId.get(row.player_id));
 
   const onMove = (row: ReassignRow, to: PlayerRow) => {
-    const detail = `${itemName(row)}: ${pickerName(from!)} -> ${pickerName(to)}`;
+    const from = holder(row);
+    const detail = `${itemName(row)}: ${from ? pickerName(from) : 'Unknown'} -> ${pickerName(to)}`;
     reassign.mutate(
       { row, to: to.id, detail },
       {
@@ -136,79 +142,161 @@ function Reassign({ teamId, roster }: { teamId: number; roster: PlayerRow[] }) {
     );
   };
 
+  const reassignButton = (row: ReassignRow, label: string) => (
+    <button
+      type="button"
+      className="button"
+      aria-label={label}
+      disabled={reassign.isPending}
+      onClick={() => setMoving(row)}
+    >
+      Reassign
+    </button>
+  );
+
   return (
     <div className="card settings-card">
-      <div className="settings-row">
-        <label htmlFor={pickId}>Now credited to</label>
-        <select
-          id={pickId}
-          className="select"
-          value={playerId ?? ''}
-          onChange={(e) => setPlayerId(e.target.value ? Number(e.target.value) : null)}
-        >
-          <option value="">Pick a raider</option>
-          {sorted.map((p) => (
-            <option key={p.id} value={p.id}>
-              {pickerName(p)}
-            </option>
+      <label className="field-label" htmlFor={searchId}>
+        Find a raider or an item
+      </label>
+      <input
+        id={searchId}
+        type="search"
+        className="input"
+        placeholder="For example: Brakkus, or Voidbound Cinch"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+      {/* Every raider at once, by role and in class color, so picking one is a
+          single click (Kat, 2026-10-23: the dropdown was slow to go through). */}
+      {shown.length > 0 && (
+        <div className="loot-reassign-roles">
+          {raidersByRole(shown).map(({ label, raiders }) => (
+            <div key={label} role="group" aria-label={label} className="loot-reassign-role">
+              <span className="loot-reassign-role-label text-muted" aria-hidden="true">
+                {label}
+              </span>
+              {raiders.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="button loot-reassign-raider"
+                  aria-pressed={p.id === playerId}
+                  style={{ color: classColor(p.classes_specs?.class ?? '') }}
+                  onClick={() => setPlayerId(p.id === playerId ? null : p.id)}
+                >
+                  {pickerName(p)}
+                </button>
+              ))}
+            </div>
           ))}
-        </select>
-      </div>
-      {playerId !== null && (
-        <DataState query={loot} label="their loot">
-          {(rows) =>
-            !rows.length ? (
-              <p className="text-muted">No raid loot on file for {pickerName(from!)}.</p>
-            ) : (
-              bySeason(rows, seasons.data ?? []).map(({ code, loot }) => {
-                const byId = new Map(rows.map((r) => [r.id, r]));
-                return (
-                  <section key={code ?? 'none'} className="loot-reassign-season">
-                    {/* The profile's Items received, one season at a time. */}
-                    <h3 className="loot-summary">
-                      <span className="num loot-count">{loot.count}</span> {loot.count === 1 ? 'item' : 'items'} in{' '}
-                      <span className="loot-season">{loot.season}</span>
-                    </h3>
-                    <ul className="loot-review-list">
-                      {loot.awards.map((a) => {
-                        const row = byId.get(a.key)!;
-                        return (
-                          <li key={a.key} className="loot-review">
-                            <div className="loot-review-line">
-                              <span className="loot-review-item">
-                                <ItemLink link={itemLinkData(row.items)}>{a.name}</ItemLink>
-                                <NotCounted award={a} />
-                              </span>
-                              <span className={difficultyClass(a.difficulty)}>{a.difficulty}</span>
-                              <span className="text-muted loot-review-when" title={formatInstant(a.awardedAt)}>
-                                {a.date}
-                              </span>
-                              <span className="loot-review-actions">
-                                <button
-                                  type="button"
-                                  className="button"
-                                  disabled={reassign.isPending}
-                                  onClick={() => setMoving(row)}
-                                >
-                                  Reassign
-                                </button>
-                              </span>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </section>
-                );
-              })
-            )
-          }
-        </DataState>
+        </div>
       )}
+      <DataState query={loot} label="the team's loot">
+        {(rows) => {
+          // Items whose name matches, whoever has them, newest first.
+          const items =
+            q.length >= 2
+              ? rows
+                  .filter((r) => itemName(r).toLowerCase().includes(q))
+                  .sort((a, b) => (a.awarded_at < b.awarded_at ? 1 : -1))
+              : [];
+          const theirs = picked ? rows.filter((r) => r.player_id === picked.id) : [];
+          return (
+            <>
+              {q && !shown.length && !items.length && (
+                <p className="text-muted loot-reassign-season">
+                  No raider or item matches &ldquo;{search.trim()}&rdquo;.
+                </p>
+              )}
+              {items.length > 0 && (
+                <section className="loot-reassign-season">
+                  <h3 className="loot-summary">
+                    <span className="num loot-count">{items.length}</span> {items.length === 1 ? 'item' : 'items'} named
+                    like &ldquo;{search.trim()}&rdquo;
+                  </h3>
+                  <ul className="loot-review-list">
+                    {items.map((row) => {
+                      const who = holder(row);
+                      const difficulty = difficultyOf(row.track);
+                      return (
+                        <li key={row.id} className="loot-review">
+                          <div className="loot-review-line">
+                            <strong
+                              className="loot-review-who"
+                              style={{ color: classColor(who?.classes_specs?.class ?? '') }}
+                            >
+                              {who ? pickerName(who) : 'No longer on the roster'}
+                            </strong>
+                            <span className="loot-review-item">
+                              <ItemLink link={itemLinkData(row.items)}>{itemName(row)}</ItemLink>
+                              {row.counted === false && <span className="loot-offspec">Off spec</span>}
+                            </span>
+                            <span className={difficultyClass(difficulty)}>{difficulty}</span>
+                            <span className="text-muted loot-review-when" title={formatInstant(row.awarded_at)}>
+                              {awardDate(row.awarded_at)}
+                            </span>
+                            <span className="loot-review-actions">
+                              {reassignButton(row, `Reassign ${itemName(row)} from ${who ? pickerName(who) : 'them'}`)}
+                            </span>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              )}
+              {picked &&
+                (!theirs.length ? (
+                  <p className="text-muted loot-reassign-season">No raid loot on file for {pickerName(picked)}.</p>
+                ) : (
+                  bySeason(theirs, seasons.data ?? []).map(({ code, loot: season }) => {
+                    const rowById = new Map(theirs.map((r) => [r.id, r]));
+                    return (
+                      <section key={code ?? 'none'} className="loot-reassign-season">
+                        {/* The profile's Items received, one season at a time. */}
+                        <h3 className="loot-summary">
+                          <strong style={{ color: classColor(picked.classes_specs?.class ?? '') }}>
+                            {pickerName(picked)}
+                          </strong>
+                          : <span className="num loot-count">{season.count}</span>{' '}
+                          {season.count === 1 ? 'item' : 'items'} in{' '}
+                          <span className="loot-season">{season.season}</span>
+                        </h3>
+                        <ul className="loot-review-list">
+                          {season.awards.map((a) => {
+                            const row = rowById.get(a.key)!;
+                            return (
+                              <li key={a.key} className="loot-review">
+                                <div className="loot-review-line">
+                                  <span className="loot-review-item">
+                                    <ItemLink link={itemLinkData(row.items)}>{a.name}</ItemLink>
+                                    <NotCounted award={a} />
+                                  </span>
+                                  <span className={difficultyClass(a.difficulty)}>{a.difficulty}</span>
+                                  <span className="text-muted loot-review-when" title={formatInstant(a.awardedAt)}>
+                                    {a.date}
+                                  </span>
+                                  <span className="loot-review-actions">
+                                    {reassignButton(row, `Reassign ${a.name}`)}
+                                  </span>
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </section>
+                    );
+                  })
+                ))}
+            </>
+          );
+        }}
+      </DataState>
       {moving && (
         <MoveDialog
           row={moving}
-          others={sorted.filter((p) => p.id !== playerId)}
+          others={sorted.filter((p) => p.id !== moving.player_id)}
           busy={reassign.isPending}
           onClose={() => setMoving(null)}
           onMove={(to) => onMove(moving, to)}
@@ -216,6 +304,16 @@ function Reassign({ teamId, roster }: { teamId: number; roster: PlayerRow[] }) {
       )}
     </div>
   );
+}
+
+// The roster's role groups, in its order; a raider with no role set goes last.
+function raidersByRole(players: PlayerRow[]) {
+  const groups = ROLE_ORDER.map((role) => ({
+    label: ROLE_LABELS[role],
+    raiders: players.filter((p) => p.classes_specs?.role === role)
+  }));
+  const other = players.filter((p) => !ROLE_ORDER.includes(p.classes_specs?.role as Role));
+  return [...groups, { label: 'No role set', raiders: other }].filter((g) => g.raiders.length);
 }
 
 // One block per season the raider has loot in, newest season first, each read

@@ -9,13 +9,24 @@ import { parseMove } from './useReassign';
 // Officer Loot: Reassign (#1363), ported from js/tabs/tab-loot-import.js.
 
 const PLAYERS = [
-  { id: 5, name_realm: 'Katorrí-Stormrage', nickname: 'Kat', classes_specs: { class: 'Warlock' } },
-  { id: 6, name_realm: 'Brakkus-Illidan', nickname: null, classes_specs: { class: 'Warrior' } }
+  {
+    id: 5,
+    name_realm: 'Katorrí-Stormrage',
+    nickname: 'Kat',
+    classes_specs: { class: 'Warlock', spec: 'Demonology', role: 'Ranged' }
+  },
+  {
+    id: 6,
+    name_realm: 'Brakkus-Illidan',
+    nickname: null,
+    classes_specs: { class: 'Warrior', spec: 'Fury', role: 'Melee' }
+  }
 ];
 
 const LOOT = [
   {
     id: 11,
+    player_id: 5,
     track: 'Hero',
     season: 'MID1',
     team_id: 1,
@@ -110,10 +121,12 @@ describe('Reassign page', () => {
   it('moves an item to another raider and logs it', async () => {
     const writes: Write[] = [];
     const { client } = renderApp(PATH, handlers(person('officer'), writes));
-    await userEvent.selectOptions(await screen.findByLabelText('Now credited to'), '5');
+    const ranged = await screen.findByRole('group', { name: 'Ranged' });
+    await userEvent.click(within(ranged).getByRole('button', { name: 'Kat (Katorrí)' }));
+    expect(within(ranged).getByRole('button', { name: 'Kat (Katorrí)' })).toHaveAttribute('aria-pressed', 'true');
     expect(await screen.findByText('Midnight Season 1')).toBeInTheDocument();
     expect(screen.getByText('Heroic')).toHaveClass('difficulty-heroic');
-    await userEvent.click(screen.getByRole('button', { name: 'Reassign' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Reassign Voidbound Cinch' }));
     const dialog = screen.getByRole('dialog', { name: 'Reassign Voidbound Cinch?' });
     const confirm = within(dialog).getByRole('button', { name: 'Reassign' });
     expect(confirm).toBeDisabled();
@@ -135,9 +148,25 @@ describe('Reassign page', () => {
     ]);
   });
 
+  it('finds an item by name, and a raider by typing', async () => {
+    renderApp(PATH, handlers());
+    const search = await screen.findByLabelText('Find a raider or an item');
+    await userEvent.type(search, 'cinch');
+    expect(
+      await screen.findByRole('button', { name: 'Reassign Voidbound Cinch from Kat (Katorrí)' })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Ranged' })).not.toBeInTheDocument();
+    await userEvent.type(search, 'zz');
+    expect(screen.getByText('No raider or item matches “cinchzz”.')).toBeInTheDocument();
+    await userEvent.clear(search);
+    await userEvent.type(search, 'brak');
+    expect(screen.getByRole('button', { name: 'Brakkus' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Kat (Katorrí)' })).not.toBeInTheDocument();
+  });
+
   it('tells a guild officer from another team it is for the team officers', async () => {
     renderApp(PATH, handlers(person(null, true)));
     expect(await screen.findByText("Only this team's officers can reassign loot.")).toBeInTheDocument();
-    expect(screen.queryByLabelText('Now credited to')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Find a raider or an item')).not.toBeInTheDocument();
   });
 });

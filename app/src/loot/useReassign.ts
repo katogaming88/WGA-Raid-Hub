@@ -49,12 +49,13 @@ export function useReassignHistory(teamId: number) {
       const had = items[item.name];
       if (item.wow_item_id && (!had || (had.is_ptr && !item.is_ptr))) items[item.name] = item;
     }
-    return { data: { rows: rows.data!.reverse(), actorNames, items }, error: null };
+    return { data: { rows: rows.data!.sort((a, b) => b.id - a.id), actorNames, items }, error: null };
   });
 }
 
 export type ReassignRow = {
   id: number;
+  player_id: number | null;
   track: string | null;
   season: string | null;
   awarded_at: string;
@@ -66,29 +67,23 @@ export type ReassignRow = {
   counted?: boolean;
 };
 
-const lootKey = (teamId: number, playerId: number) => ['loot-reassign', teamId, playerId] as const;
-
-// Every raid award for one raider, from any season: a trade an officer
-// corrects could be from an earlier one. countedLoot() shows them as the
-// raider's profile does (Off spec tagged, Hidden left out).
-export function useRaiderLoot(teamId: number, playerId: number | null) {
-  return useSupabaseQuery<ReassignRow[]>(
-    lootKey(teamId, playerId ?? 0),
-    async (client) => {
-      const rows = await readAll<ReassignRow>((from, to) =>
-        client
-          .from('rclc_loot')
-          .select('id, team_id, response, track, season, awarded_at, items(name, wow_item_id, is_ptr, icon)')
-          .eq('team_id', teamId)
-          .eq('player_id', playerId!)
-          .order('id')
-          .range(from, to)
-      );
-      if (rows.error) return rows;
-      return countedLoot(client, rows.data!);
-    },
-    { enabled: playerId !== null }
-  );
+// Every raid award on the team, from any season: a trade an officer corrects
+// could be from an earlier one, and the item search looks across every
+// raider. countedLoot() shows them as each raider's profile does (Off spec
+// tagged, Hidden left out).
+export function useTeamLoot(teamId: number) {
+  return useSupabaseQuery<ReassignRow[]>(['loot-reassign', teamId], async (client) => {
+    const rows = await readAll<ReassignRow>((from, to) =>
+      client
+        .from('rclc_loot')
+        .select('id, player_id, team_id, response, track, season, awarded_at, items(name, wow_item_id, is_ptr, icon)')
+        .eq('team_id', teamId)
+        .order('id')
+        .range(from, to)
+    );
+    if (rows.error) return rows;
+    return countedLoot(client, rows.data!);
+  });
 }
 
 export type Reassign = { row: ReassignRow; to: number; detail: string };
