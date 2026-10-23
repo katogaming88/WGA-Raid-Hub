@@ -1048,6 +1048,37 @@ const LOOT_REVIEWS = {
   }
 };
 
+// Reassign (#1363): the search, a raider button in class color, and two past
+// reassignments. A raider's loot needs a click, which reassign.test.tsx covers.
+const LOOT_REASSIGN = {
+  session: OFFICER,
+  who: 'officer',
+  path: '/g/wga/t/phoenix/officer/reassign',
+  sentinel: 'main .loot-reassign-move',
+  tables: {
+    players: [
+      {
+        id: 5,
+        name_realm: 'Torbjorn-Illidan',
+        nickname: null,
+        classes_specs: { class: 'Warrior', spec: 'Arms', role: 'Melee' }
+      }
+    ],
+    rclc_loot: [],
+    audit_log: [1, 2].map((id) => ({
+      id,
+      actor_id: 'actor-1',
+      action: 'Loot Reassigned',
+      target_type: 'players',
+      target_id: 5,
+      detail: 'Item ' + id + ': Brakkus -> Torbjorn',
+      created_at: '2026-10-02T02:00:00Z'
+    })),
+    items: [{ name: 'Item 1', wow_item_id: null, is_ptr: false, icon: null }]
+  },
+  rpc: { resolve_actor_name: 'Aurelith' }
+};
+
 // Audit log (#1358, #1103 row 1): one entry with no target (Trial Thresholds
 // Set) and one naming a player (Roster Targets Set), so both the actor-name
 // and target-name resolution are on the page axe measures.
@@ -1519,6 +1550,8 @@ const STATES = [
   { label: 'import loot, officer, light', ...IMPORT_LOOT, colorScheme: 'light' },
   { label: 'loot reviews, officer', ...LOOT_REVIEWS },
   { label: 'loot reviews, officer, light', ...LOOT_REVIEWS, colorScheme: 'light' },
+  { label: 'loot reassign, officer', ...LOOT_REASSIGN },
+  { label: 'loot reassign, officer, light', ...LOOT_REASSIGN, colorScheme: 'light' },
   { label: 'settings audit log, officer', ...SETTINGS_AUDIT_LOG },
   { label: 'settings audit log, officer, light', ...SETTINGS_AUDIT_LOG, colorScheme: 'light' },
   {

@@ -184,3 +184,69 @@
 .loot-season-row .select {
   width: auto;
 }
+
+/* Past reassignments: the item, who it moved from and to, and who moved it. */
+.loot-reassign-move {
+  flex: 1 1 14rem;
+}
+
+.loot-reassign-by {
+  flex: 0 0 9rem;
+}
+
+@media (max-width: 640px) {
+  .loot-reassign-move,
+  .loot-reassign-by {
+    flex-basis: auto;
+  }
+}
+
+.loot-reassign-season {
+  margin-top: var(--space-3);
+}
+
+.loot-reassign-season .loot-summary {
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+/* The raider buttons, one row per role as on the roster. */
+.loot-reassign-roles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.loot-reassign-role {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.loot-reassign-role-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.loot-reassign-raiders {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: var(--space-1);
+}
+
+.loot-reassign-raider {
+  justify-content: flex-start;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.loot-reassign-raider[aria-pressed='true'] {
+  background: var(--raised);
+  border-color: currentColor;
+}
