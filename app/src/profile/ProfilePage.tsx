@@ -350,10 +350,6 @@ function Profile({
   attendanceOf?: number | null;
 }) {
   const season = useCurrentSeason(teamId);
-  const seasons = useSeasons();
-  const signupSeason = signup
-    ? (seasons.data?.find((s) => s.code === signup.season)?.display_name ?? signup.season)
-    : null;
   const attendanceRows = useAttendance(attendanceOf ?? player.id);
   const loot = useLoot(player.id);
   const gear = useEquippedGear(player.id);
@@ -440,7 +436,9 @@ function Profile({
           {signup && (
             <p className="profile-meta">
               <span className="status-tag profile-tag">Next season</span>
-              <span className="profile-joined">Signed up for {signupSeason}. Joins the roster when signups close.</span>
+              <span className="profile-joined">
+                Signed up for <SeasonName code={signup.season} />. Joins the roster when signups close.
+              </span>
             </p>
           )}
         </div>
@@ -506,12 +504,7 @@ function Profile({
                 {!signup && <CharactersCard player={player} itemLevel={itemLevel} own={own} />}
                 {!council &&
                   (signup ? (
-                    <WishlistSummaryCard
-                      player={player}
-                      season={season}
-                      owner={{ signupId: signup.id, season: signup.season }}
-                      seasonOf={{ reads: seasons, code: signup.season, name: signupSeason }}
-                    />
+                    <SignupWishlistSummary player={player} season={season} signup={signup} />
                   ) : (
                     <WishlistSummaryCard player={player} season={season} />
                   ))}
@@ -575,6 +568,35 @@ function Profile({
           ))}
       </div>
     </section>
+  );
+}
+
+// A season by its stored name. Read only where a signup needs it, so a roster
+// profile's Overview leaves the season list to the Wishlist tab.
+function SeasonName({ code }: { code: string }) {
+  const seasons = useSeasons();
+  return <>{seasons.data?.find((s) => s.code === code)?.display_name ?? code}</>;
+}
+
+// The Overview's wishlist count for a signup: its picks, in its season (#1609).
+function SignupWishlistSummary({
+  player,
+  season,
+  signup
+}: {
+  player: ProfilePlayer;
+  season: ReturnType<typeof useCurrentSeason>;
+  signup: OwnSignupRow;
+}) {
+  const seasons = useSeasons();
+  const name = seasons.data?.find((s) => s.code === signup.season)?.display_name ?? signup.season;
+  return (
+    <WishlistSummaryCard
+      player={player}
+      season={season}
+      owner={{ signupId: signup.id, season: signup.season }}
+      seasonOf={{ reads: seasons, code: signup.season, name }}
+    />
   );
 }
 
