@@ -20,6 +20,21 @@
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-3);
   cursor: pointer;
+  list-style: none;
+}
+
+/* A flex summary drops the browser's own arrow, so it is drawn here. */
+.loot-import-list summary::-webkit-details-marker {
+  display: none;
+}
+
+.loot-import-list summary::before {
+  content: '▸';
+  color: var(--text-muted);
+}
+
+.loot-import-list details[open] > summary::before {
+  content: '▾';
 }
 
 .loot-import-detail {
