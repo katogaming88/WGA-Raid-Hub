@@ -77,7 +77,7 @@ describe('signed in', () => {
   });
 
   it('opens officer pages and the Officer group for an officer of this team', async () => {
-    renderApp('/g/wga/t/phoenix/officer/import', signedIn(OFFICER, person('officer')));
+    renderApp('/g/wga/t/phoenix/officer/reports/performance', signedIn(OFFICER, person('officer')));
     expect(
       await screen.findByText('Not built yet. This page arrives in a later part of the rebuild.')
     ).toBeInTheDocument();

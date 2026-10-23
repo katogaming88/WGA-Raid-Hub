@@ -33,6 +33,7 @@ import { SiteAdminPage } from './siteadmin/SiteAdminPage';
 import { CreateGuildPage } from './front/CreateGuildPage';
 import { FrontPage } from './front/FrontPage';
 import { JoinRoute } from './join/JoinRoute';
+import { ImportLootPage } from './loot/ImportLootPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ErrorPage } from './pages/ErrorPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
@@ -48,6 +49,7 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   calendar: <CalendarPage />,
   me: <MyProfilePage />,
   'officer/priority': <PriorityPage />,
+  'officer/import': <ImportLootPage />,
   'officer/groups': <BossGroupsPage />,
   // 'officer/attendance/scores' stays a placeholder (Kat, 2026-09-27): Profile
   // already shows a raider's attendance pct and flagged nights, so a

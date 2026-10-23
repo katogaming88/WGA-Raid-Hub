@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     31 h 35 m |
+| Revamp 3: officer dashboard        |     31 h 49 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **94 h 10 m** |
+| **All revamp work**                | **94 h 24 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -342,6 +342,13 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:40-1:14 PM | PR #1590 (#1561 part 3): Kat's questions on the export and Suggest order rules with no list saved, and what a saved list is; review and merge | Revamp 3 (#1561) | 34 m | ~4 m build, ~30 m Kat | not read | Mismatch with no list left as is. Merged 1:14 PM; #1561 closed |
 | 1:15-1:20 PM | What next: the loot systems redrawn (Loot council = no wishlists, Wishlist = marks only, no ranking); #1563 and #1564 rewritten | Revamp 3 (#1563) | 5 m | ~2 m build, ~3 m Kat deciding | not read | Items-received ranking dropped (Kat) |
 | 1:20-1:27 PM | #1563 built: a Loot council team gets no Wishlist tab, wishlist cards, Priority page or wishlist reports; the profile says the council decides; the system descriptions on Settings › Loot; tests, browser accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1563) | 7 m | ~7 m build | not read | Review and merge not yet counted |
+
+### 2026-10-22
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 10:56-10:58 PM | What next: which unbuilt pages need no database change; #1363 picked | Revamp 3 (#1363) | 2 m | ~2 m build | not read | M+ exclusions left out of Reviews, since #1532 removes them |
+| 10:58-11:10 PM | #1363 part 1 built: Officer › Loot › Import, the paste form and Past imports by season, tests, browser accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1363) | 12 m | ~12 m build | not read | Reviews and Reassign follow as parts 2 and 3. Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
