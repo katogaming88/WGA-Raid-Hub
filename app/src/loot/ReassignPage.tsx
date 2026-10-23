@@ -304,18 +304,23 @@ function RaiderButtons({
           <span className="loot-reassign-role-label text-muted" aria-hidden="true">
             {label}
           </span>
-          {raiders.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className="button loot-reassign-raider"
-              aria-pressed={p.id === picked}
-              style={{ color: classColor(p.classes_specs?.class ?? '') }}
-              onClick={() => onPick(p.id)}
-            >
-              {pickerName(p)}
-            </button>
-          ))}
+          {/* Equal-width columns, so the names line up row to row (Kat: the
+              wrapped buttons looked messy). */}
+          <div className="loot-reassign-raiders">
+            {raiders.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className="button loot-reassign-raider"
+                aria-pressed={p.id === picked}
+                title={pickerName(p)}
+                style={{ color: classColor(p.classes_specs?.class ?? '') }}
+                onClick={() => onPick(p.id)}
+              >
+                {pickerName(p)}
+              </button>
+            ))}
+          </div>
         </div>
       ))}
     </div>
