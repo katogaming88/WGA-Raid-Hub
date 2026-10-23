@@ -18,6 +18,8 @@ const LOOT = [
     id: 11,
     track: 'Hero',
     season: 'MID1',
+    team_id: 1,
+    response: null,
     awarded_at: '2026-10-01T02:00:00Z',
     items: { name: 'Voidbound Cinch', wow_item_id: null, is_ptr: null, icon: null }
   }
@@ -109,7 +111,8 @@ describe('Reassign page', () => {
     const writes: Write[] = [];
     const { client } = renderApp(PATH, handlers(person('officer'), writes));
     await userEvent.selectOptions(await screen.findByLabelText('Now credited to'), '5');
-    expect(await screen.findByText('Heroic, Midnight Season 1')).toBeInTheDocument();
+    expect(await screen.findByText('Midnight Season 1')).toBeInTheDocument();
+    expect(screen.getByText('Heroic')).toHaveClass('difficulty-heroic');
     await userEvent.click(screen.getByRole('button', { name: 'Reassign' }));
     const dialog = screen.getByRole('dialog', { name: 'Reassign Voidbound Cinch?' });
     const confirm = within(dialog).getByRole('button', { name: 'Reassign' });

@@ -200,3 +200,12 @@
     flex-basis: auto;
   }
 }
+
+.loot-reassign-season {
+  margin-top: var(--space-3);
+}
+
+.loot-reassign-season .loot-summary {
+  font-size: 1rem;
+  font-weight: 400;
+}

@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     33 h 26 m |
+| Revamp 3: officer dashboard        |     33 h 36 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **96 h 01 m** |
+| **All revamp work**                | **96 h 11 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -361,7 +361,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 12:02-12:10 AM | #1363 part 2: stamp, changelog, these rows, checks, PR opened, screenshots | Revamp 3 (#1363) | 8 m | ~8 m build | not read | Review and merge not yet counted |
 | 12:10-12:17 AM | PR #1601 (#1363 part 2) reviewed and merged; #1602 (Priority slot tabs) filed | Revamp 3 (#1363) | 7 m | ~7 m Kat reviewing | not read | Merged 12:17 AM |
-| 10:17-10:30 AM | Where the work stood; #1363 part 3 built: Officer › Loot › Reassign (pick who an item is credited to, move it to another raider, logged), tests, browser accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1363) | 13 m | ~13 m build | not read | No database change. Review and merge not yet counted |
+| 10:17-10:40 AM | Where the work stood; #1363 part 3 built: Officer › Loot › Reassign (pick who an item is credited to, move it to another raider, logged), then Kat's three asks mid-build: Past reassignments from the audit log, item tooltips on it, and the raider's items shown as on their profile; tests, browser accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1363) | 23 m | ~20 m build, ~3 m Kat | not read | No database change. Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

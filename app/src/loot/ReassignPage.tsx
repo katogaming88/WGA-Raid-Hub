@@ -10,7 +10,8 @@ import { errorMessage } from '../lib/errors';
 import { formatInstant, formatInstantShort, localTimeZoneNote } from '../lib/dates';
 import { formatAuditDetail } from '../settings/audit';
 import { itemLinkData } from '../profile/lootPriority';
-import { difficultyOf, type SeasonRow } from '../profile/profile';
+import { seasonLoot, type SeasonRow } from '../profile/profile';
+import { difficultyClass, NotCounted } from '../profile/ProfilePage';
 import { firstName, type PlayerRow } from '../roster/roster';
 import { useRosterPlayers } from '../roster/useRoster';
 import {
@@ -159,34 +160,47 @@ function Reassign({ teamId, roster }: { teamId: number; roster: PlayerRow[] }) {
             !rows.length ? (
               <p className="text-muted">No raid loot on file for {pickerName(from!)}.</p>
             ) : (
-              <ul className="loot-review-list">
-                {rows.map((row) => (
-                  <li key={row.id} className="loot-review">
-                    <div className="loot-review-line">
-                      <span className="loot-review-item">
-                        <ItemLink link={itemLinkData(row.items)}>{itemName(row)}</ItemLink>
-                      </span>
-                      <span className="loot-review-source">
-                        {difficultyOf(row.track)}
-                        {row.season && `, ${seasonName(seasons.data, row.season)}`}
-                      </span>
-                      <span className="text-muted loot-review-when" title={formatInstant(row.awarded_at)}>
-                        {formatInstantShort(row.awarded_at)}
-                      </span>
-                      <span className="loot-review-actions">
-                        <button
-                          type="button"
-                          className="button"
-                          disabled={reassign.isPending}
-                          onClick={() => setMoving(row)}
-                        >
-                          Reassign
-                        </button>
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              bySeason(rows, seasons.data ?? []).map(({ code, loot }) => {
+                const byId = new Map(rows.map((r) => [r.id, r]));
+                return (
+                  <section key={code ?? 'none'} className="loot-reassign-season">
+                    {/* The profile's Items received, one season at a time. */}
+                    <h3 className="loot-summary">
+                      <span className="num loot-count">{loot.count}</span> {loot.count === 1 ? 'item' : 'items'} in{' '}
+                      <span className="loot-season">{loot.season}</span>
+                    </h3>
+                    <ul className="loot-review-list">
+                      {loot.awards.map((a) => {
+                        const row = byId.get(a.key)!;
+                        return (
+                          <li key={a.key} className="loot-review">
+                            <div className="loot-review-line">
+                              <span className="loot-review-item">
+                                <ItemLink link={itemLinkData(row.items)}>{a.name}</ItemLink>
+                                <NotCounted award={a} />
+                              </span>
+                              <span className={difficultyClass(a.difficulty)}>{a.difficulty}</span>
+                              <span className="text-muted loot-review-when" title={formatInstant(a.awardedAt)}>
+                                {a.date}
+                              </span>
+                              <span className="loot-review-actions">
+                                <button
+                                  type="button"
+                                  className="button"
+                                  disabled={reassign.isPending}
+                                  onClick={() => setMoving(row)}
+                                >
+                                  Reassign
+                                </button>
+                              </span>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
+                );
+              })
             )
           }
         </DataState>
@@ -204,8 +218,27 @@ function Reassign({ teamId, roster }: { teamId: number; roster: PlayerRow[] }) {
   );
 }
 
-const seasonName = (seasons: SeasonRow[] | undefined, code: string) =>
-  seasons?.find((s) => s.code === code)?.display_name ?? code;
+// One block per season the raider has loot in, newest season first, each read
+// by seasonLoot() as the profile does. Awards from before seasons were
+// recorded go last.
+export function bySeason(rows: ReassignRow[], seasons: SeasonRow[]) {
+  const codes = [...new Set(rows.map((r) => r.season))];
+  const order = (c: string | null) => (c === null ? -1 : seasons.findIndex((s) => s.code === c));
+  return codes
+    .sort((a, b) => order(b) - order(a))
+    .map((code) => ({
+      code,
+      loot: seasonLoot(
+        rows.filter((r) => r.season === code),
+        {
+          code: null,
+          name: code === null ? 'no recorded season' : (seasons.find((s) => s.code === code)?.display_name ?? code),
+          start: null,
+          end: null
+        }
+      )
+    }));
+}
 
 function MoveDialog({
   row,

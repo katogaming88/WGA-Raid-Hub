@@ -1,5 +1,6 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import { resolveActorNames, type AuditRow } from '../settings/useAudit';
+import { countedLoot } from '../settings/useSettings';
 
 export const REASSIGN_ACTION = 'Loot Reassigned';
 
@@ -38,7 +39,8 @@ export function useReassignHistory(teamId: number) {
     const [actorNames, found] = await Promise.all([
       resolveActorNames(client, rows.data!, teamId),
       names.length
-        ? client.from('items').select('name, wow_item_id, is_ptr, icon').in('name', names)
+        ? // team-read-guard: only the items named in this team's reassignments, a handful
+          client.from('items').select('name, wow_item_id, is_ptr, icon').in('name', names)
         : { data: [] as LinkItem[], error: null }
     ]);
     if (found.error) return { data: null, error: found.error };
@@ -56,13 +58,19 @@ export type ReassignRow = {
   track: string | null;
   season: string | null;
   awarded_at: string;
+  team_id: number | null;
+  response: string | null;
   items: { name: string; wow_item_id: number | null; is_ptr: boolean | null; icon: string | null } | null;
+  // Set by countedLoot() (#1561), as on the profile.
+  offSpec?: boolean;
+  counted?: boolean;
 };
 
 const lootKey = (teamId: number, playerId: number) => ['loot-reassign', teamId, playerId] as const;
 
-// Every raid award for one raider, newest first, from any season: a trade an
-// officer corrects could be from an earlier one.
+// Every raid award for one raider, from any season: a trade an officer
+// corrects could be from an earlier one. countedLoot() shows them as the
+// raider's profile does (Off spec tagged, Hidden left out).
 export function useRaiderLoot(teamId: number, playerId: number | null) {
   return useSupabaseQuery<ReassignRow[]>(
     lootKey(teamId, playerId ?? 0),
@@ -70,14 +78,14 @@ export function useRaiderLoot(teamId: number, playerId: number | null) {
       const rows = await readAll<ReassignRow>((from, to) =>
         client
           .from('rclc_loot')
-          .select('id, track, season, awarded_at, items(name, wow_item_id, is_ptr, icon)')
+          .select('id, team_id, response, track, season, awarded_at, items(name, wow_item_id, is_ptr, icon)')
           .eq('team_id', teamId)
           .eq('player_id', playerId!)
           .order('id')
           .range(from, to)
       );
       if (rows.error) return rows;
-      return { data: rows.data!.sort((a, b) => (a.awarded_at < b.awarded_at ? 1 : -1)), error: null };
+      return countedLoot(client, rows.data!);
     },
     { enabled: playerId !== null }
   );

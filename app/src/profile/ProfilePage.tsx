@@ -439,7 +439,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-const difficultyClass = (d: Award['difficulty']) => `difficulty difficulty-${d.toLowerCase()}`;
+export const difficultyClass = (d: Award['difficulty']) => `difficulty difficulty-${d.toLowerCase()}`;
 
 function ItemsReceived({ loot }: { loot: ReturnType<typeof seasonLoot> }) {
   if (!loot.awards.length) {
@@ -507,7 +507,7 @@ function ItemsReceived({ loot }: { loot: ReturnType<typeof seasonLoot> }) {
 // An item received on an earlier character: an old main, or a team the raider
 // left. Their own character's items carry no mark.
 // An Off spec award the team's button list leaves out of the count (#1561).
-function NotCounted({ award }: { award: Award }) {
+export function NotCounted({ award }: { award: Award }) {
   return award.counted ? null : (
     <span className="loot-offspec" title="Its response counts as Off spec, so it is not counted">
       Off spec
