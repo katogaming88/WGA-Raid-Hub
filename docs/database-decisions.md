@@ -2780,3 +2780,17 @@ Decided 2026-10-06 (#1342): closing signups archives the rostered raiders who di
 **Only the team leader and site admins** run either, as for opening signups.
 
 [Full discussion -> #1467](https://github.com/katogaming88/WGA-Raid-Hub/issues/1467).
+
+## #1342 part 1 -- every signup on the Projected Roster, and closing signups from two weeks out
+
+Shipped: 20261023131302_projected_roster_signups.sql
+
+Decided with Kat 2026-10-23.
+
+**Everyone sees the Projected Roster; officers get its controls.** In the new app a signup has no approval step, so it stays `pending` until signups close. The public `incoming_roster` view listed only `approved` signups and would never have shown one. It now lists `pending` and `approved` signups not yet on the roster, with a `status` column. The current site's public roster filters to `approved`, so it shows what it did until cutover.
+
+**Closing signups opens 14 days before the season starts (#648).** `promote_season_signups()` refuses before then, so picks made months early are not locked in while raiders still change their minds. From then on the team leader can close any time.
+
+**Signups also close by themselves when the season starts,** archiving everyone who did not sign up, as a leader closing with every tick left on would (Kat). That is #1608: it runs with nobody signed in, and it must not act on a season that started before it ships (Midnight Season 2's signups are still switched on for Phoenix and Hellfire).
+
+[Full discussion -> #1342](https://github.com/katogaming88/WGA-Raid-Hub/issues/1342).

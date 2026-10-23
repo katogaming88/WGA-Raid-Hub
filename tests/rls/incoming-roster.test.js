@@ -1,5 +1,6 @@
 // Read-path and column-safety assertions for incoming_roster (#499): a
-// public view over season_signups' approved-unpromoted rows, narrowed to
+// public view over season_signups' pending and approved rows not yet on the
+// roster (pending since #1342, with their status), narrowed to
 // safe columns and scoped to the tiers the team has taken signups for. Since
 // #934 that scope is the team's team_seasons row for the row's tier (#939),
 // whichever way its switch is now: officers close signups and then push the
@@ -33,10 +34,13 @@ describe('incoming_roster is visible to everyone, scoped to the tiers the team h
     });
   });
 
-  it('does not include the still-pending (not-yet-approved) seeded signup', async () => {
+  it('includes the still-pending seeded signup, marked pending (#1342: no approval step in the new app)', async () => {
     await withTxn(async ({ q, asAnon }) => {
       await openSignups(q);
-      expect(await countIncoming(asAnon, "signup_name_realm = 'Seedsignup-Illidan'")).toBe(0);
+      const { rows } = await asAnon(
+        "select status from public.incoming_roster where signup_name_realm = 'Seedsignup-Illidan'"
+      );
+      expect(rows).toEqual([{ status: 'pending' }]);
     });
   });
 

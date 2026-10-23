@@ -12,6 +12,21 @@ answers to.
 
 ---
 
+## [3.201.0] - 2026-10-23
+
+### Backend
+
+- The public Projected Roster read (`incoming_roster`) lists signups
+  that are waiting as well as approved ones, with their status, since
+  the new app has no approval step (#1342 part 1).
+- Closing signups is refused until 14 days before the season starts, so
+  picks made months early are not locked in (#648).
+
+### Frontend
+
+- The Roster tab's next-season roster still lists only approved
+  signups, now by asking for them.
+
 ## [3.200.0] - 2026-10-23
 
 ### Backend

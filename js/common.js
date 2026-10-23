@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.200.0';
+var VERSION = '3.201.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20261023122233';
+var REQUIRED_SCHEMA = '20261023131302';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1751,6 +1751,9 @@ function fetchSupabaseIncomingRoster() {
     .from('incoming_roster')
     .select('signup_id, signup_name_realm, swap_from_name_realm, class, spec, role')
     .eq('team_id', _teamCfg.supabaseTeamId)
+    // The view lists pending signups too since #1342, for the new app's
+    // Projected Roster; this page still shows only approved ones.
+    .eq('status', 'approved')
     .then(
       function (result) {
         if (result.error) {

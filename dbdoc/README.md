@@ -38,7 +38,7 @@
 | [public.priority_order_stale_after_heroic](public.priority_order_stale_after_heroic.md) | 7 |  | VIEW |
 | [public.item_preferences](public.item_preferences.md) | 11 |  | BASE TABLE |
 | [public.site_settings](public.site_settings.md) | 10 |  | BASE TABLE |
-| [public.incoming_roster](public.incoming_roster.md) | 7 |  | VIEW |
+| [public.incoming_roster](public.incoming_roster.md) | 8 |  | VIEW |
 | [public.tier_token_map](public.tier_token_map.md) | 6 |  | BASE TABLE |
 | [public.boe_items](public.boe_items.md) | 26 |  | BASE TABLE |
 | [public.boe_listings](public.boe_listings.md) | 8 |  | BASE TABLE |
@@ -783,6 +783,7 @@ erDiagram
   text spec
   text role
   text swap_from_name_realm
+  text status
 }
 "public.tier_token_map" {
   integer id
