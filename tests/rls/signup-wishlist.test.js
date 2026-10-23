@@ -121,6 +121,52 @@ describe('signup wishlist (#1609)', () => {
     });
   });
 
+  // Review on PR #1612: the character can join the roster before signups
+  // close (an approved main swap, the invite link, an officer's add), and the
+  // raider then edits its own wishlist. The older signup picks never replace it.
+  it('keeps the wishlist a character already on the roster holds, and drops the signup picks', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await nextSeason(q);
+      const me = await signedUp(q, { status: 'approved' });
+      const [signupItem, rosterItem] = [await anItem(q), await anItem(q, 1)];
+      await mark(asUser, me.uid, me.signupId, signupItem);
+      const playerId = await seedPlayer(q, { memberId: me.memberId, nameRealm: 'Newmain-Illidan' });
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, $1, $2, 'bis', $3)",
+        [playerId, rosterItem, SEASON]
+      );
+
+      await asUser(OFFICER_T1, 'select public.add_signup_to_roster($1)', [me.signupId]);
+      const items = await q('select item_id from public.item_preferences where player_id = $1', [playerId]);
+      expect(items.rows.map((r) => r.item_id)).toEqual([rosterItem]);
+      expect(await rowsOf(q, me.signupId)).toEqual([]);
+    });
+  });
+
+  // Review on PR #1612: an officer may update any signup column, so marking
+  // one added against another raider must not rewrite that raider's wishlist.
+  it("moves only onto the signup's own character", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await nextSeason(q);
+      const me = await signedUp(q, { status: 'approved' });
+      const otherId = await seedPlayer(q, { nameRealm: 'Someoneelse-Illidan' });
+      const [signupItem, otherItem] = [await anItem(q), await anItem(q, 1)];
+      await mark(asUser, me.uid, me.signupId, signupItem);
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status, season) values (1, $1, $2, 'bis', $3)",
+        [otherId, otherItem, SEASON]
+      );
+
+      await asUser(
+        OFFICER_T1,
+        "update public.season_signups set status = 'added', approved_player_id = $2 where id = $1",
+        [me.signupId, otherId]
+      );
+      const items = await q('select item_id from public.item_preferences where player_id = $1', [otherId]);
+      expect(items.rows.map((r) => r.item_id)).toEqual([otherItem]);
+    });
+  });
+
   it("leaves a swap's old character its own wishlist", async () => {
     await withTxn(async ({ q, asUser }) => {
       await nextSeason(q);

@@ -60,6 +60,7 @@ Note the dependency, because it decides restore order: `priority_order` and `sco
 - `characters` (the alts each person picked from their Battle.net account, [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942) step 5; restores after `people`. Nothing else holds the picks, so a lost row is only rebuilt by that raider choosing again)
 - `item_preferences` (raider wishlists)
 - `season_signups`
+- `signup_item_preferences` (next season's wishlist picks on a signup whose character is not on the roster yet, [#1609](https://github.com/katogaming88/WGA-Raid-Hub/issues/1609); restores after `season_signups`, and moves into `item_preferences` when the signup is added). No `EMPTY_CHECK` floor: outside signups it is legitimately empty.
 - `bis_requests`
 - `self_received_requests`
 - `mplus_exclusion_requests`

@@ -57,7 +57,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | trg_season_signups_updated_at | CREATE TRIGGER trg_season_signups_updated_at BEFORE UPDATE ON public.season_signups FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
-| season_signups_carry_wishlist | CREATE TRIGGER season_signups_carry_wishlist AFTER UPDATE OF status, signup_name_realm ON public.season_signups FOR EACH ROW WHEN (((new.status IS DISTINCT FROM old.status) OR (new.signup_name_realm IS DISTINCT FROM old.signup_name_realm))) EXECUTE FUNCTION carry_signup_wishlist() |
+| season_signups_carry_wishlist | CREATE TRIGGER season_signups_carry_wishlist AFTER UPDATE OF status, signup_name_realm, approved_player_id ON public.season_signups FOR EACH ROW WHEN (((new.status IS DISTINCT FROM old.status) OR (new.signup_name_realm IS DISTINCT FROM old.signup_name_realm) OR (new.approved_player_id IS DISTINCT FROM old.approved_player_id))) EXECUTE FUNCTION carry_signup_wishlist() |
 
 ## Relations
 

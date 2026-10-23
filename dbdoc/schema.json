@@ -2066,7 +2066,7 @@
         },
         {
           "name": "season_signups_carry_wishlist",
-          "def": "CREATE TRIGGER season_signups_carry_wishlist AFTER UPDATE OF status, signup_name_realm ON public.season_signups FOR EACH ROW WHEN (((new.status IS DISTINCT FROM old.status) OR (new.signup_name_realm IS DISTINCT FROM old.signup_name_realm))) EXECUTE FUNCTION carry_signup_wishlist()"
+          "def": "CREATE TRIGGER season_signups_carry_wishlist AFTER UPDATE OF status, signup_name_realm, approved_player_id ON public.season_signups FOR EACH ROW WHEN (((new.status IS DISTINCT FROM old.status) OR (new.signup_name_realm IS DISTINCT FROM old.signup_name_realm) OR (new.approved_player_id IS DISTINCT FROM old.approved_player_id))) EXECUTE FUNCTION carry_signup_wishlist()"
         }
       ]
     },

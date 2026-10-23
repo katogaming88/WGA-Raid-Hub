@@ -60,7 +60,10 @@ revoke all on function public.my_wishlist_signup_ids() from public, anon;
 grant execute on function public.my_wishlist_signup_ids() to authenticated;
 
 -- Whether the team has opened the wishlist for the signup's season. Security
--- definer for the same reason; it says nothing team_seasons does not.
+-- definer for the same reason. It says nothing team_seasons does not, beyond
+-- whether a signup id exists; it is not limited to the caller's own signups,
+-- since the trigger below runs before the access rule, and a stranger's write
+-- should be refused by that rule rather than reported as a closed season.
 create function public.signup_wishlist_open(p_signup_id integer) returns boolean
 language sql stable security definer set search_path = public
 as $$
@@ -116,24 +119,35 @@ create trigger trg_signup_item_preferences_wishlist_open
 -- The signup's rows follow it. Added to the roster (add_signup_to_roster(),
 -- whoever calls it: closing signups, an officer's single add, the automatic
 -- close of #1608): they become the roster character's wishlist for the
--- season, in place of any it held there, which only a character brought back
--- from the archive can have. A swap's old character is a different row and
--- keeps its own. Turned down, or moved to another character: they go, since
--- they were picks for that character. Security definer because the add can be
--- an officer's, who may not write a raider's wishlist.
+-- season, unless it already holds one there. The character can join the
+-- roster before signups close (an approved main swap, the invite link, an
+-- officer's add), and from then on the raider edits its own wishlist, so that
+-- one is newer and the signup's picks are dropped. Only the character the
+-- signup names, on its team, takes them: an officer can set any signup's
+-- approved_player_id, and must not rewrite another raider's wishlist this way.
+-- A swap's old character is a different row and keeps its own. Turned down,
+-- or moved to another character: they go, since they were picks for that
+-- character. Security definer because the add can be an officer's, who may
+-- not write a raider's wishlist.
 create function public.carry_signup_wishlist() returns trigger
 language plpgsql security definer set search_path = public
 as $$
 begin
   if new.status = 'added' and new.approved_player_id is not null then
-    if exists (select 1 from signup_item_preferences where signup_id = new.id) then
-      delete from item_preferences
-       where player_id = new.approved_player_id and season = new.season;
-      insert into item_preferences (team_id, player_id, item_id, status, note, slot, season, synced_bis)
-      select new.team_id, new.approved_player_id, item_id, status, note, slot, new.season, synced_bis
-        from signup_item_preferences
-       where signup_id = new.id;
-    end if;
+    insert into item_preferences (team_id, player_id, item_id, status, note, slot, season, synced_bis)
+    select new.team_id, new.approved_player_id, sp.item_id, sp.status, sp.note, sp.slot, new.season, sp.synced_bis
+      from signup_item_preferences sp
+     where sp.signup_id = new.id
+       and exists (
+             select 1 from players p
+              where p.id = new.approved_player_id
+                and p.team_id = new.team_id
+                and p.name_realm_key = lower(replace(new.signup_name_realm, ' ', ''))
+           )
+       and not exists (
+             select 1 from item_preferences ip
+              where ip.player_id = new.approved_player_id and ip.season = new.season
+           );
   elsif new.status <> 'rejected'
         and lower(replace(new.signup_name_realm, ' ', '')) = lower(replace(old.signup_name_realm, ' ', '')) then
     return new;
@@ -146,9 +160,11 @@ end $$;
 revoke all on function public.carry_signup_wishlist() from public, anon, authenticated;
 
 create trigger season_signups_carry_wishlist
-  after update of status, signup_name_realm on public.season_signups
+  after update of status, signup_name_realm, approved_player_id on public.season_signups
   for each row
-  when (new.status is distinct from old.status or new.signup_name_realm is distinct from old.signup_name_realm)
+  when (new.status is distinct from old.status
+        or new.signup_name_realm is distinct from old.signup_name_realm
+        or new.approved_player_id is distinct from old.approved_player_id)
   execute function public.carry_signup_wishlist();
 
 revoke all on table public.signup_item_preferences from public, anon, authenticated, service_role;

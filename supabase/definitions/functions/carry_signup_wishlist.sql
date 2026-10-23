@@ -10,14 +10,20 @@ CREATE OR REPLACE FUNCTION public.carry_signup_wishlist()
 AS $function$
 begin
   if new.status = 'added' and new.approved_player_id is not null then
-    if exists (select 1 from signup_item_preferences where signup_id = new.id) then
-      delete from item_preferences
-       where player_id = new.approved_player_id and season = new.season;
-      insert into item_preferences (team_id, player_id, item_id, status, note, slot, season, synced_bis)
-      select new.team_id, new.approved_player_id, item_id, status, note, slot, new.season, synced_bis
-        from signup_item_preferences
-       where signup_id = new.id;
-    end if;
+    insert into item_preferences (team_id, player_id, item_id, status, note, slot, season, synced_bis)
+    select new.team_id, new.approved_player_id, sp.item_id, sp.status, sp.note, sp.slot, new.season, sp.synced_bis
+      from signup_item_preferences sp
+     where sp.signup_id = new.id
+       and exists (
+             select 1 from players p
+              where p.id = new.approved_player_id
+                and p.team_id = new.team_id
+                and p.name_realm_key = lower(replace(new.signup_name_realm, ' ', ''))
+           )
+       and not exists (
+             select 1 from item_preferences ip
+              where ip.player_id = new.approved_player_id and ip.season = new.season
+           );
   elsif new.status <> 'rejected'
         and lower(replace(new.signup_name_realm, ' ', '')) = lower(replace(old.signup_name_realm, ' ', '')) then
     return new;
