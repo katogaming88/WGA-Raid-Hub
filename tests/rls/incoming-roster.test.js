@@ -1,6 +1,7 @@
 // Read-path and column-safety assertions for incoming_roster (#499): a
-// public view over season_signups' pending and approved rows not yet on the
-// roster (pending since #1342, with their status), narrowed to
+// public view over season_signups' approved rows not yet on the roster, and
+// since #1342 their pending ones too, with the status, for the team's own
+// members, guild officers and site admins only, narrowed to
 // safe columns and scoped to the tiers the team has taken signups for. Since
 // #934 that scope is the team's team_seasons row for the row's tier (#939),
 // whichever way its switch is now: officers close signups and then push the
@@ -10,7 +11,7 @@
 // rolled-back transaction (helpers.js withTxn) so the row and the read share
 // a connection; the column cases keep queryAs, which needs no fixture.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, queryAs, seedSeason, RAIDER_T1 } from './helpers.js';
+import { pool, withTxn, queryAs, seedSeason, RAIDER_T1, RAIDER_T2, GUILD_OFFICER, SITE_ADMIN } from './helpers.js';
 
 const openSignups = (q, team = 1, season = 'seed-season', open = true) =>
   q('insert into public.team_seasons (team_id, season_code, signups_open) values ($1, $2, $3)', [team, season, open]);
@@ -34,13 +35,32 @@ describe('incoming_roster is visible to everyone, scoped to the tiers the team h
     });
   });
 
-  it('includes the still-pending seeded signup, marked pending (#1342: no approval step in the new app)', async () => {
-    await withTxn(async ({ q, asAnon }) => {
+  // Waiting signups are the team's own business (Kat, 2026-10-23): its
+  // members, guild officers and site admins. Approved ones stay public until
+  // cutover, for the current site's public roster.
+  const pendingSeen = async (asCaller) =>
+    (await asCaller("select status from public.incoming_roster where signup_name_realm = 'Seedsignup-Illidan'")).rows;
+
+  it("shows the team's waiting signup to its own raider, marked pending (#1342)", async () => {
+    await withTxn(async ({ q, asUser }) => {
       await openSignups(q);
-      const { rows } = await asAnon(
-        "select status from public.incoming_roster where signup_name_realm = 'Seedsignup-Illidan'"
-      );
-      expect(rows).toEqual([{ status: 'pending' }]);
+      expect(await pendingSeen((text) => asUser(RAIDER_T1, text))).toEqual([{ status: 'pending' }]);
+    });
+  });
+
+  it('shows it to a guild officer and a site admin', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await openSignups(q);
+      expect(await pendingSeen((text) => asUser(GUILD_OFFICER, text))).toHaveLength(1);
+      expect(await pendingSeen((text) => asUser(SITE_ADMIN, text))).toHaveLength(1);
+    });
+  });
+
+  it("hides it from anon and from another team's raider", async () => {
+    await withTxn(async ({ q, asAnon, asUser }) => {
+      await openSignups(q);
+      expect(await pendingSeen(asAnon)).toEqual([]);
+      expect(await pendingSeen((text) => asUser(RAIDER_T2, text))).toEqual([]);
     });
   });
 

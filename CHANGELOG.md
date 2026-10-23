@@ -16,9 +16,11 @@ answers to.
 
 ### Backend
 
-- The public Projected Roster read (`incoming_roster`) lists signups
-  that are waiting as well as approved ones, with their status, since
-  the new app has no approval step (#1342 part 1).
+- The Projected Roster read (`incoming_roster`) lists signups that are
+  waiting as well as approved ones, with their status, since the new app
+  has no approval step (#1342 part 1). Waiting ones show only to the
+  team's own members, guild officers and site admins; approved ones stay
+  public until cutover for the current site.
 - Closing signups is refused until 14 days before the season starts, so
   picks made months early are not locked in (#648).
 

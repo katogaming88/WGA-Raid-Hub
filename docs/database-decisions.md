@@ -2787,7 +2787,7 @@ Shipped: 20261023131302_projected_roster_signups.sql
 
 Decided with Kat 2026-10-23.
 
-**Everyone sees the Projected Roster; officers get its controls.** In the new app a signup has no approval step, so it stays `pending` until signups close. The public `incoming_roster` view listed only `approved` signups and would never have shown one. It now lists `pending` and `approved` signups not yet on the roster, with a `status` column. The current site's public roster filters to `approved`, so it shows what it did until cutover.
+**The team sees its Projected Roster; officers get its controls.** In the new app a signup has no approval step, so it stays `pending` until signups close. The `incoming_roster` view listed only `approved` signups and would never have shown one. It now lists `pending` ones too, with a `status` column, but only to the team's own members, guild officers and site admins: who has signed up is the team's business, not anyone's (Kat). Approved ones stay public until cutover, so the current site's public roster, which filters to `approved`, shows what it did. At cutover they become members-only too.
 
 **Closing signups opens 14 days before the season starts (#648).** `promote_season_signups()` refuses before then, so picks made months early are not locked in while raiders still change their minds. From then on the team leader can close any time.
 

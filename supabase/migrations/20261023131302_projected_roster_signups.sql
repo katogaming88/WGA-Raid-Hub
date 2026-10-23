@@ -5,8 +5,12 @@
 -- approval step (Kat, 2026-10-23), so it stays 'pending' until signups close.
 -- incoming_roster, the public read the Projected Roster tab uses, listed only
 -- 'approved' signups, so it would never show one. It now lists pending ones
--- too, with the status, so the current site's public roster keeps reading
--- only approved ones until cutover (js/common.js filters on it).
+-- too, with the status, but only to the team's own members, guild officers
+-- and site admins: who has signed up is the team's business (Kat,
+-- 2026-10-23). Approved ones stay public until cutover, for the current
+-- site's public roster, which keeps reading only those (js/common.js filters
+-- on the status). The view runs as its owner, so these checks read the
+-- caller's own auth.uid(); my_team_role() is null for an ended membership.
 
 create or replace view public.incoming_roster as
  SELECT s.id AS signup_id,
@@ -20,7 +24,12 @@ create or replace view public.incoming_roster as
    FROM season_signups s
      JOIN team_seasons ts ON ts.team_id = s.team_id AND ts.season_code = s.season
      LEFT JOIN classes_specs cs ON cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id)
-  WHERE s.status = ANY (ARRAY['pending'::text, 'approved'::text]) AND s.approved_player_id IS NULL;
+  WHERE s.approved_player_id IS NULL
+    AND (s.status = 'approved'::text
+         OR (s.status = 'pending'::text
+             AND (public.my_team_role(s.team_id) IS NOT NULL
+                  OR public.is_guild_officer()
+                  OR public.is_site_admin())));
 
 grant select on public.incoming_roster to anon, authenticated;
 
