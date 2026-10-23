@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     35 h 29 m |
+| Revamp 3: officer dashboard        |     36 h 14 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                |  **98 h 4 m** |
+| **All revamp work**                | **98 h 49 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -368,6 +368,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:41-11:58 AM | #1465 built: season signups record the person and their saved character, one per person per team per tier, declare_season_signup() for the coming tier only, add_signup_to_roster() links the character to the signer, the officer's Trial and backup flags; database tests red first, generated docs, decision log, stamp, changelog, these rows, PR opened | Revamp 3 (#1465) | 17 m | ~14 m build, ~3 m Kat deciding | not read | Kat: no approval step in the new app; signups only for the coming tier. Rex had #1465 assigned and had not started. Review and merge not yet counted |
 | 11:58 AM-12:18 PM | PR #1605 (#1465): fresh-agent review, the fix it asked for (the add checks the character again before linking it), merged | Revamp 3 (#1465) | 20 m | ~10 m build, ~10 m Kat reviewing | not read | Merged 12:18 PM. Times from the git history |
 | 12:19-12:35 PM | #1467 built: preview_signup_promotion() and promote_season_signups() (who stays, joins, swaps, starts a first main, is skipped, and which characters nobody signed up for; one transaction, refuses a stale preview), the "Did not sign up" reason everywhere, lock order written out and tested; database tests, generated docs, decision log, stamp, changelog, these rows, PR opened | Revamp 3 (#1467) | 16 m | ~16 m build | not read | No page calls these yet (#1342). Fresh-agent review, then review and merge not yet counted |
+| 12:35-12:50 PM | PR #1606 (#1467): fresh-agent review (one blocking item: a typed swap could archive another raider's character), the fix with red tests first, merged; #1607 filed for a Remove made while signups close | Revamp 3 (#1467) | 15 m | ~10 m build, ~5 m Kat | not read | Times approximate |
+| 12:50-1:00 PM | #1463 reworked with Kat: a first main is self-service, officers told in Discord, mistakes undone by an officer, swaps keep approval; closed rows taken off #1487; work goes in #1487's order | Revamp 3 (#1463) | 10 m | ~5 m build, ~5 m Kat deciding | not read | Times approximate |
+| 1:00-1:20 PM | #1342 part 1 built: Kat's answers (everyone sees the Projected Roster, close from 14 days out, signups close by themselves at season start archiving non-signers, edits on phones too); the public read lists waiting signups, closing refused before 14 days out (#648); #1608 filed for the automatic close; database tests red first, generated docs, decision log, stamp, changelog, these rows, PR opened | Revamp 3 (#1342) | 20 m | ~15 m build, ~5 m Kat deciding | not read | Part 2 (Settings › Signups and the Projected Roster tab) next. Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

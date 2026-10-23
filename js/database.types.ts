@@ -3477,6 +3477,7 @@ export type Database = {
           signup_id: number | null
           signup_name_realm: string | null
           spec: string | null
+          status: string | null
           swap_from_name_realm: string | null
           team_id: number | null
         }

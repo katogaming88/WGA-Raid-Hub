@@ -235,6 +235,29 @@ describe('promote_season_signups()', () => {
     });
   });
 
+  it('is refused until 14 days before the season starts (#648)', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const s = await scene(q);
+      // The running season ends today, as the migration adding the next one
+      // sets it (the seed leaves it open-ended).
+      await q(
+        "update public.seasons set ends_at = (now() at time zone 'America/New_York')::date where ends_at is null"
+      );
+      const startIn = (days) =>
+        q(
+          `update public.seasons set starts_at = (now() at time zone 'America/New_York')::date + $2::int,
+                                     ends_at = (now() at time zone 'America/New_York')::date + $2::int
+            where code = $1`,
+          [s.season, days]
+        );
+      await startIn(15);
+      const p = await preview(asUser, s.team.leader.uid, s);
+      await expect(promote(asUser, s.team.leader.uid, s, p.expected, [])).rejects.toThrow(/14 days before it starts/);
+      await startIn(14);
+      await promote(asUser, s.team.leader.uid, s, p.expected, []);
+    });
+  });
+
   it('is refused to a plain officer', async () => {
     await withTxn(async ({ q, asUser }) => {
       const s = await scene(q);
