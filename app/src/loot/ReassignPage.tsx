@@ -7,12 +7,20 @@ import { ItemLink } from '../components/ItemLink';
 import { useStatus } from '../components/Status';
 import { can, useAccess } from '../auth/access';
 import { errorMessage } from '../lib/errors';
-import { formatInstant, formatInstantShort } from '../lib/dates';
+import { formatInstant, formatInstantShort, localTimeZoneNote } from '../lib/dates';
+import { formatAuditDetail } from '../settings/audit';
 import { itemLinkData } from '../profile/lootPriority';
 import { difficultyOf, type SeasonRow } from '../profile/profile';
 import { firstName, type PlayerRow } from '../roster/roster';
 import { useRosterPlayers } from '../roster/useRoster';
-import { useRaiderLoot, useReassign, type ReassignRow } from './useReassign';
+import {
+  parseMove,
+  useRaiderLoot,
+  useReassign,
+  useReassignHistory,
+  type ReassignHistory,
+  type ReassignRow
+} from './useReassign';
 import '../settings/settings.css';
 import './loot.css';
 
@@ -29,6 +37,7 @@ export function ReassignPage() {
   const team = useTeam();
   const access = useAccess();
   const players = useRosterPlayers(team.id);
+  const history = useReassignHistory(team.id);
 
   return (
     <section className="page settings-page" aria-labelledby="page-title">
@@ -47,7 +56,57 @@ export function ReassignPage() {
         // #607: rclc_loot's officer write leaves guild officers out.
         <p className="card settings-card">Only this team&apos;s officers can reassign loot.</p>
       )}
+      <DataState query={history} label="past reassignments">
+        {(data) => <HistoryCard history={data} />}
+      </DataState>
     </section>
+  );
+}
+
+function HistoryCard({ history }: { history: ReassignHistory }) {
+  return (
+    <div className="card settings-card">
+      <h2 className="section-title">Past reassignments</h2>
+      {!history.rows.length ? (
+        <p className="text-muted">No loot reassigned yet.</p>
+      ) : (
+        <>
+          <p className="text-muted">
+            {history.rows.length} so far, newest first. {localTimeZoneNote()}
+          </p>
+          <ul className="loot-review-list">
+            {history.rows.map((row) => {
+              const move = parseMove(row.detail);
+              return (
+                <li key={row.id} className="loot-review">
+                  <div className="loot-review-line">
+                    {move ? (
+                      <>
+                        <span className="loot-review-item">
+                          <ItemLink link={itemLinkData(history.items[move.item])}>{move.item}</ItemLink>
+                        </span>
+                        <span className="loot-reassign-move">
+                          {move.from} <span aria-hidden="true">→</span>
+                          <span className="visually-hidden">to</span> {move.to}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="loot-review-item">{formatAuditDetail(row.detail)}</span>
+                    )}
+                    <span className="text-muted loot-reassign-by">
+                      by {(row.actor_id && history.actorNames[row.actor_id]) || 'an officer'}
+                    </span>
+                    <span className="text-muted loot-review-when" title={formatInstant(row.created_at)}>
+                      {formatInstantShort(row.created_at)}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+    </div>
   );
 }
 

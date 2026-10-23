@@ -1,4 +1,55 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
+import { resolveActorNames, type AuditRow } from '../settings/useAudit';
+
+export const REASSIGN_ACTION = 'Loot Reassigned';
+
+type LinkItem = { name: string; wow_item_id: number | null; is_ptr: boolean | null; icon: string | null };
+
+export type ReassignHistory = {
+  rows: AuditRow[];
+  actorNames: Record<string, string>;
+  items: Record<string, LinkItem>;
+};
+
+// "Voidbound Cinch: Kat (Katorrí) -> Brakkus", as useReassign() and the
+// current site write it. Anything else shows as written.
+export function parseMove(detail: unknown): { item: string; from: string; to: string } | null {
+  const m = typeof detail === 'string' ? /^(.*): (.*) -> (.*)$/.exec(detail) : null;
+  return m ? { item: m[1]!, from: m[2]!, to: m[3]! } : null;
+}
+
+// Every move so far, newest first, from the audit entry each one writes (the
+// current site's moves included: same action, same detail).
+export function useReassignHistory(teamId: number) {
+  return useSupabaseQuery<ReassignHistory>(['loot-reassign-history', teamId], async (client) => {
+    const rows = await readAll<AuditRow>((from, to) =>
+      client
+        .from('audit_log')
+        .select('id, actor_id, action, target_type, target_id, detail, created_at')
+        .eq('team_id', teamId)
+        .eq('action', REASSIGN_ACTION)
+        .order('id')
+        .range(from, to)
+    );
+    if (rows.error) return { data: null, error: rows.error };
+    // The entry keeps only the item's name, so its tooltip comes from the
+    // catalog by name, the live copy before a PTR one.
+    const names = [...new Set(rows.data!.map((r) => parseMove(r.detail)?.item).filter((n): n is string => !!n))];
+    const [actorNames, found] = await Promise.all([
+      resolveActorNames(client, rows.data!, teamId),
+      names.length
+        ? client.from('items').select('name, wow_item_id, is_ptr, icon').in('name', names)
+        : { data: [] as LinkItem[], error: null }
+    ]);
+    if (found.error) return { data: null, error: found.error };
+    const items: Record<string, LinkItem> = {};
+    for (const item of (found.data ?? []) as LinkItem[]) {
+      const had = items[item.name];
+      if (item.wow_item_id && (!had || (had.is_ptr && !item.is_ptr))) items[item.name] = item;
+    }
+    return { data: { rows: rows.data!.reverse(), actorNames, items }, error: null };
+  });
+}
 
 export type ReassignRow = {
   id: number;
@@ -47,7 +98,7 @@ export function useReassign(teamId: number) {
       try {
         await client.rpc('write_audit_log', {
           p_team_id: teamId,
-          p_action: 'Loot Reassigned',
+          p_action: REASSIGN_ACTION,
           p_target_type: 'players',
           p_target_id: to,
           p_detail: detail
@@ -61,6 +112,7 @@ export function useReassign(teamId: number) {
       key: ['reassign-loot', teamId],
       refreshes: [
         ['loot-reassign', teamId],
+        ['loot-reassign-history', teamId],
         ['loot'],
         ['home-loot', teamId],
         ['priority-data', teamId],

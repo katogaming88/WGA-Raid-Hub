@@ -184,3 +184,19 @@
 .loot-season-row .select {
   width: auto;
 }
+
+/* Past reassignments: the item, who it moved from and to, and who moved it. */
+.loot-reassign-move {
+  flex: 1 1 14rem;
+}
+
+.loot-reassign-by {
+  flex: 0 0 9rem;
+}
+
+@media (max-width: 640px) {
+  .loot-reassign-move,
+  .loot-reassign-by {
+    flex-basis: auto;
+  }
+}

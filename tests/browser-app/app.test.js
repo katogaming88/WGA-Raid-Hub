@@ -1048,16 +1048,28 @@ const LOOT_REVIEWS = {
   }
 };
 
-// Reassign (#1363): the raider picker, filled from the roster. The loot list
-// under it needs a pick, which a state cannot make; reassign.test.tsx covers it.
+// Reassign (#1363): the raider picker, filled from the roster, and two past
+// reassignments. The loot list under the picker needs a pick, which a state
+// cannot make; reassign.test.tsx covers it.
 const LOOT_REASSIGN = {
   session: OFFICER,
   who: 'officer',
   path: '/g/wga/t/phoenix/officer/reassign',
-  sentinel: 'main .settings-row select',
+  sentinel: 'main .loot-reassign-move',
   tables: {
-    players: [{ id: 5, name_realm: 'Torbjorn-Illidan', nickname: null, classes_specs: { class: 'Warrior' } }]
-  }
+    players: [{ id: 5, name_realm: 'Torbjorn-Illidan', nickname: null, classes_specs: { class: 'Warrior' } }],
+    audit_log: [1, 2].map((id) => ({
+      id,
+      actor_id: 'actor-1',
+      action: 'Loot Reassigned',
+      target_type: 'players',
+      target_id: 5,
+      detail: 'Item ' + id + ': Brakkus -> Torbjorn',
+      created_at: '2026-10-02T02:00:00Z'
+    })),
+    items: [{ name: 'Item 1', wow_item_id: null, is_ptr: false, icon: null }]
+  },
+  rpc: { resolve_actor_name: 'Aurelith' }
 };
 
 // Audit log (#1358, #1103 row 1): one entry with no target (Trial Thresholds

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers, type Write } from '../test/fakeSupabase';
 import { pickerName } from './ReassignPage';
+import { parseMove } from './useReassign';
 
 // Officer Loot: Reassign (#1363), ported from js/tabs/tab-loot-import.js.
 
@@ -38,7 +39,7 @@ const person = (role: string | null, guildOfficer = false) => ({
     : []
 });
 
-function handlers(who = person('officer'), writes: Write[] = []): FakeHandlers {
+function handlers(who = person('officer'), writes: Write[] = [], history: unknown[] = []): FakeHandlers {
   const base = seededHandlers();
   return seededHandlers({
     session: fakeSession({ battlenet: 'Aur#1', discord: { id: 'd', name: 'Aur' } }),
@@ -50,6 +51,9 @@ function handlers(who = person('officer'), writes: Write[] = []): FakeHandlers {
     from(read) {
       if (read.table === 'players') return { data: PLAYERS };
       if (read.table === 'rclc_loot') return { data: LOOT };
+      if (read.table === 'audit_log') return { data: history };
+      if (read.table === 'items')
+        return { data: [{ name: 'Voidbound Cinch', wow_item_id: 1234, is_ptr: false, icon: null }] };
       if (read.table === 'seasons') return { data: [{ code: 'MID1', display_name: 'Midnight Season 1' }] };
       return base.from!(read);
     },
@@ -66,6 +70,39 @@ describe('Reassign page', () => {
   it('names a raider by nickname and character', () => {
     expect(pickerName(PLAYERS[0]!)).toBe('Kat (Katorrí)');
     expect(pickerName(PLAYERS[1]!)).toBe('Brakkus');
+  });
+
+  it('reads a move back from its audit entry', () => {
+    expect(parseMove('Voidbound Cinch: Kat (Katorrí) -> Brakkus')).toEqual({
+      item: 'Voidbound Cinch',
+      from: 'Kat (Katorrí)',
+      to: 'Brakkus'
+    });
+    expect(parseMove({ summary: 'x' })).toBeNull();
+  });
+
+  it('lists past reassignments, and says when there are none', async () => {
+    const entry = {
+      id: 1,
+      actor_id: null,
+      action: 'Loot Reassigned',
+      target_type: 'players',
+      target_id: 6,
+      detail: 'Voidbound Cinch: Kat (Katorrí) -> Brakkus',
+      created_at: '2026-10-02T02:00:00Z'
+    };
+    renderApp(PATH, handlers(person('officer'), [], [entry]));
+    expect(await screen.findByText('1 so far, newest first.', { exact: false })).toBeInTheDocument();
+    // The catalog's copy, so the item's tooltip shows.
+    expect(screen.getByRole('link', { name: /Voidbound Cinch/ })).toHaveAttribute(
+      'href',
+      expect.stringContaining('1234')
+    );
+  });
+
+  it('says when nothing has been reassigned', async () => {
+    renderApp(PATH, handlers());
+    expect(await screen.findByText('No loot reassigned yet.')).toBeInTheDocument();
   });
 
   it('moves an item to another raider and logs it', async () => {
