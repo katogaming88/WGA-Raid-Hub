@@ -201,6 +201,38 @@ describe('signup wishlist (#1609)', () => {
     });
   });
 
+  // CodeRabbit on PR #1612: an officer's hand-set approved_player_id may name
+  // an archived character, or one with the signup's name that another person
+  // holds. Neither takes the picks.
+  it('moves onto neither an archived character nor one another person holds', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await nextSeason(q);
+      const me = await signedUp(q, { status: 'approved' });
+      await mark(asUser, me.uid, me.signupId, await anItem(q));
+      const otherPerson = await seedMember(q);
+      const archivedId = await seedPlayer(q, { nameRealm: 'Newmain-Illidan', archivedAt: new Date().toISOString() });
+      const items = async (playerId) =>
+        (await q('select item_id from public.item_preferences where player_id = $1', [playerId])).rows;
+
+      await asUser(
+        OFFICER_T1,
+        "update public.season_signups set status = 'added', approved_player_id = $2 where id = $1",
+        [me.signupId, archivedId]
+      );
+      expect(await items(archivedId)).toEqual([]);
+
+      const again = await signedUp(q, { status: 'approved', nameRealm: 'Heldname-Illidan' });
+      await mark(asUser, again.uid, again.signupId, await anItem(q));
+      const heldId = await seedPlayer(q, { memberId: otherPerson.memberId, nameRealm: 'Heldname-Illidan' });
+      await asUser(
+        OFFICER_T1,
+        "update public.season_signups set status = 'added', approved_player_id = $2 where id = $1",
+        [again.signupId, heldId]
+      );
+      expect(await items(heldId)).toEqual([]);
+    });
+  });
+
   it("leaves a swap's old character its own wishlist", async () => {
     await withTxn(async ({ q, asUser }) => {
       await nextSeason(q);

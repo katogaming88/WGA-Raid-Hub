@@ -18,7 +18,15 @@ begin
              select 1 from players p
               where p.id = new.approved_player_id
                 and p.team_id = new.team_id
+                and p.archived_at is null
                 and p.name_realm_key = lower(replace(new.signup_name_realm, ' ', ''))
+                and (p.team_member_id is null or exists (
+                      select 1 from team_members tm
+                        join people pe on pe.id = tm.person_id
+                       where tm.id = p.team_member_id
+                         and (pe.id = new.person_id
+                              or (new.person_id is null and pe.auth_user_id = new.auth_user_id))
+                    ))
            )
        and not exists (
              select 1 from item_preferences ip

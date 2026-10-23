@@ -123,8 +123,9 @@ create trigger trg_signup_item_preferences_wishlist_open
 -- roster before signups close (an approved main swap, the invite link, an
 -- officer's add), and from then on the raider edits its own wishlist, so that
 -- one is newer and the signup's picks are dropped. Only the character the
--- signup names, on its team, takes them: an officer can set any signup's
--- approved_player_id, and must not rewrite another raider's wishlist this way.
+-- signup names takes them: on its team, on the roster, and the signer's or
+-- nobody's yet. An officer can set any signup's approved_player_id, and must
+-- not rewrite another raider's wishlist, or an archived one, this way.
 -- A swap's old character is a different row and keeps its own. Turned down,
 -- or moved to another character: they go, since they were picks for that
 -- character. Security definer because the add can be an officer's, who may
@@ -142,7 +143,15 @@ begin
              select 1 from players p
               where p.id = new.approved_player_id
                 and p.team_id = new.team_id
+                and p.archived_at is null
                 and p.name_realm_key = lower(replace(new.signup_name_realm, ' ', ''))
+                and (p.team_member_id is null or exists (
+                      select 1 from team_members tm
+                        join people pe on pe.id = tm.person_id
+                       where tm.id = p.team_member_id
+                         and (pe.id = new.person_id
+                              or (new.person_id is null and pe.auth_user_id = new.auth_user_id))
+                    ))
            )
        and not exists (
              select 1 from item_preferences ip
