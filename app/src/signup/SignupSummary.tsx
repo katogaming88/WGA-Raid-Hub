@@ -1,5 +1,6 @@
 import { CharacterIcon } from '../characters/CharacterIcon';
 import { classColor } from '../roster/roster';
+import { CHANGE_UNTIL_CLOSE } from './signup';
 import type { OwnSignupRow } from './useSignup';
 
 const STATUS_LABEL: Record<OwnSignupRow['status'], string> = {
@@ -97,6 +98,7 @@ export function SignupSummary({
         )}
       </dl>
 
+      {(row.status === 'pending' || row.status === 'approved') && <p className="text-muted">{CHANGE_UNTIL_CLOSE}</p>}
       <div className="signup-actions">
         {(row.status === 'pending' || row.status === 'approved') && (
           <button type="button" className="button button-primary" onClick={onEdit}>

@@ -74,3 +74,8 @@ export function backupRolesFor(className: string, mainSpec: string): ('Tank' | '
   if (!specs || !mainSpec) return [];
   return (['Tank', 'Heal'] as const).filter((r) => SPEC_ROLE[mainSpec] !== r && specs.some((s) => SPEC_ROLE[s] === r));
 }
+
+// Said on the form and the summary (Kat, 2026-10-24): a signup is not final
+// until signups close.
+export const CHANGE_UNTIL_CLOSE =
+  'You can change your signup to a different character, class or spec any time until officers close signups, or until they close by themselves when the season starts.';

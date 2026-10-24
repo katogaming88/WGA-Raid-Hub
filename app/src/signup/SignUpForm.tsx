@@ -7,7 +7,14 @@ import { nameRealmKey, type SavedCharacter } from '../characters/characters';
 import { useClassSpecs } from '../characters/useMainSwaps';
 import '../characters/characters.css';
 import { useTouchScreen } from '../lib/device';
-import { backupRolesFor, readingLabel, readPick, type ClassmateRow, type SignupFields } from './signup';
+import {
+  backupRolesFor,
+  CHANGE_UNTIL_CLOSE,
+  readingLabel,
+  readPick,
+  type ClassmateRow,
+  type SignupFields
+} from './signup';
 import { useDeclareSignup } from './useSignup';
 import { CLASS_SPECS, specRole } from './wowData';
 
@@ -133,6 +140,7 @@ export function SignUpForm({
   return (
     <>
       <h2>Sign up for {seasonName}</h2>
+      <p className="text-muted">{CHANGE_UNTIL_CLOSE}</p>
       <CharacterList saved={saved} rosterCharacters={rosterCharacters} fields={fields} set={set} />
       {picked && CLASS_SPECS[fields.className] && (
         <SpecFields fields={fields} set={set} classmates={classmates} roleTargets={roleTargets} id={id} />

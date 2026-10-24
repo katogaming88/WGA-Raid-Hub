@@ -151,6 +151,7 @@ describe('Sign Up, the one-page form', () => {
     renderApp('/g/wga/t/phoenix/signup', formHandlers(person(null), [KATORRI], { declared }));
     await screen.findByRole('heading', { level: 2, name: 'Sign up for Midnight Season 3' });
     expect(screen.queryByText(/Step \d of/)).not.toBeInTheDocument();
+    expect(screen.getByText(/close by themselves when the season starts/)).toBeInTheDocument();
 
     await userEvent.click(await screen.findByRole('radio', { name: /Katorrí/ }));
     expect(within(sideCard()).getByRole('status')).toHaveTextContent('Katorrí: First main on this team');
@@ -347,6 +348,7 @@ describe('Sign Up, an existing signup', () => {
     await screen.findByRole('heading', { level: 2, name: 'Your signup' });
     expect(screen.getByText('Pending')).toBeInTheDocument();
     expect(screen.getByText('Katorri')).toBeInTheDocument();
+    expect(screen.getByText(/any time until officers close signups/)).toBeInTheDocument();
     expect(screen.getByText(/Stormrage · Holy Priest/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit signup' })).toBeInTheDocument();
   });
