@@ -309,7 +309,7 @@ describe('Sign Up, editing an existing signup', () => {
         ]
       })
     );
-    expect(await screen.findByText('Can also backup tank')).toBeInTheDocument();
+    expect(await screen.findByText('Backup tank')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Edit signup' }));
     expect(await screen.findByRole('checkbox', { name: 'I can backup tank' })).toBeChecked();
     // Their own signup is not someone else already playing the class.
@@ -346,7 +346,8 @@ describe('Sign Up, an existing signup', () => {
     );
     await screen.findByRole('heading', { level: 2, name: 'Your signup' });
     expect(screen.getByText('Pending')).toBeInTheDocument();
-    expect(screen.getByText(/Katorri-Stormrage/)).toBeInTheDocument();
+    expect(screen.getByText('Katorri')).toBeInTheDocument();
+    expect(screen.getByText(/Stormrage · Holy Priest/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit signup' })).toBeInTheDocument();
   });
 });

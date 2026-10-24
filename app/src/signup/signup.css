@@ -227,3 +227,69 @@
 .signup-button {
   align-self: flex-start;
 }
+
+/* The signup summary (#1466): the character first, as the form's list shows
+   it, then the rest as labelled rows. */
+.signup-summary-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.signup-summary-head h2 {
+  margin: 0;
+}
+
+.signup-summary-character {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+}
+
+.signup-summary-character p {
+  margin: 0;
+}
+
+.signup-summary-name {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.signup-summary-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+  margin: var(--space-4) 0;
+}
+
+.signup-summary-facts dt {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.signup-summary-facts dd {
+  margin: 0;
+}
+
+.signup-summary-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.signup-summary-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  font-size: var(--text-sm);
+}
