@@ -20,6 +20,8 @@ answers to.
   signup goes straight onto the Projected Roster with no approval (#1629).
   Once you are on the roster it says so, without "it will go back to an
   officer for review", and a signup an officer removed says that.
+- New app: the card lists your off specs and backup roles as plain text
+  instead of rounded tags.
 
 ### Project
 

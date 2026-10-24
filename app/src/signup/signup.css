@@ -276,12 +276,13 @@
   gap: var(--space-2);
 }
 
+/* Plain text, not pills (Kat: pills read as generic). */
 .signup-summary-tag {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 2px var(--space-2);
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  font-size: var(--text-sm);
+}
+
+.signup-summary-tag:not(:last-child)::after {
+  content: ',';
 }
