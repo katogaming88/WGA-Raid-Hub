@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     37 h 40 m |
+| Revamp 3: officer dashboard        |     39 h 15 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **100 h 15 m** |
+| **All revamp work**                | **101 h 50 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -375,6 +375,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 1:45-2:05 PM | #1342 part 2 built: Settings › Signups (open, close from two weeks out, the close confirm by name with a tick per non-signer) and the Projected Roster tab (New and Changing from, officer Trial and backup ticks, Remove); tests, browser accessibility states, stamp, changelog, these rows, PR opened | Revamp 3 (#1342) | 20 m | ~20 m build | not read | Screenshots and Kat's design review not yet counted |
 | 3:44-4:04 PM | #1609 reopened (#1611's body said "close: #1609", which GitHub closed on merge); built: signup_item_preferences, edited by the signer while the season's wishlist is open, moved onto the roster character when the signup is added and dropped when it is turned down or changes character; database tests red first, generated docs, decision log; a first editor on the Sign up page, which Kat moved to the profile | Revamp 3 (#1609) | 20 m | ~17 m build, ~3 m Kat deciding | not read | |
 | 4:04-4:25 PM | My profile for the signed-up character (Kat's asks mid-build): a switch beside the roster character, or the whole profile for someone new; the full profile rather than only the wishlist; attendance and join date are the Member's; tests, stamp, changelog, these rows, PR opened | Revamp 3 (#1609) | 21 m | ~16 m build, ~5 m Kat deciding | not read | Fresh-agent review, screenshots, review and merge not yet counted |
+| 4:25-5:30 PM | PR #1612 (#1609): fresh-agent review and its two fixes, CodeRabbit's four comments fixed, two CI re-runs (registry data limit), merged; #1487 row removed | Revamp 3 (#1609) | 1 h 5 m | mostly build, Kat reviewing | not read | Merged 5:25 PM |
+| 8:45-9:15 PM | #1608 built: signups still open when a season starts close by themselves within the hour, team by team, as the team leader closing with every tick on would (signups on the roster, non-signers archived as Did not sign up, an archived signer brought back); audit rows marked Automatic and shown so on both Audit Log pages; database tests red first, generated docs, decision log, stamp, changelog, these rows, PR opened | Revamp 3 (#1608) | 30 m | ~25 m build, ~5 m Kat deciding | not read | Kat: "Automatic" in the Audit Log; no cutoff date (Kat closes MID2 by hand before merge); Discord notice split off. Times approximate. Fresh-agent review, review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

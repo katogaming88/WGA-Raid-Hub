@@ -12,6 +12,7 @@
 | target_id | integer |  | true |  |  |  |
 | detail | jsonb |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
+| automatic | boolean | false | false |  |  | True when a scheduled job made the change, with nobody signed in (#1608). The Audit Log shows "Automatic" for it. |
 
 ## Constraints
 
@@ -43,6 +44,7 @@ erDiagram
   integer target_id
   jsonb detail
   timestamp_with_time_zone created_at
+  boolean automatic
 }
 "public.teams" {
   integer id

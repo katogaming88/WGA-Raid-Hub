@@ -197,6 +197,13 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "automatic",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "True when a scheduled job made the change, with nobody signed in (#1608). The Audit Log shows \"Automatic\" for it."
         }
       ],
       "indexes": [
@@ -12053,6 +12060,12 @@
     {
       "name": "public.carry_signup_wishlist",
       "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.close_started_season_signups",
+      "return_type": "int4",
       "arguments": "",
       "type": "FUNCTION"
     }

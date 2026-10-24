@@ -113,6 +113,7 @@ export type Database = {
         Row: {
           action: string
           actor_id: string | null
+          automatic: boolean
           created_at: string
           detail: Json | null
           id: number
@@ -123,6 +124,7 @@ export type Database = {
         Insert: {
           action: string
           actor_id?: string | null
+          automatic?: boolean
           created_at?: string
           detail?: Json | null
           id?: number
@@ -133,6 +135,7 @@ export type Database = {
         Update: {
           action?: string
           actor_id?: string | null
+          automatic?: boolean
           created_at?: string
           detail?: Json | null
           id?: number
@@ -4212,6 +4215,7 @@ export type Database = {
         Args: { p_roster_snapshot: Json; p_season: string; p_team_id: number }
         Returns: Json
       }
+      close_started_season_signups: { Args: never; Returns: number }
       create_guild: {
         Args: {
           p_name: string

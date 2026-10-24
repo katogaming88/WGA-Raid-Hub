@@ -70,7 +70,7 @@ function buildAuditTab() {
       var q = supabaseClient
         .from('audit_log')
         .select(
-          'id, actor_id, action, target_type, target_id, detail, created_at',
+          'id, actor_id, automatic, action, target_type, target_id, detail, created_at',
           afterId === null ? { count: 'exact' } : undefined
         )
         .eq('team_id', teamId)
@@ -96,7 +96,9 @@ function buildAuditTab() {
         _auditEntries = rows.map(function (row) {
           return {
             ts: row.created_at,
-            changedBy: row.actor_id ? actorNames[row.actor_id] || '' : '',
+            // A scheduled job's change has no actor (#1608); older rows
+            // with none were officers', so the flag decides, not the null.
+            changedBy: row.automatic ? 'Automatic' : row.actor_id ? actorNames[row.actor_id] || '' : '',
             action: row.action || '',
             target: auditTargetName(row, targetNames),
             detail: formatAuditDetail(row.detail)

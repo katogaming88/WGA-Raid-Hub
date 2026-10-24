@@ -129,7 +129,7 @@ describe('buildAuditTab', () => {
     const q = captured.byTable.audit_log[0];
     // Keyset paging orders by id (#707); the newest-first order this view
     // wants is applied to the collected rows, not by the query.
-    expect(q.select).toBe('id, actor_id, action, target_type, target_id, detail, created_at');
+    expect(q.select).toBe('id, actor_id, automatic, action, target_type, target_id, detail, created_at');
     expect(q.eq).toEqual([['team_id', 1]]);
     expect(q.order).toEqual([['id', { ascending: true }]]);
     expect(q.limit).toBe(1000);
@@ -237,6 +237,24 @@ describe('buildAuditTab', () => {
     expect(els.auditContainer.innerHTML).toContain('Bench -&gt; Present');
     expect(els.auditContainer.innerHTML).toMatch(/<td class="audit-changedby"><\/td>/);
     expect(els.auditContainer.innerHTML).toMatch(/<td class="audit-target"><\/td>/);
+  });
+
+  it("shows CHANGED BY as Automatic for a scheduled job's row (#1608)", async () => {
+    const { client, captured } = makeClient({
+      tables: {
+        audit_log: () => ({
+          data: [{ actor_id: null, automatic: true, action: 'Signups Closed', created_at: '2026-11-03T05:20:00Z' }],
+          error: null
+        })
+      }
+    });
+    const els = { auditContainer: makeEl() };
+    const sandbox = loadSandbox({ supabaseClient: client, els });
+    sandbox.buildAuditTab();
+    await flush();
+
+    expect(captured.rpcCalls).toHaveLength(0);
+    expect(els.auditContainer.innerHTML).toMatch(/<td class="audit-changedby">Automatic<\/td>/);
   });
 
   it('degrades to a blank name when resolve_actor_name() errors, without failing the rest of the row', async () => {
