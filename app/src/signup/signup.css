@@ -142,14 +142,6 @@
   color: var(--good);
 }
 
-.signup-status-open {
-  color: var(--good);
-}
-
-.signup-status-closed {
-  color: var(--bad);
-}
-
 /* Step 1's Battle.net character picker (#1162): the only way to pick a
    character for a fresh signup, no manual-entry fallback. Reuses
    characters.css's character-icon/character-text but its own single-pick row

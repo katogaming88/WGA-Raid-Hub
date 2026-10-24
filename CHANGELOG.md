@@ -12,6 +12,15 @@ answers to.
 
 ---
 
+## [3.207.2] - 2026-10-24
+
+### Frontend
+
+- New app: your signup card no longer says Pending or Approved, since a
+  signup goes straight onto the Projected Roster with no approval (#1629).
+  Once you are on the roster it says so, without "it will go back to an
+  officer for review", and a signup an officer removed says that.
+
 ## [3.207.1] - 2026-10-24
 
 ### Backend
