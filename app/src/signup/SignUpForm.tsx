@@ -98,7 +98,7 @@ export function SignUpForm({
           <strong>
             {nameRealmOf(picked)} ({fields.mainSpec} {fields.className})
           </strong>
-          . You’re welcome to change this any time until signups close, around the start of the season.
+          . {CHANGE_UNTIL_CLOSE}
         </p>
         <button type="button" className="button button-primary" onClick={onDone}>
           Done

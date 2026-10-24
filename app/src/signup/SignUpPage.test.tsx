@@ -164,7 +164,7 @@ describe('Sign Up, the one-page form', () => {
     expect(
       screen.getByText(/You are now signed up for Midnight Season 3 as/).closest('p') as HTMLElement
     ).toHaveTextContent(
-      'You are now signed up for Midnight Season 3 as Katorrí-Stormrage (Demonology Warlock). You’re welcome to change this any time until signups close, around the start of the season.'
+      'You are now signed up for Midnight Season 3 as Katorrí-Stormrage (Demonology Warlock). You can change your signup to a different character, class or spec any time until officers close signups, or until they close by themselves when the season starts.'
     );
     expect(declared).toEqual([
       {
