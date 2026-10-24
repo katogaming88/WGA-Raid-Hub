@@ -1,6 +1,5 @@
 import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
-import type { Client } from '../lib/supabase';
-import type { IncomingSignupRow, SignupSubmission } from './signup';
+import type { IncomingSignupRow } from './signup';
 
 export type OwnSignupRow = {
   id: number;
@@ -19,16 +18,21 @@ export type OwnSignupRow = {
 };
 
 // The raider's own signup for a tier, if any (get_own_signup): null tier
-// means whichever one tier the team has open.
-export function useOwnSignup(teamId: number, seasonCodeArg: string | null) {
-  return useSupabaseQuery<OwnSignupRow | null>(['own-signup', teamId, seasonCodeArg], async (client) => {
-    const { data, error } = await client.rpc('get_own_signup', {
-      p_team_id: teamId,
-      ...(seasonCodeArg ? { p_season: seasonCodeArg } : {})
-    });
-    if (error) return { data: null, error };
-    return { data: (data?.[0] as OwnSignupRow | undefined) ?? null, error: null };
-  });
+// means whichever one tier the team has open. Off for someone signed out,
+// whom the function refuses.
+export function useOwnSignup(teamId: number, seasonCodeArg: string | null, enabled = true) {
+  return useSupabaseQuery<OwnSignupRow | null>(
+    ['own-signup', teamId, seasonCodeArg],
+    async (client) => {
+      const { data, error } = await client.rpc('get_own_signup', {
+        p_team_id: teamId,
+        ...(seasonCodeArg ? { p_season: seasonCodeArg } : {})
+      });
+      if (error) return { data: null, error };
+      return { data: (data?.[0] as OwnSignupRow | undefined) ?? null, error: null };
+    },
+    { enabled }
+  );
 }
 
 // Tank/Heal capacity targets an officer set in Season Settings, for the role
@@ -71,25 +75,30 @@ export function useIncomingWithSwap(teamId: number) {
   });
 }
 
-async function submit(
-  client: Client,
-  args: { isEdit: boolean; teamId: number; season: string | null; signupId: number | null; fields: SignupSubmission }
-) {
-  const { isEdit, teamId, season, signupId, fields } = args;
-  const { p_swap_from_name_realm, ...rest } = fields;
-  const params = { ...rest, ...(p_swap_from_name_realm ? { p_swap_from_name_realm } : {}) };
-  if (isEdit) {
-    return client.rpc('update_own_signup', { p_signup_id: signupId as number, ...params });
-  }
-  return client.rpc('submit_season_signup', { p_team_id: teamId, ...(season ? { p_season: season } : {}), ...params });
-}
+export type Declaration = { characterId: number; classSpecId: number; offSpecs: string; note: string };
 
-// One mutation for both submit_season_signup and update_own_signup (#500):
-// same field shape, only how the row is identified differs.
-export function useSubmitSignup(teamId: number, seasonCodeArg: string | null) {
-  return useSupabaseMutation<number, { isEdit: boolean; signupId: number | null; fields: SignupSubmission }>(
-    (client, { isEdit, signupId, fields }) =>
-      submit(client, { isEdit, teamId, season: seasonCodeArg, signupId, fields }),
-    { key: ['submit-signup', teamId], refreshes: [['own-signup', teamId, seasonCodeArg]] }
+// Signs up, or changes a signup, through declare_season_signup() (#1466): the
+// database works out from the roster whether the pick is the same main, a new
+// one or a first one, so nothing about a swap is sent.
+export function useDeclareSignup(teamId: number, season: string) {
+  return useSupabaseMutation<number, Declaration>(
+    async (client, d) => {
+      const { data, error } = await client.rpc('declare_season_signup', {
+        p_team_id: teamId,
+        p_season: season,
+        p_character_id: d.characterId,
+        p_class_spec_id: d.classSpecId,
+        p_off_specs: d.offSpecs,
+        p_note: d.note
+      });
+      return { data: data as number, error };
+    },
+    {
+      key: ['declare-signup', teamId],
+      refreshes: [
+        ['own-signup', teamId, season],
+        ['incoming-roster-swap', teamId]
+      ]
+    }
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSubmission, classmatesPool, claimDiffers, type ClassmateRow, type IncomingSignupRow } from './signup';
+import { classmatesPool, readingLabel, readPick, type ClassmateRow, type IncomingSignupRow } from './signup';
 
 const row = (nameRealm: string, cls: string, spec: string, role: string): ClassmateRow => ({
   nameRealm,
@@ -31,45 +31,35 @@ describe('classmatesPool', () => {
   });
 });
 
-describe('claimDiffers', () => {
-  it('is false with no claim', () => {
-    expect(claimDiffers(null, 'Katorri', 'Stormrage')).toBe(false);
+// What a pick means (#1466), as declare_season_signup() decides it.
+describe('readPick', () => {
+  const katorri = { playerId: 7, nameRealm: 'Katorrí-Stormrage' };
+
+  it('is the same main when the pick is their character on the roster, spaces and case aside', () => {
+    expect(readPick('katorrí-stormrage', [katorri])).toEqual({ kind: 'same' });
+    expect(readPick('Grihz-Area 52', [{ playerId: 3, nameRealm: 'Grihz-Area52' }])).toEqual({ kind: 'same' });
   });
 
-  it('is false when the typed name matches, case-insensitively', () => {
-    expect(claimDiffers('katorri-stormrage', 'Katorri', 'Stormrage')).toBe(false);
+  it('is the same main when they have two roster characters and pick either', () => {
+    expect(readPick('Grihz-Illidan', [katorri, { playerId: 9, nameRealm: 'Grihz-Illidan' }])).toEqual({ kind: 'same' });
   });
 
-  it('is true when they differ', () => {
-    expect(claimDiffers('Katorri-Stormrage', 'Rex', 'Stormrage')).toBe(true);
-  });
-});
-
-describe('buildSubmission', () => {
-  const fields = {
-    charName: 'Katorri',
-    realm: 'Stormrage',
-    className: 'Priest',
-    mainSpec: 'Holy',
-    offSpecs: ['Discipline'],
-    primaryRole: 'Healer',
-    notes: 'Trial run'
-  };
-
-  it('is not a swap when the raider is not swapping', () => {
-    expect(buildSubmission(fields, false, null)).toEqual({
-      p_name_realm: 'Katorri-Stormrage',
-      p_class: 'Priest',
-      p_spec: 'Holy',
-      p_off_specs: 'Discipline',
-      p_main_swap: false,
-      p_player_note: 'Trial run',
-      p_swap_from_name_realm: null
-    });
+  it('is a new main replacing their roster character when the pick is another', () => {
+    expect(readPick('Grihz-Illidan', [katorri])).toEqual({ kind: 'new', replaces: 'Katorrí-Stormrage' });
   });
 
-  it('carries the claim as the swap-from character', () => {
-    expect(buildSubmission(fields, true, 'Rex-Stormrage').p_swap_from_name_realm).toBe('Rex-Stormrage');
-    expect(buildSubmission(fields, true, 'Rex-Stormrage').p_main_swap).toBe(true);
+  it('replaces the earliest roster character when they have two, as the database does', () => {
+    const later = { playerId: 12, nameRealm: 'Zed-Illidan' };
+    expect(readPick('Grihz-Illidan', [later, katorri])).toEqual({ kind: 'new', replaces: 'Katorrí-Stormrage' });
+  });
+
+  it('is a first main when they have no roster character on the team', () => {
+    expect(readPick('Katorrí-Stormrage', [])).toEqual({ kind: 'first' });
+  });
+
+  it('says each plainly', () => {
+    expect(readingLabel({ kind: 'same' })).toBe('Same main as now');
+    expect(readingLabel({ kind: 'new', replaces: 'Katorrí-Stormrage' })).toBe('New main: replaces Katorrí-Stormrage');
+    expect(readingLabel({ kind: 'first' })).toBe('First main on this team');
   });
 });

@@ -19,10 +19,11 @@ import { CharacterIcon } from './CharacterIcon';
 import { refusalStatus, useBattlenetCharacters } from './useCharacters';
 import './characters.css';
 
-// Choose alts (#942 step 5b). Opens from the profile's "Choose alts", and once
-// on its own when the person comes back from connecting Battle.net (or from
-// the Battle.net trip "Choose alts" makes for a fresh token). Computer-only
-// (Kat, 2026-09-15), so it never opens on a phone or tablet.
+// Import your characters (#942 step 5b; "Choose alts" until #1466). Opens from
+// the profile's "Import characters" and the signup's, and once on its own when
+// the person comes back from connecting Battle.net (or from the Battle.net
+// trip the import makes for a fresh token). Computer-only (Kat, 2026-09-15),
+// so it never opens on a phone or tablet.
 
 const AltsPickerContext = createContext<(() => void) | null>(null);
 
@@ -68,9 +69,10 @@ function AltsPicker({ onClose }: { onClose: () => void }) {
 
   if (!user?.hasBattlenet) {
     return (
-      <Dialog title="Choose your alts" onClose={onClose} busy={leaving}>
+      <Dialog title="Import your characters" onClose={onClose} busy={leaving}>
         <p>
-          Your alts come from your Battle.net account. Connect Battle.net first, and the list opens when you’re back.
+          Your characters come from your Battle.net account. Connect Battle.net first, and the list opens when you’re
+          back.
         </p>
         <div className="dialog-actions">
           <button type="button" className="button" onClick={onClose} disabled={leaving}>
@@ -86,7 +88,7 @@ function AltsPicker({ onClose }: { onClose: () => void }) {
 
   if (!battlenetToken) {
     return (
-      <Dialog title="Choose your alts" onClose={onClose} busy={leaving}>
+      <Dialog title="Import your characters" onClose={onClose} busy={leaving}>
         <p>
           Battle.net needs to confirm it’s you before WGA Raid Hub can read your characters. You’ll come straight back
           here.
@@ -169,7 +171,7 @@ function PickerList({
       { token, save: [...picked] },
       {
         onSuccess: () => {
-          announce('success', picked.size ? 'Alts saved.' : 'Alts cleared.');
+          announce('success', 'Characters saved.');
           onClose();
         }
       }
@@ -244,7 +246,7 @@ function PickerList({
         )}
         {save.isError && (
           <p className="picker-error" role="alert">
-            Could not save your alts: {save.error.message}
+            Could not save your characters: {save.error.message}
           </p>
         )}
       </>
@@ -252,8 +254,11 @@ function PickerList({
   }
 
   return (
-    <Dialog title="Choose your alts" onClose={onClose} busy={busy} wide initialFocus={saveButton}>
-      <p className="picker-intro">From your Battle.net account. Pick the characters you want listed under your name.</p>
+    <Dialog title="Import your characters" onClose={onClose} busy={busy} wide initialFocus={saveButton}>
+      <p className="picker-intro">
+        From your Battle.net account. Characters on a roster as yours are saved for you; choose which others to list as
+        your alts.
+      </p>
       {body}
       <div className="picker-footer">
         <span className="text-muted picker-count" aria-live="polite">
@@ -274,7 +279,7 @@ function PickerList({
             onClick={onSave}
             disabled={busy || !answer || rows.length === 0}
           >
-            {save.isPending ? 'Saving…' : 'Save alts'}
+            {save.isPending ? 'Saving…' : 'Save characters'}
           </button>
         </span>
       </div>

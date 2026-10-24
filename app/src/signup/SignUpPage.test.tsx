@@ -66,88 +66,131 @@ describe('Sign Up, signups closed', () => {
   });
 });
 
-// One character on the Battle.net account, for the fresh-signup picker
-// (#1162): no active spec, so the raider still picks Main spec/Primary role
-// by hand in Step 3, same as before Battle.net was wired in.
-const BNET_CHARACTER = {
-  blizzard_id: 201,
-  name: 'Katorri',
+// Saved characters for the one-page form (#1466): the import's list, which
+// since #1620 includes the raider's roster character.
+const KATORRI = {
+  id: 11,
+  person_id: 42,
+  name: 'Katorrí',
   realm: 'Stormrage',
-  realm_slug: 'stormrage',
-  class_name: 'Priest',
-  spec_name: null,
-  level: 90,
-  item_level: 620,
-  saved: false,
-  roster: null
+  class_name: 'Warlock',
+  spec_name: 'Demonology',
+  item_level: 640
 };
+const GRIHZ = {
+  id: 12,
+  person_id: 42,
+  name: 'Grihz',
+  realm: 'Illidan',
+  class_name: 'Warlock',
+  spec_name: null,
+  item_level: 630
+};
+const CLASS_SPECS_ROWS = [
+  { id: 31, class: 'Warlock', spec: 'Affliction', role: 'Ranged' },
+  { id: 32, class: 'Warlock', spec: 'Demonology', role: 'Ranged' },
+  { id: 33, class: 'Warlock', spec: 'Destruction', role: 'Ranged' }
+];
 
-const bnetHandlers = (who: ReturnType<typeof person> | null, characters = [BNET_CHARACTER]) => ({
-  ...handlers(who),
-  invoke: () => ({ data: { characters, roster: [] } })
-});
+function formHandlers(
+  who: ReturnType<typeof person>,
+  saved: unknown[],
+  options: { ownSignup?: unknown[]; declared?: Record<string, unknown>[] } = {}
+) {
+  const base = handlers(who, {
+    ...(options.ownSignup ? { ownSignup: options.ownSignup } : {}),
+    tables: { characters: () => ({ data: saved }), classes_specs: () => ({ data: CLASS_SPECS_ROWS }) }
+  });
+  return {
+    ...base,
+    rpc(name: string, args: Record<string, unknown>) {
+      if (name === 'my_person_id') return { data: 42 };
+      if (name === 'declare_season_signup') {
+        options.declared?.push(args);
+        return { data: 5 };
+      }
+      return base.rpc!(name, args);
+    }
+  };
+}
 
-describe('Sign Up, a fresh signup', () => {
-  it('picks the character from Battle.net and walks the rest of the steps, with no class step', async () => {
-    renderApp('/g/wga/t/phoenix/signup', bnetHandlers(person(null)), { battlenetToken: 'bnet-token' });
-    const card = await screen
-      .findByRole('heading', { level: 2, name: 'Sign up for next season' })
-      .then((h) => h.closest('.card') as HTMLElement);
-    const within1 = within(card);
+const sideCard = () => screen.getByRole('button', { name: /Sign up|Save changes/ }).closest('.card') as HTMLElement;
 
-    // Back/Next/Submit live in their own card beside this one (#1162), not
-    // scoped under it, so they're queried from the whole screen.
-    await userEvent.click(await within1.findByRole('radio', { name: /Katorri/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
-
-    // Straight to the spec step (#1162): Blizzard already said Priest, so
-    // there is no "Select your class" step to click through.
-    await within1.findByRole('heading', { level: 2, name: 'Priest' });
-    await userEvent.click(await within1.findByRole('radio', { name: 'Holy' }));
-    await userEvent.click(within1.getByRole('radio', { name: 'Healer' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
-
-    await within1.findByText('Additional information');
-    await userEvent.type(within1.getByLabelText(/Anything else officers/), 'Trial run');
-    await userEvent.click(screen.getByRole('button', { name: 'Submit' }));
-
-    expect(await within1.findByText('Signup submitted')).toBeInTheDocument();
+describe('Sign Up, the one-page form', () => {
+  it('offers the import when no characters are saved', async () => {
+    renderApp('/g/wga/t/phoenix/signup', formHandlers(person(null), []));
+    expect(await screen.findByText(/You have no characters saved yet/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Import your characters' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign up' })).toBeDisabled();
   });
 
-  it('has no manual-entry fallback, and points to Discord when the character is missing', async () => {
-    renderApp('/g/wga/t/phoenix/signup', bnetHandlers(person(null), []), { battlenetToken: 'bnet-token' });
-    await screen.findByText('No characters found on this Battle.net account.');
-    expect(screen.queryByLabelText('Character name')).not.toBeInTheDocument();
-    expect(screen.getByText(/message an officer on Discord/)).toBeInTheDocument();
+  it('signs up a first main on one page and says so in plain words', async () => {
+    const declared: Record<string, unknown>[] = [];
+    renderApp('/g/wga/t/phoenix/signup', formHandlers(person(null), [KATORRI], { declared }));
+    await screen.findByRole('heading', { level: 2, name: 'Sign up for Midnight Season 3' });
+    expect(screen.queryByText(/Step \d of/)).not.toBeInTheDocument();
+
+    await userEvent.click(await screen.findByRole('radio', { name: /Katorrí/ }));
+    expect(within(sideCard()).getByRole('status')).toHaveTextContent('Katorrí: First main on this team');
+    // Blizzard's spec is picked for them; the rest of the form is on this page.
+    expect(screen.getByRole('radio', { name: 'Demonology' })).toBeChecked();
+    await userEvent.type(screen.getByLabelText(/Anything else officers/), 'Trial run');
+    await userEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'You’re signed up' })).toBeInTheDocument();
+    expect(
+      screen.getByText(/You are now signed up for Midnight Season 3 as/).closest('p') as HTMLElement
+    ).toHaveTextContent(
+      'You are now signed up for Midnight Season 3 as Katorrí-Stormrage (Demonology Warlock). You’re welcome to change this any time until signups close, around the start of the season.'
+    );
+    expect(declared).toEqual([
+      {
+        p_team_id: 1,
+        p_season: 'MID3',
+        p_character_id: 11,
+        p_class_spec_id: 32,
+        p_off_specs: '',
+        p_note: 'Trial run'
+      }
+    ]);
   });
 
-  it('blocks Next with a pick-a-character message, not the typed-name one, until one is picked', async () => {
-    renderApp('/g/wga/t/phoenix/signup', bnetHandlers(person(null)), { battlenetToken: 'bnet-token' });
-    await screen.findByRole('radio', { name: /Katorri/ });
-    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+  it('reads the roster character as the same main, and another pick as a new main replacing it', async () => {
+    renderApp('/g/wga/t/phoenix/signup', formHandlers(person('Katorrí-Stormrage'), [GRIHZ, KATORRI]));
+    const radios = await screen.findAllByRole('radio', { name: /Katorrí|Grihz/ });
+    // The character they raid on now comes first, tagged.
+    expect(radios[0]).toHaveAccessibleName(/Katorrí.*Raiding now/);
+
+    await userEvent.click(radios[0]!);
+    expect(within(sideCard()).getByRole('status')).toHaveTextContent('Katorrí: Same main as now');
+
+    await userEvent.click(screen.getByRole('radio', { name: /Grihz/ }));
+    expect(within(sideCard()).getByRole('status')).toHaveTextContent('Grihz: New main: replaces Katorrí-Stormrage');
+    expect(screen.queryByRole('checkbox', { name: /meant to sign up/ })).not.toBeInTheDocument();
+  });
+
+  it('asks for a main spec when Blizzard did not say one', async () => {
+    const declared: Record<string, unknown>[] = [];
+    renderApp('/g/wga/t/phoenix/signup', formHandlers(person(null), [GRIHZ], { declared }));
+    await userEvent.click(await screen.findByRole('radio', { name: /Grihz/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+    expect(await screen.findByText('Please select your main spec.')).toBeInTheDocument();
+    expect(declared).toEqual([]);
+  });
+
+  it('asks for a character before anything else', async () => {
+    renderApp('/g/wga/t/phoenix/signup', formHandlers(person(null), [KATORRI]));
+    await screen.findByRole('radio', { name: /Katorrí/ });
+    await userEvent.click(screen.getByRole('button', { name: 'Sign up' }));
     expect(await screen.findByText('Please pick the character you’re signing up with.')).toBeInTheDocument();
-    expect(screen.queryByText(/enter your character name/)).not.toBeInTheDocument();
-  });
-
-  it('shows the step label beside Back/Next, not above the step content', async () => {
-    renderApp('/g/wga/t/phoenix/signup', bnetHandlers(person(null)), { battlenetToken: 'bnet-token' });
-    const heading = await screen.findByRole('heading', { level: 2, name: 'Sign up for next season' });
-    const stepLabel = await screen.findByText('Step 1 of 3');
-    expect(heading.closest('.card')).not.toBe(stepLabel.closest('.card'));
-  });
-
-  it('asks to connect Battle.net first when the account has none linked', async () => {
-    const noBattlenet = { ...handlers(person(null)), session: fakeSession({ discord: { id: 'd', name: 'X' } }) };
-    renderApp('/g/wga/t/phoenix/signup', noBattlenet);
-    expect(await screen.findByRole('button', { name: 'Connect Battle.net' })).toBeInTheDocument();
   });
 });
 
 const ownFields = {
   id: 5,
-  signup_name_realm: 'Rex-Stormrage',
-  class: 'Warrior',
-  spec: 'Protection',
+  signup_name_realm: 'Katorrí-Stormrage',
+  class: 'Warlock',
+  spec: 'Demonology',
   off_specs: null,
   main_swap: false,
   swap_class: null,
@@ -159,61 +202,21 @@ const ownFields = {
   submitted_at: '2026-09-01T00:00:00Z'
 };
 
-// The claimed roster character, as a Battle.net row -- so editing without
-// picking a different character shows no differs warning (#1162: editing
-// uses the same picker as a fresh signup now, no manual fields anywhere).
-const REX_CHARACTER = {
-  blizzard_id: 202,
-  name: 'Rex',
-  realm: 'Stormrage',
-  realm_slug: 'stormrage',
-  class_name: 'Warrior',
-  spec_name: 'Protection',
-  level: 90,
-  item_level: 640,
-  saved: false,
-  roster: null
-};
-
 describe('Sign Up, editing an existing signup', () => {
-  it('opens on the same Battle.net picker, no manual fields', async () => {
+  it('opens on the same form with their character picked, saved through the same call', async () => {
+    const declared: Record<string, unknown>[] = [];
     renderApp(
       '/g/wga/t/phoenix/signup',
-      {
-        ...handlers(person('Rex-Stormrage'), { ownSignup: [ownFields] }),
-        invoke: () => ({ data: { characters: [REX_CHARACTER], roster: [] } })
-      },
-      { battlenetToken: 'bnet-token' }
+      formHandlers(person('Katorrí-Stormrage'), [KATORRI, GRIHZ], { ownSignup: [ownFields], declared })
     );
     await screen.findByRole('heading', { level: 2, name: 'Your signup' });
     await userEvent.click(screen.getByRole('button', { name: 'Edit signup' }));
-    await screen.findByRole('heading', { level: 2, name: 'Sign up for next season' });
-    expect(await screen.findByRole('radio', { name: /Rex/ })).toBeInTheDocument();
-    expect(screen.queryByLabelText('Character name')).not.toBeInTheDocument();
-  });
+    expect(await screen.findByRole('radio', { name: /Katorrí/ })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: 'Demonology' })).toBeChecked();
 
-  it('blocks Next until the raider confirms picking a different character than their claim', async () => {
-    renderApp(
-      '/g/wga/t/phoenix/signup',
-      {
-        ...handlers(person('Rex-Stormrage'), { ownSignup: [ownFields] }),
-        invoke: () => ({ data: { characters: [REX_CHARACTER, BNET_CHARACTER], roster: [] } })
-      },
-      { battlenetToken: 'bnet-token' }
-    );
-    await screen.findByRole('heading', { level: 2, name: 'Your signup' });
-    await userEvent.click(screen.getByRole('button', { name: 'Edit signup' }));
-    await screen.findByRole('heading', { level: 2, name: 'Sign up for next season' });
-
-    await userEvent.click(await screen.findByRole('radio', { name: /Katorri/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
-
-    expect(await screen.findByText(/confirm you meant to sign up/)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2, name: 'Sign up for next season' })).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('checkbox'));
-    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
-    await screen.findByRole('heading', { level: 2, name: 'Priest' });
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await screen.findByRole('heading', { level: 2, name: 'You’re signed up' });
+    expect(declared.map((d) => d['p_character_id'])).toEqual([11]);
   });
 });
 
@@ -291,5 +294,25 @@ describe('Sign Up, a season not coded like MIDn', () => {
     expect(await screen.findByText('The Last Titan Season 1', { selector: '.signup-summary p' })).toBeInTheDocument();
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Signing up for' }), 'MID3');
     expect(await screen.findByText('Midnight Season 3', { selector: '.signup-summary p' })).toBeInTheDocument();
+  });
+});
+
+// The way in from the team's own pages (Kat, 2026-10-24).
+describe('Sign up button on team Home and the Roster', () => {
+  it('links to Sign up while signups are open', async () => {
+    renderApp('/g/wga/t/phoenix', handlers(person(null)));
+    const link = await screen.findByRole('link', { name: 'Sign up for Midnight Season 3' });
+    expect(link).toHaveAttribute('href', '/g/wga/t/phoenix/signup');
+  });
+
+  it('says so once they have signed up', async () => {
+    renderApp('/g/wga/t/phoenix/roster', handlers(person(null), { ownSignup: [ownFields] }));
+    expect(await screen.findByRole('link', { name: 'Your signup for Midnight Season 3' })).toBeInTheDocument();
+  });
+
+  it('is not there when signups are closed', async () => {
+    renderApp('/g/wga/t/phoenix', handlers(person(null), { tables: { team_seasons: () => ({ data: [] }) } }));
+    await screen.findByRole('heading', { level: 1, name: 'Phoenix' });
+    expect(screen.queryByRole('link', { name: /Sign up for|Your signup for/ })).not.toBeInTheDocument();
   });
 });

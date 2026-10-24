@@ -51,6 +51,7 @@ import {
   type AccountLinks
 } from './useRoster';
 import './roster.css';
+import { SignupButton } from '../signup/SignupButton';
 
 type Filter = Role | 'All';
 type Tab = 'current' | 'incoming' | 'archived';
@@ -107,6 +108,7 @@ export function RosterPage() {
         {current.isSuccess && (
           <p className="text-muted page-subtitle">{summaryLine(summarize(toRoster(...current.data)))}</p>
         )}
+        <SignupButton />
       </div>
 
       {hasTabs && <RosterTabs tabs={tabs} selected={showing} onSelect={setTab} />}

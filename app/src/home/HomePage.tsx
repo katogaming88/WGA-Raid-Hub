@@ -14,6 +14,7 @@ import { calendarMonth, raidNights, WEEKDAYS, type CalendarMonth } from '../cale
 import { calendarDay } from '../lib/dates';
 import { useCalendarMonth, useRaidProgression, useSeasonLoot } from './useHome';
 import './home.css';
+import { SignupButton } from '../signup/SignupButton';
 
 // The team's Home page (#1102): the stats row, raid progression, this month's
 // calendar and the recent loot feed, checked against the current site's
@@ -31,6 +32,7 @@ export function HomePage() {
       <div className="page-header">
         <h1 id="page-title">{team.name}</h1>
         {season.isSuccess && season.data.name && <p className="text-muted page-subtitle">{season.data.name}</p>}
+        <SignupButton />
       </div>
 
       <DataState query={page} label="the team’s season">

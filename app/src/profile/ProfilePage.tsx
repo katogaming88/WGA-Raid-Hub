@@ -38,6 +38,7 @@ import { CharactersCard } from '../characters/CharactersCard';
 import { withEarlierLoot } from '../characters/characters';
 import { useAlsoOnTeams, useEarlierLoot } from '../characters/useCharacters';
 import './profile.css';
+import { SignupButton } from '../signup/SignupButton';
 
 // A profile opens for the raider it belongs to and for the team's officers
 // (Kat, 2026-09-14: same as the current site). The data is public to read;
@@ -105,6 +106,7 @@ export function MyProfilePage() {
     return (
       <Closed>
         <p>You don’t have a character on {team.name} yet.</p>
+        <SignupButton />
       </Closed>
     );
   }
@@ -441,6 +443,7 @@ function Profile({
               </span>
             </p>
           )}
+          {own && <SignupButton />}
         </div>
         {links && (
           <nav className="profile-links" aria-label={`${character} on other sites`}>

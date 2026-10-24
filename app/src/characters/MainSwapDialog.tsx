@@ -84,7 +84,8 @@ export function MainSwapDialog({
           </select>
           {specs.isSuccess && choices.length === 0 && (
             <p className="field-hint">
-              We do not have a class for {alt.name} yet. Choose alts again to read it from Battle.net, then ask.
+              We do not have a class for {alt.name} yet. Import your characters again to read it from Battle.net, then
+              ask.
             </p>
           )}
         </div>

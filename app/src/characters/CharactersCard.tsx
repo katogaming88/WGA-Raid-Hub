@@ -40,7 +40,7 @@ export function CharactersCard({
         </h2>
         {own && openPicker && !touch && (
           <button type="button" className="button" onClick={openPicker}>
-            Choose alts
+            Import characters
           </button>
         )}
       </div>
@@ -63,7 +63,7 @@ export function CharactersCard({
       <DataState query={person} label="alts">
         {(personId) => (personId === null ? null : <Alts personId={personId} player={player} own={own} />)}
       </DataState>
-      {own && touch && <p className="text-muted card-note">Choosing alts works on a computer.</p>}
+      {own && touch && <p className="text-muted card-note">Importing characters works on a computer.</p>}
       <p className="characters-privacy">
         <svg className="characters-lock" viewBox="0 0 12 12" aria-hidden="true">
           <rect x="2" y="5.5" width="8" height="5.5" rx="1" fill="none" stroke="currentColor" />
@@ -90,7 +90,7 @@ function Alts({ personId, player, own }: { personId: number; player: ProfilePlay
         if (!alts.length) {
           return (
             <p className="text-muted card-note characters-empty">
-              {own && !touch ? 'No alts listed yet. Choose alts to add your other characters.' : 'No alts listed.'}
+              {own && !touch ? 'No alts listed yet. Import characters to add your others.' : 'No alts listed.'}
             </p>
           );
         }
