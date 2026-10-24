@@ -285,4 +285,5 @@
 
 .signup-summary-tag:not(:last-child)::after {
   content: ',';
+  margin-left: calc(-1 * var(--space-1));
 }
