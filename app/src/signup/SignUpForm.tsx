@@ -319,6 +319,7 @@ function SpecFields({
                 checked={fields.mainSpec === s}
                 onChange={() => set('mainSpec', s)}
               />
+              <CharacterIcon className={fields.className} spec={s} size={20} />
               <span>{s}</span>
             </label>
           ))}
@@ -341,6 +342,7 @@ function SpecFields({
                     set('offSpecs', checked ? fields.offSpecs.filter((x) => x !== s) : [...fields.offSpecs, s])
                   }
                 />
+                <CharacterIcon className={fields.className} spec={s} size={20} />
                 <span>{s}</span>
               </label>
             );
