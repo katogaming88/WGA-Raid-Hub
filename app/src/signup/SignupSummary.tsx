@@ -38,6 +38,12 @@ export function SignupSummary({
         <p className="text-muted">Switching from {row.swap_from_name_realm}.</p>
       )}
       {row.off_specs && <p className="text-muted">Off-specs: {row.off_specs}</p>}
+      {(row.is_backup_tank || row.is_backup_healer) && (
+        <p className="text-muted">
+          Can also backup{' '}
+          {row.is_backup_tank && row.is_backup_healer ? 'tank and heal' : row.is_backup_tank ? 'tank' : 'heal'}
+        </p>
+      )}
       {row.player_note && <p className="text-muted">Note: {row.player_note}</p>}
       <div className="signup-actions">
         {(row.status === 'pending' || row.status === 'approved') && (

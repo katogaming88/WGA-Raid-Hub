@@ -1325,7 +1325,9 @@ const SIGNUP_SUMMARY = {
         player_note: null,
         status: 'pending',
         season: 'MID3',
-        submitted_at: '2026-09-01T00:00:00Z'
+        submitted_at: '2026-09-01T00:00:00Z',
+        is_backup_tank: false,
+        is_backup_healer: false
       }
     ]
   }

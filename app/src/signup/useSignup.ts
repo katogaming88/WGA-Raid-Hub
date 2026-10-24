@@ -15,6 +15,8 @@ export type OwnSignupRow = {
   status: 'pending' | 'approved' | 'rejected' | 'added';
   season: string;
   submitted_at: string;
+  is_backup_tank: boolean;
+  is_backup_healer: boolean;
 };
 
 // The raider's own signup for a tier, if any (get_own_signup): null tier
@@ -75,7 +77,14 @@ export function useIncomingWithSwap(teamId: number) {
   });
 }
 
-export type Declaration = { characterId: number; classSpecId: number; offSpecs: string; note: string };
+export type Declaration = {
+  characterId: number;
+  classSpecId: number;
+  offSpecs: string;
+  note: string;
+  backupTank: boolean;
+  backupHealer: boolean;
+};
 
 // Signs up, or changes a signup, through declare_season_signup() (#1466): the
 // database works out from the roster whether the pick is the same main, a new
@@ -89,7 +98,9 @@ export function useDeclareSignup(teamId: number, season: string) {
         p_character_id: d.characterId,
         p_class_spec_id: d.classSpecId,
         p_off_specs: d.offSpecs,
-        p_note: d.note
+        p_note: d.note,
+        p_backup_tank: d.backupTank,
+        p_backup_healer: d.backupHealer
       });
       return { data: data as number, error };
     },

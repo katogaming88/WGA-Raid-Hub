@@ -7,7 +7,7 @@ import { nameRealmKey, type SavedCharacter } from '../characters/characters';
 import { useClassSpecs } from '../characters/useMainSwaps';
 import '../characters/characters.css';
 import { useTouchScreen } from '../lib/device';
-import { readingLabel, readPick, type ClassmateRow, type SignupFields } from './signup';
+import { backupRolesFor, readingLabel, readPick, type ClassmateRow, type SignupFields } from './signup';
 import { useDeclareSignup } from './useSignup';
 import { CLASS_SPECS, resolveRole } from './wowData';
 
@@ -17,7 +17,9 @@ const EMPTY: SignupFields = {
   mainSpec: '',
   offSpecs: [],
   primaryRole: null,
-  notes: ''
+  notes: '',
+  backupTank: false,
+  backupHealer: false
 };
 
 export type FormEdit = { signupId: number; fields: SignupFields };
@@ -105,8 +107,17 @@ export function SignUpForm({
     if (classSpecs.roles && !fields.primaryRole) return setError('Please select your primary role.');
     const classSpecId = specs.data?.find((s) => s.class === fields.className && s.spec === fields.mainSpec)?.id;
     if (!classSpecId) return setError('The spec list did not load. Reload the page and try again.');
+    // A tick left on from a spec that hid it is not sent.
+    const backups = backupRolesFor(fields.className, fields.mainSpec);
     declare.mutate(
-      { characterId: picked.id, classSpecId, offSpecs: fields.offSpecs.join(', '), note: fields.notes },
+      {
+        characterId: picked.id,
+        classSpecId,
+        offSpecs: fields.offSpecs.join(', '),
+        note: fields.notes,
+        backupTank: fields.backupTank && backups.includes('Tank'),
+        backupHealer: fields.backupHealer && backups.includes('Heal')
+      },
       {
         onSuccess: () => setDone(true),
         onError: (e) => setError(e.message || 'Submission failed. Please try again or contact an officer on Discord.')
@@ -238,6 +249,8 @@ function CharacterList({
                 );
                 set('offSpecs', []);
                 set('primaryRole', null);
+                set('backupTank', false);
+                set('backupHealer', false);
               }}
             >
               <CharacterIcon className={character.class_name} spec={character.spec_name} />
@@ -354,7 +367,39 @@ function SpecFields({
           <RoleAdvisory fields={fields} classmates={classmates} roleTargets={roleTargets} />
         </fieldset>
       )}
+      <BackupTicks fields={fields} set={set} />
     </>
+  );
+}
+
+// "I can backup tank / heal" (#1466): the same flags as the officer boxes on
+// the Projected Roster, offered only for a role the class can fill and not the
+// one they main.
+function BackupTicks({ fields, set }: { fields: SignupFields; set: Setter }) {
+  const roles = backupRolesFor(fields.className, fields.mainSpec);
+  if (!roles.length) return null;
+  return (
+    <fieldset className="field">
+      <legend className="field-label">
+        Backup roles <span className="text-muted">(optional)</span>
+      </legend>
+      <div className="signup-chip-group">
+        {roles.map((r) => {
+          const key = r === 'Tank' ? 'backupTank' : 'backupHealer';
+          return (
+            <label key={r} className="signup-chip">
+              <input
+                type="checkbox"
+                className="visually-hidden"
+                checked={fields[key]}
+                onChange={() => set(key, !fields[key])}
+              />
+              <span>{r === 'Tank' ? 'I can backup tank' : 'I can backup heal'}</span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
 

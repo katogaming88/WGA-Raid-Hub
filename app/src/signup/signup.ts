@@ -1,5 +1,5 @@
 import { nameRealmKey } from '../characters/characters';
-import { resolveRole } from './wowData';
+import { CLASS_SPECS, resolveRole, SPEC_ROLE } from './wowData';
 
 // The Sign Up form's rules (#1102), ported from js/signup.js and recorded
 // against it in tests/behavior/signup.js. Kept apart from the component so
@@ -62,7 +62,19 @@ export type SignupFields = {
   offSpecs: string[];
   primaryRole: string | null;
   notes: string;
+  backupTank: boolean;
+  backupHealer: boolean;
 };
+
+// The backup ticks to offer (#1466), as declare_season_signup() stores them
+// (#1622): a role one of the class's specs plays, and not the one the main
+// spec plays (a main tank is not a backup tank). Nothing until a main spec is
+// picked.
+export function backupRolesFor(className: string, mainSpec: string): ('Tank' | 'Heal')[] {
+  const specs = CLASS_SPECS[className]?.specs;
+  if (!specs || !mainSpec) return [];
+  return (['Tank', 'Heal'] as const).filter((r) => SPEC_ROLE[mainSpec] !== r && specs.some((s) => SPEC_ROLE[s] === r));
+}
 
 export const role = (className: string, mainSpec: string, primaryRole: string | null) =>
   resolveRole(className, mainSpec, primaryRole);

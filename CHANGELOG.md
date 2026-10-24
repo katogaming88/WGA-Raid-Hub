@@ -12,6 +12,31 @@ answers to.
 
 ---
 
+## [3.207.0] - 2026-10-24
+
+### Frontend
+
+- New app: signing up is one page (#1466). You pick the character you
+  will main from the characters you imported from Battle.net, so there is
+  nothing to type, and the box beside Sign up says what the pick means:
+  "Same main as now", "New main: replaces Katorrí-Stormrage" or "First
+  main on this team". Your class and spec come from Blizzard; you can
+  change the spec. With nothing imported yet, the page offers "Import
+  your characters" (on a computer; a phone says so).
+- New app: "I can backup tank" and "I can backup heal" on the signup,
+  offered only for a class that can fill the role and not for the role
+  you main. They set the same backup flags as the officer boxes on the
+  Projected Roster, and editing your signup starts with your answers.
+- New app: a Sign up button on team Home, the Roster and My profile
+  ("Your signup for Midnight Season 3" once you have one), and a
+  confirmation that says what you signed up as.
+- New app: "Choose alts" is now "Import characters" everywhere.
+
+### Project
+
+- Browser accessibility states for the one-page signup, including a
+  signup with no characters imported (#1466).
+
 ## [3.206.1] - 2026-10-24
 
 ### Backend

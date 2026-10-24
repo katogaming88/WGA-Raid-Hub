@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { classmatesPool, readingLabel, readPick, type ClassmateRow, type IncomingSignupRow } from './signup';
+import {
+  backupRolesFor,
+  classmatesPool,
+  readingLabel,
+  readPick,
+  type ClassmateRow,
+  type IncomingSignupRow
+} from './signup';
 
 const row = (nameRealm: string, cls: string, spec: string, role: string): ClassmateRow => ({
   nameRealm,
@@ -61,5 +68,23 @@ describe('readPick', () => {
     expect(readingLabel({ kind: 'same' })).toBe('Same main as now');
     expect(readingLabel({ kind: 'new', replaces: 'Katorrí-Stormrage' })).toBe('New main: replaces Katorrí-Stormrage');
     expect(readingLabel({ kind: 'first' })).toBe('First main on this team');
+  });
+});
+
+// The backup ticks offered (#1466), as declare_season_signup() stores them
+// (#1622): a role the class has a spec in, and not the one they main.
+describe('backupRolesFor', () => {
+  it('offers the roles the class can fill, leaving out the one the main spec plays', () => {
+    expect(backupRolesFor('Death Knight', 'Frost')).toEqual(['Tank']);
+    expect(backupRolesFor('Death Knight', 'Blood')).toEqual([]);
+    expect(backupRolesFor('Paladin', 'Retribution')).toEqual(['Tank', 'Heal']);
+    expect(backupRolesFor('Paladin', 'Holy')).toEqual(['Tank']);
+    expect(backupRolesFor('Priest', 'Shadow')).toEqual(['Heal']);
+  });
+
+  it('offers nothing to a class with no tank or healer spec, or with no main spec yet', () => {
+    expect(backupRolesFor('Warlock', 'Demonology')).toEqual([]);
+    expect(backupRolesFor('Paladin', '')).toEqual([]);
+    expect(backupRolesFor('', '')).toEqual([]);
   });
 });

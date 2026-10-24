@@ -136,7 +136,9 @@ function SignUpForTier({ teamId, seasons }: { teamId: number; seasons: SignupSea
                   .map((s) => s.trim())
                   .filter(Boolean),
                 primaryRole: null,
-                notes: own.player_note ?? ''
+                notes: own.player_note ?? '',
+                backupTank: own.is_backup_tank,
+                backupHealer: own.is_backup_healer
               }
             }
           : null;

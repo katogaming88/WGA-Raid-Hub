@@ -893,7 +893,9 @@ const SIGNUP = {
   player_note: null,
   status: 'pending',
   season: 'MID3',
-  submitted_at: '2026-10-20T00:00:00Z'
+  submitted_at: '2026-10-20T00:00:00Z',
+  is_backup_tank: false,
+  is_backup_healer: false
 };
 
 function withSignup(who: ReturnType<typeof person>, wishlistOpen = true) {
