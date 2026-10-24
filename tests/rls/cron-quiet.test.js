@@ -21,6 +21,7 @@ afterAll(() => pool.end());
 
 const SCHEDULED = [
   'blizzard-gear-sync',
+  'close-started-season-signups',
   'fill-raid-night-lineups',
   'optional-rsvp-reminders',
   'twitch-live-check',
@@ -28,8 +29,9 @@ const SCHEDULED = [
 ];
 
 // Jobs that run SQL in the database and call nothing outside it (#1216 fills
-// the coming week's raid nights). The seed switches them off with the rest.
-const IN_DATABASE = ['fill-raid-night-lineups'];
+// the coming week's raid nights, #1608 closes signups at season start). The
+// seed switches them off with the rest.
+const IN_DATABASE = ['close-started-season-signups', 'fill-raid-night-lineups'];
 
 const PROD_FUNCTIONS = 'kxgjqnpwfklbgrxdgmmv.supabase.co/functions/v1/';
 

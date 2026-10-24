@@ -5,7 +5,7 @@
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.attendance](public.attendance.md) | 9 |  | BASE TABLE |
-| [public.audit_log](public.audit_log.md) | 8 |  | BASE TABLE |
+| [public.audit_log](public.audit_log.md) | 9 |  | BASE TABLE |
 | [public.bis_requests](public.bis_requests.md) | 8 |  | BASE TABLE |
 | [public.classes_specs](public.classes_specs.md) | 4 |  | BASE TABLE |
 | [public.item_bosses](public.item_bosses.md) | 2 |  | BASE TABLE |
@@ -247,6 +247,7 @@
 | public.signup_wishlist_open | bool | p_signup_id integer | FUNCTION |
 | public.restrict_signup_item_preferences_to_open_wishlist | trigger |  | FUNCTION |
 | public.carry_signup_wishlist | trigger |  | FUNCTION |
+| public.close_started_season_signups | int4 |  | FUNCTION |
 
 ## Enums
 
@@ -422,6 +423,7 @@ erDiagram
   integer target_id
   jsonb detail
   timestamp_with_time_zone created_at
+  boolean automatic
 }
 "public.bis_requests" {
   integer id

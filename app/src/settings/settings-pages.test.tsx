@@ -304,6 +304,25 @@ describe('Audit log', () => {
     expect(within(rows[2]!).getByText('Aur')).toBeInTheDocument();
   });
 
+  it("shows Automatic as who made a scheduled job's change (#1608)", async () => {
+    const automatic = {
+      id: 3,
+      actor_id: null,
+      automatic: true,
+      action: 'Signups Closed',
+      target_type: 'team_seasons',
+      target_id: 9,
+      detail: { season: 'MID3' },
+      created_at: '2026-09-03T12:00:00Z'
+    };
+    renderApp(
+      '/g/wga/t/phoenix/officer/settings/audit-log',
+      officerHandlers({ from: (read) => (read.table === 'audit_log' ? { data: [automatic] } : undefined) })
+    );
+    const rows = await screen.findAllByRole('row');
+    expect(within(rows[1]!).getByText('Automatic')).toBeInTheDocument();
+  });
+
   it('filters as you search, across every column', async () => {
     renderApp('/g/wga/t/phoenix/officer/settings/audit-log', auditHandlers());
     const table = (await screen.findByRole('table')).closest('.settings-card') as HTMLElement;
