@@ -45,7 +45,7 @@
   margin-bottom: var(--space-3);
 }
 
-/* <fieldset>/<legend> for Main spec/Off spec/Primary role, without the
+/* <fieldset>/<legend> for Main spec/Off spec/Backup roles, without the
    browser's own default border box around each (Kat, 2026-09-22). More room
    than a plain .field: a legend reads as a heading over a button group, not
    a label tight against a single input, so both gaps are opened up a step

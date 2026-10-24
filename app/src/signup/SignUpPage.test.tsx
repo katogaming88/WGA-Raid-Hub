@@ -107,11 +107,20 @@ const DEEKA = {
 function formHandlers(
   who: ReturnType<typeof person>,
   saved: unknown[],
-  options: { ownSignup?: unknown[]; declared?: Record<string, unknown>[]; onDeclare?: () => void } = {}
+  options: {
+    ownSignup?: unknown[];
+    declared?: Record<string, unknown>[];
+    onDeclare?: () => void;
+    incoming?: unknown[];
+  } = {}
 ) {
   const base = handlers(who, {
     ...(options.ownSignup ? { ownSignup: options.ownSignup } : {}),
-    tables: { characters: () => ({ data: saved }), classes_specs: () => ({ data: CLASS_SPECS_ROWS }) }
+    tables: {
+      characters: () => ({ data: saved }),
+      classes_specs: () => ({ data: CLASS_SPECS_ROWS }),
+      incoming_roster: () => ({ data: options.incoming ?? [] })
+    }
   });
   return {
     ...base,
@@ -192,7 +201,6 @@ describe('Sign Up, the one-page form', () => {
     expect(screen.queryByRole('checkbox', { name: /I can backup/ })).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('radio', { name: /Deeka/ }));
-    await userEvent.click(screen.getByRole('radio', { name: 'DPS' }));
     expect(screen.queryByRole('checkbox', { name: 'I can backup heal' })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('checkbox', { name: 'I can backup tank' }));
     // A Blood main is a main tank, not a backup one.
@@ -285,11 +293,27 @@ describe('Sign Up, editing an existing signup', () => {
       spec: 'Frost',
       is_backup_tank: true
     };
-    renderApp('/g/wga/t/phoenix/signup', formHandlers(person(null), [DEEKA], { ownSignup: [own], declared }));
+    renderApp(
+      '/g/wga/t/phoenix/signup',
+      formHandlers(person(null), [DEEKA], {
+        ownSignup: [own],
+        declared,
+        incoming: [
+          {
+            signup_name_realm: 'Deeka-Illidan',
+            class: 'Death Knight',
+            spec: 'Frost',
+            role: 'Melee',
+            swap_from_name_realm: null
+          }
+        ]
+      })
+    );
     expect(await screen.findByText('Can also backup tank')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Edit signup' }));
     expect(await screen.findByRole('checkbox', { name: 'I can backup tank' })).toBeChecked();
-    await userEvent.click(screen.getByRole('radio', { name: 'DPS' }));
+    // Their own signup is not someone else already playing the class.
+    expect(screen.getByText('No one else is currently playing Death Knight.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await screen.findByRole('heading', { level: 2, name: 'You’re signed up' });
     expect(declared[0]).toMatchObject({ p_backup_tank: true, p_backup_healer: false });

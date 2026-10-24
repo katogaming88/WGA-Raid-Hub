@@ -21,9 +21,10 @@ answers to.
   nothing to type, and the box beside Sign up says what the pick means:
   "Same main as now", "New main: replaces Katorrí-Stormrage" or "First
   main on this team". Your class and spec come from Blizzard; you can
-  change the spec. With nothing imported yet, the page offers "Import
+  change the spec, and each spec shows its icon. There is no Primary
+  role to pick any more: the spec says it. With nothing imported yet, the page offers "Import
   your characters" (on a computer; a phone says so).
-- New app: "I can backup tank" and "I can backup heal" on the signup,
+- New app: "I can backup tank" and "I can backup heal" checkboxes on the signup,
   offered only for a class that can fill the role and not for the role
   you main. They set the same backup flags as the officer boxes on the
   Projected Roster, and editing your signup starts with your answers.

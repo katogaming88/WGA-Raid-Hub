@@ -109,7 +109,12 @@ function SignUpForTier({ teamId, seasons }: { teamId: number; seasons: SignupSea
           spec: p.classes_specs?.spec ?? null,
           role: p.classes_specs?.role ?? null
         }));
-        const classmates = classmatesPool(incomingRows, rosterAsClassmates, liveSeasonCode, tier);
+        // Not their own characters: their signup is not someone else playing
+        // the class.
+        const mine = new Set(savedRows.map((c) => nameRealmKey(`${c.name}-${c.realm}`)));
+        const classmates = classmatesPool(incomingRows, rosterAsClassmates, liveSeasonCode, tier).filter(
+          (c) => !mine.has(nameRealmKey(c.nameRealm))
+        );
 
         if (own && !editing) {
           return (
@@ -135,7 +140,6 @@ function SignUpForTier({ teamId, seasons }: { teamId: number; seasons: SignupSea
                   .split(',')
                   .map((s) => s.trim())
                   .filter(Boolean),
-                primaryRole: null,
                 notes: own.player_note ?? '',
                 backupTank: own.is_backup_tank,
                 backupHealer: own.is_backup_healer

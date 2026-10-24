@@ -9,14 +9,13 @@ import '../characters/characters.css';
 import { useTouchScreen } from '../lib/device';
 import { backupRolesFor, readingLabel, readPick, type ClassmateRow, type SignupFields } from './signup';
 import { useDeclareSignup } from './useSignup';
-import { CLASS_SPECS, resolveRole } from './wowData';
+import { CLASS_SPECS, specRole } from './wowData';
 
 const EMPTY: SignupFields = {
   characterId: null,
   className: '',
   mainSpec: '',
   offSpecs: [],
-  primaryRole: null,
   notes: '',
   backupTank: false,
   backupHealer: false
@@ -30,10 +29,6 @@ const classColorVar = (className: string) =>
   `var(--class-${className.toLowerCase().replace(/\s+/g, '-')}, var(--text))`;
 
 const nameRealmOf = (c: SavedCharacter) => `${c.name}-${c.realm}`;
-
-// Beside each Primary role choice (Kat, 2026-10-24); decorative, the word is
-// the label.
-const ROLE_EMOJI: Record<string, string> = { Tank: '🛡️', Healer: '💚', DPS: '⚔️', Melee: '🗡️', Ranged: '🏹' };
 
 // The Sign Up form (#1102), one page since #1466 (Kat: nothing is typed by
 // hand any more, so steps only slowed it down). The character is picked from
@@ -112,7 +107,6 @@ export function SignUpForm({
     if (!classSpecs)
       return setError(`We don’t know ${picked.name}’s class yet. Import your characters again, then pick it.`);
     if (!fields.mainSpec) return setError('Please select your main spec.');
-    if (classSpecs.roles && !fields.primaryRole) return setError('Please select your primary role.');
     const classSpecId = specs.data?.find((s) => s.class === fields.className && s.spec === fields.mainSpec)?.id;
     if (!classSpecId) return setError('The spec list did not load. Reload the page and try again.');
     // A tick left on from a spec that hid it is not sent.
@@ -252,14 +246,12 @@ function CharacterList({
                 const classSpecs = character.class_name ? CLASS_SPECS[character.class_name]?.specs : undefined;
                 set('characterId', character.id);
                 set('className', classSpecs ? character.class_name! : '');
-                set(
-                  'mainSpec',
+                const spec =
                   classSpecs && character.spec_name && classSpecs.includes(character.spec_name)
                     ? character.spec_name
-                    : ''
-                );
+                    : '';
+                set('mainSpec', spec);
                 set('offSpecs', []);
-                set('primaryRole', null);
                 set('backupTank', false);
                 set('backupHealer', false);
               }}
@@ -335,6 +327,7 @@ function SpecFields({
             </label>
           ))}
         </div>
+        <RoleAdvisory fields={fields} classmates={classmates} roleTargets={roleTargets} />
       </fieldset>
       <fieldset className="field">
         <legend className="field-label">
@@ -360,27 +353,6 @@ function SpecFields({
           })}
         </div>
       </fieldset>
-      {spec.roles && (
-        <fieldset className="field">
-          <legend className="field-label">Primary role</legend>
-          <div className="signup-chip-group" role="radiogroup" aria-label="Primary role">
-            {spec.roles.map((r) => (
-              <label key={r} className="signup-chip">
-                <input
-                  type="radio"
-                  name={`${id}-role`}
-                  className="visually-hidden"
-                  checked={fields.primaryRole === r}
-                  onChange={() => set('primaryRole', r)}
-                />
-                <span aria-hidden="true">{ROLE_EMOJI[r]}</span>
-                <span>{r}</span>
-              </label>
-            ))}
-          </div>
-          <RoleAdvisory fields={fields} classmates={classmates} roleTargets={roleTargets} />
-        </fieldset>
-      )}
       <BackupTicks fields={fields} set={set} />
     </>
   );
@@ -420,7 +392,7 @@ function RoleAdvisory({
   classmates: ClassmateRow[];
   roleTargets: { tank: number | null; heal: number | null };
 }) {
-  const role = resolveRole(fields.className, fields.mainSpec, fields.primaryRole);
+  const role = specRole(fields.className, fields.mainSpec);
   if (role !== 'Tank' && role !== 'Heal') return null;
   const target = role === 'Tank' ? roleTargets.tank : roleTargets.heal;
   const count = classmates.filter((c) => c.role === role).length;

@@ -1,5 +1,5 @@
 import { nameRealmKey } from '../characters/characters';
-import { CLASS_SPECS, resolveRole, SPEC_ROLE } from './wowData';
+import { CLASS_SPECS, SPEC_ROLE } from './wowData';
 
 // The Sign Up form's rules (#1102), ported from js/signup.js and recorded
 // against it in tests/behavior/signup.js. Kept apart from the component so
@@ -60,7 +60,6 @@ export type SignupFields = {
   className: string;
   mainSpec: string;
   offSpecs: string[];
-  primaryRole: string | null;
   notes: string;
   backupTank: boolean;
   backupHealer: boolean;
@@ -75,6 +74,3 @@ export function backupRolesFor(className: string, mainSpec: string): ('Tank' | '
   if (!specs || !mainSpec) return [];
   return (['Tank', 'Heal'] as const).filter((r) => SPEC_ROLE[mainSpec] !== r && specs.some((s) => SPEC_ROLE[s] === r));
 }
-
-export const role = (className: string, mainSpec: string, primaryRole: string | null) =>
-  resolveRole(className, mainSpec, primaryRole);
