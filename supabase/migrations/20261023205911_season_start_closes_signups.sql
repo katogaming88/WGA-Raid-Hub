@@ -45,13 +45,10 @@ begin
   loop
     -- One team's failure leaves the others to close; it is retried next hour.
     begin
-      -- Signups closed by hand while this waited: nothing left to do.
-      perform 1 from public.team_seasons where id = v_open.id and signups_open for update;
-      if not found then
-        continue;
-      end if;
-
-      -- The locks promote_season_signups() takes, in its order (#1467).
+      -- The locks promote_season_signups() takes, in its order (#1467): the
+      -- signups, then the memberships, and the team_seasons row last, so a
+      -- leader closing by hand at the same moment waits instead of
+      -- deadlocking.
       perform 1 from public.season_signups
        where team_id = v_open.team_id and season = v_open.season_code
        order by id
@@ -67,6 +64,12 @@ begin
                             and (s.person_id = pe.id or (s.person_id is null and s.auth_user_id = pe.auth_user_id))))
        order by tm.id
          for share;
+
+      -- Signups closed by hand while this waited: nothing left to do.
+      perform 1 from public.team_seasons where id = v_open.id and signups_open for update;
+      if not found then
+        continue;
+      end if;
 
       v_plan := public.signup_promotion_plan(v_open.team_id, v_open.season_code);
 

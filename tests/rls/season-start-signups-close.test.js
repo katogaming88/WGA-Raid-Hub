@@ -186,10 +186,15 @@ describe('close_started_season_signups()', () => {
   });
 
   it('nobody can call it from the site', async () => {
-    await withTxn(async ({ asUser }) => {
-      await expect(asUser(SITE_ADMIN, 'select public.close_started_season_signups()')).rejects.toThrow(
-        /permission denied/
-      );
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      const s = await scene(q);
+      for (const call of [
+        () => asAnon('select public.close_started_season_signups()'),
+        () => asUser(s.team.leader.uid, 'select public.close_started_season_signups()'),
+        () => asUser(SITE_ADMIN, 'select public.close_started_season_signups()')
+      ]) {
+        await expect(call()).rejects.toThrow(/permission denied/);
+      }
     });
   });
 
