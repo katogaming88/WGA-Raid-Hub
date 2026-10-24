@@ -93,6 +93,17 @@ describe('get_own_signup', () => {
     });
   });
 
+  // The new signup page fills its edit form from these (#1624), so saving
+  // an edit does not clear answers the raider gave (#1622).
+  it("returns the raider's backup tank and heal answers", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const id = (await insertSignup(q, {})).rows[0].id;
+      await q('update public.season_signups set is_backup_tank = true where id = $1', [id]);
+      const res = await getOwn(asUser, SIGNUP_OWNER_T1, 1);
+      expect(res.rows[0]).toMatchObject({ is_backup_tank: true, is_backup_healer: false });
+    });
+  });
+
   it("does not return another user's signup", async () => {
     await withTxn(async ({ q, asUser }) => {
       await insertSignup(q, {});
