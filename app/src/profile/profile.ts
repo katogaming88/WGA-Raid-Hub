@@ -128,7 +128,7 @@ export function seasonLoot(rows: LootRow[], season: SeasonWindow): SeasonLoot {
 
 export type GearRow = {
   equipment_slot: string;
-  item_id: number | null;
+  wow_item_id: number | null;
   item_level: number | null;
   track: string | null;
 };
@@ -163,7 +163,7 @@ export function equippedGear(rows: GearRow[], namesByWowId: Map<number, string>)
     if (!row) continue;
     gear.push({
       slot: label,
-      item: (row.item_id != null && namesByWowId.get(row.item_id)) || `Item #${row.item_id}`,
+      item: (row.wow_item_id != null && namesByWowId.get(row.wow_item_id)) || `Item #${row.wow_item_id}`,
       itemLevel: row.item_level,
       track: row.track
     });

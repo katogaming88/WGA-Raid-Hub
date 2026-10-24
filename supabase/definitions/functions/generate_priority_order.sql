@@ -115,7 +115,7 @@ begin
       join public.players p on p.id = peg.player_id
       where p.team_id = p_team_id
         and p.archived_at is null
-        and peg.item_id in (select item_id from equipped_item_ids where item_id is not null)
+        and peg.wow_item_id in (select item_id from equipped_item_ids where item_id is not null)
     ) owned
     group by player_id
   ),

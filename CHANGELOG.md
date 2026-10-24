@@ -12,6 +12,31 @@ answers to.
 
 ---
 
+## [3.207.1] - 2026-10-24
+
+### Backend
+
+- The equipped gear table's item column is now `wow_item_id`, so it says
+  it holds Blizzard's item number and not the site's own (#1094). The
+  same mix-up once let a raider already wearing an item count as needing
+  it (#1091). `generate_priority_order()` reads the new name; nothing
+  anyone sees changes.
+
+### Functions
+
+- `blizzard-gear-sync` writes the renamed column (#1094).
+
+### Frontend
+
+- The Equipped Gear section, on both the current site and the new app's
+  profile, reads the renamed column (#1094).
+
+### Project
+
+- A CI check that every item id column either points at the site's
+  items or is named for the id it holds (#1094), and the gear and bonus
+  id tables in the schema reference.
+
 ## [3.207.0] - 2026-10-24
 
 ### Frontend

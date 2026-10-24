@@ -4894,9 +4894,10 @@
           "nullable": false
         },
         {
-          "name": "item_id",
+          "name": "wow_item_id",
           "type": "integer",
-          "nullable": true
+          "nullable": true,
+          "comment": "Blizzard's item id for the equipped item, as the Character Equipment Summary returns it: the same numbers as items.wow_item_id, not items.id. Null when Blizzard sent none."
         },
         {
           "name": "item_level",

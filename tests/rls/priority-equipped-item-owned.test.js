@@ -10,7 +10,7 @@
 // (priority-equipped-slot-track.test.js), which only ever compares
 // ilvl-vs-threshold and never item_id.
 //
-// player_equipped_gear.item_id is Blizzard's real wow_item_id, NOT this
+// player_equipped_gear.wow_item_id (item_id until #1094) is Blizzard's id, NOT this
 // app's items.id catalog key that p_item_id/rclc_loot/item_preferences/
 // bis_items all use -- confirmed live (Gebbo's Bottomless Bag is items.id
 // 322 / wow_item_id 270164) after the first version of this exclusion
@@ -79,7 +79,7 @@ describe('generate_priority_order equipped-item exclusion', () => {
       await seedScoring(q, 2, 100, 100);
       await seedBoth1And2Bis(q, RING_ITEM_ID);
       await q(
-        `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, item_id, item_level, track)
+        `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, wow_item_id, item_level, track)
          values (1, 1, 'FINGER_1', $1, 700, 'Myth')`,
         [RING_WOW_ITEM_ID]
       );
@@ -98,7 +98,7 @@ describe('generate_priority_order equipped-item exclusion', () => {
       await seedScoring(q, 2, 100, 100);
       await seedBoth1And2Bis(q, RING_ITEM_ID);
       await q(
-        `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, item_id, item_level, track)
+        `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, wow_item_id, item_level, track)
          values (1, 1, 'FINGER_1', $1, 660, 'Hero')`,
         [RING_WOW_ITEM_ID]
       );
@@ -123,7 +123,7 @@ describe('generate_priority_order equipped-item exclusion', () => {
       await seedScoring(q, 2, 100, 100);
       await seedBoth1And2Bis(q, RING_ITEM_ID);
       await q(
-        `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, item_id, item_level, track)
+        `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, wow_item_id, item_level, track)
          values (1, 1, 'FINGER_1', 999999, 700, 'Myth')`
       );
 
@@ -134,7 +134,7 @@ describe('generate_priority_order equipped-item exclusion', () => {
     });
   });
 
-  it('does not exclude a candidate whose equipped item_id happens to equal the target items.id but not its wow_item_id', async () => {
+  it('does not exclude a candidate whose equipped wow_item_id happens to equal the target items.id', async () => {
     await withTxn(async ({ q, asUser }) => {
       await seedRingItem(q);
       await seedScoring(q, 1, 100, 100);
@@ -144,7 +144,7 @@ describe('generate_priority_order equipped-item exclusion', () => {
       // item_id numerically matches the internal items.id (not the real
       // wow_item_id) must NOT be treated as owning the item.
       await q(
-        `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, item_id, item_level, track)
+        `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, wow_item_id, item_level, track)
          values (1, 1, 'FINGER_1', $1, 700, 'Myth')`,
         [RING_ITEM_ID]
       );
@@ -177,7 +177,7 @@ describe('generate_priority_order equipped-item exclusion', () => {
       // never the generic token -- wishlist/BiS stay keyed to the token, and
       // the synced row carries the resolved item's real wow_item_id.
       await q(
-        `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, item_id, item_level, track)
+        `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, wow_item_id, item_level, track)
          values (1, 1, 'CHEST', $1, 700, 'Myth')`,
         [RESOLVED_WOW_ITEM_ID]
       );
