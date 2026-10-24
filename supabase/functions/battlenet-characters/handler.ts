@@ -1,6 +1,7 @@
 // battlenet-characters (#942 step 5, #1162): lists a raider's max-level
 // characters from their Battle.net account, links the ones on a team's roster
-// to them, and saves the ones they pick as alts.
+// to them, and saves the ones they pick as alts, with their own roster
+// characters alongside.
 //
 // POST { token, save? }. `token` is the Battle.net access token the app holds
 // right after a Battle.net sign-in or connect. `save`, when present, is the
@@ -149,11 +150,25 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (picked && picked.length === 0 && Array.isArray(body.save) && body.save.length > 0) {
     return refuse(BLIZZARD_DOWN, 502);
   }
-  if (picked) await deps.db.saveCharacters(personId, picked);
-  const saved = new Set(await deps.db.savedBlizzardIds(personId));
 
   const key = (name: string, realm: string) => (name + '-' + realm).replace(/ /g, '').toLowerCase();
   const rosterByKey = new Map(roster.map((r) => [r.name_realm.replace(/ /g, '').toLowerCase(), r]));
+
+  // A save also keeps the person's own roster characters (#1620): the signup
+  // picks from saved characters, and the picker never offers a roster
+  // character as an alt, so without this a raider's main is never saved.
+  // Any of the person's matches counts: one character can be on two teams'
+  // rosters, and rosterByKey keeps only the last.
+  if (picked) {
+    const ownKeys = new Set(
+      roster
+        .filter((r) => r.outcome === 'linked' || r.outcome === 'already_yours')
+        .map((r) => r.name_realm.replace(/ /g, '').toLowerCase())
+    );
+    const own = shown.filter((c) => ownKeys.has(key(c.name, c.realm)) && !picked.includes(c));
+    await deps.db.saveCharacters(personId, [...picked, ...own]);
+  }
+  const saved = new Set(await deps.db.savedBlizzardIds(personId));
 
   return jsonResponse({
     success: true,
