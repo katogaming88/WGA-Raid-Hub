@@ -357,7 +357,7 @@ Unique on `(player_id, season)`.
 
 ## `player_equipped_gear`
 
-Each roster character's equipped gear, one row per slot, as the Blizzard gear sync (`blizzard-gear-sync`) last saw it. Synced data: the sync replaces a character's rows each run, so nothing here is hand-entered and all of it can be rebuilt. Read by `generate_priority_order()` (a raider already wearing the item, or the slot's lowest track worn) and shown as Equipped Gear on the profile.
+Each roster character's equipped gear, one row per slot, as the Blizzard gear sync (`blizzard-gear-sync`) last saw it. Synced data: each run updates a character's row for every slot Blizzard returns, so nothing here is hand-entered and all of it can be rebuilt. It never deletes, so a slot emptied since (an off hand put away) keeps its last row. Read by `generate_priority_order()` (a raider already wearing the item, or the slot's lowest track worn) and shown as Equipped Gear on the profile.
 
 | Column           | Type        | Purpose                                                                                                         |
 | ---------------- | ----------- | --------------------------------------------------------------------------------------------------------------- |
@@ -371,7 +371,7 @@ Each roster character's equipped gear, one row per slot, as the Blizzard gear sy
 | `bonus_list`     | int4[]      | Blizzard's bonus ids for the item, kept raw so `track` can be worked out again without a re-sync               |
 | `synced_at`      | timestamptz | When the sync wrote the row                                                                                     |
 
-Unique on `(player_id, equipment_slot)`. To find the catalog item a row is wearing, join `items` on `items.wow_item_id = player_equipped_gear.wow_item_id`. Most rows match nothing: dungeon, crafted, delve and world gear is not in the raid catalog.
+Unique on `(player_id, equipment_slot)`. To find the catalog item a row is wearing, join `items` on `items.wow_item_id = player_equipped_gear.wow_item_id`. Not every row matches: dungeon, crafted, delve and world gear the catalog does not hold matches nothing (169 of 1,463 rows on production, 2026-10-24).
 
 ---
 
