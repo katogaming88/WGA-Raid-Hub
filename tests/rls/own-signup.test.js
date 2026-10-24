@@ -101,6 +101,9 @@ describe('get_own_signup', () => {
       await q('update public.season_signups set is_backup_tank = true where id = $1', [id]);
       const res = await getOwn(asUser, SIGNUP_OWNER_T1, 1);
       expect(res.rows[0]).toMatchObject({ is_backup_tank: true, is_backup_healer: false });
+      await q('update public.season_signups set is_backup_tank = false, is_backup_healer = true where id = $1', [id]);
+      const again = await getOwn(asUser, SIGNUP_OWNER_T1, 1);
+      expect(again.rows[0]).toMatchObject({ is_backup_tank: false, is_backup_healer: true });
     });
   });
 
