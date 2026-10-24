@@ -4,7 +4,7 @@
 // on the roster keeps them.
 import { describe, it, expect, afterAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { pool, withTxn, seedPlayer, seedSignup, OFFICER_T1 } from './helpers.js';
+import { pool, withTxn, seedPlayer, seedSignup, OFFICER_T1, OFFICER_T2, RAIDER_T1 } from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -39,4 +39,25 @@ describe('add_signup_to_roster() and the officer exceptions', () => {
       expect(await exceptions(q, p.id)).toEqual({ wishlist_allowed: true, bis_allowed: true, archived_at: null });
     });
   });
+
+  // The matching refused cases (CodeRabbit on #1617): another team's officer,
+  // a raider and a signed-out caller cannot add the signup, and the character
+  // is left exactly as it was, archived or not.
+  for (const archived of [true, false]) {
+    it(`is refused to everyone but the team's officers, changing nothing (${archived ? 'archived' : 'on the roster'})`, async () => {
+      await withTxn(async ({ q, asUser, asAnon }) => {
+        const p = await withExceptions(q, archived);
+        const before = await exceptions(q, p.id);
+        const add = 'select public.add_signup_to_roster($1)';
+        for (const call of [
+          () => asUser(OFFICER_T2, add, [p.signup]),
+          () => asUser(RAIDER_T1, add, [p.signup]),
+          () => asAnon(add, [p.signup])
+        ]) {
+          await expect(call()).rejects.toThrow();
+          expect(await exceptions(q, p.id)).toEqual(before);
+        }
+      });
+    });
+  }
 });
