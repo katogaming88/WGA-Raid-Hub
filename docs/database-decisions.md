@@ -2808,3 +2808,19 @@ Decided with Kat 2026-10-23: with signups closing as late as the season's start 
 **They move when the signup is added.** A trigger on `season_signups` moves the rows onto `approved_player_id` for the signup's season when the status becomes `added`, so every path that adds a signup carries them: the team leader closing signups, an officer's single add, and the automatic close (#1608). They move only when the character holds no wishlist for that season. The character can join the roster before signups close (an approved main swap, the invite link, an officer's add), and from then on the raider edits its own wishlist, which is newer, so the signup's picks are dropped instead of replacing it (fresh-agent review). They move only onto the character the signup names: on its team, on the roster, and held by the signer or by nobody yet. An officer can set any signup's `approved_player_id`, and must not rewrite another raider's wishlist, or an archived character's, that way (fresh-agent review and CodeRabbit). A swap's old character keeps its own. Turned down, or moved to a different character (the name key changes), the rows go; deleting the signup takes them by cascade.
 
 [Full discussion -> #1609](https://github.com/katogaming88/WGA-Raid-Hub/issues/1609).
+
+## #1608 -- signups close by themselves when the season starts
+
+Shipped: 20261023205911_season_start_closes_signups.sql
+
+Decided with Kat 2026-10-23.
+
+**What it does.** Every hour, `close_started_season_signups()` (pg_cron, `close-started-season-signups`, at 20 past) finds each team whose signups are still open for a season that has started (on or before today's Eastern date) and closes them as the team leader closing them with every tick left on would (#1467): the plan's stays, swaps, first mains and joins go on the roster with their Trial and backup flags, every character the plan lists to archive is archived as `no_signup` with the season's name, and `signups_open` goes off. A signup the plan skips stays pending for an officer. A team already closed is passed over, so a second run does nothing. One team failing is rolled back alone, with a warning, and tried again the next hour.
+
+**Nobody is signed in,** so the officer-only steps are done in the function itself, in the leader's lock order: signups, then memberships, then characters (#1432). An archived signer is brought back as a raider before their add, as `restore_team_member()` does for an officer. Nobody can call it from the site; only the scheduler runs it.
+
+**`audit_log.automatic`.** Its audit rows carry no actor and `automatic = true`, and both Audit Log pages show "Automatic" as who made them. The flag, not a null `actor_id`, decides: about 3,000 older officer rows have no actor.
+
+**No cutoff date.** A season already started when this ships closes on the first run. Kat closes Midnight Season 2's signups by hand before this merges (it would otherwise archive 13 raiders on Phoenix and Hellfire). The Discord notice to officers is its own issue.
+
+[Full discussion -> #1608](https://github.com/katogaming88/WGA-Raid-Hub/issues/1608).

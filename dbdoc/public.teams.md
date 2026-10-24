@@ -112,6 +112,7 @@ erDiagram
   integer target_id
   jsonb detail
   timestamp_with_time_zone created_at
+  boolean automatic
 }
 "public.bis_requests" {
   integer id

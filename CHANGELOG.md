@@ -12,6 +12,25 @@ answers to.
 
 ---
 
+## [3.204.0] - 2026-10-23
+
+### Frontend
+
+- The Audit Log, on the current site and in the new app, shows
+  "Automatic" as who made a change when a scheduled job made it (#1608).
+
+### Backend
+
+- Signups close by themselves when the season starts (#1608). Within the
+  hour after a season's start date (Eastern), each team whose signups are
+  still open is closed as if the team leader had closed them with every
+  tick left on: signups go on the roster with their Trial and backup
+  flags, swaps included; everyone nobody signed up for is archived as
+  "Did not sign up"; an archived signer comes back as a raider. A signup
+  that needs an officer (someone with several characters, or two signups
+  on one character) stays pending. The team leader can still close them
+  from 14 days before. The audit rows are marked Automatic.
+
 ## [3.203.0] - 2026-10-23
 
 ### Frontend

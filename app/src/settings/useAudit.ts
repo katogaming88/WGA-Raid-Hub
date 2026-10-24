@@ -10,6 +10,7 @@ import { formatAuditDetail, type AuditEntry } from './audit';
 export type AuditRow = {
   id: number;
   actor_id: string | null;
+  automatic?: boolean;
   action: string | null;
   target_type: string | null;
   target_id: number | null;
@@ -24,7 +25,7 @@ export function useAuditLog(teamId: number) {
     const rows = await readAll<AuditRow>((from, to) =>
       client
         .from('audit_log')
-        .select('id, actor_id, action, target_type, target_id, detail, created_at')
+        .select('id, actor_id, automatic, action, target_type, target_id, detail, created_at')
         .eq('team_id', teamId)
         .order('id')
         .range(from, to)
@@ -39,7 +40,9 @@ export function useAuditLog(teamId: number) {
     const entries: AuditEntry[] = rows.data!.map((row) => ({
       id: row.id,
       ts: row.created_at,
-      changedBy: row.actor_id ? (actorNames[row.actor_id] ?? '') : '',
+      // A scheduled job's change has no actor (#1608); older rows with none
+      // were officers', so the flag decides, not the null.
+      changedBy: row.automatic ? 'Automatic' : row.actor_id ? (actorNames[row.actor_id] ?? '') : '',
       action: row.action ?? '',
       target: row.target_type === 'players' && row.target_id != null ? (targetNames[row.target_id] ?? '') : '',
       detail: formatAuditDetail(row.detail)
