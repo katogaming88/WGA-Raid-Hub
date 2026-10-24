@@ -239,6 +239,22 @@ Deno.test('a save leaves out roster characters that are not the raider’s own (
   }
 });
 
+Deno.test(
+  'a save keeps a roster character that is the raider’s on one team, whatever another team says (#1620)',
+  async () => {
+    const roster: RosterLink[] = [
+      { player_id: 5, team_id: 1, name_realm: 'Grihz-Illidan', outcome: 'already_yours' },
+      { player_id: 9, team_id: 2, name_realm: 'Grihz-Illidan', outcome: 'claimed_by_someone_else' }
+    ];
+    const r = await run({ token: TOKEN, save: [] }, { roster });
+    const saveCall = r.db.calls.find((c) => c.method === 'saveCharacters')!;
+    assertEquals(
+      (saveCall.args[1] as Array<{ blizzard_id: number }>).map((c) => c.blizzard_id),
+      [101]
+    );
+  }
+);
+
 Deno.test('a save with no alts picked still keeps a linked roster character (#1620)', async () => {
   const roster: RosterLink[] = [{ player_id: 5, team_id: 1, name_realm: 'Grihz-Illidan', outcome: 'linked' }];
   const r = await run({ token: TOKEN, save: [] }, { roster });

@@ -157,11 +157,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // A save also keeps the person's own roster characters (#1620): the signup
   // picks from saved characters, and the picker never offers a roster
   // character as an alt, so without this a raider's main is never saved.
+  // Any of the person's matches counts: one character can be on two teams'
+  // rosters, and rosterByKey keeps only the last.
   if (picked) {
-    const own = shown.filter((c) => {
-      const outcome = rosterByKey.get(key(c.name, c.realm))?.outcome;
-      return (outcome === 'linked' || outcome === 'already_yours') && !picked.includes(c);
-    });
+    const ownKeys = new Set(
+      roster
+        .filter((r) => r.outcome === 'linked' || r.outcome === 'already_yours')
+        .map((r) => r.name_realm.replace(/ /g, '').toLowerCase())
+    );
+    const own = shown.filter((c) => ownKeys.has(key(c.name, c.realm)) && !picked.includes(c));
     await deps.db.saveCharacters(personId, [...picked, ...own]);
   }
   const saved = new Set(await deps.db.savedBlizzardIds(personId));
