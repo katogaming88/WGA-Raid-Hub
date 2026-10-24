@@ -4,9 +4,11 @@ import { charactersOn, useAccess } from '../auth/access';
 import { useSession } from '../auth/session';
 import { useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
+import { nameRealmKey } from '../characters/characters';
+import { useMySavedCharacters } from '../characters/useCharacters';
 import { useCurrentSeason } from '../profile/useProfile';
 import { useRosterPlayers, useSignupSeasons, type SignupSeason } from '../roster/useRoster';
-import { SignUpWizard, type WizardEdit } from './SignUpWizard';
+import { SignUpForm, type FormEdit } from './SignUpForm';
 import { SignupSummary } from './SignupSummary';
 import { classmatesPool, type ClassmateRow } from './signup';
 import { useIncomingWithSwap, useOwnSignup, useRoleTargets } from './useSignup';
@@ -51,10 +53,10 @@ function SignUpForTier({ teamId, seasons }: { teamId: number; seasons: SignupSea
   const picked = seasons.find((s) => s.code === tierOverride) ?? seasons[0]!;
   const tier = picked.code;
   const [editing, setEditing] = useState(false);
-  // Where the wizard's Back/Next/Submit box portals to (#1162): its own card
-  // beside the step content, not appended under it, so it never scrolls off
-  // with a long Battle.net character list. Only the wizard uses it; the
-  // summary's one button needs no side box.
+  // Where the form's Sign up box portals to (#1162): its own card beside the
+  // form, not appended under it, so it never scrolls off with a long
+  // character list. Only the form uses it; the summary's one button needs no
+  // side box.
   const [sideHost, setSideHost] = useState<HTMLDivElement | null>(null);
 
   const access = useAccess();
@@ -66,10 +68,11 @@ function SignUpForTier({ teamId, seasons }: { teamId: number; seasons: SignupSea
   // page reads.
   const liveSeason = useCurrentSeason(teamId);
   const targets = useRoleTargets(teamId);
+  const saved = useMySavedCharacters();
 
   const page = bothQueries(
     bothQueries(bothQueries(access, ownSignup), bothQueries(roster, incoming)),
-    bothQueries(liveSeason, targets)
+    bothQueries(liveSeason, bothQueries(targets, saved))
   );
 
   const tierPicker = seasons.length > 1 && (
@@ -97,17 +100,21 @@ function SignUpForTier({ teamId, seasons }: { teamId: number; seasons: SignupSea
 
   return (
     <DataState query={page} label="your signup">
-      {([[[accessData, own], [rosterRows, incomingRows]], [liveSeason, targetsData]]) => {
+      {([[[accessData, own], [rosterRows, incomingRows]], [liveSeason, [targetsData, savedRows]]]) => {
         const liveSeasonCode = liveSeason.code;
-        const claimed = charactersOn(accessData, teamId)[0] ?? null;
-        const claimNameRealm = claimed?.nameRealm ?? null;
+        const rosterCharacters = charactersOn(accessData, teamId);
         const rosterAsClassmates: ClassmateRow[] = rosterRows.map((p) => ({
           nameRealm: p.name_realm,
           class: p.classes_specs?.class ?? null,
           spec: p.classes_specs?.spec ?? null,
           role: p.classes_specs?.role ?? null
         }));
-        const classmates = classmatesPool(incomingRows, rosterAsClassmates, liveSeasonCode, tier);
+        // Not their own characters: their signup is not someone else playing
+        // the class.
+        const mine = new Set(savedRows.map((c) => nameRealmKey(`${c.name}-${c.realm}`)));
+        const classmates = classmatesPool(incomingRows, rosterAsClassmates, liveSeasonCode, tier).filter(
+          (c) => !mine.has(nameRealmKey(c.nameRealm))
+        );
 
         if (own && !editing) {
           return (
@@ -118,20 +125,24 @@ function SignUpForTier({ teamId, seasons }: { teamId: number; seasons: SignupSea
           );
         }
 
-        const edit: WizardEdit | null = own
+        const edit: FormEdit | null = own
           ? {
               signupId: own.id,
               fields: {
-                charName: own.signup_name_realm.split('-')[0] ?? '',
-                realm: own.signup_name_realm.split('-').slice(1).join('-'),
+                // get_own_signup names the character, not its id, so the saved
+                // one under that name; none if it has since gone from the list.
+                characterId:
+                  savedRows.find((c) => nameRealmKey(`${c.name}-${c.realm}`) === nameRealmKey(own.signup_name_realm))
+                    ?.id ?? null,
                 className: (own.main_swap ? own.swap_class : own.class) ?? '',
                 mainSpec: (own.main_swap ? own.swap_spec : own.spec) ?? '',
                 offSpecs: (own.off_specs ?? '')
                   .split(',')
                   .map((s) => s.trim())
                   .filter(Boolean),
-                primaryRole: null,
-                notes: own.player_note ?? ''
+                notes: own.player_note ?? '',
+                backupTank: own.is_backup_tank,
+                backupHealer: own.is_backup_healer
               }
             }
           : null;
@@ -140,14 +151,17 @@ function SignUpForTier({ teamId, seasons }: { teamId: number; seasons: SignupSea
           <div className="signup-grid">
             <div className="card signup-card">
               {tierPicker}
-              <SignUpWizard
+              <SignUpForm
                 teamId={teamId}
                 season={tier}
+                seasonName={picked.name}
                 edit={edit}
-                claimNameRealm={claimNameRealm}
+                saved={savedRows}
+                rosterCharacters={rosterCharacters}
                 classmates={classmates}
                 roleTargets={targetsData}
                 onDone={() => setEditing(false)}
+                onSubmitted={() => setEditing(true)}
                 sideHost={sideHost}
               />
             </div>

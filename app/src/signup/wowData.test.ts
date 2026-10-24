@@ -1,36 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { CLASS_SPECS, resolveRole } from './wowData';
+import { CLASS_SPECS, specRole } from './wowData';
 
-describe('resolveRole', () => {
+describe('specRole', () => {
   it('is fixed for a pure ranged/melee class', () => {
-    expect(resolveRole('Mage', 'Fire', null)).toBe('Ranged');
-    expect(resolveRole('Rogue', 'Subtlety', null)).toBe('Melee');
+    expect(specRole('Mage', 'Frost')).toBe('Ranged');
+    expect(specRole('Rogue', 'Subtlety')).toBe('Melee');
   });
 
-  it('resolves a hybrid’s DPS/Healer choice through the spec', () => {
-    expect(resolveRole('Druid', 'Balance', 'DPS')).toBe('Ranged');
-    expect(resolveRole('Druid', 'Feral', 'DPS')).toBe('Melee');
-    expect(resolveRole('Druid', 'Restoration', 'Healer')).toBe('Heal');
+  it("is the spec's role for everyone else", () => {
+    expect(specRole('Druid', 'Balance')).toBe('Ranged');
+    expect(specRole('Druid', 'Feral')).toBe('Melee');
+    expect(specRole('Druid', 'Restoration')).toBe('Heal');
+    expect(specRole('Warrior', 'Protection')).toBe('Tank');
+    expect(specRole('Death Knight', 'Frost')).toBe('Melee');
+    expect(specRole('Hunter', 'Survival')).toBe('Melee');
+    expect(specRole('Hunter', 'Beast Mastery')).toBe('Ranged');
   });
 
-  it('keeps Tank as Tank', () => {
-    expect(resolveRole('Warrior', 'Protection', 'Tank')).toBe('Tank');
-  });
-
-  it('passes Hunter’s own Melee/Ranged choice through unchanged', () => {
-    expect(resolveRole('Hunter', 'Survival', 'Melee')).toBe('Melee');
-    expect(resolveRole('Hunter', 'Beast Mastery', 'Ranged')).toBe('Ranged');
-  });
-
-  it('is null with no role chosen yet on a hybrid', () => {
-    expect(resolveRole('Priest', 'Shadow', null)).toBeNull();
+  it('is null with no spec picked yet, or a class it does not know', () => {
+    expect(specRole('Priest', '')).toBeNull();
+    expect(specRole('Tinker', 'Frost')).toBeNull();
   });
 });
 
 describe('CLASS_SPECS', () => {
-  it('has every class the roster shows, and Hunter offers a role choice', () => {
+  it('has every class the roster shows', () => {
     expect(Object.keys(CLASS_SPECS)).toHaveLength(13);
-    expect(CLASS_SPECS['Hunter']!.roles).toEqual(['Melee', 'Ranged']);
-    expect(CLASS_SPECS['Hunter']!.role).toBeUndefined();
   });
 });

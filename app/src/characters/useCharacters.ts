@@ -35,6 +35,18 @@ export function usePersonCharacters(personId: number | null) {
   );
 }
 
+// The signed-in person's own saved characters, for the signup (#1466): the
+// alts the import saved and, since #1620, their roster characters. Someone
+// with no person record has none.
+export function useMySavedCharacters() {
+  return useSupabaseQuery<SavedCharacter[]>(['person-characters', 'mine'], async (client) => {
+    const person = await client.rpc('my_person_id');
+    if (person.error) return { data: null, error: person.error };
+    if (person.data == null) return { data: [], error: null };
+    return client.from('characters').select(CHARACTER_COLUMNS).eq('person_id', person.data);
+  });
+}
+
 // Every alt of the team's raiders, for the officer roster, and which
 // memberships are current (the Roster page's name-only rows, #1355).
 // Memberships and characters are both readable only by the team's officers.

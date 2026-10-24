@@ -1270,10 +1270,43 @@ const SIGNUP_BASE = {
         signups_open: true,
         seasons: { starts_at: '2099-01-01', display_name: 'Midnight Season 3' }
       }
-    ]
+    ],
+    // The import's saved characters (#1466), one leveling without a spec.
+    characters: [
+      {
+        id: 11,
+        person_id: 42,
+        name: 'Katorrí',
+        realm: 'Stormrage',
+        class_name: 'Warlock',
+        spec_name: 'Demonology',
+        item_level: 640
+      },
+      {
+        id: 12,
+        person_id: 42,
+        name: 'Grihz',
+        realm: 'Illidan',
+        class_name: 'Shaman',
+        spec_name: null,
+        item_level: null
+      }
+    ],
+    classes_specs: [{ id: 32, class: 'Warlock', spec: 'Demonology', role: 'Ranged' }]
   }
 };
-const SIGNUP = { ...SIGNUP_BASE, sentinel: 'main:has(.signup-card)', rpc: { get_own_signup: [] } };
+const SIGNUP = {
+  ...SIGNUP_BASE,
+  sentinel: 'main:has(.signup-bnet-list)',
+  rpc: { get_own_signup: [], my_person_id: 42 }
+};
+// No characters imported yet: the form offers the import instead (#1466).
+const SIGNUP_NO_CHARACTERS = {
+  ...SIGNUP_BASE,
+  tables: { ...SIGNUP_BASE.tables, characters: [] },
+  sentinel: 'main:has(.signup-bnet-picker)',
+  rpc: { get_own_signup: [], my_person_id: 42 }
+};
 const SIGNUP_SUMMARY = {
   ...SIGNUP_BASE,
   sentinel: 'main:has(.signup-summary)',
@@ -1292,9 +1325,12 @@ const SIGNUP_SUMMARY = {
         player_note: null,
         status: 'pending',
         season: 'MID3',
-        submitted_at: '2026-09-01T00:00:00Z'
+        submitted_at: '2026-09-01T00:00:00Z',
+        is_backup_tank: false,
+        is_backup_healer: false
       }
-    ]
+    ],
+    my_person_id: 42
   }
 };
 
@@ -1345,6 +1381,7 @@ const STATES = [
   { label: 'signup', ...SIGNUP },
   { label: 'signup, light', ...SIGNUP, colorScheme: 'light' },
   { label: 'signup summary', ...SIGNUP_SUMMARY },
+  { label: 'signup, no characters imported', ...SIGNUP_NO_CHARACTERS },
   { label: 'news', ...NEWS },
   { label: 'news, light', ...NEWS, colorScheme: 'light' },
   { label: 'streams', ...STREAMS_PAGE },

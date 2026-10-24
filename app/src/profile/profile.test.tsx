@@ -725,7 +725,7 @@ describe('Characters card and alts picker', () => {
     expect(within(card).getByText('Raiding')).toBeInTheDocument();
     const alts = await within(card).findByRole('list', { name: 'Alts' });
     expect(within(alts).getByText('Grihzy')).toBeInTheDocument();
-    expect(within(card).getByRole('button', { name: 'Choose alts' })).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'Import characters' })).toBeInTheDocument();
     expect(card).toHaveTextContent('Only you and your team’s officers see your alts.');
   });
 
@@ -733,7 +733,7 @@ describe('Characters card and alts picker', () => {
     renderApp('/g/wga/t/phoenix/p/tb000011', profileHandlers(person('officer', null), withPerson()));
     const card = (await screen.findByRole('heading', { name: 'Characters' })).closest('section')!;
     expect(await within(card).findByText('Grihzy')).toBeInTheDocument();
-    expect(within(card).queryByRole('button', { name: 'Choose alts' })).not.toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: 'Import characters' })).not.toBeInTheDocument();
   });
 
   it('opens on its own after the Battle.net trip, and saves the picked alts', async () => {
@@ -745,7 +745,7 @@ describe('Characters card and alts picker', () => {
       authReturn: { intent: 'choose-alts', error: null },
       battlenetToken: 'bnet-token'
     });
-    const dialog = await screen.findByRole('dialog', { name: 'Choose your alts' });
+    const dialog = await screen.findByRole('dialog', { name: 'Import your characters' });
     // Save is still disabled while the characters load, so focus has to land on
     // something else inside the dialog rather than staying on the page behind it.
     expect(dialog).toContainElement(document.activeElement as HTMLElement);
@@ -762,7 +762,7 @@ describe('Characters card and alts picker', () => {
     const frost = within(dialog).getByRole('group', { name: 'Show Grihzfrost as' });
     await userEvent.click(within(frost).getByRole('button', { name: 'Alt' }));
     expect(within(dialog).getByText(/alts? selected/)).toHaveTextContent('2 alts selected');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save alts' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save characters' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     const calls = client.authCalls.filter(([kind]) => kind === 'invoke').map(([, call]) => call);
@@ -796,7 +796,7 @@ describe('Characters card and alts picker', () => {
       { ...profileHandlers(person('raider', 11), withPerson()), invoke: () => ({ data: ended }) },
       { authReturn: { intent: 'choose-alts', error: null }, battlenetToken: 'bnet-token' }
     );
-    const dialog = await screen.findByRole('dialog', { name: 'Choose your alts' });
+    const dialog = await screen.findByRole('dialog', { name: 'Import your characters' });
     expect(await within(dialog).findByText('Hellfire Rollers · membership ended')).toBeInTheDocument();
     expect(within(dialog).getByText('Ask its officers to add you back')).toBeInTheDocument();
   });
@@ -806,7 +806,7 @@ describe('Characters card and alts picker', () => {
       status: 401
     });
     const noToken = renderApp('/g/wga/t/phoenix/me', profileHandlers(person('raider', 11), withPerson()));
-    await userEvent.click(await screen.findByRole('button', { name: 'Choose alts' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Import characters' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Load your characters from Battle.net' }));
     expect(noToken.client.authCalls).toContainEqual([
       'signInWithOAuth',
@@ -822,7 +822,7 @@ describe('Characters card and alts picker', () => {
       },
       { authReturn: { intent: 'choose-alts', error: null }, battlenetToken: 'old' }
     );
-    const dialog = await screen.findByRole('dialog', { name: 'Choose your alts' });
+    const dialog = await screen.findByRole('dialog', { name: 'Import your characters' });
     expect(await within(dialog).findByText('Your Battle.net sign-in has expired.')).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Sign in with Battle.net again' })).toBeInTheDocument();
   });
@@ -893,7 +893,9 @@ const SIGNUP = {
   player_note: null,
   status: 'pending',
   season: 'MID3',
-  submitted_at: '2026-10-20T00:00:00Z'
+  submitted_at: '2026-10-20T00:00:00Z',
+  is_backup_tank: false,
+  is_backup_healer: false
 };
 
 function withSignup(who: ReturnType<typeof person>, wishlistOpen = true) {
