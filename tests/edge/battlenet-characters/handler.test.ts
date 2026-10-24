@@ -215,6 +215,40 @@ Deno.test("saves only picked ids that are on the raider's own max-level list", a
   );
 });
 
+Deno.test(
+  'a save keeps the raider’s own roster characters too, so the signup can offer their main (#1620)',
+  async () => {
+    const roster: RosterLink[] = [{ player_id: 5, team_id: 1, name_realm: 'Grihz-Illidan', outcome: 'already_yours' }];
+    const ids = async (save: number[]) => {
+      const r = await run({ token: TOKEN, save }, { roster });
+      const saveCall = r.db.calls.find((c) => c.method === 'saveCharacters')!;
+      return (saveCall.args[1] as Array<{ blizzard_id: number }>).map((c) => c.blizzard_id).sort();
+    };
+    assertEquals(await ids([201]), [101, 201]);
+    // 101 named in the body as well: still saved once.
+    assertEquals(await ids([201, 101]), [101, 201]);
+  }
+);
+
+Deno.test('a save leaves out roster characters that are not the raider’s own (#1620)', async () => {
+  for (const outcome of ['claimed_by_someone_else', 'needs_discord', 'membership_ended'] as const) {
+    const roster: RosterLink[] = [{ player_id: 5, team_id: 1, name_realm: 'Grihz-Illidan', outcome }];
+    const r = await run({ token: TOKEN, save: [] }, { roster });
+    const saveCall = r.db.calls.find((c) => c.method === 'saveCharacters')!;
+    assertEquals((saveCall.args[1] as unknown[]).length, 0, outcome);
+  }
+});
+
+Deno.test('a save with no alts picked still keeps a linked roster character (#1620)', async () => {
+  const roster: RosterLink[] = [{ player_id: 5, team_id: 1, name_realm: 'Grihz-Illidan', outcome: 'linked' }];
+  const r = await run({ token: TOKEN, save: [] }, { roster });
+  const saveCall = r.db.calls.find((c) => c.method === 'saveCharacters')!;
+  assertEquals(
+    (saveCall.args[1] as Array<{ blizzard_id: number }>).map((c) => c.blizzard_id),
+    [101]
+  );
+});
+
 Deno.test('a save that matches nothing Blizzard returned refuses instead of clearing the set (#1319)', async () => {
   // Blizzard answers 404 for a login with no WoW characters, so a hiccup
   // mid-save reads as "this account holds nothing". Saving that would delete

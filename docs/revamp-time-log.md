@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     39 h 15 m |
+| Revamp 3: officer dashboard        |     40 h 17 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **101 h 50 m** |
+| **All revamp work**                | **102 h 52 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -377,6 +377,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 4:04-4:25 PM | My profile for the signed-up character (Kat's asks mid-build): a switch beside the roster character, or the whole profile for someone new; the full profile rather than only the wishlist; attendance and join date are the Member's; tests, stamp, changelog, these rows, PR opened | Revamp 3 (#1609) | 21 m | ~16 m build, ~5 m Kat deciding | not read | Fresh-agent review, screenshots, review and merge not yet counted |
 | 4:25-5:30 PM | PR #1612 (#1609): fresh-agent review and its two fixes, CodeRabbit's four comments fixed, two CI re-runs (registry data limit), merged; #1487 row removed | Revamp 3 (#1609) | 1 h 5 m | mostly build, Kat reviewing | not read | Merged 5:25 PM |
 | 8:45-9:15 PM | #1608 built: signups still open when a season starts close by themselves within the hour, team by team, as the team leader closing with every tick on would (signups on the roster, non-signers archived as Did not sign up, an archived signer brought back); audit rows marked Automatic and shown so on both Audit Log pages; database tests red first, generated docs, decision log, stamp, changelog, these rows, PR opened | Revamp 3 (#1608) | 30 m | ~25 m build, ~5 m Kat deciding | not read | Kat: "Automatic" in the Audit Log; no cutoff date (Kat closes MID2 by hand before merge); Discord notice split off. Times approximate. Fresh-agent review, review and merge not yet counted |
+| 9:15-9:30 PM | PR #1614 (#1608): CodeRabbit round 1 (lock order matched to the leader's close, every site caller refused); the Schema docs failure diagnosed and #1615 filed | Revamp 3 (#1608) | 15 m | mostly build | not read | Row added 10-23 from the handoff note; times approximate |
+| 9:45-10:15 PM | PR #1614 (#1608): CodeRabbit round 2 (cutoff date declined per Kat, per-team failure test, #1608 text updated); fresh-agent reviews of #1614 and #1617 and their fixes (RLS.md entry, no-actor count, lock gap note); #1618 filed; #1614 merged; #1617 re-stamped after main | Revamp 3 (#1608) | 30 m | ~20 m build, ~10 m Kat | not read | Merged 10:11 PM. Row added 10-23 from the handoff note; times approximate |
+| 11:33-11:50 PM | #1620 found while starting #1466: no rostered raider has their main among their saved characters (53 of 53 on production), so the signup could not offer it; Kat asked, then shown it again with Katorrí; #1620 filed and set as blocking #1466; built: a save keeps the raider's own roster characters; Edge Function tests red first, stamp, changelog, these rows, PR opened | Revamp 3 (#1620) | 17 m | ~14 m build, ~3 m Kat deciding | not read | Kat: people import their characters before they sign up, and the import matches the roster character. Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
@@ -401,6 +404,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-10-18 | 11:29-11:32 AM | Where the work stood | 5 m |
 | 2026-10-19 | 9:16-9:17 PM | Where the work stood | 5 m |
 | 2026-10-23 | 9:30-9:45 PM | #1616 (CodeRabbit on #1614): a character re-added from a signup no longer keeps last stint's wishlist and BiS exceptions; issue, migration, tests red first, PR (#1614's CodeRabbit round is logged in #1614) | 15 m |
+| 2026-10-23 | 11:25-11:26 PM | Where the work stood | 5 m |
+| 2026-10-23 | 11:26-11:32 PM | #1615: the Schema docs check pulls the type generator from Docker Hub when Amazon refuses (PR #1619, merged 11:32 PM) | 5 m |
 
 ## Remaining in Revamp 1
 

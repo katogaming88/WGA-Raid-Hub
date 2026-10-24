@@ -12,6 +12,14 @@ answers to.
 
 ---
 
+## [3.205.0] - 2026-10-23
+
+### Functions
+
+- Importing your characters (Choose alts, then Save) also saves the ones
+  on a roster as yours, so next season's signup can offer your main and
+  not only your alts (#1620). `battlenet-characters`.
+
 ## [3.204.2] - 2026-10-23
 
 ### Project
