@@ -3,7 +3,7 @@
 -- execute (site roles): authenticated
 
 CREATE OR REPLACE FUNCTION public.get_own_signup(p_team_id integer, p_season text DEFAULT NULL::text)
- RETURNS TABLE(id integer, signup_name_realm text, class text, spec text, off_specs text, main_swap boolean, swap_class text, swap_spec text, swap_from_name_realm text, player_note text, status text, season text, submitted_at timestamp with time zone)
+ RETURNS TABLE(id integer, signup_name_realm text, class text, spec text, off_specs text, main_swap boolean, swap_class text, swap_spec text, swap_from_name_realm text, player_note text, status text, season text, submitted_at timestamp with time zone, is_backup_tank boolean, is_backup_healer boolean)
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
@@ -22,7 +22,8 @@ begin
          coalesce(cs_live.spec, cs_main.spec),
          s.off_specs, s.main_swap,
          cs_swap.class, cs_swap.spec, s.swap_from_name_realm,
-         s.player_note, s.status, s.season, s.submitted_at
+         s.player_note, s.status, s.season, s.submitted_at,
+         s.is_backup_tank, s.is_backup_healer
   from public.season_signups s
   left join public.classes_specs cs_main on cs_main.id = s.class_spec_id
   left join public.classes_specs cs_swap on cs_swap.id = s.swap_class_spec_id
@@ -39,4 +40,5 @@ begin
     )
   order by s.submitted_at desc
   limit 1;
-end $function$;
+end
+$function$;

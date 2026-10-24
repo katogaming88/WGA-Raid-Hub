@@ -4321,6 +4321,8 @@ export type Database = {
         Returns: {
           class: string
           id: number
+          is_backup_healer: boolean
+          is_backup_tank: boolean
           main_swap: boolean
           off_specs: string
           player_note: string

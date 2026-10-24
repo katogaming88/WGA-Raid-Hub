@@ -2846,3 +2846,13 @@ Decided with Kat 2026-10-24.
 **Left alone.** `is_trial` and the officer's note. The current site's `submit_season_signup()` and `update_own_signup()` do not change. The old six-argument function is dropped, not kept beside the new one; only the new app, not yet shipping, calls it.
 
 [Full discussion -> #1622](https://github.com/katogaming88/WGA-Raid-Hub/issues/1622).
+
+## #1624 -- editing a signup shows the raider's backup tank and heal answers
+
+Shipped: 20261024114519_own_signup_backup_answers.sql
+
+Decided with Kat 2026-10-24.
+
+`get_own_signup()` also returns `is_backup_tank` and `is_backup_healer`. The new signup page fills its edit form from it, and without them an edit would show both ticks empty and saving would clear the answers the raider gave on their signup (#1622). Raiders have no read on `season_signups` itself, so this is the only way to them. The officer-only columns stay out. Its return shape changed, so it was dropped and created again with the same grants; the current site's signup page ignores the two extra columns. Kept as its own database PR ahead of the page (#1466), as #1622 was.
+
+[Full discussion -> #1624](https://github.com/katogaming88/WGA-Raid-Hub/issues/1624).

@@ -11806,12 +11806,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.get_own_signup",
-      "return_type": "record",
-      "arguments": "p_team_id integer, p_season text DEFAULT NULL::text",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.close_season",
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_season text, p_roster_snapshot jsonb",
@@ -12067,6 +12061,12 @@
       "name": "public.declare_season_signup",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_season text, p_character_id integer, p_class_spec_id integer, p_off_specs text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_backup_tank boolean DEFAULT false, p_backup_healer boolean DEFAULT false",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.get_own_signup",
+      "return_type": "record",
+      "arguments": "p_team_id integer, p_season text DEFAULT NULL::text",
       "type": "FUNCTION"
     }
   ],
