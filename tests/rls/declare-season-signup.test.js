@@ -216,8 +216,8 @@ describe('declare_season_signup()', () => {
         await openSignups(q);
         const { Frost } = await specs(q);
         const dk = await character(q, await personOf(q), { name: 'Deeka', characterClass: 'Death Knight' });
-        const id = (await declare(asUser, RAIDER_T1, dk, { spec: Frost, backupTank: true, backupHealer: true }))
-          .rows[0].id;
+        const id = (await declare(asUser, RAIDER_T1, dk, { spec: Frost, backupTank: true, backupHealer: true })).rows[0]
+          .id;
         expect(await flags(q, id)).toEqual({ is_backup_tank: true, is_backup_healer: false });
       });
     });
