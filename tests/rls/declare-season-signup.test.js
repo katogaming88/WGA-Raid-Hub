@@ -247,6 +247,23 @@ describe('declare_season_signup()', () => {
       });
     });
 
+    it('stores backup heal for a class with a healer spec, but not for a main healer', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        await openSignups(q);
+        const { rows } = await q(
+          `insert into public.classes_specs (class, spec, role) values
+             ('Priest', 'Shadow', 'Ranged'), ('Priest', 'Discipline', 'Heal')
+           returning spec, id`
+        );
+        const { Shadow, Discipline } = Object.fromEntries(rows.map((r) => [r.spec, r.id]));
+        const priest = await character(q, await personOf(q), { name: 'Priesty', characterClass: 'Priest' });
+        const id = (await declare(asUser, RAIDER_T1, priest, { spec: Shadow, backupHealer: true })).rows[0].id;
+        expect(await flags(q, id)).toEqual({ is_backup_tank: false, is_backup_healer: true });
+        await declare(asUser, RAIDER_T1, priest, { spec: Discipline, backupHealer: true });
+        expect(await flags(q, id)).toEqual({ is_backup_tank: false, is_backup_healer: false });
+      });
+    });
+
     it('stores false when the main spec is the role itself', async () => {
       await withTxn(async ({ q, asUser }) => {
         await openSignups(q);
