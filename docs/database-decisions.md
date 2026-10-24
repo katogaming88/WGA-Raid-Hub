@@ -2808,3 +2808,11 @@ Decided with Kat 2026-10-23: with signups closing as late as the season's start 
 **They move when the signup is added.** A trigger on `season_signups` moves the rows onto `approved_player_id` for the signup's season when the status becomes `added`, so every path that adds a signup carries them: the team leader closing signups, an officer's single add, and the automatic close (#1608). They move only when the character holds no wishlist for that season. The character can join the roster before signups close (an approved main swap, the invite link, an officer's add), and from then on the raider edits its own wishlist, which is newer, so the signup's picks are dropped instead of replacing it (fresh-agent review). They move only onto the character the signup names: on its team, on the roster, and held by the signer or by nobody yet. An officer can set any signup's `approved_player_id`, and must not rewrite another raider's wishlist, or an archived character's, that way (fresh-agent review and CodeRabbit). A swap's old character keeps its own. Turned down, or moved to a different character (the name key changes), the rows go; deleting the signup takes them by cascade.
 
 [Full discussion -> #1609](https://github.com/katogaming88/WGA-Raid-Hub/issues/1609).
+
+## #1616 -- a character re-added from a signup starts without last stint's exceptions
+
+Shipped: 20261023213820_signup_readd_resets_exceptions.sql
+
+Found by CodeRabbit on #1614. `add_signup_to_roster()` brought an archived character back with `wishlist_allowed` and `bis_allowed` still on from its last stint, so a returning raider could edit a closed wishlist or send a BiS link with no officer having allowed it this time. It now turns both off when it revives a character, as `team_invite_link_join()` already did; a character already on the roster keeps them. Every way a signup is added goes through this function: an officer's add, the team leader closing signups (#1467) and the automatic close (#1608).
+
+[Full discussion -> #1616](https://github.com/katogaming88/WGA-Raid-Hub/issues/1616).

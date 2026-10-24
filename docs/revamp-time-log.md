@@ -398,6 +398,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-10-17 | 12:09-12:10 PM | Where the work stood | 5 m |
 | 2026-10-18 | 11:29-11:32 AM | Where the work stood | 5 m |
 | 2026-10-19 | 9:16-9:17 PM | Where the work stood | 5 m |
+| 2026-10-23 | 9:30-9:45 PM | #1616 (CodeRabbit on #1614): a character re-added from a signup no longer keeps last stint's wishlist and BiS exceptions; issue, migration, tests red first, PR (#1614's CodeRabbit round is logged in #1614) | 15 m |
 
 ## Remaining in Revamp 1
 

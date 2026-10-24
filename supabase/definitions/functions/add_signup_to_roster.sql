@@ -105,6 +105,12 @@ begin
                          then excluded.is_backup_tank else players.is_backup_tank end,
         is_backup_healer = case when players.archived_at is not null
                          then excluded.is_backup_healer else players.is_backup_healer end,
+        -- The officer's wishlist and BiS exceptions were for the last stint
+        -- (#1616), as the invite link resets them.
+        wishlist_allowed = case when players.archived_at is not null
+                         then false else players.wishlist_allowed end,
+        bis_allowed = case when players.archived_at is not null
+                         then false else players.bis_allowed end,
         archived_at = null
   returning id into v_player_id;
 
