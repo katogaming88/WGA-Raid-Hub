@@ -12,6 +12,14 @@ answers to.
 
 ---
 
+## [3.204.1] - 2026-10-23
+
+### Backend
+
+- A raider put back on the roster from a signup no longer keeps the
+  wishlist and BiS exceptions an officer gave them last time (#1616).
+  Coming back through the invite link already reset them.
+
 ## [3.204.0] - 2026-10-23
 
 ### Frontend

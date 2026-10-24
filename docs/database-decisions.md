@@ -2824,3 +2824,11 @@ Decided with Kat 2026-10-23.
 **No cutoff date.** A season already started when this ships closes on the first run. Kat closes Midnight Season 2's signups by hand before this merges (it would otherwise archive 13 raiders on Phoenix and Hellfire). The Discord notice to officers is its own issue.
 
 [Full discussion -> #1608](https://github.com/katogaming88/WGA-Raid-Hub/issues/1608).
+
+## #1616 -- a character re-added from a signup starts without last stint's exceptions
+
+Shipped: 20261023213820_signup_readd_resets_exceptions.sql
+
+Found by CodeRabbit on #1614. `add_signup_to_roster()` brought an archived character back with `wishlist_allowed` and `bis_allowed` still on from its last stint, so a returning raider could edit a closed wishlist or send a BiS link with no officer having allowed it this time. It now turns both off when it revives a character, as `team_invite_link_join()` already did; a character already on the roster keeps them. Every way a signup is added goes through this function: an officer's add, the team leader closing signups (#1467) and the automatic close (#1608).
+
+[Full discussion -> #1616](https://github.com/katogaming88/WGA-Raid-Hub/issues/1616).
