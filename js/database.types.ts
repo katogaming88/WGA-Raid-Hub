@@ -1106,34 +1106,34 @@ export type Database = {
           bonus_list: number[] | null
           equipment_slot: string
           id: number
-          item_id: number | null
           item_level: number | null
           player_id: number
           synced_at: string
           team_id: number
           track: string | null
+          wow_item_id: number | null
         }
         Insert: {
           bonus_list?: number[] | null
           equipment_slot: string
           id?: number
-          item_id?: number | null
           item_level?: number | null
           player_id: number
           synced_at?: string
           team_id: number
           track?: string | null
+          wow_item_id?: number | null
         }
         Update: {
           bonus_list?: number[] | null
           equipment_slot?: string
           id?: number
-          item_id?: number | null
           item_level?: number | null
           player_id?: number
           synced_at?: string
           team_id?: number
           track?: string | null
+          wow_item_id?: number | null
         }
         Relationships: [
           {

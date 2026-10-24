@@ -32,7 +32,7 @@ Deno.test('every row carries the team id given', () => {
     player_id: PLAYER,
     team_id: TEAM,
     equipment_slot: 'HEAD',
-    item_id: 101,
+    wow_item_id: 101,
     item_level: 300,
     track: null,
     bonus_list: []
@@ -48,7 +48,7 @@ Deno.test('a row per equipped slot with an item id', () => {
     NO_BONUS_TRACKS
   );
   assertEquals(
-    rows.map((r) => [r.equipment_slot, r.item_id]),
+    rows.map((r) => [r.equipment_slot, r.wow_item_id]),
     [
       ['HEAD', 101],
       ['CHEST', 102],

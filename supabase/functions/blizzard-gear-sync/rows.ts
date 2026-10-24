@@ -8,7 +8,7 @@ export type EquippedRow = {
   player_id: number;
   team_id: number;
   equipment_slot: string;
-  item_id: number;
+  wow_item_id: number;
   item_level: number | null;
   track: string | null;
   bonus_list: number[];
@@ -57,7 +57,7 @@ export function buildRows(
       player_id: playerId,
       team_id: teamId,
       equipment_slot: slot,
-      item_id: itemId,
+      wow_item_id: itemId,
       item_level: itemLevel,
       track: deriveTrack(itemLevel, thresholds, bonusList, bonusTracks),
       bonus_list: bonusList

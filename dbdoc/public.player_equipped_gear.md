@@ -11,7 +11,7 @@ One row per player per physical gear slot (Blizzard API slot keys: HEAD, FINGER_
 | id | integer | nextval('player_equipped_gear_id_seq'::regclass) | false |  |  |  |
 | player_id | integer |  | false |  | [public.players](public.players.md) |  |
 | equipment_slot | text |  | false |  |  |  |
-| item_id | integer |  | true |  |  |  |
+| wow_item_id | integer |  | true |  |  | Blizzard's item id for the equipped item, as the Character Equipment Summary returns it: the same numbers as items.wow_item_id, not items.id. Null when Blizzard sent none. |
 | item_level | integer |  | true |  |  |  |
 | track | text |  | true |  |  | Gear upgrade track (Explorer/Adventurer/Veteran/Champion/Hero/Myth), derived from bonus_list via track_bonus_ids. Falls back to the item level against the current tier's season_track_floors only when no bonus ID matches (crafted, Timewarped and similar gear carries no track bonus ID) -- that fallback cannot distinguish overlapping tracks and is a last resort, not the primary source. |
 | synced_at | timestamp with time zone | now() | false |  |  |  |
@@ -52,7 +52,7 @@ erDiagram
   integer id
   integer player_id FK
   text equipment_slot
-  integer item_id
+  integer wow_item_id
   integer item_level
   text track
   timestamp_with_time_zone synced_at

@@ -109,14 +109,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.207.0';
+var VERSION = '3.207.1';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20261024114519';
+var REQUIRED_SCHEMA = '20261024132254';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -2277,7 +2277,7 @@ function fetchSupabaseEquippedGear() {
       var q = supabaseClient
         .from('player_equipped_gear')
         .select(
-          'id, player_id, equipment_slot, item_id, item_level, track',
+          'id, player_id, equipment_slot, wow_item_id, item_level, track',
           afterId === null ? { count: 'exact' } : undefined
         )
         .eq('team_id', _teamCfg.supabaseTeamId)
@@ -2322,7 +2322,7 @@ function mapSupabaseEquippedGear(rows) {
     if (row.player_id == null || !row.equipment_slot) return;
     if (!map[row.player_id]) map[row.player_id] = {};
     map[row.player_id][row.equipment_slot] = {
-      itemId: row.item_id,
+      itemId: row.wow_item_id,
       itemLevel: row.item_level,
       track: row.track || null
     };
@@ -3366,9 +3366,10 @@ function buildItemMaps(rows) {
       // has the Blizzard API's wow_item_id to go on, not this catalog's own
       // id -- reverse lookup so it can show a real item name for anything
       // that's also a tracked raid drop, rather than every slot falling back
-      // to "Item #<id>". Never assumed unique in general (this catalog can
-      // carry retired/PTR duplicates of the same wow_item_id), but last
-      // write wins here is fine -- any of those rows names the same item.
+      // to "Item #<id>". The catalog holds each wow_item_id at most once
+      // (items_wow_item_id_key, a partial unique index since 2026-07-11).
+      // player_equipped_gear's column is wow_item_id for the same reason
+      // (#1094).
       itemNamesByWowId[row.wow_item_id] = name;
     }
     if (row.icon) itemIcons[name] = row.icon;

@@ -103,9 +103,9 @@ describe('header helpers', () => {
   it('lists equipped gear in gear-panel order, naming unknown items by id', () => {
     const gear = equippedGear(
       [
-        { equipment_slot: 'TRINKET_1', item_id: 2, item_level: 318, track: 'Hero' },
-        { equipment_slot: 'HEAD', item_id: 1, item_level: 321, track: 'Myth' },
-        { equipment_slot: 'NECK', item_id: 9, item_level: 300, track: null }
+        { equipment_slot: 'TRINKET_1', wow_item_id: 2, item_level: 318, track: 'Hero' },
+        { equipment_slot: 'HEAD', wow_item_id: 1, item_level: 321, track: 'Myth' },
+        { equipment_slot: 'NECK', wow_item_id: 9, item_level: 300, track: null }
       ],
       new Map([
         [1, 'Helm'],

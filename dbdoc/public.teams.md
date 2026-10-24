@@ -363,7 +363,7 @@ erDiagram
   integer id
   integer player_id FK
   text equipment_slot
-  integer item_id
+  integer wow_item_id
   integer item_level
   text track
   timestamp_with_time_zone synced_at

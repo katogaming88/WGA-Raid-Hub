@@ -32,6 +32,8 @@ Includes notes on redundancies and why they exist.
 - [guild_grants](#guild_grants)
 - [scoring](#scoring)
 - [player_wcl_season_perf](#player_wcl_season_perf)
+- [player_equipped_gear](#player_equipped_gear)
+- [track_bonus_ids](#track_bonus_ids)
 - [classes_specs](#classes_specs)
 - [self_received_requests](#self_received_requests)
 - [bis_requests](#bis_requests)
@@ -350,6 +352,40 @@ WCL character page performance averages per player per season. Written once at t
 | `fetched_at`      | timestamptz | When the data was pulled from WCL                                    |
 
 Unique on `(player_id, season)`.
+
+---
+
+## `player_equipped_gear`
+
+Each roster character's equipped gear, one row per slot, as the Blizzard gear sync (`blizzard-gear-sync`) last saw it. Synced data: the sync replaces a character's rows each run, so nothing here is hand-entered and all of it can be rebuilt. Read by `generate_priority_order()` (a raider already wearing the item, or the slot's lowest track worn) and shown as Equipped Gear on the profile.
+
+| Column           | Type        | Purpose                                                                                                         |
+| ---------------- | ----------- | --------------------------------------------------------------------------------------------------------------- |
+| `id`             | int4        | PK                                                                                                              |
+| `player_id`      | int4        | FK -> `players.id`                                                                                              |
+| `team_id`        | int4        | FK -> `teams.id` (denormalized for RLS, checked against the player's team)                                      |
+| `equipment_slot` | text        | Blizzard's slot key (`HEAD`, `FINGER_1`, `MAIN_HAND`...), not `items.slot`                                      |
+| `wow_item_id`    | int4        | **Blizzard's** item id, the same numbers as `items.wow_item_id`, not `items.id` (`item_id` until #1094)         |
+| `item_level`     | int4        | The equipped item's level                                                                                       |
+| `track`          | text        | Upgrade track (Explorer...Myth), from `bonus_list` via `track_bonus_ids`, else the item level as a last resort  |
+| `bonus_list`     | int4[]      | Blizzard's bonus ids for the item, kept raw so `track` can be worked out again without a re-sync               |
+| `synced_at`      | timestamptz | When the sync wrote the row                                                                                     |
+
+Unique on `(player_id, equipment_slot)`. To find the catalog item a row is wearing, join `items` on `items.wow_item_id = player_equipped_gear.wow_item_id`. Most rows match nothing: dungeon, crafted, delve and world gear is not in the raid catalog.
+
+---
+
+## `track_bonus_ids`
+
+Which gear upgrade track and step each Blizzard bonus id means (for example 12853 is Myth 5/6). Read-only reference data, added by hand per season in a migration: a new season appends its block, and older rows stay, since older gear keeps its original bonus ids.
+
+| Column       | Type        | Purpose                                                                  |
+| ------------ | ----------- | ------------------------------------------------------------------------ |
+| `bonus_id`   | int4        | PK: Blizzard's bonus id                                                  |
+| `track`      | text        | Explorer, Adventurer, Veteran, Champion, Hero or Myth                    |
+| `rank`       | int2        | The upgrade step on that track                                           |
+| `season`     | text        | FK -> `seasons.code`; which season the block came with (lookups ignore it) |
+| `created_at` | timestamptz | When the row was added                                                   |
 
 ---
 

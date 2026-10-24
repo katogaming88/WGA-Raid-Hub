@@ -21,7 +21,7 @@ function gearRows(total, startId = 1) {
       id: startId + i,
       player_id: Math.floor(i / 16) + 1,
       equipment_slot: 'SLOT_' + (i % 16),
-      item_id: 200000 + i,
+      wow_item_id: 200000 + i,
       item_level: 300,
       track: 'Hero'
     });
@@ -73,7 +73,7 @@ describe('fetchSupabaseEquippedGear (#944)', () => {
     const { sandbox } = load(client);
     await sandbox.fetchSupabaseEquippedGear();
     const cols = calls.selects[0].select;
-    ['id', 'player_id', 'equipment_slot', 'item_id', 'item_level', 'track'].forEach((col) => {
+    ['id', 'player_id', 'equipment_slot', 'wow_item_id', 'item_level', 'track'].forEach((col) => {
       expect(cols).toContain(col);
     });
   });

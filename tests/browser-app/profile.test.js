@@ -279,7 +279,7 @@ describe('Profile (new app), equipped gear', () => {
   const longGear = [...SLOTS, ...EXTRA].map((equipment_slot, i) => ({
     player_id: TORBJORN.id,
     equipment_slot,
-    item_id: 212001 + (i % 5),
+    wow_item_id: 212001 + (i % 5),
     item_level: 308,
     track: 'Champion'
   }));

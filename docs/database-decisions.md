@@ -2856,3 +2856,19 @@ Decided with Kat 2026-10-24.
 `get_own_signup()` also returns `is_backup_tank` and `is_backup_healer`. The new signup page fills its edit form from it, and without them an edit would show both ticks empty and saving would clear the answers the raider gave on their signup (#1622). Raiders have no read on `season_signups` itself, so this is the only way to them. The officer-only columns stay out. Its return shape changed, so it was dropped and created again with the same grants; the current site's signup page ignores the two extra columns. Kept as its own database PR ahead of the page (#1466), as #1622 was.
 
 [Full discussion -> #1624](https://github.com/katogaming88/WGA-Raid-Hub/issues/1624).
+
+## #1094 -- the equipped gear column says it holds Blizzard's item id
+
+Shipped: 20261024132254_equipped_gear_wow_item_id.sql
+
+Follows #1091 and #1092. Decided with Kat 2026-10-24 to keep this to the rename (the enchant, gem and embellishment details come with #1261).
+
+**The catalog keeps two item ids on purpose.** `items.id` is the site's own row, and `items.wow_item_id` is Blizzard's number for it. Measured on production 2026-09-13: of 323 catalog rows, 3 have no Blizzard id (`M+`, `Crafted` and `Catalyst`), because they name a loot source rather than a piece of gear, and 278 wishlist marks and 72 approved self-received items point at them. All 11 foreign keys onto `items` point at `id`.
+
+**What went wrong was a name.** Everywhere else a column named `item_id` holds an `items.id` and has a foreign key to it. `player_equipped_gear.item_id` held Blizzard's id, and the one reader written purely in SQL, `generate_priority_order()`, compared it with an `items.id`, so a raider wearing the item still counted as needing it (#1091). The column is now `wow_item_id`, and `tests/ci/item-id-space.test.js` fails any `item_id` column that neither points at `items.id` nor is listed as named for the id it holds (today `items.wow_item_id`, `boe_listings.boe_item_id` and `player_equipped_gear.wow_item_id`).
+
+**Look the item up when reading, never store it.** `generate_priority_order()` finds the target item's Blizzard id at the time it runs rather than the gear row storing a matching `items.id`. Of 939 equipped rows on production, only 413 match a catalog item; a stored match would be empty for the rest and go stale as soon as an item was added to the catalog.
+
+**Alias every column a CTE projects when a correlated name could catch it.** An unaliased `wow_item_id` projected from a CTE and read downstream as `item_id` does not error: Postgres takes the bare name as the outer query's column, and `peg.item_id in (select item_id from ...)` matched every candidate (caught in #1092). After the rename an unaliased one errors instead, since the gear row has no `item_id` any more, but nothing in CI catches the shape in general.
+
+[Full discussion -> #1094](https://github.com/katogaming88/WGA-Raid-Hub/issues/1094).

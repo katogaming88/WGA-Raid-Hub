@@ -91,11 +91,11 @@ export function useEquippedGear(playerId: number) {
     async (client) => {
       const gear = await client
         .from('player_equipped_gear')
-        .select('equipment_slot, item_id, item_level, track')
+        .select('equipment_slot, wow_item_id, item_level, track')
         .eq('player_id', playerId);
       if (gear.error) return { data: null, error: gear.error };
       const rows = (gear.data ?? []) as GearRow[];
-      const ids = [...new Set(rows.map((r) => r.item_id).filter((id): id is number => id != null))];
+      const ids = [...new Set(rows.map((r) => r.wow_item_id).filter((id): id is number => id != null))];
       if (!ids.length) return { data: { rows, names: new Map() }, error: null };
       // team-read-guard: only the item ids in one player's equipped gear, 16 at most
       const items = await client.from('items').select('wow_item_id, name').in('wow_item_id', ids);
