@@ -1329,7 +1329,8 @@ const SIGNUP_SUMMARY = {
         is_backup_tank: false,
         is_backup_healer: false
       }
-    ]
+    ],
+    my_person_id: 42
   }
 };
 

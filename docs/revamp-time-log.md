@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     41 h 44 m |
+| Revamp 3: officer dashboard        |     42 h 24 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **104 h 19 m** |
+| **All revamp work**                | **104 h 59 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -391,6 +391,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2:55-3:15 PM | Where the work stood; #1622 built: declare_season_signup() takes the raider's backup tank and heal answers, false for a class with no spec in the role or a main spec in it; database tests red first, generated docs, decision log, stamp, changelog, these rows, PR opened | Revamp 3 (#1622) | 20 m | ~20 m build | not read | Times approximate. Fresh-agent review, review and merge not yet counted |
 | 3:15-3:35 PM | PR #1623 (#1622): fresh-agent review and its fixes (schema reference, RLS.md, a stored backup-heal test), CodeRabbit's two points (one already fixed, one declined: signing up is how someone joins), merged; Kat: the fresh-agent review now waits for CodeRabbit's | Revamp 3 (#1622) | 20 m | ~12 m build, ~8 m Kat reviewing | not read | Times approximate |
 | 3:35-3:50 PM | Back on #1466: main merged in; found the edit form could not know the saved backup answers; Kat chose a small database PR first; #1624 filed and set as blocking #1466; built: get_own_signup() returns both answers; database test red first, generated docs, decision log, stamp, changelog, these rows, PR opened | Revamp 3 (#1624) | 15 m | ~13 m build, ~2 m Kat deciding | not read | Times approximate. CodeRabbit, fresh-agent review, review and merge not yet counted |
+| 3:50-4:05 PM | PR #1625 (#1624): CodeRabbit (nothing to fix), then the fresh-agent review (ready; its test note taken), merged | Revamp 3 (#1624) | 15 m | ~8 m build, ~7 m Kat | not read | Times approximate |
+| 4:05-4:30 PM | #1466 finished: main merged in; the backup tank and heal ticks (only for a role the class can fill and not the one they main), sent on signup and read back on an edit, shown on the summary; page and unit tests red first; browser states fixed (the summary state lacked the person id) and run; stamp, changelog, these rows, PR opened | Revamp 3 (#1466) | 25 m | ~25 m build | not read | Times approximate. Screenshots, Kat's design review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
