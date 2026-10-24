@@ -5,11 +5,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   IMAGE,
+  SOURCES,
   compare,
   countTables,
   generatorArgs,
   normalise,
   parseArgs,
+  pickImage,
   readProjectId,
   stabilise,
   validate
@@ -29,6 +31,46 @@ describe('generatorArgs', () => {
     expect(args).toContain('PG_META_GENERATE_TYPES_DETECT_ONE_TO_ONE_RELATIONSHIPS=true');
     expect(args.slice(-3)).toEqual([IMAGE, 'node', 'dist/server/server.js']);
     expect(IMAGE).toMatch(/^public\.ecr\.aws\/supabase\/postgres-meta:v\d+\.\d+\.\d+$/);
+  });
+
+  it('runs the image it is given, for the Docker Hub fallback', () => {
+    expect(generatorArgs('WGA-Raid-Hub', SOURCES[1]).at(-3)).toBe(SOURCES[1]);
+  });
+});
+
+describe('pickImage (#1615)', () => {
+  // A fake docker: `held` images inspect clean, `pullable` ones pull clean.
+  const fakeDocker =
+    (held, pullable, calls = []) =>
+    (args) => {
+      calls.push(args.join(' '));
+      const [verb, , image = args[1]] = args;
+      return (verb === 'image' ? held : pullable).includes(image) ? 0 : 1;
+    };
+
+  it('pins one version under both names, Amazon first', () => {
+    expect(SOURCES).toEqual([IMAGE, IMAGE.replace('public.ecr.aws/', '')]);
+    expect(SOURCES[1]).toMatch(/^supabase\/postgres-meta:v\d+\.\d+\.\d+$/);
+  });
+
+  it('pulls nothing when the machine already holds an image', () => {
+    const calls = [];
+    expect(pickImage(fakeDocker([SOURCES[1]], [], calls))).toBe(SOURCES[1]);
+    expect(calls.some((c) => c.startsWith('pull'))).toBe(false);
+  });
+
+  it('uses Amazon when its pull succeeds', () => {
+    expect(pickImage(fakeDocker([], SOURCES))).toBe(IMAGE);
+  });
+
+  it('falls back to Docker Hub when Amazon refuses the pull', () => {
+    const calls = [];
+    expect(pickImage(fakeDocker([], [SOURCES[1]], calls))).toBe(SOURCES[1]);
+    expect(calls.filter((c) => c.startsWith('pull'))).toEqual([`pull ${IMAGE}`, `pull ${SOURCES[1]}`]);
+  });
+
+  it('fails naming both sources when neither pulls', () => {
+    expect(() => pickImage(fakeDocker([], []))).toThrow(`could not pull ${SOURCES.join(' or ')}`);
   });
 });
 

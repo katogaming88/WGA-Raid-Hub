@@ -12,6 +12,15 @@ answers to.
 
 ---
 
+## [3.204.2] - 2026-10-23
+
+### Project
+
+- The Schema docs check no longer fails when Amazon's image store refuses
+  to download the type generator ("Data limit exceeded"): it pulls the same
+  pinned version from Docker Hub instead, and says which one it used
+  (#1615).
+
 ## [3.204.1] - 2026-10-23
 
 ### Backend
