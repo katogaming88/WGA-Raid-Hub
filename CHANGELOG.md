@@ -12,6 +12,14 @@ answers to.
 
 ---
 
+## [3.206.1] - 2026-10-24
+
+### Backend
+
+- Editing your signup in the new app will show the backup tank and heal
+  answers you gave, instead of empty ticks that would clear them when you
+  save (#1624). `get_own_signup()` returns both.
+
 ## [3.206.0] - 2026-10-24
 
 ### Backend
