@@ -2832,3 +2832,17 @@ Shipped: 20261023213820_signup_readd_resets_exceptions.sql
 Found by CodeRabbit on #1614. `add_signup_to_roster()` brought an archived character back with `wishlist_allowed` and `bis_allowed` still on from its last stint, so a returning raider could edit a closed wishlist or send a BiS link with no officer having allowed it this time. It now turns both off when it revives a character, as `team_invite_link_join()` already did; a character already on the roster keeps them. Every way a signup is added goes through this function: an officer's add, the team leader closing signups (#1467) and the automatic close (#1608).
 
 [Full discussion -> #1616](https://github.com/katogaming88/WGA-Raid-Hub/issues/1616).
+
+## #1622 -- a raider says on their signup whether they can backup tank or heal
+
+Shipped: 20261024110959_signup_backup_role_answers.sql
+
+Decided with Kat 2026-10-24.
+
+**What it does.** `declare_season_signup()` takes two more answers, "I can backup tank" and "I can backup heal", and writes them to `is_backup_tank` and `is_backup_healer`: the same flags the officer boxes on the Projected Roster set, and that closing signups carries onto the roster (#1467). They are written on a new signup and again on every change to one, so an officer's tick stands until the raider next changes their signup.
+
+**When an answer is stored as false.** When the picked character's class has no spec in `classes_specs` with that role: a Blood Death Knight who ticked backup tank and changes to a Demonology Warlock loses it. And when the main spec is that role, since a main tank is not a backup tank (my addition; Kat can strike it). The class is the character's, not anything the browser sends; for a character with no class on file it is the picked spec's.
+
+**Left alone.** `is_trial` and the officer's note. The current site's `submit_season_signup()` and `update_own_signup()` do not change. The old six-argument function is dropped, not kept beside the new one; only the new app, not yet shipping, calls it.
+
+[Full discussion -> #1622](https://github.com/katogaming88/WGA-Raid-Hub/issues/1622).

@@ -1886,14 +1886,14 @@
           "type": "boolean",
           "nullable": false,
           "default": "false",
-          "comment": "The officer's backup-tank flag from the Projected Roster (#1342), applied when signups close (#1467)."
+          "comment": "Backup tank: the raider's answer on their signup (#1622) or the officer's box on the Projected Roster (#1342), whichever came last; applied when signups close (#1467)."
         },
         {
           "name": "is_backup_healer",
           "type": "boolean",
           "nullable": false,
           "default": "false",
-          "comment": "The officer's backup-healer flag from the Projected Roster (#1342), applied when signups close (#1467)."
+          "comment": "Backup healer: the raider's answer on their signup (#1622) or the officer's box on the Projected Roster (#1342), whichever came last; applied when signups close (#1467)."
         }
       ],
       "indexes": [
@@ -12016,12 +12016,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.declare_season_signup",
-      "return_type": "int4",
-      "arguments": "p_team_id integer, p_season text, p_character_id integer, p_class_spec_id integer, p_off_specs text DEFAULT NULL::text, p_note text DEFAULT NULL::text",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.signup_promotion_plan",
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_season text",
@@ -12067,6 +12061,12 @@
       "name": "public.close_started_season_signups",
       "return_type": "int4",
       "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.declare_season_signup",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_season text, p_character_id integer, p_class_spec_id integer, p_off_specs text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_backup_tank boolean DEFAULT false, p_backup_healer boolean DEFAULT false",
       "type": "FUNCTION"
     }
   ],

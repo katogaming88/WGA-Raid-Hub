@@ -143,8 +143,8 @@ Lifecycle: `pending` -> `approved` -> `added` (or `rejected` at review). The "Pe
 | `person_id`           | int4        | FK -> `people.id` ON DELETE SET NULL -- the signer (#1465); set by `declare_season_signup()`, null on rows the current site wrote |
 | `character_id`        | int4        | FK -> `characters.id` ON DELETE SET NULL -- the saved character picked (#1465); `signup_name_realm` stays the name of record |
 | `is_trial`            | bool        | Officer's Trial flag from the Projected Roster (#1342), applied when signups close (#1467); null until set |
-| `is_backup_tank`      | bool        | Officer's backup-tank flag from the Projected Roster, applied when signups close |
-| `is_backup_healer`    | bool        | Officer's backup-healer flag from the Projected Roster, applied when signups close |
+| `is_backup_tank`      | bool        | Backup tank: the raider's answer on their signup (#1622) or the officer's box on the Projected Roster, whichever came last; applied when signups close |
+| `is_backup_healer`    | bool        | Backup healer: the raider's answer on their signup (#1622) or the officer's box on the Projected Roster, whichever came last; applied when signups close |
 
 ---
 

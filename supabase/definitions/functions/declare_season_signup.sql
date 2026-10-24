@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.declare_season_signup(p_team_id integer, p_season text, p_character_id integer, p_class_spec_id integer, p_off_specs text DEFAULT NULL::text, p_note text DEFAULT NULL::text)
+CREATE OR REPLACE FUNCTION public.declare_season_signup(p_team_id integer, p_season text, p_character_id integer, p_class_spec_id integer, p_off_specs text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_backup_tank boolean DEFAULT false, p_backup_healer boolean DEFAULT false)
  RETURNS integer
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -13,6 +13,9 @@ declare
   v_person_id integer := public.my_person_id();
   v_character public.characters%rowtype;
   v_spec_class text;
+  v_spec_role text;
+  v_backup_tank boolean;
+  v_backup_healer boolean;
   v_current text;
   v_swap boolean;
   v_existing public.season_signups%rowtype;
@@ -46,13 +49,30 @@ begin
     raise exception 'That character is not on your account';
   end if;
 
-  select cs.class into v_spec_class from public.classes_specs cs where cs.id = p_class_spec_id;
+  select cs.class, cs.role into v_spec_class, v_spec_role from public.classes_specs cs where cs.id = p_class_spec_id;
   if v_spec_class is null then
     raise exception 'Unknown spec';
   end if;
   if v_character.class_name is not null and v_spec_class is distinct from v_character.class_name then
     raise exception '% is a %, not a %', v_character.name, v_character.class_name, v_spec_class;
   end if;
+
+  -- A backup answer holds only for a class with a spec in that role, and not
+  -- for someone who mains it: a main tank is not a backup tank. The class is
+  -- the character's (the spec's when the character has none on file, which
+  -- the check above has then nothing to compare with).
+  v_backup_tank := coalesce(p_backup_tank, false)
+    and v_spec_role is distinct from 'Tank'
+    and exists (
+      select 1 from public.classes_specs cs
+       where cs.class = coalesce(v_character.class_name, v_spec_class) and cs.role = 'Tank'
+    );
+  v_backup_healer := coalesce(p_backup_healer, false)
+    and v_spec_role is distinct from 'Heal'
+    and exists (
+      select 1 from public.classes_specs cs
+       where cs.class = coalesce(v_character.class_name, v_spec_class) and cs.role = 'Heal'
+    );
 
   -- Their character on this team's roster now, if any. Picking one already
   -- there is not a swap, even when they have a second one on it.
@@ -97,6 +117,8 @@ begin
            swap_from_name_realm = case when v_swap then v_current end,
            off_specs = nullif(btrim(p_off_specs), ''),
            player_note = nullif(btrim(p_note), ''),
+           is_backup_tank = v_backup_tank,
+           is_backup_healer = v_backup_healer,
            status = 'pending',
            submitted_at = now(),
            reviewed_at = null,
@@ -111,13 +133,13 @@ begin
   insert into public.season_signups (
     team_id, season, person_id, character_id, auth_user_id, signup_name_realm,
     class_spec_id, main_swap, swap_class_spec_id, swap_from_name_realm,
-    off_specs, player_note, status
+    off_specs, player_note, is_backup_tank, is_backup_healer, status
   )
   values (
     p_team_id, p_season, v_person_id, v_character.id, v_uid, v_character.name_realm,
     case when v_swap then null else p_class_spec_id end, v_swap,
     case when v_swap then p_class_spec_id end, case when v_swap then v_current end,
-    nullif(btrim(p_off_specs), ''), nullif(btrim(p_note), ''), 'pending'
+    nullif(btrim(p_off_specs), ''), nullif(btrim(p_note), ''), v_backup_tank, v_backup_healer, 'pending'
   )
   on conflict (person_id, team_id, season) where status <> 'rejected' do update
      set character_id = excluded.character_id,
@@ -128,6 +150,8 @@ begin
          swap_from_name_realm = excluded.swap_from_name_realm,
          off_specs = excluded.off_specs,
          player_note = excluded.player_note,
+         is_backup_tank = excluded.is_backup_tank,
+         is_backup_healer = excluded.is_backup_healer,
          submitted_at = now()
    where season_signups.status <> 'added'
   returning id into v_id;

@@ -25,8 +25,8 @@
 | person_id | integer |  | true |  | [public.people](public.people.md) | The person who signed up (#1465). Set by declare_season_signup(); null on rows submit_season_signup() wrote, which carry auth_user_id instead. |
 | character_id | integer |  | true |  | [public.characters](public.characters.md) | The saved character the signer picked (#1465). Emptied if that character row goes, for example when the person chooses alts again (#1430); signup_name_realm stays the name of record. |
 | is_trial | boolean |  | true |  |  | The officer's Trial flag from the Projected Roster (#1342), applied when signups close (#1467). Null until an officer sets it. |
-| is_backup_tank | boolean | false | false |  |  | The officer's backup-tank flag from the Projected Roster (#1342), applied when signups close (#1467). |
-| is_backup_healer | boolean | false | false |  |  | The officer's backup-healer flag from the Projected Roster (#1342), applied when signups close (#1467). |
+| is_backup_tank | boolean | false | false |  |  | Backup tank: the raider's answer on their signup (#1622) or the officer's box on the Projected Roster (#1342), whichever came last; applied when signups close (#1467). |
+| is_backup_healer | boolean | false | false |  |  | Backup healer: the raider's answer on their signup (#1622) or the officer's box on the Projected Roster (#1342), whichever came last; applied when signups close (#1467). |
 
 ## Constraints
 

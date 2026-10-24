@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.206.0] - 2026-10-24
+
+### Backend
+
+- Signing up in the new app can say "I can backup tank" and "I can backup
+  heal" (#1622). The answers set the same backup flags the officer boxes on
+  the Projected Roster set, and changing the signup sets them again. A
+  class with no tank or healer spec, or a main spec in that role, stores
+  no. The ticks themselves come with the new signup page (#1466).
+
 ## [3.205.0] - 2026-10-23
 
 ### Functions
