@@ -21,6 +21,10 @@ answers to.
   Once you are on the roster it says so, without "it will go back to an
   officer for review", and a signup an officer removed says that.
 
+### Project
+
+- Revamp time log rows for the audit mockup and #1629.
+
 ## [3.207.1] - 2026-10-24
 
 ### Backend
