@@ -239,7 +239,6 @@
 | public.hold_team_member | void | p_team_member_id integer | FUNCTION |
 | public.set_loot_responses | jsonb | p_team_id integer, p_responses jsonb | FUNCTION |
 | public.loot_response_counts_as | text | p_team_id integer, p_response text | FUNCTION |
-| public.declare_season_signup | int4 | p_team_id integer, p_season text, p_character_id integer, p_class_spec_id integer, p_off_specs text DEFAULT NULL::text, p_note text DEFAULT NULL::text | FUNCTION |
 | public.signup_promotion_plan | jsonb | p_team_id integer, p_season text | FUNCTION |
 | public.preview_signup_promotion | jsonb | p_team_id integer, p_season text | FUNCTION |
 | public.promote_season_signups | void | p_team_id integer, p_season text, p_expected text, p_archive_player_ids integer[] DEFAULT '{}'::integer[] | FUNCTION |
@@ -248,6 +247,7 @@
 | public.restrict_signup_item_preferences_to_open_wishlist | trigger |  | FUNCTION |
 | public.carry_signup_wishlist | trigger |  | FUNCTION |
 | public.close_started_season_signups | int4 |  | FUNCTION |
+| public.declare_season_signup | int4 | p_team_id integer, p_season text, p_character_id integer, p_class_spec_id integer, p_off_specs text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_backup_tank boolean DEFAULT false, p_backup_healer boolean DEFAULT false | FUNCTION |
 
 ## Enums
 

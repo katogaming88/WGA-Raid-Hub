@@ -4252,6 +4252,8 @@ export type Database = {
       }
       declare_season_signup: {
         Args: {
+          p_backup_healer?: boolean
+          p_backup_tank?: boolean
           p_character_id: number
           p_class_spec_id: number
           p_note?: string

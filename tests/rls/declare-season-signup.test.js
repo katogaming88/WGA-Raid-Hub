@@ -44,14 +44,23 @@ const declare = (
   asUser,
   uid,
   characterId,
-  { season = 'next-season', spec = FROST_MAGE, offSpecs = null, note = null } = {}
+  {
+    season = 'next-season',
+    spec = FROST_MAGE,
+    offSpecs = null,
+    note = null,
+    backupTank = false,
+    backupHealer = false
+  } = {}
 ) =>
-  asUser(uid, 'select public.declare_season_signup(1, $1, $2, $3, $4, $5) as id', [
+  asUser(uid, 'select public.declare_season_signup(1, $1, $2, $3, $4, $5, $6, $7) as id', [
     season,
     characterId,
     spec,
     offSpecs,
-    note
+    note,
+    backupTank,
+    backupHealer
   ]);
 
 const signup = async (q, id) => (await q('select * from public.season_signups where id = $1', [id])).rows[0];
@@ -183,6 +192,86 @@ describe('declare_season_signup()', () => {
       await openSignups(q, 'seed-season');
       await expect(declare(asUser, RAIDER_T1, mine, { season: 'seed-season' })).rejects.toThrow(/already started/);
       await expect(declare(asUser, null, mine)).rejects.toThrow(/Not signed in/);
+    });
+  });
+
+  // The raider's own "I can backup tank / heal" ticks (#1622) set the same
+  // flags as the officer boxes on the Projected Roster.
+  describe('backup tank and heal answers', () => {
+    const specs = async (q) => {
+      const { rows } = await q(
+        `insert into public.classes_specs (class, spec, role) values
+           ('Death Knight', 'Blood', 'Tank'), ('Death Knight', 'Frost', 'Melee'), ('Warlock', 'Demonology', 'Ranged')
+         returning spec, id`
+      );
+      return Object.fromEntries(rows.map((r) => [r.spec, r.id]));
+    };
+    const flags = async (q, id) => {
+      const { is_backup_tank, is_backup_healer } = await signup(q, id);
+      return { is_backup_tank, is_backup_healer };
+    };
+
+    it('stores them on a new signup, and false for a role the class has no spec in', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        await openSignups(q);
+        const { Frost } = await specs(q);
+        const dk = await character(q, await personOf(q), { name: 'Deeka', characterClass: 'Death Knight' });
+        const id = (await declare(asUser, RAIDER_T1, dk, { spec: Frost, backupTank: true, backupHealer: true })).rows[0]
+          .id;
+        expect(await flags(q, id)).toEqual({ is_backup_tank: true, is_backup_healer: false });
+      });
+    });
+
+    it('sets them again on a change, so a Death Knight changed to a Warlock loses backup tank', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        await openSignups(q);
+        const { Frost, Demonology } = await specs(q);
+        const personId = await personOf(q);
+        const dk = await character(q, personId, { name: 'Deeka', characterClass: 'Death Knight' });
+        const id = (await declare(asUser, RAIDER_T1, dk, { spec: Frost, backupTank: true })).rows[0].id;
+        const lock = await character(q, personId, { name: 'Locky', characterClass: 'Warlock' });
+        await declare(asUser, RAIDER_T1, lock, { spec: Demonology, backupTank: true });
+        expect(await flags(q, id)).toEqual({ is_backup_tank: false, is_backup_healer: false });
+      });
+    });
+
+    it("replaces an officer's ticks with the raider's answers on a change", async () => {
+      await withTxn(async ({ q, asUser }) => {
+        await openSignups(q);
+        const { Frost } = await specs(q);
+        const dk = await character(q, await personOf(q), { name: 'Deeka', characterClass: 'Death Knight' });
+        const id = (await declare(asUser, RAIDER_T1, dk, { spec: Frost })).rows[0].id;
+        await q('update public.season_signups set is_backup_tank = true, is_trial = true where id = $1', [id]);
+        await declare(asUser, RAIDER_T1, dk, { spec: Frost });
+        expect(await signup(q, id)).toMatchObject({ is_backup_tank: false, is_trial: true });
+      });
+    });
+
+    it('stores backup heal for a class with a healer spec, but not for a main healer', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        await openSignups(q);
+        const { rows } = await q(
+          `insert into public.classes_specs (class, spec, role) values
+             ('Priest', 'Shadow', 'Ranged'), ('Priest', 'Discipline', 'Heal')
+           returning spec, id`
+        );
+        const { Shadow, Discipline } = Object.fromEntries(rows.map((r) => [r.spec, r.id]));
+        const priest = await character(q, await personOf(q), { name: 'Priesty', characterClass: 'Priest' });
+        const id = (await declare(asUser, RAIDER_T1, priest, { spec: Shadow, backupHealer: true })).rows[0].id;
+        expect(await flags(q, id)).toEqual({ is_backup_tank: false, is_backup_healer: true });
+        await declare(asUser, RAIDER_T1, priest, { spec: Discipline, backupHealer: true });
+        expect(await flags(q, id)).toEqual({ is_backup_tank: false, is_backup_healer: false });
+      });
+    });
+
+    it('stores false when the main spec is the role itself', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        await openSignups(q);
+        const { Blood } = await specs(q);
+        const dk = await character(q, await personOf(q), { name: 'Deeka', characterClass: 'Death Knight' });
+        const id = (await declare(asUser, RAIDER_T1, dk, { spec: Blood, backupTank: true })).rows[0].id;
+        expect(await flags(q, id)).toEqual({ is_backup_tank: false, is_backup_healer: false });
+      });
     });
   });
 
