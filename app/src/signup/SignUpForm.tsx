@@ -53,6 +53,7 @@ export function SignUpForm({
   classmates,
   roleTargets,
   onDone,
+  onSubmitted,
   sideHost
 }: {
   teamId: number;
@@ -65,6 +66,9 @@ export function SignUpForm({
   classmates: ClassmateRow[];
   roleTargets: { tank: number | null; heal: number | null };
   onDone: () => void;
+  // Called on a successful submit, so the page keeps this form (and its
+  // confirmation) up while the new signup loads back, until Done.
+  onSubmitted: () => void;
   // The card Submit portals into (#1162), owned by the page so it sits beside
   // the form as its own box and does not scroll off under a long list.
   sideHost: HTMLDivElement | null;
@@ -123,7 +127,10 @@ export function SignUpForm({
         backupHealer: fields.backupHealer && backups.includes('Heal')
       },
       {
-        onSuccess: () => setDone(true),
+        onSuccess: () => {
+          onSubmitted();
+          setDone(true);
+        },
         onError: (e) => setError(e.message || 'Submission failed. Please try again or contact an officer on Discord.')
       }
     );
@@ -379,7 +386,8 @@ function SpecFields({
   );
 }
 
-// "I can backup tank / heal" (#1466): the same flags as the officer boxes on
+// "I can backup tank / heal" (#1466), real checkboxes rather than chips so
+// they are not missed (Kat): the same flags as the officer boxes on
 // the Projected Roster, offered only for a role the class can fill and not the
 // one they main.
 function BackupTicks({ fields, set }: { fields: SignupFields; set: Setter }) {
@@ -390,22 +398,15 @@ function BackupTicks({ fields, set }: { fields: SignupFields; set: Setter }) {
       <legend className="field-label">
         Backup roles <span className="text-muted">(optional)</span>
       </legend>
-      <div className="signup-chip-group">
-        {roles.map((r) => {
-          const key = r === 'Tank' ? 'backupTank' : 'backupHealer';
-          return (
-            <label key={r} className="signup-chip">
-              <input
-                type="checkbox"
-                className="visually-hidden"
-                checked={fields[key]}
-                onChange={() => set(key, !fields[key])}
-              />
-              <span>{r === 'Tank' ? 'I can backup tank' : 'I can backup heal'}</span>
-            </label>
-          );
-        })}
-      </div>
+      {roles.map((r) => {
+        const key = r === 'Tank' ? 'backupTank' : 'backupHealer';
+        return (
+          <label key={r} className="checkbox">
+            <input type="checkbox" checked={fields[key]} onChange={() => set(key, !fields[key])} />
+            <span>{r === 'Tank' ? 'I can backup tank' : 'I can backup heal'}</span>
+          </label>
+        );
+      })}
     </fieldset>
   );
 }

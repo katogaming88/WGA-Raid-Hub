@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type Read } from '../test/fakeSupabase';
@@ -107,7 +107,7 @@ const DEEKA = {
 function formHandlers(
   who: ReturnType<typeof person>,
   saved: unknown[],
-  options: { ownSignup?: unknown[]; declared?: Record<string, unknown>[] } = {}
+  options: { ownSignup?: unknown[]; declared?: Record<string, unknown>[]; onDeclare?: () => void } = {}
 ) {
   const base = handlers(who, {
     ...(options.ownSignup ? { ownSignup: options.ownSignup } : {}),
@@ -119,6 +119,7 @@ function formHandlers(
       if (name === 'my_person_id') return { data: 42 };
       if (name === 'declare_season_signup') {
         options.declared?.push(args);
+        options.onDeclare?.();
         return { data: 5 };
       }
       return base.rpc!(name, args);
@@ -203,6 +204,24 @@ describe('Sign Up, the one-page form', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Sign up' }));
     await screen.findByRole('heading', { level: 2, name: 'You’re signed up' });
     expect(declared[0]).toMatchObject({ p_class_spec_id: 42, p_backup_tank: true, p_backup_healer: false });
+  });
+
+  // Found taking the screenshots: the saved signup loads back straight away,
+  // which swapped the confirmation for the summary before anyone read it.
+  it('keeps the confirmation up once the new signup has loaded back', async () => {
+    const ownSignup: unknown[] = [];
+    renderApp(
+      '/g/wga/t/phoenix/signup',
+      formHandlers(person(null), [KATORRI], { ownSignup, onDeclare: () => ownSignup.push(ownFields) })
+    );
+    await userEvent.click(await screen.findByRole('radio', { name: /Katorrí/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+    expect(await screen.findByRole('heading', { level: 2, name: 'You’re signed up' })).toBeInTheDocument();
+    await waitFor(() => expect(ownSignup).toHaveLength(1));
+    await new Promise((r) => setTimeout(r, 200));
+    expect(screen.getByRole('heading', { level: 2, name: 'You’re signed up' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(await screen.findByRole('heading', { level: 2, name: 'Your signup' })).toBeInTheDocument();
   });
 
   it('asks for a main spec when Blizzard did not say one', async () => {

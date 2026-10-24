@@ -157,6 +157,7 @@ function SignUpForTier({ teamId, seasons }: { teamId: number; seasons: SignupSea
                 classmates={classmates}
                 roleTargets={targetsData}
                 onDone={() => setEditing(false)}
+                onSubmitted={() => setEditing(true)}
                 sideHost={sideHost}
               />
             </div>
