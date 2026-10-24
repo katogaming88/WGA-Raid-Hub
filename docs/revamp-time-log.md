@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     40 h 21 m |
+| Revamp 3: officer dashboard        |     41 h 09 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **102 h 56 m** |
+| **All revamp work**                | **103 h 44 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -381,6 +381,14 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:45-10:15 PM | PR #1614 (#1608): CodeRabbit round 2 (cutoff date declined per Kat, per-team failure test, #1608 text updated); fresh-agent reviews of #1614 and #1617 and their fixes (RLS.md entry, no-actor count, lock gap note); #1618 filed; #1614 merged; #1617 re-stamped after main | Revamp 3 (#1608) | 30 m | ~20 m build, ~10 m Kat | not read | Merged 10:11 PM. Row added 10-23 from the handoff note; times approximate |
 | 11:33-11:50 PM | #1620 found while starting #1466: no rostered raider has their main among their saved characters (53 of 53 on production), so the signup could not offer it; Kat asked, then shown it again with Katorrí; #1620 filed and set as blocking #1466; built: a save keeps the raider's own roster characters; Edge Function tests red first, stamp, changelog, these rows, PR opened | Revamp 3 (#1620) | 17 m | ~14 m build, ~3 m Kat deciding | not read | Kat: people import their characters before they sign up, and the import matches the roster character. Review and merge not yet counted |
 | 11:54-11:58 PM | PR #1621 (#1620): CodeRabbit's two comments; the same character on two teams' rosters now counts as yours if either says so (test red first); saving only max-level roster characters declined (a roster character confirmed as yours is yours at any level) | Revamp 3 (#1620) | 4 m | ~4 m build | not read | Review and merge not yet counted |
+| 11:58 PM-12:01 AM | PR #1621 (#1620): checks question (Schema docs only runs on database files), merged | Revamp 3 (#1620) | 3 m | ~3 m Kat | not read | Merged 12:01 AM |
+
+### 2026-10-24
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 12:01-12:26 AM | #1466 started; #1487 updated; Kat's flow review (one page, "Import characters" wording, Sign up buttons, the confirmation text); built on its branch; local test data and sign-in; #1622 filed and set as blocking #1466 | Revamp 3 (#1466) | 25 m | ~18 m build, ~7 m Kat | not read | Not pushed. Review and merge not yet counted |
+| 2:55-3:15 PM | Where the work stood; #1622 built: declare_season_signup() takes the raider's backup tank and heal answers, false for a class with no spec in the role or a main spec in it; database tests red first, generated docs, decision log, stamp, changelog, these rows, PR opened | Revamp 3 (#1622) | 20 m | ~20 m build | not read | Times approximate. Fresh-agent review, review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
