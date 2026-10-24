@@ -31,6 +31,10 @@ const classColorVar = (className: string) =>
 
 const nameRealmOf = (c: SavedCharacter) => `${c.name}-${c.realm}`;
 
+// Beside each Primary role choice (Kat, 2026-10-24); decorative, the word is
+// the label.
+const ROLE_EMOJI: Record<string, string> = { Tank: '🛡️', Healer: '💚', DPS: '⚔️', Melee: '🗡️', Ranged: '🏹' };
+
 // The Sign Up form (#1102), one page since #1466 (Kat: nothing is typed by
 // hand any more, so steps only slowed it down). The character is picked from
 // the person's saved characters, the ones Battle.net confirmed are theirs, so
@@ -362,6 +366,7 @@ function SpecFields({
                   checked={fields.primaryRole === r}
                   onChange={() => set('primaryRole', r)}
                 />
+                <span aria-hidden="true">{ROLE_EMOJI[r]}</span>
                 <span>{r}</span>
               </label>
             ))}
