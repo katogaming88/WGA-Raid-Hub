@@ -142,14 +142,6 @@
   color: var(--good);
 }
 
-.signup-status-open {
-  color: var(--good);
-}
-
-.signup-status-closed {
-  color: var(--bad);
-}
-
 /* Step 1's Battle.net character picker (#1162): the only way to pick a
    character for a fresh signup, no manual-entry fallback. Reuses
    characters.css's character-icon/character-text but its own single-pick row
@@ -284,12 +276,14 @@
   gap: var(--space-2);
 }
 
+/* Plain text, not pills (Kat: pills read as generic). */
 .signup-summary-tag {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 2px var(--space-2);
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  font-size: var(--text-sm);
+}
+
+.signup-summary-tag:not(:last-child)::after {
+  content: ',';
+  margin-left: calc(-1 * var(--space-1));
 }

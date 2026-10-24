@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     13 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     43 h 29 m |
+| Revamp 3: officer dashboard        |     45 h 59 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **106 h 04 m** |
+| **All revamp work**                | **108 h 34 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -395,6 +395,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:05-12:30 PM | #1466 finished: main merged in; the backup tank and heal ticks (only for a role the class can fill and not the one they main), sent on signup and read back on an edit, shown on the summary; page and unit tests red first; browser states fixed (the summary state lacked the person id) and run; stamp, changelog, these rows, PR opened | Revamp 3 (#1466) | 25 m | ~25 m build | not read | Times approximate. Screenshots, Kat's design review and merge not yet counted |
 | 12:30-1:11 PM | PR #1626 (#1466): Kat testing and design review; a stale dev server hid the backup ticks; Kat's asks: spec icons on the spec choices, the backup roles as real checkboxes, a Balance Druid on the test raider, no Primary role (the spec says it), a livelier summary card, and "you can change this until signups close" on the form, summary and confirmation; a first signup's confirmation fixed (it jumped to the summary); merged | Revamp 3 (#1466) | 41 m | ~25 m build, ~16 m Kat testing and deciding | not read | Merged 1:11 PM. Screenshots taken mid-review, not retaken |
 | 1:11-1:35 PM | #1487 updated; #1094's waiting decision settled with Kat (the audit's weekly row: per character, per reset week, gear details current-only), recorded on #1261; an audit mockup to come before #1261; #1094 kept to the rename; built: player_equipped_gear.item_id becomes wow_item_id, generate_priority_order() re-created, the CI check (red first), schema reference and decision log, stamp, changelog, these rows, PR opened | Revamp 3 (#1094) | 24 m | ~17 m build, ~7 m Kat deciding | not read | Earlier rows today corrected from UTC to Eastern. Fresh-agent review, review and merge not yet counted |
+| 1:35-1:55 PM | PR #1627 (#1094): CodeRabbit (nothing to fix), the fresh-agent review and its three doc fixes, merged; #1487 updated | Revamp 3 (#1094) | 20 m | ~12 m build, ~8 m Kat | not read | Times approximate |
+| 1:55-3:50 PM | #1628 filed (a gear slot emptied since the last sync still counts as worn) and added to #1487; the roster audit mockup with Kat (#1261): all eight tabs, the opened-up raider, the phone card and past weeks; decisions on #1261 (team page, wowaudit as the model, enchant and gem rules, per-season enchant slots, free this week and last week, highest-ever item level, epic gem, vault rule, crest caps); a read of wowaudit's and Viserio's audit pages for ideas | Revamp 3 (#1261) | 1 h 55 m | shared, heavy on Kat deciding | not read | Times approximate. #1261 still to be split into build issues |
+| 3:50-4:05 PM | #1629 filed and built: the signup card drops Pending and Approved (no approval in the new app); page tests red first; stamp, changelog, these rows, PR opened | Revamp 3 (#1629) | 15 m | ~15 m build | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

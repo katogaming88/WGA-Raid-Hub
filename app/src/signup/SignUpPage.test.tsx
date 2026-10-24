@@ -346,11 +346,30 @@ describe('Sign Up, an existing signup', () => {
       })
     );
     await screen.findByRole('heading', { level: 2, name: 'Your signup' });
-    expect(screen.getByText('Pending')).toBeInTheDocument();
+    // No approval step in the new app (#1629), so no Pending or Approved tag.
+    expect(screen.queryByText(/Pending|Approved/)).not.toBeInTheDocument();
     expect(screen.getByText('Katorri')).toBeInTheDocument();
     expect(screen.getByText(/any time until officers close signups/)).toBeInTheDocument();
     expect(screen.getByText(/Stormrage · Holy Priest/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit signup' })).toBeInTheDocument();
+  });
+});
+
+describe('Sign Up, the signup card says where it stands without approval words (#1629)', () => {
+  it('says so once they are on the roster, with no officer review', async () => {
+    renderApp('/g/wga/t/phoenix/signup', handlers(person(null), { ownSignup: [{ ...ownFields, status: 'added' }] }));
+    expect(await screen.findByText(/You are on this season.s roster/)).toHaveTextContent(
+      "You are on this season's roster. You can still change your signup while signups are open."
+    );
+    expect(screen.queryByText(/review|Rostered/)).not.toBeInTheDocument();
+  });
+
+  it('says an officer removed it', async () => {
+    renderApp('/g/wga/t/phoenix/signup', handlers(person(null), { ownSignup: [{ ...ownFields, status: 'rejected' }] }));
+    expect(await screen.findByText(/An officer removed this signup/)).toHaveTextContent(
+      'An officer removed this signup. Ask an officer on Discord if you have questions.'
+    );
+    expect(screen.queryByText(/Denied|not approved/)).not.toBeInTheDocument();
   });
 });
 

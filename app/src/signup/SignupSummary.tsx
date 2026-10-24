@@ -3,17 +3,12 @@ import { classColor } from '../roster/roster';
 import { CHANGE_UNTIL_CLOSE } from './signup';
 import type { OwnSignupRow } from './useSignup';
 
-const STATUS_LABEL: Record<OwnSignupRow['status'], string> = {
-  pending: 'Pending',
-  approved: 'Approved',
-  rejected: 'Denied',
-  added: 'Rostered'
-};
-
 // The raider's own signup (#500): shown instead of a fresh form once one
 // exists for the tier. Since #1466 it leads with the character, as the
 // form's list shows it, and lays the rest out as labelled rows (Kat: the
-// plain lines were bland).
+// plain lines were bland). No status tag: a signup in the new app needs no
+// approval (#1629), so the card only says when it is on the roster or an
+// officer removed it.
 export function SignupSummary({
   row,
   seasonName,
@@ -23,8 +18,6 @@ export function SignupSummary({
   seasonName: string;
   onEdit: () => void;
 }) {
-  const statusClass =
-    row.status === 'pending' || row.status === 'approved' ? 'signup-status-open' : 'signup-status-closed';
   const displayClass = row.main_swap ? row.swap_class : row.class;
   const displaySpec = row.main_swap ? row.swap_spec : row.spec;
   const [name, realm] = splitNameRealm(row.signup_name_realm);
@@ -41,7 +34,6 @@ export function SignupSummary({
           <h2>Your signup</h2>
           <p className="text-muted">{seasonName}</p>
         </div>
-        <span className={`status-tag ${statusClass}`}>{STATUS_LABEL[row.status]}</span>
       </div>
 
       <div className="signup-summary-character">
@@ -108,8 +100,7 @@ export function SignupSummary({
         {row.status === 'added' && (
           <>
             <p className="text-muted">
-              You are on the roster for this season. You can still update your signup while signups are open; it will go
-              back to an officer for review.
+              You are on this season&apos;s roster. You can still change your signup while signups are open.
             </p>
             <button type="button" className="button button-primary" onClick={onEdit}>
               Edit signup
@@ -117,9 +108,7 @@ export function SignupSummary({
           </>
         )}
         {row.status === 'rejected' && (
-          <p className="text-muted">
-            This signup was not approved. Contact an officer on Discord if you have questions.
-          </p>
+          <p className="text-muted">An officer removed this signup. Ask an officer on Discord if you have questions.</p>
         )}
       </div>
     </div>
