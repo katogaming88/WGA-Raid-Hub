@@ -151,6 +151,33 @@ describe('close_started_season_signups()', () => {
     });
   });
 
+  it("rolls back only the team that fails, and still closes the others' (CodeRabbit on #1614)", async () => {
+    await withTxn(async ({ q }) => {
+      const broken = await scene(q);
+      const fine = await scene(q);
+      // The plan fails for one team, for this transaction only.
+      await q('alter function public.signup_promotion_plan(integer, text) rename to signup_promotion_plan_real');
+      await q(`create function public.signup_promotion_plan(p_team_id integer, p_season text) returns jsonb
+               language plpgsql set search_path = public as $$
+               begin
+                 if p_team_id = ${Number(broken.team.teamId)} then
+                   raise exception 'forced failure';
+                 end if;
+                 return public.signup_promotion_plan_real(p_team_id, p_season);
+               end $$`);
+      await run(q);
+
+      expect((await player(q, broken.team.teamId, broken.n.quiet)).archived_at).toBeNull();
+      expect(await audit(q, broken.team.teamId)).toEqual([]);
+      const open = await q('select signups_open from public.team_seasons where id = $1', [broken.teamSeasonId]);
+      expect(open.rows[0].signups_open).toBe(true);
+
+      expect((await player(q, fine.team.teamId, fine.n.quiet)).archived_at).toBeInstanceOf(Date);
+      const closed = await q('select signups_open from public.team_seasons where id = $1', [fine.teamSeasonId]);
+      expect(closed.rows[0].signups_open).toBe(false);
+    });
+  });
+
   it('closes a season starting today', async () => {
     await withTxn(async ({ q }) => {
       const s = await scene(q);
