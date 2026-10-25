@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadCommonJs, quietConsole } from './helpers/common-sandbox.js';
 
 // _renderPullsBadge() (js/roster.js) renders the Mythic pull count on a
 // progression-card boss row, with _renderHeroicRow() rendering the separate
@@ -32,7 +33,9 @@ function makeSandbox() {
       addEventListener: () => {}
     },
     window: {},
-    location: { search: '', pathname: '/' }
+    location: { search: '', pathname: '/' },
+    // index.html loads js/common.js first; roster.js uses its _esc() (#1404).
+    _esc: loadCommonJs(quietConsole)._esc
   };
   vm.createContext(sandbox);
   // roster.js self-boots at the bottom (bootRosterApp()), which needs a lot
