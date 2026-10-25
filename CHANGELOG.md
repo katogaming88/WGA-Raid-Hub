@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.207.5] - 2026-10-25
+
+### Functions
+
+- The Blizzard gear sync now removes any of a character's gear slots that
+  Blizzard no longer returns, so an off hand dropped for a two-hander
+  stops counting as worn on the priority list and the profile. It only
+  removes after that character's gear saved, and never on a failed or
+  empty reply. The 10 stale rows on production (8 off hands, a shirt and
+  a tabard) go on the next morning sweep (#1628).
+
+### Project
+
+- Edge Function test for the gear save: an emptied slot is removed, and a
+  failed save or an empty reply removes nothing (#1628).
+- Revamp time log: #1404's merge time and the #1628 row.
+
 ## [3.207.4] - 2026-10-25
 
 ### Frontend

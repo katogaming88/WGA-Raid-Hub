@@ -429,7 +429,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-10-23 | 11:26-11:32 PM | #1615: the Schema docs check pulls the type generator from Docker Hub when Amazon refuses (PR #1619, merged 11:32 PM) | 5 m |
 | 2026-10-25 | 10:10-10:12 AM | Where the work stood | 5 m |
 | 2026-10-25 | 10:12-10:21 AM | #1408: Kat made a new Warcraft Logs API client, put its id and secret in Supabase and deleted the old one; a manual sync run stopped at GitHub's stale copy of the sync password (not the new keys), so the check waits for Monday night's run | 10 m |
-| 2026-10-25 | 10:21-10:35 AM | #1404: form text on the officer M+, BiS and Requests tabs and the profile card escaped, links only for web addresses, roster.js's weaker escaper removed; test red first; the live request rows read (549 values, nothing harmful); stamp, changelog, these rows, PR opened. Review and merge not yet counted | 15 m |
+| 2026-10-25 | 10:21-10:31 AM | #1404: form text on the officer M+, BiS and Requests tabs and the profile card escaped, links only for web addresses, roster.js's weaker escaper removed; test red first; the live request rows read (549 values, nothing harmful); PR #1659, merged 10:31 AM | 10 m |
+| 2026-10-25 | 10:32-10:40 AM | #1628: the gear sync removes a character's slots Blizzard no longer returns, only after a save that worked; Edge Function test red first; the removal filter checked against the local database; stamp, changelog, this row, PR opened. Review and merge not yet counted | 10 m |
 
 ## Remaining in Revamp 1
 
