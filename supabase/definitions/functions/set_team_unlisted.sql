@@ -22,8 +22,7 @@ begin
 
   update teams set unlisted = coalesce(p_unlisted, false) where id = p_team_id;
 
-  insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
-  values (p_team_id, v_uid, case when p_unlisted then 'Team Unlisted' else 'Team Listed' end,
-          'teams', p_team_id, null);
+  perform public.write_audit_log(p_team_id, case when p_unlisted then 'Team Unlisted' else 'Team Listed' end,
+                                 'teams', p_team_id, null);
 end;
 $function$;

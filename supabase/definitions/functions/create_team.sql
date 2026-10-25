@@ -46,9 +46,8 @@ begin
   insert into team_members (team_id, discord_id, role)
   values (v_team_id, v_discord_id, 'team_leader');
 
-  insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
-  values (v_team_id, v_uid, 'Team Created', 'teams', v_team_id,
-          jsonb_build_object('name', v_name, 'key', v_team_key));
+  perform public.write_audit_log(v_team_id, 'Team Created', 'teams', v_team_id,
+                                 jsonb_build_object('name', v_name, 'key', v_team_key));
 
   return query select v_team_id, v_team_key;
 end;

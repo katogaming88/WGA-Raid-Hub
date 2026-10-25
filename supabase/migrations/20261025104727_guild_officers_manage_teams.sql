@@ -95,9 +95,8 @@ begin
   insert into team_members (team_id, discord_id, role)
   values (v_team_id, v_discord_id, 'team_leader');
 
-  insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
-  values (v_team_id, v_uid, 'Team Created', 'teams', v_team_id,
-          jsonb_build_object('name', v_name, 'key', v_team_key));
+  perform public.write_audit_log(v_team_id, 'Team Created', 'teams', v_team_id,
+                                 jsonb_build_object('name', v_name, 'key', v_team_key));
 
   return query select v_team_id, v_team_key;
 end;
@@ -159,9 +158,8 @@ begin
 
   update teams set name = v_name, slug = v_key where id = p_team_id;
 
-  insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
-  values (p_team_id, v_uid, 'Team Updated', 'teams', p_team_id,
-          jsonb_build_object('name', v_name, 'key', v_key, 'old_name', v_old_name, 'old_key', v_old_key));
+  perform public.write_audit_log(p_team_id, 'Team Updated', 'teams', p_team_id,
+                                 jsonb_build_object('name', v_name, 'key', v_key, 'old_name', v_old_name, 'old_key', v_old_key));
 end;
 $$;
 
@@ -195,9 +193,8 @@ begin
      set archived_at = case when p_archived then coalesce(archived_at, now()) end
    where id = p_team_id;
 
-  insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
-  values (p_team_id, v_uid, case when p_archived then 'Team Archived' else 'Team Restored' end,
-          'teams', p_team_id, null);
+  perform public.write_audit_log(p_team_id, case when p_archived then 'Team Archived' else 'Team Restored' end,
+                                 'teams', p_team_id, null);
 end;
 $$;
 
@@ -228,9 +225,8 @@ begin
 
   update teams set unlisted = coalesce(p_unlisted, false) where id = p_team_id;
 
-  insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
-  values (p_team_id, v_uid, case when p_unlisted then 'Team Unlisted' else 'Team Listed' end,
-          'teams', p_team_id, null);
+  perform public.write_audit_log(p_team_id, case when p_unlisted then 'Team Unlisted' else 'Team Listed' end,
+                                 'teams', p_team_id, null);
 end;
 $$;
 

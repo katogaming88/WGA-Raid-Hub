@@ -25,8 +25,7 @@ begin
      set archived_at = case when p_archived then coalesce(archived_at, now()) end
    where id = p_team_id;
 
-  insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
-  values (p_team_id, v_uid, case when p_archived then 'Team Archived' else 'Team Restored' end,
-          'teams', p_team_id, null);
+  perform public.write_audit_log(p_team_id, case when p_archived then 'Team Archived' else 'Team Restored' end,
+                                 'teams', p_team_id, null);
 end;
 $function$;

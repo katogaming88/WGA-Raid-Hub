@@ -49,8 +49,7 @@ begin
 
   update teams set name = v_name, slug = v_key where id = p_team_id;
 
-  insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
-  values (p_team_id, v_uid, 'Team Updated', 'teams', p_team_id,
-          jsonb_build_object('name', v_name, 'key', v_key, 'old_name', v_old_name, 'old_key', v_old_key));
+  perform public.write_audit_log(p_team_id, 'Team Updated', 'teams', p_team_id,
+                                 jsonb_build_object('name', v_name, 'key', v_key, 'old_name', v_old_name, 'old_key', v_old_key));
 end;
 $function$;

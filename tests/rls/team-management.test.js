@@ -121,9 +121,10 @@ describe('update_team()', () => {
     });
   });
 
-  it("refuses another guild's officer, a team officer, a raider and Staff", async () => {
-    await withTxn(async ({ q, asUser }) => {
+  it("refuses another guild's officer, a team officer, a raider, Staff and anon", async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
       const other = await otherGuildOfficer(q);
+      await expect(asAnon("select public.update_team(1, 'X', 'xx')")).rejects.toMatchObject({ code: RLS_DENIED });
       const phoenix = (await q('select name, slug from public.teams where id = 1')).rows[0];
       for (const uid of [other.uid, OFFICER_T1, RAIDER_T1, SITE_ADMIN]) {
         await expect(
@@ -153,9 +154,10 @@ describe('set_team_archived()', () => {
     });
   });
 
-  it("refuses another guild's officer, a team officer, a raider and Staff", async () => {
-    await withTxn(async ({ q, asUser }) => {
+  it("refuses another guild's officer, a team officer, a raider, Staff and anon", async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
       const other = await otherGuildOfficer(q);
+      await expect(asAnon('select public.set_team_archived(1, true)')).rejects.toMatchObject({ code: RLS_DENIED });
       for (const uid of [other.uid, OFFICER_T1, RAIDER_T1, SITE_ADMIN]) {
         await expect(asUser(uid, 'select public.set_team_archived($1, true)', [PHOENIX])).rejects.toThrow(
           /Not authorized/
@@ -182,9 +184,10 @@ describe('set_team_unlisted()', () => {
     });
   });
 
-  it("refuses another guild's officer, a team officer, a raider and Staff", async () => {
-    await withTxn(async ({ q, asUser }) => {
+  it("refuses another guild's officer, a team officer, a raider, Staff and anon", async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
       const other = await otherGuildOfficer(q);
+      await expect(asAnon('select public.set_team_unlisted(1, true)')).rejects.toMatchObject({ code: RLS_DENIED });
       for (const uid of [other.uid, OFFICER_T1, RAIDER_T1, SITE_ADMIN]) {
         await expect(asUser(uid, 'select public.set_team_unlisted($1, true)', [PHOENIX])).rejects.toThrow(
           /Not authorized/
