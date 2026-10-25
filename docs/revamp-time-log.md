@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     15 h 55 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     46 h 16 m |
+| Revamp 3: officer dashboard        |     46 h 26 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **111 h 6 m** |
+| **All revamp work**                | **111 h 16 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -402,6 +402,12 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 4:15-4:22 PM | #1261 split into #1633 to #1642 with blocked-by links; #1261 and #1487 updated and an order-change comment | Revamp 3 (#1261) | 7 m | ~7 m build | 32,300 | |
 | 9:57 PM-12:15 AM | Planning with Kat: what has to be in before cutover; every remaining row estimated by pull requests (about 115 hours before cutover, 80 after); #1487 rebuilt with Est and totals, Decisions 18 and 19, Heroic Sale Runs to the back burner; #1643 to #1657 filed (teams, #1517's build issues, the Sync repo, the sign-up notice, the bot's old links, the guild test); model and effort labels on every issue; the new bot's Discord permissions checked; the call for testers written; the missing Tokens cells back-filled | Planning and design | 2 h 15 m | shared | 577,500 | Ran past midnight into 10-25 |
 
+### 2026-10-25
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 10:45-10:55 AM | #1643 built: create_team(), update_team(), set_team_archived(), set_team_unlisted() for a guild officer of the team's own guild (not Staff), teams.unlisted (a flag the lists read, so the address still opens), also_on_teams() skips unlisted teams, Wrathless unlisted; database tests red first (13), full database suite, generated docs, decision log, RLS.md, schema reference, stamp, changelog, this row, PR opened | Revamp 3 (#1643) | 10 m | ~10 m build | not read | CodeRabbit, fresh-agent review, review and merge not yet counted |
+
 ## Not counted (same sessions, not revamp)
 
 | Date       | Time (ET)         | Item                                                                                                                         | Elapsed |
@@ -430,7 +436,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-10-25 | 10:10-10:12 AM | Where the work stood | 5 m |
 | 2026-10-25 | 10:12-10:21 AM | #1408: Kat made a new Warcraft Logs API client, put its id and secret in Supabase and deleted the old one; a manual sync run stopped at GitHub's stale copy of the sync password (not the new keys), so the check waits for Monday night's run | 10 m |
 | 2026-10-25 | 10:21-10:31 AM | #1404: form text on the officer M+, BiS and Requests tabs and the profile card escaped, links only for web addresses, roster.js's weaker escaper removed; test red first; the live request rows read (549 values, nothing harmful); PR #1659, merged 10:31 AM | 10 m |
-| 2026-10-25 | 10:32-10:40 AM | #1628: the gear sync removes a character's slots Blizzard no longer returns, only after a save that worked; Edge Function test red first; the removal filter checked against the local database; stamp, changelog, this row, PR opened. Review and merge not yet counted | 10 m |
+| 2026-10-25 | 10:32-10:44 AM | #1628: the gear sync removes a character's slots Blizzard no longer returns, only after a save that worked; Edge Function test red first; the removal filter checked against the local database; PR #1660, merged 10:44 AM | 10 m |
 
 ## Remaining in Revamp 1
 

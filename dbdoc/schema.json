@@ -2536,6 +2536,13 @@
           "name": "guild_id",
           "type": "integer",
           "nullable": false
+        },
+        {
+          "name": "unlisted",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "Kept off the team switcher, the cold-landing picker and the guild's pages for anyone not on the team, and out of also_on_teams(); still opened by its address. Set by a guild officer of the team's guild through set_team_unlisted() (#1643)."
         }
       ],
       "indexes": [
@@ -12068,6 +12075,36 @@
       "name": "public.get_own_signup",
       "return_type": "record",
       "arguments": "p_team_id integer, p_season text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.is_guild_officer_of",
+      "return_type": "bool",
+      "arguments": "p_guild_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.create_team",
+      "return_type": "record",
+      "arguments": "p_guild_id integer, p_name text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.update_team",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_name text, p_key text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_archived",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_archived boolean",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_unlisted",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_unlisted boolean",
       "type": "FUNCTION"
     }
   ],

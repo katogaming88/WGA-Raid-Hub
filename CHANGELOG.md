@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.208.0] - 2026-10-25
+
+### Backend
+
+- Guild officers can add, rename, change the address of, archive, bring
+  back and unlist their own guild's teams, through four new database
+  functions for the new app's Teams page (#1644). A new team gets its
+  settings row and its creator as team leader. Only a guild officer of
+  that team's guild is allowed: not another guild's officers, team
+  officers, raiders, or Staff without that grant. The current site's
+  Site Admin team tools are unchanged until it is retired (#1643).
+- Teams can be unlisted: kept off other people's team lists and out of
+  "Also on" tags, still opened by their address. Wrathless is unlisted,
+  matching how the current site already hides it (#1643).
+
+### Project
+
+- Database tests for each of those, and the refusals (#1643); decision
+  log, RLS.md and schema reference updated.
+- Revamp time log: #1628's merge time and the #1643 row.
+
 ## [3.207.5] - 2026-10-25
 
 ### Functions

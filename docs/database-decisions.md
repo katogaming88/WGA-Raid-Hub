@@ -2872,3 +2872,19 @@ Follows #1091 and #1092. Decided with Kat 2026-10-24 to keep this to the rename 
 **Alias every column a CTE projects when a correlated name could catch it.** An unaliased `wow_item_id` projected from a CTE and read downstream as `item_id` does not error: Postgres takes the bare name as the outer query's column, and `peg.item_id in (select item_id from ...)` matched every candidate (caught in #1092). After the rename an unaliased one errors instead, since the gear row has no `item_id` any more, but nothing in CI catches the shape in general.
 
 [Full discussion -> #1094](https://github.com/katogaming88/WGA-Raid-Hub/issues/1094).
+
+## #1643 -- guild officers add, rename, archive and unlist their guild's teams
+
+Shipped: 20261025104727_guild_officers_manage_teams.sql
+
+Decided with Kat 2026-10-24, as the database half of #1644's Teams page.
+
+**A guild officer of the team's own guild, not Staff.** `create_team()`, `update_team()`, `set_team_archived()` and `set_team_unlisted()` each check `is_guild_officer_of(guild)`: a `guild_officer` grant whose `guild_grants.guild_id` is the team's guild. `is_guild_officer()` answers "a guild officer anywhere" and would let one guild's officers run another's teams once there are two (#1324). Staff are left out on purpose (Kat: Staff will not have access to every guild and team in future); a site admin with no grant for the guild is refused. The current site's `admin_create_team()`, `admin_update_team()` and `admin_set_team_archived()` keep their site-admin check until the old site goes (#1105).
+
+**A new team starts the way a new guild's first team does.** `create_team()` takes only a name: the address comes from `new_url_code()`, the `team_settings` row is made empty, and the caller joins as `team_leader`. Like `create_guild()`, it needs the caller's Discord id, since `team_members` is keyed on it.
+
+**Unlisted is a flag the lists read, not a read rule.** `teams.unlisted` keeps a team off the switcher, the cold-landing picker and the guild's pages for anyone not on it (#1644 filters them), and `also_on_teams()` leaves it out, so #1347's testers show nothing new on their real team. The row stays readable to everyone: `resolve_address()` reads `teams` as the visitor, so hiding the row would also close the address, and an unlisted team has to open by its address. Team names were already public. Wrathless is unlisted here, matching the `hidden: true` the current site uses in `js/common.js`.
+
+**One function for the name and the address.** `update_team()` takes both, as `admin_update_team()` did, and says in words why a key is refused (the `teams_slug_format` shape, or another team's key) instead of surfacing the constraint. The existing `teams_retire_url_key` trigger keeps the old key resolving.
+
+[Full discussion -> #1643](https://github.com/katogaming88/WGA-Raid-Hub/issues/1643).
