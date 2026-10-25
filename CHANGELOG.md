@@ -24,7 +24,8 @@ answers to.
   officers, raiders, or Staff without that grant. The current site's
   Site Admin team tools are unchanged until it is retired (#1643).
 - Teams can be unlisted: kept off other people's team lists and out of
-  "Also on" tags, still opened by their address. Wrathless is unlisted,
+  "Also on" tags and out of earlier characters shown on another team,
+  still opened by their address. Wrathless is unlisted,
   matching how the current site already hides it (#1643).
 
 ### Project

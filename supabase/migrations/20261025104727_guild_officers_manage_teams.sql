@@ -179,18 +179,25 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_guild_id integer;
+  v_was_archived boolean;
 begin
   if v_uid is null then
     raise exception 'Not signed in';
   end if;
-  select t.guild_id into v_guild_id from teams t where t.id = p_team_id;
+  select t.guild_id, t.archived_at is not null into v_guild_id, v_was_archived from teams t where t.id = p_team_id;
   if v_guild_id is null or not public.is_guild_officer_of(v_guild_id) then
     raise exception 'Not authorized';
   end if;
+  if p_archived is null then
+    raise exception 'Say whether to archive the team';
+  end if;
+  -- No change, no write and no audit line.
+  if p_archived = v_was_archived then
+    return;
+  end if;
 
-  -- Archiving an archived team keeps its first date.
   update teams
-     set archived_at = case when p_archived then coalesce(archived_at, now()) end
+     set archived_at = case when p_archived then now() end
    where id = p_team_id;
 
   perform public.write_audit_log(p_team_id, case when p_archived then 'Team Archived' else 'Team Restored' end,
@@ -214,16 +221,24 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_guild_id integer;
+  v_was_unlisted boolean;
 begin
   if v_uid is null then
     raise exception 'Not signed in';
   end if;
-  select t.guild_id into v_guild_id from teams t where t.id = p_team_id;
+  select t.guild_id, t.unlisted into v_guild_id, v_was_unlisted from teams t where t.id = p_team_id;
   if v_guild_id is null or not public.is_guild_officer_of(v_guild_id) then
     raise exception 'Not authorized';
   end if;
+  if p_unlisted is null then
+    raise exception 'Say whether to unlist the team';
+  end if;
+  -- No change, no write and no audit line.
+  if p_unlisted = v_was_unlisted then
+    return;
+  end if;
 
-  update teams set unlisted = coalesce(p_unlisted, false) where id = p_team_id;
+  update teams set unlisted = p_unlisted where id = p_team_id;
 
   perform public.write_audit_log(p_team_id, case when p_unlisted then 'Team Unlisted' else 'Team Listed' end,
                                  'teams', p_team_id, null);
@@ -262,4 +277,43 @@ as $$
        or (select is_guild_officer())
      )
    group by p.id, t.name;
+$$;
+
+-- The same for a raider's earlier characters: a character left behind on an
+-- unlisted team (a tester who leaves the Sandbox) never comes back on their
+-- real team's profile, with its loot counted there. Earlier characters on the
+-- same team are kept even when that team is unlisted.
+create or replace function public.earlier_characters(p_team_id integer)
+returns table (player_id integer, earlier_player_id integer)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select p.id, q.id
+    from players p
+    join team_members tm on tm.id = p.team_member_id
+    join team_members tq on tq.person_id = tm.person_id
+    join players q on q.team_member_id = tq.id
+    join teams t on t.id = q.team_id
+   where p.team_id = p_team_id
+     and p.archived_at is null
+     and q.id <> p.id
+     -- An earlier character is one no longer on its roster: an old main on
+     -- this team, or a character on a team the person has left (no active
+     -- character there any more). A team they are still on keeps its own total.
+     and q.archived_at is not null
+     and (
+       q.team_id = p.team_id
+       or not exists (
+         select 1 from players r where r.team_member_id = tq.id and r.archived_at is null
+       )
+     )
+     and (q.team_id = p.team_id or not t.unlisted)
+     and (
+       p_team_id = any ((select my_officer_team_ids())::integer[])
+       or (select is_site_admin())
+       or (select is_guild_officer())
+       or tm.person_id = (select my_person_id())
+     );
 $$;

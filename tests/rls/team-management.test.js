@@ -198,6 +198,27 @@ describe('set_team_unlisted()', () => {
   });
 });
 
+describe('archive and unlist switches', () => {
+  it('write nothing and log nothing when there is no change, and refuse a missing value', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { team_id } = (await create(asUser, GUILD_OFFICER)).rows[0];
+      await asUser(GUILD_OFFICER, 'select public.set_team_archived($1, false)', [team_id]);
+      await asUser(GUILD_OFFICER, 'select public.set_team_unlisted($1, false)', [team_id]);
+      const logged = await q(
+        "select count(*)::int as n from public.audit_log where team_id = $1 and action in ('Team Restored', 'Team Listed')",
+        [team_id]
+      );
+      expect(logged.rows[0].n).toBe(0);
+      await expect(asUser(GUILD_OFFICER, 'select public.set_team_archived($1, null)', [team_id])).rejects.toThrow(
+        /Say whether/
+      );
+      await expect(asUser(GUILD_OFFICER, 'select public.set_team_unlisted($1, null)', [team_id])).rejects.toThrow(
+        /Say whether/
+      );
+    });
+  });
+});
+
 describe('an unlisted team', () => {
   it('Wrathless is unlisted', async () => {
     await withTxn(async ({ q }) => {
@@ -232,6 +253,40 @@ describe('an unlisted team', () => {
       expect(await tags()).toEqual([]);
       await asUser(GUILD_OFFICER, 'select public.set_team_unlisted($1, false)', [team_id]);
       expect(await tags()).toEqual([{ player_id: main, team_name: 'Sandbox' }]);
+    });
+  });
+
+  it('gives a Phoenix raider no earlier character from an unlisted team they left, until it is listed', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      // discord-raider-1 (membership 3 on Phoenix) joins an unlisted team,
+      // plays a character there, and leaves it.
+      const main = (
+        await q(
+          "insert into public.players (team_id, name_realm, team_member_id) values (1, 'Earliermain-Illidan', 3) returning id"
+        )
+      ).rows[0].id;
+      const { team_id } = (await create(asUser, GUILD_OFFICER)).rows[0];
+      await asUser(GUILD_OFFICER, 'select public.set_team_unlisted($1, true)', [team_id]);
+      const member = (
+        await q(
+          "insert into public.team_members (team_id, discord_id, role) values ($1, 'discord-raider-1', 'raider') returning id",
+          [team_id]
+        )
+      ).rows[0].id;
+      const left = (
+        await q(
+          "insert into public.players (team_id, name_realm, team_member_id, archived_at) values ($1, 'Earliersandbox-Illidan', $2, now()) returning id",
+          [team_id, member]
+        )
+      ).rows[0].id;
+
+      const earlier = async () =>
+        (await asUser(OFFICER_T1, 'select * from public.earlier_characters(1)')).rows.filter(
+          (r) => r.player_id === main
+        );
+      expect(await earlier()).toEqual([]);
+      await asUser(GUILD_OFFICER, 'select public.set_team_unlisted($1, false)', [team_id]);
+      expect(await earlier()).toEqual([{ player_id: main, earlier_player_id: left }]);
     });
   });
 
