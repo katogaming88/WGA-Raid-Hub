@@ -137,16 +137,16 @@ function renderRecentDecisions() {
       (row.slot ? ' <span style="color:var(--text-muted);font-weight:400;">(' + row.slot + ')</span>' : '') +
       '</div>' +
       '<div style="font-size:1.04rem;color:var(--text-muted);margin-top:0.2rem;">Source: <span style="color:var(--text);">' +
-      source +
+      _esc(source) +
       '</span></div>' +
       (row.note
         ? '<div style="font-size:1rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' +
-          row.note +
+          _esc(row.note) +
           '</div>'
         : '') +
       (!approved && row.officer_notes
         ? '<div style="font-size:1rem;color:var(--text-muted);margin-top:0.5rem;">Rejection reason: <span style="color:var(--text);">' +
-          row.officer_notes +
+          _esc(row.officer_notes) +
           '</span></div>'
         : '') +
       '<p class="request-action-error" id="decision-error-' +
@@ -287,11 +287,11 @@ function renderPendingRequests(requests) {
       (r.slot ? ' <span style="color:var(--text-muted);font-weight:400;">(' + r.slot + ')</span>' : '') +
       '</div>' +
       '<div style="font-size:1.04rem;color:var(--text-muted);margin-top:0.2rem;">Source: <span style="color:var(--text);">' +
-      r.source +
+      _esc(r.source) +
       '</span></div>' +
       (r.notes
         ? '<div style="font-size:1rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' +
-          r.notes +
+          _esc(r.notes) +
           '</div>'
         : '') +
       '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +

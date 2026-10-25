@@ -152,7 +152,7 @@ function renderBisSubmissions(submissions) {
       '" data-name-realm="' +
       s.nameRealm.replace(/"/g, '&quot;') +
       '" data-bis-link="' +
-      s.bisLink.replace(/"/g, '&quot;') +
+      _esc(s.bisLink) +
       '">' +
       '<div class="request-card-header">' +
       '<span class="request-player">' +
@@ -165,16 +165,12 @@ function renderBisSubmissions(submissions) {
       s.timestamp +
       '</span>' +
       '</div>' +
-      '<div class="request-item" style="word-break:break-all;margin-top:0.35rem;">' +
-      '<a href="' +
-      s.bisLink +
-      '" target="_blank" rel="noopener" style="color:var(--gold);font-size:1rem;">' +
-      s.bisLink +
-      '</a>' +
+      '<div class="request-item" style="word-break:break-all;margin-top:0.35rem;font-size:1rem;">' +
+      _linkOrText(s.bisLink, null, ' style="color:var(--gold);"') +
       '</div>' +
       (s.notes
         ? '<div style="font-size:1rem;color:var(--text);margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">' +
-          s.notes +
+          _esc(s.notes) +
           '</div>'
         : '') +
       // #607: BiS approvals stay excluded for a guild-officer-only visitor.
