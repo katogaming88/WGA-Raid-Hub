@@ -61,6 +61,7 @@ import {
   type Trigger
 } from './outcome.ts';
 import { buildRows } from './rows.ts';
+import { saveGear } from './save.ts';
 import { loadTierFloors } from './floors.ts';
 
 const CORS_HEADERS = {
@@ -169,16 +170,12 @@ async function syncRoster(
       ...r,
       synced_at: new Date().toISOString()
     }));
-    if (rows.length > 0) {
-      const { error: upsertError } = await supabase
-        .from('player_equipped_gear')
-        .upsert(rows, { onConflict: 'player_id,equipment_slot' });
-      if (upsertError) {
-        console.error('blizzard-gear-sync: upsert failed for player', player.id, upsertError.message);
-        noteError(tally, upsertError.message);
-        tally.skipped++;
-        continue;
-      }
+    const saveError = await saveGear(supabase, player.id, rows);
+    if (saveError) {
+      console.error('blizzard-gear-sync: save failed for player', player.id, saveError);
+      noteError(tally, saveError);
+      tally.skipped++;
+      continue;
     }
     tally.synced++;
   }
