@@ -13,6 +13,7 @@ AS $function$
     join team_members tm on tm.id = p.team_member_id
     join team_members tq on tq.person_id = tm.person_id
     join players q on q.team_member_id = tq.id
+    join teams t on t.id = q.team_id
    where p.team_id = p_team_id
      and p.archived_at is null
      and q.id <> p.id
@@ -26,6 +27,7 @@ AS $function$
          select 1 from players r where r.team_member_id = tq.id and r.archived_at is null
        )
      )
+     and (q.team_id = p.team_id or not t.unlisted)
      and (
        p_team_id = any ((select my_officer_team_ids())::integer[])
        or (select is_site_admin())

@@ -61,6 +61,7 @@ erDiagram
   timestamp_with_time_zone archived_at
   integer wcl_guild_id
   integer guild_id FK
+  boolean unlisted
 }
 "public.boe_items" {
   integer id

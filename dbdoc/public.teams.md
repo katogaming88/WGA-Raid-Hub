@@ -10,6 +10,7 @@
 | archived_at | timestamp with time zone |  | true |  |  |  |
 | wcl_guild_id | integer |  | true |  |  |  |
 | guild_id | integer |  | false |  | [public.guilds](public.guilds.md) |  |
+| unlisted | boolean | false | false |  |  | Kept off the team switcher, the cold-landing picker and the guild's pages for anyone not on the team, and out of also_on_teams(); still opened by its address. Set by a guild officer of the team's guild through set_team_unlisted() (#1643). |
 
 ## Constraints
 
@@ -91,6 +92,7 @@ erDiagram
   timestamp_with_time_zone archived_at
   integer wcl_guild_id
   integer guild_id FK
+  boolean unlisted
 }
 "public.attendance" {
   integer id

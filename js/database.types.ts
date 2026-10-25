@@ -3357,6 +3357,7 @@ export type Database = {
           id: number
           name: string
           slug: string
+          unlisted: boolean
           wcl_guild_id: number | null
         }
         Insert: {
@@ -3365,6 +3366,7 @@ export type Database = {
           id?: number
           name: string
           slug?: string
+          unlisted?: boolean
           wcl_guild_id?: number | null
         }
         Update: {
@@ -3373,6 +3375,7 @@ export type Database = {
           id?: number
           name?: string
           slug?: string
+          unlisted?: boolean
           wcl_guild_id?: number | null
         }
         Relationships: [
@@ -4228,6 +4231,13 @@ export type Database = {
           team_key: string
         }[]
       }
+      create_team: {
+        Args: { p_guild_id: number; p_name: string }
+        Returns: {
+          team_id: number
+          team_key: string
+        }[]
+      }
       current_discord_id: { Args: never; Returns: string }
       current_season: { Args: { p_on?: string }; Returns: string }
       danger_clear_bis_requests: {
@@ -4348,6 +4358,7 @@ export type Database = {
       is_any_team_officer: { Args: never; Returns: boolean }
       is_boe_manager: { Args: never; Returns: boolean }
       is_guild_officer: { Args: never; Returns: boolean }
+      is_guild_officer_of: { Args: { p_guild_id: number }; Returns: boolean }
       is_optional_raid_night: {
         Args: { p_raid_date: string; p_team_id: number }
         Returns: boolean
@@ -4615,6 +4626,10 @@ export type Database = {
         }
         Returns: number
       }
+      set_team_archived: {
+        Args: { p_archived: boolean; p_team_id: number }
+        Returns: undefined
+      }
       set_team_officer_bios: {
         Args: { p_bios: Json; p_team_id: number }
         Returns: Json
@@ -4644,6 +4659,10 @@ export type Database = {
       set_team_setting: {
         Args: { p_skip_audit?: boolean; p_team_id: number; p_updates: Json }
         Returns: Json
+      }
+      set_team_unlisted: {
+        Args: { p_team_id: number; p_unlisted: boolean }
+        Returns: undefined
       }
       signup_promotion_plan: {
         Args: { p_season: string; p_team_id: number }
@@ -4774,6 +4793,10 @@ export type Database = {
           p_swap_from_name_realm?: string
         }
         Returns: number
+      }
+      update_team: {
+        Args: { p_key: string; p_name: string; p_team_id: number }
+        Returns: undefined
       }
       wishlist_setup_status: {
         Args: { p_team_id: number }

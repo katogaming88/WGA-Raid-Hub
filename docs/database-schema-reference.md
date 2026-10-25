@@ -254,6 +254,9 @@ Top-level tenant. One row per raid team.
 | `id`   | int4 | PK                                 |
 | `name` | text | Display name of the team           |
 | `slug` | text | URL-safe identifier used in routes |
+| `unlisted` | bool | Kept off the team lists of anyone not on the team and out of `also_on_teams()` and `earlier_characters()`; still opens by its address. Default false; Wrathless is unlisted (#1643) |
+
+Guild officers of the team's guild add, rename, re-address, archive and unlist teams through `create_team()`, `update_team()`, `set_team_archived()` and `set_team_unlisted()` (#1643).
 
 ---
 

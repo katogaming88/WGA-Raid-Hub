@@ -20,7 +20,7 @@
 | [public.self_received_requests](public.self_received_requests.md) | 12 |  | BASE TABLE |
 | [public.team_members](public.team_members.md) | 9 |  | BASE TABLE |
 | [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
-| [public.teams](public.teams.md) | 6 |  | BASE TABLE |
+| [public.teams](public.teams.md) | 7 |  | BASE TABLE |
 | [public.pending_roster](public.pending_roster.md) | 15 |  | VIEW |
 | [public.rnlsi](public.rnlsi.md) | 6 |  | VIEW |
 | [public.bis_demand_vs_awards](public.bis_demand_vs_awards.md) | 7 |  | VIEW |
@@ -248,6 +248,11 @@
 | public.close_started_season_signups | int4 |  | FUNCTION |
 | public.declare_season_signup | int4 | p_team_id integer, p_season text, p_character_id integer, p_class_spec_id integer, p_off_specs text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_backup_tank boolean DEFAULT false, p_backup_healer boolean DEFAULT false | FUNCTION |
 | public.get_own_signup | record | p_team_id integer, p_season text DEFAULT NULL::text | FUNCTION |
+| public.is_guild_officer_of | bool | p_guild_id integer | FUNCTION |
+| public.create_team | record | p_guild_id integer, p_name text | FUNCTION |
+| public.update_team | void | p_team_id integer, p_name text, p_key text | FUNCTION |
+| public.set_team_archived | void | p_team_id integer, p_archived boolean | FUNCTION |
+| public.set_team_unlisted | void | p_team_id integer, p_unlisted boolean | FUNCTION |
 
 ## Enums
 
@@ -607,6 +612,7 @@ erDiagram
   timestamp_with_time_zone archived_at
   integer wcl_guild_id
   integer guild_id FK
+  boolean unlisted
 }
 "public.pending_roster" {
   integer signup_id
