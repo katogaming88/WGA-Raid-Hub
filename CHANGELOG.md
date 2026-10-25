@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.207.3] - 2026-10-25
+
+### Project
+
+- Revamp time log: the 2026-10-24 afternoon and evening rows (PR #1631,
+  the roster audit split, and the planning session that rebuilt #1487
+  with estimates), the Tokens column filled in for the 113 rows that
+  said "not read", read from the session transcripts, and the totals
+  re-summed from the rows.
+
 ## [3.207.2] - 2026-10-24
 
 ### Frontend
