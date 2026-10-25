@@ -867,13 +867,6 @@ function _renderHeroicRow(progress) {
   return html;
 }
 
-function _esc(str) {
-  return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
 // Called by discord.js when a stored session is successfully validated on page load.
 // officer-quick-actions.js (loaded before this file) also wants this hook -- only
 // one function named onDiscordSessionRestored can exist in the global scope, and

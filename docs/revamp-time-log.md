@@ -427,6 +427,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-10-23 | 9:30-9:45 PM | #1616 (CodeRabbit on #1614): a character re-added from a signup no longer keeps last stint's wishlist and BiS exceptions; issue, migration, tests red first, PR (#1614's CodeRabbit round is logged in #1614) | 15 m |
 | 2026-10-23 | 11:25-11:26 PM | Where the work stood | 5 m |
 | 2026-10-23 | 11:26-11:32 PM | #1615: the Schema docs check pulls the type generator from Docker Hub when Amazon refuses (PR #1619, merged 11:32 PM) | 5 m |
+| 2026-10-25 | 10:10-10:12 AM | Where the work stood | 5 m |
+| 2026-10-25 | 10:12-10:21 AM | #1408: Kat made a new Warcraft Logs API client, put its id and secret in Supabase and deleted the old one; a manual sync run stopped at GitHub's stale copy of the sync password (not the new keys), so the check waits for Monday night's run | 10 m |
+| 2026-10-25 | 10:21-10:35 AM | #1404: form text on the officer M+, BiS and Requests tabs and the profile card escaped, links only for web addresses, roster.js's weaker escaper removed; test red first; the live request rows read (549 values, nothing harmful); stamp, changelog, these rows, PR opened. Review and merge not yet counted | 15 m |
 
 ## Remaining in Revamp 1
 

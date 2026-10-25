@@ -12,6 +12,25 @@ answers to.
 
 ---
 
+## [3.207.4] - 2026-10-25
+
+### Frontend
+
+- Text from the M+ exclusion, BiS Source, My BiS Changed and Mark
+  Received forms now shows exactly as typed on the officer M+, BiS and
+  Requests tabs and on the profile card, instead of being read as page
+  code. A Raider.IO or BiS link is a link only when it is a web address
+  (`http://` or `https://`); anything else shows as plain text. The team
+  page now uses the same quote-safe escaping as the rest of the site
+  (#1404).
+
+### Project
+
+- A frontend test renders each of those cards with markup, quote marks
+  and a `javascript:` link in every field, using the real escaping (#1404).
+- Revamp time log: this morning's "Not counted" rows (where the work
+  stood, the new Warcraft Logs client secret for #1408, and #1404).
+
 ## [3.207.3] - 2026-10-25
 
 ### Project

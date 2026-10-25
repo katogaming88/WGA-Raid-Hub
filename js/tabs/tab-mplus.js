@@ -162,13 +162,13 @@ function renderMPlusSubmissions(submissions) {
       '</div>' +
       '</div>' +
       (s.raiderioUrl
-        ? '<div style="margin-top:0.5rem;"><a href="' +
-          s.raiderioUrl +
-          '" target="_blank" rel="noopener" style="color:var(--gold);font-size:1.07rem;">View Raider.io Profile</a></div>'
+        ? '<div style="margin-top:0.5rem;font-size:1.07rem;word-break:break-all;">' +
+          _linkOrText(s.raiderioUrl, 'View Raider.io Profile', ' style="color:var(--gold);"') +
+          '</div>'
         : '') +
       (s.notes
         ? '<div style="font-size:1.07rem;color:var(--text);margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border);">' +
-          s.notes +
+          _esc(s.notes) +
           '</div>'
         : '') +
       '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +

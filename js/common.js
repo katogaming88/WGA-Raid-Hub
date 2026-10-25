@@ -109,7 +109,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.207.3';
+var VERSION = '3.207.4';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
@@ -1980,6 +1980,17 @@ function _esc(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+// A link someone typed into a form (#1404): an <a> only when it is a web
+// address, escaped text otherwise, so a javascript: or data: value can't
+// become something an officer clicks. label defaults to the url itself.
+function _linkOrText(url, label, attrs) {
+  var text = _esc(label == null ? url : label);
+  if (!/^https?:\/\//i.test(String(url || '').trim())) return _esc(url);
+  return (
+    '<a href="' + _esc(String(url).trim()) + '" target="_blank" rel="noopener"' + (attrs || '') + '>' + text + '</a>'
+  );
 }
 
 // Relative-age text ("3d ago", "just now") for a profile-card signal column
@@ -6487,9 +6498,9 @@ function renderProfile(firstName, backTo, container) {
 
   // BiS source
   var bisStatusHTML = player.bisLink
-    ? '<div class="bis-row"><div class="bis-dot yes"></div><a class="bis-link" href="' +
-      player.bisLink +
-      '" target="_blank" rel="noopener">View BiS Source</a></div>'
+    ? '<div class="bis-row"><div class="bis-dot yes"></div>' +
+      _linkOrText(player.bisLink, 'View BiS Source', ' class="bis-link"') +
+      '</div>'
     : '<div class="bis-row"><div class="bis-dot no"></div><span class="bis-none">No BiS list submitted yet</span></div>';
 
   var bisActionHTML;
@@ -6580,7 +6591,7 @@ function renderProfile(firstName, backTo, container) {
       '</div>' +
       (player.mPlusNote
         ? '<div style="font-size:1.04rem;color:var(--text);margin-top:0.4rem;font-style:italic;">' +
-          player.mPlusNote +
+          _esc(player.mPlusNote) +
           '</div>'
         : '');
   } else if (player.mPlusRejected) {
@@ -6964,18 +6975,18 @@ function renderProfile(firstName, backTo, container) {
           ';border-color:' +
           sr_colors.bd +
           ';" title="' +
-          (selfRec.source || '') +
+          _esc(selfRec.source) +
           '">' +
           sr_letter +
           '</span>' +
-          (sr_label ? '<span style="font-size:0.9em;color:var(--text-muted);">' + sr_label + '</span>' : '') +
+          (sr_label ? '<span style="font-size:0.9em;color:var(--text-muted);">' + _esc(sr_label) + '</span>' : '') +
           '</span>' +
           (showMarkBtn ? markRecvBtn : '') +
           '</div>';
       } else {
         rows +=
           '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;"><span class="bis-self-received-badge">' +
-          (selfRec.source || 'Self-reported') +
+          _esc(selfRec.source || 'Self-reported') +
           '</span>' +
           (showMarkBtn ? markRecvBtn : '') +
           '</div>';

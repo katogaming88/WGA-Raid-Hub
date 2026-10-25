@@ -140,6 +140,7 @@ function loadSandbox({ client, els = {}, bySelector = {}, confirmResult = true }
   };
   sandbox.formatDateTime = realCommon.formatDateTime;
   sandbox.localTimeZoneNote = realCommon.localTimeZoneNote;
+  sandbox._esc = realCommon._esc;
   vm.createContext(sandbox);
   vm.runInContext(TAB_REQUESTS_JS, sandbox, { filename: 'tab-requests.js' });
   return { sandbox, spies };
