@@ -44,7 +44,8 @@ export const MENUS = {
   'officer-settings': 'Settings in the sidebar’s Officer menu',
   'officer-invite': 'Invite link under Settings in the sidebar’s Officer menu',
   'officer-boss-groups': 'Boss groups under Attendance in the sidebar’s Officer menu',
-  'officer-manage': 'Manage under Attendance in the sidebar’s Officer menu'
+  'officer-manage': 'Manage under Attendance in the sidebar’s Officer menu',
+  'new-team': 'New team at the bottom of the team picker, open at the top of the sidebar'
 };
 
 export type TopicId = 'start' | 'loot' | 'raid' | 'gear';
@@ -103,6 +104,10 @@ export const GUIDES: Guide[] = [
     officers: true,
     quick: 'Guild officers choose New team at the bottom of the team picker and give it a name. You lead the new team.',
     place: { label: 'Guild settings', to: (b) => `${b.guild}/settings` },
+    picture: 'The Teams tab of Guild settings, with a team’s Rename button and an unlisted team marked.',
+    popup: 'The New team pop-up, with the team name box marked.',
+    menu: 'new-team',
+    marked: [1, 2, 3, 4],
     steps: [
       'Open the team picker at the top of the sidebar and choose New team. Guild settings, under Guild in the sidebar, has the same button.',
       'Type the team’s name and choose Add team. You land on its home page as its team leader. Its address starts as a short code, like /t/q6v6gljx.',

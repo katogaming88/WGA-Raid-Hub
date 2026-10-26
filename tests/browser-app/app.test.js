@@ -2359,6 +2359,11 @@ const HELP_SHOT_STATES = {
     frame: '.card:has(.priority-table)',
     viewport: { width: 700, height: 900 }
   },
+  'add-team': {
+    state: { ...GUILD_SETTINGS, session: storedSession({ battlenet: 'Katorrí#1', discord: 'Katorrí' }) },
+    markers: [null, null, 'role=button[name="Rename Phoenix"]', '.guildsettings-row:has-text("Sandbox") .guildsettings-team'],
+    frame: 'main .guildsettings-list'
+  },
   attendance: {
     state: ATTENDANCE_MANAGE,
     markers: [
@@ -2397,13 +2402,28 @@ const HELP_MENU_SHOTS = {
   'my-profile': { state: katProfile(), item: '.sidebar >> role=link[name="My profile"]' },
   calendar: { state: CAL_MONTH, item: '.sidebar >> role=link[name="Calendar"]' },
   'officer-boss-groups': { state: BOSS_GROUPS, item: '.sidebar >> role=link[name="Boss groups"]' },
-  'officer-manage': { state: ATTENDANCE_MANAGE, item: '.sidebar >> role=link[name="Manage"]' }
+  'officer-manage': { state: ATTENDANCE_MANAGE, item: '.sidebar >> role=link[name="Manage"]' },
+  // The team picker open, as a guild officer sees it (#1644).
+  'new-team': {
+    state: {
+      ...GUILD_SETTINGS,
+      click: '.sidebar >> role=button[name=/switch team/]',
+      afterClick: '.team-list:not([hidden])'
+    },
+    item: '.sidebar >> role=button[name="New team"]'
+  }
 };
 
 // A guide whose step happens in a pop-up also gets a picture of the pop-up,
 // open over the page (Kat, 2026-10-15), saved as <id>-popup.png. Same shape
 // as HELP_SHOT_STATES; its markers number the guide's steps the same way.
 const HELP_POPUP_SHOTS = {
+  'add-team': {
+    state: { ...GUILD_SETTINGS, click: 'main >> role=button[name="New team"]', afterClick: '[role="dialog"]' },
+    markers: [null, '[role="dialog"] input', null, null],
+    frame: '.dialog',
+    viewport: { width: 1000, height: 900 }
+  },
   received: {
     state: {
       ...katProfile(),
