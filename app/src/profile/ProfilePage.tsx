@@ -34,6 +34,7 @@ import { useOwnSignup, type OwnSignupRow } from '../signup/useSignup';
 import { useClassSpecs } from '../characters/useMainSwaps';
 import { useSeasons } from '../calendar/useCalendar';
 import { MplusRequestButton } from './ProfileForms';
+import { NoCharacterCard } from '../characters/NoCharacterCard';
 import { CharactersCard } from '../characters/CharactersCard';
 import { withEarlierLoot } from '../characters/characters';
 import { useAlsoOnTeams, useEarlierLoot } from '../characters/useCharacters';
@@ -103,9 +104,14 @@ export function MyProfilePage() {
   if (!own && projected)
     return <ProjectedProfile teamId={team.id} signup={projected} base={base} rosterPlayer={null} />;
   if (!own) {
+    const membership = access.data.teams.find((t) => t.teamId === team.id);
     return (
       <Closed>
-        <p>You don’t have a character on {team.name} yet.</p>
+        {membership ? (
+          <NoCharacterCard teamMemberId={membership.teamMemberId} />
+        ) : (
+          <p>You don’t have a character on {team.name} yet.</p>
+        )}
         <SignupButton />
       </Closed>
     );

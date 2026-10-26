@@ -313,6 +313,84 @@ describe('Profile page', () => {
     expect(await screen.findByText('You don’t have a character on Phoenix yet.')).toBeInTheDocument();
   });
 
+  describe('with a membership and no roster character (#1464)', () => {
+    const SAVED = {
+      id: 5,
+      person_id: 7,
+      name: 'Grihz',
+      realm: 'Illidan',
+      class_name: 'Warlock',
+      spec_name: 'Demonology',
+      item_level: 280
+    };
+    const handlers = (invoke?: (name: string, args: unknown) => { data: unknown }) => {
+      const base = profileHandlers(person('raider', null), {
+        names: () => ({ data: [{ id: 2, label: 'Kat', team_member_id: 1, role: null }] }),
+        characters: () => ({ data: [SAVED] }),
+        classes_specs: () => ({
+          data: [
+            { id: 1, class: 'Warlock', spec: 'Affliction', role: 'Ranged' },
+            { id: 2, class: 'Warlock', spec: 'Demonology', role: 'Ranged' }
+          ]
+        })
+      });
+      return {
+        ...base,
+        ...(invoke ? { invoke } : {}),
+        rpc: (name: string, args: Record<string, unknown>) =>
+          name === 'my_person_id' ? { data: 7 } : name === 'add_own_character' ? { data: 99 } : base.rpc!(name, args)
+      };
+    };
+
+    it('shows their Name and each saved character with a way onto the roster', async () => {
+      renderApp('/g/wga/t/phoenix/me', handlers());
+      expect(await screen.findByRole('heading', { name: 'Kat' })).toBeInTheDocument();
+      expect(await screen.findByText('Grihz')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Import characters' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Add character to roster' })).toBeInTheDocument();
+    });
+
+    it('adds the character with the chosen spec and tells the officers', async () => {
+      const user = userEvent.setup();
+      const invoke = vi.fn(() => ({ data: { success: true } }));
+      const { client } = renderApp('/g/wga/t/phoenix/me', handlers(invoke));
+      await user.click(await screen.findByRole('button', { name: 'Add character to roster' }));
+      const dialog = await screen.findByRole('dialog');
+      await user.selectOptions(await within(dialog).findByLabelText('Which spec will you raid?'), 'Affliction');
+      await user.click(within(dialog).getByRole('button', { name: 'Add to roster' }));
+      await waitFor(() =>
+        expect(client.rpcs).toContainEqual([
+          'add_own_character',
+          { p_team_id: 1, p_character_id: 5, p_class_spec_id: 1 }
+        ])
+      );
+      await waitFor(() =>
+        expect(invoke).toHaveBeenCalledWith('discord-bot-webhook', {
+          body: {
+            action: 'addCharacter',
+            team: 'phoenix',
+            payload: { member: 'Kat', nameRealm: 'Grihz-Illidan', classSpec: 'Affliction Warlock' }
+          }
+        })
+      );
+    });
+
+    it('shows the database’s refusal in the dialog and leaves the officers alone', async () => {
+      const user = userEvent.setup();
+      const invoke = vi.fn(() => ({ data: { success: true } }));
+      const h = handlers(invoke);
+      renderApp('/g/wga/t/phoenix/me', {
+        ...h,
+        rpc: (name: string, args: Record<string, unknown>) =>
+          name === 'add_own_character' ? { error: { message: 'Ask for a main swap instead' } } : h.rpc(name, args)
+      });
+      await user.click(await screen.findByRole('button', { name: 'Add character to roster' }));
+      await user.click(await screen.findByRole('button', { name: 'Add to roster' }));
+      expect(await screen.findByText(/Ask for a main swap instead/)).toBeInTheDocument();
+      expect(invoke).not.toHaveBeenCalled();
+    });
+  });
+
   it('keeps a raider out of someone else’s profile', async () => {
     renderApp('/g/wga/t/phoenix/p/someoneelse', profileHandlers(person('raider', 11)));
     expect(

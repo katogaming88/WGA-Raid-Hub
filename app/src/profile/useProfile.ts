@@ -347,7 +347,7 @@ export function useRequestSettings(teamId: number) {
 
 // Tells the officers in Discord about a request waiting for them. A failed
 // notice does not undo the request, which is already saved.
-async function notifyOfficers(client: Client, body: Record<string, unknown>) {
+export async function notifyOfficers(client: Client, body: Record<string, unknown>) {
   try {
     await client.functions.invoke('discord-bot-webhook', { body });
   } catch {
