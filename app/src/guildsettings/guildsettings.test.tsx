@@ -15,6 +15,7 @@ const TEAMS = [
 // `memberOf`: team ids the signed-in person is on.
 function signedIn(opts: { guildOfficer: boolean; siteAdmin?: boolean; memberOf?: number[] }): FakeHandlers {
   const base = seededHandlers();
+  const teams = [...TEAMS];
   return {
     ...base,
     session: fakeSession({ discord: { id: 'discord-x', name: 'Someone' } }),
@@ -35,11 +36,22 @@ function signedIn(opts: { guildOfficer: boolean; siteAdmin?: boolean; memberOf?:
           }
         };
       }
-      if (name === 'create_team') return { data: [{ team_id: 10, team_key: 'new-team' }] };
-      if (name === 'resolve_address' && args['p_team_key'] === 'sandbox') {
+      if (name === 'create_team') {
+        teams.push({ id: 10, name: String(args['p_name']), slug: 'new-team', archived_at: null, unlisted: false });
+        return { data: [{ team_id: 10, team_key: 'new-team' }] };
+      }
+      const extra = teams.find((t) => t.id >= 3 && t.slug === args['p_team_key']);
+      if (name === 'resolve_address' && extra) {
         return {
           data: [
-            { guild_id: 1, guild_key: 'wga', team_id: 3, team_key: 'sandbox', is_canonical: true, player_id: null }
+            {
+              guild_id: 1,
+              guild_key: 'wga',
+              team_id: extra.id,
+              team_key: extra.slug,
+              is_canonical: true,
+              player_id: null
+            }
           ]
         };
       }
@@ -47,7 +59,7 @@ function signedIn(opts: { guildOfficer: boolean; siteAdmin?: boolean; memberOf?:
       return base.rpc!(name, args);
     },
     from(read) {
-      if (read.table === 'teams') return { data: TEAMS };
+      if (read.table === 'teams') return { data: [...teams] };
       return base.from!(read);
     }
   };
@@ -145,6 +157,7 @@ describe('New team', () => {
     await userEvent.type(within(dialog).getByLabelText('Team name'), 'Dungeons');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Add team' }));
     await waitFor(() => expect(client.rpcs).toContainEqual(['create_team', { p_guild_id: 1, p_name: 'Dungeons' }]));
+    expect(await within(sidebar()).findByRole('button', { name: 'Dungeons, switch team' })).toBeInTheDocument();
   });
 
   it('refuses an empty name without asking the database', async () => {
@@ -169,6 +182,13 @@ describe('unlisted teams', () => {
     const names = await switcherTeams();
     expect(names).toContain('Phoenix');
     expect(names).not.toContain('Sandbox');
+  });
+
+  it('are left off Guild home for someone not on them', async () => {
+    renderApp('/g/wga', signedIn({ guildOfficer: true }));
+    const main = screen.getByRole('main');
+    expect(await within(main).findByText('Phoenix')).toBeInTheDocument();
+    expect(within(main).queryByText('Sandbox')).not.toBeInTheDocument();
   });
 
   it('show in the switcher of their own members', async () => {

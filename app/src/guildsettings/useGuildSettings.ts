@@ -15,11 +15,13 @@ export function useCreateTeam(guildId: number) {
   );
 }
 
-// A new address leaves the old one working (retired_url_keys).
+// A new address leaves the old one working (retired_url_keys). The address
+// lookup is refreshed too, so a page on the renamed team moves to its new
+// address and the sidebar's links follow.
 export function useUpdateTeam() {
   return useSupabaseMutation<void, { teamId: number; name: string; key: string }>(
     (client, v) => client.rpc('update_team', { p_team_id: v.teamId, p_name: v.name, p_key: v.key }),
-    { key: ['update-team'], refreshes: [teamsKey] }
+    { key: ['update-team'], refreshes: [teamsKey, ['address']] }
   );
 }
 
