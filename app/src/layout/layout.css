@@ -140,6 +140,24 @@
   background: var(--hover);
 }
 
+/* New team (#1644): the one entry that is a button, set apart below the teams. */
+.team-add {
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--border);
+}
+
+button.team-option {
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
 .team-option[aria-current='true'] {
   background: var(--nav-selected);
   font-weight: 600;

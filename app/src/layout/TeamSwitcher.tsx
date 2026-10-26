@@ -9,6 +9,7 @@ import {
 import { Link, useLocation } from 'react-router';
 import { Icon } from '../components/Icon';
 import type { TeamSummary } from '../data/address';
+import { NewTeamDialog } from '../guildsettings/NewTeamDialog';
 
 // A disclosure, not a menu: a button that shows a list of links (#1101
 // checklist: collapsibles are real buttons with aria-expanded/aria-controls).
@@ -19,17 +20,23 @@ import type { TeamSummary } from '../data/address';
 // and returns to the button; tabbing out closes it (Kat, 2026-09-13).
 export function TeamSwitcher({
   guildKey,
+  guildId,
+  canAddTeam,
   teams,
   currentKey,
   label
 }: {
   guildKey: string;
+  guildId: number | undefined;
+  // A guild officer sees New team at the bottom of the list (#1644).
+  canAddTeam: boolean;
   teams: TeamSummary[];
   currentKey: string | null;
   label: string;
 }) {
   const [open, setOpen] = useState(false);
   const [openedAt, setOpenedAt] = useState('');
+  const [adding, setAdding] = useState(false);
   const location = useLocation();
   const button = useRef<HTMLButtonElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
@@ -39,7 +46,7 @@ export function TeamSwitcher({
 
   if (open && location.pathname !== openedAt) setOpen(false);
 
-  const links = () => [...(list.current?.querySelectorAll<HTMLAnchorElement>('a') ?? [])];
+  const links = () => [...(list.current?.querySelectorAll<HTMLElement>('a, button') ?? [])];
 
   // Opened from the keyboard: move focus into the list once it is showing.
   useEffect(() => {
@@ -99,7 +106,7 @@ export function TeamSwitcher({
 
   const moveWithinList = (event: ReactKeyboardEvent) => {
     const all = links();
-    const at = all.indexOf(document.activeElement as HTMLAnchorElement);
+    const at = all.indexOf(document.activeElement as HTMLElement);
     const next =
       event.key === 'ArrowDown'
         ? all[(at + 1) % all.length]
@@ -154,7 +161,27 @@ export function TeamSwitcher({
             </Link>
           </li>
         ))}
+        {canAddTeam && guildId !== undefined && (
+          <li className="team-add">
+            <button
+              type="button"
+              className="team-option"
+              onKeyDown={moveWithinList}
+              onBlur={closeIfFocusLeaves}
+              onClick={() => {
+                setOpen(false);
+                setAdding(true);
+              }}
+            >
+              <Icon name="plus" size={14} />
+              New team
+            </button>
+          </li>
+        )}
       </ul>
+      {adding && guildId !== undefined && (
+        <NewTeamDialog guildId={guildId} guildKey={guildKey} onClose={() => setAdding(false)} />
+      )}
     </div>
   );
 }

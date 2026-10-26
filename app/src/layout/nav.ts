@@ -25,7 +25,14 @@ export type NavGroup = { heading: string; items: NavItem[] };
 // officer tools sit under /officer/ (#1100).
 export function navGroups(
   base: { team: string; guild: string },
-  show: { officer: boolean; siteAdmin?: boolean; newsUnread?: boolean; liveCount?: number; council?: boolean }
+  show: {
+    officer: boolean;
+    guildSettings?: boolean;
+    siteAdmin?: boolean;
+    newsUnread?: boolean;
+    liveCount?: number;
+    council?: boolean;
+  }
 ): NavGroup[] {
   const groups: NavGroup[] = [
     {
@@ -34,7 +41,11 @@ export function navGroups(
         { label: 'Guild home', icon: 'home', to: base.guild, end: true },
         { label: 'BoE sales', icon: 'coin', to: `${base.guild}/boe` },
         { label: 'Streams', icon: 'tv', to: `${base.guild}/streams`, live: show.liveCount ?? 0 },
-        { label: 'Guild officers', icon: 'shield', to: `${base.guild}/officers` }
+        { label: 'Guild officers', icon: 'shield', to: `${base.guild}/officers` },
+        // For guild officers only (#1644). Each tab of it has its own address.
+        ...(show.guildSettings
+          ? [{ label: 'Guild settings', icon: 'gear' as const, to: `${base.guild}/settings` }]
+          : [])
       ]
     },
     { heading: 'You', items: [{ label: 'My profile', icon: 'user', to: `${base.team}/me` }] },
@@ -199,8 +210,13 @@ export const TEAM_PAGES: Record<string, string> = {
 export const GUILD_PAGES: Record<string, string> = {
   boe: 'BoE sales',
   streams: 'Streams',
-  officers: 'Guild officers'
+  officers: 'Guild officers',
+  'settings/teams': 'Guild settings'
 };
+
+// The tabs of Guild settings (#1644), one address each. Members (#1650) and
+// the rank permissions grid (#1652) join them.
+export const GUILD_SETTINGS_TABS: NavPage[] = [{ label: 'Teams', to: 'settings/teams' }];
 
 // Pages about the site itself, at /<path> with no guild in the address (#1482).
 // Their old /g/<guild>/<path> addresses forward here.

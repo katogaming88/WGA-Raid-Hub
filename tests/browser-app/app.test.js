@@ -1226,6 +1226,24 @@ const GUILD_OFFICERS_EDITING = {
   afterClick: '.bios-save-bar'
 };
 
+// Guild settings (#1644): the Teams tab, for a guild officer, with an unlisted
+// team and an archived one.
+const GUILD_SETTINGS = {
+  path: '/g/wga/settings/teams',
+  sentinel: 'main .guildsettings-row',
+  session: OFFICER,
+  person: {
+    discordId: 'discord-officer-1',
+    person: { site_admin: false, guild_officer: true, boe_manager: false, teams: [] }
+  },
+  teams: [
+    { id: 1, name: 'Phoenix', slug: 'phoenix', archived_at: null, unlisted: false },
+    { id: 2, name: 'Hellfire Rollers', slug: 'hellfire', archived_at: null, unlisted: false },
+    { id: 3, name: 'Sandbox', slug: 'sandbox', archived_at: null, unlisted: true },
+    { id: 9, name: 'Old Team', slug: 'old-team', archived_at: '2026-01-01T00:00:00Z', unlisted: false }
+  ]
+};
+
 // History (#1102): a season with a roster to show behind the toggle.
 const HISTORY_ENTRY = {
   name: 'Season One',
@@ -1376,6 +1394,21 @@ const STATES = [
   { label: 'team officers, officer editing', ...TEAM_OFFICERS_EDITING },
   { label: 'team officers, officer editing, light', ...TEAM_OFFICERS_EDITING, colorScheme: 'light' },
   { label: 'guild officers, guild officer editing', ...GUILD_OFFICERS_EDITING },
+  { label: 'guild settings, teams', ...GUILD_SETTINGS },
+  { label: 'guild settings, teams, light', ...GUILD_SETTINGS, colorScheme: 'light' },
+  { label: 'guild settings, teams, on a phone', ...GUILD_SETTINGS, viewport: NARROW },
+  {
+    label: 'guild settings, archive dialog',
+    ...GUILD_SETTINGS,
+    click: 'role=button[name="Archive Phoenix"]',
+    afterClick: '[role=dialog]'
+  },
+  {
+    label: 'guild settings, new team dialog',
+    ...GUILD_SETTINGS,
+    click: 'role=button[name="New team"]',
+    afterClick: '[role=dialog]'
+  },
   { label: 'history', ...HISTORY },
   { label: 'history, light', ...HISTORY, colorScheme: 'light' },
   { label: 'signup', ...SIGNUP },

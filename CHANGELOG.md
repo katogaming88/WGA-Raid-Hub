@@ -12,6 +12,31 @@ answers to.
 
 ---
 
+## [3.209.0] - 2026-10-25
+
+### Frontend
+
+- New app: a Guild settings page under Guild in the sidebar, for guild
+  officers only (#1644). Its first tab, Teams, lists every team in the
+  guild with its address. Each team can be renamed, given a new
+  address (the old one keeps working), archived (type the team's name
+  to confirm), brought back, or marked Unlisted. Archived teams stay
+  on the list, greyed out. The guild's Members tab and its rank
+  permissions will join it later.
+- New app: guild officers get New team at the bottom of the team
+  picker. It asks only for a name, then opens the new team's home page
+  with you as its team leader.
+- New app: an unlisted team is left out of the team picker and the
+  guild's pages for anyone not on it, guild officers included. People
+  on it still see it, and it still opens by its address.
+- New app: a Help guide for adding a team.
+
+### Project
+
+- Unit and browser tests for Guild settings and New team, covering
+  keyboard use, phone width and light mode (#1644).
+- Revamp time log: #1643's merge time and the #1644 row.
+
 ## [3.208.0] - 2026-10-25
 
 ### Backend

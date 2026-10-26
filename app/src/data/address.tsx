@@ -56,12 +56,15 @@ export function useGuildDetails(guildId: number) {
   );
 }
 
+export type GuildTeamRow = { id: number; name: string; slug: string; archived_at: string | null; unlisted: boolean };
+
 // In team id order, the order the guild created them (Kat, 2026-09-13), not
 // alphabetical.
 export function useGuildTeams(guildId: number | undefined) {
-  return useSupabaseQuery<{ id: number; name: string; slug: string; archived_at: string | null }[]>(
+  return useSupabaseQuery<GuildTeamRow[]>(
     ['guild-teams', guildId],
-    (client) => client.from('teams').select('id, name, slug, archived_at').eq('guild_id', guildId!).order('id'),
+    (client) =>
+      client.from('teams').select('id, name, slug, archived_at, unlisted').eq('guild_id', guildId!).order('id'),
     { enabled: guildId !== undefined }
   );
 }

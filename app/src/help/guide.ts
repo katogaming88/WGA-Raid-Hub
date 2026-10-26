@@ -97,6 +97,20 @@ export const GUIDES: Guide[] = [
     ]
   },
   {
+    id: 'add-team',
+    topic: 'start',
+    title: 'Add a team to your guild',
+    officers: true,
+    quick: 'Guild officers choose New team at the bottom of the team picker and give it a name. You lead the new team.',
+    place: { label: 'Guild settings', to: (b) => `${b.guild}/settings` },
+    steps: [
+      'Open the team picker at the top of the sidebar and choose New team. Guild settings, under Guild in the sidebar, has the same button.',
+      'Type the team’s name and choose Add team. You land on its home page as its team leader, and its address comes from the name.',
+      'To rename a team, change its address, archive it or bring it back, open Guild settings. The old address keeps working after a change.',
+      'Tick Unlisted to keep a team, like a test team, off the team picker and the guild’s pages for anyone not on it. People on it still see it, and it still opens by its address.'
+    ]
+  },
+  {
     id: 'team-setup',
     topic: 'start',
     title: 'Set up your team',

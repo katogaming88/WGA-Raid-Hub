@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     15 h 55 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     46 h 36 m |
+| Revamp 3: officer dashboard        |      47 h 1 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **111 h 26 m** |
+| **All revamp work**                | **111 h 51 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -407,7 +407,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 10:45-10:55 AM | #1643 built: create_team(), update_team(), set_team_archived(), set_team_unlisted() for a guild officer of the team's own guild (not Staff), teams.unlisted (a flag the lists read, so the address still opens), also_on_teams() skips unlisted teams, Wrathless unlisted; database tests red first (13), full database suite, generated docs, decision log, RLS.md, schema reference, stamp, changelog, this row, PR opened | Revamp 3 (#1643) | 10 m | ~10 m build | not read | Review and merge not yet counted |
-| 11:05-11:15 AM | PR #1661 (#1643): CodeRabbit (audit rows through write_audit_log() and signed-out refusals taken; showing an unlisted team in "Also on" to its members declined), then the fresh-agent review: earlier_characters() also read into unlisted teams (fixed, test red first), and the archive and unlist switches log nothing on no change and refuse a missing value | Revamp 3 (#1643) | 10 m | ~10 m build | not read | Kat's review and merge not yet counted |
+| 11:05-11:15 AM | PR #1661 (#1643): CodeRabbit (audit rows through write_audit_log() and signed-out refusals taken; showing an unlisted team in "Also on" to its members declined), then the fresh-agent review: earlier_characters() also read into unlisted teams (fixed, test red first), and the archive and unlist switches log nothing on no change and refuse a missing value | Revamp 3 (#1643) | 15 m | ~10 m build, ~5 m Kat | not read | Merged 11:21 AM |
+| 10:40-11:00 PM | #1644 built: two Teams-list mockups (own page vs a tab on Guild officers), Kat chose a new Guild settings page with Teams as its first tab; New team in the team picker, the Teams list (rename, change address, archive with the name typed, bring back, unlist), unlisted teams left out of the switcher and guild pages for people not on them; unit and browser tests (keyboard, phone, light), help guide, stamp, changelog, this row | Revamp 3 (#1644) | 20 m | ~15 m build, ~5 m Kat | not read | Kat's local test, review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
