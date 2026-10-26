@@ -11,10 +11,11 @@
 // misconfiguration now (not a to-be-expected missing team), so it errors
 // instead of the old silent no-op.
 //
-// No auth gate: all four notification paths (signup, self-received,
-// BiS link, M+ exclusion) are submitted by unauthenticated public-roster
-// forms today (their RPCs are granted to `anon`), so this function accepts
-// the same unauthenticated calls the GAS actions did. It only relays a
+// No auth gate: the signup, self-received, BiS link and M+ exclusion
+// notices are submitted by unauthenticated public-roster forms today (their
+// RPCs are granted to `anon`), so this function accepts the same
+// unauthenticated calls the GAS actions did. addCharacter (#1463) is sent by
+// a signed-in member, but is not checked either. It only relays a
 // notification -- the writes it accompanies are already committed via their
 // own RPC before this is ever called.
 const CORS_HEADERS = {
@@ -32,6 +33,7 @@ function jsonResponse(body: unknown, status = 200) {
 
 const ACTION_PATHS: Record<string, string> = {
   signup: '/signup',
+  addCharacter: '/add-character',
   selfreceived: '/selfreceived',
   bis: '/bis',
   mplus: '/mplus',

@@ -944,6 +944,54 @@ app.post('/signup', async (req: Request, res: Response): Promise<void> => {
   res.json({ ok: true });
 });
 
+// --- Add character (#1463) ---
+
+// Someone with no character on the team added their own; it is already on
+// the roster. Officers undo a wrong one with Remove claim, Remove or Archive
+// Member.
+interface AddCharacterBody {
+  member?: string;
+  nameRealm?: string;
+  classSpec?: string;
+  submittedAt?: string;
+}
+
+app.post('/add-character', async (req: Request, res: Response): Promise<void> => {
+  if (!checkSecret(req, res)) return;
+  const cfg = resolveTeam(req, res);
+  if (!cfg) return;
+
+  const { member, nameRealm, classSpec, submittedAt } = req.body as AddCharacterBody;
+
+  if (!member || !nameRealm) {
+    res.status(400).json({ error: 'Missing required fields: member, nameRealm' });
+    return;
+  }
+
+  const channel = await fetchTextChannel(res, cfg.officerChannelId);
+  if (!channel) return;
+
+  const unixTs = submittedAt ? Math.floor(new Date(submittedAt).getTime() / 1000) : Math.floor(Date.now() / 1000);
+
+  const embed = new EmbedBuilder()
+    .setColor(0x2ecc71)
+    .setTitle('Character Added to Roster')
+    .setDescription(
+      `${member} added ${nameRealm} to the roster. If that is wrong, use Remove claim, Remove or Archive Member.`
+    )
+    .addFields(
+      { name: 'Member', value: member, inline: true },
+      { name: 'Character', value: nameRealm, inline: true },
+      { name: 'Class / Spec', value: classSpec || 'N/A', inline: true },
+      { name: 'Added At', value: `<t:${unixTs}:f>` }
+    )
+    .setFooter({ text: 'Roster' });
+
+  await channel.send({ embeds: [embed] });
+
+  res.json({ ok: true });
+});
+
 // --- Self-received item requests ---
 
 interface SelfReceivedBody {

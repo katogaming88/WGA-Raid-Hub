@@ -256,6 +256,7 @@
 | public.create_own_name | int4 | p_team_id integer, p_label text | FUNCTION |
 | public.team_unnamed_members | record | p_team_id integer | FUNCTION |
 | public.players_archived_at_through_functions | trigger |  | FUNCTION |
+| public.add_own_character | int4 | p_team_id integer, p_character_id integer, p_class_spec_id integer | FUNCTION |
 
 ## Enums
 
