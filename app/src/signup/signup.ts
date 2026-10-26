@@ -37,8 +37,8 @@ export function classmatesPool(
 // What a pick means (#1466), decided as declare_season_signup() decides it:
 // a pick that is one of their characters on this team's roster is the same
 // main, even when they have two there; any other pick replaces their earliest
-// roster character (lowest player id); with none, it is their first main on
-// the team. Shown before they submit, so there is no swap box to get wrong.
+// roster character (lowest player id); with none, it joins the team's roster.
+// Shown before they submit, so there is no swap box to get wrong.
 export type PickReading = { kind: 'same' } | { kind: 'new'; replaces: string } | { kind: 'first' };
 
 export function readPick(pickNameRealm: string, roster: { playerId: number; nameRealm: string }[]): PickReading {
@@ -53,7 +53,7 @@ export const readingLabel = (reading: PickReading): string =>
     ? 'Same main as now'
     : reading.kind === 'new'
       ? `New main: replaces ${reading.replaces}`
-      : 'First main on this team';
+      : "Joins this team's roster";
 
 export type SignupFields = {
   characterId: number | null;

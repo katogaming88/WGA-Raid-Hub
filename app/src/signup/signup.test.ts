@@ -67,7 +67,7 @@ describe('readPick', () => {
   it('says each plainly', () => {
     expect(readingLabel({ kind: 'same' })).toBe('Same main as now');
     expect(readingLabel({ kind: 'new', replaces: 'Katorrí-Stormrage' })).toBe('New main: replaces Katorrí-Stormrage');
-    expect(readingLabel({ kind: 'first' })).toBe('First main on this team');
+    expect(readingLabel({ kind: 'first' })).toBe("Joins this team's roster");
   });
 });
 

@@ -154,7 +154,7 @@ describe('Sign Up, the one-page form', () => {
     expect(screen.getByText(/close by themselves when the season starts/)).toBeInTheDocument();
 
     await userEvent.click(await screen.findByRole('radio', { name: /Katorrí/ }));
-    expect(within(sideCard()).getByRole('status')).toHaveTextContent('Katorrí: First main on this team');
+    expect(within(sideCard()).getByRole('status')).toHaveTextContent("Katorrí: Joins this team's roster");
     // Blizzard's spec is picked for them; the rest of the form is on this page.
     expect(screen.getByRole('radio', { name: 'Demonology' })).toBeChecked();
     await userEvent.type(screen.getByLabelText(/Anything else officers/), 'Trial run');
