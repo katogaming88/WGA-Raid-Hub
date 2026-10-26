@@ -4001,6 +4001,14 @@ export type Database = {
       }
     }
     Functions: {
+      add_own_character: {
+        Args: {
+          p_character_id: number
+          p_class_spec_id: number
+          p_team_id: number
+        }
+        Returns: number
+      }
       add_signup_to_roster: {
         Args: {
           p_archive_player_id?: number

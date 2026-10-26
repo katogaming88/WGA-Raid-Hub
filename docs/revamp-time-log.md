@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |      16 h 0 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     49 h 56 m |
+| Revamp 3: officer dashboard        |     50 h 26 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **114 h 51 m** |
+| **All revamp work**                | **115 h 21 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -420,6 +420,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:35-1:41 PM | #1355 reviews: CodeRabbit (the Assign list scoped to guild officers of the team's own guild; its character filtered by team), the fresh-agent review (a raider's Member name one line and 40 characters, one join row per real join, empty sign-in names, its missing tests), replies on the threads; the Roster box's spacing fixed and its pictures retaken; #1670 re-stamped once #1669 merged | Revamp 3 (#1355) | 65 m | ~45 m build, ~20 m Kat | not read | PR #1669 merged 1:09 PM, PR #1670 merged 1:41 PM |
 | 1:43-1:46 PM | #1487: closed rows removed (#1347, #1355, #1404, #1628, #1643, #1644), totals redone, a Last updated line at the top; the switch to ranks noted on #1646 for the Assign list | Planning and design | 5 m | ~5 m build | not read | |
 | 1:46-2:00 PM | #1434 built: players.archived_at changed only through its functions (a guard like the membership's), archive_player(), restore_player() and add_signup_to_roster() run as their owner with their own checks; database tests red first, four older test files moved off direct writes, full database suite, generated docs, decision log, RLS.md, stamp, changelog, this row | Revamp 3 (#1434) | 15 m | ~15 m build | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
+| 4:15-4:45 PM | #1463 built: add_own_character() (a member with no roster character adds their own character, trial joining that day, a returning character keeps its trial flag and join date; membership held first), "Player Added ... first main, self-added" in the Audit Log, the addCharacter relay and the bot's officer-channel notice; database tests red first; decision log, RLS.md, stamp, changelog | Revamp 3 (#1463) | 30 m | ~30 m build | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

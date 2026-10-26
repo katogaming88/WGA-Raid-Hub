@@ -10,6 +10,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-23 -- Add character: a member with no roster character adds their own; a main swap keeps an officer (#1463)
+
+Shipped: 20261026163945_add_own_character.sql
+
+Someone with a current membership on a team and no active character there had no way onto the roster but an officer: `request_main_swap()` refuses anyone without a character to swap from. Kat, 2026-10-23: a player joining partway through the season adds their own character, and an officer undoes a wrong one afterwards. This replaces the 2026-10-06 decision that a member's first character goes through an officer.
+
+- **`add_own_character(team_id, character_id, class_spec_id)`**, `SECURITY DEFINER`, for `authenticated`. The character has to be on the caller's account and the spec of its class. A new character starts as a trial joining that day; one they played on this team before keeps its own trial flag, join date and history, as a re-add does, while its backup flags and the wishlist and BiS exceptions an officer set for its last stint reset, as with the signup add and the invite link.
+- **Refused:** no membership on the team, an ended one (#1401), anyone with an active character there (a main swap), a character already on the roster, and a removed character someone else held there (its history is theirs, as #1433 holds for a swap).
+- **The membership is held first** (#1432), `for no key update` rather than the officers' share hold: it still waits behind Archive Member's `for update`, and also queues two of the caller's own adds (a double click, two tabs), which a share hold would let both through to add two characters.
+- **Officers are told in Discord**, the officer channel, through `discord-bot-webhook`'s `addCharacter` action, sent by the page once the add returns, as signup notices are. The Audit Log gets "Player Added", "<spec>, added by the member", written by the function itself since `write_audit_log()` is an officer's.
+- **Mistakes are undone after the fact** with Remove claim, Remove or Archive Member. Who may claim a Member is unchanged. A main swap keeps an officer's approval, since it archives a character and moves its attendance.
+
+[Full discussion -> #1463](https://github.com/katogaming88/WGA-Raid-Hub/issues/1463).
+
+---
+
 ## 2026-10-08 -- an approved main swap refuses an alt that is someone else's character (#1433)
 
 Shipped: 20261008153641_approved_swap_links_revived_row.sql
