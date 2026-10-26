@@ -5,7 +5,8 @@ import { useStatus } from '../components/Status';
 import { useCreateTeam } from './useGuildSettings';
 
 // New team (#1644): only a name is asked. The creator lands on the new team's
-// home as its team leader; the address comes from the name.
+// home as its team leader; the address starts as a random code, which the
+// Teams list can change to a readable one.
 export function NewTeamDialog({
   guildId,
   guildKey,
