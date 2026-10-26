@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     15 h 55 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |      47 h 1 m |
+| Revamp 3: officer dashboard        |     47 h 41 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **111 h 51 m** |
+| **All revamp work**                | **112 h 31 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -408,7 +408,13 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 10:45-10:55 AM | #1643 built: create_team(), update_team(), set_team_archived(), set_team_unlisted() for a guild officer of the team's own guild (not Staff), teams.unlisted (a flag the lists read, so the address still opens), also_on_teams() skips unlisted teams, Wrathless unlisted; database tests red first (13), full database suite, generated docs, decision log, RLS.md, schema reference, stamp, changelog, this row, PR opened | Revamp 3 (#1643) | 10 m | ~10 m build | not read | Review and merge not yet counted |
 | 11:05-11:15 AM | PR #1661 (#1643): CodeRabbit (audit rows through write_audit_log() and signed-out refusals taken; showing an unlisted team in "Also on" to its members declined), then the fresh-agent review: earlier_characters() also read into unlisted teams (fixed, test red first), and the archive and unlist switches log nothing on no change and refuse a missing value | Revamp 3 (#1643) | 15 m | ~10 m build, ~5 m Kat | not read | Merged 11:21 AM |
-| 10:40-11:00 PM | #1644 built: two Teams-list mockups (own page vs a tab on Guild officers), Kat chose a new Guild settings page with Teams as its first tab; New team in the team picker, the Teams list (rename, change address, archive with the name typed, bring back, unlist), unlisted teams left out of the switcher and guild pages for people not on them; unit and browser tests (keyboard, phone, light), help guide, stamp, changelog, this row | Revamp 3 (#1644) | 20 m | ~15 m build, ~5 m Kat | not read | Kat's local test, review and merge not yet counted |
+| 10:40-11:23 PM | #1644 built: two Teams-list mockups (own page vs a tab on Guild officers), Kat chose a new Guild settings page with Teams as its first tab; New team in the team picker, the Teams list (rename, change address, archive with the name typed, bring back, unlist), unlisted teams left out of the switcher and guild pages for people not on them; unit and browser tests (keyboard, phone, light), help guide, stamp, changelog, this row; Kat's local test, review and merge | Revamp 3 (#1644) | 45 m | ~25 m build, ~20 m Kat | not read | PR #1667, merged 11:23 PM |
+
+### 2026-10-26
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 11:20-11:35 AM | #1347: what the Sandbox still needed checked (unlisted kept off the live site and the new app's lists, no Discord posts without a config row, no way in the app yet to make a tester an officer of one team); the preview guide's Sandbox steps (making it, adding a tester, what keeps real teams safe), stamp, changelog, this row, PR opened | Revamp 3 (#1347) | 15 m | ~15 m build | not read | Kat making and filling the Sandbox on the site not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
@@ -438,6 +444,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-10-25 | 10:10-10:12 AM | Where the work stood | 5 m |
 | 2026-10-25 | 10:12-10:21 AM | #1408: Kat made a new Warcraft Logs API client, put its id and secret in Supabase and deleted the old one; a manual sync run stopped at GitHub's stale copy of the sync password (not the new keys), so the check waits for Monday night's run | 10 m |
 | 2026-10-25 | 10:21-10:31 AM | #1404: form text on the officer M+, BiS and Requests tabs and the profile card escaped, links only for web addresses, roster.js's weaker escaper removed; test red first; the live request rows read (549 values, nothing harmful); PR #1659, merged 10:31 AM | 10 m |
+| 2026-10-26 | 11:17-11:20 AM | Where the work stood | 5 m |
 | 2026-10-25 | 10:32-10:44 AM | #1628: the gear sync removes a character's slots Blizzard no longer returns, only after a save that worked; Edge Function test red first; the removal filter checked against the local database; PR #1660, merged 10:44 AM | 10 m |
 
 ## Remaining in Revamp 1
