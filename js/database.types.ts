@@ -4231,6 +4231,10 @@ export type Database = {
           team_key: string
         }[]
       }
+      create_own_name: {
+        Args: { p_label: string; p_team_id: number }
+        Returns: number
+      }
       create_team: {
         Args: { p_guild_id: number; p_name: string }
         Returns: {
@@ -4780,6 +4784,15 @@ export type Database = {
       team_season_start: {
         Args: { p_season?: string; p_team_id: number }
         Returns: string
+      }
+      team_unnamed_members: {
+        Args: { p_team_id: number }
+        Returns: {
+          battletag: string
+          character_name: string
+          discord_name: string
+          team_member_id: number
+        }[]
       }
       update_own_signup: {
         Args: {

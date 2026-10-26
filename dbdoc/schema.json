@@ -12106,6 +12106,18 @@
       "return_type": "void",
       "arguments": "p_team_id integer, p_unlisted boolean",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.create_own_name",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_label text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_unnamed_members",
+      "return_type": "record",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

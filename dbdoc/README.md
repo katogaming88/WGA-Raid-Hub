@@ -253,6 +253,8 @@
 | public.update_team | void | p_team_id integer, p_name text, p_key text | FUNCTION |
 | public.set_team_archived | void | p_team_id integer, p_archived boolean | FUNCTION |
 | public.set_team_unlisted | void | p_team_id integer, p_unlisted boolean | FUNCTION |
+| public.create_own_name | int4 | p_team_id integer, p_label text | FUNCTION |
+| public.team_unnamed_members | record | p_team_id integer | FUNCTION |
 
 ## Enums
 
