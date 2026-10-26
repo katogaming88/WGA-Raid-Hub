@@ -12129,6 +12129,12 @@
       "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.add_own_first_main",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_character_id integer, p_class_spec_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

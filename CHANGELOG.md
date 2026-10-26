@@ -12,6 +12,34 @@ answers to.
 
 ---
 
+## [3.213.0] - 2026-10-26
+
+### Backend
+
+- Someone on a team with no character on its roster can now add their
+  own first main, with no officer step (#1463). `add_own_first_main()`
+  puts one of their own characters on the roster: a new one as a trial
+  joining that day, one they played there before with its own trial flag
+  and join date. Refused for an ended membership, anyone who already has
+  a character there (that is still a main swap, which an officer
+  approves), a character already on the roster, and one someone else
+  held on the team. The Audit Log shows "Player Added" with "first main,
+  self-added". The pages that use it come with #1464.
+
+### Functions
+
+- `discord-bot-webhook` relays a new `firstMain` notice to the bot
+  (#1463).
+
+### Bot
+
+- The bot posts "First Main Added" to the team's officer channel: who
+  added which character, and how to undo it (#1463).
+
+### Project
+
+- Revamp time log row for #1463.
+
 ## [3.212.0] - 2026-10-26
 
 ### Backend
