@@ -52,7 +52,11 @@ describe('add_own_character()', () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const { characterId, nameRealm } = await character(q, team.raider.memberId);
-      const old = await seedPlayer(q, { memberId: team.raider.memberId, nameRealm, archivedAt: new Date('2026-03-01') });
+      const old = await seedPlayer(q, {
+        memberId: team.raider.memberId,
+        nameRealm,
+        archivedAt: new Date('2026-03-01')
+      });
       await q("update public.players set is_trial = false, join_date = '2026-02-01' where id = $1", [old]);
       const id = (await addCharacter(asUser, team.raider.uid, team.teamId, characterId)).rows[0].id;
       expect(id).toBe(old);
