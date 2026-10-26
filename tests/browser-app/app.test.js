@@ -2361,7 +2361,12 @@ const HELP_SHOT_STATES = {
   },
   'add-team': {
     state: { ...GUILD_SETTINGS, session: storedSession({ battlenet: 'Katorrí#1', discord: 'Katorrí' }) },
-    markers: [null, null, 'role=button[name="Rename Phoenix"]', '.guildsettings-row:has-text("Sandbox") .guildsettings-team'],
+    markers: [
+      null,
+      null,
+      'role=button[name="Rename Phoenix"]',
+      '.guildsettings-row:has-text("Sandbox") .guildsettings-team'
+    ],
     frame: 'main .guildsettings-list'
   },
   attendance: {
