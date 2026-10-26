@@ -57,12 +57,32 @@ describe('add_own_character()', () => {
         nameRealm,
         archivedAt: new Date('2026-03-01')
       });
-      await q("update public.players set is_trial = false, join_date = '2026-02-01' where id = $1", [old]);
+      // The officer's flags for the last stint, which do not carry over.
+      await q(
+        `update public.players
+            set is_trial = false, join_date = '2026-02-01', is_bench = true,
+                is_backup_tank = true, is_backup_healer = true,
+                wishlist_allowed = true, bis_allowed = true
+          where id = $1`,
+        [old]
+      );
       const id = (await addCharacter(asUser, team.raider.uid, team.teamId, characterId)).rows[0].id;
       expect(id).toBe(old);
       const row = await playerRow(q, id);
-      expect(row).toMatchObject({ is_trial: false, archived_at: null, team_member_id: team.raider.memberId });
-      expect(row.join_date.toISOString().slice(0, 10)).toBe('2026-02-01');
+      expect(row).toMatchObject({
+        is_trial: false,
+        archived_at: null,
+        team_member_id: team.raider.memberId,
+        is_bench: false,
+        is_backup_tank: false,
+        is_backup_healer: false,
+        wishlist_allowed: false,
+        bis_allowed: false
+      });
+      // As text: pg reads a date as local midnight, which toISOString() can
+      // move a day (CodeRabbit).
+      const joined = await q('select join_date::text as d from public.players where id = $1', [id]);
+      expect(joined.rows[0].d).toBe('2026-02-01');
     });
   });
 
@@ -167,6 +187,16 @@ describe('add_own_character()', () => {
       await expect(addCharacter(asUser, team.raider.uid, team.teamId, characterId)).rejects.toThrow(
         /is a Evoker, not a Mage/
       );
+    });
+  });
+
+  it('refuses someone signed out', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      const team = await seedTeam(q);
+      const { characterId } = await character(q, team.raider.memberId);
+      await expect(
+        asAnon('select public.add_own_character($1, $2, $3)', [team.teamId, characterId, FROST_MAGE])
+      ).rejects.toThrow(/permission denied/);
     });
   });
 });
