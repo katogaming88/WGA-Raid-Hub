@@ -86,6 +86,26 @@ describe('add_own_character()', () => {
     });
   });
 
+  it('brings back a removed character nobody held, linked to them', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const { characterId, nameRealm } = await character(q, team.raider.memberId);
+      const old = await seedPlayer(q, { teamId: team.teamId, nameRealm, archivedAt: new Date('2026-03-01') });
+      const id = (await addCharacter(asUser, team.raider.uid, team.teamId, characterId)).rows[0].id;
+      expect(id).toBe(old);
+      expect(await playerRow(q, id)).toMatchObject({ archived_at: null, team_member_id: team.raider.memberId });
+    });
+  });
+
+  it('lets an officer with no character add their own', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const { characterId } = await character(q, team.officer.memberId);
+      const id = (await addCharacter(asUser, team.officer.uid, team.teamId, characterId)).rows[0].id;
+      expect((await playerRow(q, id)).team_member_id).toBe(team.officer.memberId);
+    });
+  });
+
   it('writes "Player Added" with "added by the member" to the Audit Log', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
