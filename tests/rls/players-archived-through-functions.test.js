@@ -132,14 +132,30 @@ describe('who may call them', () => {
     });
   });
 
+  it('archive_player() and restore_player() refuse a raider on the same team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const playerId = await seedPlayer(q, { teamId: team.teamId });
+      await expect(
+        asUser(team.raider.uid, "select public.archive_player($1, 'drama', null)", [playerId])
+      ).rejects.toThrow(/Not authorized/);
+      await q('update public.players set archived_at = now() where id = $1', [playerId]);
+      await expect(asUser(team.raider.uid, 'select public.restore_player($1)', [playerId])).rejects.toThrow(
+        /Not authorized/
+      );
+    });
+  });
+
   it('anon cannot call any of the three', async () => {
     await withTxn(async ({ q, asAnon }) => {
       const team = await seedTeam(q);
       const playerId = await seedPlayer(q, { teamId: team.teamId });
       const signupId = await seedSignup(q, { teamId: team.teamId });
-      await expect(asAnon("select public.archive_player($1, 'drama', null)", [playerId])).rejects.toThrow();
-      await expect(asAnon('select public.restore_player($1)', [playerId])).rejects.toThrow();
-      await expect(asAnon('select public.add_signup_to_roster($1)', [signupId])).rejects.toThrow();
+      await expect(asAnon("select public.archive_player($1, 'drama', null)", [playerId])).rejects.toThrow(
+        /permission denied/
+      );
+      await expect(asAnon('select public.restore_player($1)', [playerId])).rejects.toThrow(/permission denied/);
+      await expect(asAnon('select public.add_signup_to_roster($1)', [signupId])).rejects.toThrow(/permission denied/);
     });
   });
 });
