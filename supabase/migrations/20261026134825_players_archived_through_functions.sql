@@ -73,6 +73,12 @@ begin
   if not found then
     raise exception 'signup % not found', p_signup_id;
   end if;
+  -- The check above was for the team read before the lock; a signup moved to
+  -- another team in between is refused rather than added to a team the caller
+  -- was never checked for (CodeRabbit).
+  if auth.uid() is not null and v_signup.team_id is distinct from v_team_id then
+    raise exception 'Not authorized';
+  end if;
 
   if v_signup.status is distinct from 'approved' then
     raise exception 'signup % is not in approved status (is %)',
@@ -270,7 +276,7 @@ begin
   end if;
 
   return v_player_id;
-end $function$;;
+end $function$;
 
 revoke all on function public.add_signup_to_roster(integer, boolean, integer, boolean, boolean) from public;
 revoke execute on function public.add_signup_to_roster(integer, boolean, integer, boolean, boolean) from anon;
