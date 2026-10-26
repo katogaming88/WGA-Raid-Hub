@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.209.1] - 2026-10-26
+
+### Project
+
+- The preview guide (`docs/app-preview.md`) explains the Sandbox team
+  for the guild test (#1347): how a guild officer makes it through the
+  site and unlists it, how to add a tester (Cloudflare allow list,
+  the Sandbox's invite link, and for officer testers the role set by a
+  site admin until #1651), and what keeps the real teams safe. It
+  replaces the old line that described a sandbox copied from a real
+  team.
+- The revamp time log: #1644's row now counts Kat's test and merge,
+  and #1347 has its row.
+
+---
+
 ## [3.209.0] - 2026-10-25
 
 ### Frontend

@@ -22,10 +22,32 @@ What a tester sees:
 
 > **The preview uses the live database.** It reads and writes the same data as wgaraidhub.com. Today its RSVP, wishlist, main-swap and calendar buttons are real actions, and the officer tools that follow will be too (#1185).
 
-**Test anything that writes to the database on the sandbox team, not a real one.** It holds a copy of one real team's data. Before inviting a tester:
+**Test anything that writes to the database on the Sandbox team, not a real one.** The guild test before cutover runs entirely there (#1347, #1657).
 
-1. Make their account an officer of the sandbox team only, never a guild officer, site admin or officer of a real team.
-2. Tell them to stay in the sandbox team. Anything they do on a real team is a real edit, and a bug in the app can still reach one (#1185).
+## The Sandbox team
+
+A team in We Go Again made for testing. Testers can press every button on it without touching Phoenix, Hellfire Rollers, Immolation or Wrathless. It is made and filled through the site, the way an officer would, so each step is also a test of that page.
+
+### Making it
+
+1. Sign in as a guild officer of We Go Again. Open the team picker and choose **New team**, named `Sandbox`. You become its team leader.
+2. **Guild → Guild settings → Teams**: tick **Unlisted** on Sandbox. It drops off the team picker and the guild's pages for anyone not on it, and out of "Also on" on real teams. Its address still opens it. The live site never shows it at all: its team list is fixed in code.
+3. Fill it as an officer would: paste a real RCLootCouncil export into **Import loot**, add people on the **Roster**, and set the season and calendar under **Settings**.
+4. If it gets wrecked, archive it on the Teams list and make a new one the same way. There is no reset script.
+
+### Adding a tester
+
+1. Add their email to the Cloudflare allow list (next section).
+2. Send them the Sandbox's invite link (**Settings → Invite link** on the Sandbox). They join with their real characters, as raiders.
+3. **Officer testers only:** make them an officer of the Sandbox, never a guild officer, site admin or officer of a real team. The app cannot do this yet; team ranks on the Roster arrive with #1651. Until then a site admin does it in the Supabase dashboard: **Table Editor → team_members**, find the tester's row for the Sandbox's team id, and set `role` to `officer`.
+4. Tell them to stay on the Sandbox and check the team name in the team switcher before every change. Real officers keep their real-team roles on the same account, so a page that opened the wrong team would not be refused.
+
+### What keeps the real teams safe
+
+- **Discord:** the Sandbox has no `team_discord_config` row, so the bot posts nothing for it. To see its posts, add a row by hand that points at a test channel (until Settings → Discord, #994). Never copy a real team's channels into it.
+- **Cross-team reads:** "Also on" and earlier-character loot counts leave unlisted teams out (#1643). Loot counts already stay inside one team.
+- **BoE:** sales are guild-wide, not per team. Test the BoE page by reading only, or with one made-up find deleted afterwards.
+- **Not covered:** a bug in a shared database function, a table no single team owns, or a real officer testing on their own account can still reach real data (#1185). The Sandbox makes the common mistakes harmless; it is not a guarantee.
 
 ## Adding or removing a tester
 
