@@ -352,9 +352,18 @@ a.raider-name:hover {
   cursor: pointer;
 }
 
-/* A member with no Member of their own makes one (#1355). */
-.own-name-card p {
-  margin-top: 0;
+/* A member with no Member of their own makes one (#1355). Spaced like Needs a
+   look: .card carries no padding of its own. */
+.own-name-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+.own-name-card p,
+.own-name-card .create-name-form {
+  margin: 0;
 }
 
 .archive-reason-form .field {
