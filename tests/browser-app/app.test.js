@@ -1370,7 +1370,45 @@ const SITE_ADMIN = {
   tables: { site_settings: [{ maintenance_mode: false, maintenance_message: null, guild_creation_open: false }] }
 };
 
+// #1355: someone on Phoenix with no Member and no character yet.
+const NO_MEMBER = {
+  discordId: 'discord-raider-60',
+  person: {
+    site_admin: false,
+    guild_officer: false,
+    boe_manager: false,
+    teams: [{ team_id: 1, team_member_id: 60, role: 'raider', characters: [] }]
+  }
+};
+// The invite link's "Which Member is you?" step, two officer-made Members bare.
+const JOIN_MEMBER_STEP = {
+  path: '/join/phoenix-abc',
+  sentinel: 'main:has(.join-members)',
+  session: OFFICER,
+  person: NO_MEMBER,
+  tables: { names: rosterWithNames().names },
+  rpc: {
+    team_invite_link_resolve: [
+      { team_id: 1, team_name: 'Phoenix', team_slug: 'phoenix', guild_id: 1, guild_name: 'We Go Again' }
+    ]
+  }
+};
+// The Roster for that person: Make my Member above the table.
+const ROSTER_OWN_NAME = {
+  path: '/g/wga/t/phoenix/roster',
+  sentinel: '.own-name-card',
+  session: OFFICER,
+  person: NO_MEMBER,
+  tables: rosterWithNames()
+};
+
 const STATES = [
+  { label: 'join, which Member is you', ...JOIN_MEMBER_STEP },
+  { label: 'join, which Member is you, light', ...JOIN_MEMBER_STEP, colorScheme: 'light' },
+  { label: 'join, which Member is you, on a phone', ...JOIN_MEMBER_STEP, viewport: NARROW },
+  { label: 'roster, no Member yet', ...ROSTER_OWN_NAME },
+  { label: 'roster, no Member yet, light', ...ROSTER_OWN_NAME, colorScheme: 'light' },
+  { label: 'roster, no Member yet, on a phone', ...ROSTER_OWN_NAME, viewport: NARROW },
   { label: 'help', ...HELP },
   { label: 'help, light', ...HELP, colorScheme: 'light' },
   { label: 'help, a guide open', ...HELP_GUIDE },
@@ -2151,6 +2189,42 @@ describe('keyboard', () => {
   });
 });
 
+describe('roster Assign dialog (#1355)', () => {
+  it('has no violations with the people who joined listed', async () => {
+    const { context, page } = await openApp(browser, server.port, {
+      path: '/g/wga/t/phoenix/roster',
+      sentinel: 'table.roster-table .name-only-row',
+      session: OFFICER,
+      who: 'officer',
+      tables: rosterWithNames(),
+      rpc: {
+        team_unnamed_members: [
+          { team_member_id: 60, discord_name: 'kato', battletag: 'Kato#1234', character_name: 'Katorri-Stormrage' },
+          { team_member_id: 61, discord_name: null, battletag: null, character_name: null }
+        ]
+      }
+    });
+    try {
+      // From the keyboard: a mouse click scrolls the row into view, and that
+      // late scroll closes the menu (see the row menu tests below).
+      const trigger = page.getByRole('button', { name: 'More actions for Corvin' });
+      await trigger.scrollIntoViewIfNeeded();
+      await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+      await trigger.focus();
+      await page.keyboard.press('Enter');
+      await page
+        .getByRole('menu', { name: 'More actions for Corvin' })
+        .getByRole('menuitem', { name: 'Assign…' })
+        .click();
+      const dialog = page.getByRole('dialog', { name: 'Assign Corvin' });
+      await dialog.getByRole('radio', { name: /Katorri-Stormrage/ }).waitFor();
+      expect(await axe(page)).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+});
+
 describe('roster row menu', () => {
   it('has no violations while open, and focus returns to its button when a dialog it opened closes', async () => {
     const { context, page } = await openApp(browser, server.port, {
@@ -2162,7 +2236,13 @@ describe('roster row menu', () => {
     });
     try {
       const trigger = page.getByRole('button', { name: 'More actions for Bryn' });
-      await trigger.click();
+      // From the keyboard, as the Assign test does: the officer has no Member
+      // here, so Make my Member sits above the table and a mouse click's
+      // scroll would close the menu.
+      await trigger.scrollIntoViewIfNeeded();
+      await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+      await trigger.focus();
+      await page.keyboard.press('Enter');
       const menu = page.getByRole('menu', { name: 'More actions for Bryn' });
       await menu.waitFor();
       expect(await axe(page)).toEqual([]);

@@ -337,6 +337,35 @@ a.raider-name:hover {
   margin-bottom: 0;
 }
 
+/* Assign's list of people who joined with no Member (#1355): one per line,
+   the whole line a target for the radio. */
+.assign-options {
+  border: 0;
+  padding: 0;
+}
+
+.assign-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  cursor: pointer;
+}
+
+/* A member with no Member of their own makes one (#1355). Spaced like Needs a
+   look: .card carries no padding of its own. */
+.own-name-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+.own-name-card p,
+.own-name-card .create-name-form {
+  margin: 0;
+}
+
 .archive-reason-form .field {
   margin-bottom: var(--space-2);
 }

@@ -1017,3 +1017,105 @@ describe('Roster page, quick Claim and accounts', () => {
     expect(client.rpcs.some(([n]) => n === 'team_battlenet_connections')).toBe(false);
   });
 });
+
+describe('Assign (#1355)', () => {
+  const POOL = [
+    { team_member_id: 20, discord_name: 'kato', battletag: 'Kato#1234', character_name: 'Katorri-Stormrage' },
+    { team_member_id: 21, discord_name: null, battletag: null, character_name: null }
+  ];
+  const withPool = (pool = POOL) =>
+    namesHandlers({
+      role: 'officer',
+      rpc: (name, args) => (name === 'team_unnamed_members' ? { data: pool } : seededHandlers().rpc!(name, args))
+    });
+  const openAssign = async (user: ReturnType<typeof userEvent.setup>) => {
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: 'More actions for Bare Raider' }));
+    const menu = await screen.findByRole('menu', { name: 'More actions for Bare Raider' });
+    await user.click(within(menu).getByRole('menuitem', { name: 'Assign…' }));
+    return screen.findByRole('dialog', { name: 'Assign Bare Raider' });
+  };
+
+  it('is on a bare row only, not a claimed one', async () => {
+    const user = userEvent.setup();
+    renderApp('/g/wga/t/phoenix/roster', withPool());
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const claimedRow = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
+    await user.click(within(claimedRow).getByRole('button', { name: 'More actions for Raz' }));
+    const menu = await screen.findByRole('menu', { name: 'More actions for Raz' });
+    expect(within(menu).queryByRole('menuitem', { name: 'Assign…' })).not.toBeInTheDocument();
+  });
+
+  it('lists who joined with no Member by their sign-in names and character, and assigns one', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp('/g/wga/t/phoenix/roster', withPool());
+    const dialog = await openAssign(user);
+    const assign = within(dialog).getByRole('button', { name: 'Assign' });
+    expect(assign).toBeDisabled();
+    expect(within(dialog).getByRole('radio', { name: 'Signed in, no name on record' })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('radio', { name: 'kato · Kato#1234 (Katorri-Stormrage)' }));
+    await user.click(assign);
+    await screen.findByText('Bare Raider assigned.');
+    expect(client.writes).toEqual([
+      {
+        table: 'names',
+        method: 'update',
+        values: { team_member_id: 20 },
+        filters: [
+          ['eq', 'id', 1],
+          ['is', 'team_member_id', null]
+        ]
+      }
+    ]);
+    expect(client.rpcs).toContainEqual([
+      'write_audit_log',
+      {
+        p_team_id: 1,
+        p_action: 'Name Assigned',
+        p_target_type: 'names',
+        p_target_id: 1,
+        p_detail: { label: 'Bare Raider', team_member_id: 20 }
+      }
+    ]);
+  });
+
+  it('says so when everyone already has a Member', async () => {
+    const user = userEvent.setup();
+    renderApp('/g/wga/t/phoenix/roster', withPool([]));
+    const dialog = await openAssign(user);
+    expect(await within(dialog).findByText(/Everyone on the team already has a Member/)).toBeInTheDocument();
+  });
+});
+
+describe('Make my Member on the Roster (#1355)', () => {
+  it('shows a member with no Member the form, and makes one through create_own_name', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(
+      '/g/wga/t/phoenix/roster',
+      namesHandlers({
+        rpc: (name, args) => (name === 'create_own_name' ? { data: 7 } : seededHandlers().rpc!(name, args))
+      })
+    );
+    expect(await screen.findByRole('heading', { name: 'You don’t have a Member yet' })).toBeInTheDocument();
+    const field = screen.getByRole('textbox', { name: 'Your name' });
+    expect(field).toHaveValue('X');
+    await user.clear(field);
+    await user.type(field, 'Katorri');
+    await user.click(screen.getByRole('button', { name: 'Make my Member' }));
+    await screen.findByText('Katorri is your Member now.');
+    expect(client.rpcs).toContainEqual(['create_own_name', { p_team_id: 1, p_label: 'Katorri' }]);
+  });
+
+  it('is not shown to someone who already holds a Member', async () => {
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ teamMemberId: 9 }));
+    await screen.findByRole('table', { name: 'Current roster' });
+    expect(screen.queryByRole('heading', { name: 'You don’t have a Member yet' })).not.toBeInTheDocument();
+  });
+
+  it('is not shown to a signed-out visitor', async () => {
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: null }));
+    await screen.findByRole('table', { name: 'Current roster' });
+    expect(screen.queryByRole('heading', { name: 'You don’t have a Member yet' })).not.toBeInTheDocument();
+  });
+});

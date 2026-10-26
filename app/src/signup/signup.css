@@ -287,3 +287,29 @@
   content: ',';
   margin-left: calc(-1 * var(--space-1));
 }
+
+/* The invite link's "Which Member is you?" list (#1355): one bare Member per
+   line, its "That's me" at the right end, boxed like the character list. */
+.join-members {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.join-members li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.join-members li + li {
+  border-top: 1px solid var(--border);
+}
+
+.join-skip {
+  margin-top: var(--space-2);
+}
