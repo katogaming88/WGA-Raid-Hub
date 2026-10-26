@@ -95,11 +95,14 @@ security definer
 set search_path = public
 as $$
 begin
-  -- The same gate as team_battlenet_connections(): whoever can Assign.
+  -- Whoever can Assign: the team's officers, a site admin, or a guild officer
+  -- of this team's own guild. is_guild_officer() would answer for a guild
+  -- officer anywhere and hand one guild's sign-in names to another (#1643's
+  -- rule, CodeRabbit on this function).
   if not (
     coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false)
     or public.is_site_admin()
-    or public.is_guild_officer()
+    or exists (select 1 from public.teams t where t.id = p_team_id and public.is_guild_officer_of(t.guild_id))
   ) then
     raise exception 'Not authorized';
   end if;

@@ -4,7 +4,16 @@
 // before a character is picked (team_invite_link_join() with no character).
 import { randomUUID } from 'node:crypto';
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, insertDiscordUser, seedTeam, seedPlayer, OFFICER_T1, SITE_ADMIN } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  insertDiscordUser,
+  seedTeam,
+  seedPlayer,
+  OFFICER_T1,
+  SITE_ADMIN,
+  GUILD_OFFICER
+} from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -152,6 +161,30 @@ describe('team_unnamed_members()', () => {
       const team = await seedTeam(q);
       await expect(unnamed(asUser, team.raider.uid, team.teamId)).rejects.toThrow(/Not authorized/);
       expect((await unnamed(asUser, SITE_ADMIN, team.teamId)).length).toBe(3);
+    });
+  });
+
+  it('is refused to an officer of a different team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const teamA = await seedTeam(q);
+      const teamB = await seedTeam(q);
+      await expect(unnamed(asUser, teamB.officer.uid, teamA.teamId)).rejects.toThrow(/Not authorized/);
+    });
+  });
+
+  it("is open to a guild officer of the team's own guild", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      expect((await unnamed(asUser, GUILD_OFFICER, team.teamId)).length).toBe(3);
+    });
+  });
+
+  it('refuses a guild officer of another guild', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const other = (await q("insert into public.guilds (name) values ('Other Guild') returning id")).rows[0].id;
+      await q('update public.teams set guild_id = $1 where id = $2', [other, team.teamId]);
+      await expect(unnamed(asUser, GUILD_OFFICER, team.teamId)).rejects.toThrow(/Not authorized/);
     });
   });
 
