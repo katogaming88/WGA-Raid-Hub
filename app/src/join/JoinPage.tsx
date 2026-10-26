@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { DataState } from '../components/DataState';
+import { useAccess } from '../auth/access';
 import { BATTLENET, DISCORD, useSession } from '../auth/session';
+import { useStatus } from '../components/Status';
 import { CharacterIcon } from '../characters/CharacterIcon';
 import { pickerRows, type AccountCharacter, type CharactersAnswer } from '../characters/characters';
 import { refusalStatus, useBattlenetCharacters } from '../characters/useCharacters';
 import { defaultGuildPath } from '../config';
+import { OwnNameForm } from '../roster/OwnNameForm';
+import { useClaimName, useNames } from '../roster/useNames';
 import { useInviteTarget, useJoinTeam, type InviteTarget } from './useJoin';
 import '../characters/characters.css';
 import '../signup/signup.css';
 
 // /join/<code> (#1264): the page an invite link opens. Team and guild name,
-// Battle.net sign-in, character pick, then straight onto the roster -- the
+// Battle.net sign-in, joining, which Member is you (#1355), character pick, then onto the roster -- the
 // link is the approval. Sits outside the app shell: a visitor has no guild
 // yet, so there is no sidebar to show. Same character pick as Sign Up (#1162).
 export function JoinPage({ code }: { code: string }) {
@@ -81,8 +85,113 @@ function Join({ code, target }: { code: string; target: InviteTarget }) {
   return (
     <section className="card signup-card">
       {heading}
-      <Picker code={code} target={target} />
+      <Steps code={code} target={target} />
     </section>
+  );
+}
+
+// Join the team, then say which Member is you (claim one an officer made, or
+// make your own), then pick a character (#1355, Kat 2026-10-26).
+function Steps({ code, target }: { code: string; target: InviteTarget }) {
+  const access = useAccess();
+  const names = useNames(target.teamId);
+  const join = useJoinTeam(code);
+  const [skippedMember, setSkippedMember] = useState(false);
+  const membership = access.data?.teams.find((t) => t.teamId === target.teamId);
+  const teamLink = `${defaultGuildPath()}/t/${target.teamSlug}`;
+
+  if (access.isPending || names.isPending) {
+    return (
+      <p className="text-muted" role="status">
+        Loading…
+      </p>
+    );
+  }
+  if (access.isError || names.isError) {
+    return (
+      <p className="form-error" role="alert">
+        Could not load the team: {(access.error ?? names.error)?.message}
+      </p>
+    );
+  }
+  if (!membership) {
+    return (
+      <>
+        {join.isError && (
+          <p className="form-error" role="alert">
+            Could not join: {join.error.message}
+          </p>
+        )}
+        <button
+          type="button"
+          className="button button-primary"
+          disabled={join.isPending}
+          onClick={() => join.mutate({ blizzardId: null })}
+        >
+          {join.isPending ? 'Joining…' : `Join ${target.teamName}`}
+        </button>
+      </>
+    );
+  }
+  const holdsName = (names.data ?? []).some((n) => n.team_member_id === membership.teamMemberId);
+  if (!holdsName && !skippedMember) {
+    return <MemberStep target={target} onSkip={() => setSkippedMember(true)} />;
+  }
+  if (membership.characters.length > 0) {
+    return (
+      <>
+        <h2>You’re on the roster</h2>
+        <p>Welcome to {target.teamName}.</p>
+        <Link className="button button-primary" to={teamLink}>
+          Go to {target.teamName}
+        </Link>
+      </>
+    );
+  }
+  return <Picker code={code} target={target} />;
+}
+
+// Which Member is you: one an officer already made (Claim), or your own.
+function MemberStep({ target, onSkip }: { target: InviteTarget; onSkip: () => void }) {
+  const names = useNames(target.teamId);
+  const claim = useClaimName(target.teamId);
+  const { announce } = useStatus();
+  const bare = (names.data ?? []).filter((n) => n.team_member_id === null);
+  return (
+    <>
+      <h2>Which Member is you?</h2>
+      {bare.length > 0 && (
+        <>
+          <p className="text-muted">If an officer already added you, pick your name.</p>
+          <ul className="join-members">
+            {bare.map((n) => (
+              <li key={n.id}>
+                <span>{n.label}</span>
+                <button
+                  type="button"
+                  className="button"
+                  disabled={claim.isPending}
+                  onClick={() =>
+                    claim.mutate({ nameId: n.id }, { onSuccess: () => announce('success', `Claimed ${n.label}.`) })
+                  }
+                >
+                  That’s me
+                </button>
+              </li>
+            ))}
+          </ul>
+          {claim.isError && (
+            <p className="form-error" role="alert">
+              That did not save: {claim.error.message}
+            </p>
+          )}
+        </>
+      )}
+      <OwnNameForm teamId={target.teamId} card={false} />
+      <button type="button" className="button join-skip" onClick={onSkip}>
+        Skip for now
+      </button>
+    </>
   );
 }
 

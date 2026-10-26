@@ -174,3 +174,72 @@ export function useDeleteName(teamId: number, done?: (variables: { nameId: numbe
     { key: ['delete-name', teamId], refreshes: [key(teamId)], ...onDone(done) }
   );
 }
+
+// Officer: who Assign can attach a bare Name to -- current members with no
+// Name -- with the names their sign-ins carry (team_unnamed_members, #1355).
+export type UnnamedMember = {
+  team_member_id: number;
+  discord_name: string | null;
+  battletag: string | null;
+  character_name: string | null;
+};
+const unnamedKey = (teamId: number) => ['unnamed-members', teamId] as const;
+export function useUnnamedMembers(teamId: number, enabled: boolean) {
+  return useSupabaseQuery<UnnamedMember[]>(
+    unnamedKey(teamId),
+    async (client) => {
+      const { data, error } = await client.rpc('team_unnamed_members', { p_team_id: teamId });
+      return { data: (data ?? []) as UnnamedMember[], error };
+    },
+    { enabled }
+  );
+}
+
+// How Assign and the pool show a person: what their sign-ins call them, then
+// their character, so two people are told apart.
+export function unnamedLabel(m: UnnamedMember): string {
+  const who = [m.discord_name, m.battletag].filter(Boolean).join(' · ') || 'Signed in, no name on record';
+  return m.character_name ? `${who} (${m.character_name})` : who;
+}
+
+// Officer: attaches a bare Name to someone who joined without one. Matches
+// only a Name still bare, as Delete Name does, so one claimed since the page
+// read it is left alone and the officer is told.
+type Assign = { nameId: number; label: string; teamMemberId: number };
+export function useAssignName(teamId: number, done?: (variables: Assign) => void) {
+  return useSupabaseMutation<null, Assign>(
+    async (client, { nameId, label, teamMemberId }) => {
+      const result = await client
+        .from('names')
+        .update({ team_member_id: teamMemberId })
+        .eq('id', nameId)
+        .is('team_member_id', null)
+        .select('id');
+      if (result.error) {
+        return result.error.code === '23505'
+          ? { data: null, error: { message: 'That person already has a Member on this team.' } }
+          : result;
+      }
+      if (result.data?.length === 0) return { data: null, error: CHANGED };
+      await writeAuditLog(client, teamId, 'Name Assigned', nameId, { label, team_member_id: teamMemberId });
+      return { data: null, error: null };
+    },
+    { key: ['assign-name', teamId], refreshes: [key(teamId), unnamedKey(teamId)], ...onDone(done) }
+  );
+}
+
+// Self-service: someone on the team with no Name makes their own, claimed by
+// them (create_own_name, #1355).
+export function useCreateOwnName(teamId: number, done?: (variables: { label: string }) => void) {
+  return useSupabaseMutation<null, { label: string }>(
+    async (client, { label }) => {
+      const result = await client.rpc('create_own_name', { p_team_id: teamId, p_label: label });
+      return { data: null, error: result.error };
+    },
+    {
+      key: ['create-own-name', teamId],
+      refreshes: [key(teamId), unnamedKey(teamId), ['access'], ['team-alts', teamId]],
+      ...onDone(done)
+    }
+  );
+}

@@ -38,6 +38,7 @@ import { NeedsALook } from './NeedsALook';
 import { ProjectedRoster } from './ProjectedRoster';
 import { PlayerSettingsProvider, SettingsRowButton } from './PlayerSettings';
 import { useCreateName, useNames } from './useNames';
+import { OwnNameForm } from './OwnNameForm';
 import type { NameRow } from './names';
 import {
   useAccountLinks,
@@ -355,6 +356,9 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
       {/* Bare Names (#1355): officers add one ahead of a raider having an
           account, optionally with a role guess so it sits under that tab. */}
       {officer && <CreateNameForm teamId={team.id} />}
+      {/* On the team with no Member of their own (#1355): claim theirs from the
+          list, or make one rather than wait for an officer. */}
+      {ownMember !== undefined && namesQuery.isSuccess && !holdsName && <OwnNameForm teamId={team.id} />}
       {groups.length === 0 && nameRows.length === 0 ? (
         <div className="card placeholder">
           <p>No one is on this team’s roster yet.</p>

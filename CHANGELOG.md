@@ -12,6 +12,28 @@ answers to.
 
 ---
 
+## [3.211.0] - 2026-10-26
+
+### Frontend
+
+- New app: the invite link now asks "Which Member is you?" after you
+  join (#1355). Press "That's me" next to the Member an officer made
+  for you, or type your name to make your own (it starts from your
+  Discord name). Then pick your character for the roster. You can skip
+  the Member step and an officer can sort it out later.
+- New app: on the Roster, someone on the team who has no Member gets a
+  "You don't have a Member yet" box to make their own.
+- New app: officers get Assign in an unclaimed Member's "..." menu. It
+  lists everyone who joined without a Member, by their Discord name,
+  BattleTag and character, and attaches the Member to the person
+  picked.
+
+### Project
+
+- The revamp time log has #1355's pages row.
+
+---
+
 ## [3.210.0] - 2026-10-26
 
 ### Backend

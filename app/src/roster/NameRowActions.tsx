@@ -6,16 +6,19 @@ import { useSession } from '../auth/session';
 import { ROLE_LABELS, ROLE_ORDER } from './roster';
 import {
   ARCHIVE_REASONS,
+  unnamedLabel,
   useArchiveTeamMember,
+  useAssignName,
   useClaimName,
   useDeleteName,
   useRemoveNameClaim,
-  useRenameName
+  useRenameName,
+  useUnnamedMembers
 } from './useNames';
 
 // A roster row's actions (#1355), all behind one "..." menu (Kat, 2026-09-29):
 // Claim on a bare row (anyone signed in), Edit/Remove claim/Archive Member
-// once claimed, Edit/Delete Name while still bare, and Archive Member alone on
+// once claimed, Edit/Assign/Delete Name while still bare, and Archive Member alone on
 // a member's row with no Name. Everything but Claim is officer-only. No menu
 // at all when nothing in it applies (a raider looking at an already-claimed
 // row).
@@ -40,6 +43,7 @@ export function NameRowActions({
   const { announce } = useStatus();
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [assigning, setAssigning] = useState(false);
   // The roster table this row sits in, learned once when the row mounts: when
   // a write takes the row away, focus goes to the table instead of falling to
   // the page itself.
@@ -66,6 +70,8 @@ export function NameRowActions({
   }
   if (officer && nameId !== null) {
     menuActions.push({ label: 'Edit', onSelect: () => setEditing(true) });
+    // Someone who joined without a Name (#1355): an officer attaches this one.
+    if (teamMemberId === null) menuActions.push({ label: 'Assign…', onSelect: () => setAssigning(true) });
     if (teamMemberId !== null) {
       menuActions.push({
         label: 'Remove claim',
@@ -115,6 +121,15 @@ export function NameRowActions({
           onRenamed={refocus}
         />
       )}
+      {assigning && nameId !== null && (
+        <AssignDialog
+          teamId={teamId}
+          nameId={nameId}
+          label={label}
+          onClose={() => setAssigning(false)}
+          onAssigned={refocus}
+        />
+      )}
       {confirmDelete && teamMemberId !== null && (
         <ArchiveMemberDialog
           teamId={teamId}
@@ -145,6 +160,96 @@ export function NameRowActions({
         />
       )}
     </span>
+  );
+}
+
+// Officer: attaches a bare Name to someone on the team who has none yet, picked
+// from team_unnamed_members() by the names their sign-ins carry (#1355).
+function AssignDialog({
+  teamId,
+  nameId,
+  label,
+  onClose,
+  onAssigned
+}: {
+  teamId: number;
+  nameId: number;
+  label: string;
+  onClose: () => void;
+  onAssigned: () => void;
+}) {
+  const id = useId();
+  const pool = useUnnamedMembers(teamId, true);
+  const assign = useAssignName(teamId, onAssigned);
+  const { announce } = useStatus();
+  const [picked, setPicked] = useState<number | null>(null);
+  const people = pool.data ?? [];
+
+  const onSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (picked === null) return;
+    assign.mutate(
+      { nameId, label, teamMemberId: picked },
+      {
+        onSuccess: () => {
+          announce('success', `${label} assigned.`);
+          onClose();
+        }
+      }
+    );
+  };
+
+  return (
+    <Dialog title={`Assign ${label}`} onClose={onClose} busy={assign.isPending}>
+      <form onSubmit={onSubmit} noValidate>
+        {pool.isPending && (
+          <p className="text-muted" role="status">
+            Reading who has joined…
+          </p>
+        )}
+        {pool.isError && (
+          <p className="form-error" role="alert">
+            Could not read who has joined: {pool.error.message}
+          </p>
+        )}
+        {pool.isSuccess && people.length === 0 && (
+          <p className="text-muted">
+            Everyone on the team already has a Member. People show up here after they join through the team’s invite
+            link.
+          </p>
+        )}
+        {people.length > 0 && (
+          <fieldset className="field assign-options">
+            <legend className="field-label">Joined, with no Member yet</legend>
+            {people.map((m) => (
+              <label key={m.team_member_id} className="assign-option">
+                <input
+                  type="radio"
+                  name={`${id}-person`}
+                  checked={picked === m.team_member_id}
+                  onChange={() => setPicked(m.team_member_id)}
+                />
+                {unnamedLabel(m)}
+              </label>
+            ))}
+          </fieldset>
+        )}
+        {assign.isError && (
+          <p className="form-error" role="alert">
+            That did not save: {assign.error.message}
+          </p>
+        )}
+        <div className="dialog-actions">
+          <span className="grow" />
+          <button type="button" className="button" onClick={onClose} disabled={assign.isPending}>
+            Cancel
+          </button>
+          <button type="submit" className="button button-primary" disabled={assign.isPending || picked === null}>
+            {assign.isPending ? 'Saving…' : 'Assign'}
+          </button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
