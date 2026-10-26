@@ -12,6 +12,28 @@ answers to.
 
 ---
 
+## [3.210.0] - 2026-10-26
+
+### Backend
+
+- Someone on a team with no Member there can make their own, claimed by
+  them, instead of waiting for an officer to list them (#1355,
+  `create_own_name()`). It refuses anyone not on the team, an ended
+  membership, a second Member, and a name the team already has ("claim
+  it instead").
+- Officers can list who joined a team without a Member, with each
+  person's Discord name, BattleTag and roster character, so Assign can
+  attach the right one (`team_unnamed_members()`).
+- The team invite link can join someone before they pick a character:
+  they join, claim or make their Member, then pick a character. Joining
+  with a character works as before.
+
+### Project
+
+- The revamp time log has #1355's database row.
+
+---
+
 ## [3.209.1] - 2026-10-26
 
 ### Project

@@ -16,6 +16,7 @@ declare
   v_character public.characters%rowtype;
   v_spec_id integer;
   v_player_id integer;
+  v_joined boolean;
   v_today date := (now() at time zone 'America/New_York')::date;
 begin
   if v_uid is null then
@@ -38,18 +39,22 @@ begin
 
   -- The character has to be one Blizzard confirmed for this person, the way
   -- request_main_swap() takes a character id rather than a name. Everything
-  -- below reads the name from this row, so the caller never supplies it.
-  select * into v_character
-    from public.characters c
-   where c.blizzard_id = p_blizzard_id
-     and c.person_id = public.my_person_id();
-  if not found then
-    raise exception 'That character is not on your account';
-  end if;
+  -- below reads the name from this row, so the caller never supplies it. No
+  -- character (#1355) means joining the team only; checked before the
+  -- membership is written, so a wrong character joins nothing.
+  if p_blizzard_id is not null then
+    select * into v_character
+      from public.characters c
+     where c.blizzard_id = p_blizzard_id
+       and c.person_id = public.my_person_id();
+    if not found then
+      raise exception 'That character is not on your account';
+    end if;
 
-  select cs.id into v_spec_id
-    from public.classes_specs cs
-   where cs.class = v_character.class_name and cs.spec = v_character.spec_name;
+    select cs.id into v_spec_id
+      from public.classes_specs cs
+     where cs.class = v_character.class_name and cs.spec = v_character.spec_name;
+  end if;
 
   -- The membership goes the same way, for the same reason: a person opening
   -- the link in two tabs would otherwise have both find no membership and both
@@ -66,10 +71,25 @@ begin
    where team_members.archived_at is not null
   returning id into v_member_id;
 
+  -- A row came back only when the membership was made or brought back.
+  v_joined := v_member_id is not null;
+
   if v_member_id is null then
     select tm.id into v_member_id
       from public.team_members tm
      where tm.team_id = v_team_id and tm.person_id = public.my_person_id();
+  end if;
+
+  if p_blizzard_id is null then
+    -- The caller is a raider, so write_audit_log()'s officer gate would refuse
+    -- them; this is one of the functions that writes its own row. Only for a
+    -- real join: a member reopening the link, or the page's own second step,
+    -- adds nothing to the log (fresh-agent review).
+    if v_joined then
+      insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+      values (v_team_id, v_uid, 'Joined via Invite Link', 'team_members', v_member_id, null);
+    end if;
+    return 'joined';
   end if;
 
   -- One statement for the new character and the returning one, so a join
@@ -99,8 +119,6 @@ begin
     raise exception '% is already claimed', v_character.name_realm;
   end if;
 
-  -- The caller is a raider, so write_audit_log()'s officer gate would refuse
-  -- them; this is one of the RPCs that writes its own row.
   insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (v_team_id, v_uid, 'Joined via Invite Link', 'players', v_player_id, to_jsonb(v_character.name_realm));
 

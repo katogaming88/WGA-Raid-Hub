@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     15 h 55 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     47 h 41 m |
+| Revamp 3: officer dashboard        |      48 h 6 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **112 h 31 m** |
+| **All revamp work**                | **112 h 56 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -414,7 +414,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
-| 11:20-11:35 AM | #1347: what the Sandbox still needed checked (unlisted kept off the live site and the new app's lists, no Discord posts without a config row, no way in the app yet to make a tester an officer of one team); the preview guide's Sandbox steps (making it, adding a tester, what keeps real teams safe), stamp, changelog, this row, PR opened | Revamp 3 (#1347) | 15 m | ~15 m build | not read | Kat making and filling the Sandbox on the site not yet counted |
+| 11:20-11:47 AM | #1347: what the Sandbox still needed checked (unlisted kept off the live site and the new app's lists, no Discord posts without a config row, no way in the app yet to make a tester an officer of one team); the preview guide's Sandbox steps (making it, adding a tester, what keeps real teams safe), stamp, changelog, this row, PR opened; Kat: officer testers set by hand for now, and no rounds (everyone tests everything at once), written into #1487 and #1657; merged | Revamp 3 (#1347) | 25 m | ~20 m build, ~5 m Kat | not read | PR #1668, merged 11:47 AM. Kat making and filling the Sandbox on the site not yet counted |
+| 11:48 AM-12:05 PM | #1355 (database): what was left after September (Assign, the invite link); Kat added a member making their own Member, on the invite link and the Roster page; create_own_name(), team_unnamed_members() (sign-in names for Assign), the invite link joining without a character; database tests red first, full database suite, generated docs, decision log, RLS.md, stamp, changelog, this row | Revamp 3 (#1355) | 15 m | ~10 m build, ~5 m Kat deciding | not read | CodeRabbit, the fresh-agent review and merge not yet counted; the pages are the next PR |
 
 ## Not counted (same sessions, not revamp)
 
