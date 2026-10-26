@@ -254,11 +254,27 @@ describe('a claimed Name with no character yet', () => {
     expect(screen.queryByRole('rowheader', { name: 'Left Us' })).not.toBeInTheDocument();
   });
 
-  it('shows the claimer their own row, with no menu', async () => {
+  it('gives the claimer "+ Add" on their own row, and nobody else', async () => {
+    const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'raider', teamMemberId: 21, names: [...NAMES, WREN] }));
     const row = await rowFor('Wren');
     expect(within(row).getByText('No characters yet')).toBeInTheDocument();
-    expect(within(row).queryByRole('button', { name: 'More actions for Wren' })).not.toBeInTheDocument();
+    await user.click(within(row).getByRole('button', { name: 'More actions for Wren' }));
+    const menu = await screen.findByRole('menu', { name: 'More actions for Wren' });
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((i) => i.textContent)
+    ).toEqual(['+ Add']);
+  });
+
+  it('gives an officer no "+ Add" on someone else’s row', async () => {
+    const user = userEvent.setup();
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer', names: [...NAMES, WREN], members: MEMBERS }));
+    const row = await rowFor('Wren');
+    await user.click(within(row).getByRole('button', { name: 'More actions for Wren' }));
+    const menu = await screen.findByRole('menu', { name: 'More actions for Wren' });
+    expect(within(menu).queryByRole('menuitem', { name: '+ Add' })).not.toBeInTheDocument();
   });
 
   it('shows another raider only their own such row', async () => {
@@ -410,7 +426,7 @@ describe('focus after a row action', () => {
     expect(trigger).toHaveFocus();
   });
 
-  it('moves to the roster table when a Claim takes the row away', async () => {
+  it('keeps focus in the roster table when a Claim turns the row into your own', async () => {
     const user = userEvent.setup();
     let claimed = false;
     const handlers = namesHandlers({
@@ -432,10 +448,10 @@ describe('focus after a row action', () => {
     const { menu } = await openMenu(user, 'Bare Raider', 'Bare Raider');
     await user.click(within(menu).getByRole('menuitem', { name: 'Claim' }));
     const region = screen.getByRole('region', { name: 'Current roster' });
-    await waitFor(() =>
-      expect(within(region).queryByRole('button', { name: 'More actions for Bare Raider' })).not.toBeInTheDocument()
-    );
-    await waitFor(() => expect(region).toHaveFocus());
+    // The claimed row is the claimer's own name-only row now, with "+ Add".
+    expect(await within(region).findByText('No characters yet')).toBeInTheDocument();
+    // Focus stays in the table: on the new row's own menu, not on the page.
+    await waitFor(() => expect(region.contains(document.activeElement)).toBe(true));
   });
 });
 

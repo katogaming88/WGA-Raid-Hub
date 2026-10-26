@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.213.2] - 2026-10-26
+
+### Project
+
+- New app: someone on a team with no character on its roster can now add
+  one themselves (#1464). Their profile shows their Member name and the
+  characters they imported, each with "Add character to roster" and a spec
+  to pick; the officers get the Discord notice. A claimed Member with no
+  character gets "+ Add" in its "..." menu, for the person who claimed it
+  only, which opens the Battle.net picker.
+
 ## [3.213.1] - 2026-10-26
 
 ### Project

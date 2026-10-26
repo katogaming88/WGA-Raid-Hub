@@ -3,6 +3,8 @@ import { Dialog } from '../components/Dialog';
 import { Menu, type MenuAction } from '../components/Menu';
 import { useStatus } from '../components/Status';
 import { useSession } from '../auth/session';
+import { useOpenAltsPicker } from '../characters/AltsPicker';
+import { useTouchScreen } from '../lib/device';
 import { ROLE_LABELS, ROLE_ORDER } from './roster';
 import {
   ARCHIVE_REASONS,
@@ -28,7 +30,8 @@ export function NameRowActions({
   nameId,
   label,
   role,
-  teamMemberId
+  teamMemberId,
+  canAdd = false
 }: {
   teamId: number;
   officer: boolean;
@@ -38,9 +41,13 @@ export function NameRowActions({
   // The raid role guess a bare Name carries; meaningless once claimed.
   role?: string | null;
   teamMemberId: number | null;
+  // The claimer's own name-only row: "+ Add" opens the Battle.net picker (#1464).
+  canAdd?: boolean;
 }) {
   const { user } = useSession();
   const { announce } = useStatus();
+  const openPicker = useOpenAltsPicker();
+  const touch = useTouchScreen();
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -61,6 +68,7 @@ export function NameRowActions({
   const deleteName = useDeleteName(teamId, refocus);
 
   const menuActions: MenuAction[] = [];
+  if (canAdd && openPicker && !touch) menuActions.push({ label: '+ Add', onSelect: openPicker });
   if (nameId !== null && teamMemberId === null && user) {
     menuActions.push({
       label: claim.isPending ? 'Claiming…' : 'Claim',

@@ -1402,7 +1402,31 @@ const ROSTER_OWN_NAME = {
   tables: rosterWithNames()
 };
 
+// Someone on the team with a Member and no roster character (#1464): their
+// Name, the characters they imported, and the way onto the roster.
+const PROFILE_NO_CHARACTER = {
+  path: '/g/wga/t/phoenix/me',
+  sentinel: 'main .characters-card',
+  session: OFFICER,
+  person: NO_MEMBER,
+  rpc: { my_person_id: 70 },
+  tables: {
+    names: [{ id: 1, label: 'Wren', team_member_id: 60, role: null }],
+    characters: ALT_CHARACTERS,
+    classes_specs: SPECS
+  }
+};
+
 const STATES = [
+  { label: 'my profile, no roster character', ...PROFILE_NO_CHARACTER },
+  { label: 'my profile, no roster character, light', ...PROFILE_NO_CHARACTER, colorScheme: 'light' },
+  { label: 'my profile, no roster character, on a phone', ...PROFILE_NO_CHARACTER, viewport: NARROW },
+  {
+    label: 'my profile, add character to roster',
+    ...PROFILE_NO_CHARACTER,
+    click: 'main .character-ask >> nth=0',
+    afterClick: '[role="dialog"]'
+  },
   { label: 'join, which Member is you', ...JOIN_MEMBER_STEP },
   { label: 'join, which Member is you, light', ...JOIN_MEMBER_STEP, colorScheme: 'light' },
   { label: 'join, which Member is you, on a phone', ...JOIN_MEMBER_STEP, viewport: NARROW },

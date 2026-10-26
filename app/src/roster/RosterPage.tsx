@@ -431,6 +431,7 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
                 nameRows={shownNameRows}
                 accounts={accountLinks.data ?? null}
                 quickClaim={!holdsName}
+                ownMember={ownMember}
               />
             </div>
             <RosterSummaryPanel summary={summary} />
@@ -530,7 +531,8 @@ function RosterTable({
   officer = false,
   nameRows = [],
   accounts = null,
-  quickClaim = false
+  quickClaim = false,
+  ownMember
 }: {
   groups: RoleGroup[];
   caption: string;
@@ -550,6 +552,8 @@ function RosterTable({
   accounts?: Map<number, AccountLinks> | null;
   // Whether unclaimed rows offer Claim under the name.
   quickClaim?: boolean;
+  // The signed-in person's membership on this team, for "+ Add" (#1464).
+  ownMember?: number | undefined;
 }) {
   const columns = details ? (stats ? 6 : 4) : 1;
   return (
@@ -629,6 +633,7 @@ function RosterTable({
                 withStats={stats !== null}
                 links={n.team_member_id !== null ? (accounts?.get(n.team_member_id) ?? null) : null}
                 quickClaim={quickClaim}
+                ownMember={ownMember}
               />
             ))}
           </tbody>
@@ -758,7 +763,8 @@ function NameOnlyRow({
   details,
   withStats,
   links,
-  quickClaim
+  quickClaim,
+  ownMember
 }: {
   teamId: number;
   officer: boolean;
@@ -767,6 +773,7 @@ function NameOnlyRow({
   withStats: boolean;
   links: AccountLinks | null;
   quickClaim: boolean;
+  ownMember?: number | undefined;
 }) {
   const claimed = name.team_member_id !== null;
   const none = (
@@ -803,6 +810,7 @@ function NameOnlyRow({
               label={name.label}
               role={name.role}
               teamMemberId={name.team_member_id}
+              canAdd={claimed && name.team_member_id === ownMember}
             />
           </td>
         </>
