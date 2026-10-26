@@ -104,6 +104,15 @@ describe('create_own_name()', () => {
     });
   });
 
+  it('refuses a label over 40 characters, or on more than one line', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await expect(createOwn(asUser, team.raider.uid, team.teamId, 'x'.repeat(41))).rejects.toThrow(/40 characters/);
+      await expect(createOwn(asUser, team.raider.uid, team.teamId, 'Kat\nOrri')).rejects.toThrow(/one line/);
+      expect(await createOwn(asUser, team.raider.uid, team.teamId, 'x'.repeat(40))).toBeTruthy();
+    });
+  });
+
   it('refuses a blank label', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
@@ -230,6 +239,68 @@ describe('team_invite_link_join() with no character', () => {
       expect(audit).toEqual([{ target_type: 'team_members', target_id: member.id }]);
 
       await createOwn(asUser, uid, 1, `Joiner ${uid.slice(0, 8)}`);
+    });
+  });
+
+  const noCharJoin = (asUser, uid, code) =>
+    asUser(uid, 'select public.team_invite_link_join($1, null) as o', [code]).then((r) => r.rows[0].o);
+  const joinRows = (q, uid) =>
+    q("select count(*)::int as n from public.audit_log where action = 'Joined via Invite Link' and actor_id = $1", [
+      uid
+    ]).then((r) => r.rows[0].n);
+  const membershipsOf = (q, uid) =>
+    q(
+      `select tm.id, tm.role, tm.archived_at from public.team_members tm
+         join public.people pe on pe.id = tm.person_id
+        where tm.team_id = 1 and pe.auth_user_id = $1`,
+      [uid]
+    ).then((r) => r.rows);
+
+  it('logs one join, not one per visit or per step', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const code = await mint(asUser);
+      const uid = randomUUID();
+      await insertDiscordUser(q, uid, `again-${uid}`);
+      await noCharJoin(asUser, uid, code);
+      await noCharJoin(asUser, uid, code);
+      expect(await joinRows(q, uid)).toBe(1);
+    });
+  });
+
+  it('brings an archived member back as a raider', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const code = await mint(asUser);
+      const uid = randomUUID();
+      const discord = `back-${uid}`;
+      await q("insert into public.team_members (team_id, discord_id, role) values (1, $1, 'officer')", [discord]);
+      await insertDiscordUser(q, uid, discord);
+      await q('update public.team_members set archived_at = now() where discord_id = $1', [discord]);
+      await noCharJoin(asUser, uid, code);
+      const [row] = await membershipsOf(q, uid);
+      expect({ role: row.role, archived_at: row.archived_at }).toEqual({ role: 'raider', archived_at: null });
+      expect(await joinRows(q, uid)).toBe(1);
+    });
+  });
+
+  it('leaves a current officer their role and logs nothing', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const code = await mint(asUser);
+      await noCharJoin(asUser, OFFICER_T1, code);
+      const [row] = await membershipsOf(q, OFFICER_T1);
+      expect(row.role).toBe('officer');
+      expect(await joinRows(q, OFFICER_T1)).toBe(0);
+    });
+  });
+
+  it('joins nothing when the character is not on the account', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const code = await mint(asUser);
+      const uid = randomUUID();
+      await insertDiscordUser(q, uid, `wrong-${uid}`);
+      await expect(asUser(uid, 'select public.team_invite_link_join($1, $2)', [code, 999999999])).rejects.toThrow(
+        /not on your account/
+      );
+      expect(await membershipsOf(q, uid)).toEqual([]);
     });
   });
 });

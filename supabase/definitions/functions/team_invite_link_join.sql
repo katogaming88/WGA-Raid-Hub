@@ -16,6 +16,7 @@ declare
   v_character public.characters%rowtype;
   v_spec_id integer;
   v_player_id integer;
+  v_joined boolean;
   v_today date := (now() at time zone 'America/New_York')::date;
 begin
   if v_uid is null then
@@ -70,6 +71,9 @@ begin
    where team_members.archived_at is not null
   returning id into v_member_id;
 
+  -- A row came back only when the membership was made or brought back.
+  v_joined := v_member_id is not null;
+
   if v_member_id is null then
     select tm.id into v_member_id
       from public.team_members tm
@@ -78,9 +82,13 @@ begin
 
   if p_blizzard_id is null then
     -- The caller is a raider, so write_audit_log()'s officer gate would refuse
-    -- them; this is one of the functions that writes its own row.
-    insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
-    values (v_team_id, v_uid, 'Joined via Invite Link', 'team_members', v_member_id, null);
+    -- them; this is one of the functions that writes its own row. Only for a
+    -- real join: a member reopening the link, or the page's own second step,
+    -- adds nothing to the log (fresh-agent review).
+    if v_joined then
+      insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+      values (v_team_id, v_uid, 'Joined via Invite Link', 'team_members', v_member_id, null);
+    end if;
     return 'joined';
   end if;
 

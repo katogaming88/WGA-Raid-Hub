@@ -24,6 +24,15 @@ begin
     raise exception 'Type a name for your Member';
   end if;
 
+  -- Typed by a raider and readable by anyone, so kept to a name's shape: one
+  -- line, and short enough for a roster row (fresh-agent review).
+  if length(v_label) > 40 then
+    raise exception 'Keep your Member''s name to 40 characters or fewer';
+  end if;
+  if v_label ~ '[[:cntrl:]]' then
+    raise exception 'Your Member''s name has to fit on one line';
+  end if;
+
   -- for share, as in claim_name(): archive_team_member() locks this row
   -- first, so the check and the insert land wholly before or after an archive.
   select tm.id, tm.archived_at into v_member_id, v_member_archived_at
