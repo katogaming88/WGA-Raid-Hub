@@ -39,7 +39,8 @@ begin
       limit 1),
     (select p.name_realm
        from public.players p
-      where p.team_member_id = tm.id and p.archived_at is null
+      -- On this team too, not only linked to the membership (CodeRabbit).
+      where p.team_member_id = tm.id and p.team_id = tm.team_id and p.archived_at is null
       order by p.id
       limit 1)
   from public.team_members tm
