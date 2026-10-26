@@ -1226,6 +1226,24 @@ const GUILD_OFFICERS_EDITING = {
   afterClick: '.bios-save-bar'
 };
 
+// Guild settings (#1644): the Teams tab, for a guild officer, with an unlisted
+// team and an archived one.
+const GUILD_SETTINGS = {
+  path: '/g/wga/settings/teams',
+  sentinel: 'main .guildsettings-row',
+  session: OFFICER,
+  person: {
+    discordId: 'discord-officer-1',
+    person: { site_admin: false, guild_officer: true, boe_manager: false, teams: [] }
+  },
+  teams: [
+    { id: 1, name: 'Phoenix', slug: 'phoenix', archived_at: null, unlisted: false },
+    { id: 2, name: 'Hellfire Rollers', slug: 'hellfire', archived_at: null, unlisted: false },
+    { id: 3, name: 'Sandbox', slug: 'sandbox', archived_at: null, unlisted: true },
+    { id: 9, name: 'Old Team', slug: 'old-team', archived_at: '2026-01-01T00:00:00Z', unlisted: false }
+  ]
+};
+
 // History (#1102): a season with a roster to show behind the toggle.
 const HISTORY_ENTRY = {
   name: 'Season One',
@@ -1376,6 +1394,21 @@ const STATES = [
   { label: 'team officers, officer editing', ...TEAM_OFFICERS_EDITING },
   { label: 'team officers, officer editing, light', ...TEAM_OFFICERS_EDITING, colorScheme: 'light' },
   { label: 'guild officers, guild officer editing', ...GUILD_OFFICERS_EDITING },
+  { label: 'guild settings, teams', ...GUILD_SETTINGS },
+  { label: 'guild settings, teams, light', ...GUILD_SETTINGS, colorScheme: 'light' },
+  { label: 'guild settings, teams, on a phone', ...GUILD_SETTINGS, viewport: NARROW },
+  {
+    label: 'guild settings, archive dialog',
+    ...GUILD_SETTINGS,
+    click: 'role=button[name="Archive Phoenix"]',
+    afterClick: '[role=dialog]'
+  },
+  {
+    label: 'guild settings, new team dialog',
+    ...GUILD_SETTINGS,
+    click: 'role=button[name="New team"]',
+    afterClick: '[role=dialog]'
+  },
   { label: 'history', ...HISTORY },
   { label: 'history, light', ...HISTORY, colorScheme: 'light' },
   { label: 'signup', ...SIGNUP },
@@ -2326,6 +2359,16 @@ const HELP_SHOT_STATES = {
     frame: '.card:has(.priority-table)',
     viewport: { width: 700, height: 900 }
   },
+  'add-team': {
+    state: { ...GUILD_SETTINGS, session: storedSession({ battlenet: 'Katorrí#1', discord: 'Katorrí' }) },
+    markers: [
+      null,
+      null,
+      'role=button[name="Rename Phoenix"]',
+      '.guildsettings-row:has-text("Sandbox") .guildsettings-team'
+    ],
+    frame: 'main .guildsettings-list'
+  },
   attendance: {
     state: ATTENDANCE_MANAGE,
     markers: [
@@ -2364,13 +2407,28 @@ const HELP_MENU_SHOTS = {
   'my-profile': { state: katProfile(), item: '.sidebar >> role=link[name="My profile"]' },
   calendar: { state: CAL_MONTH, item: '.sidebar >> role=link[name="Calendar"]' },
   'officer-boss-groups': { state: BOSS_GROUPS, item: '.sidebar >> role=link[name="Boss groups"]' },
-  'officer-manage': { state: ATTENDANCE_MANAGE, item: '.sidebar >> role=link[name="Manage"]' }
+  'officer-manage': { state: ATTENDANCE_MANAGE, item: '.sidebar >> role=link[name="Manage"]' },
+  // The team picker open, as a guild officer sees it (#1644).
+  'new-team': {
+    state: {
+      ...GUILD_SETTINGS,
+      click: '.sidebar >> role=button[name=/switch team/]',
+      afterClick: '.team-list:not([hidden])'
+    },
+    item: '.sidebar >> role=button[name="New team"]'
+  }
 };
 
 // A guide whose step happens in a pop-up also gets a picture of the pop-up,
 // open over the page (Kat, 2026-10-15), saved as <id>-popup.png. Same shape
 // as HELP_SHOT_STATES; its markers number the guide's steps the same way.
 const HELP_POPUP_SHOTS = {
+  'add-team': {
+    state: { ...GUILD_SETTINGS, click: 'main >> role=button[name="New team"]', afterClick: '[role="dialog"]' },
+    markers: [null, '[role="dialog"] input', null, null],
+    frame: '.dialog',
+    viewport: { width: 1000, height: 900 }
+  },
   received: {
     state: {
       ...katProfile(),

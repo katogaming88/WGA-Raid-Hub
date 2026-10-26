@@ -111,7 +111,10 @@ export type Ability =
   | 'manageRaidReference'
   // The Guild officers page's bios (#1361): guild-wide, so a guild officer or
   // site admin, as set_guild_officer_bios() checks.
-  | 'editGuildOfficers';
+  | 'editGuildOfficers'
+  // Guild settings (#1644): adding, renaming, archiving and unlisting teams.
+  // A guild officer only, as is_guild_officer_of() checks; Staff are left out.
+  | 'manageTeams';
 
 export function teamRole(access: Access, teamId: number | null | undefined): TeamRole | null {
   if (teamId == null) return null;
@@ -133,6 +136,8 @@ export function can(access: Access | null | undefined, ability: Ability, teamId?
       return access.siteAdmin;
     case 'manageBoe':
       return access.boeManager || access.siteAdmin;
+    case 'manageTeams':
+      return access.guildOfficer;
     case 'manageRaidReference':
     case 'editGuildOfficers':
       return access.guildOfficer || access.siteAdmin;

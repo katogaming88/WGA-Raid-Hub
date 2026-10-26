@@ -44,7 +44,8 @@ export const MENUS = {
   'officer-settings': 'Settings in the sidebar’s Officer menu',
   'officer-invite': 'Invite link under Settings in the sidebar’s Officer menu',
   'officer-boss-groups': 'Boss groups under Attendance in the sidebar’s Officer menu',
-  'officer-manage': 'Manage under Attendance in the sidebar’s Officer menu'
+  'officer-manage': 'Manage under Attendance in the sidebar’s Officer menu',
+  'new-team': 'New team at the bottom of the team picker, open at the top of the sidebar'
 };
 
 export type TopicId = 'start' | 'loot' | 'raid' | 'gear';
@@ -94,6 +95,24 @@ export const GUIDES: Guide[] = [
       'Sign in with Battle.net and connect your Discord.',
       'Fill in your guild’s name, region and realm. The first team’s name is optional: leave it empty and the team takes the guild’s name.',
       'Choose Create guild. New guilds can’t sign up yet; until they can, ask in the support Discord.'
+    ]
+  },
+  {
+    id: 'add-team',
+    topic: 'start',
+    title: 'Add a team to your guild',
+    officers: true,
+    quick: 'Guild officers choose New team at the bottom of the team picker and give it a name. You lead the new team.',
+    place: { label: 'Guild settings', to: (b) => `${b.guild}/settings` },
+    picture: 'The Teams tab of Guild settings, with a team’s Rename button and an unlisted team marked.',
+    popup: 'The New team pop-up, with the team name box marked.',
+    menu: 'new-team',
+    marked: [1, 2, 3, 4],
+    steps: [
+      'Open the team picker at the top of the sidebar and choose New team. Guild settings, under Guild in the sidebar, has the same button.',
+      'Type the team’s name and choose Add team. You land on its home page as its team leader. Its address starts as a short code, like /t/q6v6gljx.',
+      'To rename a team, archive it or bring it back, open Guild settings. Renaming leaves the address alone. Change address is there if you want a readable one, like /t/sandbox; the old address keeps working.',
+      'Tick Unlisted to keep a team, like a test team, off the team picker and the guild’s pages for anyone not on it. People on it still see it, and it still opens by its address.'
     ]
   },
   {
@@ -325,6 +344,11 @@ export const WEEK: { title: string; jobs: WeekJob[] }[] = [
 export const SETUP: { title: string; text: string; guide?: string }[] = [
   { title: 'Sign in with Battle.net', text: 'Then connect your Discord.', guide: 'sign-in' },
   { title: 'Create your guild', text: 'Name, realm, and your first team.', guide: 'create-guild' },
+  {
+    title: 'Add your other teams',
+    text: 'More than one raid team? New team, at the bottom of the team picker.',
+    guide: 'add-team'
+  },
   {
     title: 'Set up your team',
     text: 'Warcraft Logs guild and roster sizes, in officer Settings.',

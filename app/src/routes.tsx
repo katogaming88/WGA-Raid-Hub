@@ -28,6 +28,7 @@ import { AboutPage } from './about/AboutPage';
 import { HistoryPage } from './history/HistoryPage';
 import { SignUpPage } from './signup/SignUpPage';
 import { GuildOfficersPage } from './officers/GuildOfficersPage';
+import { GuildSettingsPage } from './guildsettings/GuildSettingsPage';
 import { TeamOfficersPage } from './officers/TeamOfficersPage';
 import { InviteLinkPage } from './invite/InviteLinkPage';
 import { SiteAdminPage } from './siteadmin/SiteAdminPage';
@@ -85,7 +86,12 @@ const BUILT_PAGES: Record<string, ReactElement> = {
 const BUILT_GUILD_PAGES: Record<string, ReactElement> = {
   boe: <BoePage />,
   streams: <StreamsPage />,
-  officers: <GuildOfficersPage />
+  officers: <GuildOfficersPage />,
+  'settings/teams': (
+    <RequireAbility ability="manageTeams" title="Guild settings" forWhom="guild officers">
+      <GuildSettingsPage />
+    </RequireAbility>
+  )
 };
 
 // The site pages (#1482), in the frame of the guild last visited.
@@ -162,6 +168,8 @@ export const routes: RouteObject[] = [
             element: BUILT_GUILD_PAGES[path] ?? <PlaceholderPage title={title} />,
             handle: { title } satisfies RouteHandle
           })),
+          // Guild settings opens on its first tab.
+          { path: 'settings', element: <Navigate to="teams" replace /> },
           ...Object.keys(SITE_PAGES).map((path) => ({ path, element: <ToSitePage path={path} /> })),
           {
             path: 't/:teamKey',

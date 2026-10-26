@@ -62,17 +62,22 @@ export function AppShell() {
   const guildQuery = useGuild(guildId);
   const teamsQuery = useGuildTeams(guildId);
 
-  const teams = (teamsQuery.data ?? []).map((t) => ({
-    id: t.id,
-    key: t.slug,
-    name: t.name,
-    archived: t.archived_at !== null
-  }));
+  const access = useAccess();
+  // An unlisted team (#1644) is left out for anyone not on it, guild officers
+  // included, but still opens by its address, so the team being viewed stays.
+  const onTeamIds = new Set((access.data?.teams ?? []).map((t) => t.teamId));
+  const teams = (teamsQuery.data ?? [])
+    .filter((t) => !t.unlisted || onTeamIds.has(t.id) || t.id === resolved?.teamId)
+    .map((t) => ({
+      id: t.id,
+      key: t.slug,
+      name: t.name,
+      archived: t.archived_at !== null
+    }));
   const currentTeam = resolved?.teamId ? teams.find((t) => t.id === resolved.teamId) : undefined;
 
   const matches = useMatches();
   const pageTitle = (matches.at(-1)?.handle as RouteHandle | undefined)?.title ?? '';
-  const access = useAccess();
   const news = useNews();
   const [newsSeen] = useNewsSeen();
   const navTeamKey = teamKey ?? defaultTeamKey();
@@ -88,6 +93,7 @@ export function AppShell() {
   const council = useLootCouncil(navTeam?.id ?? 0);
   const groups = navGroups(base, {
     officer: can(access.data, 'viewOfficerTools', navTeam?.id),
+    guildSettings: can(access.data, 'manageTeams'),
     siteAdmin: can(access.data, 'adminSite'),
     newsUnread: news.isSuccess && hasUnread(news.data, newsSeen),
     liveCount: streamers.isSuccess ? liveCount(streamers.data) : 0,
@@ -264,6 +270,8 @@ export function AppShell() {
 
         <TeamSwitcher
           guildKey={guildKey}
+          guildId={guildId}
+          canAddTeam={can(access.data, 'manageTeams')}
           teams={teams}
           currentKey={currentTeam?.key ?? null}
           label={currentTeam?.name ?? 'Choose a team'}
