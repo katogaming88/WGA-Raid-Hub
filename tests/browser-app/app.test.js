@@ -2236,7 +2236,13 @@ describe('roster row menu', () => {
     });
     try {
       const trigger = page.getByRole('button', { name: 'More actions for Bryn' });
-      await trigger.click();
+      // From the keyboard, as the Assign test does: the officer has no Member
+      // here, so Make my Member sits above the table and a mouse click's
+      // scroll would close the menu.
+      await trigger.scrollIntoViewIfNeeded();
+      await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+      await trigger.focus();
+      await page.keyboard.press('Enter');
       const menu = page.getByRole('menu', { name: 'More actions for Bryn' });
       await menu.waitFor();
       expect(await axe(page)).toEqual([]);
