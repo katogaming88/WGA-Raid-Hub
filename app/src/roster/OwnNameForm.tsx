@@ -32,6 +32,8 @@ export function OwnNameForm({ teamId, card = true }: { teamId: number; card?: bo
             id={`${id}-label`}
             className="input"
             type="text"
+            // create_own_name() refuses more.
+            maxLength={40}
             value={label}
             onChange={(e) => setLabel(e.target.value)}
           />
