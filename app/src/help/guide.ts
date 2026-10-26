@@ -340,6 +340,11 @@ export const SETUP: { title: string; text: string; guide?: string }[] = [
   { title: 'Sign in with Battle.net', text: 'Then connect your Discord.', guide: 'sign-in' },
   { title: 'Create your guild', text: 'Name, realm, and your first team.', guide: 'create-guild' },
   {
+    title: 'Add your other teams',
+    text: 'More than one raid team? New team, at the bottom of the team picker.',
+    guide: 'add-team'
+  },
+  {
     title: 'Set up your team',
     text: 'Warcraft Logs guild and roster sizes, in officer Settings.',
     guide: 'team-setup'

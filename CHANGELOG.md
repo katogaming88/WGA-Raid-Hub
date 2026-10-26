@@ -29,7 +29,8 @@ answers to.
 - New app: an unlisted team is left out of the team picker and the
   guild's pages for anyone not on it, guild officers included. People
   on it still see it, and it still opens by its address.
-- New app: a Help guide for adding a team.
+- New app: a Help guide for adding a team, and an "Add your other teams"
+  step in Help's Bringing your guild here.
 
 ### Project
 
