@@ -2902,3 +2902,15 @@ Decided with Kat 2026-10-26.
 **The invite link joins the team first.** `team_invite_link_join()` takes a null character: the person joins as a raider with no roster character, claims or makes their Name, then picks a character, which calls the same function again with it. With a character it does what it did before. The no-character join logs `Joined via Invite Link` against the membership, only when the membership was made or brought back, so the page's second step and a member reopening the link add nothing (fresh-agent review).
 
 [Full discussion -> #1355](https://github.com/katogaming88/WGA-Raid-Hub/issues/1355).
+
+## #1434 -- a character leaves the roster and comes back only through its functions
+
+Shipped: 20261026134825_players_archived_through_functions.sql
+
+**The same guard a membership has.** The officer write rule on `players` let an officer, a guild officer or a site admin change `archived_at` directly. A character brought back that way kept its membership archived, which breaks the rule that any officer action brings the person back (Option 2 on #1355), and one taken off that way recorded no reason. No page did either, but anything calling the API as an officer could. A trigger, `players_archived_at_through_functions`, now refuses a direct change from the site in either direction, as `team_members_archived_at_through_functions` does for `team_members.archived_at`. It tells a function from a direct write by who is running: `authenticated` is refused, a function running as its owner passes, and so does the service role (imports, scripts).
+
+**Three functions move to running as their owner.** `archive_player()` and `restore_player()` already checked their caller and only change how they run. `add_signup_to_roster()` had no check of its own and leaned on the `players` and `season_signups` rules, so it takes the narrower of them, the `season_signups` read and update rules: the team's officers and team leader, or a site admin. Not a guild officer: those rules never let one in, and including `is_guild_officer()` would have let any guild's officer add any team's signups (caught in the fresh-agent review). The check runs before the signup is locked, so a refused caller locks nothing and learns nothing about which signups exist. With nobody signed in it still runs, since the season-start job (`close_started_season_signups()`) and scripts call it that way; anon has no execute grant. A raider or another team's officer is now refused with "Not authorized" instead of finding no signup.
+
+**Tests that archived directly.** Four test files used an officer's direct write as the way to archive a character for some other check (removal reasons, a cancelled main swap, dropped priority ranks). They now archive through the functions, the database owner or the service role, so they test the same reactions.
+
+[Full discussion -> #1434](https://github.com/katogaming88/WGA-Raid-Hub/issues/1434).

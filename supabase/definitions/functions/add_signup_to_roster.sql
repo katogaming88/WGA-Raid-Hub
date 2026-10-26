@@ -5,6 +5,7 @@
 CREATE OR REPLACE FUNCTION public.add_signup_to_roster(p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer, p_is_backup_tank boolean DEFAULT false, p_is_backup_healer boolean DEFAULT false)
  RETURNS integer
  LANGUAGE plpgsql
+ SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
 declare
@@ -22,12 +23,35 @@ declare
   v_archived_name_realm text;
   v_old_member_id integer;
   v_hold integer;
+  v_team_id integer;
 begin
+  -- Its own check now that it runs as its owner (#1434), before anything is
+  -- locked or reported: who the season_signups read and write rules let
+  -- through before, the team's officers and team leader or a site admin. Not a
+  -- guild officer, whom those rules never let in (fresh-agent review). Nobody
+  -- signed in is the season-start job (close_started_season_signups()) or a
+  -- script; anon cannot call it. An unknown signup has no team, so it is
+  -- refused here too, except to a site admin, who is told below.
+  select team_id into v_team_id from public.season_signups where id = p_signup_id;
+  if auth.uid() is not null and not (
+    coalesce(public.my_team_role(v_team_id) = any (array['officer', 'team_leader']), false)
+    or public.is_site_admin()
+  ) then
+    raise exception 'Not authorized';
+  end if;
+
   select * into v_signup from public.season_signups
    where id = p_signup_id for update;
   if not found then
     raise exception 'signup % not found', p_signup_id;
   end if;
+  -- The check above was for the team read before the lock; a signup moved to
+  -- another team in between is refused rather than added to a team the caller
+  -- was never checked for (CodeRabbit).
+  if auth.uid() is not null and v_signup.team_id is distinct from v_team_id then
+    raise exception 'Not authorized';
+  end if;
+
   if v_signup.status is distinct from 'approved' then
     raise exception 'signup % is not in approved status (is %)',
       p_signup_id, v_signup.status;

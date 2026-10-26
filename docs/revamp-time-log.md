@@ -12,12 +12,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 | Phase                              |   Time so far |
 | ---------------------------------- | ------------: |
-| Planning and design                |     15 h 55 m |
+| Planning and design                |      16 h 0 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     48 h 36 m |
+| Revamp 3: officer dashboard        |     49 h 56 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **113 h 26 m** |
+| **All revamp work**                | **114 h 51 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -417,6 +417,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:20-11:47 AM | #1347: what the Sandbox still needed checked (unlisted kept off the live site and the new app's lists, no Discord posts without a config row, no way in the app yet to make a tester an officer of one team); the preview guide's Sandbox steps (making it, adding a tester, what keeps real teams safe), stamp, changelog, this row, PR opened; Kat: officer testers set by hand for now, and no rounds (everyone tests everything at once), written into #1487 and #1657; merged | Revamp 3 (#1347) | 25 m | ~20 m build, ~5 m Kat | not read | PR #1668, merged 11:47 AM. Kat making and filling the Sandbox on the site not yet counted |
 | 11:48 AM-12:05 PM | #1355 (database): what was left after September (Assign, the invite link); Kat added a member making their own Member, on the invite link and the Roster page; create_own_name(), team_unnamed_members() (sign-in names for Assign), the invite link joining without a character; database tests red first, full database suite, generated docs, decision log, RLS.md, stamp, changelog, this row | Revamp 3 (#1355) | 15 m | ~10 m build, ~5 m Kat deciding | not read | CodeRabbit, the fresh-agent review and merge not yet counted; the pages are the next PR |
 | 12:05-12:35 PM | #1355 (pages): Assign in an unclaimed Member's menu (who joined, by Discord name, BattleTag and character), Make my Member on the Roster, and the invite link's steps (join, "Which Member is you?" with That's me or your own, then the character); page tests rewritten for the steps and red first for Assign and Make my Member; browser states (phone, light) and the Assign dialog's accessibility check; stamp, changelog, this row, PR opened | Revamp 3 (#1355) | 30 m | ~30 m build | not read | Stacked on PR #1669. Screenshots, Kat's test and merge not yet counted |
+| 12:35-1:41 PM | #1355 reviews: CodeRabbit (the Assign list scoped to guild officers of the team's own guild; its character filtered by team), the fresh-agent review (a raider's Member name one line and 40 characters, one join row per real join, empty sign-in names, its missing tests), replies on the threads; the Roster box's spacing fixed and its pictures retaken; #1670 re-stamped once #1669 merged | Revamp 3 (#1355) | 65 m | ~45 m build, ~20 m Kat | not read | PR #1669 merged 1:09 PM, PR #1670 merged 1:41 PM |
+| 1:43-1:46 PM | #1487: closed rows removed (#1347, #1355, #1404, #1628, #1643, #1644), totals redone, a Last updated line at the top; the switch to ranks noted on #1646 for the Assign list | Planning and design | 5 m | ~5 m build | not read | |
+| 1:46-2:00 PM | #1434 built: players.archived_at changed only through its functions (a guard like the membership's), archive_player(), restore_player() and add_signup_to_roster() run as their owner with their own checks; database tests red first, four older test files moved off direct writes, full database suite, generated docs, decision log, RLS.md, stamp, changelog, this row | Revamp 3 (#1434) | 15 m | ~15 m build | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

@@ -1166,7 +1166,8 @@
         {
           "name": "archived_at",
           "type": "timestamp with time zone",
-          "nullable": true
+          "nullable": true,
+          "comment": "Set when the character leaves the roster: archive_player() (the Roster tab's Remove, with a reason), Archive Member (archive_team_member()), a main swap's old character (add_signup_to_roster(), review_main_swap_request()) or the season-start job. Cleared when an officer brings it back (restore_player(), add_signup_to_roster(), an approved main swap onto it in review_main_swap_request()) or its owner rejoins through the invite link (team_invite_link_join()). Also set on insert for a placeholder row: import_rclc_loot() and the import scripts add a character already removed for a loot name that matches nobody on the roster. A direct change from the site is refused (players_archived_at_through_functions, #1434)."
         },
         {
           "name": "updated_at",
@@ -1416,6 +1417,10 @@
         {
           "name": "players_cancel_waiting_main_swaps_on_archive",
           "def": "CREATE TRIGGER players_cancel_waiting_main_swaps_on_archive AFTER UPDATE OF archived_at ON public.players FOR EACH ROW WHEN (((old.archived_at IS NULL) AND (new.archived_at IS NOT NULL))) EXECUTE FUNCTION cancel_waiting_main_swaps_on_archive()"
+        },
+        {
+          "name": "players_archived_at_through_functions",
+          "def": "CREATE TRIGGER players_archived_at_through_functions BEFORE UPDATE OF archived_at ON public.players FOR EACH ROW EXECUTE FUNCTION players_archived_at_through_functions()"
         }
       ]
     },
@@ -12117,6 +12122,12 @@
       "name": "public.team_unnamed_members",
       "return_type": "record",
       "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.players_archived_at_through_functions",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],

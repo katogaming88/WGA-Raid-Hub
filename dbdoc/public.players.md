@@ -16,7 +16,7 @@
 | m_plus_excluded | boolean | false | false |  |  |  |  |
 | m_plus_note | text |  | true |  |  |  |  |
 | team_member_id | integer |  | true |  |  | [public.team_members](public.team_members.md) |  |
-| archived_at | timestamp with time zone |  | true |  |  |  |  |
+| archived_at | timestamp with time zone |  | true |  |  |  | Set when the character leaves the roster: archive_player() (the Roster tab's Remove, with a reason), Archive Member (archive_team_member()), a main swap's old character (add_signup_to_roster(), review_main_swap_request()) or the season-start job. Cleared when an officer brings it back (restore_player(), add_signup_to_roster(), an approved main swap onto it in review_main_swap_request()) or its owner rejoins through the invite link (team_invite_link_join()). Also set on insert for a placeholder row: import_rclc_loot() and the import scripts add a character already removed for a loot name that matches nobody on the roster. A direct change from the site is refused (players_archived_at_through_functions, #1434). |
 | updated_at | timestamp with time zone |  | true |  |  |  |  |
 | bis_allowed | boolean | false | false |  |  |  |  |
 | is_backup_tank | boolean | false | false |  |  |  |  |
@@ -65,6 +65,7 @@
 | players_keep_url_code | CREATE TRIGGER players_keep_url_code BEFORE UPDATE OF url_code ON public.players FOR EACH ROW EXECUTE FUNCTION keep_player_url_code() |
 | players_drop_live_priority_on_archive | CREATE TRIGGER players_drop_live_priority_on_archive AFTER UPDATE OF archived_at ON public.players FOR EACH ROW WHEN (((old.archived_at IS NULL) AND (new.archived_at IS NOT NULL))) EXECUTE FUNCTION drop_archived_player_live_priority() |
 | players_cancel_waiting_main_swaps_on_archive | CREATE TRIGGER players_cancel_waiting_main_swaps_on_archive AFTER UPDATE OF archived_at ON public.players FOR EACH ROW WHEN (((old.archived_at IS NULL) AND (new.archived_at IS NOT NULL))) EXECUTE FUNCTION cancel_waiting_main_swaps_on_archive() |
+| players_archived_at_through_functions | CREATE TRIGGER players_archived_at_through_functions BEFORE UPDATE OF archived_at ON public.players FOR EACH ROW EXECUTE FUNCTION players_archived_at_through_functions() |
 
 ## Relations
 
