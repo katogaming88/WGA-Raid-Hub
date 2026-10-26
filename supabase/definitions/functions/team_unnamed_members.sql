@@ -24,15 +24,18 @@ begin
   return query
   select
     tm.id,
-    (select coalesce(i.identity_data -> 'custom_claims' ->> 'global_name',
-                     i.identity_data ->> 'full_name',
-                     i.identity_data ->> 'name')
+    -- An empty name counts as none, as the app reads its own sign-in.
+    (select coalesce(nullif(i.identity_data -> 'custom_claims' ->> 'global_name', ''),
+                     nullif(i.identity_data ->> 'full_name', ''),
+                     nullif(i.identity_data ->> 'name', ''))
        from auth.identities i
       where i.user_id = pe.auth_user_id and i.provider = 'discord'
+      order by i.created_at desc
       limit 1),
-    (select i.identity_data -> 'custom_claims' ->> 'battletag'
+    (select nullif(i.identity_data -> 'custom_claims' ->> 'battletag', '')
        from auth.identities i
       where i.user_id = pe.auth_user_id and i.provider = 'custom:battlenet'
+      order by i.created_at desc
       limit 1),
     (select p.name_realm
        from public.players p

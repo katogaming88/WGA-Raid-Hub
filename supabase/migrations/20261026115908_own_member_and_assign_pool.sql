@@ -37,6 +37,15 @@ begin
     raise exception 'Type a name for your Member';
   end if;
 
+  -- Typed by a raider and readable by anyone, so kept to a name's shape: one
+  -- line, and short enough for a roster row (fresh-agent review).
+  if length(v_label) > 40 then
+    raise exception 'Keep your Member''s name to 40 characters or fewer';
+  end if;
+  if v_label ~ '[[:cntrl:]]' then
+    raise exception 'Your Member''s name has to fit on one line';
+  end if;
+
   -- for share, as in claim_name(): archive_team_member() locks this row
   -- first, so the check and the insert land wholly before or after an archive.
   select tm.id, tm.archived_at into v_member_id, v_member_archived_at
@@ -110,15 +119,18 @@ begin
   return query
   select
     tm.id,
-    (select coalesce(i.identity_data -> 'custom_claims' ->> 'global_name',
-                     i.identity_data ->> 'full_name',
-                     i.identity_data ->> 'name')
+    -- An empty name counts as none, as the app reads its own sign-in.
+    (select coalesce(nullif(i.identity_data -> 'custom_claims' ->> 'global_name', ''),
+                     nullif(i.identity_data ->> 'full_name', ''),
+                     nullif(i.identity_data ->> 'name', ''))
        from auth.identities i
       where i.user_id = pe.auth_user_id and i.provider = 'discord'
+      order by i.created_at desc
       limit 1),
-    (select i.identity_data -> 'custom_claims' ->> 'battletag'
+    (select nullif(i.identity_data -> 'custom_claims' ->> 'battletag', '')
        from auth.identities i
       where i.user_id = pe.auth_user_id and i.provider = 'custom:battlenet'
+      order by i.created_at desc
       limit 1),
     (select p.name_realm
        from public.players p
@@ -155,6 +167,7 @@ declare
   v_character public.characters%rowtype;
   v_spec_id integer;
   v_player_id integer;
+  v_joined boolean;
   v_today date := (now() at time zone 'America/New_York')::date;
 begin
   if v_uid is null then
@@ -209,6 +222,9 @@ begin
    where team_members.archived_at is not null
   returning id into v_member_id;
 
+  -- A row came back only when the membership was made or brought back.
+  v_joined := v_member_id is not null;
+
   if v_member_id is null then
     select tm.id into v_member_id
       from public.team_members tm
@@ -217,9 +233,13 @@ begin
 
   if p_blizzard_id is null then
     -- The caller is a raider, so write_audit_log()'s officer gate would refuse
-    -- them; this is one of the functions that writes its own row.
-    insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
-    values (v_team_id, v_uid, 'Joined via Invite Link', 'team_members', v_member_id, null);
+    -- them; this is one of the functions that writes its own row. Only for a
+    -- real join: a member reopening the link, or the page's own second step,
+    -- adds nothing to the log (fresh-agent review).
+    if v_joined then
+      insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+      values (v_team_id, v_uid, 'Joined via Invite Link', 'team_members', v_member_id, null);
+    end if;
     return 'joined';
   end if;
 
