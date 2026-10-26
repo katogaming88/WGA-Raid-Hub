@@ -12,6 +12,13 @@ answers to.
 
 ---
 
+## [3.213.1] - 2026-10-26
+
+### Project
+
+- New app signup page: a pick with nothing on that team's roster now reads
+  "Joins this team's roster" instead of "First main on this team".
+
 ## [3.213.0] - 2026-10-26
 
 ### Backend
