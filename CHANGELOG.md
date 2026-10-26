@@ -12,6 +12,29 @@ answers to.
 
 ---
 
+## [3.212.0] - 2026-10-26
+
+### Backend
+
+- A character now leaves the roster and comes back only through Remove,
+  Archive Member, a re-add or a signup add (#1434). Editing a
+  character's removed date directly is refused, even for officers, guild
+  officers and site admins, so bringing a character back always brings
+  its owner back onto the team, and every removal keeps its reason.
+  Imports and scripts on the service role still can.
+- `archive_player()`, `restore_player()` and `add_signup_to_roster()`
+  run as their owner for it, each checking who is calling.
+  `add_signup_to_roster()` gets its own check (the team's officers, a
+  guild officer, a site admin) where it used to rely on the table rules,
+  so a raider is now refused with "Not authorized".
+
+### Project
+
+- The revamp time log has #1355's reviews and merges, the tracking
+  issue's cleanup and #1434's row.
+
+---
+
 ## [3.211.0] - 2026-10-26
 
 ### Frontend

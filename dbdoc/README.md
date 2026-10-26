@@ -255,6 +255,7 @@
 | public.set_team_unlisted | void | p_team_id integer, p_unlisted boolean | FUNCTION |
 | public.create_own_name | int4 | p_team_id integer, p_label text | FUNCTION |
 | public.team_unnamed_members | record | p_team_id integer | FUNCTION |
+| public.players_archived_at_through_functions | trigger |  | FUNCTION |
 
 ## Enums
 

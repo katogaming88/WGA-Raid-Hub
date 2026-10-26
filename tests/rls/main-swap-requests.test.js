@@ -517,10 +517,12 @@ describe('a waiting main swap is cancelled when its character leaves the roster'
     });
   });
 
-  it("an officer setting the character's archived date directly cancels it", async () => {
-    await withTxn(async ({ q, asUser }) => {
-      const { team, raiderPlayer, id } = await swapOnOwnTeam(q, asUser);
-      await asUser(team.officer.uid, 'update public.players set archived_at = now() where id = $1', [raiderPlayer]);
+  // The site can no longer set it directly (#1434); a script on the service
+  // role still can, and the request is cancelled the same way.
+  it("setting the character's archived date directly, as the service role, cancels it", async () => {
+    await withTxn(async ({ q, asUser, asRole }) => {
+      const { raiderPlayer, id } = await swapOnOwnTeam(q, asUser);
+      await asRole('service_role', null)('update public.players set archived_at = now() where id = $1', [raiderPlayer]);
       expect(await requestOf(q, id)).toMatchObject({ status: 'cancelled', officer_note: 'Character removed' });
     });
   });

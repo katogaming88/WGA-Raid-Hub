@@ -79,11 +79,13 @@ describe('removal_reasons gets a row for every reason written', () => {
     });
   });
 
-  it('an officer removing a character by hand and writing the reason onto the notes row leaves a row too', async () => {
+  // The site cannot change archived_at directly since #1434, so the removal
+  // here is a script's; the officer then writes the reason by hand.
+  it('a reason an officer writes onto a character removed outside the functions leaves a row too', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const playerId = await seedPlayer(q, { teamId: team.teamId });
-      await asUser(team.officer.uid, 'update public.players set archived_at = now() where id = $1', [playerId]);
+      await q('update public.players set archived_at = now() where id = $1', [playerId]);
       await asUser(
         team.officer.uid,
         `insert into public.player_officer_notes (player_id, team_id, archived_reason, archived_reason_detail)
@@ -101,9 +103,7 @@ describe('removal_reasons gets a row for every reason written', () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const playerId = await seedPlayer(q, { teamId: team.teamId });
-      await asUser(team.officer.uid, "update public.players set archived_at = '2026-09-01T00:00:00Z' where id = $1", [
-        playerId
-      ]);
+      await q("update public.players set archived_at = '2026-09-01T00:00:00Z' where id = $1", [playerId]);
       await asUser(
         team.officer.uid,
         `insert into public.player_officer_notes (player_id, team_id, archived_reason, archived_reason_detail)
@@ -137,9 +137,7 @@ describe('removal_reasons gets a row for every reason written', () => {
       const playerId = await seedPlayer(q, { teamId: team.teamId });
       // Removed before this transaction began, so a correction written now
       // only lands under the same removal if rows are dated by the removal.
-      await asUser(team.officer.uid, "update public.players set archived_at = '2026-09-01T00:00:00Z' where id = $1", [
-        playerId
-      ]);
+      await q("update public.players set archived_at = '2026-09-01T00:00:00Z' where id = $1", [playerId]);
       await asUser(
         team.officer.uid,
         `insert into public.player_officer_notes (player_id, team_id, archived_reason, archived_reason_detail)
@@ -174,8 +172,8 @@ describe('removal_reasons gets a row for every reason written', () => {
       const team = await seedTeam(q);
       const playerId = await seedPlayer(q, { teamId: team.teamId });
       await archivePlayer(asUser, team.officer.uid, playerId, 'other', 'First time');
-      // The Roster tab's re-add before #1133: un-archive, then clear the reason.
-      await asUser(team.officer.uid, 'update public.players set archived_at = null where id = $1', [playerId]);
+      // Brought back through restore_player(), then the reason cleared by hand.
+      await asUser(team.officer.uid, 'select public.restore_player($1)', [playerId]);
       await asUser(
         team.officer.uid,
         'update public.player_officer_notes set archived_reason = null, archived_reason_detail = null where player_id = $1',

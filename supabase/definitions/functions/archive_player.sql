@@ -5,6 +5,7 @@
 CREATE OR REPLACE FUNCTION public.archive_player(p_player_id integer, p_reason text, p_detail text)
  RETURNS timestamp with time zone
  LANGUAGE plpgsql
+ SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
 declare

@@ -206,18 +206,20 @@ describe('add_signup_to_roster is officer-gated through RLS', () => {
       await expect(asAnon(sql, [signup])).rejects.toMatchObject({ code: RLS_DENIED });
     });
   });
-  it('raider cannot promote (signup invisible under RLS)', async () => {
+  // Runs as its owner since #1434, so it sees the signup and refuses the
+  // caller in words, where it used to find nothing under their read rules.
+  it('raider cannot promote', async () => {
     await withTxn(async ({ q, asUser }) => {
       const signup = await seedSignup(q, { teamId: 1 });
       expect(await exists(q, signup)).toBe(1);
-      await expect(asUser(RAIDER_T1, sql, [signup])).rejects.toThrow(/not found/);
+      await expect(asUser(RAIDER_T1, sql, [signup])).rejects.toThrow(/Not authorized/);
     });
   });
   it('team 2 officer cannot promote a team 1 signup', async () => {
     await withTxn(async ({ q, asUser }) => {
       const signup = await seedSignup(q, { teamId: 1 });
       expect(await exists(q, signup)).toBe(1);
-      await expect(asUser(OFFICER_T2, sql, [signup])).rejects.toThrow(/not found/);
+      await expect(asUser(OFFICER_T2, sql, [signup])).rejects.toThrow(/Not authorized/);
     });
   });
 });

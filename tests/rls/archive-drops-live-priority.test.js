@@ -62,10 +62,12 @@ describe('archiving a raider drops their live priority ranks', () => {
     });
   });
 
-  it("an officer's direct update of archived_at removes them", async () => {
-    await withTxn(async ({ q, asUser }) => {
-      const { team, leaving } = await fixture(q);
-      const res = await asUser(team.officer.uid, 'update public.players set archived_at = now() where id = $1', [
+  // The site can no longer write archived_at directly (#1434); a script on
+  // the service role still can, and the trigger answers it the same way.
+  it('a direct update of archived_at by the service role removes them', async () => {
+    await withTxn(async ({ q, asRole }) => {
+      const { leaving } = await fixture(q);
+      const res = await asRole('service_role', null)('update public.players set archived_at = now() where id = $1', [
         leaving
       ]);
       expect(res.rowCount).toBe(1);
@@ -97,7 +99,7 @@ describe('archiving a raider drops their live priority ranks', () => {
   });
 
   it('un-archiving, re-archiving and other updates remove nothing', async () => {
-    await withTxn(async ({ q, asUser }) => {
+    await withTxn(async ({ q, asUser, asRole }) => {
       const { team, staying, season } = await fixture(q);
       const away = await seedPlayer(q, { teamId: team.teamId, archivedAt: new Date('2026-09-05T16:28:00Z') });
       await q(
@@ -105,10 +107,11 @@ describe('archiving a raider drops their live priority ranks', () => {
          values ($1, $2, 2, 'Hero', 2, $3)`,
         [team.teamId, season, away]
       );
-      const officer = (text, params) => asUser(team.officer.uid, text, params);
-      await officer('update public.players set archived_at = now() where id = $1', [away]);
-      await officer('update public.players set archived_at = null where id = $1', [away]);
-      await officer("update public.players set nickname = 'Stays' where id = $1", [staying]);
+      // archived_at through the service role, the one direct path left (#1434).
+      const service = asRole('service_role', null);
+      await service('update public.players set archived_at = now() where id = $1', [away]);
+      await service('update public.players set archived_at = null where id = $1', [away]);
+      await asUser(team.officer.uid, "update public.players set nickname = 'Stays' where id = $1", [staying]);
       expect(await ranksHeldBy(q, away)).toEqual([{ season, item_id: 2, track: 'Hero', rank: 2 }]);
       expect(await ranksHeldBy(q, staying)).toEqual([{ season, item_id: 1, track: 'Myth', rank: 2 }]);
     });

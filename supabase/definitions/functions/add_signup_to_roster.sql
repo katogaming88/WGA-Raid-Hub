@@ -5,6 +5,7 @@
 CREATE OR REPLACE FUNCTION public.add_signup_to_roster(p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer, p_is_backup_tank boolean DEFAULT false, p_is_backup_healer boolean DEFAULT false)
  RETURNS integer
  LANGUAGE plpgsql
+ SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
 declare
@@ -28,6 +29,19 @@ begin
   if not found then
     raise exception 'signup % not found', p_signup_id;
   end if;
+
+  -- Its own check now that it runs as its owner (#1434): who the players and
+  -- season_signups write rules let through before. Nobody signed in is the
+  -- season-start job (close_started_season_signups()) or a script; anon cannot
+  -- call it.
+  if auth.uid() is not null and not (
+    coalesce(public.my_team_role(v_signup.team_id) = any (array['officer', 'team_leader']), false)
+    or public.is_guild_officer()
+    or public.is_site_admin()
+  ) then
+    raise exception 'Not authorized';
+  end if;
+
   if v_signup.status is distinct from 'approved' then
     raise exception 'signup % is not in approved status (is %)',
       p_signup_id, v_signup.status;
