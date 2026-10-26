@@ -32,7 +32,7 @@ function jsonResponse(body: unknown, status = 200) {
 
 const ACTION_PATHS: Record<string, string> = {
   signup: '/signup',
-  firstMain: '/first-main',
+  addCharacter: '/add-character',
   selfreceived: '/selfreceived',
   bis: '/bis',
   mplus: '/mplus',

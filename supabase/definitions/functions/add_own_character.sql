@@ -1,16 +1,13 @@
--- #1463: someone on a team with no character on its roster adds their own
--- first main, straight onto the roster, with no officer step. Officers are told
--- in Discord (the page relays it through discord-bot-webhook once this
--- returns) and undo a mistake afterwards with Remove claim, Remove or Archive
--- Member. A main swap still goes through an officer (request_main_swap()),
--- since it archives a character and moves its attendance.
+-- Function public.add_own_character: current definition, generated from the database.
+-- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
+-- execute (site roles): authenticated
 
-create function public.add_own_first_main(p_team_id integer, p_character_id integer, p_class_spec_id integer)
-returns integer
-language plpgsql
-security definer
-set search_path = public
-as $$
+CREATE OR REPLACE FUNCTION public.add_own_character(p_team_id integer, p_character_id integer, p_class_spec_id integer)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 declare
   v_uid uuid := auth.uid();
   v_person_id integer := public.my_person_id();
@@ -100,15 +97,8 @@ begin
   -- officer's add, so both read alike in the Audit Log.
   insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (p_team_id, v_uid, 'Player Added', 'players', v_player_id,
-          to_jsonb(v_spec_label || ', first main, self-added'));
+          to_jsonb(v_spec_label || ', added by the member'));
 
   return v_player_id;
 end;
-$$;
-
-comment on function public.add_own_first_main(integer, integer, integer) is
-  'The caller adds their own first main on a team (#1463): a character on their account, onto the roster with no officer step. Refused for an ended membership, anyone who already has an active character there (that is a main swap, request_main_swap()), a character already on the roster, and one someone else held there. Holds the caller''s membership before the character (#1432). The page tells the officers in Discord afterwards.';
-
-revoke all on function public.add_own_first_main(integer, integer, integer) from public;
-revoke execute on function public.add_own_first_main(integer, integer, integer) from anon;
-grant execute on function public.add_own_first_main(integer, integer, integer) to authenticated;
+$function$;

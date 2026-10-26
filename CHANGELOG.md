@@ -17,23 +17,23 @@ answers to.
 ### Backend
 
 - Someone on a team with no character on its roster can now add their
-  own first main, with no officer step (#1463). `add_own_first_main()`
+  own character, with no officer step (#1463). `add_own_character()`
   puts one of their own characters on the roster: a new one as a trial
   joining that day, one they played there before with its own trial flag
   and join date. Refused for an ended membership, anyone who already has
   a character there (that is still a main swap, which an officer
   approves), a character already on the roster, and one someone else
-  held on the team. The Audit Log shows "Player Added" with "first main,
-  self-added". The pages that use it come with #1464.
+  held on the team. The Audit Log shows "Player Added" with "added by the
+  member". The pages that use it come with #1464.
 
 ### Functions
 
-- `discord-bot-webhook` relays a new `firstMain` notice to the bot
+- `discord-bot-webhook` relays a new `addCharacter` notice to the bot
   (#1463).
 
 ### Bot
 
-- The bot posts "First Main Added" to the team's officer channel: who
+- The bot posts "Character Added to Roster" to the team's officer channel: who
   added which character, and how to undo it (#1463).
 
 ### Project
@@ -828,7 +828,6 @@ answers to.
   "Recruiting" (signups are for next season, not for new players), and the
   line under the guild's name reads "Select yours" without "or find one to
   join".
-
 
 ### Project
 

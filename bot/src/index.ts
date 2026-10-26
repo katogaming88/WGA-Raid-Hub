@@ -944,24 +944,24 @@ app.post('/signup', async (req: Request, res: Response): Promise<void> => {
   res.json({ ok: true });
 });
 
-// --- First mains (#1463) ---
+// --- Add character (#1463) ---
 
 // Someone with no character on the team added their own; it is already on
 // the roster. Officers undo a wrong one with Remove claim, Remove or Archive
 // Member.
-interface FirstMainBody {
+interface AddCharacterBody {
   member?: string;
   nameRealm?: string;
   classSpec?: string;
   submittedAt?: string;
 }
 
-app.post('/first-main', async (req: Request, res: Response): Promise<void> => {
+app.post('/add-character', async (req: Request, res: Response): Promise<void> => {
   if (!checkSecret(req, res)) return;
   const cfg = resolveTeam(req, res);
   if (!cfg) return;
 
-  const { member, nameRealm, classSpec, submittedAt } = req.body as FirstMainBody;
+  const { member, nameRealm, classSpec, submittedAt } = req.body as AddCharacterBody;
 
   if (!member || !nameRealm) {
     res.status(400).json({ error: 'Missing required fields: member, nameRealm' });
@@ -975,7 +975,7 @@ app.post('/first-main', async (req: Request, res: Response): Promise<void> => {
 
   const embed = new EmbedBuilder()
     .setColor(0x2ecc71)
-    .setTitle('First Main Added')
+    .setTitle('Character Added to Roster')
     .setDescription(
       `${member} added ${nameRealm} to the roster. If that is wrong, use Remove claim, Remove or Archive Member.`
     )

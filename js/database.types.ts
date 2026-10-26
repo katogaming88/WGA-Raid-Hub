@@ -4001,7 +4001,7 @@ export type Database = {
       }
     }
     Functions: {
-      add_own_first_main: {
+      add_own_character: {
         Args: {
           p_character_id: number
           p_class_spec_id: number

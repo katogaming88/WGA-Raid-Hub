@@ -1,5 +1,5 @@
-// A first main is self-service (#1463): someone on a team with no character
-// on its roster adds one of their own, straight onto the roster, and an
+// Add character (#1463): someone on a team with no character on its roster
+// adds one of their own, straight onto the roster, and an
 // officer undoes a mistake afterwards. A main swap still goes through an
 // officer (main-swap-requests.test.js). Each case mints its own team.
 import { describe, it, expect, afterAll } from 'vitest';
@@ -10,11 +10,11 @@ afterAll(() => pool.end());
 // classes_specs 1 is Mage Frost.
 const FROST_MAGE = 1;
 
-const addFirstMain = (asUser, uid, teamId, characterId, specId = FROST_MAGE) =>
-  asUser(uid, 'select public.add_own_first_main($1, $2, $3) as id', [teamId, characterId, specId]);
+const addCharacter = (asUser, uid, teamId, characterId, specId = FROST_MAGE) =>
+  asUser(uid, 'select public.add_own_character($1, $2, $3) as id', [teamId, characterId, specId]);
 
 // A character on the member's own account, from Battle.net.
-async function character(q, memberId, { name = 'Firstmain', characterClass = 'Mage' } = {}) {
+async function character(q, memberId, { name = 'Newmain', characterClass = 'Mage' } = {}) {
   const person = await q('select person_id from public.team_members where id = $1', [memberId]);
   const { rows } = await q(
     `insert into public.characters (person_id, blizzard_id, name, realm, realm_slug, class_name, spec_name, level)
@@ -26,12 +26,12 @@ async function character(q, memberId, { name = 'Firstmain', characterClass = 'Ma
 
 const playerRow = async (q, id) => (await q('select * from public.players where id = $1', [id])).rows[0];
 
-describe('add_own_first_main()', () => {
+describe('add_own_character()', () => {
   it('puts a new character on the roster as a trial joining today, linked to them', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const { characterId, nameRealm } = await character(q, team.raider.memberId);
-      const id = (await addFirstMain(asUser, team.raider.uid, team.teamId, characterId)).rows[0].id;
+      const id = (await addCharacter(asUser, team.raider.uid, team.teamId, characterId)).rows[0].id;
       const row = await playerRow(q, id);
       const today = (await q("select (now() at time zone 'America/New_York')::date as d")).rows[0].d;
       expect(row).toMatchObject({
@@ -54,7 +54,7 @@ describe('add_own_first_main()', () => {
       const { characterId, nameRealm } = await character(q, team.raider.memberId);
       const old = await seedPlayer(q, { memberId: team.raider.memberId, nameRealm, archivedAt: new Date('2026-03-01') });
       await q("update public.players set is_trial = false, join_date = '2026-02-01' where id = $1", [old]);
-      const id = (await addFirstMain(asUser, team.raider.uid, team.teamId, characterId)).rows[0].id;
+      const id = (await addCharacter(asUser, team.raider.uid, team.teamId, characterId)).rows[0].id;
       expect(id).toBe(old);
       const row = await playerRow(q, id);
       expect(row).toMatchObject({ is_trial: false, archived_at: null, team_member_id: team.raider.memberId });
@@ -62,18 +62,18 @@ describe('add_own_first_main()', () => {
     });
   });
 
-  it('writes "Player Added" with "first main, self-added" to the Audit Log', async () => {
+  it('writes "Player Added" with "added by the member" to the Audit Log', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const { characterId } = await character(q, team.raider.memberId);
-      const id = (await addFirstMain(asUser, team.raider.uid, team.teamId, characterId)).rows[0].id;
+      const id = (await addCharacter(asUser, team.raider.uid, team.teamId, characterId)).rows[0].id;
       const { rows } = await q(
         "select actor_id, detail from public.audit_log where target_type = 'players' and target_id = $1 and action = 'Player Added'",
         [id]
       );
       expect(rows).toHaveLength(1);
       expect(rows[0].actor_id).toBe(team.raider.uid);
-      expect(rows[0].detail).toBe('Mage Frost Ranged, first main, self-added');
+      expect(rows[0].detail).toBe('Mage Frost Ranged, added by the member');
     });
   });
 
@@ -81,7 +81,7 @@ describe('add_own_first_main()', () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const { characterId } = await character(q, team.raider.memberId);
-      await addFirstMain(asUser, team.raider.uid, team.teamId, characterId);
+      await addCharacter(asUser, team.raider.uid, team.teamId, characterId);
       expect(await rowLockModes(q, 'team_members', team.raider.memberId)).toContain('For No Key Update');
     });
   });
@@ -91,7 +91,7 @@ describe('add_own_first_main()', () => {
       const team = await seedTeam(q);
       const other = await seedTeam(q);
       const { characterId } = await character(q, team.raider.memberId);
-      await expect(addFirstMain(asUser, team.raider.uid, other.teamId, characterId)).rejects.toThrow(
+      await expect(addCharacter(asUser, team.raider.uid, other.teamId, characterId)).rejects.toThrow(
         /You are not on this team/
       );
     });
@@ -107,7 +107,7 @@ describe('add_own_first_main()', () => {
         'moved_guilds',
         'Joined another guild'
       ]);
-      await expect(addFirstMain(asUser, team.raider.uid, team.teamId, characterId)).rejects.toThrow(
+      await expect(addCharacter(asUser, team.raider.uid, team.teamId, characterId)).rejects.toThrow(
         /Your place on this team has ended/
       );
     });
@@ -118,7 +118,7 @@ describe('add_own_first_main()', () => {
       const team = await seedTeam(q);
       await seedPlayer(q, { memberId: team.raider.memberId });
       const { characterId } = await character(q, team.raider.memberId);
-      await expect(addFirstMain(asUser, team.raider.uid, team.teamId, characterId)).rejects.toThrow(
+      await expect(addCharacter(asUser, team.raider.uid, team.teamId, characterId)).rejects.toThrow(
         /already have a character on this team's roster. Ask for a main swap/
       );
     });
@@ -129,8 +129,8 @@ describe('add_own_first_main()', () => {
       const team = await seedTeam(q);
       const { characterId, nameRealm } = await character(q, team.raider.memberId);
       await seedPlayer(q, { teamId: team.teamId, nameRealm });
-      await expect(addFirstMain(asUser, team.raider.uid, team.teamId, characterId)).rejects.toThrow(
-        /Firstmain-Illidan is already on this roster/
+      await expect(addCharacter(asUser, team.raider.uid, team.teamId, characterId)).rejects.toThrow(
+        /Newmain-Illidan is already on this roster/
       );
     });
   });
@@ -140,8 +140,8 @@ describe('add_own_first_main()', () => {
       const team = await seedTeam(q);
       const { characterId, nameRealm } = await character(q, team.raider.memberId);
       await seedPlayer(q, { memberId: team.leader.memberId, nameRealm, archivedAt: new Date('2026-03-01') });
-      await expect(addFirstMain(asUser, team.raider.uid, team.teamId, characterId)).rejects.toThrow(
-        /Firstmain-Illidan was someone else's on this team/
+      await expect(addCharacter(asUser, team.raider.uid, team.teamId, characterId)).rejects.toThrow(
+        /Newmain-Illidan was someone else's on this team/
       );
     });
   });
@@ -150,7 +150,7 @@ describe('add_own_first_main()', () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const { characterId } = await character(q, team.leader.memberId);
-      await expect(addFirstMain(asUser, team.raider.uid, team.teamId, characterId)).rejects.toThrow(
+      await expect(addCharacter(asUser, team.raider.uid, team.teamId, characterId)).rejects.toThrow(
         /That character is not on your account/
       );
     });
@@ -160,7 +160,7 @@ describe('add_own_first_main()', () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const { characterId } = await character(q, team.raider.memberId, { characterClass: 'Evoker' });
-      await expect(addFirstMain(asUser, team.raider.uid, team.teamId, characterId)).rejects.toThrow(
+      await expect(addCharacter(asUser, team.raider.uid, team.teamId, characterId)).rejects.toThrow(
         /is a Evoker, not a Mage/
       );
     });
