@@ -179,18 +179,20 @@ describe('request tables allow officer review updates', () => {
   });
 });
 
-describe('add_signup_to_roster is officer-gated through RLS', () => {
-  // SECURITY INVOKER function, so the caller's own read of season_signups
-  // decides. The approved team 1 signup is minted inside each transaction
+describe('add_signup_to_roster is officer-gated', () => {
+  // SECURITY DEFINER since #1434, with its own check of the people the
+  // season_signups rules let in: the team's officers and team leader, or a
+  // site admin. The approved team 1 signup is minted inside each transaction
   // (#1123) and the call rides the same connection; a refusal reads the row
-  // as postgres first, so "not found" is the rule and not a missing fixture.
+  // as postgres first, so the refusal is the check and not a missing fixture.
   const sql = 'select public.add_signup_to_roster($1) as player_id';
   const exists = async (q, signup) =>
     (await q('select count(*)::int as n from public.season_signups where id = $1', [signup])).rows[0].n;
 
   for (const [who, uid] of [
     ['team 1 officer', OFFICER_T1],
-    ['team 1 team leader', TEAM_LEADER_T1]
+    ['team 1 team leader', TEAM_LEADER_T1],
+    ['a site admin', SITE_ADMIN]
   ]) {
     it(`${who} can promote a team 1 signup`, async () => {
       await withTxn(async ({ q, asUser }) => {
@@ -213,6 +215,17 @@ describe('add_signup_to_roster is officer-gated through RLS', () => {
       const signup = await seedSignup(q, { teamId: 1 });
       expect(await exists(q, signup)).toBe(1);
       await expect(asUser(RAIDER_T1, sql, [signup])).rejects.toThrow(/Not authorized/);
+    });
+  });
+  // The season_signups rules never let a guild officer in, so neither does
+  // the function (fresh-agent review on #1671).
+  it('a guild officer cannot promote a team 1 signup', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const signup = await seedSignup(q, { teamId: 1 });
+      await expect(asUser(GUILD_OFFICER, sql, [signup])).rejects.toThrow(/Not authorized/);
+      expect((await q('select status from public.season_signups where id = $1', [signup])).rows[0].status).toBe(
+        'approved'
+      );
     });
   });
   it('team 2 officer cannot promote a team 1 signup', async () => {
