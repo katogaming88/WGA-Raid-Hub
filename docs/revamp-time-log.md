@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |      16 h 0 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     54 h 56 m |
+| Revamp 3: officer dashboard        |     55 h 11 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **119 h 51 m** |
+| **All revamp work**                | **120 h 6 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -432,6 +432,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 12:26-12:45 AM | #1674 built: the relay refuses addCharacter without a signed-in user and builds the message from the caller's own Audit Log row from the last five minutes; the bot posts each row once; the app stops sending the text; Edge Function and bot tests; stamp, changelog, these rows | Revamp 3 (#1674) | 20 m | ~20 m build | not read | Review and merge not yet counted |
 | 12:45-1:55 AM | PR #1677 (#1674): CodeRabbit's first review (the 20-row limit fixed; the channel check filed as #1678), its second (the add looked up on the asked-for team only); then Kat chose CodeRabbit's way for the Audit Log read: my_recent_own_add(), called as the member, the service role dropped from the relay; database tests red first, full database suite, generated docs, decision log, RLS.md, restamp, changelog | Revamp 3 (#1674) | 70 m | ~65 m build, ~5 m Kat | not read | The fresh-agent review and merge not yet counted |
+| 12:40-12:55 PM | #1618 built: an approved main swap that brings a character back from the archive turns its wishlist and BiS exceptions off, one already on the roster keeps them; database tests red first (approve, on-roster, refused callers and a decline), generated definitions, decision log, stamp, changelog, this row | Revamp 3 (#1618) | 15 m | ~15 m build | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

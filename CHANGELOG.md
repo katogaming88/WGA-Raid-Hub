@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.214.1] - 2026-10-27
+
+### Backend
+
+- A character brought back from the archive by an approved main swap no
+  longer keeps last stint's wishlist and BiS exceptions (#1618).
+  `review_main_swap_request()` turns `wishlist_allowed` and `bis_allowed`
+  off when it revives an archived character, as a signup re-add and the
+  invite link already do; a character already on the roster keeps them.
+
+### Project
+
+- Revamp time log row for #1618.
+
 ## [3.214.0] - 2026-10-27
 
 ### Backend

@@ -2940,3 +2940,13 @@ Shipped: 20261027014831_my_recent_own_add.sql
 **The five-minute window is in the function.** The page calls the relay right after `add_own_character()` returns, so seconds is the usual gap. Holding the window in the database, not as a parameter, means a caller cannot ask for an older add again and re-post it after the bot (which posts each audit id once, in memory) restarts.
 
 [Full discussion -> #1674](https://github.com/katogaming88/WGA-Raid-Hub/issues/1674).
+
+## #1618 -- a character brought back by an approved main swap starts without last stint's exceptions
+
+Shipped: 20261027124211_approved_swap_revive_resets_exceptions.sql
+
+Found by the fresh-agent migration review on #1617. `review_main_swap_request()` brought an archived character back with `wishlist_allowed` and `bis_allowed` still on from its last stint, so a raider swapping back to an old main could edit a closed wishlist or send a BiS link with no officer having allowed it this time; the officer approved a swap, not the exceptions. It now turns both off when an approved swap revives a character, as `add_signup_to_roster()` (#1616) and `team_invite_link_join()` already do. A character already on the roster keeps whatever an officer set.
+
+**`restore_player()` keeps them.** An officer restoring a character is deliberately undoing an archive, so its exceptions coming back with it is what they asked for. That is the one way back onto the roster that keeps them.
+
+[Full discussion -> #1618](https://github.com/katogaming88/WGA-Raid-Hub/issues/1618).

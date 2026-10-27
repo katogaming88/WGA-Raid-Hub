@@ -453,6 +453,65 @@ describe('review_main_swap_request()', () => {
   });
 });
 
+// #1618: a character an approved swap brings back from the archive starts
+// without the wishlist and BiS exceptions an officer gave it last stint, as
+// one coming back through a signup (#1616) or the invite link does. One
+// already on the roster keeps them.
+describe('review_main_swap_request() and the officer exceptions', () => {
+  async function withExceptions(q, asUser, archived) {
+    const { characterId, nameRealm } = await fixture(q);
+    const id = (await ask(asUser, RAIDER_T1, characterId)).rows[0].id;
+    // Written after the ask, which refuses a character already on the roster.
+    const alt = await q(
+      `insert into public.players (team_id, name_realm, class_spec_id, team_member_id, archived_at,
+                                   wishlist_allowed, bis_allowed)
+       values (1, $1, 1, $2, case when $3 then now() end, true, true) returning id`,
+      [nameRealm, PHOENIX_RAIDER_MEMBER, archived]
+    );
+    return { id, alt: alt.rows[0].id };
+  }
+
+  const exceptions = async (q, id) =>
+    (await q('select wishlist_allowed, bis_allowed, archived_at from public.players where id = $1', [id])).rows[0];
+
+  it('turns both off for a character it brings back from the archive', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const s = await withExceptions(q, asUser, true);
+      expect((await review(asUser, OFFICER_T1, s.id, true)).rows[0].player_id).toBe(s.alt);
+      expect(await exceptions(q, s.alt)).toEqual({ wishlist_allowed: false, bis_allowed: false, archived_at: null });
+    });
+  });
+
+  it('leaves them on for a character already on the roster', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const s = await withExceptions(q, asUser, false);
+      expect((await review(asUser, OFFICER_T1, s.id, true)).rows[0].player_id).toBe(s.alt);
+      expect(await exceptions(q, s.alt)).toEqual({ wishlist_allowed: true, bis_allowed: true, archived_at: null });
+    });
+  });
+
+  // Refused: another team's officer, the raider and a signed-out caller
+  // change nothing, archived or not; nor does an officer declining.
+  for (const archived of [true, false]) {
+    it(`is refused to everyone but the team's officers, and a decline changes nothing (${archived ? 'archived' : 'on the roster'})`, async () => {
+      await withTxn(async ({ q, asUser, asAnon }) => {
+        const s = await withExceptions(q, asUser, archived);
+        const before = await exceptions(q, s.alt);
+        for (const call of [
+          () => review(asUser, OFFICER_T2, s.id, true),
+          () => review(asUser, RAIDER_T1, s.id, true),
+          () => asAnon('select public.review_main_swap_request($1, true)', [s.id])
+        ]) {
+          await expect(call()).rejects.toThrow();
+          expect(await exceptions(q, s.alt)).toEqual(before);
+        }
+        await review(asUser, OFFICER_T1, s.id, false);
+        expect(await exceptions(q, s.alt)).toEqual(before);
+      });
+    });
+  }
+});
+
 // #1428: once the character a swap is from leaves the roster, an approval can
 // never go through, so every way off the roster cancels the swaps waiting from
 // it. Each case runs on a team of its own: the archives write the raider's
