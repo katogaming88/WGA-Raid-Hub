@@ -32,7 +32,10 @@ function supabaseDb(): RelayDb {
     },
     async latestOwnAdd(userId, since): Promise<OwnAdd | null> {
       // The same caller may also be an officer adding someone else, whose
-      // rows share the action; the detail tells them apart.
+      // rows share the action; the detail tells them apart. No row limit, so
+      // a run of those adds cannot push the caller's own out of the read: it
+      // is one person's adds over a few minutes. detail is jsonb, which
+      // PostgREST cannot match with like, so the filter is here.
       const { data: rows, error } = await db()
         .from('audit_log')
         .select('id, team_id, target_id, detail, created_at')
@@ -40,8 +43,7 @@ function supabaseDb(): RelayDb {
         .eq('action', 'Player Added')
         .eq('target_type', 'players')
         .gte('created_at', since.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(20);
+        .order('created_at', { ascending: false });
       if (error) throw new Error(error.message);
       const row = (rows ?? []).find((r) => typeof r.detail === 'string' && r.detail.endsWith(OWN_ADD_SUFFIX));
       if (!row) return null;
