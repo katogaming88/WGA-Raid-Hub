@@ -14,7 +14,8 @@ import {
   GUILD_OFFICER,
   TEAM_LEADER_T1,
   RAIDER_T1,
-  RAIDER_T2
+  RAIDER_T2,
+  TEAM_LEADER_T2
 } from './helpers.js';
 
 afterAll(() => pool.end());
@@ -114,6 +115,17 @@ describe('team_members.role follows the rank', () => {
     });
   });
 
+  it("only that team's leader changes a role: another team's leader, a raider and the signed-out cannot", async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      const raider = await seedMember(q, { teamId: 1 });
+      const promote = "update public.team_members set role = 'officer' where id = $1";
+      await asUser(TEAM_LEADER_T2, promote, [raider.memberId]);
+      await asUser(RAIDER_T1, promote, [raider.memberId]);
+      await asAnon(promote, [raider.memberId]).catch(() => {});
+      expect(await member(q, raider.memberId)).toEqual({ rank: 'raider', role: 'raider' });
+    });
+  });
+
   it('a team leader cannot write a rank directly, only the role', async () => {
     await withTxn(async ({ q, asUser }) => {
       const raider = await seedMember(q, { teamId: 1 });
@@ -178,6 +190,33 @@ describe('guild ranks and the guild_officer grant', () => {
       expect(await guildRank(q, who)).toBe('admin');
       await asUser(SITE_ADMIN, `select public.admin_revoke_guild_officer($1, ${WGA})`, [who]);
       expect(await guildRank(q, who)).toBe('member');
+    });
+  });
+
+  it('a grant moved to someone else moves the admin rank with it', async () => {
+    await withTxn(async ({ q }) => {
+      const [a, b] = [`discord-1645-${randomUUID()}`, `discord-1645-${randomUUID()}`];
+      await q(
+        `insert into public.guild_grants (person_id, guild_id, grant_type)
+         values (public.person_for_discord_id($1), ${WGA}, 'guild_officer')`,
+        [a]
+      );
+      // A no-op update changes nothing.
+      await q(
+        'update public.guild_grants set grant_type = grant_type where person_id = public.person_for_discord_id($1)',
+        [a]
+      );
+      expect(await guildRank(q, a)).toBe('admin');
+      expect(await hasGrant(q, a)).toBe(true);
+
+      await q(
+        'update public.guild_grants set person_id = public.person_for_discord_id($2) where person_id = public.person_for_discord_id($1)',
+        [a, b]
+      );
+      expect(await guildRank(q, a)).toBe('member');
+      expect(await guildRank(q, b)).toBe('admin');
+      expect(await hasGrant(q, a)).toBe(false);
+      expect(await hasGrant(q, b)).toBe(true);
     });
   });
 

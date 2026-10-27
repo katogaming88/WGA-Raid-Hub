@@ -36,7 +36,7 @@ Guild-wide grants, one row per person per grant per guild (#942). Replaced site_
 
 | Name | Definition |
 | ---- | ---------- |
-| guild_grants_keep_rank | CREATE TRIGGER guild_grants_keep_rank AFTER INSERT OR DELETE ON public.guild_grants FOR EACH ROW EXECUTE FUNCTION guild_grants_keep_rank() |
+| guild_grants_keep_rank | CREATE TRIGGER guild_grants_keep_rank AFTER INSERT OR DELETE OR UPDATE ON public.guild_grants FOR EACH ROW EXECUTE FUNCTION guild_grants_keep_rank() |
 
 ## Relations
 

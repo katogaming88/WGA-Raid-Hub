@@ -254,7 +254,7 @@ $$;
 revoke all on function public.team_members_guard_rank() from public, anon, authenticated;
 
 create trigger team_members_guard_rank
-  before insert or update of rank on public.team_members
+  before insert or update on public.team_members
   for each row execute function public.team_members_guard_rank();
 
 -- Guild ranks.
@@ -313,28 +313,36 @@ create trigger guild_ranks_keep_grant
 
 -- The current site's Grant and Revoke Guild Officer, the other way. Revoking
 -- the owner's grant is refused: the guild would keep an owner with no
--- guild_officer grant.
+-- guild_officer grant. An update that moves a grant (nothing does, but a
+-- site admin's rule allows it) counts as a revoke and a grant; one that
+-- moves nothing changes nothing.
 create function public.guild_grants_keep_rank()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_moved boolean := tg_op <> 'UPDATE'
+                     or (old.person_id, old.guild_id, old.grant_type)
+                        is distinct from (new.person_id, new.guild_id, new.grant_type);
 begin
-  if tg_op = 'INSERT' then
-    if new.grant_type = 'guild_officer' then
-      insert into guild_ranks (guild_id, person_id, rank)
-      values (new.guild_id, new.person_id, 'admin')
-      on conflict (guild_id, person_id) do update set rank = 'admin'
-       where guild_ranks.rank not in ('owner', 'admin');
-    end if;
-  elsif old.grant_type = 'guild_officer' then
+  if not v_moved then
+    return null;
+  end if;
+  if tg_op <> 'INSERT' and old.grant_type = 'guild_officer' then
     if exists (select 1 from guild_ranks
                 where guild_id = old.guild_id and person_id = old.person_id and rank = 'owner') then
       raise exception 'That person is the guild''s Owner. Hand the guild to someone else first.';
     end if;
     update guild_ranks set rank = 'member'
      where guild_id = old.guild_id and person_id = old.person_id and rank = 'admin';
+  end if;
+  if tg_op <> 'DELETE' and new.grant_type = 'guild_officer' then
+    insert into guild_ranks (guild_id, person_id, rank)
+    values (new.guild_id, new.person_id, 'admin')
+    on conflict (guild_id, person_id) do update set rank = 'admin'
+     where guild_ranks.rank not in ('owner', 'admin');
   end if;
   return null;
 end;
@@ -343,7 +351,7 @@ $$;
 revoke all on function public.guild_grants_keep_rank() from public, anon, authenticated;
 
 create trigger guild_grants_keep_rank
-  after insert or delete on public.guild_grants
+  after insert or update or delete on public.guild_grants
   for each row execute function public.guild_grants_keep_rank();
 
 -- The two checks. Never null. An owner holds every permission on its grid;
