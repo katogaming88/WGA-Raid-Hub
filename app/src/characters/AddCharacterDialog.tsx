@@ -9,13 +9,7 @@ import { useClassSpecs } from './useMainSwaps';
 
 // "Add character to roster" (#1464): pick the spec, and the character is on
 // the roster at once. Works on a phone, like the main swap form.
-export function AddCharacterDialog({
-  character,
-  onClose
-}: {
-  character: SavedCharacter;
-  onClose: () => void;
-}) {
+export function AddCharacterDialog({ character, onClose }: { character: SavedCharacter; onClose: () => void }) {
   const team = useTeam();
   const { announce } = useStatus();
   const specs = useClassSpecs();
