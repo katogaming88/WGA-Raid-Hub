@@ -3,7 +3,7 @@
 // make loot decisions, and a permission switched off on a team's grid
 // refuses at once.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedTeam, seedMember, seedPlayer, RLS_DENIED } from './helpers.js';
+import { pool, withTxn, seedTeam, seedMember, seedPlayer, seedSignup, RLS_DENIED } from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -18,6 +18,13 @@ async function seedAssistant(q, teamId) {
 const renamePlayer = (asUser, uid, playerId) =>
   asUser(uid, "update public.players set nickname = 'Renamed' where id = $1 returning id", [playerId]);
 
+const switchOff = (q, teamId, rank, permissions) =>
+  q('delete from public.team_rank_permissions where team_id = $1 and rank = $2 and permission = any ($3)', [
+    teamId,
+    rank,
+    permissions
+  ]);
+
 const markPresent = (asUser, uid, teamId, playerId, raidDate = '2026-08-01') =>
   asUser(
     uid,
@@ -27,8 +34,8 @@ const markPresent = (asUser, uid, teamId, playerId, raidDate = '2026-08-01') =>
   );
 
 describe('team permissions (#1646)', () => {
-  it('an Assistant edits the roster and attendance; a raider does neither', async () => {
-    await withTxn(async ({ q, asUser }) => {
+  it('an Assistant edits the roster and attendance; a raider, another team and signed out do neither', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
       const team = await seedTeam(q);
       const assistant = await seedAssistant(q, team.teamId);
       const player = await seedPlayer(q, { teamId: team.teamId });
@@ -40,6 +47,44 @@ describe('team permissions (#1646)', () => {
       await expect(markPresent(asUser, team.raider.uid, team.teamId, player)).rejects.toMatchObject({
         code: RLS_DENIED
       });
+
+      const other = await seedTeam(q);
+      const otherAssistant = await seedAssistant(q, other.teamId);
+      expect((await renamePlayer(asUser, otherAssistant.uid, player)).rowCount).toBe(0);
+      await expect(markPresent(asUser, otherAssistant.uid, team.teamId, player)).rejects.toMatchObject({
+        code: RLS_DENIED
+      });
+
+      expect(
+        (await asAnon("update public.players set nickname = 'Renamed' where id = $1 returning id", [player])).rowCount
+      ).toBe(0);
+    });
+  });
+
+  it('the audit log takes a row only from a permission that changes something', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const assistant = await seedAssistant(q, team.teamId);
+      const log = () => asUser(assistant.uid, "select public.write_audit_log($1, 'fixture') as id", [team.teamId]);
+      expect((await log()).rows[0].id).toBeGreaterThan(0);
+
+      // Left with See RSVPs, View reports and View loot only.
+      await switchOff(q, team.teamId, 'assistant', ['edit_roster', 'edit_schedule', 'attendance', 'manage_signups']);
+      await expect(log()).rejects.toThrow(/Not authorized/);
+    });
+  });
+
+  it('adding a signup to the roster asks Edit roster as well as Manage signups', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const signup = await seedSignup(q, { teamId: team.teamId });
+      await switchOff(q, team.teamId, 'officer', ['edit_roster']);
+      await expect(asUser(team.officer.uid, 'select public.add_signup_to_roster($1)', [signup])).rejects.toThrow(
+        /Not authorized/
+      );
+      expect((await q('select status from public.season_signups where id = $1', [signup])).rows[0].status).toBe(
+        'approved'
+      );
     });
   });
 
@@ -75,11 +120,7 @@ describe('team permissions (#1646)', () => {
       const player = await seedPlayer(q, { teamId: team.teamId });
       expect((await markPresent(asUser, team.officer.uid, team.teamId, player)).rowCount).toBe(1);
 
-      await q(
-        `delete from public.team_rank_permissions
-          where team_id = $1 and rank = 'officer' and permission = 'attendance'`,
-        [team.teamId]
-      );
+      await switchOff(q, team.teamId, 'officer', ['attendance']);
 
       await expect(markPresent(asUser, team.officer.uid, team.teamId, player)).rejects.toMatchObject({
         code: RLS_DENIED

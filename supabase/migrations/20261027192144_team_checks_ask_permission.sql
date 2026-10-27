@@ -15,7 +15,7 @@
 --   see_rsvps       everyone's RSVPs and notes
 --   attendance      attendance, raid night participation, the rotator week
 --                   and setting an RSVP for someone (bench)
---   manage_signups  season signups, adding a signup to the roster
+--   manage_signups  season signups; adding one to the roster asks edit_roster too
 --   view_reports    raid reports and kills
 --
 -- The guild officer and site admin arms are unchanged: guild-level checks
@@ -210,8 +210,10 @@ alter policy "Officers read team_raid_kills" on public.team_raid_kills
          or (select is_site_admin()));
 
 -- The functions. Each body is as it was except its check. write_audit_log()
--- lets in anyone holding a team permission beyond a raider's own two, since
--- every officer-side action logs through it.
+-- lets in anyone holding a team permission that changes something, since
+-- every officer-side action logs through it; the read-only ones (RSVPs,
+-- reports, loot, the audit log) and a raider's own two do not.
+-- add_signup_to_roster() asks manage_signups and edit_roster both.
 
 create or replace function public.add_signup_to_roster(p_signup_id integer, p_is_trial boolean default true, p_archive_player_id integer default NULL::integer, p_is_backup_tank boolean default false, p_is_backup_healer boolean default false)
 returns integer
@@ -244,8 +246,11 @@ begin
   -- script; anon cannot call it. An unknown signup has no team, so it is
   -- refused here too, except to a site admin, who is told below.
   select team_id into v_team_id from public.season_signups where id = p_signup_id;
+  -- Adding a signup is a roster edit too, and restore_team_member() and
+  -- hold_team_member() below ask edit_roster, so this asks both (#1646).
   if auth.uid() is not null and not (
-    public.has_team_permission(v_team_id, 'manage_signups')
+    (public.has_team_permission(v_team_id, 'manage_signups')
+     and public.has_team_permission(v_team_id, 'edit_roster'))
     or public.is_site_admin()
   ) then
     raise exception 'Not authorized';
@@ -1733,7 +1738,8 @@ begin
   end if;
 
   if not (exists (select 1 from public.rank_permissions k
-                  where k.scope = 'team' and k.permission not in ('own_character', 'edit_own_wishlist')
+                  where k.permission in ('edit_roster', 'edit_schedule', 'attendance', 'manage_signups',
+                                         'manage_loot', 'pay_boe_cuts', 'promote_assistants')
                     and public.has_team_permission(p_team_id, k.permission)) or public.is_site_admin() or public.is_guild_officer_of_team(p_team_id)) then
     raise exception 'Not authorized';
   end if;
