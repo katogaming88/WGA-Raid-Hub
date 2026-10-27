@@ -11,11 +11,9 @@ import { useClassSpecs } from './useMainSwaps';
 // the roster at once. Works on a phone, like the main swap form.
 export function AddCharacterDialog({
   character,
-  member,
   onClose
 }: {
   character: SavedCharacter;
-  member: string;
   onClose: () => void;
 }) {
   const team = useTeam();
@@ -37,10 +35,7 @@ export function AddCharacterDialog({
     add.mutate(
       {
         characterId: character.id,
-        classSpecId: spec.id,
-        member,
-        nameRealm: `${character.name}-${character.realm}`,
-        classSpec: `${spec.spec} ${spec.class}`
+        classSpecId: spec.id
       },
       {
         onSuccess: () => {

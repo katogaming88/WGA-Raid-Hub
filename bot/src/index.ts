@@ -24,6 +24,7 @@ import {
 import express, { Request, Response } from 'express';
 import { fetchNudgeCandidates, NudgeCandidate, NudgeCategory, nudgeLines, profileDeepLink } from './wishlistStatus';
 import { filterAndRecordNudges } from './nudgeLog';
+import { postedOnce } from './postedOnce';
 import { runSignupSheetSweep, syncSignupSheet, SignupSheetContext } from './signupSheet';
 import {
   TeamConfig,
@@ -950,21 +951,30 @@ app.post('/signup', async (req: Request, res: Response): Promise<void> => {
 // the roster. Officers undo a wrong one with Remove claim, Remove or Archive
 // Member.
 interface AddCharacterBody {
+  auditId?: number;
   member?: string;
   nameRealm?: string;
   classSpec?: string;
   submittedAt?: string;
 }
 
+const firstAddPost = postedOnce();
+
 app.post('/add-character', async (req: Request, res: Response): Promise<void> => {
   if (!checkSecret(req, res)) return;
   const cfg = resolveTeam(req, res);
   if (!cfg) return;
 
-  const { member, nameRealm, classSpec, submittedAt } = req.body as AddCharacterBody;
+  const { auditId, member, nameRealm, classSpec, submittedAt } = req.body as AddCharacterBody;
 
-  if (!member || !nameRealm) {
-    res.status(400).json({ error: 'Missing required fields: member, nameRealm' });
+  if (typeof auditId !== 'number' || !member || !nameRealm) {
+    res.status(400).json({ error: 'Missing required fields: auditId, member, nameRealm' });
+    return;
+  }
+  // The relay's check (#1674) makes every call a real add; this makes a
+  // repeat of one post nothing.
+  if (!firstAddPost(auditId)) {
+    res.json({ ok: true, repeat: true });
     return;
   }
 

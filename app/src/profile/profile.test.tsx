@@ -368,8 +368,7 @@ describe('Profile page', () => {
         expect(invoke).toHaveBeenCalledWith('discord-bot-webhook', {
           body: {
             action: 'addCharacter',
-            team: 'phoenix',
-            payload: { member: 'Kat', nameRealm: 'Grihz-Illidan', classSpec: 'Affliction Warlock' }
+            team: 'phoenix'
           }
         })
       );

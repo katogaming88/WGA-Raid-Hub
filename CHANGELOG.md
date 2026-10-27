@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.213.3] - 2026-10-27
+
+### Functions
+
+- The "Character Added to Roster" Discord message can no longer be faked
+  (#1674). `discord-bot-webhook` refuses an `addCharacter` call without a
+  signed-in user, and builds the message from that user's own "added by
+  the member" Audit Log row from the last five minutes, ignoring the text
+  and team the caller sent. With no such row, nothing is posted. Ships when
+  #959 lifts the function's deploy hold.
+
+### Bot
+
+- `/add-character` needs the Audit Log row id and posts each one once, so
+  a repeated call for the same add posts nothing new (#1674).
+
+### Project
+
+- New app: Add character no longer sends the Member, character and spec
+  for the officers' notice; the relay reads them from the database.
+
 ## [3.213.2] - 2026-10-26
 
 ### Project
