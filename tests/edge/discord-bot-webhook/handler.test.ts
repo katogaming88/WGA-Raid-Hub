@@ -25,20 +25,20 @@ const ADD: OwnAdd = {
 
 function setup({ user = { id: 'u1' } as { id: string } | null, add = ADD as OwnAdd | null } = {}) {
   const { fetch, calls } = recordingFetch([new Response('{"ok":true}', { status: 200 })]);
-  const sinces: Date[] = [];
+  const asks: Array<{ team: string; since: Date }> = [];
   const deps: Deps = {
     fetch,
     env: { get: (name) => ({ BOT_WEBHOOK_URL: BOT_URL, BOT_WEBHOOK_SECRET: 's3cret' })[name] },
     now: () => NOW,
     db: {
       getUser: () => Promise.resolve(user),
-      latestOwnAdd: (_userId, since) => {
-        sinces.push(since);
+      latestOwnAdd: (_userId, team, since) => {
+        asks.push({ team, since });
         return Promise.resolve(add);
       }
     }
   };
-  return { deps, calls, sinces };
+  return { deps, calls, asks };
 }
 
 const FAKE = {
@@ -76,13 +76,13 @@ Deno.test('addCharacter with no recent own add posts nothing', async () => {
   assertEquals(calls.length, 0);
 });
 
-Deno.test('addCharacter looks back only the window', async () => {
-  const { deps, sinces } = setup();
+Deno.test("addCharacter looks only at the asked-for team's adds, over only the window", async () => {
+  const { deps, asks } = setup();
   await handle(post(FAKE), deps);
-  assertEquals(sinces, [new Date(NOW.getTime() - OWN_ADD_WINDOW_MS)]);
+  assertEquals(asks, [{ team: 'hellfire', since: new Date(NOW.getTime() - OWN_ADD_WINDOW_MS) }]);
 });
 
-Deno.test("addCharacter posts the Audit Log row, not the caller's text or team", async () => {
+Deno.test("addCharacter posts the Audit Log row, not the caller's text", async () => {
   const { deps, calls } = setup();
   const res = await handle(post(FAKE), deps);
   assertEquals(res.status, 200);

@@ -30,7 +30,13 @@ function supabaseDb(): RelayDb {
       } = await caller(authHeader).auth.getUser();
       return user ? { id: user.id } : null;
     },
-    async latestOwnAdd(userId, since): Promise<OwnAdd | null> {
+    async latestOwnAdd(userId, teamSlug, since): Promise<OwnAdd | null> {
+      // Only the asked-for team: a member adding on two teams in the window
+      // would otherwise send one team's notice to the other's officers.
+      const team = await db().from('teams').select('id, slug').eq('slug', teamSlug).maybeSingle();
+      if (team.error) throw new Error(team.error.message);
+      if (!team.data) return null;
+
       // The same caller may also be an officer adding someone else, whose
       // rows share the action; the detail tells them apart. No row limit, so
       // a run of those adds cannot push the caller's own out of the read: it
@@ -40,6 +46,7 @@ function supabaseDb(): RelayDb {
         .from('audit_log')
         .select('id, team_id, target_id, detail, created_at')
         .eq('actor_id', userId)
+        .eq('team_id', team.data.id)
         .eq('action', 'Player Added')
         .eq('target_type', 'players')
         .gte('created_at', since.toISOString())
@@ -48,13 +55,13 @@ function supabaseDb(): RelayDb {
       const row = (rows ?? []).find((r) => typeof r.detail === 'string' && r.detail.endsWith(OWN_ADD_SUFFIX));
       if (!row) return null;
 
-      const [player, team] = await Promise.all([
-        db().from('players').select('name_realm, team_member_id').eq('id', row.target_id).maybeSingle(),
-        db().from('teams').select('slug').eq('id', row.team_id).maybeSingle()
-      ]);
+      const player = await db()
+        .from('players')
+        .select('name_realm, team_member_id')
+        .eq('id', row.target_id)
+        .maybeSingle();
       if (player.error) throw new Error(player.error.message);
-      if (team.error) throw new Error(team.error.message);
-      if (!player.data || !team.data) return null;
+      if (!player.data) return null;
 
       const name = player.data.team_member_id
         ? await db().from('names').select('label').eq('team_member_id', player.data.team_member_id).maybeSingle()

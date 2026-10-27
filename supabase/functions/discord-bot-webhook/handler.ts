@@ -16,8 +16,9 @@
 // (their RPCs are granted to `anon`), and each points at something officers
 // then review on the site. addCharacter (#1674) is the exception: it is the
 // officers' only word of an add that has already happened, so it needs a
-// signed-in caller and ignores the caller's text. The team, Member, character
-// and spec all come from the caller's own Audit Log row for the add, and the
+// signed-in caller and ignores the caller's text. The Member, character and
+// spec come from the caller's own Audit Log row for the add on that team (the
+// team only picks among the caller's own adds), and the
 // row's id goes to the bot, which posts each row once.
 //
 // handle() takes its reads, its fetch and its environment as an argument
@@ -36,9 +37,9 @@ export type OwnAdd = {
 
 export interface RelayDb {
   getUser(authHeader: string): Promise<{ id: string } | null>;
-  // The caller's newest "added by the member" Audit Log row since `since`,
-  // or null when there is none.
-  latestOwnAdd(userId: string, since: Date): Promise<OwnAdd | null>;
+  // The caller's newest "added by the member" Audit Log row on this team
+  // since `since`, or null when there is none.
+  latestOwnAdd(userId: string, team: string, since: Date): Promise<OwnAdd | null>;
 }
 
 export type Env = { get(name: string): string | undefined };
@@ -93,7 +94,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       if (!user) return jsonResponse({ success: false, error: 'Not signed in' }, 401);
 
       const now = deps.now ? deps.now() : new Date();
-      const add = await deps.db.latestOwnAdd(user.id, new Date(now.getTime() - OWN_ADD_WINDOW_MS));
+      const add = await deps.db.latestOwnAdd(user.id, team, new Date(now.getTime() - OWN_ADD_WINDOW_MS));
       if (!add) return jsonResponse({ success: false, error: 'No character added' }, 404);
       body = {
         team: add.team,

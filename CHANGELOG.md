@@ -19,8 +19,8 @@ answers to.
 - The "Character Added to Roster" Discord message can no longer be faked
   (#1674). `discord-bot-webhook` refuses an `addCharacter` call without a
   signed-in user, and builds the message from that user's own "added by
-  the member" Audit Log row from the last five minutes, ignoring the text
-  and team the caller sent. With no such row, nothing is posted. Ships when
+  the member" Audit Log row on that team from the last five minutes,
+  ignoring the text the caller sent. With no such row, nothing is posted. Ships when
   #959 lifts the function's deploy hold.
 
 ### Bot
