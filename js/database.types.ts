@@ -4427,6 +4427,17 @@ export type Database = {
       my_officer_team_ids: { Args: never; Returns: number[] }
       my_person_id: { Args: never; Returns: number }
       my_player_ids: { Args: never; Returns: number[] }
+      my_recent_own_add: {
+        Args: { p_team_slug: string }
+        Returns: {
+          added_at: string
+          audit_id: number
+          class_spec: string
+          member: string
+          name_realm: string
+          team_slug: string
+        }[]
+      }
       my_team_role: { Args: { p_team_id: number }; Returns: string }
       my_wishlist_signup_ids: { Args: never; Returns: number[] }
       new_url_code: { Args: never; Returns: string }

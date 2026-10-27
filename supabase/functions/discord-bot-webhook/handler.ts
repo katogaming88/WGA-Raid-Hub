@@ -17,15 +17,15 @@
 // then review on the site. addCharacter (#1674) is the exception: it is the
 // officers' only word of an add that has already happened, so it needs a
 // signed-in caller and ignores the caller's text. The Member, character and
-// spec come from the caller's own Audit Log row for the add on that team (the
-// team only picks among the caller's own adds), and the
-// row's id goes to the bot, which posts each row once.
+// spec come from my_recent_own_add(), called as the caller: their own newest
+// add on that team from the last five minutes. The row's id goes to the bot,
+// which posts each row once.
 //
 // handle() takes its reads, its fetch and its environment as an argument
 // (#1006), so tests/edge/ runs it against plain objects; deps.ts supplies the
 // real ones and index.ts serves it.
 
-// What add_own_character() wrote, read back with the service role.
+// What add_own_character() wrote, as my_recent_own_add() reads it back.
 export type OwnAdd = {
   auditId: number;
   team: string;
@@ -37,18 +37,14 @@ export type OwnAdd = {
 
 export interface RelayDb {
   getUser(authHeader: string): Promise<{ id: string } | null>;
-  // The caller's newest "added by the member" Audit Log row on this team
-  // since `since`, or null when there is none.
-  latestOwnAdd(userId: string, team: string, since: Date): Promise<OwnAdd | null>;
+  // The caller's own newest add on this team from the last five minutes, or
+  // null when there is none.
+  latestOwnAdd(authHeader: string, team: string): Promise<OwnAdd | null>;
 }
 
 export type Env = { get(name: string): string | undefined };
 
-export type Deps = { fetch: typeof fetch; env: Env; db: RelayDb; now?: () => Date };
-
-// The page calls right after add_own_character() returns, so seconds is the
-// usual gap; minutes leaves room for a slow phone.
-export const OWN_ADD_WINDOW_MS = 5 * 60 * 1000;
+export type Deps = { fetch: typeof fetch; env: Env; db: RelayDb };
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -91,10 +87,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (action === 'addCharacter') {
       const authHeader = req.headers.get('Authorization');
       const user = authHeader ? await deps.db.getUser(authHeader) : null;
-      if (!user) return jsonResponse({ success: false, error: 'Not signed in' }, 401);
+      if (!authHeader || !user) return jsonResponse({ success: false, error: 'Not signed in' }, 401);
 
-      const now = deps.now ? deps.now() : new Date();
-      const add = await deps.db.latestOwnAdd(user.id, team, new Date(now.getTime() - OWN_ADD_WINDOW_MS));
+      const add = await deps.db.latestOwnAdd(authHeader, team);
       if (!add) return jsonResponse({ success: false, error: 'No character added' }, 404);
       body = {
         team: add.team,

@@ -2,17 +2,11 @@
 // own add reaches the bot, and the message is the caller's Audit Log row, not
 // the text they sent. The bot posts each row once (bot/tests/postedOnce.test.ts).
 import { assertEquals } from 'jsr:@std/assert@1';
-import {
-  type Deps,
-  type OwnAdd,
-  OWN_ADD_WINDOW_MS,
-  handle
-} from '../../../supabase/functions/discord-bot-webhook/handler.ts';
+import { type Deps, type OwnAdd, handle } from '../../../supabase/functions/discord-bot-webhook/handler.ts';
 import { recordingFetch } from '../_support/fetch.ts';
 
 const URL = 'http://edge.test/functions/v1/discord-bot-webhook';
 const BOT_URL = 'https://bot.test';
-const NOW = new Date('2026-10-27T20:00:00Z');
 
 const ADD: OwnAdd = {
   auditId: 41,
@@ -25,15 +19,14 @@ const ADD: OwnAdd = {
 
 function setup({ user = { id: 'u1' } as { id: string } | null, add = ADD as OwnAdd | null } = {}) {
   const { fetch, calls } = recordingFetch([new Response('{"ok":true}', { status: 200 })]);
-  const asks: Array<{ team: string; since: Date }> = [];
+  const asks: Array<{ authHeader: string; team: string }> = [];
   const deps: Deps = {
     fetch,
     env: { get: (name) => ({ BOT_WEBHOOK_URL: BOT_URL, BOT_WEBHOOK_SECRET: 's3cret' })[name] },
-    now: () => NOW,
     db: {
       getUser: () => Promise.resolve(user),
-      latestOwnAdd: (_userId, team, since) => {
-        asks.push({ team, since });
+      latestOwnAdd: (authHeader, team) => {
+        asks.push({ authHeader, team });
         return Promise.resolve(add);
       }
     }
@@ -76,10 +69,12 @@ Deno.test('addCharacter with no recent own add posts nothing', async () => {
   assertEquals(calls.length, 0);
 });
 
-Deno.test("addCharacter looks only at the asked-for team's adds, over only the window", async () => {
+// The window, the team match and "own adds only" are my_recent_own_add()'s,
+// pinned in tests/rls/my-recent-own-add.test.js.
+Deno.test('addCharacter reads the add as the caller, on the asked-for team', async () => {
   const { deps, asks } = setup();
   await handle(post(FAKE), deps);
-  assertEquals(asks, [{ team: 'hellfire', since: new Date(NOW.getTime() - OWN_ADD_WINDOW_MS) }]);
+  assertEquals(asks, [{ authHeader: 'Bearer user-jwt', team: 'hellfire' }]);
 });
 
 Deno.test("addCharacter posts the Audit Log row, not the caller's text", async () => {

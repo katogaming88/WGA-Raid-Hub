@@ -1,27 +1,24 @@
 // The production side of handler.ts's Deps (#1006): supabase-js over the
-// caller's session and the service role, the platform fetch, Deno.env. The
-// only module here that reaches a network or an environment.
-import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+// caller's session, the platform fetch, Deno.env. The only module here that
+// reaches a network or an environment.
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 import type { Deps, OwnAdd, RelayDb } from './handler.ts';
 
-// add_own_character()'s detail: the spec label, then this.
-const OWN_ADD_SUFFIX = ', added by the member';
+type OwnAddRow = {
+  audit_id: number;
+  team_slug: string;
+  member: string | null;
+  name_realm: string;
+  class_spec: string;
+  added_at: string;
+};
 
 function supabaseDb(): RelayDb {
+  // Every read is the caller's own, as the caller: no service role here.
   const caller = (authHeader: string) =>
     createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: authHeader } }
     });
-
-  // Service role for the reads: audit_log is officer-only, and the caller has
-  // already been named by their own token.
-  let service: SupabaseClient<any> | undefined;
-  const db = () => {
-    if (!service) {
-      service = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-    }
-    return service;
-  };
 
   return {
     async getUser(authHeader) {
@@ -30,51 +27,18 @@ function supabaseDb(): RelayDb {
       } = await caller(authHeader).auth.getUser();
       return user ? { id: user.id } : null;
     },
-    async latestOwnAdd(userId, teamSlug, since): Promise<OwnAdd | null> {
-      // Only the asked-for team: a member adding on two teams in the window
-      // would otherwise send one team's notice to the other's officers.
-      const team = await db().from('teams').select('id, slug').eq('slug', teamSlug).maybeSingle();
-      if (team.error) throw new Error(team.error.message);
-      if (!team.data) return null;
-
-      // The same caller may also be an officer adding someone else, whose
-      // rows share the action; the detail tells them apart. No row limit, so
-      // a run of those adds cannot push the caller's own out of the read: it
-      // is one person's adds over a few minutes. detail is jsonb, which
-      // PostgREST cannot match with like, so the filter is here.
-      const { data: rows, error } = await db()
-        .from('audit_log')
-        .select('id, team_id, target_id, detail, created_at')
-        .eq('actor_id', userId)
-        .eq('team_id', team.data.id)
-        .eq('action', 'Player Added')
-        .eq('target_type', 'players')
-        .gte('created_at', since.toISOString())
-        .order('created_at', { ascending: false });
+    async latestOwnAdd(authHeader, team): Promise<OwnAdd | null> {
+      const { data, error } = await caller(authHeader).rpc('my_recent_own_add', { p_team_slug: team });
       if (error) throw new Error(error.message);
-      const row = (rows ?? []).find((r) => typeof r.detail === 'string' && r.detail.endsWith(OWN_ADD_SUFFIX));
+      const row = ((data as OwnAddRow[] | null) ?? [])[0];
       if (!row) return null;
-
-      const player = await db()
-        .from('players')
-        .select('name_realm, team_member_id')
-        .eq('id', row.target_id)
-        .maybeSingle();
-      if (player.error) throw new Error(player.error.message);
-      if (!player.data) return null;
-
-      const name = player.data.team_member_id
-        ? await db().from('names').select('label').eq('team_member_id', player.data.team_member_id).maybeSingle()
-        : null;
-      if (name?.error) throw new Error(name.error.message);
-
       return {
-        auditId: row.id,
-        team: team.data.slug,
-        member: name?.data?.label ?? 'A member',
-        nameRealm: player.data.name_realm,
-        classSpec: row.detail.slice(0, -OWN_ADD_SUFFIX.length),
-        addedAt: row.created_at
+        auditId: row.audit_id,
+        team: row.team_slug,
+        member: row.member ?? 'A member',
+        nameRealm: row.name_realm,
+        classSpec: row.class_spec,
+        addedAt: row.added_at
       };
     }
   };

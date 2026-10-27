@@ -2930,3 +2930,13 @@ Shipped: 20261026134825_players_archived_through_functions.sql
 **Tests that archived directly.** Four test files used an officer's direct write as the way to archive a character for some other check (removal reasons, a cancelled main swap, dropped priority ranks). They now archive through the functions, the database owner or the service role, so they test the same reactions.
 
 [Full discussion -> #1434](https://github.com/katogaming88/WGA-Raid-Hub/issues/1434).
+
+## #1674 -- the "Character Added to Roster" notice comes from the member's own Audit Log row
+
+Shipped: 20261027014831_my_recent_own_add.sql
+
+**Read as the member, not with the service role.** `discord-bot-webhook` builds the officers' notice of an Add character from the add's own Audit Log row instead of text the page sends, so nobody can post a made-up one. `audit_log` is readable by officers only, and the repo's rule for Edge Functions is that the service role never makes a read the caller could not make themselves (CodeRabbit on #1677; Kat chose to follow it). So `my_recent_own_add()` is a `SECURITY DEFINER` function the relay calls with the member's own token. It returns at most one row: the caller's (`auth.uid()`) newest `Player Added` row ending in ", added by the member" on the named team, with the Member name, character and spec label the notice shows. An officer's add of someone else, another team's add, and anyone else's add never come back.
+
+**The five-minute window is in the function.** The page calls the relay right after `add_own_character()` returns, so seconds is the usual gap. Holding the window in the database, not as a parameter, means a caller cannot ask for an older add again and re-post it after the bot (which posts each audit id once, in memory) restarts.
+
+[Full discussion -> #1674](https://github.com/katogaming88/WGA-Raid-Hub/issues/1674).
