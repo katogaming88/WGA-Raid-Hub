@@ -13,7 +13,8 @@ import {
   SITE_ADMIN,
   GUILD_OFFICER,
   TEAM_LEADER_T1,
-  RAIDER_T1
+  RAIDER_T1,
+  RAIDER_T2
 } from './helpers.js';
 
 afterAll(() => pool.end());
@@ -233,6 +234,7 @@ describe('the permission checks', () => {
   it("a team's own grid wins over the defaults", async () => {
     await withTxn(async ({ q, asUser }) => {
       const { teamId, raider } = await seedTeam(q);
+      expect(await can(asUser, raider.uid, 'has_team_permission', teamId, 'edit_own_wishlist')).toBe(true);
       await q(
         "delete from public.team_rank_permissions where team_id = $1 and rank = 'raider' and permission = 'edit_own_wishlist'",
         [teamId]
@@ -250,6 +252,13 @@ describe('the permission checks', () => {
          values (${WGA}, public.person_for_discord_id('discord-raider-1'), true)`
       );
       expect(await can(asUser, RAIDER_T1, 'has_team_permission', teamId, 'manage_loot')).toBe(true);
+
+      // Only in that guild: a team in another guild stays shut.
+      const otherGuild = (await q("insert into public.guilds (name) values ('Other') returning id")).rows[0].id;
+      const otherTeam = (
+        await q("insert into public.teams (name, guild_id) values ('Other Team', $1) returning id", [otherGuild])
+      ).rows[0].id;
+      expect(await can(asUser, RAIDER_T1, 'has_team_permission', otherTeam, 'manage_loot')).toBe(false);
     });
   });
 
@@ -305,12 +314,19 @@ describe('access', () => {
   });
 
   it('a guild rank reads to the person, guild officers and site admins only', async () => {
-    await withTxn(async ({ asUser, asAnon }) => {
-      const read = async (uid) =>
-        (await asUser(uid, "select count(*)::int as n from public.guild_ranks where rank = 'admin'")).rows[0].n;
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      const read = async (uid, rank = 'admin') =>
+        (await asUser(uid, 'select count(*)::int as n from public.guild_ranks where rank = $1', [rank])).rows[0].n;
       expect(await read(GUILD_OFFICER)).toBeGreaterThan(0);
       expect(await read(SITE_ADMIN)).toBeGreaterThan(0);
       expect(await read(RAIDER_T1)).toBe(0);
+
+      await q(
+        `insert into public.guild_ranks (guild_id, person_id, rank)
+         values (${WGA}, public.person_for_discord_id('discord-raider-1'), 'team_lead')`
+      );
+      expect(await read(RAIDER_T1, 'team_lead')).toBe(1);
+      expect(await read(RAIDER_T2, 'team_lead')).toBe(0);
       await expect(asAnon('select 1 from public.guild_ranks')).rejects.toMatchObject({ code: RLS_DENIED });
     });
   });
