@@ -28,6 +28,8 @@ export function navGroups(
   show: {
     officer: boolean;
     guildSettings?: boolean;
+    // Left out on the preview for anyone limited to the test team (#1676).
+    hideBoe?: boolean;
     siteAdmin?: boolean;
     newsUnread?: boolean;
     liveCount?: number;
@@ -39,7 +41,7 @@ export function navGroups(
       heading: 'Guild',
       items: [
         { label: 'Guild home', icon: 'home', to: base.guild, end: true },
-        { label: 'BoE sales', icon: 'coin', to: `${base.guild}/boe` },
+        ...(show.hideBoe ? [] : [{ label: 'BoE sales', icon: 'coin' as const, to: `${base.guild}/boe` }]),
         { label: 'Streams', icon: 'tv', to: `${base.guild}/streams`, live: show.liveCount ?? 0 },
         { label: 'Guild officers', icon: 'shield', to: `${base.guild}/officers` },
         // For guild officers only (#1644). Each tab of it has its own address.

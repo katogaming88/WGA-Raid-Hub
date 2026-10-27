@@ -1,3 +1,4 @@
+import { previewTeamKeys } from '../config';
 import { useSupabaseQuery } from '../data/query';
 import { useSession } from './session';
 
@@ -91,6 +92,19 @@ export function useAccess() {
     },
     { enabled: user !== null }
   );
+}
+
+// The teams this person may see on the preview (#1676): null shows every
+// team (no list set, or a site admin), undefined while their access loads.
+// A guard against editing a real team by mistake, not a lock: the database
+// lets them do whatever it lets them do on the current site.
+export function usePreviewTeams(): ReadonlySet<string> | null | undefined {
+  const keys = previewTeamKeys();
+  const { user } = useSession();
+  const access = useAccess();
+  if (!keys) return null;
+  if (user && access.isPending) return undefined;
+  return access.data?.siteAdmin ? null : new Set(keys);
 }
 
 // What a page can ask. The database enforces every one of these on its own;

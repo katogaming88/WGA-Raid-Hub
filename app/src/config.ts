@@ -12,6 +12,19 @@ export function defaultTeamKey(): string {
   return /\/t\/([^/]+)/.exec(defaultPath())?.[1] ?? '';
 }
 
+// The teams the preview shows to anyone but a site admin (#1676), by address
+// key, comma-separated. Unset shows every team; at cutover the line in
+// .env.production goes.
+export function previewTeamKeys(): string[] | null {
+  const keys: unknown = import.meta.env.VITE_PREVIEW_TEAMS;
+  if (typeof keys !== 'string') return null;
+  const list = keys
+    .split(',')
+    .map((k) => k.trim().toLowerCase())
+    .filter(Boolean);
+  return list.length ? list : null;
+}
+
 // The default guild's home.
 export function defaultGuildPath(): string {
   return /^\/g\/[^/]+/.exec(defaultPath())?.[0] ?? '/';

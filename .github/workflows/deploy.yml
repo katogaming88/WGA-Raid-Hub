@@ -549,6 +549,10 @@ jobs:
         env:
           # Uploads source maps to Sentry (#1161); empty skips it.
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          # The preview shows testers only the Sandbox (#1676). Set here, not
+          # in app/.env.production, so the browser tests and a local build
+          # keep every team. Delete at cutover (#1105).
+          VITE_PREVIEW_TEAMS: sandbox
         run: |
           npm ci
           npm run build

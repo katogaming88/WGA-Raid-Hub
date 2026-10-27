@@ -5,7 +5,7 @@ import { Link, Navigate, NavLink, Outlet, useLocation, useMatches, useParams } f
 import { Icon, LogoMark } from '../components/Icon';
 import { DataState } from '../components/DataState';
 import { useTheme } from '../theme/theme';
-import { defaultTeamKey, SUPPORT_DISCORD_URL } from '../config';
+import { defaultTeamKey, previewTeamKeys, SUPPORT_DISCORD_URL } from '../config';
 import {
   AddressProvider,
   canonicalPath,
@@ -14,11 +14,11 @@ import {
   useResolvedAddress,
   type Address
 } from '../data/address';
-import { NotFoundPage, wayOn } from '../pages/NotFoundPage';
+import { NotFoundPage, NotInTestPage, wayOn } from '../pages/NotFoundPage';
 import { AccountPanel } from '../auth/AccountPanel';
 import { ConnectPrompt } from '../auth/ConnectPrompt';
 import { AltsPickerProvider } from '../characters/AltsPicker';
-import { can, useAccess } from '../auth/access';
+import { can, useAccess, usePreviewTeams } from '../auth/access';
 import { navGroups, pageHolds, type NavGroup, type NavItem } from './nav';
 import { defaultGuildKey, forgetGuild, lastGuildKey, rememberGuild } from './lastGuild';
 import { TeamSwitcher } from './TeamSwitcher';
@@ -63,11 +63,15 @@ export function AppShell() {
   const teamsQuery = useGuildTeams(guildId);
 
   const access = useAccess();
+  // On the preview, everyone but a site admin sees only the test team (#1676).
+  const preview = usePreviewTeams();
+  const limited = preview !== null;
   // An unlisted team (#1644) is left out for anyone not on it, guild officers
   // included, but still opens by its address, so the team being viewed stays.
   const onTeamIds = new Set((access.data?.teams ?? []).map((t) => t.teamId));
   const teams = (teamsQuery.data ?? [])
     .filter((t) => !t.unlisted || onTeamIds.has(t.id) || t.id === resolved?.teamId)
+    .filter((t) => !limited || preview?.has(t.slug))
     .map((t) => ({
       id: t.id,
       key: t.slug,
@@ -80,7 +84,9 @@ export function AppShell() {
   const pageTitle = (matches.at(-1)?.handle as RouteHandle | undefined)?.title ?? '';
   const news = useNews();
   const [newsSeen] = useNewsSeen();
-  const navTeamKey = teamKey ?? defaultTeamKey();
+  // Read from the build setting, so the links are right while access loads.
+  const testKey = limited ? previewTeamKeys()?.[0] : undefined;
+  const navTeamKey = teamKey ?? testKey ?? defaultTeamKey();
   // A guild page has no team of its own, so its team links and Officer group
   // follow the team those links go to.
   const navTeam = currentTeam ?? teams.find((t) => t.key === navTeamKey);
@@ -93,7 +99,8 @@ export function AppShell() {
   const council = useLootCouncil(navTeam?.id ?? 0);
   const groups = navGroups(base, {
     officer: can(access.data, 'viewOfficerTools', navTeam?.id),
-    guildSettings: can(access.data, 'manageTeams'),
+    guildSettings: can(access.data, 'manageTeams') && !limited,
+    hideBoe: limited,
     siteAdmin: can(access.data, 'adminSite'),
     newsUnread: news.isSuccess && hasUnread(news.data, newsSeen),
     liveCount: streamers.isSuccess ? liveCount(streamers.data) : 0,
@@ -227,6 +234,22 @@ export function AppShell() {
         {() => null}
       </DataState>
     );
+  } else if (preview === undefined) {
+    content = (
+      <DataState query={access} label="your access">
+        {() => null}
+      </DataState>
+    );
+  } else if (
+    limited &&
+    (resolved.teamKey
+      ? !preview.has(resolved.teamKey.toLowerCase())
+      : !sitePage && /^\/g\/[^/]+\/(boe|settings)(\/|$)/.test(location.pathname))
+  ) {
+    const testTeam = teamsQuery.data.find((t) => t.slug === testKey);
+    content = (
+      <NotInTestPage testTeam={{ to: `/g/${guildKey}/t/${testKey ?? ''}`, label: testTeam?.name ?? testKey ?? '' }} />
+    );
   } else {
     const address: Address = {
       guild: { id: guildQuery.data.id, key: guildQuery.data.url_key, name: guildQuery.data.name },
@@ -271,7 +294,7 @@ export function AppShell() {
         <TeamSwitcher
           guildKey={guildKey}
           guildId={guildId}
-          canAddTeam={can(access.data, 'manageTeams')}
+          canAddTeam={can(access.data, 'manageTeams') && !limited}
           teams={teams}
           currentKey={currentTeam?.key ?? null}
           label={currentTeam?.name ?? 'Choose a team'}

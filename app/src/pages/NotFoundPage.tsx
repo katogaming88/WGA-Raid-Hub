@@ -11,6 +11,24 @@ export function wayOn(guildKey?: string, teamKey?: string): WayOn {
   return { to: '/', label: 'Go to the home page' };
 }
 
+// A real team, BoE or guild settings opened on the preview by someone who only
+// sees the test team (#1676). The page itself never loads.
+export function NotInTestPage({ testTeam }: { testTeam: WayOn }) {
+  return (
+    <section className="page" aria-labelledby="page-title">
+      <h1 id="page-title">Not part of the test</h1>
+      <div className="card problem-card">
+        <p>This page isn’t part of the test. Your test team is the {testTeam.label}.</p>
+        <div className="problem-actions">
+          <Link className="button button-primary" to={testTeam.to}>
+            Go to the {testTeam.label}
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // A wrong address. Not reported to Sentry: a typo is not a fault in the app.
 // `home` overrides the way on, for an address whose guild or team key does not
 // exist, where linking back to it would land here again.
