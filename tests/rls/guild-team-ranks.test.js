@@ -260,6 +260,14 @@ describe('the permission checks', () => {
     });
   });
 
+  it('signed out, neither check can be called', async () => {
+    await withTxn(async ({ asAnon }) => {
+      for (const fn of ['has_team_permission(1', `has_guild_permission(${WGA}`]) {
+        await expect(asAnon(`select public.${fn}, 'own_character')`)).rejects.toMatchObject({ code: RLS_DENIED });
+      }
+    });
+  });
+
   it("a team's own grid wins over the defaults", async () => {
     await withTxn(async ({ q, asUser }) => {
       const { teamId, raider } = await seedTeam(q);
