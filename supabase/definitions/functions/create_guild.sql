@@ -53,6 +53,11 @@ begin
   values (v_name, p_region, v_realm)
   returning id, url_key into v_guild_id, v_guild_key;
 
+  -- The creator owns the guild (#1645); guild_ranks_keep_grant() gives them
+  -- the guild_officer grant the current site reads.
+  insert into public.guild_ranks (guild_id, person_id, rank)
+  values (v_guild_id, public.person_for_discord_id(v_discord_id), 'owner');
+
   insert into public.teams (name, guild_id)
   values (v_team_name, v_guild_id)
   returning id, slug into v_team_id, v_team_key;

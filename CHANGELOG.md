@@ -12,6 +12,32 @@ answers to.
 
 ---
 
+## [3.217.0] - 2026-10-27
+
+### Backend
+
+- Guild and team ranks, with each rank's permissions stored (#1645), the
+  database step of #1517. A team member has a rank (Team Owner, one per
+  team; Officer; Assistant; Raider) beside today's role, and a guild has
+  ranks in the new `guild_ranks` (Owner, one per guild; Admin; Team
+  Lead; Member, automatic for anyone on a team), with the per-person
+  "See every team" and "Officer on every team" switches, both off. The
+  two grids are stored per guild and per team with #1517's defaults, and
+  `has_team_permission()` / `has_guild_permission()` answer from them.
+  Nothing asks them yet. Ranks and today's roles follow each other both
+  ways until cutover, so the current site sees the same powers: Grant
+  and Revoke Officer and Grant and Revoke Guild Officer move the rank,
+  and a second team leader on a team is an Officer by rank and still a
+  team leader on the current site. Each team's team leader is its Team
+  Owner and each guild officer an Admin; We Go Again's Owner is picked
+  when its people are converted. Whoever creates a guild owns it.
+
+### Project
+
+- Database tests for the ranks, grids, checks and the two-way sync;
+  decision log, RLS.md and schema reference.
+- Revamp time log row for #1645.
+
 ## [3.216.0] - 2026-10-27
 
 ### Frontend

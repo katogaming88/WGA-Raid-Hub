@@ -2305,6 +2305,12 @@
           "type": "timestamp with time zone",
           "nullable": true,
           "comment": "Set when an officer archives this membership (archive_team_member, #1355) for someone who left -- never deleted, so the account's history keeps pointing at something. Cleared when they are brought back: team_invite_link_join(); restore_team_member(), as a raider, when an officer adds their season signup (#1402) or re-adds one of their characters on the Roster tab (restore_player(), #1133); or admin_grant_team_role(), with the role it grants, when the team leader or a site admin grants them one (#1403). Nothing changes it any other way: a direct update of the column is refused (team_members_archived_at_through_functions). Every \"what is this person on this team\" predicate (my_team_role, my_officer_team_ids, my_leader_team_ids, is_any_team_officer, is_team_leader_anywhere) skips an archived row, and so does every \"what does this person own there\" read (is_own_player, my_active_player_ids, and the own-character lookups in request_main_swap, set_own_rsvp and submit_self_received, #1401), and admin_revoke_team_role() refuses one (#1403); my_player_ids() and earlier_characters() still read it, since that is the history."
+        },
+        {
+          "name": "rank",
+          "type": "text",
+          "nullable": false,
+          "comment": "Team rank (#1645): owner (one per team), officer, assistant or raider. Kept in step with role until the old roles are dropped at cutover, both ways, by team_members_keep_rank_and_role: setting one sets the other. team_members_rank_matches_role holds the pairs."
         }
       ],
       "indexes": [
@@ -2341,9 +2347,28 @@
           "columns": [
             "person_id"
           ]
+        },
+        {
+          "name": "team_members_one_owner",
+          "def": "CREATE UNIQUE INDEX team_members_one_owner ON public.team_members USING btree (team_id) WHERE ((rank = 'owner'::text) AND (archived_at IS NULL))",
+          "table": "public.team_members",
+          "columns": [
+            "team_id"
+          ]
         }
       ],
       "constraints": [
+        {
+          "name": "team_members_rank_matches_role",
+          "type": "CHECK",
+          "def": "CHECK ((((rank = 'owner'::text) AND (role = 'team_leader'::text)) OR ((rank = 'officer'::text) AND (role = ANY (ARRAY['officer'::text, 'team_leader'::text]))) OR ((rank = ANY (ARRAY['assistant'::text, 'raider'::text])) AND (role = 'raider'::text))))",
+          "table": "public.team_members",
+          "referenced_table": "",
+          "columns": [
+            "rank",
+            "role"
+          ]
+        },
         {
           "name": "team_members_role_check",
           "type": "CHECK",
@@ -2438,6 +2463,14 @@
         {
           "name": "team_members_archived_at_through_functions",
           "def": "CREATE TRIGGER team_members_archived_at_through_functions BEFORE UPDATE OF archived_at ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_archived_at_through_functions()"
+        },
+        {
+          "name": "team_members_keep_rank_and_role",
+          "def": "CREATE TRIGGER team_members_keep_rank_and_role BEFORE INSERT OR UPDATE OF role, rank, archived_at, team_id ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_keep_rank_and_role()"
+        },
+        {
+          "name": "team_members_guard_rank",
+          "def": "CREATE TRIGGER team_members_guard_rank BEFORE INSERT OR UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_guard_rank()"
         }
       ]
     },
@@ -2628,6 +2661,10 @@
         {
           "name": "teams_retire_url_key",
           "def": "CREATE TRIGGER teams_retire_url_key AFTER UPDATE OF slug, guild_id ON public.teams FOR EACH ROW WHEN (((old.slug IS DISTINCT FROM new.slug) OR (old.guild_id IS DISTINCT FROM new.guild_id))) EXECUTE FUNCTION retire_team_url_key()"
+        },
+        {
+          "name": "teams_seed_rank_permissions",
+          "def": "CREATE TRIGGER teams_seed_rank_permissions AFTER INSERT ON public.teams FOR EACH ROW EXECUTE FUNCTION seed_rank_permissions()"
         }
       ]
     },
@@ -6521,6 +6558,10 @@
         {
           "name": "guilds_retire_url_key",
           "def": "CREATE TRIGGER guilds_retire_url_key AFTER UPDATE OF url_key ON public.guilds FOR EACH ROW WHEN ((old.url_key IS DISTINCT FROM new.url_key)) EXECUTE FUNCTION retire_guild_url_key()"
+        },
+        {
+          "name": "guilds_seed_rank_permissions",
+          "def": "CREATE TRIGGER guilds_seed_rank_permissions AFTER INSERT ON public.guilds FOR EACH ROW EXECUTE FUNCTION seed_rank_permissions()"
         }
       ]
     },
@@ -6955,6 +6996,12 @@
             "guild_id",
             "grant_type"
           ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "guild_grants_keep_rank",
+          "def": "CREATE TRIGGER guild_grants_keep_rank AFTER INSERT OR DELETE OR UPDATE ON public.guild_grants FOR EACH ROW EXECUTE FUNCTION guild_grants_keep_rank()"
         }
       ]
     },
@@ -9407,6 +9454,414 @@
           "def": "CREATE TRIGGER trg_signup_item_preferences_wishlist_open BEFORE INSERT OR DELETE OR UPDATE ON public.signup_item_preferences FOR EACH ROW EXECUTE FUNCTION restrict_signup_item_preferences_to_open_wishlist()"
         }
       ]
+    },
+    {
+      "name": "public.rank_permissions",
+      "type": "BASE TABLE",
+      "comment": "Every permission on the guild and team grids, with the ranks that have it in a new guild or team (#1517, #1645). Owners hold every permission and are not listed.",
+      "columns": [
+        {
+          "name": "permission",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "scope",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "default_ranks",
+          "type": "text[]",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "rank_permissions_pkey",
+          "def": "CREATE UNIQUE INDEX rank_permissions_pkey ON public.rank_permissions USING btree (permission)",
+          "table": "public.rank_permissions",
+          "columns": [
+            "permission"
+          ]
+        },
+        {
+          "name": "rank_permissions_permission_scope_key",
+          "def": "CREATE UNIQUE INDEX rank_permissions_permission_scope_key ON public.rank_permissions USING btree (permission, scope)",
+          "table": "public.rank_permissions",
+          "columns": [
+            "permission",
+            "scope"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "rank_permissions_scope_check",
+          "type": "CHECK",
+          "def": "CHECK ((scope = ANY (ARRAY['guild'::text, 'team'::text])))",
+          "table": "public.rank_permissions",
+          "referenced_table": "",
+          "columns": [
+            "scope"
+          ]
+        },
+        {
+          "name": "rank_permissions_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (permission)",
+          "table": "public.rank_permissions",
+          "referenced_table": "",
+          "columns": [
+            "permission"
+          ]
+        },
+        {
+          "name": "rank_permissions_permission_scope_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (permission, scope)",
+          "table": "public.rank_permissions",
+          "referenced_table": "",
+          "columns": [
+            "permission",
+            "scope"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.guild_rank_permissions",
+      "type": "BASE TABLE",
+      "comment": "Each guild's grid: a row means that guild rank has that permission there (#1645). Filled from rank_permissions.default_ranks when the guild is made; the Owner changes it later.",
+      "columns": [
+        {
+          "name": "guild_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "rank",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "permission",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "scope",
+          "type": "text",
+          "nullable": false,
+          "default": "'guild'::text"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "guild_rank_permissions_pkey",
+          "def": "CREATE UNIQUE INDEX guild_rank_permissions_pkey ON public.guild_rank_permissions USING btree (guild_id, rank, permission)",
+          "table": "public.guild_rank_permissions",
+          "columns": [
+            "guild_id",
+            "rank",
+            "permission"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "guild_rank_permissions_rank_check",
+          "type": "CHECK",
+          "def": "CHECK ((rank = ANY (ARRAY['member'::text, 'team_lead'::text, 'admin'::text])))",
+          "table": "public.guild_rank_permissions",
+          "referenced_table": "",
+          "columns": [
+            "rank"
+          ]
+        },
+        {
+          "name": "guild_rank_permissions_scope_check",
+          "type": "CHECK",
+          "def": "CHECK ((scope = 'guild'::text))",
+          "table": "public.guild_rank_permissions",
+          "referenced_table": "",
+          "columns": [
+            "scope"
+          ]
+        },
+        {
+          "name": "guild_rank_permissions_guild_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE",
+          "table": "public.guild_rank_permissions",
+          "referenced_table": "public.guilds",
+          "columns": [
+            "guild_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "guild_rank_permissions_permission_scope_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (permission, scope) REFERENCES rank_permissions(permission, scope)",
+          "table": "public.guild_rank_permissions",
+          "referenced_table": "public.rank_permissions",
+          "columns": [
+            "permission",
+            "scope"
+          ],
+          "referenced_columns": [
+            "permission",
+            "scope"
+          ]
+        },
+        {
+          "name": "guild_rank_permissions_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (guild_id, rank, permission)",
+          "table": "public.guild_rank_permissions",
+          "referenced_table": "",
+          "columns": [
+            "guild_id",
+            "rank",
+            "permission"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.team_rank_permissions",
+      "type": "BASE TABLE",
+      "comment": "Each team's grid: a row means that team rank has that permission there (#1645). Filled from rank_permissions.default_ranks when the team is made; the Team Owner changes it later.",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "rank",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "permission",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "scope",
+          "type": "text",
+          "nullable": false,
+          "default": "'team'::text"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_rank_permissions_pkey",
+          "def": "CREATE UNIQUE INDEX team_rank_permissions_pkey ON public.team_rank_permissions USING btree (team_id, rank, permission)",
+          "table": "public.team_rank_permissions",
+          "columns": [
+            "team_id",
+            "rank",
+            "permission"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_rank_permissions_rank_check",
+          "type": "CHECK",
+          "def": "CHECK ((rank = ANY (ARRAY['raider'::text, 'assistant'::text, 'officer'::text])))",
+          "table": "public.team_rank_permissions",
+          "referenced_table": "",
+          "columns": [
+            "rank"
+          ]
+        },
+        {
+          "name": "team_rank_permissions_scope_check",
+          "type": "CHECK",
+          "def": "CHECK ((scope = 'team'::text))",
+          "table": "public.team_rank_permissions",
+          "referenced_table": "",
+          "columns": [
+            "scope"
+          ]
+        },
+        {
+          "name": "team_rank_permissions_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_rank_permissions",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_rank_permissions_permission_scope_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (permission, scope) REFERENCES rank_permissions(permission, scope)",
+          "table": "public.team_rank_permissions",
+          "referenced_table": "public.rank_permissions",
+          "columns": [
+            "permission",
+            "scope"
+          ],
+          "referenced_columns": [
+            "permission",
+            "scope"
+          ]
+        },
+        {
+          "name": "team_rank_permissions_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id, rank, permission)",
+          "table": "public.team_rank_permissions",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "rank",
+            "permission"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.guild_ranks",
+      "type": "BASE TABLE",
+      "comment": "A person's rank in a guild (#1645): owner (one per guild), admin, team_lead or member. Member is automatic for anyone on a team in the guild, so a member has a row only to hold one of the two switches. Owner and admin are kept in step with a guild_officer grant until cutover, both ways.",
+      "columns": [
+        {
+          "name": "guild_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "rank",
+          "type": "text",
+          "nullable": false,
+          "default": "'member'::text"
+        },
+        {
+          "name": "sees_every_team",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "\"See every team, read-only\" (#1517): set by the guild Owner per person. Off for everyone; the read rules that use it come later."
+        },
+        {
+          "name": "officer_on_every_team",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "\"Officer on every team\" (#1517): set by the guild Owner per person. While on, has_team_permission() answers as an Officer on every team in the guild."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "guild_ranks_pkey",
+          "def": "CREATE UNIQUE INDEX guild_ranks_pkey ON public.guild_ranks USING btree (guild_id, person_id)",
+          "table": "public.guild_ranks",
+          "columns": [
+            "guild_id",
+            "person_id"
+          ]
+        },
+        {
+          "name": "guild_ranks_one_owner",
+          "def": "CREATE UNIQUE INDEX guild_ranks_one_owner ON public.guild_ranks USING btree (guild_id) WHERE (rank = 'owner'::text)",
+          "table": "public.guild_ranks",
+          "columns": [
+            "guild_id"
+          ]
+        },
+        {
+          "name": "guild_ranks_person_id_idx",
+          "def": "CREATE INDEX guild_ranks_person_id_idx ON public.guild_ranks USING btree (person_id)",
+          "table": "public.guild_ranks",
+          "columns": [
+            "person_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "guild_ranks_rank_check",
+          "type": "CHECK",
+          "def": "CHECK ((rank = ANY (ARRAY['owner'::text, 'admin'::text, 'team_lead'::text, 'member'::text])))",
+          "table": "public.guild_ranks",
+          "referenced_table": "",
+          "columns": [
+            "rank"
+          ]
+        },
+        {
+          "name": "guild_ranks_guild_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id)",
+          "table": "public.guild_ranks",
+          "referenced_table": "public.guilds",
+          "columns": [
+            "guild_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "guild_ranks_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (person_id) REFERENCES people(id)",
+          "table": "public.guild_ranks",
+          "referenced_table": "public.people",
+          "columns": [
+            "person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "guild_ranks_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (guild_id, person_id)",
+          "table": "public.guild_ranks",
+          "referenced_table": "",
+          "columns": [
+            "guild_id",
+            "person_id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "guild_ranks_keep_grant",
+          "def": "CREATE TRIGGER guild_ranks_keep_grant AFTER INSERT OR DELETE OR UPDATE OF rank ON public.guild_ranks FOR EACH ROW EXECUTE FUNCTION guild_ranks_keep_grant()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -11107,6 +11562,88 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (signup_id) REFERENCES season_signups(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.guild_rank_permissions",
+      "columns": [
+        "guild_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.guilds",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.guild_rank_permissions",
+      "columns": [
+        "permission",
+        "scope"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.rank_permissions",
+      "parent_columns": [
+        "permission",
+        "scope"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (permission, scope) REFERENCES rank_permissions(permission, scope)"
+    },
+    {
+      "table": "public.team_rank_permissions",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_rank_permissions",
+      "columns": [
+        "permission",
+        "scope"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.rank_permissions",
+      "parent_columns": [
+        "permission",
+        "scope"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (permission, scope) REFERENCES rank_permissions(permission, scope)"
+    },
+    {
+      "table": "public.guild_ranks",
+      "columns": [
+        "guild_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.guilds",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
+    },
+    {
+      "table": "public.guild_ranks",
+      "columns": [
+        "person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (person_id) REFERENCES people(id)"
     }
   ],
   "functions": [
@@ -12152,6 +12689,48 @@
       "name": "public.admin_create_team",
       "return_type": "int4",
       "arguments": "p_name text, p_slug text, p_guild_id integer DEFAULT NULL::integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.seed_rank_permissions",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_members_keep_rank_and_role",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_members_guard_rank",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.guild_ranks_keep_grant",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.guild_grants_keep_rank",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.has_team_permission",
+      "return_type": "bool",
+      "arguments": "p_team_id integer, p_permission text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.has_guild_permission",
+      "return_type": "bool",
+      "arguments": "p_guild_id integer, p_permission text",
       "type": "FUNCTION"
     }
   ],

@@ -13,11 +13,13 @@
 | updated_at | timestamp with time zone |  | true |  |  |  |
 | person_id | integer |  | false |  | [public.people](public.people.md) |  |
 | archived_at | timestamp with time zone |  | true |  |  | Set when an officer archives this membership (archive_team_member, #1355) for someone who left -- never deleted, so the account's history keeps pointing at something. Cleared when they are brought back: team_invite_link_join(); restore_team_member(), as a raider, when an officer adds their season signup (#1402) or re-adds one of their characters on the Roster tab (restore_player(), #1133); or admin_grant_team_role(), with the role it grants, when the team leader or a site admin grants them one (#1403). Nothing changes it any other way: a direct update of the column is refused (team_members_archived_at_through_functions). Every "what is this person on this team" predicate (my_team_role, my_officer_team_ids, my_leader_team_ids, is_any_team_officer, is_team_leader_anywhere) skips an archived row, and so does every "what does this person own there" read (is_own_player, my_active_player_ids, and the own-character lookups in request_main_swap, set_own_rsvp and submit_self_received, #1401), and admin_revoke_team_role() refuses one (#1403); my_player_ids() and earlier_characters() still read it, since that is the history. |
+| rank | text |  | false |  |  | Team rank (#1645): owner (one per team), officer, assistant or raider. Kept in step with role until the old roles are dropped at cutover, both ways, by team_members_keep_rank_and_role: setting one sets the other. team_members_rank_matches_role holds the pairs. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| team_members_rank_matches_role | CHECK | CHECK ((((rank = 'owner'::text) AND (role = 'team_leader'::text)) OR ((rank = 'officer'::text) AND (role = ANY (ARRAY['officer'::text, 'team_leader'::text]))) OR ((rank = ANY (ARRAY['assistant'::text, 'raider'::text])) AND (role = 'raider'::text)))) |
 | team_members_role_check | CHECK | CHECK ((role = ANY (ARRAY['raider'::text, 'officer'::text, 'team_leader'::text]))) |
 | team_members_auth_user_id_fkey | FOREIGN KEY | FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL |
 | team_members_pkey | PRIMARY KEY | PRIMARY KEY (id) |
@@ -34,6 +36,7 @@
 | team_members_team_id_discord_id_key | CREATE UNIQUE INDEX team_members_team_id_discord_id_key ON public.team_members USING btree (team_id, discord_id) |
 | team_members_team_id_person_id_key | CREATE UNIQUE INDEX team_members_team_id_person_id_key ON public.team_members USING btree (team_id, person_id) |
 | team_members_person_id_idx | CREATE INDEX team_members_person_id_idx ON public.team_members USING btree (person_id) |
+| team_members_one_owner | CREATE UNIQUE INDEX team_members_one_owner ON public.team_members USING btree (team_id) WHERE ((rank = 'owner'::text) AND (archived_at IS NULL)) |
 
 ## Triggers
 
@@ -42,6 +45,8 @@
 | trg_team_members_updated_at | CREATE TRIGGER trg_team_members_updated_at BEFORE UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
 | team_members_set_person | CREATE TRIGGER team_members_set_person BEFORE INSERT OR UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION set_person_from_discord_id() |
 | team_members_archived_at_through_functions | CREATE TRIGGER team_members_archived_at_through_functions BEFORE UPDATE OF archived_at ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_archived_at_through_functions() |
+| team_members_keep_rank_and_role | CREATE TRIGGER team_members_keep_rank_and_role BEFORE INSERT OR UPDATE OF role, rank, archived_at, team_id ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_keep_rank_and_role() |
+| team_members_guard_rank | CREATE TRIGGER team_members_guard_rank BEFORE INSERT OR UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_guard_rank() |
 
 ## Relations
 
@@ -66,6 +71,7 @@ erDiagram
   timestamp_with_time_zone updated_at
   integer person_id FK
   timestamp_with_time_zone archived_at
+  text rank
 }
 "public.players" {
   integer id
