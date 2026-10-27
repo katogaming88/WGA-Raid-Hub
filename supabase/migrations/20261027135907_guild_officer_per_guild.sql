@@ -97,8 +97,13 @@ comment on function public.is_guild_officer() is
 create or replace function public.only_guild_id() returns integer
 language plpgsql stable security definer set search_path to 'public'
 as $$
+declare
+  v_count integer := (select count(*) from guilds);
 begin
-  if (select count(*) from guilds) <> 1 then
+  if v_count = 0 then
+    raise exception 'There is no guild yet';
+  end if;
+  if v_count > 1 then
     raise exception 'There is more than one guild, so say which guild this is for';
   end if;
   return (select id from guilds);
@@ -133,6 +138,9 @@ begin
   end if;
 
   v_guild := coalesce(p_guild_id, only_guild_id());
+  if not exists (select 1 from guilds where id = v_guild) then
+    raise exception 'There is no such guild';
+  end if;
 
   if exists (
     select 1 from guild_grants g
@@ -265,14 +273,20 @@ returns integer
 language plpgsql security definer set search_path to 'public'
 as $$
 declare
+  v_guild integer;
   v_id integer;
 begin
   if not public.is_site_admin() then
     raise exception 'Not authorized';
   end if;
 
+  v_guild := coalesce(p_guild_id, public.only_guild_id());
+  if not exists (select 1 from public.guilds where id = v_guild) then
+    raise exception 'There is no such guild';
+  end if;
+
   insert into public.teams (name, slug, guild_id)
-  values (p_name, p_slug, coalesce(p_guild_id, public.only_guild_id()))
+  values (p_name, p_slug, v_guild)
   returning id into v_id;
 
   -- Every other write path (set_team_setting, fetchSupabaseSettings) assumes

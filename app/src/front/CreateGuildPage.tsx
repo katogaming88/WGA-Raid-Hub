@@ -121,8 +121,8 @@ function SwitchCard({ isOpen }: { isOpen: boolean }) {
         Guild creation is {isOpen ? 'open' : 'closed'}
       </h2>
       <p className="text-muted">
-        To create a guild, open this, create it, then close it again. Officer bio cards and BoE sales are still shared by
-        every guild, so leave it closed until they are each guild's own.
+        To create a guild, open this, create it, then close it again. Officer bio cards and BoE sales are still shared
+        by every guild, so leave it closed until they are each guild's own.
       </p>
       {set.isError && (
         <p className="form-error" role="alert">

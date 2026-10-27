@@ -18,6 +18,9 @@ begin
   end if;
 
   v_guild := coalesce(p_guild_id, only_guild_id());
+  if not exists (select 1 from guilds where id = v_guild) then
+    raise exception 'There is no such guild';
+  end if;
 
   if exists (
     select 1 from guild_grants g

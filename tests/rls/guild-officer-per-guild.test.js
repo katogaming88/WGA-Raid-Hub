@@ -92,6 +92,44 @@ describe('grants name their guild', () => {
   });
 });
 
+describe('only a site admin grants or adds a team, in either guild', () => {
+  it('refuses a guild officer of that guild, and anyone signed out', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      const { guildId, officer } = await secondGuild(q);
+      const wga = (await q(`select ${WGA} as id`)).rows[0].id;
+      const calls = [
+        'select public.admin_grant_guild_officer($1, $2)',
+        'select public.admin_revoke_guild_officer($1, $2)',
+        'select public.admin_grant_boe_manager($1, $2)',
+        'select public.admin_revoke_boe_manager($1, $2)',
+        "select public.admin_create_team($1, 'probe-team', $2)"
+      ];
+      for (const [uid, guild] of [
+        [officer.uid, guildId],
+        [GUILD_OFFICER, wga]
+      ]) {
+        for (const sql of calls) {
+          await expect(asUser(uid, sql, ['discord-1324-probe', guild])).rejects.toThrow(/Not authorized/);
+        }
+      }
+      for (const sql of calls) {
+        await expect(asAnon(sql, ['discord-1324-probe', guildId])).rejects.toThrow(/permission denied/);
+      }
+    });
+  });
+
+  it('says so when the guild does not exist', async () => {
+    await withTxn(async ({ asUser }) => {
+      await expect(
+        asUser(SITE_ADMIN, "select public.admin_grant_boe_manager('discord-1324-probe', -1)")
+      ).rejects.toThrow(/no such guild/);
+      await expect(asUser(SITE_ADMIN, "select public.admin_create_team('Probe', 'probe', -1)")).rejects.toThrow(
+        /no such guild/
+      );
+    });
+  });
+});
+
 describe('a guild officer acts in their own guild', () => {
   it('reads their own guild and not the other', async () => {
     await withTxn(async ({ q, asUser }) => {
