@@ -504,6 +504,7 @@ describe('review_main_swap_request() and the officer exceptions', () => {
         ]) {
           await expect(call()).rejects.toThrow();
           expect(await exceptions(q, s.alt)).toEqual(before);
+          expect((await statusOf(q, s.id)).status).toBe('pending');
         }
         await review(asUser, OFFICER_T1, s.id, false);
         expect(await exceptions(q, s.alt)).toEqual(before);

@@ -2945,8 +2945,8 @@ Shipped: 20261027014831_my_recent_own_add.sql
 
 Shipped: 20261027124211_approved_swap_revive_resets_exceptions.sql
 
-Found by the fresh-agent migration review on #1617. `review_main_swap_request()` brought an archived character back with `wishlist_allowed` and `bis_allowed` still on from its last stint, so a raider swapping back to an old main could edit a closed wishlist or send a BiS link with no officer having allowed it this time; the officer approved a swap, not the exceptions. It now turns both off when an approved swap revives a character, as `add_signup_to_roster()` (#1616) and `team_invite_link_join()` already do. A character already on the roster keeps whatever an officer set.
+Found by the fresh-agent migration review on #1617. `review_main_swap_request()` brought an archived character back with `wishlist_allowed` and `bis_allowed` still on from its last stint, so a raider swapping back to an old main could edit a closed wishlist or send a BiS link with no officer having allowed it this time; the officer approved a swap, not the exceptions. It now turns both off when an approved swap revives a character, as `add_signup_to_roster()` (#1616), `team_invite_link_join()` and `add_own_character()` (#1463) already do. A character already on the roster keeps whatever an officer set.
 
-**`restore_player()` keeps them.** An officer restoring a character is deliberately undoing an archive, so its exceptions coming back with it is what they asked for. That is the one way back onto the roster that keeps them.
+**`restore_player()` keeps them.** An officer restoring a character is deliberately undoing an archive, so its exceptions coming back with it is what they asked for. That is the one way back onto the roster from the site that keeps them. The old sheet import (`scripts/import/tables/players.js`, service role) also brings a character back without touching them; it predates both flags being used and is not changed here.
 
 [Full discussion -> #1618](https://github.com/katogaming88/WGA-Raid-Hub/issues/1618).
