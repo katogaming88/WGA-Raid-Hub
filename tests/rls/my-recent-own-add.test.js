@@ -126,6 +126,26 @@ describe('my_recent_own_add()', () => {
     });
   });
 
+  // A guild officer can write audit rows on any team (fresh review on #1677),
+  // so a row about their own character on another team must not count.
+  it('returns nothing for an own-add-worded row on a team the character is not on', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const other = await seedTeam(q);
+      const playerId = await ownAdd(q, asUser, team);
+      await q(
+        `insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+         values ($1, $2, 'Player Added', 'players', $3, to_jsonb('Anything, added by the member'::text))`,
+        [other.teamId, team.raider.uid, playerId]
+      );
+      const { rows } = await recent(
+        (text, params) => asUser(team.raider.uid, text, params),
+        await slugOf(q, other.teamId)
+      );
+      expect(rows).toEqual([]);
+    });
+  });
+
   it('returns nothing for an add older than five minutes', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);

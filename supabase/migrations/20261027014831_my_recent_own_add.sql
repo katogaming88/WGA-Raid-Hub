@@ -5,9 +5,10 @@
 -- hands back nothing but the caller's own newest add_own_character() row on
 -- the named team from the last five minutes, with what the notice shows.
 -- The window lives here so a caller cannot ask for an older add again.
--- The character must be the caller's own on the roster too: an officer can
--- write any audit row through write_audit_log(), detail included, so the
--- wording alone does not prove add_own_character() wrote it (CodeRabbit on
+-- The character must be the caller's own on the roster too, on the row's
+-- team: an officer can write any audit row through write_audit_log(), detail
+-- included, and a guild officer on any team, so the wording alone does not
+-- prove add_own_character() wrote it (CodeRabbit and the fresh review on
 -- #1677).
 
 create function public.my_recent_own_add(p_team_slug text)
@@ -38,6 +39,7 @@ as $$
     left join public.names n on n.team_member_id = p.team_member_id
    where a.actor_id = auth.uid()
      and tm.person_id = public.my_person_id()
+     and p.team_id = a.team_id
      and t.slug = p_team_slug
      and a.action = 'Player Added'
      and a.target_type = 'players'

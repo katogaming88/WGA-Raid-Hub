@@ -22,6 +22,7 @@ AS $function$
     left join public.names n on n.team_member_id = p.team_member_id
    where a.actor_id = auth.uid()
      and tm.person_id = public.my_person_id()
+     and p.team_id = a.team_id
      and t.slug = p_team_slug
      and a.action = 'Player Added'
      and a.target_type = 'players'
