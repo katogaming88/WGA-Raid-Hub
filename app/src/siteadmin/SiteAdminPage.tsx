@@ -212,7 +212,7 @@ function Switches({ data }: { data: SiteSwitches }) {
           <span className={data.guildCreationOpen ? 'siteadmin-on' : 'siteadmin-off'}>
             {data.guildCreationOpen ? 'Open' : 'Shut'}
           </span>
-          <span className="text-muted"> Stays shut until guild grants are tied to a guild (#1324).</span>
+          <span className="text-muted"> Stays shut until the multi-guild work is done.</span>
         </p>
       </div>
 

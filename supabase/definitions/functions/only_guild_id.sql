@@ -10,7 +10,7 @@ CREATE OR REPLACE FUNCTION public.only_guild_id()
 AS $function$
 begin
   if (select count(*) from guilds) <> 1 then
-    raise exception 'A grant needs a guild once there is more than one (#1045)';
+    raise exception 'There is more than one guild, so say which guild this is for';
   end if;
   return (select id from guilds);
 end;

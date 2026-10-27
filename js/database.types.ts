@@ -4020,19 +4020,24 @@ export type Database = {
         Returns: number
       }
       admin_create_team: {
-        Args: { p_name: string; p_slug: string }
+        Args: { p_guild_id?: number; p_name: string; p_slug: string }
         Returns: number
       }
       admin_grant: {
-        Args: { p_discord_id: string; p_grant_type: string; p_label: string }
+        Args: {
+          p_discord_id: string
+          p_grant_type: string
+          p_guild_id: number
+          p_label: string
+        }
         Returns: number
       }
       admin_grant_boe_manager: {
-        Args: { p_discord_id: string }
+        Args: { p_discord_id: string; p_guild_id?: number }
         Returns: number
       }
       admin_grant_guild_officer: {
-        Args: { p_discord_id: string }
+        Args: { p_discord_id: string; p_guild_id?: number }
         Returns: number
       }
       admin_grant_site_admin: {
@@ -4049,6 +4054,7 @@ export type Database = {
           auth_user_id: string
           discord_id: string
           display_name: string
+          guild_id: number
           id: number
         }[]
       }
@@ -4058,6 +4064,7 @@ export type Database = {
           auth_user_id: string
           discord_id: string
           display_name: string
+          guild_id: number
           id: number
         }[]
       }
@@ -4067,6 +4074,7 @@ export type Database = {
           auth_user_id: string
           discord_id: string
           display_name: string
+          guild_id: number
           id: number
         }[]
       }
@@ -4076,19 +4084,25 @@ export type Database = {
           auth_user_id: string
           discord_id: string
           display_name: string
+          guild_id: number
           id: number
         }[]
       }
       admin_revoke: {
-        Args: { p_discord_id: string; p_grant_type: string; p_label: string }
+        Args: {
+          p_discord_id: string
+          p_grant_type: string
+          p_guild_id: number
+          p_label: string
+        }
         Returns: undefined
       }
       admin_revoke_boe_manager: {
-        Args: { p_discord_id: string }
+        Args: { p_discord_id: string; p_guild_id?: number }
         Returns: undefined
       }
       admin_revoke_guild_officer: {
-        Args: { p_discord_id: string }
+        Args: { p_discord_id: string; p_guild_id?: number }
         Returns: undefined
       }
       admin_revoke_site_admin: {
@@ -4371,6 +4385,10 @@ export type Database = {
       is_boe_manager: { Args: never; Returns: boolean }
       is_guild_officer: { Args: never; Returns: boolean }
       is_guild_officer_of: { Args: { p_guild_id: number }; Returns: boolean }
+      is_guild_officer_of_team: {
+        Args: { p_team_id: number }
+        Returns: boolean
+      }
       is_optional_raid_night: {
         Args: { p_raid_date: string; p_team_id: number }
         Returns: boolean
@@ -4423,6 +4441,7 @@ export type Database = {
         Returns: string
       }
       my_active_player_ids: { Args: never; Returns: number[] }
+      my_guild_officer_team_ids: { Args: never; Returns: number[] }
       my_leader_team_ids: { Args: never; Returns: number[] }
       my_officer_team_ids: { Args: never; Returns: number[] }
       my_person_id: { Args: never; Returns: number }

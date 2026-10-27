@@ -3,7 +3,7 @@
 -- execute (site roles): authenticated
 
 CREATE OR REPLACE FUNCTION public.admin_list_boe_managers()
- RETURNS TABLE(id integer, discord_id text, auth_user_id uuid, display_name text)
+ RETURNS TABLE(id integer, discord_id text, auth_user_id uuid, display_name text, guild_id integer)
  LANGUAGE sql
  SECURITY DEFINER
  SET search_path TO 'public'

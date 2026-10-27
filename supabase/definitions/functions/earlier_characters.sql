@@ -31,7 +31,7 @@ AS $function$
      and (
        p_team_id = any ((select my_officer_team_ids())::integer[])
        or (select is_site_admin())
-       or (select is_guild_officer())
+       or (select is_guild_officer_of_team(p_team_id))
        or tm.person_id = (select my_person_id())
      );
 $function$;

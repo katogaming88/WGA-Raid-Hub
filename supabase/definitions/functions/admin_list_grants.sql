@@ -3,7 +3,7 @@
 -- execute (site roles): none
 
 CREATE OR REPLACE FUNCTION public.admin_list_grants(p_grant_type text)
- RETURNS TABLE(id integer, discord_id text, auth_user_id uuid, display_name text)
+ RETURNS TABLE(id integer, discord_id text, auth_user_id uuid, display_name text, guild_id integer)
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
@@ -15,7 +15,8 @@ begin
 
   return query
     select g.id, p.discord_id, p.auth_user_id,
-      coalesce(u.raw_user_meta_data ->> 'full_name', u.raw_user_meta_data ->> 'name')
+      coalesce(u.raw_user_meta_data ->> 'full_name', u.raw_user_meta_data ->> 'name'),
+      g.guild_id
     from guild_grants g
     join people p on p.id = g.person_id
     left join auth.users u on u.id = p.auth_user_id

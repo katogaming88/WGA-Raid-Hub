@@ -44,6 +44,7 @@ const ANON_DEFINER_ALLOWLIST = [
   'is_site_admin',
   'is_team_leader_anywhere',
   'my_active_player_ids',
+  'my_guild_officer_team_ids',
   'my_leader_team_ids',
   'my_officer_team_ids',
   'my_person_id',

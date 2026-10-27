@@ -107,12 +107,8 @@
 | public.notify_player | int4 | p_player_id integer, p_message text | FUNCTION |
 | public.submit_bis_link | int4 | p_team_id integer, p_name_realm text, p_bis_link text, p_player_note text DEFAULT NULL::text | FUNCTION |
 | public.submit_mplus_exclusion | int4 | p_team_id integer, p_name_realm text, p_raiderio_url text DEFAULT NULL::text, p_reason text DEFAULT NULL::text | FUNCTION |
-| public.admin_create_team | int4 | p_name text, p_slug text | FUNCTION |
 | public.admin_update_team | void | p_team_id integer, p_name text, p_slug text | FUNCTION |
 | public.admin_set_team_archived | void | p_team_id integer, p_archived boolean | FUNCTION |
-| public.admin_list_site_admins | record |  | FUNCTION |
-| public.admin_grant_site_admin | int4 | p_discord_id text | FUNCTION |
-| public.admin_revoke_site_admin | void | p_discord_id text | FUNCTION |
 | public.admin_set_maintenance_mode | void | p_enabled boolean, p_message text DEFAULT NULL::text | FUNCTION |
 | public.submit_self_received | record | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text | FUNCTION |
 | public.direct_mark_received | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text | FUNCTION |
@@ -122,9 +118,6 @@
 | public.add_signup_to_roster | int4 | p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer, p_is_backup_tank boolean DEFAULT false, p_is_backup_healer boolean DEFAULT false | FUNCTION |
 | public.set_team_setting | jsonb | p_team_id integer, p_updates jsonb, p_skip_audit boolean DEFAULT false | FUNCTION |
 | public.is_guild_officer | bool |  | FUNCTION |
-| public.admin_list_guild_officers | record |  | FUNCTION |
-| public.admin_grant_guild_officer | int4 | p_discord_id text | FUNCTION |
-| public.admin_revoke_guild_officer | void | p_discord_id text | FUNCTION |
 | public.check_priority_order_drift | record | p_team_id integer, p_season text | FUNCTION |
 | public.restrict_players_self_update_to_bonus_roll | trigger |  | FUNCTION |
 | public.restrict_item_preferences_officer_update_to_note_clear | trigger |  | FUNCTION |
@@ -138,9 +131,6 @@
 | public.delete_self_received_request | void | p_id integer | FUNCTION |
 | public.is_boe_manager | bool |  | FUNCTION |
 | public.is_any_team_officer | bool |  | FUNCTION |
-| public.admin_list_boe_managers | record |  | FUNCTION |
-| public.admin_grant_boe_manager | int4 | p_discord_id text | FUNCTION |
-| public.admin_revoke_boe_manager | void | p_discord_id text | FUNCTION |
 | public.is_team_leader_anywhere | bool |  | FUNCTION |
 | public.set_team_officer_bios | jsonb | p_team_id integer, p_bios jsonb | FUNCTION |
 | public.build_rclc_export | jsonb | p_team_id integer, p_season text, p_track text | FUNCTION |
@@ -176,9 +166,6 @@
 | public.set_person_from_discord_id | trigger |  | FUNCTION |
 | public.delete_empty_person | trigger |  | FUNCTION |
 | public.only_guild_id | int4 |  | FUNCTION |
-| public.admin_list_grants | record | p_grant_type text | FUNCTION |
-| public.admin_grant | int4 | p_grant_type text, p_discord_id text, p_label text | FUNCTION |
-| public.admin_revoke | void | p_grant_type text, p_discord_id text, p_label text | FUNCTION |
 | public.my_person_id | int4 |  | FUNCTION |
 | public.copy_person_account_to_members | trigger |  | FUNCTION |
 | public.my_player_ids | _int4 |  | FUNCTION |
@@ -258,6 +245,21 @@
 | public.players_archived_at_through_functions | trigger |  | FUNCTION |
 | public.add_own_character | int4 | p_team_id integer, p_character_id integer, p_class_spec_id integer | FUNCTION |
 | public.my_recent_own_add | record | p_team_slug text | FUNCTION |
+| public.my_guild_officer_team_ids | _int4 |  | FUNCTION |
+| public.is_guild_officer_of_team | bool | p_team_id integer | FUNCTION |
+| public.admin_grant | int4 | p_grant_type text, p_discord_id text, p_label text, p_guild_id integer | FUNCTION |
+| public.admin_revoke | void | p_grant_type text, p_discord_id text, p_label text, p_guild_id integer | FUNCTION |
+| public.admin_list_grants | record | p_grant_type text | FUNCTION |
+| public.admin_grant_site_admin | int4 | p_discord_id text | FUNCTION |
+| public.admin_grant_guild_officer | int4 | p_discord_id text, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
+| public.admin_grant_boe_manager | int4 | p_discord_id text, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
+| public.admin_revoke_site_admin | void | p_discord_id text | FUNCTION |
+| public.admin_revoke_guild_officer | void | p_discord_id text, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
+| public.admin_revoke_boe_manager | void | p_discord_id text, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
+| public.admin_list_site_admins | record |  | FUNCTION |
+| public.admin_list_guild_officers | record |  | FUNCTION |
+| public.admin_list_boe_managers | record |  | FUNCTION |
+| public.admin_create_team | int4 | p_name text, p_slug text, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
 
 ## Enums
 

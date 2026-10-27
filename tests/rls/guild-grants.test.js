@@ -67,8 +67,8 @@ describe('the shared admin bodies and the guild lookup', () => {
     await withTxn(async ({ asUser }) => {
       for (const sql of [
         "select * from public.admin_list_grants('site_admin')",
-        "select public.admin_grant('site_admin', 'x', 'site admin')",
-        "select public.admin_revoke('boe_manager', 'discord-officer-1', 'BoE manager')",
+        "select public.admin_grant('site_admin', 'x', 'site admin', null)",
+        "select public.admin_revoke('boe_manager', 'discord-officer-1', 'BoE manager', null)",
         'select public.only_guild_id()'
       ]) {
         await expect(asUser(SITE_ADMIN, sql)).rejects.toThrow(/permission denied/);
@@ -82,7 +82,7 @@ describe('the shared admin bodies and the guild lookup', () => {
       await expect(asUser(SITE_ADMIN, 'select public.admin_grant_boe_manager($1)', [LATER])).rejects.toThrow(
         /more than one/
       );
-      // The checks still ask "in any guild", so existing grants keep working.
+      // is_boe_manager() still asks "in any guild" until #1647, so existing grants keep working.
       expect((await asUser(OFFICER_T1, 'select public.is_boe_manager() as yes')).rows[0].yes).toBe(true);
     });
   });

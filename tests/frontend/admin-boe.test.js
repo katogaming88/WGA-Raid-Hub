@@ -207,9 +207,10 @@ describe('the BoE manager list (#748)', () => {
 });
 
 describe('granting a BoE manager (#748)', () => {
-  it('sends the trimmed Discord ID, clears the input, and reloads the list', async () => {
-    const els = { grantBoeManagerDiscordId: makeEl() };
+  it('sends the trimmed Discord ID and the picked guild, clears the input, and reloads the list', async () => {
+    const els = { grantBoeManagerDiscordId: makeEl(), grantBoeManagerGuild: makeEl() };
     els.grantBoeManagerDiscordId.value = '  333333333333333333  ';
+    els.grantBoeManagerGuild.value = '2';
     const { sandbox, rpcCalls } = makeSandbox({
       els,
       rpcResults: {
@@ -221,7 +222,7 @@ describe('granting a BoE manager (#748)', () => {
 
     expect(rpcCalls[0]).toEqual({
       name: 'admin_grant_boe_manager',
-      params: { p_discord_id: '333333333333333333' }
+      params: { p_discord_id: '333333333333333333', p_guild_id: 2 }
     });
     expect(els.grantBoeManagerDiscordId.value).toBe('');
     expect(rpcCalls.some((c) => c.name === 'admin_list_boe_managers')).toBe(true);
@@ -266,12 +267,12 @@ describe('revoking a BoE manager (#748)', () => {
         admin_list_boe_managers: { data: [], error: null }
       }
     });
-    await sandbox.submitRevokeBoeManager('111111111111111111');
+    await sandbox.submitRevokeBoeManager('111111111111111111', 2);
 
     expect(confirmFn).toHaveBeenCalledTimes(1);
     expect(rpcCalls[0]).toEqual({
       name: 'admin_revoke_boe_manager',
-      params: { p_discord_id: '111111111111111111' }
+      params: { p_discord_id: '111111111111111111', p_guild_id: 2 }
     });
   });
 

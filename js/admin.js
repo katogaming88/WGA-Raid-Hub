@@ -106,8 +106,10 @@ function checkAdminAccess() {
         loadAuditLog();
       });
       loadSiteAdmins();
-      loadGuildOfficers();
-      loadBoeManagers();
+      loadGuilds().then(function () {
+        loadGuildOfficers();
+        loadBoeManagers();
+      });
       loadBoePayoutSettings();
       loadMaintenanceStatus();
     });
@@ -123,6 +125,40 @@ function loadTeams() {
       _adminTeams = result.data || [];
       renderTeamRows();
     });
+}
+
+// A guild officer grant, a BoE manager grant and a new team each belong to a
+// guild (#1324), so each of those forms has a Guild picker filled from here.
+// Site admin is site-wide and has none.
+var _adminGuilds = [];
+
+function loadGuilds() {
+  return supabaseClient
+    .from('guilds')
+    .select('id, name')
+    .order('id')
+    .then(function (result) {
+      _adminGuilds = result.data || [];
+      var options = _adminGuilds
+        .map(function (g) {
+          return '<option value="' + g.id + '">' + escapeHtml(g.name) + '</option>';
+        })
+        .join('');
+      ['teamModalGuild', 'grantGuildOfficerGuild', 'grantBoeManagerGuild'].forEach(function (id) {
+        document.getElementById(id).innerHTML = options;
+      });
+    });
+}
+
+function guildName(guildId) {
+  var guild = _adminGuilds.filter(function (g) {
+    return g.id === guildId;
+  })[0];
+  return guild ? guild.name : '';
+}
+
+function pickedGuildId(selectId) {
+  return parseInt(document.getElementById(selectId).value, 10) || null;
 }
 
 function renderTeamRows() {
@@ -174,6 +210,7 @@ function showCreateTeamModal() {
   document.getElementById('teamModalId').value = '';
   document.getElementById('teamModalName').value = '';
   document.getElementById('teamModalSlug').value = '';
+  document.getElementById('teamModalGuildField').style.display = '';
   document.getElementById('teamModalError').style.display = 'none';
   document.getElementById('teamModal').style.display = 'flex';
 }
@@ -187,6 +224,8 @@ function showEditTeamModal(teamId) {
   document.getElementById('teamModalId').value = team.id;
   document.getElementById('teamModalName').value = team.name;
   document.getElementById('teamModalSlug').value = team.slug;
+  // Editing never moves a team to another guild.
+  document.getElementById('teamModalGuildField').style.display = 'none';
   document.getElementById('teamModalError').style.display = 'none';
   document.getElementById('teamModal').style.display = 'flex';
 }
@@ -210,7 +249,11 @@ function submitTeamModal() {
 
   var call = id
     ? supabaseClient.rpc('admin_update_team', { p_team_id: parseInt(id, 10), p_name: name, p_slug: slug })
-    : supabaseClient.rpc('admin_create_team', { p_name: name, p_slug: slug });
+    : supabaseClient.rpc('admin_create_team', {
+        p_name: name,
+        p_slug: slug,
+        p_guild_id: pickedGuildId('teamModalGuild')
+      });
 
   call.then(function (result) {
     if (result.error) {
@@ -331,10 +374,15 @@ function renderGuildOfficerRows() {
         '<td class="admin-discord-id">' +
         escapeHtml(go.discord_id) +
         '</td>' +
+        '<td>' +
+        escapeHtml(guildName(go.guild_id)) +
+        '</td>' +
         '<td class="admin-row-actions">' +
         '<button class="btn btn-danger" onclick="submitRevokeGuildOfficer(\'' +
         escapeHtml(go.discord_id) +
-        '\')">Revoke</button>' +
+        "', " +
+        go.guild_id +
+        ')">Revoke</button>' +
         '</td>' +
         '</tr>'
       );
@@ -354,27 +402,32 @@ function submitGrantGuildOfficer() {
     return;
   }
 
-  supabaseClient.rpc('admin_grant_guild_officer', { p_discord_id: discordId }).then(function (result) {
-    if (result.error) {
-      errorEl.textContent = result.error.message;
-      errorEl.style.display = '';
-      return;
-    }
-    input.value = '';
-    loadGuildOfficers();
-  });
+  var guildId = pickedGuildId('grantGuildOfficerGuild');
+  supabaseClient
+    .rpc('admin_grant_guild_officer', { p_discord_id: discordId, p_guild_id: guildId })
+    .then(function (result) {
+      if (result.error) {
+        errorEl.textContent = result.error.message;
+        errorEl.style.display = '';
+        return;
+      }
+      input.value = '';
+      loadGuildOfficers();
+    });
 }
 
-function submitRevokeGuildOfficer(discordId) {
+function submitRevokeGuildOfficer(discordId, guildId) {
   if (!confirm('Revoke guild officer access for this Discord account?')) return;
 
-  supabaseClient.rpc('admin_revoke_guild_officer', { p_discord_id: discordId }).then(function (result) {
-    if (result.error) {
-      alert(result.error.message);
-      return;
-    }
-    loadGuildOfficers();
-  });
+  supabaseClient
+    .rpc('admin_revoke_guild_officer', { p_discord_id: discordId, p_guild_id: guildId })
+    .then(function (result) {
+      if (result.error) {
+        alert(result.error.message);
+        return;
+      }
+      loadGuildOfficers();
+    });
 }
 
 // ── BoE (#748) ────────────────────────────────────────────────────────────
@@ -434,6 +487,9 @@ function renderBoeManagerRows() {
         '<td class="admin-discord-id">' +
         escapeHtml(bm.discord_id) +
         '</td>' +
+        '<td>' +
+        escapeHtml(guildName(bm.guild_id)) +
+        '</td>' +
         '<td><span class="admin-status-badge ' +
         (activated ? 'admin-status-active' : 'admin-status-archived') +
         '">' +
@@ -442,7 +498,9 @@ function renderBoeManagerRows() {
         '<td class="admin-row-actions">' +
         '<button class="btn btn-danger" onclick="submitRevokeBoeManager(\'' +
         escapeHtml(bm.discord_id) +
-        '\')">Revoke</button>' +
+        "', " +
+        bm.guild_id +
+        ')">Revoke</button>' +
         '</td>' +
         '</tr>'
       );
@@ -462,27 +520,32 @@ function submitGrantBoeManager() {
     return;
   }
 
-  return supabaseClient.rpc('admin_grant_boe_manager', { p_discord_id: discordId }).then(function (result) {
-    if (result.error) {
-      errorEl.textContent = result.error.message;
-      errorEl.style.display = '';
-      return;
-    }
-    input.value = '';
-    return loadBoeManagers();
-  });
+  var guildId = pickedGuildId('grantBoeManagerGuild');
+  return supabaseClient
+    .rpc('admin_grant_boe_manager', { p_discord_id: discordId, p_guild_id: guildId })
+    .then(function (result) {
+      if (result.error) {
+        errorEl.textContent = result.error.message;
+        errorEl.style.display = '';
+        return;
+      }
+      input.value = '';
+      return loadBoeManagers();
+    });
 }
 
-function submitRevokeBoeManager(discordId) {
+function submitRevokeBoeManager(discordId, guildId) {
   if (!confirm('Revoke BoE manager access for this Discord account? They keep any officer role they hold.')) return;
 
-  return supabaseClient.rpc('admin_revoke_boe_manager', { p_discord_id: discordId }).then(function (result) {
-    if (result.error) {
-      alert(result.error.message);
-      return;
-    }
-    return loadBoeManagers();
-  });
+  return supabaseClient
+    .rpc('admin_revoke_boe_manager', { p_discord_id: discordId, p_guild_id: guildId })
+    .then(function (result) {
+      if (result.error) {
+        alert(result.error.message);
+        return;
+      }
+      return loadBoeManagers();
+    });
 }
 
 // ── BoE payout constants

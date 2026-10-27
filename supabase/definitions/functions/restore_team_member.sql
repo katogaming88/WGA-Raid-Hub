@@ -15,7 +15,7 @@ declare
 begin
   if not (
     p_team_id = any (public.my_officer_team_ids())
-    or public.is_guild_officer()
+    or public.is_guild_officer_of_team(p_team_id)
     or public.is_site_admin()
   ) then
     raise exception 'Not authorized';

@@ -11,14 +11,15 @@ AS $function$
 declare
   v_is_self boolean := p_discord_id is not distinct from public.current_discord_id();
   v_is_site_admin boolean := public.is_site_admin();
+  v_guild_team_ids integer[] := public.my_guild_officer_team_ids();
   v_sees_all_teams boolean;
   v_person people%rowtype;
   v_grants text[];
   v_result jsonb;
 begin
-  v_sees_all_teams := v_is_self or v_is_site_admin or public.is_guild_officer();
+  v_sees_all_teams := v_is_self or v_is_site_admin;
 
-  if not (v_sees_all_teams or public.is_any_team_officer()) then
+  if not (v_sees_all_teams or public.is_any_team_officer() or cardinality(v_guild_team_ids) > 0) then
     raise exception 'Not authorized';
   end if;
 
@@ -69,7 +70,9 @@ begin
              )
         from team_members tm
        where tm.person_id = v_person.id
-         and (v_sees_all_teams or public.my_team_role(tm.team_id) = any (array['officer', 'team_leader']))
+         and (v_sees_all_teams
+              or tm.team_id = any (v_guild_team_ids)
+              or public.my_team_role(tm.team_id) = any (array['officer', 'team_leader']))
     ), '[]'::jsonb)
   )
   into v_result;

@@ -18,7 +18,7 @@ CREATE VIEW incoming_roster AS (
    FROM ((season_signups s
      JOIN team_seasons ts ON (((ts.team_id = s.team_id) AND (ts.season_code = s.season))))
      LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))
-  WHERE ((s.approved_player_id IS NULL) AND ((s.status = 'approved'::text) OR ((s.status = 'pending'::text) AND ((my_team_role(s.team_id) IS NOT NULL) OR is_guild_officer() OR is_site_admin()))))
+  WHERE ((s.approved_player_id IS NULL) AND ((s.status = 'approved'::text) OR ((s.status = 'pending'::text) AND ((my_team_role(s.team_id) IS NOT NULL) OR (s.team_id = ANY (my_guild_officer_team_ids())) OR is_site_admin()))))
 )
 ```
 

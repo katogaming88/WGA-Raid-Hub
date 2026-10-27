@@ -110,7 +110,8 @@ function Closed() {
 
 // Only a site admin sees this. The switch governs everyone, site admins
 // included, so a guild is never created by accident. Second guilds are not
-// fully supported yet (#1324), so it says so before anyone opens creation.
+// fully supported yet (the Multi-guild milestone), so it says so before anyone
+// opens creation.
 function SwitchCard({ isOpen }: { isOpen: boolean }) {
   const { announce } = useStatus();
   const set = useSetGuildCreationOpen();
@@ -120,8 +121,8 @@ function SwitchCard({ isOpen }: { isOpen: boolean }) {
         Guild creation is {isOpen ? 'open' : 'closed'}
       </h2>
       <p className="text-muted">
-        To create a guild, open this, create it, then close it again. Granting roles and adding teams stop working once
-        there is a second guild (#1324), for We Go Again too, so leave it closed until that is fixed.
+        To create a guild, open this, create it, then close it again. Officer bio cards, BoE sales and boss caps are
+        still shared by every guild, so leave it closed until they are each guild's own.
       </p>
       {set.isError && (
         <p className="form-error" role="alert">

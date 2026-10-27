@@ -4066,7 +4066,7 @@
           "nullable": true
         }
       ],
-      "def": "CREATE VIEW incoming_roster AS (\n SELECT s.id AS signup_id,\n    s.team_id,\n    s.signup_name_realm,\n    cs.class,\n    cs.spec,\n    cs.role,\n    s.swap_from_name_realm,\n    s.status\n   FROM ((season_signups s\n     JOIN team_seasons ts ON (((ts.team_id = s.team_id) AND (ts.season_code = s.season))))\n     LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))\n  WHERE ((s.approved_player_id IS NULL) AND ((s.status = 'approved'::text) OR ((s.status = 'pending'::text) AND ((my_team_role(s.team_id) IS NOT NULL) OR is_guild_officer() OR is_site_admin()))))\n)",
+      "def": "CREATE VIEW incoming_roster AS (\n SELECT s.id AS signup_id,\n    s.team_id,\n    s.signup_name_realm,\n    cs.class,\n    cs.spec,\n    cs.role,\n    s.swap_from_name_realm,\n    s.status\n   FROM ((season_signups s\n     JOIN team_seasons ts ON (((ts.team_id = s.team_id) AND (ts.season_code = s.season))))\n     LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))\n  WHERE ((s.approved_player_id IS NULL) AND ((s.status = 'approved'::text) OR ((s.status = 'pending'::text) AND ((my_team_role(s.team_id) IS NOT NULL) OR (s.team_id = ANY (my_guild_officer_team_ids())) OR is_site_admin()))))\n)",
       "referenced_tables": [
         "public.season_signups",
         "public.team_seasons",
@@ -11237,12 +11237,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.admin_create_team",
-      "return_type": "int4",
-      "arguments": "p_name text, p_slug text",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.admin_update_team",
       "return_type": "void",
       "arguments": "p_team_id integer, p_name text, p_slug text",
@@ -11252,24 +11246,6 @@
       "name": "public.admin_set_team_archived",
       "return_type": "void",
       "arguments": "p_team_id integer, p_archived boolean",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.admin_list_site_admins",
-      "return_type": "record",
-      "arguments": "",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.admin_grant_site_admin",
-      "return_type": "int4",
-      "arguments": "p_discord_id text",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.admin_revoke_site_admin",
-      "return_type": "void",
-      "arguments": "p_discord_id text",
       "type": "FUNCTION"
     },
     {
@@ -11324,24 +11300,6 @@
       "name": "public.is_guild_officer",
       "return_type": "bool",
       "arguments": "",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.admin_list_guild_officers",
-      "return_type": "record",
-      "arguments": "",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.admin_grant_guild_officer",
-      "return_type": "int4",
-      "arguments": "p_discord_id text",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.admin_revoke_guild_officer",
-      "return_type": "void",
-      "arguments": "p_discord_id text",
       "type": "FUNCTION"
     },
     {
@@ -11420,24 +11378,6 @@
       "name": "public.is_any_team_officer",
       "return_type": "bool",
       "arguments": "",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.admin_list_boe_managers",
-      "return_type": "record",
-      "arguments": "",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.admin_grant_boe_manager",
-      "return_type": "int4",
-      "arguments": "p_discord_id text",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.admin_revoke_boe_manager",
-      "return_type": "void",
-      "arguments": "p_discord_id text",
       "type": "FUNCTION"
     },
     {
@@ -11648,24 +11588,6 @@
       "name": "public.only_guild_id",
       "return_type": "int4",
       "arguments": "",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.admin_list_grants",
-      "return_type": "record",
-      "arguments": "p_grant_type text",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.admin_grant",
-      "return_type": "int4",
-      "arguments": "p_grant_type text, p_discord_id text, p_label text",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.admin_revoke",
-      "return_type": "void",
-      "arguments": "p_grant_type text, p_discord_id text, p_label text",
       "type": "FUNCTION"
     },
     {
@@ -12140,6 +12062,96 @@
       "name": "public.my_recent_own_add",
       "return_type": "record",
       "arguments": "p_team_slug text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_guild_officer_team_ids",
+      "return_type": "_int4",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.is_guild_officer_of_team",
+      "return_type": "bool",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_grant",
+      "return_type": "int4",
+      "arguments": "p_grant_type text, p_discord_id text, p_label text, p_guild_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_revoke",
+      "return_type": "void",
+      "arguments": "p_grant_type text, p_discord_id text, p_label text, p_guild_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_list_grants",
+      "return_type": "record",
+      "arguments": "p_grant_type text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_grant_site_admin",
+      "return_type": "int4",
+      "arguments": "p_discord_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_grant_guild_officer",
+      "return_type": "int4",
+      "arguments": "p_discord_id text, p_guild_id integer DEFAULT NULL::integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_grant_boe_manager",
+      "return_type": "int4",
+      "arguments": "p_discord_id text, p_guild_id integer DEFAULT NULL::integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_revoke_site_admin",
+      "return_type": "void",
+      "arguments": "p_discord_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_revoke_guild_officer",
+      "return_type": "void",
+      "arguments": "p_discord_id text, p_guild_id integer DEFAULT NULL::integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_revoke_boe_manager",
+      "return_type": "void",
+      "arguments": "p_discord_id text, p_guild_id integer DEFAULT NULL::integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_list_site_admins",
+      "return_type": "record",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_list_guild_officers",
+      "return_type": "record",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_list_boe_managers",
+      "return_type": "record",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_create_team",
+      "return_type": "int4",
+      "arguments": "p_name text, p_slug text, p_guild_id integer DEFAULT NULL::integer",
       "type": "FUNCTION"
     }
   ],
