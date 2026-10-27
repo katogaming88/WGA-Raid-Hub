@@ -93,9 +93,11 @@ describe('team permissions (#1646)', () => {
       ).rejects.toThrow(/Not authorized/);
       // The owner holds every permission whatever the grid says.
       expect((await markPresent(asUser, team.leader.uid, team.teamId, player, '2026-08-08')).rowCount).toBe(1);
-      const otherOfficer = await asUser(other.officer.uid, "select public.has_team_permission($1, 'attendance') as ok", [
-        other.teamId
-      ]);
+      const otherOfficer = await asUser(
+        other.officer.uid,
+        "select public.has_team_permission($1, 'attendance') as ok",
+        [other.teamId]
+      );
       expect(otherOfficer.rows[0].ok).toBe(true);
     });
   });

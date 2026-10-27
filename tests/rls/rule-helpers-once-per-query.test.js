@@ -52,7 +52,10 @@ describe('rule shape (#1106)', () => {
     `);
     expect(rows.length).toBeGreaterThan(50);
     const offenders = rows
-      .map((r) => ({ rule: `${r.tablename}: ${r.policyname}`, calls: r.expr.replace(WRAPPED, '').replace(WRAPPED_PERMISSION, '').match(/\w+\(/g) }))
+      .map((r) => ({
+        rule: `${r.tablename}: ${r.policyname}`,
+        calls: r.expr.replace(WRAPPED, '').replace(WRAPPED_PERMISSION, '').match(/\w+\(/g)
+      }))
       .filter((r) => r.calls);
     expect(offenders).toEqual([]);
   });
