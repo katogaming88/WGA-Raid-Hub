@@ -105,6 +105,27 @@ describe('my_recent_own_add()', () => {
     });
   });
 
+  // An officer can write any audit row, wording included (CodeRabbit on
+  // #1677), so the row has to be about the caller's own character too.
+  it("returns nothing for an officer's own-add-worded row about someone else's character", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const playerId = await ownAdd(q, asUser, team);
+      await asUser(team.officer.uid, 'select public.write_audit_log($1, $2, $3, $4, $5)', [
+        team.teamId,
+        'Player Added',
+        'players',
+        playerId,
+        JSON.stringify('Mage Frost Ranged, added by the member')
+      ]);
+      const { rows } = await recent(
+        (text, params) => asUser(team.officer.uid, text, params),
+        await slugOf(q, team.teamId)
+      );
+      expect(rows).toEqual([]);
+    });
+  });
+
   it('returns nothing for an add older than five minutes', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);

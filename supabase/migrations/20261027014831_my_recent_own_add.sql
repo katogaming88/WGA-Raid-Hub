@@ -5,6 +5,10 @@
 -- hands back nothing but the caller's own newest add_own_character() row on
 -- the named team from the last five minutes, with what the notice shows.
 -- The window lives here so a caller cannot ask for an older add again.
+-- The character must be the caller's own on the roster too: an officer can
+-- write any audit row through write_audit_log(), detail included, so the
+-- wording alone does not prove add_own_character() wrote it (CodeRabbit on
+-- #1677).
 
 create function public.my_recent_own_add(p_team_slug text)
 returns table (
@@ -30,8 +34,10 @@ as $$
     from public.audit_log a
     join public.teams t on t.id = a.team_id
     join public.players p on p.id = a.target_id
+    join public.team_members tm on tm.id = p.team_member_id
     left join public.names n on n.team_member_id = p.team_member_id
    where a.actor_id = auth.uid()
+     and tm.person_id = public.my_person_id()
      and t.slug = p_team_slug
      and a.action = 'Player Added'
      and a.target_type = 'players'
@@ -42,7 +48,7 @@ as $$
 $$;
 
 comment on function public.my_recent_own_add(text) is
-  'The caller''s own newest Add character row on the team from the last five minutes (#1674): audit id, team slug, Member name, character, spec label and when. discord-bot-webhook builds the officers'' "Character Added to Roster" notice from it, as the caller. No row for anyone else''s adds, an officer''s add, another team or an older add.';
+  'The caller''s own newest Add character row on the team from the last five minutes (#1674): audit id, team slug, Member name, character, spec label and when. discord-bot-webhook builds the officers'' "Character Added to Roster" notice from it, as the caller. No row for anyone else''s adds, an officer''s add, a row about a character not the caller''s own, another team or an older add.';
 
 revoke all on function public.my_recent_own_add(text) from public;
 revoke execute on function public.my_recent_own_add(text) from anon;

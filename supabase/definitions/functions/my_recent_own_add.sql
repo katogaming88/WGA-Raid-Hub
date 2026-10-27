@@ -18,8 +18,10 @@ AS $function$
     from public.audit_log a
     join public.teams t on t.id = a.team_id
     join public.players p on p.id = a.target_id
+    join public.team_members tm on tm.id = p.team_member_id
     left join public.names n on n.team_member_id = p.team_member_id
    where a.actor_id = auth.uid()
+     and tm.person_id = public.my_person_id()
      and t.slug = p_team_slug
      and a.action = 'Player Added'
      and a.target_type = 'players'
