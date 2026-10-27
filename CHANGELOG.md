@@ -12,6 +12,34 @@ answers to.
 
 ---
 
+## [3.214.0] - 2026-10-27
+
+### Backend
+
+- New `my_recent_own_add()` (#1674): a signed-in member's own Add
+  character from the last five minutes on a team, with the Member name,
+  character and spec, for the officers' Discord notice. Nobody else's add
+  ever comes back.
+
+### Functions
+
+- The "Character Added to Roster" Discord message can no longer be faked
+  (#1674). `discord-bot-webhook` refuses an `addCharacter` call without a
+  signed-in user, and builds the message from `my_recent_own_add()`,
+  called as that user, ignoring the text the caller sent. With no recent
+  add of their own on that team, nothing is posted. Ships when
+  #959 lifts the function's deploy hold.
+
+### Bot
+
+- `/add-character` needs the Audit Log row id and posts each one once, so
+  a repeated call for the same add posts nothing new (#1674).
+
+### Project
+
+- New app: Add character no longer sends the Member, character and spec
+  for the officers' notice; the relay reads them from the database.
+
 ## [3.213.2] - 2026-10-26
 
 ### Project

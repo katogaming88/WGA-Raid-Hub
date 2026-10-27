@@ -9,15 +9,7 @@ import { useClassSpecs } from './useMainSwaps';
 
 // "Add character to roster" (#1464): pick the spec, and the character is on
 // the roster at once. Works on a phone, like the main swap form.
-export function AddCharacterDialog({
-  character,
-  member,
-  onClose
-}: {
-  character: SavedCharacter;
-  member: string;
-  onClose: () => void;
-}) {
+export function AddCharacterDialog({ character, onClose }: { character: SavedCharacter; onClose: () => void }) {
   const team = useTeam();
   const { announce } = useStatus();
   const specs = useClassSpecs();
@@ -37,10 +29,7 @@ export function AddCharacterDialog({
     add.mutate(
       {
         characterId: character.id,
-        classSpecId: spec.id,
-        member,
-        nameRealm: `${character.name}-${character.realm}`,
-        classSpec: `${spec.spec} ${spec.class}`
+        classSpecId: spec.id
       },
       {
         onSuccess: () => {

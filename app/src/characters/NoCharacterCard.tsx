@@ -70,9 +70,7 @@ export function NoCharacterCard({ teamMemberId }: { teamMemberId: number }) {
           )
         }
       </DataState>
-      {adding && (
-        <AddCharacterDialog character={adding} member={member ?? 'A member'} onClose={() => setAdding(null)} />
-      )}
+      {adding && <AddCharacterDialog character={adding} onClose={() => setAdding(null)} />}
     </section>
   );
 }

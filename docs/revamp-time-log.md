@@ -15,9 +15,9 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |      16 h 0 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     50 h 26 m |
+| Revamp 3: officer dashboard        |     54 h 56 m |
 | Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **115 h 21 m** |
+| **All revamp work**                | **119 h 51 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -421,6 +421,17 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 1:43-1:46 PM | #1487: closed rows removed (#1347, #1355, #1404, #1628, #1643, #1644), totals redone, a Last updated line at the top; the switch to ranks noted on #1646 for the Assign list | Planning and design | 5 m | ~5 m build | not read | |
 | 1:46-2:00 PM | #1434 built: players.archived_at changed only through its functions (a guard like the membership's), archive_player(), restore_player() and add_signup_to_roster() run as their owner with their own checks; database tests red first, four older test files moved off direct writes, full database suite, generated docs, decision log, RLS.md, stamp, changelog, this row | Revamp 3 (#1434) | 15 m | ~15 m build | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
 | 4:15-4:45 PM | #1463 built: add_own_character() (a member with no roster character adds their own character, trial joining that day, a returning character keeps its trial flag and join date; membership held first), "Player Added ... first main, self-added" in the Audit Log, the addCharacter relay and the bot's officer-channel notice; database tests red first; decision log, RLS.md, stamp, changelog | Revamp 3 (#1463) | 30 m | ~30 m build | not read | Review and merge not yet counted |
+| 4:00-4:36 PM | PR #1671 (#1434): CodeRabbit's two reviews, why the PR gave guild officers access when that role is being renamed, the a11y browser job restarted after 11 minutes, merged 4:36 PM | Revamp 3 (#1434) | 35 m | ~15 m build, ~20 m Kat | not read | Ran alongside the #1463 build |
+| 4:46-6:15 PM | PR #1672 (#1463): the issue's words changed to Kat's ("Add character", not "first main"), title and label; CodeRabbit, the fresh-agent review, #1674 filed for the notice anyone could fake; merged 6:15 PM | Revamp 3 (#1463) | 90 m | ~60 m build, ~30 m Kat | not read | Includes waiting on the reviews |
+| 6:15-6:33 PM | PR #1673: the signup pick reads "Joins this team's roster", not "First main"; merged 6:32 PM; #1674 added to #1487 | Revamp 3 (#1463) | 15 m | ~10 m build, ~5 m Kat | not read | |
+| 6:33-7:12 PM | #1464 built: the profile's Member card with Import characters and Add character to roster, the spec dialog, "+ Add" in a claimed Member's Roster menu; page tests, accessibility states, screenshots, stamp, changelog; Kat's review and merge | Revamp 3 (#1464) | 40 m | ~30 m build, ~10 m Kat | not read | PR #1675, merged 7:12 PM |
+
+### 2026-10-27
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 12:26-12:45 AM | #1674 built: the relay refuses addCharacter without a signed-in user and builds the message from the caller's own Audit Log row from the last five minutes; the bot posts each row once; the app stops sending the text; Edge Function and bot tests; stamp, changelog, these rows | Revamp 3 (#1674) | 20 m | ~20 m build | not read | Review and merge not yet counted |
+| 12:45-1:55 AM | PR #1677 (#1674): CodeRabbit's first review (the 20-row limit fixed; the channel check filed as #1678), its second (the add looked up on the asked-for team only); then Kat chose CodeRabbit's way for the Audit Log read: my_recent_own_add(), called as the member, the service role dropped from the relay; database tests red first, full database suite, generated docs, decision log, RLS.md, restamp, changelog | Revamp 3 (#1674) | 70 m | ~65 m build, ~5 m Kat | not read | The fresh-agent review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
@@ -452,6 +463,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-10-25 | 10:21-10:31 AM | #1404: form text on the officer M+, BiS and Requests tabs and the profile card escaped, links only for web addresses, roster.js's weaker escaper removed; test red first; the live request rows read (549 values, nothing harmful); PR #1659, merged 10:31 AM | 10 m |
 | 2026-10-26 | 11:17-11:20 AM | Where the work stood | 5 m |
 | 2026-10-25 | 10:32-10:44 AM | #1628: the gear sync removes a character's slots Blizzard no longer returns, only after a save that worked; Edge Function test red first; the removal filter checked against the local database; PR #1660, merged 10:44 AM | 10 m |
+| 2026-10-27 | 12:23-12:26 AM | Where the work stood; #1408 closed: Monday night's progression sync ran on the new Warcraft Logs secret | 5 m |
 
 ## Remaining in Revamp 1
 

@@ -12135,6 +12135,12 @@
       "return_type": "int4",
       "arguments": "p_team_id integer, p_character_id integer, p_class_spec_id integer",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_recent_own_add",
+      "return_type": "record",
+      "arguments": "p_team_slug text",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

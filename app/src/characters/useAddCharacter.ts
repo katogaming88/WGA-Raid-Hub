@@ -4,15 +4,12 @@ import { notifyOfficers } from '../profile/useProfile';
 export type AddCharacter = {
   characterId: number;
   classSpecId: number;
-  // For the officers' Discord notice only.
-  member: string;
-  nameRealm: string;
-  classSpec: string;
 };
 
 // "Add character to roster" (#1463, #1464): the member puts one of their own
 // saved characters on the team's roster, no officer step. The notice to the
-// officers is best-effort; the character is on the roster either way.
+// officers is best-effort; the character is on the roster either way. The
+// relay builds it from the add's Audit Log row (#1674), so nothing is sent.
 export function useAddCharacter(teamId: number, teamKey: string) {
   return useSupabaseMutation<number, AddCharacter>(
     async (client, add) => {
@@ -24,8 +21,7 @@ export function useAddCharacter(teamId: number, teamKey: string) {
       if (error) return { data: null, error };
       await notifyOfficers(client, {
         action: 'addCharacter',
-        team: teamKey,
-        payload: { member: add.member, nameRealm: add.nameRealm, classSpec: add.classSpec }
+        team: teamKey
       });
       return { data: data as number, error: null };
     },
