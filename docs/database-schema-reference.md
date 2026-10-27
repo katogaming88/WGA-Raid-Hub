@@ -30,6 +30,8 @@ Includes notes on redundancies and why they exist.
 - [team_seasons](#team_seasons)
 - [audit_log](#audit_log)
 - [guild_grants](#guild_grants)
+- [guild_ranks](#guild_ranks)
+- [rank_permissions](#rank_permissions)
 - [scoring](#scoring)
 - [player_wcl_season_perf](#player_wcl_season_perf)
 - [player_equipped_gear](#player_equipped_gear)
@@ -240,6 +242,7 @@ Links Discord/auth users to a team. The account-level membership layer, separate
 | `discord_id`   | text | Discord user snowflake -- used for auth and notifications                     |
 | `auth_user_id` | uuid | FK -> `auth.users.id` (Supabase auth)                                         |
 | `role`         | text | Team role: `raider`/`officer`/`team_leader` (CHECK constraint; since #294)     |
+| `rank`         | text | Team rank (#1645): `owner` (one per team), `officer`, `assistant`, `raider`. Kept in step with `role` by trigger until cutover; `team_members_rank_matches_role` holds the pairs |
 | `name_realm`   | text | The character this member considers their main (see note on redundancy below) |
 | `updated_at`   | timestamptz | Auto-set on every UPDATE via trigger                                   |
 
@@ -317,6 +320,29 @@ The guild-wide grants: site admin, guild officer and BoE manager, one row per pe
 | `created_at` | timestamptz | Row creation                                                            |
 
 Unique on `(person_id, guild_id, grant_type)`. A site admin can grant to someone who has not signed in yet: the grant names their person, which is listed by Discord id, and `link_auth_user_to_member()` attaches the account to that person on first sign-in. Until then the person's `auth_user_id` is null, the grant is not active, and the `admin_list_*` functions return the null so the admin UI can say so. No team column on purpose: these grants apply on every team, and the BoE manager grant in particular because BoEs are guild property ([#766](https://github.com/katogaming88/WGA-Raid-Hub/issues/766)).
+
+---
+
+## `guild_ranks`
+
+A person's rank in a guild ([#1645](https://github.com/katogaming88/WGA-Raid-Hub/issues/1645), the roles of [#1517](https://github.com/katogaming88/WGA-Raid-Hub/issues/1517)). One row per person per guild; member is automatic for anyone on a team in the guild, so a member has a row only to hold one of the two switches.
+
+| Column                  | Type        | Purpose                                                                 |
+| ----------------------- | ----------- | ----------------------------------------------------------------------- |
+| `guild_id`              | int4        | FK -> `guilds.id`                                                       |
+| `person_id`             | int4        | FK -> `people.id`                                                       |
+| `rank`                  | text        | `owner` (one per guild), `admin`, `team_lead` or `member`              |
+| `sees_every_team`       | bool        | "See every team, read-only", set by the Owner per person; off by default |
+| `officer_on_every_team` | bool        | "Officer on every team", set by the Owner per person; off by default    |
+| `created_at`            | timestamptz | Row creation                                                            |
+
+Owner and admin hold a `guild_officer` grant in `guild_grants` and nobody else does, kept by trigger both ways until cutover.
+
+---
+
+## `rank_permissions`
+
+Every permission on the guild and team grids ([#1645](https://github.com/katogaming88/WGA-Raid-Hub/issues/1645)): `permission` (the key the checks ask for), `scope` (`guild` or `team`), `position` (its order on the grid) and `default_ranks` (the ranks a new guild or team starts with it on). `guild_rank_permissions` (`guild_id`, `rank`, `permission`) and `team_rank_permissions` (`team_id`, `rank`, `permission`) are each guild's and team's own grid, copied from the defaults when it is made: a row means that rank has that permission. Owners hold every permission and have no rows. `has_team_permission()` and `has_guild_permission()` answer from them.
 
 ---
 

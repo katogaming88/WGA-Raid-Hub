@@ -8,7 +8,7 @@ One row per guild. url_key is the /g/<key> segment of an address: readable for W
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer |  | false | [public.teams](public.teams.md) [public.retired_url_keys](public.retired_url_keys.md) [public.guild_grants](public.guild_grants.md) |  |  |
+| id | integer |  | false | [public.teams](public.teams.md) [public.retired_url_keys](public.retired_url_keys.md) [public.guild_grants](public.guild_grants.md) [public.guild_rank_permissions](public.guild_rank_permissions.md) [public.guild_ranks](public.guild_ranks.md) |  |  |
 | name | text |  | false |  |  | The guild's display name. A label only: guilds are identified by url_key and id, so two guilds may share a name (#1226). |
 | url_key | text | new_url_code() | false |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
@@ -37,6 +37,7 @@ One row per guild. url_key is the /g/<key> segment of an address: readable for W
 | Name | Definition |
 | ---- | ---------- |
 | guilds_retire_url_key | CREATE TRIGGER guilds_retire_url_key AFTER UPDATE OF url_key ON public.guilds FOR EACH ROW WHEN ((old.url_key IS DISTINCT FROM new.url_key)) EXECUTE FUNCTION retire_guild_url_key() |
+| guilds_seed_rank_permissions | CREATE TRIGGER guilds_seed_rank_permissions AFTER INSERT ON public.guilds FOR EACH ROW EXECUTE FUNCTION seed_rank_permissions() |
 
 ## Relations
 
@@ -46,6 +47,8 @@ erDiagram
 "public.teams" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
 "public.retired_url_keys" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
 "public.guild_grants" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
+"public.guild_rank_permissions" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
+"public.guild_ranks" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
 
 "public.guilds" {
   integer id
@@ -76,6 +79,20 @@ erDiagram
   integer person_id FK
   integer guild_id FK
   text grant_type
+  timestamp_with_time_zone created_at
+}
+"public.guild_rank_permissions" {
+  integer guild_id FK
+  text rank
+  text permission FK
+  text scope FK
+}
+"public.guild_ranks" {
+  integer guild_id FK
+  integer person_id FK
+  text rank
+  boolean sees_every_team
+  boolean officer_on_every_team
   timestamp_with_time_zone created_at
 }
 ```

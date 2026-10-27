@@ -18,7 +18,7 @@
 | [public.scoring](public.scoring.md) | 11 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 23 |  | BASE TABLE |
 | [public.self_received_requests](public.self_received_requests.md) | 12 |  | BASE TABLE |
-| [public.team_members](public.team_members.md) | 9 |  | BASE TABLE |
+| [public.team_members](public.team_members.md) | 10 |  | BASE TABLE |
 | [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
 | [public.teams](public.teams.md) | 7 |  | BASE TABLE |
 | [public.pending_roster](public.pending_roster.md) | 15 |  | VIEW |
@@ -81,6 +81,10 @@
 | [public.names](public.names.md) | 6 | A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming, assigning and unclaiming update this row; a raider's first claim on a team also creates their membership (claim_name), and nothing merges memberships. A names row outlives its membership being archived. | BASE TABLE |
 | [public.team_raid_reports](public.team_raid_reports.md) | 15 | Every Warcraft Logs report the progression sync reads for a team (#1469), one row per team and report, rewritten on every run and never deleted. kind is the title rule's verdict, kind_override an officer's choice, effective_kind the one that counts. Written only by wcl-progression-sync. | BASE TABLE |
 | [public.signup_item_preferences](public.signup_item_preferences.md) | 9 |  | BASE TABLE |
+| [public.rank_permissions](public.rank_permissions.md) | 4 | Every permission on the guild and team grids, with the ranks that have it in a new guild or team (#1517, #1645). Owners hold every permission and are not listed. | BASE TABLE |
+| [public.guild_rank_permissions](public.guild_rank_permissions.md) | 4 | Each guild's grid: a row means that guild rank has that permission there (#1645). Filled from rank_permissions.default_ranks when the guild is made; the Owner changes it later. | BASE TABLE |
+| [public.team_rank_permissions](public.team_rank_permissions.md) | 4 | Each team's grid: a row means that team rank has that permission there (#1645). Filled from rank_permissions.default_ranks when the team is made; the Team Owner changes it later. | BASE TABLE |
+| [public.guild_ranks](public.guild_ranks.md) | 6 | A person's rank in a guild (#1645): owner (one per guild), admin, team_lead or member. Member is automatic for anyone on a team in the guild, so a member has a row only to hold one of the two switches. Owner and admin are kept in step with a guild_officer grant until cutover, both ways. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -260,6 +264,12 @@
 | public.admin_list_guild_officers | record |  | FUNCTION |
 | public.admin_list_boe_managers | record |  | FUNCTION |
 | public.admin_create_team | int4 | p_name text, p_slug text, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
+| public.seed_rank_permissions | trigger |  | FUNCTION |
+| public.team_members_keep_rank_and_role | trigger |  | FUNCTION |
+| public.guild_ranks_keep_grant | trigger |  | FUNCTION |
+| public.guild_grants_keep_rank | trigger |  | FUNCTION |
+| public.has_team_permission | bool | p_team_id integer, p_permission text | FUNCTION |
+| public.has_guild_permission | bool | p_guild_id integer, p_permission text | FUNCTION |
 
 ## Enums
 
@@ -414,6 +424,12 @@ erDiagram
 "public.team_raid_reports" }o--o| "public.people" : "FOREIGN KEY (kind_override_by) REFERENCES people(id) ON DELETE SET NULL"
 "public.signup_item_preferences" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.signup_item_preferences" }o--|| "public.season_signups" : "FOREIGN KEY (signup_id) REFERENCES season_signups(id) ON DELETE CASCADE"
+"public.guild_rank_permissions" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
+"public.guild_rank_permissions" }o--|| "public.rank_permissions" : "FOREIGN KEY (permission, scope) REFERENCES rank_permissions(permission, scope)"
+"public.team_rank_permissions" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_rank_permissions" }o--|| "public.rank_permissions" : "FOREIGN KEY (permission, scope) REFERENCES rank_permissions(permission, scope)"
+"public.guild_ranks" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
+"public.guild_ranks" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 
 "public.attendance" {
   integer id
@@ -606,6 +622,7 @@ erDiagram
   timestamp_with_time_zone updated_at
   integer person_id FK
   timestamp_with_time_zone archived_at
+  text rank
 }
 "public.team_settings" {
   integer team_id FK
@@ -1201,6 +1218,32 @@ erDiagram
   boolean synced_bis
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+}
+"public.rank_permissions" {
+  text permission
+  text scope
+  integer position
+  text__ default_ranks
+}
+"public.guild_rank_permissions" {
+  integer guild_id FK
+  text rank
+  text permission FK
+  text scope FK
+}
+"public.team_rank_permissions" {
+  integer team_id FK
+  text rank
+  text permission FK
+  text scope FK
+}
+"public.guild_ranks" {
+  integer guild_id FK
+  integer person_id FK
+  text rank
+  boolean sees_every_team
+  boolean officer_on_every_team
+  timestamp_with_time_zone created_at
 }
 ```
 

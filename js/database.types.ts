@@ -569,6 +569,84 @@ export type Database = {
           },
         ]
       }
+      guild_rank_permissions: {
+        Row: {
+          guild_id: number
+          permission: string
+          rank: string
+          scope: string
+        }
+        Insert: {
+          guild_id: number
+          permission: string
+          rank: string
+          scope?: string
+        }
+        Update: {
+          guild_id?: number
+          permission?: string
+          rank?: string
+          scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guild_rank_permissions_guild_id_fkey"
+            columns: ["guild_id"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guild_rank_permissions_permission_scope_fkey"
+            columns: ["permission", "scope"]
+            isOneToOne: false
+            referencedRelation: "rank_permissions"
+            referencedColumns: ["permission", "scope"]
+          },
+        ]
+      }
+      guild_ranks: {
+        Row: {
+          created_at: string
+          guild_id: number
+          officer_on_every_team: boolean
+          person_id: number
+          rank: string
+          sees_every_team: boolean
+        }
+        Insert: {
+          created_at?: string
+          guild_id: number
+          officer_on_every_team?: boolean
+          person_id: number
+          rank?: string
+          sees_every_team?: boolean
+        }
+        Update: {
+          created_at?: string
+          guild_id?: number
+          officer_on_every_team?: boolean
+          person_id?: number
+          rank?: string
+          sees_every_team?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guild_ranks_guild_id_fkey"
+            columns: ["guild_id"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guild_ranks_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guilds: {
         Row: {
           created_at: string
@@ -2172,6 +2250,27 @@ export type Database = {
           },
         ]
       }
+      rank_permissions: {
+        Row: {
+          default_ranks: string[]
+          permission: string
+          position: number
+          scope: string
+        }
+        Insert: {
+          default_ranks: string[]
+          permission: string
+          position: number
+          scope: string
+        }
+        Update: {
+          default_ranks?: string[]
+          permission?: string
+          position?: number
+          scope?: string
+        }
+        Relationships: []
+      }
       rclc_loot: {
         Row: {
           awarded_at: string
@@ -3027,6 +3126,7 @@ export type Database = {
           id: number
           name_realm: string | null
           person_id: number
+          rank: string
           role: string
           team_id: number
           updated_at: string | null
@@ -3038,6 +3138,7 @@ export type Database = {
           id?: number
           name_realm?: string | null
           person_id: number
+          rank: string
           role: string
           team_id: number
           updated_at?: string | null
@@ -3049,6 +3150,7 @@ export type Database = {
           id?: number
           name_realm?: string | null
           person_id?: number
+          rank?: string
           role?: string
           team_id?: number
           updated_at?: string | null
@@ -3249,6 +3351,42 @@ export type Database = {
           },
           {
             foreignKeyName: "team_raid_reports_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_rank_permissions: {
+        Row: {
+          permission: string
+          rank: string
+          scope: string
+          team_id: number
+        }
+        Insert: {
+          permission: string
+          rank: string
+          scope?: string
+          team_id: number
+        }
+        Update: {
+          permission?: string
+          rank?: string
+          scope?: string
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_rank_permissions_permission_scope_fkey"
+            columns: ["permission", "scope"]
+            isOneToOne: false
+            referencedRelation: "rank_permissions"
+            referencedColumns: ["permission", "scope"]
+          },
+          {
+            foreignKeyName: "team_rank_permissions_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
@@ -4373,6 +4511,14 @@ export type Database = {
         }[]
       }
       guild_creation_open: { Args: never; Returns: boolean }
+      has_guild_permission: {
+        Args: { p_guild_id: number; p_permission: string }
+        Returns: boolean
+      }
+      has_team_permission: {
+        Args: { p_permission: string; p_team_id: number }
+        Returns: boolean
+      }
       hold_team_member: {
         Args: { p_team_member_id: number }
         Returns: undefined

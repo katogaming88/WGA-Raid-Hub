@@ -78,6 +78,7 @@ erDiagram
   timestamp_with_time_zone updated_at
   integer person_id FK
   timestamp_with_time_zone archived_at
+  text rank
 }
 ```
 

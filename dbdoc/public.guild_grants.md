@@ -32,6 +32,12 @@ Guild-wide grants, one row per person per grant per guild (#942). Replaced site_
 | guild_grants_person_id_guild_id_grant_type_key | CREATE UNIQUE INDEX guild_grants_person_id_guild_id_grant_type_key ON public.guild_grants USING btree (person_id, guild_id, grant_type) |
 | guild_grants_guild_id_idx | CREATE INDEX guild_grants_guild_id_idx ON public.guild_grants USING btree (guild_id) |
 
+## Triggers
+
+| Name | Definition |
+| ---- | ---------- |
+| guild_grants_keep_rank | CREATE TRIGGER guild_grants_keep_rank AFTER INSERT OR DELETE ON public.guild_grants FOR EACH ROW EXECUTE FUNCTION guild_grants_keep_rank() |
+
 ## Relations
 
 ```mermaid
