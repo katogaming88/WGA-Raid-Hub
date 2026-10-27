@@ -34,7 +34,7 @@ begin
   -- refused here too, except to a site admin, who is told below.
   select team_id into v_team_id from public.season_signups where id = p_signup_id;
   if auth.uid() is not null and not (
-    coalesce(public.my_team_role(v_team_id) = any (array['officer', 'team_leader']), false)
+    public.has_team_permission(v_team_id, 'manage_signups')
     or public.is_site_admin()
   ) then
     raise exception 'Not authorized';

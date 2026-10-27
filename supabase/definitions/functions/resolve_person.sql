@@ -19,7 +19,7 @@ declare
 begin
   v_sees_all_teams := v_is_self or v_is_site_admin;
 
-  if not (v_sees_all_teams or public.is_any_team_officer() or cardinality(v_guild_team_ids) > 0) then
+  if not (v_sees_all_teams or cardinality(public.my_permission_team_ids('edit_roster')) > 0 or cardinality(v_guild_team_ids) > 0) then
     raise exception 'Not authorized';
   end if;
 
@@ -72,7 +72,7 @@ begin
        where tm.person_id = v_person.id
          and (v_sees_all_teams
               or tm.team_id = any (v_guild_team_ids)
-              or public.my_team_role(tm.team_id) = any (array['officer', 'team_leader']))
+              or public.has_team_permission(tm.team_id, 'edit_roster'))
     ), '[]'::jsonb)
   )
   into v_result;

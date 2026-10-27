@@ -38,6 +38,9 @@ const HELPERS = [
 ];
 // Postgres stores (SELECT f()) as "( SELECT f() AS f)".
 const WRAPPED = new RegExp(`\\( SELECT (${HELPERS.join('|')})\\(\\) AS \\w+\\)`, 'g');
+// my_permission_team_ids takes a permission name, but only a constant one
+// (#1646), so it still runs once per query.
+const WRAPPED_PERMISSION = /\( SELECT my_permission_team_ids\('\w+'::text\) AS \w+\)/g;
 
 describe('rule shape (#1106)', () => {
   it('no access rule calls a function except a wrapped, argument-free helper', async () => {
@@ -49,7 +52,7 @@ describe('rule shape (#1106)', () => {
     `);
     expect(rows.length).toBeGreaterThan(50);
     const offenders = rows
-      .map((r) => ({ rule: `${r.tablename}: ${r.policyname}`, calls: r.expr.replace(WRAPPED, '').match(/\w+\(/g) }))
+      .map((r) => ({ rule: `${r.tablename}: ${r.policyname}`, calls: r.expr.replace(WRAPPED, '').replace(WRAPPED_PERMISSION, '').match(/\w+\(/g) }))
       .filter((r) => r.calls);
     expect(offenders).toEqual([]);
   });
@@ -63,6 +66,7 @@ describe('once-per-query helpers', () => {
       for (const fn of ['my_officer_team_ids', 'my_leader_team_ids', 'my_active_player_ids']) {
         expect(await call(asAnon, fn)).toEqual([]);
       }
+      expect((await asAnon("select public.my_permission_team_ids('edit_roster') as v")).rows[0].v).toEqual([]);
     });
   });
 

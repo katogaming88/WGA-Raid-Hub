@@ -12,6 +12,26 @@ answers to.
 
 ---
 
+## [3.218.0] - 2026-10-27
+
+### Backend
+
+- Roster, schedule, RSVP, attendance, signup and report checks ask the
+  team's permission instead of "officer or team leader" (#1646, part 1).
+  An Assistant can now edit the roster, schedule and boss lineups, see
+  everyone's RSVPs, take attendance and bench, manage season signups and
+  read raid reports; loot, priority and settings stay with Officers and
+  Team Owners until part 2. Officers and team leaders can do exactly what
+  they could before, and the current site is unchanged: an Assistant is a
+  raider there. A permission switched off on a team's grid refuses at once.
+
+### Project
+
+- Database tests for an Assistant and for a permission switched off;
+  rule-shape and function invariant tests allow the new lookup; decision
+  log and RLS.md.
+- Revamp time log row for #1646.
+
 ## [3.217.0] - 2026-10-27
 
 ### Backend

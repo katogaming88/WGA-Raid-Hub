@@ -10,7 +10,7 @@ CREATE OR REPLACE FUNCTION public.team_invite_link_revoke(p_team_id integer)
 AS $function$
 begin
   if not (
-    coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false)
+    public.has_team_permission(p_team_id, 'edit_roster')
     or public.is_site_admin()
     or public.is_guild_officer_of_team(p_team_id)
   ) then

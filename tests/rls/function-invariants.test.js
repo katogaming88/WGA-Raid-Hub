@@ -19,18 +19,18 @@ import { pool } from './helpers.js';
 const KNOWN_DYNAMIC = ['rls_auto_enable'];
 
 // Functions allowed to compare my_team_role() without coalesce (#752, T6).
-// resolve_person puts the comparison in a WHERE clause, where a null excludes
-// the row exactly as false does. Adding a name here needs the same reasoning
-// written into the migration.
-const BARE_ROLE_COMPARE_OK = ['resolve_person'];
+// Empty since #1646 moved resolve_person to has_team_permission(). Adding a
+// name here needs the reasoning written into the migration.
+const BARE_ROLE_COMPARE_OK = [];
 
 // SECURITY DEFINER functions anon may execute, measured on prod 2026-09-08.
 // Eight RLS predicates and helpers, five public submit paths and
 // is_own_player. #1106 added the three once-per-query rule helpers
 // (my_officer_team_ids, my_leader_team_ids, my_active_player_ids): a
 // signed-out read evaluates the rules too, and each returns an empty array
-// when there is no auth.uid(). Set equality, so an accidental grant fails and so
-// does an accidental revoke.
+// when there is no auth.uid(). #1646 added my_permission_team_ids, the same
+// kind of helper for the team grid's permissions. Set equality, so an
+// accidental grant fails and so does an accidental revoke.
 const ANON_DEFINER_ALLOWLIST = [
   'app_version',
   'can_settle_boe',
@@ -47,6 +47,7 @@ const ANON_DEFINER_ALLOWLIST = [
   'my_guild_officer_team_ids',
   'my_leader_team_ids',
   'my_officer_team_ids',
+  'my_permission_team_ids',
   'my_person_id',
   'my_player_ids',
   'my_team_role',

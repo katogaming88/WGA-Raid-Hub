@@ -271,6 +271,7 @@
 | public.guild_grants_keep_rank | trigger |  | FUNCTION |
 | public.has_team_permission | bool | p_team_id integer, p_permission text | FUNCTION |
 | public.has_guild_permission | bool | p_guild_id integer, p_permission text | FUNCTION |
+| public.my_permission_team_ids | _int4 | p_permission text | FUNCTION |
 
 ## Enums
 

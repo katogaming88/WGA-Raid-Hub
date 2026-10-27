@@ -19,7 +19,7 @@ AS $function$
      and t.archived_at is null
      and not t.unlisted
      and (
-       p_team_id = any ((select my_officer_team_ids())::integer[])
+       p_team_id = any ((select my_permission_team_ids('edit_roster'))::integer[])
        or (select is_site_admin())
        or (select is_guild_officer_of_team(p_team_id))
      )
