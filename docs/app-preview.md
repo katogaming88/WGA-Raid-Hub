@@ -40,13 +40,14 @@ A team in We Go Again made for testing. Testers can press every button on it wit
 1. Add their email to the Cloudflare allow list (next section).
 2. Send them the Sandbox's invite link (**Settings → Invite link** on the Sandbox). They join with their real characters, as raiders.
 3. **Officer testers only:** make them an officer of the Sandbox, never a guild officer, site admin or officer of a real team. The app cannot do this yet; team ranks on the Roster arrive with #1651. Until then a site admin does it in the Supabase dashboard: **Table Editor → team_members**, find the tester's row for the Sandbox's team id, and set `role` to `officer`.
-4. Tell them to stay on the Sandbox and check the team name in the team switcher before every change. Real officers keep their real-team roles on the same account, so a page that opened the wrong team would not be refused.
+4. Nothing else to tell them about real teams: the preview shows them only the Sandbox (below).
 
 ### What keeps the real teams safe
 
+- **Only the Sandbox shows (#1676):** the preview's build sets `VITE_PREVIEW_TEAMS: sandbox` (in `.github/workflows/deploy.yml`, the "Build the app" step of the preview deploy). Anyone who is not a site admin sees only the Sandbox in the team picker, on the guild pages and in "Also on", and lands on it from the front page. A real team's address, the BoE page and Guild settings show "Not part of the test" with a link to the Sandbox, and their sidebar links are gone. Site admins see everything as before. It guards against picking the wrong team by accident; it is not a lock, since the database still lets a real officer edit their real team, as the live site does. Delete the line at cutover (#1105). A local build and the browser tests leave it unset and show every team.
 - **Discord:** the Sandbox has no `team_discord_config` row, so the bot posts nothing for it. To see its posts, add a row by hand that points at a test channel (until Settings → Discord, #994). Never copy a real team's channels into it.
 - **Cross-team reads:** "Also on" and earlier-character loot counts leave unlisted teams out (#1643). Loot counts already stay inside one team.
-- **BoE:** sales are guild-wide, not per team. Test the BoE page by reading only, or with one made-up find deleted afterwards.
+- **BoE:** sales are guild-wide, not per team, so testers don't see the BoE page on the preview. A site admin testing it should read only, or report one made-up find and delete it afterwards.
 - **Not covered:** a bug in a shared database function, a table no single team owns, or a real officer testing on their own account can still reach real data (#1185). The Sandbox makes the common mistakes harmless; it is not a guarantee.
 
 ## Adding or removing a tester

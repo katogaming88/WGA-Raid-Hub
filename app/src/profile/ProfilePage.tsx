@@ -4,7 +4,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { DataState } from '../components/DataState';
 import { bothQueries } from '../data/query';
 import { useAddress, useTeam } from '../data/address';
-import { can, charactersOn, useAccess } from '../auth/access';
+import { can, charactersOn, useAccess, usePreviewTeams } from '../auth/access';
 import { useSession } from '../auth/session';
 import { classColor, equippedItemLevel } from '../roster/roster';
 import {
@@ -367,8 +367,12 @@ function Profile({
   const { teams } = useAddress();
   const earlier = useEarlierLoot(teamId, season.isSuccess ? season.data : null, true);
   const alsoOn = useAlsoOnTeams(teamId, officerView);
+  // On the preview, only the teams the shell lists (#1676).
+  const preview = usePreviewTeams();
   const alsoOnNames = alsoOn.isSuccess
-    ? alsoOn.data.filter((r) => r.player_id === player.id).map((r) => r.team_name)
+    ? alsoOn.data
+        .filter((r) => r.player_id === player.id && (!preview || teams.some((t) => t.name === r.team_name)))
+        .map((r) => r.team_name)
     : [];
   const refusal = useMplusRefusal(teamId, player.id, (officerView || own) && !player.m_plus_excluded);
   const requests = useRequestSettings(teamId);

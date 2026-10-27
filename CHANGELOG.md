@@ -12,6 +12,21 @@ answers to.
 
 ---
 
+## [3.215.0] - 2026-10-27
+
+### Project
+
+- The new app's preview shows testers only the Sandbox (#1676). Its
+  build sets `VITE_PREVIEW_TEAMS: sandbox`; for anyone but a site admin
+  the team picker, guild pages and "Also on" list only the Sandbox, the
+  sidebar's team links and the front page lead to it, and a real team's
+  address, the BoE page and Guild settings show "Not part of the test"
+  with a link to the Sandbox. Site admins see every team as before. Set
+  on the preview deploy, not in `app/.env.production`, so the browser
+  tests and a local build still show every team; removing it is on the
+  cutover list (#1105). docs/app-preview.md updated.
+- Revamp time log row for #1676.
+
 ## [3.214.1] - 2026-10-27
 
 ### Backend
