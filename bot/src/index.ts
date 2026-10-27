@@ -973,13 +973,16 @@ app.post('/add-character', async (req: Request, res: Response): Promise<void> =>
   }
   // The relay's check (#1674) makes every call a real add; this makes a
   // repeat of one post nothing.
-  if (!firstAddPost(auditId)) {
+  if (!firstAddPost.claim(auditId)) {
     res.json({ ok: true, repeat: true });
     return;
   }
 
   const channel = await fetchTextChannel(res, cfg.officerChannelId);
-  if (!channel) return;
+  if (!channel) {
+    firstAddPost.release(auditId);
+    return;
+  }
 
   const unixTs = submittedAt ? Math.floor(new Date(submittedAt).getTime() / 1000) : Math.floor(Date.now() / 1000);
 
@@ -997,7 +1000,12 @@ app.post('/add-character', async (req: Request, res: Response): Promise<void> =>
     )
     .setFooter({ text: 'Roster' });
 
-  await channel.send({ embeds: [embed] });
+  try {
+    await channel.send({ embeds: [embed] });
+  } catch (err) {
+    firstAddPost.release(auditId);
+    throw err;
+  }
 
   res.json({ ok: true });
 });

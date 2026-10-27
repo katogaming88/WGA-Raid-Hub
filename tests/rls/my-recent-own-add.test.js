@@ -146,6 +146,19 @@ describe('my_recent_own_add()', () => {
     });
   });
 
+  it('returns nothing once the character is taken off the roster', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const playerId = await ownAdd(q, asUser, team);
+      await q('update public.players set archived_at = now() where id = $1', [playerId]);
+      const { rows } = await recent(
+        (text, params) => asUser(team.raider.uid, text, params),
+        await slugOf(q, team.teamId)
+      );
+      expect(rows).toEqual([]);
+    });
+  });
+
   it('returns nothing for an add older than five minutes', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);

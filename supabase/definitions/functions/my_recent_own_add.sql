@@ -23,6 +23,8 @@ AS $function$
    where a.actor_id = auth.uid()
      and tm.person_id = public.my_person_id()
      and p.team_id = a.team_id
+     and p.archived_at is null
+     and tm.archived_at is null
      and t.slug = p_team_slug
      and a.action = 'Player Added'
      and a.target_type = 'players'

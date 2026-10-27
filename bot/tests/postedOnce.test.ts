@@ -3,18 +3,25 @@ import { postedOnce } from '../src/postedOnce';
 
 describe('postedOnce', () => {
   it('lets an id through once', () => {
-    const first = postedOnce();
-    expect(first(41)).toBe(true);
-    expect(first(41)).toBe(false);
-    expect(first(42)).toBe(true);
+    const { claim } = postedOnce();
+    expect(claim(41)).toBe(true);
+    expect(claim(41)).toBe(false);
+    expect(claim(42)).toBe(true);
+  });
+
+  it('lets a released id through again', () => {
+    const { claim, release } = postedOnce();
+    claim(41);
+    release(41);
+    expect(claim(41)).toBe(true);
   });
 
   it('forgets the oldest id past its limit', () => {
-    const first = postedOnce(2);
-    first(1);
-    first(2);
-    first(3);
-    expect(first(1)).toBe(true);
-    expect(first(3)).toBe(false);
+    const { claim } = postedOnce(2);
+    claim(1);
+    claim(2);
+    claim(3);
+    expect(claim(1)).toBe(true);
+    expect(claim(3)).toBe(false);
   });
 });

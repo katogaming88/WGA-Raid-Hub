@@ -9,7 +9,7 @@
 -- team: an officer can write any audit row through write_audit_log(), detail
 -- included, and a guild officer on any team, so the wording alone does not
 -- prove add_own_character() wrote it (CodeRabbit and the fresh review on
--- #1677).
+-- #1677). A character or Member taken off the roster since is not announced.
 
 create function public.my_recent_own_add(p_team_slug text)
 returns table (
@@ -40,6 +40,8 @@ as $$
    where a.actor_id = auth.uid()
      and tm.person_id = public.my_person_id()
      and p.team_id = a.team_id
+     and p.archived_at is null
+     and tm.archived_at is null
      and t.slug = p_team_slug
      and a.action = 'Player Added'
      and a.target_type = 'players'
@@ -50,7 +52,7 @@ as $$
 $$;
 
 comment on function public.my_recent_own_add(text) is
-  'The caller''s own newest Add character row on the team from the last five minutes (#1674): audit id, team slug, Member name, character, spec label and when. discord-bot-webhook builds the officers'' "Character Added to Roster" notice from it, as the caller. No row for anyone else''s adds, an officer''s add, a row about a character not the caller''s own, another team or an older add.';
+  'The caller''s own newest Add character row on the team from the last five minutes (#1674): audit id, team slug, Member name, character, spec label and when. discord-bot-webhook builds the officers'' "Character Added to Roster" notice from it, as the caller. No row for anyone else''s adds, an officer''s add, a row about a character not the caller''s own, another team, a character or Member taken off the roster since, or an older add.';
 
 revoke all on function public.my_recent_own_add(text) from public;
 revoke execute on function public.my_recent_own_add(text) from anon;
