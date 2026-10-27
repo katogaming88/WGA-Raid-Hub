@@ -266,6 +266,7 @@
 | public.admin_create_team | int4 | p_name text, p_slug text, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
 | public.seed_rank_permissions | trigger |  | FUNCTION |
 | public.team_members_keep_rank_and_role | trigger |  | FUNCTION |
+| public.team_members_guard_rank | trigger |  | FUNCTION |
 | public.guild_ranks_keep_grant | trigger |  | FUNCTION |
 | public.guild_grants_keep_rank | trigger |  | FUNCTION |
 | public.has_team_permission | bool | p_team_id integer, p_permission text | FUNCTION |

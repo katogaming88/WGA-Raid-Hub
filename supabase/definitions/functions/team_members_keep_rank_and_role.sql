@@ -13,12 +13,13 @@ declare
                           and (tg_op = 'INSERT' or new.rank is distinct from old.rank);
 begin
   if v_rank_named then
-    if tg_op = 'UPDATE' or new.role is null then
+    if new.role is null or (tg_op = 'UPDATE' and new.role is not distinct from old.role) then
       new.role := case new.rank when 'owner' then 'team_leader'
                                 when 'officer' then 'officer'
                                 else 'raider' end;
     end if;
-  elsif tg_op = 'INSERT' or new.role is distinct from old.role then
+  elsif tg_op = 'INSERT' or new.role is distinct from old.role
+        or (old.archived_at is not null and new.archived_at is null) then
     new.rank := case new.role when 'team_leader' then 'owner'
                               when 'officer' then 'officer'
                               else 'raider' end;

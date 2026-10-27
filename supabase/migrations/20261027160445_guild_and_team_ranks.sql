@@ -183,8 +183,11 @@ create unique index team_members_one_owner on public.team_members (team_id)
 comment on column public.team_members.rank is
   'Team rank (#1645): owner (one per team), officer, assistant or raider. Kept in step with role until the old roles are dropped at cutover, both ways, by team_members_keep_rank_and_role: setting one sets the other. team_members_rank_matches_role holds the pairs.';
 
--- Whichever of rank and role the write changed, the other follows. A role
--- of team_leader on a team that already has an owner, or bringing an
+-- Whichever of rank and role the write changed, the other follows; a write
+-- naming both is left to team_members_rank_matches_role to judge. Bringing
+-- an archived member back takes the rank from the role the revive names, as
+-- every revive path names one, so a returning Assistant comes back a Raider.
+-- A role of team_leader on a team that already has an owner, or bringing an
 -- archived owner back to such a team, makes an officer who is still a
 -- team_leader on the current site. Naming owner outright is left to the
 -- unique index to refuse.
@@ -199,12 +202,13 @@ declare
                           and (tg_op = 'INSERT' or new.rank is distinct from old.rank);
 begin
   if v_rank_named then
-    if tg_op = 'UPDATE' or new.role is null then
+    if new.role is null or (tg_op = 'UPDATE' and new.role is not distinct from old.role) then
       new.role := case new.rank when 'owner' then 'team_leader'
                                 when 'officer' then 'officer'
                                 else 'raider' end;
     end if;
-  elsif tg_op = 'INSERT' or new.role is distinct from old.role then
+  elsif tg_op = 'INSERT' or new.role is distinct from old.role
+        or (old.archived_at is not null and new.archived_at is null) then
     new.rank := case new.role when 'team_leader' then 'owner'
                               when 'officer' then 'officer'
                               else 'raider' end;
@@ -223,8 +227,35 @@ $$;
 revoke all on function public.team_members_keep_rank_and_role() from public, anon, authenticated;
 
 create trigger team_members_keep_rank_and_role
-  before insert or update of role, rank, archived_at on public.team_members
+  before insert or update of role, rank, archived_at, team_id on public.team_members
   for each row execute function public.team_members_keep_rank_and_role();
+
+-- The team update and insert rules let a team leader write team_members
+-- directly, and the current site does (role). A rank is changed only through
+-- functions, which run as their owner; like
+-- team_members_archived_at_through_functions this runs as the caller, so it
+-- sees who wrote. Named to fire before team_members_keep_rank_and_role fills
+-- in a rank the write did not name.
+create function public.team_members_guard_rank()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if current_user = 'authenticated'
+     and new.rank is not null
+     and (tg_op = 'INSERT' or new.rank is distinct from old.rank) then
+    raise exception 'A team rank is changed through the rank functions, not by editing the membership';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.team_members_guard_rank() from public, anon, authenticated;
+
+create trigger team_members_guard_rank
+  before insert or update of rank on public.team_members
+  for each row execute function public.team_members_guard_rank();
 
 -- Guild ranks.
 create table public.guild_ranks (

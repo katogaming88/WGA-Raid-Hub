@@ -104,6 +104,35 @@ describe('team_members.role follows the rank', () => {
     });
   });
 
+  it('a returning Assistant comes back with the rank of the role the revive names', async () => {
+    await withTxn(async ({ q }) => {
+      const { raider } = await seedTeam(q);
+      await q("update public.team_members set rank = 'assistant' where id = $1", [raider.memberId]);
+      await q('update public.team_members set archived_at = now() where id = $1', [raider.memberId]);
+      await q("update public.team_members set archived_at = null, role = 'raider' where id = $1", [raider.memberId]);
+      expect(await member(q, raider.memberId)).toEqual({ rank: 'raider', role: 'raider' });
+    });
+  });
+
+  it('a team leader cannot write a rank directly, only the role', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const raider = await seedMember(q, { teamId: 1 });
+      await expect(
+        asUser(TEAM_LEADER_T1, "update public.team_members set rank = 'assistant' where id = $1", [raider.memberId])
+      ).rejects.toThrow(/rank functions/);
+      expect((await member(q, raider.memberId)).rank).toBe('raider');
+    });
+  });
+
+  it('a write naming a rank and a role that disagree is refused, not quietly fixed', async () => {
+    await withTxn(async ({ q }) => {
+      const { raider } = await seedTeam(q);
+      await expect(
+        q("update public.team_members set rank = 'assistant', role = 'officer' where id = $1", [raider.memberId])
+      ).rejects.toThrow(/team_members_rank_matches_role/);
+    });
+  });
+
   it('a new member named by rank alone gets the matching role', async () => {
     await withTxn(async ({ q }) => {
       const discordId = `discord-1645-${randomUUID()}`;
