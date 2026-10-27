@@ -554,19 +554,19 @@ const BOSS_GROUPS = {
   sentinel: 'main:has(.lineup-toggle)'
 };
 
-// A guild officer, for the Boss groups page's guild-wide "Edit cap" control
-// (#1244): raid_encounters has no team of its own, so this is not a plain
-// team officer ability.
-const GUILD_OFFICER_PERSON = {
+// A site admin, for the Boss groups page's "Edit cap" control (#1244): the
+// cap is Blizzard's, the same for every guild, so no guild role edits it
+// (#1324).
+const CAP_EDITOR_PERSON = {
   discordId: 'discord-officer-1',
   person: {
-    site_admin: false,
-    guild_officer: true,
+    site_admin: true,
+    guild_officer: false,
     boe_manager: false,
     teams: [{ team_id: 1, team_member_id: 1, role: 'officer', characters: [] }]
   }
 };
-const BOSS_GROUPS_GUILD_OFFICER = { ...BOSS_GROUPS, person: GUILD_OFFICER_PERSON };
+const BOSS_GROUPS_CAP_EDITOR = { ...BOSS_GROUPS, person: CAP_EDITOR_PERSON };
 
 // Attendance Manage (#1354, #1103 row 1): two raid nights, a WCL late flag
 // with no status yet, so every grid state is on the page axe measures.
@@ -1521,8 +1521,8 @@ const STATES = [
     click: 'role=button[name="Edit"]'
   },
   {
-    label: 'boss groups, guild officer, editing a boss cap',
-    ...BOSS_GROUPS_GUILD_OFFICER,
+    label: 'boss groups, site admin, editing a boss cap',
+    ...BOSS_GROUPS_CAP_EDITOR,
     click: 'role=button[name="Edit cap"]'
   },
   { label: 'loot priority, an item open', ...PRIORITY },

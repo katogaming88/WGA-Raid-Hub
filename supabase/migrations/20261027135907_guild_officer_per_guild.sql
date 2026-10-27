@@ -37,9 +37,12 @@
 --   team. Its two callers that do, set_encounter_cap() and
 --   set_guild_officer_bios(), write their own row, as create_guild() does.
 --
--- * Still "any guild", on purpose, because the thing they change is stored
---   once for the whole site, not per guild: boss caps (set_encounter_cap())
---   and the guild officer bio cards (set_guild_officer_bios(), moving to the
+-- * A boss's raider cap is Blizzard's number, not a guild's choice (Kat,
+--   2026-10-27): set_encounter_cap() is a site admin's only, and no guild
+--   role edits it.
+--
+-- * Still "any guild", on purpose, because it is stored once for the whole
+--   site: the guild officer bio cards (set_guild_officer_bios(), moving to the
 --   guild in #1647). is_guild_officer() itself stays for the current site's
 --   menus and the bio photo upload; no access rule or other function calls it,
 --   and tests/rls/guild-officer-per-guild.test.js fails if one starts to.
@@ -316,8 +319,9 @@ begin
     raise exception 'Not signed in';
   end if;
 
-  -- Any guild: the cap is stored once per boss for the whole site.
-  if not (public.is_guild_officer() or public.is_site_admin()) then
+  -- The cap is Blizzard's, the same for every guild: a site admin keeps it
+  -- right, and no guild role changes it (#1324).
+  if not public.is_site_admin() then
     raise exception 'Not authorized';
   end if;
 

@@ -154,9 +154,9 @@ describe('a guild officer acts in their own guild', () => {
   });
 });
 
-// Only these two may still ask "a guild officer in any guild": what they change
-// is stored once for the whole site (#1647 moves the bios to the guild).
-const ANY_GUILD_OK = ['set_encounter_cap', 'set_guild_officer_bios'];
+// Only this one may still ask "a guild officer in any guild": the bio cards
+// are stored once for the whole site until #1647 moves them to the guild.
+const ANY_GUILD_OK = ['set_guild_officer_bios'];
 
 describe('no check asks about any guild', () => {
   it('no access rule, view or other function calls is_guild_officer()', async () => {

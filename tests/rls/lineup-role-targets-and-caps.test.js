@@ -1,8 +1,7 @@
 // set_encounter_cap() and set_lineup_role_targets(), and the
 // team_lineup_settings table they back (#1244): a boss's cap override is
-// guild-wide reference data (raid_encounters has no team of its own), so it
-// is gated to guild officers and site admins rather than a team's own
-// officers. Role targets are per-team, gated the same way set_boss_group()
+// Blizzard's number, the same for every guild, so only a site admin sets it
+// (#1324); no team or guild role does. Role targets are per-team, gated the same way set_boss_group()
 // is.
 import { describe, it, expect } from 'vitest';
 import { withTxn, RAIDER_T1, OFFICER_T1, OFFICER_T2, GUILD_OFFICER, SITE_ADMIN } from './helpers.js';
@@ -27,19 +26,20 @@ const targetsOf = async (q, team = 1) =>
   (await q('select tanks_wanted, healers_wanted from public.team_lineup_settings where team_id = $1', [team])).rows[0];
 
 describe('set_encounter_cap()', () => {
-  it('lets a guild officer or a site admin set a boss cap, and clear it', async () => {
+  it('lets a site admin set a boss cap, and clear it', async () => {
     await withTxn(async ({ q, asUser }) => {
       await seed(q);
-      await setCap(asUser, GUILD_OFFICER, 25);
+      await setCap(asUser, SITE_ADMIN, 25);
       expect(await capOf(q)).toBe(25);
       await setCap(asUser, SITE_ADMIN, null);
       expect(await capOf(q)).toBeNull();
     });
   });
 
-  it('refuses a team officer, a team leader and a raider -- there is no team to check', async () => {
+  it('refuses a guild officer, a team officer and a raider', async () => {
     await withTxn(async ({ q, asUser }) => {
       await seed(q);
+      await expect(setCap(asUser, GUILD_OFFICER, 25)).rejects.toMatchObject({ message: /Not authorized/ });
       await expect(setCap(asUser, OFFICER_T1, 25)).rejects.toMatchObject({ message: /Not authorized/ });
       await expect(setCap(asUser, RAIDER_T1, 25)).rejects.toMatchObject({ message: /Not authorized/ });
       expect(await capOf(q)).toBeNull();
@@ -49,9 +49,9 @@ describe('set_encounter_cap()', () => {
   it('refuses a cap outside 1 to 30, and a boss that does not exist', async () => {
     await withTxn(async ({ q, asUser }) => {
       await seed(q);
-      await expect(setCap(asUser, GUILD_OFFICER, 0)).rejects.toMatchObject({ message: /between 1 and 30/ });
-      await expect(setCap(asUser, GUILD_OFFICER, 31)).rejects.toMatchObject({ message: /between 1 and 30/ });
-      await expect(asUser(GUILD_OFFICER, 'select public.set_encounter_cap(999999, 20)')).rejects.toMatchObject({
+      await expect(setCap(asUser, SITE_ADMIN, 0)).rejects.toMatchObject({ message: /between 1 and 30/ });
+      await expect(setCap(asUser, SITE_ADMIN, 31)).rejects.toMatchObject({ message: /between 1 and 30/ });
+      await expect(asUser(SITE_ADMIN, 'select public.set_encounter_cap(999999, 20)')).rejects.toMatchObject({
         message: /not in the raid list/
       });
     });
@@ -60,7 +60,7 @@ describe('set_encounter_cap()', () => {
   it('writes an audit entry with no team (guild-wide)', async () => {
     await withTxn(async ({ q, asUser }) => {
       await seed(q);
-      await setCap(asUser, GUILD_OFFICER, 25);
+      await setCap(asUser, SITE_ADMIN, 25);
       const row = (
         await q("select team_id, action, target_id, detail from public.audit_log where action = 'Set Boss Cap'")
       ).rows[0];

@@ -13,8 +13,9 @@ begin
     raise exception 'Not signed in';
   end if;
 
-  -- Any guild: the cap is stored once per boss for the whole site.
-  if not (public.is_guild_officer() or public.is_site_admin()) then
+  -- The cap is Blizzard's, the same for every guild: a site admin keeps it
+  -- right, and no guild role changes it (#1324).
+  if not public.is_site_admin() then
     raise exception 'Not authorized';
   end if;
 

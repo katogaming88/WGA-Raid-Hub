@@ -769,15 +769,18 @@ describe('the boss groups page', () => {
     expect(await screen.findByText('Role targets: 3 tanks · 6 healers')).toBeInTheDocument();
   });
 
-  it('offers no cap edit to a team officer, only to a guild officer or site admin', async () => {
-    renderApp(GROUPS, handlers(who('officer'), GROUPED));
+  it.each([
+    ['a team officer', who('officer')],
+    ['a guild officer', { ...who('officer'), guild_officer: true }]
+  ])('offers no cap edit to %s, only to a site admin', async (_, person) => {
+    renderApp(GROUPS, handlers(person, GROUPED));
     await groupsGrid();
     expect(screen.queryByRole('button', { name: 'Edit cap' })).not.toBeInTheDocument();
   });
 
-  it('lets a guild officer set a boss’s cap, for every team', async () => {
+  it('lets a site admin set a boss’s cap, for every team', async () => {
     const user = userEvent.setup();
-    const { client } = renderApp(GROUPS, handlers({ ...who('officer'), guild_officer: true }, GROUPED));
+    const { client } = renderApp(GROUPS, handlers({ ...who('officer'), site_admin: true }, GROUPED));
     const g = await groupsGrid();
     await user.click(
       within(g.getByRole('columnheader', { name: /Sszorak/ })).getByRole('button', { name: 'Edit cap' })

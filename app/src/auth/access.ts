@@ -120,8 +120,8 @@ export type Ability =
   | 'leadTeam'
   | 'adminSite'
   | 'manageBoe'
-  // Editing a raid boss's own data (its cap, #1244): raid_encounters is
-  // shared across every team, so this is guild-wide, not scoped to a team.
+  // Editing a raid boss's own data (its cap, #1244): the cap is Blizzard's,
+  // the same for every guild, so only a site admin keeps it right (#1324).
   | 'manageRaidReference'
   // The Guild officers page's bios (#1361): guild-wide, so a guild officer or
   // site admin, as set_guild_officer_bios() checks.
@@ -153,6 +153,7 @@ export function can(access: Access | null | undefined, ability: Ability, teamId?
     case 'manageTeams':
       return access.guildOfficer;
     case 'manageRaidReference':
+      return access.siteAdmin;
     case 'editGuildOfficers':
       return access.guildOfficer || access.siteAdmin;
   }
