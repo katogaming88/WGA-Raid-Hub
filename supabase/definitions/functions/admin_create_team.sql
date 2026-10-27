@@ -2,27 +2,27 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.admin_create_team(p_name text, p_slug text)
+CREATE OR REPLACE FUNCTION public.admin_create_team(p_name text, p_slug text, p_guild_id integer DEFAULT NULL::integer)
  RETURNS integer
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
 declare
+  v_guild integer;
   v_id integer;
-  v_guild_id integer;
 begin
   if not public.is_site_admin() then
     raise exception 'Not authorized';
   end if;
 
-  if (select count(*) from public.guilds) <> 1 then
-    raise exception 'admin_create_team needs a guild once there is more than one (#1045)';
+  v_guild := coalesce(p_guild_id, public.only_guild_id());
+  if not exists (select 1 from public.guilds where id = v_guild) then
+    raise exception 'There is no such guild';
   end if;
-  select id into v_guild_id from public.guilds;
 
   insert into public.teams (name, slug, guild_id)
-  values (p_name, p_slug, v_guild_id)
+  values (p_name, p_slug, v_guild)
   returning id into v_id;
 
   -- Every other write path (set_team_setting, fetchSupabaseSettings) assumes

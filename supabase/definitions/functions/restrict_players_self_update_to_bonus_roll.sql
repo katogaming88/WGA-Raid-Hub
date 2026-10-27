@@ -13,7 +13,7 @@ begin
   end if;
 
   if coalesce(public.my_team_role(new.team_id) = any (array['officer', 'team_leader']), false)
-     or public.is_guild_officer()
+     or public.is_guild_officer_of_team(new.team_id)
      or public.is_site_admin()
   then
     return new;

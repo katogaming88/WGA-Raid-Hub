@@ -16,8 +16,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
-| Revamp 4: cutover                  |      3 h 45 m |
-| **All revamp work**                | **120 h 41 m** |
+| Revamp 4: cutover                  |      4 h 10 m |
+| **All revamp work**                | **121 h 6 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -435,6 +435,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:40-12:55 PM | #1618 built: an approved main swap that brings a character back from the archive turns its wishlist and BiS exceptions off, one already on the roster keeps them; database tests red first (approve, on-roster, refused callers and a decline), generated definitions, decision log, stamp, changelog, this row | Revamp 3 (#1618) | 15 m | ~15 m build | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
 | 12:55-1:15 PM | PR #1685 (#1618): CodeRabbit (nothing to act on), the fresh-agent review (approved; four notes fixed: refused calls leave the swap waiting, the decision log names every path back including the old sheet import, RLS.md); merged 1:15 PM; #1487 row removed and totals redone | Revamp 3 (#1618) | 20 m | ~15 m build, ~5 m Kat | not read | |
 | 1:16-1:30 PM | #1676 built: VITE_PREVIEW_TEAMS on the preview deploy's build (not app/.env.production, which the browser tests build from); for anyone but a site admin the team picker, guild pages, "Also on" and the sidebar's team links show only the Sandbox, and a real team, BoE and Guild settings show "Not part of the test"; app tests (set, empty, site admin, signed out), screenshots, app-preview.md, the removal added to #1105, stamp, changelog, this row | Revamp 3 (#1676) | 15 m | ~15 m build | not read | Review and merge not yet counted |
+| 1:53-2:20 PM | #1324 built: a guild officer acts in their own guild (22 access rules and 23 functions rewritten by exact substitution, two helpers, resolve_person and incoming_roster, audit rows with no team for site admins); grants and Add Team take the guild; Site Admin page Guild pickers and columns; database tests (second guild), frontend tests, generated docs, decision log, RLS.md, stamp, changelog, this row | Revamp 4 (#1324) | 25 m | ~25 m build | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

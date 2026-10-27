@@ -13,7 +13,9 @@ begin
     raise exception 'Not signed in';
   end if;
 
-  if not (public.is_guild_officer() or public.is_site_admin()) then
+  -- The cap is Blizzard's, the same for every guild: a site admin keeps it
+  -- right, and no guild role changes it (#1324).
+  if not public.is_site_admin() then
     raise exception 'Not authorized';
   end if;
 
@@ -27,6 +29,7 @@ begin
 
   update raid_encounters set cap = p_cap where id = p_encounter_id;
 
-  perform public.write_audit_log(null, 'Set Boss Cap', 'raid_encounters', p_encounter_id, jsonb_build_object('cap', p_cap));
+  insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+  values (null, auth.uid(), 'Set Boss Cap', 'raid_encounters', p_encounter_id, jsonb_build_object('cap', p_cap));
 end;
 $function$;

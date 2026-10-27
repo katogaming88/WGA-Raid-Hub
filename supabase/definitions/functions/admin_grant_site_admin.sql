@@ -7,4 +7,4 @@ CREATE OR REPLACE FUNCTION public.admin_grant_site_admin(p_discord_id text)
  LANGUAGE sql
  SECURITY DEFINER
  SET search_path TO 'public'
-AS $function$ select admin_grant('site_admin', p_discord_id, 'site admin'); $function$;
+AS $function$ select admin_grant('site_admin', p_discord_id, 'site admin', (select min(id) from guilds)); $function$;

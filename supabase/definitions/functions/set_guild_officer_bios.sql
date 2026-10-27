@@ -11,6 +11,7 @@ AS $function$
 declare
   v_bios jsonb;
 begin
+  -- Any guild: the bio cards are stored once for the whole site until #1647.
   if not (public.is_site_admin() or public.is_guild_officer()) then
     raise exception 'Not authorized';
   end if;
@@ -20,13 +21,9 @@ begin
   where id = 1
   returning guild_officer_bios into v_bios;
 
-  perform public.write_audit_log(
-    null,
-    'Guild Officer Bios Saved',
-    'site_settings',
-    null,
-    jsonb_build_object('count', jsonb_array_length(p_bios))
-  );
+  insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+  values (null, auth.uid(), 'Guild Officer Bios Saved', 'site_settings', null,
+          jsonb_build_object('count', jsonb_array_length(p_bios)));
 
   return v_bios;
 end;

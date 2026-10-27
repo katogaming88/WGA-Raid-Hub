@@ -8,9 +8,14 @@ CREATE OR REPLACE FUNCTION public.only_guild_id()
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
+declare
+  v_count integer := (select count(*) from guilds);
 begin
-  if (select count(*) from guilds) <> 1 then
-    raise exception 'A grant needs a guild once there is more than one (#1045)';
+  if v_count = 0 then
+    raise exception 'There is no guild yet';
+  end if;
+  if v_count > 1 then
+    raise exception 'There is more than one guild, so say which guild this is for';
   end if;
   return (select id from guilds);
 end;

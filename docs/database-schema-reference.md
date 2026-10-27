@@ -312,7 +312,7 @@ The guild-wide grants: site admin, guild officer and BoE manager, one row per pe
 | ------------ | ----------- | ----------------------------------------------------------------------- |
 | `id`         | int4        | PK                                                                      |
 | `person_id`  | int4        | FK -> `people.id`. The account the grant applies to is the person's     |
-| `guild_id`   | int4        | FK -> `guilds.id`. Every grant is on the one guild until #1045           |
+| `guild_id`   | int4        | FK -> `guilds.id`. The guild the grant is for (#1324). A `site_admin` grant is site-wide and names the first guild, which nothing reads |
 | `grant_type` | text        | `site_admin`, `guild_officer` or `boe_manager`                          |
 | `created_at` | timestamptz | Row creation                                                            |
 

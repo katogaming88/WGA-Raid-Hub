@@ -12,6 +12,46 @@ answers to.
 
 ---
 
+## [3.216.0] - 2026-10-27
+
+### Frontend
+
+- Site Admin: Grant Guild Officer, Grant BoE Manager and New Team each
+  have a Guild picker, and the Guild Officers and BoE Managers lists
+  have a Guild column (#1324). Revoke removes the grant in that row's
+  guild only. Site admin stays site-wide, with no picker. With one guild
+  the picker holds just We Go Again.
+
+### Backend
+
+- A guild officer acts in their own guild only (#1324). The 22 access
+  rules and 23 functions that admitted a guild officer of any guild now
+  admit one of the row's or team's own guild, through two new helpers,
+  `my_guild_officer_team_ids()` and `is_guild_officer_of_team()`.
+  `resolve_person()` and `incoming_roster` follow the same rule, and
+  audit rows with no team are site admins' only. The guild officer bio
+  cards still take a guild officer of any guild, since they are stored
+  once for the whole site (#1647 moves them).
+- A boss's raider cap is Blizzard's number, so only a site admin sets it
+  now (`set_encounter_cap()`); a guild officer could before. The new
+  app's Edit cap button shows for site admins only.
+- Granting guild officer or BoE manager, their revokes, and
+  `admin_create_team()` take the guild (`p_guild_id`), defaulting to
+  the only guild while there is one; the grant lists return each
+  grant's `guild_id`. Migration `20261027135907_guild_officer_per_guild.sql`.
+
+### Project
+
+- Database tests for #1324: a second guild's grants, team creation, and
+  a guild officer reading, writing and calling team functions in each
+  guild with no reach into the other; a check that no rule, view or
+  other function asks about any guild. The decision log, RLS.md and
+  the schema reference updated; generated docs, definitions and types.
+- The new app's guild-creation switch says it stays shut until the
+  multi-guild work is done, no longer pointing at #1324. Boss groups'
+  Edit cap is a site admin's only (app and browser tests updated).
+- Revamp time log row for #1324.
+
 ## [3.215.0] - 2026-10-27
 
 ### Project

@@ -438,8 +438,9 @@ export function useSetLineupRoleTargets(teamId: number) {
 }
 
 // A boss's cap override (#1244): a flex fight like Nymrissa Wavecaller or
-// Kith'ix that allows more than the raid's own cap. Guild-wide, so it is not
-// scoped by team; null clears the override back to the raid's cap.
+// Kith'ix that allows more than the raid's own cap. Blizzard's number, the same
+// for every guild, so a site admin's to set (#1324); null clears the override
+// back to the raid's cap.
 export function useSetEncounterCap() {
   return useSupabaseMutation<void, { encounterId: number; cap: number | null }>(
     // p_cap is optional (default null): omitting it, rather than sending a

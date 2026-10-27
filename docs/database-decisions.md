@@ -10,6 +10,24 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-27 -- A grant belongs to a guild, and a guild officer acts in their own guild (#1324)
+
+Shipped: 20261027135907_guild_officer_per_guild.sql
+
+Every guild officer check asked `is_guild_officer()`, "a guild officer in any guild", and Grant Guild Officer, Grant BoE Manager, Grant Site Admin and Add Team worked out the guild by assuming there was only one. With a second guild the four buttons stopped, for We Go Again too, and a We Go Again guild officer could add a player to the other guild's roster (measured 2026-09-23).
+
+- **A guild officer grant, a BoE manager grant and a new team name their guild.** `admin_grant_guild_officer()`, `admin_grant_boe_manager()`, their revokes and `admin_create_team()` take `guild_id`. Left out it is the only guild while there is one, so no caller had to change at once, and an error naming the problem once there are two. A person can hold the same grant in two guilds (the unique key was already per guild), so the duplicate check and the revoke are per guild too. The lists return each grant's `guild_id`, and the Site Admin page has a Guild picker on those three forms and a Guild column on both lists.
+- **A site admin is site-wide.** `is_site_admin()` reads no guild, so its grant takes none: the row names the first guild because the column needs one, and its duplicate check and revoke ignore it.
+- **A guild officer reaches the teams of their own guilds.** Rules ask `my_guild_officer_team_ids()`, the once-per-query array (#1106); functions ask `is_guild_officer_of_team(team_id)`, which is never null so a missing team cannot slip through an `if not (...)`. The 22 rules and 23 functions were rewritten by exact substitution of the one call, so nothing else in them changed. `people` and `characters` have no team: a guild officer reads a person on a team in their guild, the shape the officer branch already had. `resolve_person()` lists only those teams, and `incoming_roster` shows pending signups to the signup's own guild.
+- **Audit rows with no team are site admins' only.** Grants, boss caps and bio saves log with no team, which belongs to no guild. No page shows them to a guild officer (the officer tab filters to a team; the Admin page is site admins only). `write_audit_log()` no longer lets a guild officer write one; `set_encounter_cap()` and `set_guild_officer_bios()` write their own row, as `create_guild()` does.
+- **A boss's raider cap is Blizzard's, so only a site admin sets it** (Kat, 2026-10-27). It is the same for every guild (regular Mythic is 20; a flex fight allows more), so no guild should set the maximum; a guild officer could before. Whether a team brings the maximum on a flex fight is the team's own choice, which this does not touch.
+- **One check stays "any guild", because it is stored once for the whole site:** the guild officer bio cards (`set_guild_officer_bios()`, which #1647 moves to the guild). `is_guild_officer()` also stays for deciding what to show (the current site's menus, the bio photo upload). `tests/rls/guild-officer-per-guild.test.js` fails if any other rule, view or function calls it.
+- **Not in this change:** `is_boe_manager()` still asks any guild; BoE grants are now per guild, and the BoE checks follow in #1647. The guild-creation switch stays shut until the rest of the Multi-guild milestone is done.
+
+[Full discussion -> #1324](https://github.com/katogaming88/WGA-Raid-Hub/issues/1324).
+
+---
+
 ## 2026-10-23 -- Add character: a member with no roster character adds their own; a main swap keeps an officer (#1463)
 
 Shipped: 20261026163945_add_own_character.sql
@@ -803,7 +821,7 @@ Step 2 of the plan in the 2026-09-14 entry below. Settled while building it:
 - **Nobody's access changes.** The read and write rules move across as they were: site admins read and write every grant, any officer or team leader reads the BoE manager grants (#766), and nobody else reads any. `is_site_admin()`, `is_guild_officer()`, `is_boe_manager()` and the nine `admin_*` functions keep their names, arguments, results and error wording.
 - **A grant has no account column; it reaches the account through the person.** The migration refuses to run if any grant's own `auth_user_id` differs from its person's, which is the check that "reads the person's account" answers exactly as "reads the grant's account" did. `link_auth_user_to_member()` no longer updates the three grant tables.
 - **The old names stay as read-only views until cutover**, readable only by the service role and the read-only database role. Nothing in either site reads them (the current site's admin page uses the `admin_*` functions); `boe-sold-webhook` reads `boe_managers` with the service role and moves off it when the views are dropped in step 6. Writes through them were not kept: only fixtures wrote the tables directly, and they now write `guild_grants`.
-- **Every grant sits on the one guild, and the checks still ask "in any guild".** Scoping a check to the guild being viewed is multi-tenancy (#1045). A new grant goes to `only_guild_id()`, which refuses once there is a second guild, as `admin_create_team()` does. This is the guild that the 2026-09-13 addresses entry said these grants would get here.
+- **Every grant sits on the one guild, and the checks still ask "in any guild".** Scoping a check to the guild being viewed is multi-tenancy (#1045; done in #1324, 2026-10-27). A new grant goes to `only_guild_id()`, which refuses once there is a second guild, as `admin_create_team()` does. This is the guild that the 2026-09-13 addresses entry said these grants would get here.
 - **One body per operation.** `admin_list_grants(type)`, `admin_grant(type, discord_id, label)` and `admin_revoke(type, discord_id, label)` hold the logic; the nine named functions are one-line wrappers, so the three copies cannot drift. The wrappers are what `authenticated` can execute; the shared bodies are not.
 - **Audit rows keep their action names** (`site_admin_granted`, `boe_manager_revoked`, ...) and target types. Their `target_id` is now a `guild_grants` id; older rows name the old table's id. Neither resolves to a name in the Admin tab's log, which reads the Discord id from `detail`.
 
@@ -1140,7 +1158,7 @@ The schema half of the address decision below (#1100). Settled while building it
 - **Retired keys are written by trigger on `guilds` and `teams`**, not by the admin functions, so a key changed from a migration or the service role is kept too. Changing a key back to one it used to have removes it from the retired list. A current key always wins over a retired one; among retired keys, the most recent wins.
 - **No new write path for keys.** Guilds have no client write access at all, and team keys are already set only through the site-admin functions `admin_create_team()` and `admin_update_team()`, so "only a site admin can set a readable key" held without adding anything.
 - **Key format**: lowercase letters, digits and single hyphens, 2 to 32 characters, as a CHECK on both tables. Random keys and codes are 8 characters from `[a-z0-9]`, from `pgcrypto`'s `gen_random_bytes`. A collision (odds about 1 in 2.8 trillion per pair) is not retried; the unique constraint turns it into an error.
-- **Guild-wide grants stay unscoped for now.** `guild_officers`, `boe_managers` and `site_admins` get a guild when #942's `guild_grants` replaces them; nothing needs a second guild before then. `admin_create_team()` refuses to guess once a second guild exists, and #1045 adds the argument.
+- **Guild-wide grants stay unscoped for now** (scoped in #1324, 2026-10-27). `guild_officers`, `boe_managers` and `site_admins` get a guild when #942's `guild_grants` replaces them; nothing needs a second guild before then. `admin_create_team()` refuses to guess once a second guild exists, and #1045 adds the argument.
 - **Still site-wide for now**, noted for #1045: `teams.name` is unique across all guilds, and a few current-site paths look a team up by slug alone (`?team=`, Edge Functions). Both are correct while there is one guild.
 
 ## 2026-09-13 -- one per-account preferences store instead of a table per flag (#940)

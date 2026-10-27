@@ -2,13 +2,14 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): none
 
-CREATE OR REPLACE FUNCTION public.admin_revoke(p_grant_type text, p_discord_id text, p_label text)
+CREATE OR REPLACE FUNCTION public.admin_revoke(p_grant_type text, p_discord_id text, p_label text, p_guild_id integer)
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
 declare
+  v_guild integer;
   v_id integer;
 begin
   if not public.is_site_admin() then
@@ -20,17 +21,23 @@ begin
     raise exception 'Cannot revoke the last remaining site admin';
   end if;
 
+  if p_grant_type <> 'site_admin' then
+    v_guild := coalesce(p_guild_id, only_guild_id());
+  end if;
+
   delete from guild_grants g
    using people p
    where p.id = g.person_id
      and p.discord_id = p_discord_id
      and g.grant_type = p_grant_type
+     and (p_grant_type = 'site_admin' or g.guild_id = v_guild)
   returning g.id into v_id;
 
   if v_id is null then
     raise exception 'That Discord account does not have % access', p_label;
   end if;
 
-  perform write_audit_log(null, p_grant_type || '_revoked', p_grant_type, v_id, jsonb_build_object('discord_id', p_discord_id));
+  perform write_audit_log(null, p_grant_type || '_revoked', p_grant_type, v_id,
+    jsonb_build_object('discord_id', p_discord_id, 'guild_id', v_guild));
 end;
 $function$;
