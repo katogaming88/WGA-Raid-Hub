@@ -28,8 +28,10 @@ answers to.
 
 ### Functions
 
-- `wcl-sync` and `blizzard-gear-sync` ask the team's "Import loot, edit
-  priority and scoring" permission instead of the officer role (#1646).
+- `wcl-sync` and `blizzard-gear-sync` ask the team's permission instead
+  of the officer role (#1646): "Attendance and bench" for pulling
+  attendance from logs, "Import loot, edit priority and scoring" for
+  everything else.
 
 ### Project
 

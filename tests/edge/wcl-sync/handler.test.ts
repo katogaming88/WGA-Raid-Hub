@@ -135,6 +135,15 @@ Deno.test(
   }
 );
 
+Deno.test('refreshAttendance asks the attendance permission, not the loot one (#1646)', async () => {
+  const { deps, rpcCalls } = clientFactory();
+  await handle(post({ action: 'refreshAttendance', teamId: 1 }, { Authorization: OFFICER_AUTH }), deps);
+  assertEquals(rpcCalls[0], {
+    name: 'has_team_permission',
+    args: { p_team_id: 1, p_permission: 'attendance' }
+  });
+});
+
 // The report window (#1269): the current tier's start date as Eastern
 // midnight, the instant the reports query filters on. The fake answers
 // rpc('current_season') and one seasons row by code, recording the row read;

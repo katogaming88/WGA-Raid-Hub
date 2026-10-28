@@ -1217,12 +1217,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // The caller's own JWT rather than the service role, so RLS and
     // has_team_permission resolve exactly as they would for a direct
     // frontend call -- see the file header comment for why. Built in
-    // deps.ts. Scoring and progress are the grid's "Import loot, edit
-    // priority and scoring" (#1646).
+    // deps.ts. Attendance from logs is the grid's "Attendance and bench";
+    // everything else here is scoring or the season tab's lookups, "Import
+    // loot, edit priority and scoring" (#1646).
     const supabase = deps.supabase(authHeader);
 
     const [{ data: allowed }, { data: isSiteAdmin }] = await Promise.all([
-      supabase.rpc('has_team_permission', { p_team_id: teamId, p_permission: 'manage_loot' }),
+      supabase.rpc('has_team_permission', {
+        p_team_id: teamId,
+        p_permission: action === 'refreshAttendance' ? 'attendance' : 'manage_loot'
+      }),
       supabase.rpc('is_site_admin')
     ]);
     const authorized = allowed === true || isSiteAdmin === true;
