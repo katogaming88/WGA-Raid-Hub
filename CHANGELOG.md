@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.222.1] - 2026-10-28
+
+### Project
+
+- `docs/RLS.md` states the read rule a new table lands with: public only
+  for reference data the same for every guild, otherwise members of the
+  guild or narrower (#1286). The table-by-table list for cutover is on
+  #1286, and the move is #1699.
+
+---
+
 ## [3.222.0] - 2026-10-28
 
 ### Backend
