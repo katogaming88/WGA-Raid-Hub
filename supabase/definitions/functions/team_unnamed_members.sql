@@ -14,7 +14,7 @@ begin
   -- officer anywhere and hand one guild's sign-in names to another (#1643's
   -- rule, CodeRabbit on this function).
   if not (
-    coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false)
+    public.has_team_permission(p_team_id, 'edit_roster')
     or public.is_site_admin()
     or exists (select 1 from public.teams t where t.id = p_team_id and public.is_guild_officer_of(t.guild_id))
   ) then

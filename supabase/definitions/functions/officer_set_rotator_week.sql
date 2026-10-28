@@ -18,7 +18,7 @@ begin
   end if;
 
   if not (
-    coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false)
+    public.has_team_permission(p_team_id, 'attendance')
     or public.is_guild_officer_of_team(p_team_id)
     or public.is_site_admin()
   ) then

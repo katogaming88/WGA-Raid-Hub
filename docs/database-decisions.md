@@ -10,6 +10,23 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-27 -- Roster, schedule, attendance, signup and report checks ask the team grid's permission (#1646, part 1)
+
+Shipped: 20261027192144_team_checks_ask_permission.sql
+
+The first half of moving the "officer or team leader" checks onto #1645's ranks, so an Assistant can help run raids before cutover. Loot, priority, settings and the team-leader-only checks are part 2.
+
+- **Which permission each check asks:** `edit_roster` for players, names, officer notes, memberships, people and characters on the team, main swaps, removal reasons, invite links and the Battle.net and unnamed-member lookups; `edit_schedule` for the schedule, its exceptions and settings, lineups, boss picks and boss groups; `see_rsvps` for everyone's RSVPs; `attendance` for attendance, raid night participation, the rotator week and setting someone's RSVP (bench); `manage_signups` for season signups, and with `edit_roster` as well for adding one to the roster (the roster functions it calls ask that); `view_reports` for raid reports and kills.
+- **One lookup per query, as before.** The table rules call `my_permission_team_ids('<permission>')`, an array of the caller's teams with that permission, wrapped in `(select ...)` so it runs once per query like `my_officer_team_ids()` did (#1106). It takes only a constant name, which the rule-shape test allows. `has_team_permission()` now asks it, so the two cannot disagree.
+- **`write_audit_log()` lets in anyone with a team permission that changes something** (`edit_roster`, `edit_schedule`, `attendance`, `manage_signups`, `manage_loot`, `pay_boe_cuts`, `promote_assistants`), because every officer-side action logs through it. A read-only permission (RSVPs, reports, loot, the audit log) does not, so it cannot add rows that look like someone did something (CodeRabbit).
+- **Archiving an Assistant also asks `promote_assistants`**, because they come back a Raider, so it takes the rank away; on the default grid that is Officers and the Team Owner, not another Assistant (fresh-agent review). A guild officer of the team's guild still can, as before (CodeRabbit).
+- **Identity reads follow `edit_roster`:** `team_members`, `people` and `characters` on the team, and `resolve_person()`, which still shows the BoE Manager flag only to the callers who saw it before (the person, site admins, any officer or team leader, guild officers; CodeRabbit). A team whose grid turned `edit_roster` off for a rank would hide them from that rank's other pages; nothing can change a grid until the grid page exists.
+- **The guild officer and site admin arms are untouched** (the next issue), and so is the current site: an Assistant is a raider there, and Officers and Team Owners pass exactly what officers and team leaders did.
+
+[Full discussion -> #1646](https://github.com/katogaming88/WGA-Raid-Hub/issues/1646).
+
+---
+
 ## 2026-10-27 -- Guild and team ranks, with each rank's permissions stored, kept in step with today's roles (#1645)
 
 Shipped: 20261027160445_guild_and_team_ranks.sql

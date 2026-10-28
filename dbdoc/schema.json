@@ -12732,6 +12732,12 @@
       "return_type": "bool",
       "arguments": "p_guild_id integer, p_permission text",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_permission_team_ids",
+      "return_type": "_int4",
+      "arguments": "p_permission text",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

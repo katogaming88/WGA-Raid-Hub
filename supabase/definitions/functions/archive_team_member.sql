@@ -11,11 +11,12 @@ AS $function$
 declare
   v_team_id integer;
   v_role text;
+  v_rank text;
   v_archived_at timestamptz;
   v_player_ids integer[];
 begin
   if not (
-    p_team_id = any (public.my_officer_team_ids())
+    public.has_team_permission(p_team_id, 'edit_roster')
     or public.is_guild_officer_of_team(p_team_id)
     or public.is_site_admin()
   ) then
@@ -30,7 +31,7 @@ begin
 
   -- Locked, so two archives of the same person cannot both pass the
   -- already-archived check below.
-  select team_id, role, archived_at into v_team_id, v_role, v_archived_at
+  select team_id, role, rank, archived_at into v_team_id, v_role, v_rank, v_archived_at
     from public.team_members where id = p_team_member_id
     for update;
   if v_team_id is null or v_team_id <> p_team_id then
@@ -47,6 +48,13 @@ begin
   if v_role = 'officer'
      and not (coalesce(public.my_team_role(p_team_id) = 'team_leader', false) or public.is_site_admin()) then
     raise exception 'Only the team leader or a site admin can archive an officer';
+  end if;
+  -- An Assistant comes back a Raider, so archiving one takes the rank away,
+  -- which is the grid's "Promote raiders to Assistant and back" (#1646).
+  if v_rank = 'assistant'
+     and not (public.has_team_permission(p_team_id, 'promote_assistants')
+              or public.is_guild_officer_of_team(p_team_id) or public.is_site_admin()) then
+    raise exception 'Only someone who can promote Assistants can archive one';
   end if;
 
   if v_archived_at is not null then

@@ -24,7 +24,7 @@ begin
     raise exception 'No main swap with id %', p_request_id;
   end if;
 
-  if not (coalesce(public.my_team_role(v_request.team_id) = any (array['officer', 'team_leader']), false)
+  if not (public.has_team_permission(v_request.team_id, 'edit_roster')
           or public.is_guild_officer_of_team(v_request.team_id)
           or public.is_site_admin()) then
     raise exception 'Not authorized';

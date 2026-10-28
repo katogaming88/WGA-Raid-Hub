@@ -33,8 +33,11 @@ begin
   -- script; anon cannot call it. An unknown signup has no team, so it is
   -- refused here too, except to a site admin, who is told below.
   select team_id into v_team_id from public.season_signups where id = p_signup_id;
+  -- Adding a signup is a roster edit too, and restore_team_member() and
+  -- hold_team_member() below ask edit_roster, so this asks both (#1646).
   if auth.uid() is not null and not (
-    coalesce(public.my_team_role(v_team_id) = any (array['officer', 'team_leader']), false)
+    (public.has_team_permission(v_team_id, 'manage_signups')
+     and public.has_team_permission(v_team_id, 'edit_roster'))
     or public.is_site_admin()
   ) then
     raise exception 'Not authorized';

@@ -18,7 +18,7 @@ begin
   select team_id into v_team_id from public.team_members where id = p_team_member_id;
   if v_team_id is null
      or not (auth.uid() is null
-             or v_team_id = any (public.my_officer_team_ids())
+             or public.has_team_permission(v_team_id, 'edit_roster')
              or public.is_guild_officer_of_team(v_team_id)
              or public.is_site_admin()) then
     raise exception 'Not authorized';

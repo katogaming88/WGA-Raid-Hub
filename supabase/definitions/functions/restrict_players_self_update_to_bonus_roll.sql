@@ -12,7 +12,7 @@ begin
     return new;
   end if;
 
-  if coalesce(public.my_team_role(new.team_id) = any (array['officer', 'team_leader']), false)
+  if public.has_team_permission(new.team_id, 'edit_roster')
      or public.is_guild_officer_of_team(new.team_id)
      or public.is_site_admin()
   then

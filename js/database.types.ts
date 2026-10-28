@@ -4590,6 +4590,10 @@ export type Database = {
       my_guild_officer_team_ids: { Args: never; Returns: number[] }
       my_leader_team_ids: { Args: never; Returns: number[] }
       my_officer_team_ids: { Args: never; Returns: number[] }
+      my_permission_team_ids: {
+        Args: { p_permission: string }
+        Returns: number[]
+      }
       my_person_id: { Args: never; Returns: number }
       my_player_ids: { Args: never; Returns: number[] }
       my_recent_own_add: {

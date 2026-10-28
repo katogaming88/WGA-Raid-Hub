@@ -16,7 +16,10 @@ begin
     raise exception 'Not signed in';
   end if;
 
-  if not (coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false) or public.is_site_admin() or public.is_guild_officer_of_team(p_team_id)) then
+  if not (exists (select 1 from public.rank_permissions k
+                  where k.permission in ('edit_roster', 'edit_schedule', 'attendance', 'manage_signups',
+                                         'manage_loot', 'pay_boe_cuts', 'promote_assistants')
+                    and public.has_team_permission(p_team_id, k.permission)) or public.is_site_admin() or public.is_guild_officer_of_team(p_team_id)) then
     raise exception 'Not authorized';
   end if;
 
