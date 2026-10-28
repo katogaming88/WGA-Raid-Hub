@@ -1132,7 +1132,7 @@ function _escAttr(str) {
 // #223 stage 1: these two used to call GAS (?action=getWclZoneEncounters /
 // ?action=fetchWclProgression); both now go through the wcl-sync Edge
 // Function instead, which forwards this session's own JWT so the function's
-// officer/team_leader/site_admin check runs as this user (see the function's
+// permission/site_admin check runs as this user (see the function's
 // own header comment for why no service-role key is involved).
 // getZoneEncounters queries WCL's static zone/encounter data (worldData.zone),
 // not the guild's own reports -- unlike fetchWclForRaid()/fetchProgression

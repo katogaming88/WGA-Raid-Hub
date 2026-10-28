@@ -120,13 +120,28 @@ Deno.test('a valid body with no Authorization header is not signed in, and no cl
   assertEquals(built, []);
 });
 
-Deno.test('a signed-in caller with no role on the team is not authorized, after both gate reads ran', async () => {
-  const { deps, built, rpcCalls } = clientFactory();
-  const res = await handle(post({ action: 'refreshPerformance', teamId: 1 }, { Authorization: OFFICER_AUTH }), deps);
-  assertEquals(await json(res), refusal('Not authorized'));
-  assertEquals(built, [OFFICER_AUTH]);
-  assertEquals(rpcCalls[0], { name: 'my_team_role', args: { p_team_id: 1 } });
-  assertEquals(rpcCalls[1].name, 'is_site_admin');
+Deno.test(
+  'a signed-in caller without the loot permission on the team is not authorized, after both gate reads ran',
+  async () => {
+    const { deps, built, rpcCalls } = clientFactory();
+    const res = await handle(post({ action: 'refreshPerformance', teamId: 1 }, { Authorization: OFFICER_AUTH }), deps);
+    assertEquals(await json(res), refusal('Not authorized'));
+    assertEquals(built, [OFFICER_AUTH]);
+    assertEquals(rpcCalls[0], {
+      name: 'has_team_permission',
+      args: { p_team_id: 1, p_permission: 'manage_loot' }
+    });
+    assertEquals(rpcCalls[1].name, 'is_site_admin');
+  }
+);
+
+Deno.test('refreshAttendance asks the attendance permission, not the loot one (#1646)', async () => {
+  const { deps, rpcCalls } = clientFactory();
+  await handle(post({ action: 'refreshAttendance', teamId: 1 }, { Authorization: OFFICER_AUTH }), deps);
+  assertEquals(rpcCalls[0], {
+    name: 'has_team_permission',
+    args: { p_team_id: 1, p_permission: 'attendance' }
+  });
 });
 
 // The report window (#1269): the current tier's start date as Eastern

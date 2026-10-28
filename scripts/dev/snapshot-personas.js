@@ -130,3 +130,22 @@ select p.team_id,
 
 select name as persona from persona order by team_id nulls last, name;
 `;
+
+// From #1645 a team has one Team Owner, and from #1646 only the owner passes
+// the team leader checks (settings, season start, roles). The real owners have
+// no account on a snapshot, so each team's leader persona takes the team over
+// and the real one becomes an Officer. A separate batch, run after the
+// branch's migrations: a dump older than #1645 has no rank until then, and
+// #1645's backfill gives each team to its earliest leader, the real one. A
+// persona is the only 20-digit Discord id starting with 9 (see above).
+export const OWNERS_SQL = `
+update public.team_members set rank = 'officer'
+ where rank = 'owner' and archived_at is null
+   and team_id in (select team_id from public.team_members
+                    where role = 'team_leader' and archived_at is null
+                      and length(discord_id) = 20 and discord_id like '9%');
+
+update public.team_members set rank = 'owner'
+ where role = 'team_leader' and archived_at is null
+   and length(discord_id) = 20 and discord_id like '9%';
+`;

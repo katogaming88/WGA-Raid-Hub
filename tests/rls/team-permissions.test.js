@@ -1,7 +1,7 @@
-// #1646: the roster, schedule, RSVP, attendance, signup and report checks ask
-// the team grid's permission (#1645), so an Assistant can run raids, can't
-// make loot decisions, and a permission switched off on a team's grid
-// refuses at once.
+// #1646: the team checks ask the team grid's permission (#1645), so an
+// Assistant can run raids and read loot but can't make loot decisions, team
+// settings are the Team Owner's, and a permission switched off on a team's
+// grid refuses at once.
 import { describe, it, expect, afterAll } from 'vitest';
 import {
   pool,
@@ -12,7 +12,8 @@ import {
   seedSignup,
   grantGuild,
   RLS_DENIED,
-  GUILD_OFFICER
+  GUILD_OFFICER,
+  SITE_ADMIN
 } from './helpers.js';
 
 afterAll(() => pool.end());
@@ -122,6 +123,189 @@ describe('team permissions (#1646)', () => {
 
       expect(await boeManager(assistant.uid)).toBe(false);
       expect(await boeManager(team.officer.uid)).toBe(true);
+    });
+  });
+
+  it('an Assistant reads wishlists and BiS requests but cannot act on them or read the audit log', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const assistant = await seedAssistant(q, team.teamId);
+      const player = await seedPlayer(q, { teamId: team.teamId });
+      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values ($1, $2, 1, 'bis')", [
+        team.teamId,
+        player
+      ]);
+      const request = (
+        await q(
+          "insert into public.bis_requests (team_id, player_id, bis_link) values ($1, $2, 'https://example.com/t') returning id",
+          [team.teamId, player]
+        )
+      ).rows[0].id;
+      await q("insert into public.audit_log (team_id, action) values ($1, 'fixture')", [team.teamId]);
+      const count = async (uid, table) =>
+        (await asUser(uid, `select count(*)::int as n from public.${table} where team_id = $1`, [team.teamId])).rows[0]
+          .n;
+
+      expect(await count(assistant.uid, 'item_preferences')).toBe(1);
+      expect(await count(assistant.uid, 'bis_requests')).toBe(1);
+      expect(await count(assistant.uid, 'audit_log')).toBe(0);
+      expect(await count(team.officer.uid, 'audit_log')).toBeGreaterThan(0);
+      expect(await count(team.raider.uid, 'bis_requests')).toBe(0);
+
+      const reject = (uid) =>
+        asUser(uid, "update public.bis_requests set status = 'rejected' where id = $1 returning id", [request]);
+      expect((await reject(assistant.uid)).rowCount).toBe(0);
+      expect((await reject(team.officer.uid)).rowCount).toBe(1);
+    });
+  });
+
+  it("team settings are the Team Owner's: a second team leader is an Officer by rank", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const coLeader = await seedMember(q, { teamId: team.teamId, role: 'team_leader' });
+      expect((await q('select rank from public.team_members where id = $1', [coLeader.memberId])).rows[0].rank).toBe(
+        'officer'
+      );
+      const write = (uid) =>
+        asUser(
+          uid,
+          `update public.team_settings set config = '{"minted": true}' where team_id = $1 returning team_id`,
+          [team.teamId]
+        );
+
+      expect((await write(coLeader.uid)).rowCount).toBe(0);
+      await expect(
+        asUser(coLeader.uid, "select public.admin_grant_team_role($1, $2, 'officer')", [
+          team.teamId,
+          team.raider.discordId
+        ])
+      ).rejects.toThrow(/Not authorized/);
+      expect((await write(team.officer.uid)).rowCount).toBe(0);
+      expect((await write(team.leader.uid)).rowCount).toBe(1);
+    });
+  });
+
+  it('a team handed over on the current site keeps an owner: the next team leader takes it', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      const team = await seedTeam(q);
+      // A co-leader listed but never signed in does not take the team ahead
+      // of one who has, though their membership is the earlier one.
+      const unlinked = (
+        await q(
+          "insert into public.team_members (team_id, discord_id, role) values ($1, $2, 'team_leader') returning id",
+          [team.teamId, `fixture-unlinked-${team.teamId}`]
+        )
+      ).rows[0].id;
+      const successor = await seedMember(q, { teamId: team.teamId });
+      const setRole = (id, role) =>
+        asUser(team.leader.uid, 'update public.team_members set role = $2 where id = $1', [id, role]);
+      const rank = async (id) => (await q('select rank from public.team_members where id = $1', [id])).rows[0].rank;
+      const writeSettings = (uid) =>
+        asUser(
+          uid,
+          `update public.team_settings set config = '{"minted": true}' where team_id = $1 returning team_id`,
+          [team.teamId]
+        );
+
+      // Nobody but the owner changes a role: an Officer, another team's
+      // owner and someone signed out change nothing.
+      const other = await seedTeam(q);
+      const promote = "update public.team_members set role = 'team_leader' where id = $1";
+      expect((await asUser(team.officer.uid, promote, [successor.memberId])).rowCount).toBe(0);
+      expect((await asUser(other.leader.uid, promote, [successor.memberId])).rowCount).toBe(0);
+      expect((await asAnon(promote, [successor.memberId]).catch(() => ({ rowCount: 0 }))).rowCount).toBe(0);
+      expect(await rank(successor.memberId)).toBe('raider');
+
+      await setRole(successor.memberId, 'team_leader');
+      expect(await rank(successor.memberId)).toBe('officer');
+      await setRole(team.leader.memberId, 'officer');
+
+      expect(await rank(team.leader.memberId)).toBe('officer');
+      expect(await rank(successor.memberId)).toBe('owner');
+      expect(await rank(unlinked)).toBe('officer');
+      expect((await writeSettings(successor.uid)).rowCount).toBe(1);
+      expect((await writeSettings(team.leader.uid)).rowCount).toBe(0);
+    });
+  });
+
+  it('an owner who leaves with no other team leader leaves the team to a site admin', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      const team = await seedTeam(q);
+      const other = await seedTeam(q);
+      const archiveOwner = "select public.archive_team_member($1, $2, 'other', null)";
+      const args = [team.teamId, team.leader.memberId];
+      await expect(asUser(team.officer.uid, archiveOwner, args)).rejects.toThrow(/site admin/);
+      await expect(asUser(other.leader.uid, archiveOwner, args)).rejects.toThrow(/Not authorized/);
+      await expect(asAnon(archiveOwner, args)).rejects.toThrow(/permission denied|Not authorized/);
+      expect(
+        (await q('select archived_at from public.team_members where id = $1', [team.leader.memberId])).rows[0]
+          .archived_at
+      ).toBeNull();
+
+      await asUser(SITE_ADMIN, "select public.archive_team_member($1, $2, 'other', null)", [
+        team.teamId,
+        team.leader.memberId
+      ]);
+      const owners = await q(
+        "select count(*)::int as n from public.team_members where team_id = $1 and rank = 'owner' and archived_at is null",
+        [team.teamId]
+      );
+      expect(owners.rows[0].n).toBe(0);
+      expect(
+        (await q('select rank from public.team_members where id = $1', [team.officer.memberId])).rows[0].rank
+      ).toBe('officer');
+    });
+  });
+
+  it("Import loot switched off refuses an Officer's loot writes at once", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const player = await seedPlayer(q, { teamId: team.teamId });
+      const writeLoot = (uid) =>
+        asUser(
+          uid,
+          `insert into public.rclc_loot (team_id, player_id, item_id, track, season)
+           values ($1, $2, 1, 'Myth', 'seed-season') returning id`,
+          [team.teamId, player]
+        );
+      expect((await writeLoot(team.officer.uid)).rowCount).toBe(1);
+
+      await switchOff(q, team.teamId, 'officer', ['manage_loot']);
+      await expect(writeLoot(team.officer.uid)).rejects.toMatchObject({ code: RLS_DENIED });
+      await expect(
+        asUser(team.officer.uid, "select public.import_rclc_loot($1, 'seed-season', '[]'::jsonb)", [team.teamId])
+      ).rejects.toThrow(/Not authorized/);
+      expect((await writeLoot(team.leader.uid)).rowCount).toBe(1);
+    });
+  });
+
+  it('Attendance alone reads the lineup it is taken against', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await q(`insert into public.raid_zones (id, wcl_zone_id, name, season, sort_index)
+               values (9001, 99001, 'Test Raid', 'MID2', 0)`);
+      await q(`insert into public.raid_encounters (id, zone_id, wcl_encounter_id, name, sort_index)
+               values (9102, 9001, 99102, 'First Boss', 1)`);
+      const player = await seedPlayer(q, { teamId: team.teamId });
+      await q(
+        "insert into public.raid_night_bosses (team_id, raid_date, encounter_id, position) values ($1, '2026-08-01', 9102, 1)",
+        [team.teamId]
+      );
+      await q(
+        "insert into public.raid_night_lineups (team_id, raid_date, encounter_id, player_id) values ($1, '2026-08-01', 9102, $2)",
+        [team.teamId, player]
+      );
+      await switchOff(q, team.teamId, 'officer', ['edit_schedule']);
+      const visible = async (uid) => {
+        const n = async (table) =>
+          (await asUser(uid, `select count(*)::int as n from public.${table} where team_id = $1`, [team.teamId]))
+            .rows[0].n;
+        return [await n('raid_night_bosses'), await n('raid_night_lineups')];
+      };
+
+      expect(await visible(team.officer.uid)).toEqual([1, 1]);
+      await switchOff(q, team.teamId, 'officer', ['attendance']);
+      expect(await visible(team.officer.uid)).toEqual([0, 0]);
     });
   });
 

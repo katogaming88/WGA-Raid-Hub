@@ -12,7 +12,7 @@ declare
   v_count integer;
   v_departed text;
 begin
-  if not (coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false) or public.is_site_admin()) then
+  if not (public.has_team_permission(p_team_id, 'manage_loot') or public.is_site_admin()) then
     raise exception 'Not authorized';
   end if;
   if p_track not in ('Hero', 'Myth') then

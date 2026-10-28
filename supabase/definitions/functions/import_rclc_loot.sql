@@ -34,7 +34,7 @@ declare
   c_hero_bonus_ids constant integer[] := array[12841,12842,12843,12844,12845,12846];
   c_myth_bonus_ids constant integer[] := array[12849,12850,12851,12852,12853,12854,13848];
 begin
-  if not (coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false) or public.is_site_admin()) then
+  if not (public.has_team_permission(p_team_id, 'manage_loot') or public.is_site_admin()) then
     raise exception 'Not authorized';
   end if;
 

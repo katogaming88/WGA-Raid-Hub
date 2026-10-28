@@ -507,8 +507,8 @@ function buildLootImportTab() {
 // Corrects which player a raid-awarded rclc_loot row is attributed to, for
 // the case where loot council awarded it to one raider and it was then
 // traded in-game per a prior agreement. rclc_loot already has a full officer
-// RLS write policy (USING/WITH CHECK on my_team_role in officer/team_leader,
-// or is_site_admin -- no is_guild_officer() clause), so this is a plain
+// RLS write policy (USING/WITH CHECK on the team's manage_loot permission
+// since #1646, or is_site_admin -- no is_guild_officer() clause), so this is a plain
 // client UPDATE plus an audit log entry, same as toggleReportExcluded()
 // (js/tabs/tab-attendance.js) -- no new RPC or migration needed. The
 // "received" badges elsewhere (getLootEntry()/DATA.lootCounts) are computed

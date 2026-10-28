@@ -12,6 +12,44 @@ answers to.
 
 ---
 
+## [3.219.0] - 2026-10-27
+
+### Frontend
+
+- Code comments on the current site name the team permissions the database
+  now checks instead of "officer or team leader" (#1646). No visible change.
+
+### Backend
+
+- Loot, priority, scoring, BoE, audit log and team-leader checks ask the
+  team's permission (#1646, part 2), so no team-level check asks "officer
+  or team leader" any more. An Assistant can read wishlists, BiS, M+ and
+  received-item requests and the RCLC export, but cannot change loot,
+  priority or scoring, act on a request, see the audit log or pay BoE
+  cuts. The team-leader-only checks (team settings, season start,
+  granting and revoking roles, archiving an officer) are the Team
+  Owner's. Every team's one team leader is its Team Owner, so nobody's
+  access changes on the current site. "Attendance and bench" also reads
+  the night's lineup, which attendance is taken against. Handing a team
+  over on the current site (make someone team leader, then step down)
+  makes them the Team Owner, so the team is never left without one while
+  it has a team leader.
+
+### Functions
+
+- `wcl-sync` and `blizzard-gear-sync` ask the team's permission instead
+  of the officer role (#1646): "Attendance and bench" for pulling
+  attendance from logs, "Import loot, edit priority and scoring" for
+  everything else.
+
+### Project
+
+- Database and Edge Function tests for part 2; two older tests that had a
+  second team leader act now have the Team Owner act; a restored snapshot
+  makes each team's leader persona its Team Owner; decision log and
+  RLS.md.
+- Revamp time log rows for #1646.
+
 ## [3.218.0] - 2026-10-27
 
 ### Backend

@@ -22,7 +22,7 @@
 // fixture no other file can be asked to stay away from.
 import { describe, it, expect, afterAll } from 'vitest';
 import { pool, withTxn } from './helpers.js';
-import { PERSONAS_SQL } from '../../scripts/dev/snapshot-personas.js';
+import { PERSONAS_SQL, OWNERS_SQL } from '../../scripts/dev/snapshot-personas.js';
 
 afterAll(() => pool.end());
 
@@ -50,6 +50,7 @@ function onSnapshot(fn) {
       players: (await q(SEEDED.players)).rows[0].n
     };
     await q(PERSONAS_SQL);
+    await q(OWNERS_SQL);
     return fn({ ...txn, before });
   });
 }
@@ -144,6 +145,10 @@ describe('the persona batch on a snapshot-shaped stack (#1065)', () => {
       expect(await role(officer, 2)).toBeNull();
       expect(await role(leader, 2)).toBe('team_leader');
       expect(await role(leader, 1)).toBeNull();
+      // The leader persona owns its team (#1646), so the owner checks pass.
+      const owned = async (uid) => (await asUser(uid, 'select public.my_leader_team_ids() as t')).rows[0].t;
+      expect(await owned(leader)).toEqual([2]);
+      expect(await owned(officer)).toEqual([]);
       expect(await role(admin, 1)).toBeNull();
 
       expect(await flag(admin, 'is_site_admin')).toBe(true);

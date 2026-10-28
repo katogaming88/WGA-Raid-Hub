@@ -9,7 +9,7 @@
 //     x-cron-secret header against BLIZZARD_GEAR_SYNC_SECRET (see the
 //     pg_cron migration), writes with the service role, loops every team.
 //   - Officer-triggered on-demand sync: forwards the caller's JWT (like
-//     wcl-sync), checks my_team_role(teamId)/is_site_admin, and syncs only
+//     wcl-sync), checks has_team_permission(teamId)/is_site_admin, and syncs only
 //     that team's roster -- or a single player, if playerId is passed.
 // verify_jwt is off for this function in supabase/config.toml (#958), which
 // the CLI reads at deploy, so a bare `supabase functions deploy` keeps it
@@ -260,7 +260,7 @@ Deno.serve(async (req) => {
     const token = await blizzardToken();
 
     // Officer-triggered, on-demand path -- forwards the caller's own JWT so
-    // my_team_role()/is_site_admin() resolve exactly as they would for a
+    // has_team_permission()/is_site_admin() resolve exactly as they would for a
     // direct frontend call, same reasoning wcl-sync's file header documents.
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return jsonResponse({ success: false, error: 'Not signed in' }, 401);
@@ -272,11 +272,13 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } }
     });
 
-    const [{ data: role }, { data: isSiteAdmin }] = await Promise.all([
-      supabase.rpc('my_team_role', { p_team_id: teamId }),
+    // Gear feeds priority: the grid's "Import loot, edit priority and
+    // scoring" (#1646).
+    const [{ data: allowed }, { data: isSiteAdmin }] = await Promise.all([
+      supabase.rpc('has_team_permission', { p_team_id: teamId, p_permission: 'manage_loot' }),
       supabase.rpc('is_site_admin')
     ]);
-    const authorized = role === 'officer' || role === 'team_leader' || isSiteAdmin === true;
+    const authorized = allowed === true || isSiteAdmin === true;
     if (!authorized) return jsonResponse({ success: false, error: 'Not authorized' }, 403);
 
     const startedAt = new Date();

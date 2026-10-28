@@ -28,7 +28,7 @@ begin
     raise exception 'Self-received request not found';
   end if;
 
-  if not (coalesce(public.my_team_role(v_team_id) = any (array['officer', 'team_leader']), false)
+  if not (public.has_team_permission(v_team_id, 'manage_loot')
           or public.is_site_admin()) then
     raise exception 'Not authorized';
   end if;

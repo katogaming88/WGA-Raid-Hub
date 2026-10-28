@@ -46,7 +46,7 @@ begin
     raise exception 'Only a site admin can archive the team leader';
   end if;
   if v_role = 'officer'
-     and not (coalesce(public.my_team_role(p_team_id) = 'team_leader', false) or public.is_site_admin()) then
+     and not (p_team_id = any (public.my_leader_team_ids()) or public.is_site_admin()) then
     raise exception 'Only the team leader or a site admin can archive an officer';
   end if;
   -- An Assistant comes back a Raider, so archiving one takes the rank away,

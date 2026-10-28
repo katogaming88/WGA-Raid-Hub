@@ -2471,6 +2471,10 @@
         {
           "name": "team_members_guard_rank",
           "def": "CREATE TRIGGER team_members_guard_rank BEFORE INSERT OR UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_guard_rank()"
+        },
+        {
+          "name": "team_members_pass_ownership",
+          "def": "CREATE TRIGGER team_members_pass_ownership AFTER DELETE OR UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_pass_ownership()"
         }
       ]
     },
@@ -12737,6 +12741,12 @@
       "name": "public.my_permission_team_ids",
       "return_type": "_int4",
       "arguments": "p_permission text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_members_pass_ownership",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],

@@ -17,7 +17,7 @@ declare
     else '' end;
   v_request_id integer;
 begin
-  if not (coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false) or public.is_site_admin()) then
+  if not (public.has_team_permission(p_team_id, 'manage_loot') or public.is_site_admin()) then
     raise exception 'Not authorized';
   end if;
 
