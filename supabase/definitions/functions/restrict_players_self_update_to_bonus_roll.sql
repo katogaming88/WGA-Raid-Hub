@@ -13,7 +13,6 @@ begin
   end if;
 
   if public.has_team_permission(new.team_id, 'edit_roster')
-     or public.is_guild_officer_of_team(new.team_id)
      or public.is_site_admin()
   then
     return new;

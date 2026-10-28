@@ -24,7 +24,8 @@ import {
   SITE_ADMIN,
   OFFICER_T2,
   GUILD_OFFICER,
-  RLS_DENIED
+  RLS_DENIED,
+  setOfficerOnEveryTeam
 } from './helpers.js';
 
 // Seeded rows this file leans on (supabase/seed.sql): team_members 3 is the
@@ -99,8 +100,10 @@ describe('delete_self_received_request', () => {
     });
   });
 
-  it('a guild officer is refused (deliberately excluded, like every approval surface)', async () => {
+  // "Officer on every team" is what lets a guild Admin in (#1647).
+  it('a guild Admin without Officer on every team is refused', async () => {
     await withTxn(async ({ q, asUser }) => {
+      await setOfficerOnEveryTeam(q, GUILD_OFFICER, false);
       const { requestId } = await seedRequest(q);
       await expect(asUser(GUILD_OFFICER, del(requestId))).rejects.toThrow(/Not authorized/);
     });

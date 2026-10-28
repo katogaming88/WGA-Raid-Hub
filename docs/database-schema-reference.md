@@ -336,7 +336,7 @@ A person's rank in a guild ([#1645](https://github.com/katogaming88/WGA-Raid-Hub
 | `officer_on_every_team` | bool        | "Officer on every team", set by the Owner per person; off by default    |
 | `created_at`            | timestamptz | Row creation                                                            |
 
-Owner and admin hold a `guild_officer` grant in `guild_grants` and nobody else does, kept by trigger both ways until cutover.
+Owner and admin hold a `guild_officer` grant in `guild_grants` and nobody else does, kept by trigger both ways until cutover. The current site's Grant Guild Officer also switches `officer_on_every_team` on, and Revoke switches it off; today's guild officers have it on (#1647).
 
 ---
 

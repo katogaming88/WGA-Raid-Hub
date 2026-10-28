@@ -16,7 +16,8 @@ import {
   RAIDER_T1,
   SITE_ADMIN,
   OFFICER_T2,
-  GUILD_OFFICER
+  GUILD_OFFICER,
+  setOfficerOnEveryTeam
 } from './helpers.js';
 
 async function expectDenied(role, uid, sql, params) {
@@ -217,10 +218,12 @@ describe('add_signup_to_roster is officer-gated', () => {
       await expect(asUser(RAIDER_T1, sql, [signup])).rejects.toThrow(/Not authorized/);
     });
   });
-  // The season_signups rules never let a guild officer in, so neither does
-  // the function (fresh-agent review on #1671).
-  it('a guild officer cannot promote a team 1 signup', async () => {
+  // The season_signups rules never let a guild Admin in, so neither does
+  // the function (fresh-agent review on #1671); "Officer on every team" is
+  // what does (#1647), so this Admin has it off.
+  it('a guild Admin without Officer on every team cannot promote a team 1 signup', async () => {
     await withTxn(async ({ q, asUser }) => {
+      await setOfficerOnEveryTeam(q, GUILD_OFFICER, false);
       const signup = await seedSignup(q, { teamId: 1 });
       await expect(asUser(GUILD_OFFICER, sql, [signup])).rejects.toThrow(/Not authorized/);
       expect((await q('select status from public.season_signups where id = $1', [signup])).rows[0].status).toBe(
@@ -240,10 +243,11 @@ describe('add_signup_to_roster is officer-gated', () => {
 describe('guild officer tier (#607)', () => {
   // A standalone grant (guild_officers), not derived from any team_members
   // role -- GUILD_OFFICER is a plain raider on team 1 with no officer/
-  // team_leader role anywhere. Full access: players/attendance, on a team
-  // they hold no team-officer role on. Everything else stays a DENY, same
-  // as a raider, since is_guild_officer() is deliberately never OR'd into
-  // those policies.
+  // team_leader role anywhere. Since #1647 the grant makes them an Admin
+  // with "Officer on every team", so they act as an Officer on every team in
+  // the guild, loot and approvals included (Kat, 2026-10-28). With the switch
+  // off they are a plain Admin and everything below is a DENY, same as a
+  // raider.
   const FULL_ACCESS_INSERTS = {
     players: DIRECT_TEAM_INSERTS.players,
     attendance: DIRECT_TEAM_INSERTS.attendance
@@ -261,9 +265,19 @@ describe('guild officer tier (#607)', () => {
     });
   }
 
+  for (const [table, sql] of Object.entries({ ...FULL_ACCESS_INSERTS, ...EXCLUDED_INSERTS })) {
+    it(`a guild Admin without Officer on every team cannot insert into ${table}`, async () => {
+      await withTxn(async ({ q, asUser }) => {
+        await setOfficerOnEveryTeam(q, GUILD_OFFICER, false);
+        await expect(asUser(GUILD_OFFICER, sql)).rejects.toMatchObject({ code: RLS_DENIED });
+      });
+    });
+  }
+
   for (const [table, sql] of Object.entries(EXCLUDED_INSERTS)) {
-    it(`guild officer cannot insert into ${table} (excluded from the tier)`, async () => {
-      await expectDenied('authenticated', GUILD_OFFICER, sql);
+    it(`with Officer on every team, a guild officer inserts into ${table} as an Officer (#1647)`, async () => {
+      const res = await queryAs('authenticated', GUILD_OFFICER, sql);
+      expect(res.rowCount).toBe(1);
     });
   }
 
@@ -284,13 +298,12 @@ describe('guild officer tier (#607)', () => {
     expect(res.rowCount).toBe(0);
   });
 
-  it('guild officer cannot update a bis_requests row (approvals stay excluded)', async () => {
-    const res = await queryAs(
-      'authenticated',
-      GUILD_OFFICER,
-      "update public.bis_requests set status = 'approved' where id = 1"
-    );
-    expect(res.rowCount).toBe(0);
+  it('a guild Admin without Officer on every team cannot update a bis_requests row', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await setOfficerOnEveryTeam(q, GUILD_OFFICER, false);
+      const res = await asUser(GUILD_OFFICER, "update public.bis_requests set status = 'approved' where id = 1");
+      expect(res.rowCount).toBe(0);
+    });
   });
 
   it('write_audit_log admits a guild officer', async () => {

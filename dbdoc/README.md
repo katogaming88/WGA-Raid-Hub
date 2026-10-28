@@ -237,7 +237,6 @@
 | public.close_started_season_signups | int4 |  | FUNCTION |
 | public.declare_season_signup | int4 | p_team_id integer, p_season text, p_character_id integer, p_class_spec_id integer, p_off_specs text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_backup_tank boolean DEFAULT false, p_backup_healer boolean DEFAULT false | FUNCTION |
 | public.get_own_signup | record | p_team_id integer, p_season text DEFAULT NULL::text | FUNCTION |
-| public.is_guild_officer_of | bool | p_guild_id integer | FUNCTION |
 | public.create_team | record | p_guild_id integer, p_name text | FUNCTION |
 | public.update_team | void | p_team_id integer, p_name text, p_key text | FUNCTION |
 | public.set_team_archived | void | p_team_id integer, p_archived boolean | FUNCTION |
@@ -248,7 +247,6 @@
 | public.add_own_character | int4 | p_team_id integer, p_character_id integer, p_class_spec_id integer | FUNCTION |
 | public.my_recent_own_add | record | p_team_slug text | FUNCTION |
 | public.my_guild_officer_team_ids | _int4 |  | FUNCTION |
-| public.is_guild_officer_of_team | bool | p_team_id integer | FUNCTION |
 | public.admin_grant | int4 | p_grant_type text, p_discord_id text, p_label text, p_guild_id integer | FUNCTION |
 | public.admin_revoke | void | p_grant_type text, p_discord_id text, p_label text, p_guild_id integer | FUNCTION |
 | public.admin_list_grants | record | p_grant_type text | FUNCTION |
@@ -274,6 +272,7 @@
 | public.my_guild_permission_team_ids | _int4 | p_permission text | FUNCTION |
 | public.set_guild_officer_bios | jsonb | p_bios jsonb, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
 | public.set_boe_payout_settings | void | p_floor bigint, p_pivot bigint, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
+| public.my_sees_every_team_ids | _int4 |  | FUNCTION |
 
 ## Enums
 

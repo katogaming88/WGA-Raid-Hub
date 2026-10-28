@@ -144,6 +144,17 @@ export function grantGuild(q, discordId, grantType) {
   );
 }
 
+// Turns a person's "Officer on every team" off or on in every guild (#1647).
+// GUILD_OFFICER has it on, as today's guild officers do; off, they are a
+// plain Admin with nothing inside a team they are not on.
+export function setOfficerOnEveryTeam(q, uid, on) {
+  return q(
+    `update public.guild_ranks set officer_on_every_team = $2
+      where person_id = (select id from public.people where auth_user_id = $1)`,
+    [uid, on]
+  );
+}
+
 // Visible row count under a role.
 export async function countAs(role, uid, table, where = 'true') {
   const res = await queryAs(role, uid, `select count(*)::int as n from public.${table} where ${where}`);

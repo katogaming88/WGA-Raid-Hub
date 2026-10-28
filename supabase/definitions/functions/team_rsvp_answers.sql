@@ -20,7 +20,6 @@ begin
         and p.id = any (public.my_active_player_ids())
     )
     or public.has_team_permission(p_team_id, 'see_rsvps')
-    or public.is_guild_officer_of_team(p_team_id)
     or public.is_site_admin()
   ) then
     raise exception 'Not authorized';

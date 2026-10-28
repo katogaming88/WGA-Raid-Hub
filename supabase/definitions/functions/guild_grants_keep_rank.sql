@@ -21,13 +21,13 @@ begin
                 where guild_id = old.guild_id and person_id = old.person_id and rank = 'owner') then
       raise exception 'That person is the guild''s Owner. Hand the guild to someone else first.';
     end if;
-    update guild_ranks set rank = 'member'
+    update guild_ranks set rank = 'member', officer_on_every_team = false
      where guild_id = old.guild_id and person_id = old.person_id and rank = 'admin';
   end if;
   if tg_op <> 'DELETE' and new.grant_type = 'guild_officer' then
-    insert into guild_ranks (guild_id, person_id, rank)
-    values (new.guild_id, new.person_id, 'admin')
-    on conflict (guild_id, person_id) do update set rank = 'admin'
+    insert into guild_ranks (guild_id, person_id, rank, officer_on_every_team)
+    values (new.guild_id, new.person_id, 'admin', true)
+    on conflict (guild_id, person_id) do update set rank = 'admin', officer_on_every_team = true
      where guild_ranks.rank not in ('owner', 'admin');
   end if;
   return null;

@@ -10,6 +10,26 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-28 -- The team checks' guild officer arm becomes "Officer on every team" and "See every team, read-only" (#1647, part 2)
+
+Shipped: 20261028000710_officer_on_every_team.sql
+
+The second half of #1647. A guild rank alone now gives nothing inside a team the person is not on; the two per-person switches on `guild_ranks` (#1517) are what reach inside.
+
+- **"Officer on every team" is a full Officer** on every team in the guild, loot, priority, approvals and signups included, because `has_team_permission()` and `my_permission_team_ids()` already answer it as an Officer (#1645). So 24 functions and 12 rules drop their separate guild officer arm, by exact substitution from the generated definitions and `pg_policies`.
+- **Today's guild officers get it switched on** (Kat, 2026-10-28), so the current site keeps working: both are Admins since #1645. This **widens** what they can do. Before, #607 kept a guild officer to roster, attendance, schedule and bios on other teams, and out of loot import, priority, approvals and signups. Kat chose the full Officer over keeping that narrower set until cutover, because it is what the switch means and the two are trusted guild leads.
+- **The current site's Grant and Revoke Guild Officer turn it on and off** until cutover, inside `guild_grants_keep_rank()`. A rank changed any other way (the new side making someone an owner or admin, or demoting them) leaves the switches alone.
+- **"See every team, read-only"** reads what an Officer reads and writes nothing. Two pieces carry it:
+  - `my_permission_team_ids()` answers the four read-only permissions as an Officer: `see_rsvps`, `view_reports`, `view_loot` and `view_team_audit_log`. Every rule and function asking them only reads, and none is in `write_audit_log()`'s list.
+  - `my_sees_every_team_ids()` (either switch) covers the officer reads that ask an edit permission: memberships, people, characters, main swaps, removal reasons, boss groups, lineups, boss picks, raid night participation, `incoming_roster`, `resolve_person()`, `also_on_teams()` and `earlier_characters()`. Officer notes get a SELECT rule of their own, since their only rule was a write rule. The other edit-gated tables were already public to read.
+- **Invite links stay out of "See every team"**: the code is a key to join the team, not something to look at. The Battle.net and unnamed-member lookups are Assign tools, so they stay with `edit_roster` too.
+- **`set_team_officer_bios()` still reads the role**, so it asks the switch directly.
+- **`is_guild_officer_of_team()` and `is_guild_officer_of()` are dropped**, since nothing asks them. `my_guild_officer_team_ids()` stays for the `guild_ranks` read rule, which answers a guild's owner and admins through their grant until the Members tab brings its own.
+
+[Full discussion -> #1647](https://github.com/katogaming88/WGA-Raid-Hub/issues/1647).
+
+---
+
 ## 2026-10-27 -- Guild-level checks ask the guild grid in their own guild; bio cards and BoE payout settings move to the guild (#1647, part 1)
 
 Shipped: 20261027222102_guild_checks_ask_permission.sql

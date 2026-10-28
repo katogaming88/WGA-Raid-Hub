@@ -17,7 +17,6 @@ declare
 begin
   if not (
     public.has_team_permission(p_team_id, 'edit_roster')
-    or public.is_guild_officer_of_team(p_team_id)
     or public.is_site_admin()
   ) then
     raise exception 'Not authorized';
@@ -53,7 +52,7 @@ begin
   -- which is the grid's "Promote raiders to Assistant and back" (#1646).
   if v_rank = 'assistant'
      and not (public.has_team_permission(p_team_id, 'promote_assistants')
-              or public.is_guild_officer_of_team(p_team_id) or public.is_site_admin()) then
+              or public.is_site_admin()) then
     raise exception 'Only someone who can promote Assistants can archive one';
   end if;
 

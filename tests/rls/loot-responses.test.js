@@ -13,7 +13,9 @@ import {
   RAIDER_T1,
   SITE_ADMIN,
   OFFICER_T2,
-  GUILD_OFFICER
+  GUILD_OFFICER,
+  withTxn,
+  setOfficerOnEveryTeam
 } from './helpers.js';
 
 afterAll(() => pool.end());
@@ -47,10 +49,17 @@ describe('set_loot_responses: who can save', () => {
       expect(res.rows[0].config.lootResponses).toEqual(LIST);
     }
   });
-  it('a guild officer, a team 2 officer and a raider cannot', async () => {
-    for (const uid of [GUILD_OFFICER, OFFICER_T2, RAIDER_T1]) {
+  it('a team 2 officer and a raider cannot', async () => {
+    for (const uid of [OFFICER_T2, RAIDER_T1]) {
       await expect(queryAs('authenticated', uid, ...save(LIST))).rejects.toThrow(/Not authorized/);
     }
+  });
+  // "Officer on every team" is what lets a guild Admin in (#1647).
+  it('a guild Admin without Officer on every team cannot', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await setOfficerOnEveryTeam(q, GUILD_OFFICER, false);
+      await expect(asUser(GUILD_OFFICER, ...save(LIST))).rejects.toThrow(/Not authorized/);
+    });
   });
   it('anon cannot call it at all', async () => {
     await expect(queryAs('anon', null, ...save(LIST))).rejects.toThrow(/permission denied/);

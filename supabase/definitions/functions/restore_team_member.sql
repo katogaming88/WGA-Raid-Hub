@@ -15,7 +15,6 @@ declare
 begin
   if not (
     public.has_team_permission(p_team_id, 'edit_roster')
-    or public.is_guild_officer_of_team(p_team_id)
     or public.is_site_admin()
   ) then
     raise exception 'Not authorized';

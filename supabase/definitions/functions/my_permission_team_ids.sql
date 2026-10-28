@@ -17,6 +17,14 @@ AS $function$
       from guild_ranks g
       join teams t on t.guild_id = g.guild_id
      where g.person_id = my_person_id() and g.officer_on_every_team
+    union all
+    -- "See every team, read-only": the read-only permissions, as an Officer.
+    -- Nothing that writes asks any of these four.
+    select t.id, 'officer'
+      from guild_ranks g
+      join teams t on t.guild_id = g.guild_id
+     where g.person_id = my_person_id() and g.sees_every_team
+       and p_permission in ('see_rsvps', 'view_reports', 'view_loot', 'view_team_audit_log')
   )
   select coalesce(array_agg(distinct r.team_id), '{}')
     from ranks r

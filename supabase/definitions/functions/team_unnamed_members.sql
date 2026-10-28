@@ -9,14 +9,11 @@ CREATE OR REPLACE FUNCTION public.team_unnamed_members(p_team_id integer)
  SET search_path TO 'public'
 AS $function$
 begin
-  -- Whoever can Assign: the team's officers, a site admin, or a guild officer
-  -- of this team's own guild. is_guild_officer() would answer for a guild
-  -- officer anywhere and hand one guild's sign-in names to another (#1643's
-  -- rule, CodeRabbit on this function).
+  -- Whoever can Assign: edit_roster on the team, "Officer on every team" in
+  -- its guild included (#1647), or a site admin.
   if not (
     public.has_team_permission(p_team_id, 'edit_roster')
     or public.is_site_admin()
-    or exists (select 1 from public.teams t where t.id = p_team_id and public.is_guild_officer_of(t.guild_id))
   ) then
     raise exception 'Not authorized';
   end if;

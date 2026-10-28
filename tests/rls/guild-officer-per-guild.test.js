@@ -184,10 +184,10 @@ describe('a guild officer acts in their own guild', () => {
       expect(await ids(GUILD_OFFICER)).not.toContain(teamId);
       expect(await ids(SITE_ADMIN)).toEqual([]);
       expect((await asAnon('select public.my_guild_officer_team_ids() as v')).rows[0].v).toEqual([]);
-      const of = async (uid, team) =>
-        (await asUser(uid, 'select public.is_guild_officer_of_team($1) as v', [team])).rows[0].v;
-      expect(await of(officer.uid, teamId)).toBe(true);
-      expect(await of(officer.uid, null)).toBe(false);
+      // is_guild_officer_of_team() went in #1647: nothing asked it any more.
+      const sees = async (uid) => (await asUser(uid, 'select public.my_sees_every_team_ids() as v')).rows[0].v;
+      expect(await sees(officer.uid)).toEqual([teamId]);
+      expect((await asAnon('select public.my_sees_every_team_ids() as v')).rows[0].v).toEqual([]);
     });
   });
 });

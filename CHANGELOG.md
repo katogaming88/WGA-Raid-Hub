@@ -12,6 +12,28 @@ answers to.
 
 ---
 
+## [3.221.0] - 2026-10-28
+
+### Backend
+
+- A guild rank alone no longer gives anything inside a team the person
+  is not on (#1647, part 2). Two per-person switches do instead:
+  "Officer on every team" acts as an Officer on every team in the guild,
+  and "See every team, read-only" reads every team's pages and changes
+  nothing. Both are off for everyone except We Go Again's two guild
+  officers, who get "Officer on every team". They keep everything they
+  could do on other teams, and can now also import loot, edit priority
+  and scoring, approve requests and add signups to the roster there.
+  Until cutover, the current site's Grant Guild Officer switches it on
+  and Revoke switches it off.
+
+### Project
+
+- The new app's guild settings comment names the guild permissions its
+  writes ask (#1647).
+
+---
+
 ## [3.220.0] - 2026-10-27
 
 ### Frontend

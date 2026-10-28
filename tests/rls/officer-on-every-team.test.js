@@ -1,0 +1,184 @@
+// #1647 part 2: inside a team someone is not on, a guild rank alone gives
+// nothing. "Officer on every team" acts as an Officer on every team in the
+// guild; "See every team, read-only" reads them and writes nothing. Until
+// cutover the current site's Grant and Revoke Guild Officer switch the first
+// on and off. Every case runs in a rolled-back transaction.
+import { describe, it, expect, afterAll } from 'vitest';
+import {
+  pool,
+  withTxn,
+  seedMember,
+  seedPlayer,
+  RLS_DENIED,
+  GUILD_OFFICER,
+  SITE_ADMIN,
+  setOfficerOnEveryTeam
+} from './helpers.js';
+
+afterAll(() => pool.end());
+
+const WGA = "(select id from public.guilds where url_key = 'wga')";
+const HELLFIRE = 2;
+
+const switches = async (q, discordId) =>
+  (
+    await q(
+      `select r.rank, r.officer_on_every_team as officer, r.sees_every_team as sees
+         from public.guild_ranks r
+        where r.guild_id = ${WGA} and r.person_id = public.person_for_discord_id($1)`,
+      [discordId]
+    )
+  ).rows[0];
+
+// Hellfire's officer-only rows: an RSVP, an officer note and an invite link.
+async function hellfireRows(q) {
+  const player = await seedPlayer(q, { teamId: HELLFIRE });
+  await q(
+    "insert into public.raid_rsvps (team_id, player_id, raid_date, status) values ($1, $2, current_date, 'Late')",
+    [HELLFIRE, player]
+  );
+  await q("insert into public.player_officer_notes (player_id, team_id, officer_notes) values ($1, $2, 'note')", [
+    player,
+    HELLFIRE
+  ]);
+  return player;
+}
+
+const reads = async (asUser, uid) => ({
+  rsvps: (await asUser(uid, 'select 1 from public.raid_rsvps where team_id = $1', [HELLFIRE])).rows.length,
+  notes: (await asUser(uid, 'select 1 from public.player_officer_notes where team_id = $1', [HELLFIRE])).rows.length,
+  members: (await asUser(uid, 'select 1 from public.team_members where team_id = $1', [HELLFIRE])).rows.length
+});
+
+describe('the current site keeps a guild officer an officer on every team', () => {
+  it('Grant Guild Officer makes an Admin with Officer on every team, and Revoke takes both away', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const who = await seedMember(q, { teamId: 1 });
+      await asUser(SITE_ADMIN, 'select public.admin_grant_guild_officer($1)', [who.discordId]);
+      expect(await switches(q, who.discordId)).toEqual({ rank: 'admin', officer: true, sees: false });
+      await asUser(who.uid, "select public.officer_set_rsvp($1, $2, current_date, 'Late', 'probe')", [
+        HELLFIRE,
+        await seedPlayer(q, { teamId: HELLFIRE })
+      ]);
+
+      await asUser(SITE_ADMIN, 'select public.admin_revoke_guild_officer($1)', [who.discordId]);
+      expect(await switches(q, who.discordId)).toEqual({ rank: 'member', officer: false, sees: false });
+      await expect(
+        asUser(who.uid, "insert into public.players (team_id, name_realm) values ($1, 'Probe-Illidan')", [HELLFIRE])
+      ).rejects.toMatchObject({ code: RLS_DENIED });
+    });
+  });
+
+  it('a rank changed on the new side leaves the switch as it was', async () => {
+    await withTxn(async ({ q }) => {
+      const who = await seedMember(q, { teamId: 1 });
+      await q(
+        `insert into public.guild_ranks (guild_id, person_id, rank) values (${WGA}, public.person_for_discord_id($1), 'admin')`,
+        [who.discordId]
+      );
+      expect(await switches(q, who.discordId)).toEqual({ rank: 'admin', officer: false, sees: false });
+    });
+  });
+});
+
+describe('Officer on every team', () => {
+  it('acts as an Officer on a team they are not on, loot included', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await hellfireRows(q);
+      expect(await reads(asUser, GUILD_OFFICER)).toMatchObject({ rsvps: 1, notes: 1 });
+      await asUser(GUILD_OFFICER, "insert into public.players (team_id, name_realm) values ($1, 'Probe-Illidan')", [
+        HELLFIRE
+      ]);
+      await asUser(GUILD_OFFICER, "select public.set_team_officer_bios($1, '[]'::jsonb)", [HELLFIRE]);
+      await asUser(GUILD_OFFICER, "select public.write_audit_log($1, 'Probe 1647')", [HELLFIRE]);
+    });
+  });
+
+  it('switched off, a guild Admin sees and changes nothing inside the team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await hellfireRows(q);
+      await setOfficerOnEveryTeam(q, GUILD_OFFICER, false);
+      expect(await reads(asUser, GUILD_OFFICER)).toEqual({ rsvps: 0, notes: 0, members: 0 });
+      await expect(
+        asUser(GUILD_OFFICER, "insert into public.players (team_id, name_realm) values ($1, 'Probe-Illidan')", [
+          HELLFIRE
+        ])
+      ).rejects.toMatchObject({ code: RLS_DENIED });
+      await expect(
+        asUser(GUILD_OFFICER, "select public.set_team_officer_bios($1, '[]'::jsonb)", [HELLFIRE])
+      ).rejects.toThrow(/Not authorized/);
+      await expect(
+        asUser(GUILD_OFFICER, "select public.write_audit_log($1, 'Probe 1647')", [HELLFIRE])
+      ).rejects.toThrow(/Not authorized/);
+      await expect(asUser(GUILD_OFFICER, 'select * from public.team_unnamed_members($1)', [HELLFIRE])).rejects.toThrow(
+        /Not authorized/
+      );
+      // Still an Admin of the guild: the guild's own checks pass.
+      await asUser(GUILD_OFFICER, 'select public.set_team_unlisted($1, true)', [HELLFIRE]);
+    });
+  });
+});
+
+describe('See every team, read-only', () => {
+  // A raider on Phoenix with only the reading switch on.
+  async function viewer(q) {
+    const who = await seedMember(q, { teamId: 1 });
+    await q(
+      `insert into public.guild_ranks (guild_id, person_id, rank, sees_every_team)
+       values (${WGA}, public.person_for_discord_id($1), 'member', true)`,
+      [who.discordId]
+    );
+    return who;
+  }
+
+  it("reads another team's officer pages", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await hellfireRows(q);
+      const who = await viewer(q);
+      const seen = await reads(asUser, who.uid);
+      expect(seen.rsvps).toBe(1);
+      expect(seen.notes).toBe(1);
+      expect(seen.members).toBeGreaterThan(0);
+      await asUser(who.uid, 'select * from public.team_rsvp_answers($1, current_date, current_date)', [HELLFIRE]);
+      await asUser(who.uid, 'select * from public.also_on_teams($1)', [HELLFIRE]);
+      const perms = await asUser(
+        who.uid,
+        `select public.has_team_permission($1, 'view_loot') as loot, public.has_team_permission($1, 'edit_roster') as roster`,
+        [HELLFIRE]
+      );
+      expect(perms.rows[0]).toEqual({ loot: true, roster: false });
+    });
+  });
+
+  it('writes nothing, and does not read the invite links', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const player = await hellfireRows(q);
+      await q(
+        "insert into public.team_invite_links (team_id, code) values ($1, 'hellfire-probe1647') on conflict do nothing",
+        [HELLFIRE]
+      );
+      const who = await viewer(q);
+      await expect(
+        asUser(who.uid, "insert into public.players (team_id, name_realm) values ($1, 'Probe-Illidan')", [HELLFIRE])
+      ).rejects.toMatchObject({ code: RLS_DENIED });
+      const edited = await asUser(
+        who.uid,
+        "update public.player_officer_notes set officer_notes = 'x' where player_id = $1",
+        [player]
+      );
+      expect(edited.rowCount).toBe(0);
+      await expect(
+        asUser(who.uid, "select public.officer_set_rsvp($1, $2, current_date, 'Late', 'probe')", [HELLFIRE, player])
+      ).rejects.toThrow(/Not authorized/);
+      await expect(asUser(who.uid, "select public.write_audit_log($1, 'Probe 1647')", [HELLFIRE])).rejects.toThrow(
+        /Not authorized/
+      );
+      await expect(asUser(who.uid, 'select * from public.team_battlenet_connections($1)', [HELLFIRE])).rejects.toThrow(
+        /Not authorized/
+      );
+      expect(
+        (await asUser(who.uid, 'select 1 from public.team_invite_links where team_id = $1', [HELLFIRE])).rows
+      ).toEqual([]);
+    });
+  });
+});

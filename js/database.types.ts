@@ -4530,11 +4530,6 @@ export type Database = {
       is_any_team_officer: { Args: never; Returns: boolean }
       is_boe_manager: { Args: never; Returns: boolean }
       is_guild_officer: { Args: never; Returns: boolean }
-      is_guild_officer_of: { Args: { p_guild_id: number }; Returns: boolean }
-      is_guild_officer_of_team: {
-        Args: { p_team_id: number }
-        Returns: boolean
-      }
       is_optional_raid_night: {
         Args: { p_raid_date: string; p_team_id: number }
         Returns: boolean
@@ -4611,6 +4606,7 @@ export type Database = {
           team_slug: string
         }[]
       }
+      my_sees_every_team_ids: { Args: never; Returns: number[] }
       my_team_role: { Args: { p_team_id: number }; Returns: string }
       my_wishlist_signup_ids: { Args: never; Returns: number[] }
       new_url_code: { Args: never; Returns: string }

@@ -14,7 +14,11 @@ begin
   if not (
     coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false)
     or public.is_site_admin()
-    or public.is_guild_officer_of_team(p_team_id)
+    -- "Officer on every team" in this team's guild (#1647): the role
+    -- check above does not see it.
+    or exists (select 1 from public.guild_ranks g join public.teams t on t.guild_id = g.guild_id
+                where t.id = p_team_id and g.person_id = public.my_person_id()
+                  and g.officer_on_every_team)
   ) then
     raise exception 'Not authorized';
   end if;

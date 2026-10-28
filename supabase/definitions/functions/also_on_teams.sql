@@ -21,7 +21,7 @@ AS $function$
      and (
        p_team_id = any ((select my_permission_team_ids('edit_roster'))::integer[])
        or (select is_site_admin())
-       or (select is_guild_officer_of_team(p_team_id))
+       or p_team_id = any ((select my_sees_every_team_ids())::integer[])
      )
    group by p.id, t.name;
 $function$;
