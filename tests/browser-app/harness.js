@@ -265,7 +265,9 @@ export async function openApp(browser, port, state) {
       }
       if (fn && state.functions?.includes(fn)) return route.fulfill(json({ ok: true }));
       if (rest === 'guilds') {
-        return route.fulfill(json({ id: 1, name: 'We Go Again', url_key: 'wga', region: 'us', realm: 'Tichondrius' }));
+        // The one guild; a state's guilds row adds to it, as its officer bios (#1647).
+        const guild = { id: 1, name: 'We Go Again', url_key: 'wga', region: 'us', realm: 'Tichondrius' };
+        return route.fulfill(json({ ...guild, ...tables.guilds?.[0] }));
       }
       if (rest === 'teams') return route.fulfill(json(state.teams ?? TEAMS));
       if (rest === 'account_preferences') return route.fulfill(json(null));

@@ -146,11 +146,10 @@ function makeSandbox({
     from: (table) => {
       calls.push({ kind: 'from', table });
       if (table === 'site_settings') {
-        // maintenance_mode and guild_officer_bios are columns on the same
-        // singleton row, and the builder ignores .select(), so one object
-        // stands in for both reads.
-        const row = maintenance === null && bios === null ? null : { ...(maintenance || {}), guild_officer_bios: bios };
-        return builder({ data: row, error: null });
+        return builder({ data: maintenance, error: null });
+      }
+      if (table === 'guilds') {
+        return builder({ data: bios === null ? null : { officer_bios: bios }, error: null });
       }
       if (table === 'streamers') {
         return builder({ data: streamers, error: null });
@@ -941,7 +940,8 @@ describe('BoE entry point (#781, #891)', () => {
 
 describe('About the Guild (#782)', () => {
   // Guild officer bios were moved onto site_settings after #586 shipped them
-  // into team_settings.config, which is per team. They have only ever been
+  // into team_settings.config, which is per team, and onto the guild in
+  // #1647. They have only ever been
   // reachable through the About tab of a team page, which is the wrong home
   // for the one bio list that is genuinely guild-wide.
   const BIOS = [

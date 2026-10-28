@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { can, useAccess } from '../auth/access';
+import { useAddress } from '../data/address';
 import { useGuildOfficers } from '../guild/useGuildHome';
 import { DataState } from '../components/DataState';
 import { bioCards } from '../guild/guild';
@@ -15,8 +16,9 @@ import { useSaveGuildOfficers } from './useOfficers';
 export function GuildOfficersPage() {
   const access = useAccess();
   const touch = useTouchScreen();
-  const bios = useGuildOfficers();
-  const save = useSaveGuildOfficers();
+  const { guild } = useAddress();
+  const bios = useGuildOfficers(guild.id);
+  const save = useSaveGuildOfficers(guild.id);
   const [editing, setEditing] = useState(false);
   const canEdit = can(access.data, 'editGuildOfficers') && !touch;
 

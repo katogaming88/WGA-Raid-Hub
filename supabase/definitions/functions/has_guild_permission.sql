@@ -19,9 +19,13 @@ AS $function$
      where t.guild_id = p_guild_id and m.person_id = my_person_id() and m.archived_at is null
   )
   select exists (select 1 from rank_permissions k where k.permission = p_permission and k.scope = 'guild')
-     and exists (select 1 from ranks r
-                  where r.rank = 'owner'
-                     or exists (select 1 from guild_rank_permissions p
-                                 where p.guild_id = p_guild_id and p.rank = r.rank
-                                   and p.permission = p_permission));
+     and (exists (select 1 from ranks r
+                   where r.rank = 'owner'
+                      or exists (select 1 from guild_rank_permissions p
+                                  where p.guild_id = p_guild_id and p.rank = r.rank
+                                    and p.permission = p_permission))
+          or (p_permission in ('record_boe', 'pay_any_boe')
+              and exists (select 1 from guild_grants g
+                           where g.guild_id = p_guild_id and g.person_id = my_person_id()
+                             and g.grant_type = 'boe_manager')));
 $function$;

@@ -19,10 +19,12 @@
 // the teams they staff, a manager or site admin every one. It passes the
 // access answer, which the buttons render behind -- `manage` for the
 // lifecycle actions and `settleTeamIds` for the payout ones, decided per row
-// rather than per page (#888). The server enforces the same gates regardless
-// (is_boe_manager() or is_site_admin() inside the lifecycle RPCs,
-// can_settle_boe() inside the settle ones), so this is disclosure, not
-// security.
+// rather than per page (#888). The server enforces its own gates regardless
+// (the guild's record_boe permission or is_site_admin() inside the lifecycle
+// RPCs since #1647, can_settle_boe() inside the settle ones), so this is
+// disclosure, not security. `manage` still follows is_boe_manager(), so a
+// guild Admin reads every find in the guild but sees no lifecycle buttons
+// here.
 //
 // The lifecycle RPCs write no audit entries themselves, so every successful
 // mutation writes one from here, naming the BoE's own team rather than the
@@ -79,9 +81,10 @@ function buildBoeManage(access) {
   // Neither read filters on team since #765. BoEs are guild property and the
   // manager grant went guild-wide in #766, so this shows every find the caller
   // may see rather than one team at a time. The scoping is the read policies'
-  // job: the team's pay_boe_cuts permission (#1646) or is_boe_manager() or
-  // is_site_admin(), which gives a manager or site admin every team and a
-  // plain officer exactly the teams they staff. A client-side
+  // job: the team's pay_boe_cuts permission (#1646), the guild's record_boe
+  // or pay_any_boe (#1647; guild Admins and the guild's BoE managers), or
+  // is_site_admin(), which gives those every team in the guild and a plain
+  // officer exactly the teams they staff. A client-side
   // .eq('team_id', ...) on top would re-implement that, worse, and would keep
   // Wrathless finds invisible -- it has no members, so nobody holds a team
   // role on it and only the guild-wide grants reach its rows at all.

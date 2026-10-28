@@ -12,6 +12,42 @@ answers to.
 
 ---
 
+## [3.220.0] - 2026-10-27
+
+### Frontend
+
+- The guild officer bio cards (guild page, About tab, Bios tab) and the
+  Admin page's BoE payout settings are read from and saved to We Go
+  Again's guild instead of the site-wide settings (#1647). No visible
+  change.
+
+### Backend
+
+- Guild-level checks ask the guild rank's permission in the guild they
+  act on (#1647, part 1), never "any guild". Creating a team asks Create
+  teams, so a Team Lead can start one; renaming, archiving and unlisting a
+  team ask Rename and archive teams. Recording BoE listings and sales asks
+  Record BoE, paying any team's find asks Pay any team's BoE, and the
+  payout settings ask Edit BoE payout settings, which until now were site
+  admins only. Reading every team's audit log in the guild asks View the
+  guild audit log. With the default grid, We Go Again's guild officers
+  (Admins) keep everything they had and can now record BoE sales and
+  change the payout settings. A BoE manager keeps their access, but only
+  in their own guild, until cutover.
+- The officer bio cards and the BoE payout settings move from the
+  site-wide settings to each guild. A Team Lead can save only their own
+  bio card, and only one; an Admin can save any.
+
+### Functions
+
+- The BoE "sold" Discord post (`boe-sold-webhook`) is sent only for a
+  caller who may record BoE sales in the find's own guild, or a site
+  admin, instead of a BoE manager of any guild (#1647). It reads the find
+  as the caller, and posts only We Go Again's sales, since the channel is
+  We Go Again's.
+
+---
+
 ## [3.219.0] - 2026-10-27
 
 ### Frontend

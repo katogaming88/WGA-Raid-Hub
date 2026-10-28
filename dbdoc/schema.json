@@ -3982,24 +3982,6 @@
           "default": "now()"
         },
         {
-          "name": "guild_officer_bios",
-          "type": "jsonb",
-          "nullable": false,
-          "default": "'[]'::jsonb"
-        },
-        {
-          "name": "boe_payout_floor",
-          "type": "bigint",
-          "nullable": false,
-          "default": "20000"
-        },
-        {
-          "name": "boe_payout_pivot",
-          "type": "bigint",
-          "nullable": false,
-          "default": "100000"
-        },
-        {
           "name": "gear_sync_last_cron_run",
           "type": "jsonb",
           "nullable": true,
@@ -4030,26 +4012,6 @@
         }
       ],
       "constraints": [
-        {
-          "name": "site_settings_boe_payout_floor_nonneg",
-          "type": "CHECK",
-          "def": "CHECK ((boe_payout_floor \u003e= 0))",
-          "table": "public.site_settings",
-          "referenced_table": "",
-          "columns": [
-            "boe_payout_floor"
-          ]
-        },
-        {
-          "name": "site_settings_boe_payout_pivot_positive",
-          "type": "CHECK",
-          "def": "CHECK ((boe_payout_pivot \u003e 0))",
-          "table": "public.site_settings",
-          "referenced_table": "",
-          "columns": [
-            "boe_payout_pivot"
-          ]
-        },
         {
           "name": "site_settings_pkey",
           "type": "PRIMARY KEY",
@@ -6486,6 +6448,27 @@
           "type": "text",
           "nullable": true,
           "comment": "Home realm as the game spells it (Tichondrius). Null when not set; the links are then left out (#1102)."
+        },
+        {
+          "name": "officer_bios",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb",
+          "comment": "The guild officers' bio cards, in display order (#1647, from site_settings). A card with a personId is that person's own: edit_own_bio lets them change it. Written only by set_guild_officer_bios()."
+        },
+        {
+          "name": "boe_payout_floor",
+          "type": "bigint",
+          "nullable": false,
+          "default": "20000",
+          "comment": "BoE finder payout floor in gold (#745, per guild since #1647). Written only by set_boe_payout_settings(); each sale snapshots it."
+        },
+        {
+          "name": "boe_payout_pivot",
+          "type": "bigint",
+          "nullable": false,
+          "default": "100000",
+          "comment": "BoE sale price at which the payout starts rising above the floor, in gold (#745, per guild since #1647). Written only by set_boe_payout_settings(); each sale snapshots it."
         }
       ],
       "indexes": [
@@ -6507,6 +6490,26 @@
         }
       ],
       "constraints": [
+        {
+          "name": "guilds_boe_payout_floor_nonneg",
+          "type": "CHECK",
+          "def": "CHECK ((boe_payout_floor \u003e= 0))",
+          "table": "public.guilds",
+          "referenced_table": "",
+          "columns": [
+            "boe_payout_floor"
+          ]
+        },
+        {
+          "name": "guilds_boe_payout_pivot_positive",
+          "type": "CHECK",
+          "def": "CHECK ((boe_payout_pivot \u003e 0))",
+          "table": "public.guilds",
+          "referenced_table": "",
+          "columns": [
+            "boe_payout_pivot"
+          ]
+        },
         {
           "name": "guilds_realm_not_blank",
           "type": "CHECK",
@@ -11808,12 +11811,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.set_guild_officer_bios",
-      "return_type": "jsonb",
-      "arguments": "p_bios jsonb",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.flag_bis_list_changed",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_name_realm text, p_player_note text DEFAULT NULL::text",
@@ -11895,12 +11892,6 @@
       "name": "public.boe_revert",
       "return_type": "text",
       "arguments": "p_id integer",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.set_boe_payout_settings",
-      "return_type": "void",
-      "arguments": "p_floor bigint, p_pivot bigint",
       "type": "FUNCTION"
     },
     {
@@ -12747,6 +12738,24 @@
       "name": "public.team_members_pass_ownership",
       "return_type": "trigger",
       "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_guild_permission_team_ids",
+      "return_type": "_int4",
+      "arguments": "p_permission text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_guild_officer_bios",
+      "return_type": "jsonb",
+      "arguments": "p_bios jsonb, p_guild_id integer DEFAULT NULL::integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_boe_payout_settings",
+      "return_type": "void",
+      "arguments": "p_floor bigint, p_pivot bigint, p_guild_id integer DEFAULT NULL::integer",
       "type": "FUNCTION"
     }
   ],

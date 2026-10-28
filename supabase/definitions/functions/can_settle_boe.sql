@@ -8,7 +8,7 @@ CREATE OR REPLACE FUNCTION public.can_settle_boe(p_team_id integer)
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-  select public.is_boe_manager()
-    or public.is_site_admin()
-    or public.has_team_permission(p_team_id, 'pay_boe_cuts');
+  select public.is_site_admin()
+    or public.has_team_permission(p_team_id, 'pay_boe_cuts')
+    or coalesce(p_team_id = any (public.my_guild_permission_team_ids('pay_any_boe')), false);
 $function$;

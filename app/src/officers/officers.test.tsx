@@ -22,7 +22,10 @@ describe('Guild officers', () => {
     renderApp(
       '/g/wga/officers',
       seededHandlers({
-        from: (read) => (read.table === 'site_settings' ? { data: { guild_officer_bios: [BIO] } } : base.from!(read))
+        from: (read) =>
+          read.table === 'guilds' && read.columns === 'officer_bios'
+            ? { data: { officer_bios: [BIO] } }
+            : base.from!(read)
       })
     );
     await screen.findByRole('heading', { level: 1, name: 'Guild officers' });

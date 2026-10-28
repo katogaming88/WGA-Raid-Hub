@@ -320,7 +320,7 @@ describe('reading the payout settings (#748)', () => {
     });
     await sandbox.loadBoePayoutSettings();
 
-    expect(fromCalls[0].table).toBe('site_settings');
+    expect(fromCalls[0].table).toBe('guilds');
     expect(fromCalls[0].eq).toEqual({ col: 'id', val: 1 });
     expect(fromCalls[0].maybeSingle).toBe(true);
     expect(els.boePayoutFloor.value).toBe('20000');
@@ -368,7 +368,7 @@ describe('saving the payout settings (#748)', () => {
 
     expect(rpcCalls[0]).toEqual({
       name: 'set_boe_payout_settings',
-      params: { p_floor: 20000, p_pivot: 100000 }
+      params: { p_floor: 20000, p_pivot: 100000, p_guild_id: 1 }
     });
   });
 
@@ -380,7 +380,7 @@ describe('saving the payout settings (#748)', () => {
     });
     await sandbox.submitBoePayoutSettings();
 
-    expect(rpcCalls[0].params).toEqual({ p_floor: 20000, p_pivot: 100000 });
+    expect(rpcCalls[0].params).toEqual({ p_floor: 20000, p_pivot: 100000, p_guild_id: 1 });
   });
 
   it.each([
@@ -429,6 +429,6 @@ describe('BoE tab wiring (#748)', () => {
 
     expect(els['tab-boe'].classList.add).toHaveBeenCalledWith('active');
     expect(rpcCalls.some((c) => c.name === 'admin_list_boe_managers')).toBe(true);
-    expect(fromCalls.some((c) => c.table === 'site_settings')).toBe(true);
+    expect(fromCalls.some((c) => c.table === 'guilds')).toBe(true);
   });
 });

@@ -94,6 +94,10 @@ var GUILD_LINKS = {
   armoryUrl: 'https://worldofwarcraft.com/en-us/guild/us/tichondrius/we-go-again'
 };
 
+// We Go Again's guilds.id, the only guild this site serves. The bio cards are
+// stored per guild since #1647.
+var GUILD_ID = 1;
+
 var _teamParam = (location.search.match(/[?&]team=([^&]+)/) || [])[1];
 var _hadExplicitTeam = !!(_teamParam && _teamParam in TEAMS);
 // A "cold landing" is a visit with no explicit ?team= and no prior team choice
@@ -109,14 +113,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.219.0';
+var VERSION = '3.220.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20261027204027';
+var REQUIRED_SCHEMA = '20261027222102';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -333,14 +337,16 @@ function withTimeoutMs(promise, ms) {
  *
  * It used to answer whether they could open the page at all. Since #890 that
  * question is gone: anyone signed in may, and the read policies decide what
- * comes back -- a BoE manager or site admin every find, an officer the teams
+ * comes back -- a guild Admin, BoE manager or site admin every find, an officer the teams
  * they staff, a raider the finds under their own character or reported while
  * signed in (#889). Getting this wrong now costs buttons, never rows.
  *
- * `manage` is the lifecycle grant (listing, sale, retire, edit, undo), the
- * same is_boe_manager() or is_site_admin() pair every money RPC gates on.
- * is_boe_manager() is grant-only and does not fold in site admins, matching
- * the RLS gate, which is why admin is asked separately rather than assumed.
+ * `manage` is the lifecycle grant (listing, sale, retire, edit, undo). It asks
+ * is_boe_manager() or is_site_admin(); the money RPCs ask the guild's
+ * record_boe permission since #1647, which guild Admins also hold, so an
+ * Admin who is not a BoE manager reads every find but gets no buttons here.
+ * is_boe_manager() is grant-only and does not fold in site admins, which is
+ * why admin is asked separately rather than assumed.
  *
  * `settleTeamIds` is what can_settle_boe() grants an officer or team leader
  * on their own team (#888): Mark Paid, Donate to Guild, Undo Payout. It comes
@@ -1777,18 +1783,18 @@ function fetchSupabaseIncomingRoster() {
 
 // Guild Officer Bios are guild-wide, not per-team (fixed after #586 shipped
 // them into team_settings.config, which is scoped per team_id) -- sourced
-// from site_settings' singleton id=1 row, same as maintenance_mode.
+// from the guild's own row since #1647.
 function fetchSupabaseGuildOfficerBios() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
-    .from('site_settings')
-    .select('guild_officer_bios')
-    .eq('id', 1)
+    .from('guilds')
+    .select('officer_bios')
+    .eq('id', GUILD_ID)
     .maybeSingle()
     .then(
       function (result) {
         if (result.error || !result.data) return null;
-        return result.data.guild_officer_bios || [];
+        return result.data.officer_bios || [];
       },
       function () {
         return null;
@@ -1803,10 +1809,11 @@ function fetchSupabaseGuildOfficerBios() {
 }
 
 // Saves Guild Officer Bios via the set_guild_officer_bios RPC (SECURITY
-// DEFINER, is_site_admin()-gated) -- NOT saveTeamSetting(), since this isn't
-// per-team data. Mirrors saveTeamSetting()'s shape.
+// DEFINER; a site admin or the guild's edit_all_bios permission, #1647) --
+// NOT saveTeamSetting(), since this isn't per-team data. Mirrors
+// saveTeamSetting()'s shape.
 function saveGuildOfficerBios(bios) {
-  return supabaseClient.rpc('set_guild_officer_bios', { p_bios: bios }).then(function (result) {
+  return supabaseClient.rpc('set_guild_officer_bios', { p_bios: bios, p_guild_id: GUILD_ID }).then(function (result) {
     if (result.error) throw new Error(result.error.message);
     return result.data;
   });
@@ -3005,7 +3012,7 @@ function applyTeamSettingsToData(data, config) {
   data.discordSignupChannelId = config.discordSignupChannelId || null;
   data.signupSheetLeadHours = config.signupSheetLeadHours || null;
   data.teamOfficerBios = config.teamOfficerBios || [];
-  // guildOfficerBios is guild-wide (site_settings, heavy-loaded in loadData()),
+  // guildOfficerBios is guild-wide (guilds, heavy-loaded in loadData()),
   // not sourced from any one team's config -- see fetchSupabaseGuildOfficerBios().
   data.wishlistStatusLabels = config.wishlistStatusLabels || {};
 }
@@ -3953,7 +3960,7 @@ function loadData(onCoreReady, onHeavyReady, onLootReady) {
   // Fired alongside; the heavy callback waits for it before setting raidZones.
   var raidZonesPromise = fetchSupabaseRaidZones();
   // Fired alongside; the heavy callback waits for it before setting
-  // guildOfficerBios. Guild-wide (site_settings), not per-team.
+  // guildOfficerBios. Guild-wide (guilds), not per-team.
   var guildOfficerBiosPromise = fetchSupabaseGuildOfficerBios();
   // Fired alongside; the heavy callback waits for it before setting raidEncounters.
   var raidEncountersPromise = fetchSupabaseRaidEncounters();

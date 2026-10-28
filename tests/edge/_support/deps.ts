@@ -9,7 +9,8 @@ import { recordingFetch } from './fetch.ts';
 export type FakeDbState = {
   // undefined means a signed-in user; null means no session behind the header.
   user?: { id: string } | null;
-  boeManager?: boolean;
+  // The teams the caller records BoE for; undefined means the sold row's team.
+  boeTeamIds?: number[];
   siteAdmin?: boolean;
   rows?: SaleRow[];
   // When set, readSale throws with this message, the way a failed read does.
@@ -31,16 +32,16 @@ export function fakeDb(state: FakeDbState = {}): FakeDb {
       record('getUser', authHeader);
       return Promise.resolve(state.user === undefined ? { id: MANAGER_USER_ID } : state.user);
     },
-    isBoeManager(authHeader) {
-      record('isBoeManager', authHeader);
-      return Promise.resolve(state.boeManager ?? true);
+    recordBoeTeamIds(authHeader) {
+      record('recordBoeTeamIds', authHeader);
+      return Promise.resolve(state.boeTeamIds ?? [1]);
     },
     isSiteAdmin(authHeader) {
       record('isSiteAdmin', authHeader);
       return Promise.resolve(state.siteAdmin ?? false);
     },
-    readSale(id) {
-      record('readSale', id);
+    readSale(authHeader, id) {
+      record('readSale', authHeader, id);
       if (state.readFails) return Promise.reject(new Error(state.readFails));
       return Promise.resolve((state.rows ?? []).find((row) => row.id === id) ?? null);
     },

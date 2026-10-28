@@ -17,7 +17,7 @@ begin
     raise exception 'Not signed in';
   end if;
   select t.guild_id, t.unlisted into v_guild_id, v_was_unlisted from teams t where t.id = p_team_id;
-  if v_guild_id is null or not public.is_guild_officer_of(v_guild_id) then
+  if v_guild_id is null or not public.has_guild_permission(v_guild_id, 'rename_archive_teams') then
     raise exception 'Not authorized';
   end if;
   if p_unlisted is null then
@@ -30,7 +30,8 @@ begin
 
   update teams set unlisted = p_unlisted where id = p_team_id;
 
-  perform public.write_audit_log(p_team_id, case when p_unlisted then 'Team Unlisted' else 'Team Listed' end,
-                                 'teams', p_team_id, null);
+  insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+  values (p_team_id, v_uid, case when p_unlisted then 'Team Unlisted' else 'Team Listed' end,
+          'teams', p_team_id, null);
 end;
 $function$;

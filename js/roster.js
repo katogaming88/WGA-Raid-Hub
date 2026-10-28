@@ -1037,7 +1037,7 @@ function bootRosterApp() {
           buildIncomingRosterSection();
           showRosterSubTab(_rosterSubTab);
         }
-        // guildOfficerBios is heavy-loaded (guild-wide, from site_settings) --
+        // guildOfficerBios is heavy-loaded (guild-wide, from guilds) --
         // a raider who deep-links straight to #about could hit showView('about')
         // before it resolves, same risk buildIncomingRosterSection() above
         // handles for the Roster tab.

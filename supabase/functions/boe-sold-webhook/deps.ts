@@ -10,9 +10,10 @@ const SALE_COLUMNS =
   'id, team_id, finder_name, item_name, track, upgrade_rank, status, sale_price, ah_fee, guild_cut, finder_payout, payout_donated';
 
 export function supabaseDb(): SaleDb {
-  // The caller's own JWT forwarded, so is_boe_manager()/is_site_admin() and
-  // resolve_boe_finder_discord_id() resolve auth.uid() exactly as they would
-  // for a direct frontend call. One client per header for the request.
+  // The caller's own JWT forwarded, so my_guild_permission_team_ids(),
+  // is_site_admin(), the row read and resolve_boe_finder_discord_id() resolve
+  // auth.uid() exactly as they would for a direct frontend call. One client
+  // per header for the request.
   const callers = new Map<string, SupabaseClient<any>>();
   const caller = (authHeader: string) => {
     let client = callers.get(authHeader);
@@ -25,9 +26,11 @@ export function supabaseDb(): SaleDb {
     return client;
   };
 
-  // Service role for the row and the manager list: boe_managers has no
+  // Service role for the manager list only: boe_managers has no
   // authenticated grant at all, so a manager holding only the grant would
-  // read an empty list and the closing line would name nobody. The finder
+  // read an empty list and the closing line would name nobody. The row is
+  // read as the caller (#1647, CodeRabbit), so another guild's find reads as
+  // no find at all. The finder
   // used to need it too, for the same shape of reason; that walk now happens
   // inside resolve_boe_finder_discord_id, which is security definer and does
   // it on the caller's behalf (#918), and which is also what lets a BoE
@@ -47,18 +50,24 @@ export function supabaseDb(): SaleDb {
       } = await caller(authHeader).auth.getUser();
       return user ? { id: user.id } : null;
     },
-    async isBoeManager(authHeader) {
-      const { data } = await caller(authHeader).rpc('is_boe_manager');
-      return data === true;
+    async recordBoeTeamIds(authHeader) {
+      const { data } = await caller(authHeader).rpc('my_guild_permission_team_ids', { p_permission: 'record_boe' });
+      return Array.isArray(data) ? data : [];
     },
     async isSiteAdmin(authHeader) {
       const { data } = await caller(authHeader).rpc('is_site_admin');
       return data === true;
     },
-    async readSale(id) {
-      const { data, error } = await db().from('boe_items').select(SALE_COLUMNS).eq('id', id).maybeSingle();
+    async readSale(authHeader, id) {
+      const { data, error } = await caller(authHeader)
+        .from('boe_items')
+        .select(SALE_COLUMNS + ', teams(guild_id)')
+        .eq('id', id)
+        .maybeSingle();
       if (error) throw new Error(error.message);
-      return (data as SaleRow | null) ?? null;
+      if (!data) return null;
+      const { teams, ...row } = data as unknown as Omit<SaleRow, 'guild_id'> & { teams: { guild_id: number } };
+      return { ...row, guild_id: teams.guild_id };
     },
     async resolveFinderDiscordId(authHeader, id) {
       const { data } = await caller(authHeader).rpc('resolve_boe_finder_discord_id', { p_boe_id: id });

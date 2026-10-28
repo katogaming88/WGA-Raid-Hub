@@ -49,6 +49,8 @@ import { type Source, allowedMentions, marker } from '../_shared/discord-destina
 export type SaleRow = {
   id: number;
   team_id: number;
+  // The finding team's guild (#1647).
+  guild_id: number;
   finder_name: string | null;
   item_name: string | null;
   track: string | null;

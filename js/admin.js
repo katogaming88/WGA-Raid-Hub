@@ -608,12 +608,16 @@ function renderBoePayoutSummary() {
   );
 }
 
+// We Go Again's guilds.id: the current site's BoE pages are that guild's
+// only, and the payout settings are per guild since #1647.
+var BOE_GUILD_ID = 1;
+
 function loadBoePayoutSettings() {
   var errorEl = document.getElementById('boePayoutError');
   return supabaseClient
-    .from('site_settings')
+    .from('guilds')
     .select('boe_payout_floor, boe_payout_pivot')
-    .eq('id', 1)
+    .eq('id', BOE_GUILD_ID)
     .maybeSingle()
     .then(function (result) {
       // Deliberately no default fallback here, unlike loadMaintenanceStatus().
@@ -660,7 +664,8 @@ function submitBoePayoutSettings() {
     return;
   }
 
-  return supabaseClient.rpc('set_boe_payout_settings', { p_floor: floor, p_pivot: pivot }).then(function (result) {
+  var params = { p_floor: floor, p_pivot: pivot, p_guild_id: BOE_GUILD_ID };
+  return supabaseClient.rpc('set_boe_payout_settings', params).then(function (result) {
     if (result.error) {
       errorEl.textContent = result.error.message;
       errorEl.style.display = '';

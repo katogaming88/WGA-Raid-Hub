@@ -227,7 +227,7 @@ describe('Guild home (new app), other states', () => {
   });
 
   it('leaves the officers out when there are none', async () => {
-    const { context, page } = await open({ tables: { ...GUILD_TABLES, site_settings: [{ guild_officer_bios: [] }] } });
+    const { context, page } = await open({ tables: { ...GUILD_TABLES, guilds: [{ officer_bios: [] }] } });
     try {
       await page.waitForSelector('.guild-news li');
       await expect(page.getByRole('heading', { name: 'Guild officers' }).count()).resolves.toBe(0);

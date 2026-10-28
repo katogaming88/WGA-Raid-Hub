@@ -18,7 +18,7 @@ begin
   if not found then
     raise exception 'BoE item not found';
   end if;
-  if not (public.is_boe_manager() or public.is_site_admin()) then
+  if not (v_team_id = any (public.my_guild_permission_team_ids('record_boe')) or public.is_site_admin()) then
     raise exception 'Not authorized';
   end if;
   if v_status <> all (array['found', 'listed']) then
