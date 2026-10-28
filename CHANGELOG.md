@@ -30,7 +30,10 @@ answers to.
   granting and revoking roles, archiving an officer) are the Team
   Owner's. Every team's one team leader is its Team Owner, so nobody's
   access changes on the current site. "Attendance and bench" also reads
-  the night's lineup, which attendance is taken against.
+  the night's lineup, which attendance is taken against. Handing a team
+  over on the current site (make someone team leader, then step down)
+  makes them the Team Owner, so the team is never left without one while
+  it has a team leader.
 
 ### Functions
 

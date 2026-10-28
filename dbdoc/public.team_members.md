@@ -47,6 +47,7 @@
 | team_members_archived_at_through_functions | CREATE TRIGGER team_members_archived_at_through_functions BEFORE UPDATE OF archived_at ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_archived_at_through_functions() |
 | team_members_keep_rank_and_role | CREATE TRIGGER team_members_keep_rank_and_role BEFORE INSERT OR UPDATE OF role, rank, archived_at, team_id ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_keep_rank_and_role() |
 | team_members_guard_rank | CREATE TRIGGER team_members_guard_rank BEFORE INSERT OR UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_guard_rank() |
+| team_members_pass_ownership | CREATE TRIGGER team_members_pass_ownership AFTER DELETE OR UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_pass_ownership() |
 
 ## Relations
 

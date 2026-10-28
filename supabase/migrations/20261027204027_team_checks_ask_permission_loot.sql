@@ -22,7 +22,8 @@
 -- they go through my_leader_team_ids(), which now means the teams the caller
 -- owns. Production has one current team leader per team and #1645 made each
 -- its owner, so nobody's access moves; a second team leader made later on
--- the current site is an Officer by rank, as #1517 has co-leads.
+-- the current site is an Officer by rank, as #1517 has co-leads, until the
+-- owner steps down and team_members_pass_ownership() hands them the team.
 --
 -- The guild officer, BoE Manager and site admin arms are unchanged, and so
 -- are is_any_team_officer() and is_team_leader_anywhere(): the guild-level
@@ -45,6 +46,43 @@ $$;
 
 comment on function public.my_leader_team_ids() is
   'The teams the caller owns (#1646): the Team Owner lines of #1517''s grid (team settings, season start, roles). Was "team leader on", which on production is the same people.';
+
+-- The current site hands a team over by making someone team leader and
+-- then stepping down, through the team leaders' direct role write or
+-- admin_revoke_team_role(). While the old owner holds the team the newcomer
+-- is an Officer by rank (#1645), so once the owner checks follow the rank,
+-- the step down would leave the team with no owner and the newcomer locked
+-- out of them. So when a current owner stops being one (another rank,
+-- archived, moved or deleted), the earliest other current team leader takes
+-- the team; with none, it waits for a site admin, as before.
+create function public.team_members_pass_ownership()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if old.rank = 'owner' and old.archived_at is null
+     and (tg_op = 'DELETE' or new.rank <> 'owner' or new.archived_at is not null
+          or new.team_id <> old.team_id)
+     and not exists (select 1 from team_members
+                      where team_id = old.team_id and rank = 'owner' and archived_at is null) then
+    update team_members set rank = 'owner'
+     where id = (select id from team_members
+                  where team_id = old.team_id and role = 'team_leader' and archived_at is null
+                    and id <> old.id
+                  order by id
+                  limit 1);
+  end if;
+  return null;
+end;
+$$;
+
+revoke all on function public.team_members_pass_ownership() from public, anon, authenticated;
+
+create trigger team_members_pass_ownership
+  after update or delete on public.team_members
+  for each row execute function public.team_members_pass_ownership();
 
 -- The table rules. Each keeps its name and its other arms.
 

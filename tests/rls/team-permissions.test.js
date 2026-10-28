@@ -12,7 +12,8 @@ import {
   seedSignup,
   grantGuild,
   RLS_DENIED,
-  GUILD_OFFICER
+  GUILD_OFFICER,
+  SITE_ADMIN
 } from './helpers.js';
 
 afterAll(() => pool.end());
@@ -181,6 +182,49 @@ describe('team permissions (#1646)', () => {
       ).rejects.toThrow(/Not authorized/);
       expect((await write(team.officer.uid)).rowCount).toBe(0);
       expect((await write(team.leader.uid)).rowCount).toBe(1);
+    });
+  });
+
+  it('a team handed over on the current site keeps an owner: the next team leader takes it', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const successor = await seedMember(q, { teamId: team.teamId });
+      const setRole = (id, role) =>
+        asUser(team.leader.uid, 'update public.team_members set role = $2 where id = $1', [id, role]);
+      const rank = async (id) => (await q('select rank from public.team_members where id = $1', [id])).rows[0].rank;
+      const writeSettings = (uid) =>
+        asUser(
+          uid,
+          `update public.team_settings set config = '{"minted": true}' where team_id = $1 returning team_id`,
+          [team.teamId]
+        );
+
+      await setRole(successor.memberId, 'team_leader');
+      expect(await rank(successor.memberId)).toBe('officer');
+      await setRole(team.leader.memberId, 'officer');
+
+      expect(await rank(team.leader.memberId)).toBe('officer');
+      expect(await rank(successor.memberId)).toBe('owner');
+      expect((await writeSettings(successor.uid)).rowCount).toBe(1);
+      expect((await writeSettings(team.leader.uid)).rowCount).toBe(0);
+    });
+  });
+
+  it('an owner who leaves with no other team leader leaves the team to a site admin', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await asUser(SITE_ADMIN, "select public.archive_team_member($1, $2, 'other', null)", [
+        team.teamId,
+        team.leader.memberId
+      ]);
+      const owners = await q(
+        "select count(*)::int as n from public.team_members where team_id = $1 and rank = 'owner' and archived_at is null",
+        [team.teamId]
+      );
+      expect(owners.rows[0].n).toBe(0);
+      expect(
+        (await q('select rank from public.team_members where id = $1', [team.officer.memberId])).rows[0].rank
+      ).toBe('officer');
     });
   });
 
