@@ -148,6 +148,7 @@ describe('bio cards', () => {
         /Not authorized/
       );
       await expect(save(asUser, lead.uid, [KAT, own, { name: 'Unowned' }])).rejects.toThrow(/Not authorized/);
+      await expect(save(asUser, lead.uid, [KAT, own, { ...own, name: 'Second' }])).rejects.toThrow(/one bio card/);
 
       await save(asUser, lead.uid, [KAT]);
       expect(await stored(q)).toEqual([KAT]);

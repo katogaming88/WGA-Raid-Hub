@@ -47,9 +47,9 @@ export function supabaseDb(): SaleDb {
       } = await caller(authHeader).auth.getUser();
       return user ? { id: user.id } : null;
     },
-    async isBoeManager(authHeader) {
-      const { data } = await caller(authHeader).rpc('is_boe_manager');
-      return data === true;
+    async recordBoeTeamIds(authHeader) {
+      const { data } = await caller(authHeader).rpc('my_guild_permission_team_ids', { p_permission: 'record_boe' });
+      return Array.isArray(data) ? data : [];
     },
     async isSiteAdmin(authHeader) {
       const { data } = await caller(authHeader).rpc('is_site_admin');

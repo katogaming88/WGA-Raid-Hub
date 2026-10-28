@@ -36,7 +36,13 @@ answers to.
   in their own guild, until cutover.
 - The officer bio cards and the BoE payout settings move from the
   site-wide settings to each guild. A Team Lead can save only their own
-  bio card; an Admin can save any.
+  bio card, and only one; an Admin can save any.
+
+### Functions
+
+- The BoE "sold" Discord post (`boe-sold-webhook`) is sent only for a
+  caller who may record BoE sales in the find's own guild, or a site
+  admin, instead of a BoE manager of any guild (#1647).
 
 ---
 

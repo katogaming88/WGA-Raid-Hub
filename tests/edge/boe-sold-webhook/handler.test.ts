@@ -93,8 +93,23 @@ Deno.test('a header with no session behind it is a 401', async () => {
   assertEquals(calls, []);
 });
 
-Deno.test('a signed-in caller who is neither a BoE manager nor a site admin is a 403, with no row read', async () => {
-  const db = fakeDb({ boeManager: false, siteAdmin: false, rows: [SOLD_ROW] });
+Deno.test(
+  'a caller who records BoE only in another guild is a 403 on this find, and nothing posts (#1647)',
+  async () => {
+    const db = fakeDb({ boeTeamIds: [7], rows: [SOLD_ROW] });
+    const { deps, calls } = testDeps({ db, responses: [discordNoContent()] });
+    const res = await handle(post({ id: 41 }), deps);
+    assertEquals(await json(res), { status: 403, body: { success: false, error: 'Not authorized' } });
+    assertEquals(
+      db.calls.some((c) => c.method === 'resolveFinderDiscordId'),
+      false
+    );
+    assertEquals(calls, []);
+  }
+);
+
+Deno.test('a signed-in caller who records BoE nowhere and is not a site admin is a 403, with no row read', async () => {
+  const db = fakeDb({ boeTeamIds: [], siteAdmin: false, rows: [SOLD_ROW] });
   const { deps, calls } = testDeps({ db, responses: [discordNoContent()] });
   const res = await handle(post({ id: 41 }), deps);
   assertEquals(await json(res), { status: 403, body: { success: false, error: 'Not authorized' } });
@@ -106,7 +121,7 @@ Deno.test('a signed-in caller who is neither a BoE manager nor a site admin is a
 });
 
 Deno.test('a site admin without the manager grant passes the gate', async () => {
-  const db = fakeDb({ boeManager: false, siteAdmin: true, rows: [SOLD_ROW], finderId: FINDER_ID });
+  const db = fakeDb({ boeTeamIds: [], siteAdmin: true, rows: [SOLD_ROW], finderId: FINDER_ID });
   const { deps, calls } = testDeps({ db, responses: [discordNoContent()] });
   const res = await handle(post({ id: 41 }), deps);
   assertEquals(await json(res), { status: 200, body: { success: true } });
@@ -120,7 +135,7 @@ Deno.test('with no webhook URL configured the call is skipped after the gate and
   assertEquals(await json(res), { status: 200, body: { success: true, skipped: true } });
   assertEquals(
     db.calls.map((c) => c.method),
-    ['getUser', 'isBoeManager', 'isSiteAdmin']
+    ['getUser', 'recordBoeTeamIds', 'isSiteAdmin']
   );
   assertEquals(calls, []);
 });
@@ -162,7 +177,7 @@ Deno.test('a sold row posts the pinned body once, to the sold webhook, as JSON',
   // caller's own session and the manager list is read after it.
   assertEquals(
     db.calls.map((c) => c.method),
-    ['getUser', 'isBoeManager', 'isSiteAdmin', 'readSale', 'resolveFinderDiscordId', 'managerDiscordIds']
+    ['getUser', 'recordBoeTeamIds', 'isSiteAdmin', 'readSale', 'resolveFinderDiscordId', 'managerDiscordIds']
   );
   assertEquals(db.calls[4].args, [MANAGER_AUTH, 41]);
 });
@@ -268,7 +283,7 @@ Deno.test(
     });
     assertEquals(
       db.calls.map((c) => c.method),
-      ['getUser', 'isBoeManager', 'isSiteAdmin']
+      ['getUser', 'recordBoeTeamIds', 'isSiteAdmin']
     );
     assertEquals(calls, []);
   }

@@ -27,7 +27,8 @@ export type { SaleRow };
 // supabase-js in deps.ts; a test hands in a plain object.
 export interface SaleDb {
   getUser(authHeader: string): Promise<{ id: string } | null>;
-  isBoeManager(authHeader: string): Promise<boolean>;
+  // The teams in every guild where the caller may record BoE sales (#1647).
+  recordBoeTeamIds(authHeader: string): Promise<number[]>;
   isSiteAdmin(authHeader: string): Promise<boolean>;
   // Throws when the read itself fails; null when no row has the id.
   readSale(id: number): Promise<SaleRow | null>;
@@ -65,8 +66,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return jsonResponse({ success: false, error: 'Missing id' }, 400);
     }
 
-    // The caller's own JWT, so is_boe_manager()/is_site_admin() resolve
-    // auth.uid() exactly as they would for a direct frontend call (the
+    // The caller's own JWT, so my_guild_permission_team_ids()/is_site_admin()
+    // resolve auth.uid() exactly as they would for a direct frontend call (the
     // upload-bio-photo and wcl-sync pattern).
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -76,11 +77,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (!user) {
       return jsonResponse({ success: false, error: 'Not authorized' }, 401);
     }
-    const [isManager, isSiteAdmin] = await Promise.all([
-      deps.db.isBoeManager(authHeader),
+    // Refused here when they record BoE nowhere; the find's own team is
+    // checked once the row is read, so another guild's recorder is refused
+    // too (#1647).
+    const [boeTeamIds, isSiteAdmin] = await Promise.all([
+      deps.db.recordBoeTeamIds(authHeader),
       deps.db.isSiteAdmin(authHeader)
     ]);
-    if (isManager !== true && isSiteAdmin !== true) {
+    if (boeTeamIds.length === 0 && isSiteAdmin !== true) {
       return jsonResponse({ success: false, error: 'Not authorized' }, 403);
     }
 
@@ -102,6 +106,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
     if (!row) {
       return jsonResponse({ success: false, error: 'No such find' }, 404);
+    }
+    if (isSiteAdmin !== true && !boeTeamIds.includes(row.team_id)) {
+      return jsonResponse({ success: false, error: 'Not authorized' }, 403);
     }
     // Only a sold row is news. A replay after Undo Sale, or an id that has
     // since been paid or retired, posts nothing rather than announcing a sale

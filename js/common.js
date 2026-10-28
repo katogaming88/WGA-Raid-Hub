@@ -337,14 +337,16 @@ function withTimeoutMs(promise, ms) {
  *
  * It used to answer whether they could open the page at all. Since #890 that
  * question is gone: anyone signed in may, and the read policies decide what
- * comes back -- a BoE manager or site admin every find, an officer the teams
+ * comes back -- a guild Admin, BoE manager or site admin every find, an officer the teams
  * they staff, a raider the finds under their own character or reported while
  * signed in (#889). Getting this wrong now costs buttons, never rows.
  *
- * `manage` is the lifecycle grant (listing, sale, retire, edit, undo), the
- * same is_boe_manager() or is_site_admin() pair every money RPC gates on.
- * is_boe_manager() is grant-only and does not fold in site admins, matching
- * the RLS gate, which is why admin is asked separately rather than assumed.
+ * `manage` is the lifecycle grant (listing, sale, retire, edit, undo). It asks
+ * is_boe_manager() or is_site_admin(); the money RPCs ask the guild's
+ * record_boe permission since #1647, which guild Admins also hold, so an
+ * Admin who is not a BoE manager reads every find but gets no buttons here.
+ * is_boe_manager() is grant-only and does not fold in site admins, which is
+ * why admin is asked separately rather than assumed.
  *
  * `settleTeamIds` is what can_settle_boe() grants an officer or team leader
  * on their own team (#888): Mark Paid, Donate to Guild, Undo Payout. It comes

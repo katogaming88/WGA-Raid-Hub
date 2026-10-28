@@ -23,8 +23,9 @@ begin
 
   v_guild := coalesce(p_guild_id, public.only_guild_id());
   -- Locked, so two own-card saves cannot each pass the check below against
-  -- the list the other is replacing.
-  select officer_bios into v_old from guilds where id = v_guild for update;
+  -- the list the other is replacing. No key update, so adding a team to the
+  -- guild meanwhile is not held up (fresh review).
+  select officer_bios into v_old from guilds where id = v_guild for no key update;
   if not found then
     raise exception 'There is no such guild';
   end if;
@@ -42,6 +43,10 @@ begin
              from jsonb_array_elements(p_bios) with ordinality as e(c, i)
             where c ->> 'personId' is distinct from v_me) then
       raise exception 'Not authorized';
+    end if;
+    -- One card of their own (fresh review).
+    if (select count(*) from jsonb_array_elements(p_bios) as e(c) where c ->> 'personId' = v_me) > 1 then
+      raise exception 'You can have one bio card of your own';
     end if;
   end if;
 
