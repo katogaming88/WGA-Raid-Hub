@@ -61,6 +61,23 @@ describe('team permissions (#1646)', () => {
     });
   });
 
+  it('archiving an Assistant asks Promote Assistants: an Assistant cannot, an Officer can', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const assistant = await seedAssistant(q, team.teamId);
+      const target = await seedAssistant(q, team.teamId);
+      const archive = (uid) =>
+        asUser(uid, "select public.archive_team_member($1, $2, 'other', null)", [team.teamId, target.memberId]);
+      const archived = async () =>
+        (await q('select archived_at from public.team_members where id = $1', [target.memberId])).rows[0].archived_at;
+
+      await expect(archive(assistant.uid)).rejects.toThrow(/promote Assistants/);
+      expect(await archived()).toBeNull();
+      await archive(team.officer.uid);
+      expect(await archived()).not.toBeNull();
+    });
+  });
+
   it('the audit log takes a row only from a permission that changes something', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);

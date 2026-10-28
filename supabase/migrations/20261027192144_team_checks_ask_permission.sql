@@ -213,7 +213,9 @@ alter policy "Officers read team_raid_kills" on public.team_raid_kills
 -- lets in anyone holding a team permission that changes something, since
 -- every officer-side action logs through it; the read-only ones (RSVPs,
 -- reports, loot, the audit log) and a raider's own two do not.
--- add_signup_to_roster() asks manage_signups and edit_roster both.
+-- add_signup_to_roster() asks manage_signups and edit_roster both, and
+-- archive_team_member() asks promote_assistants as well to archive an
+-- Assistant.
 
 create or replace function public.add_signup_to_roster(p_signup_id integer, p_is_trial boolean default true, p_archive_player_id integer default NULL::integer, p_is_backup_tank boolean default false, p_is_backup_healer boolean default false)
 returns integer
@@ -553,6 +555,7 @@ as $function$
 declare
   v_team_id integer;
   v_role text;
+  v_rank text;
   v_archived_at timestamptz;
   v_player_ids integer[];
 begin
@@ -572,7 +575,7 @@ begin
 
   -- Locked, so two archives of the same person cannot both pass the
   -- already-archived check below.
-  select team_id, role, archived_at into v_team_id, v_role, v_archived_at
+  select team_id, role, rank, archived_at into v_team_id, v_role, v_rank, v_archived_at
     from public.team_members where id = p_team_member_id
     for update;
   if v_team_id is null or v_team_id <> p_team_id then
@@ -589,6 +592,12 @@ begin
   if v_role = 'officer'
      and not (coalesce(public.my_team_role(p_team_id) = 'team_leader', false) or public.is_site_admin()) then
     raise exception 'Only the team leader or a site admin can archive an officer';
+  end if;
+  -- An Assistant comes back a Raider, so archiving one takes the rank away,
+  -- which is the grid's "Promote raiders to Assistant and back" (#1646).
+  if v_rank = 'assistant'
+     and not (public.has_team_permission(p_team_id, 'promote_assistants') or public.is_site_admin()) then
+    raise exception 'Only someone who can promote Assistants can archive one';
   end if;
 
   if v_archived_at is not null then
