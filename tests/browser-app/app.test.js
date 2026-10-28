@@ -1198,7 +1198,7 @@ const NEW_GUILD = {
 const GUILD_OFFICERS = {
   path: '/g/wga/officers',
   sentinel: 'main:has(.bio-card)',
-  tables: { site_settings: [{ guild_officer_bios: OFFICER_BIOS }] }
+  tables: { guilds: [{ officer_bios: OFFICER_BIOS }] }
 };
 const TEAM_OFFICERS = {
   path: '/g/wga/t/phoenix/officers',

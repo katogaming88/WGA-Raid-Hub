@@ -26,7 +26,7 @@ begin
   if not found then
     raise exception 'BoE item not found';
   end if;
-  if not (public.is_boe_manager() or public.is_site_admin()) then
+  if not (v_team_id = any (public.my_guild_permission_team_ids('record_boe')) or public.is_site_admin()) then
     raise exception 'Not authorized';
   end if;
   if v_status <> all (array['found', 'listed']) then
@@ -36,15 +36,17 @@ begin
     raise exception 'Sale price must be positive';
   end if;
 
-  select s.boe_payout_floor, s.boe_payout_pivot into v_floor, v_pivot
-  from public.site_settings s where s.id = 1;
+  -- The finding team's guild's settings (#1647).
+  select g.boe_payout_floor, g.boe_payout_pivot into v_floor, v_pivot
+  from public.teams t join public.guilds g on g.id = t.guild_id
+  where t.id = v_team_id;
 
   -- Whole gold, half away from zero: silver and copper are ignored by
   -- decision (a 47,999 sale carries a 2,399g 95s cut in game and 2,400 here),
   -- the same rounding the payout uses.
   v_fee := round(p_sale_price::numeric * c_ah_fee_pct / 100)::bigint;
 
-  -- Guild policy (#745 comment): 20%-of-gross or the floor, whichever is
+  -- Guild rule (#745 comment): 20%-of-gross or the floor, whichever is
   -- larger, rounded to the nearest gold half away from zero, and never more
   -- than the sale net of the fee (#861), so the guild is never out of pocket
   -- on a sub-floor sale. The guild keeps what is left after the fee.

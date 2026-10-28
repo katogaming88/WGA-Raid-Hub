@@ -340,7 +340,7 @@ function saveBios() {
 // distinct DOM/config namespace so the two never collide.
 
 var GUILD_OFFICER_BIOS = [];
-// Guild Officer Bios are guild-wide (site_settings, not team_settings) --
+// Guild Officer Bios are guild-wide (guilds, not team_settings) --
 // only a site admin or a guild officer (#607) can save them, since it isn't
 // any one team's content to own. Any other officer still sees the current
 // list, read-only.

@@ -59,10 +59,14 @@ describe('no public read; officer reads are team-scoped unless granted', () => {
     });
   });
 
-  it('a guild officer sees nothing (deliberately excluded, like approvals)', async () => {
-    await withTxn(async ({ asUser }) => {
-      expect((await asUser(GUILD_OFFICER, 'select id from public.boe_items')).rows.length).toBe(0);
-      expect((await asUser(GUILD_OFFICER, 'select id from public.boe_listings')).rows.length).toBe(0);
+  // A guild officer is an Admin (#1645), and the guild grid gives Admins
+  // record_boe (#1647): every find in their guild, any team.
+  it('a guild officer reads every find in their own guild', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const id = await addTeam2Item(q);
+      const items = await asUser(GUILD_OFFICER, 'select id from public.boe_items');
+      expect(items.rows.map((r) => r.id)).toEqual(expect.arrayContaining([1, 2, id]));
+      expect((await asUser(GUILD_OFFICER, 'select id from public.boe_listings')).rows.length).toBe(1);
     });
   });
 

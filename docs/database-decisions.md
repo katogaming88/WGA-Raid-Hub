@@ -10,6 +10,25 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-27 -- Guild-level checks ask the guild grid in their own guild; bio cards and BoE payout settings move to the guild (#1647, part 1)
+
+Shipped: 20261027222102_guild_checks_ask_permission.sql
+
+The first half of #1647. The team checks' guild officer arm becoming "Officer on every team" and "See every team, read-only" is part 2.
+
+- **Which permission each check asks:** `create_teams` for `create_team()`; `rename_archive_teams` for `update_team()`, `set_team_archived()` and `set_team_unlisted()` (unlisting goes with archiving); `edit_all_bios` / `edit_own_bio` for the bio cards; `record_boe` for listing, selling, retiring, editing, reverting and deleting a find, and for `resolve_boe_finder_discord_id()`; `pay_any_boe` for `can_settle_boe()` beside the team's own `pay_boe_cuts`; `edit_boe_settings` for the payout settings (until now site admins only); `view_guild_audit_log` for the audit log's guild arm. Each in the guild of the team or find it acts on, never "any guild".
+- **One lookup per query for the rules:** `my_guild_permission_team_ids('<permission>')`, every team in a guild where the caller has that permission, wrapped and constant-named like `my_permission_team_ids()`. The BoE read rules take `pay_any_boe` as well as `record_boe`, so whoever may pay a find can see it.
+- **BoE Manager counts as `record_boe` and `pay_any_boe` in its own guild until cutover**, inside `has_guild_permission()`, so the current site keeps working and nothing asks `is_boe_manager()` (any guild) any more. It stays for the current site's buttons, as `is_guild_officer()` does; `tests/rls/guild-officer-per-guild.test.js` fails if a rule, view or function calls either.
+- **We Go Again's guild officers gain BoE recording and the payout settings**, because they are Admins (#1645) and the default grid gives Admins both. On the current site the BoE buttons still follow `is_boe_manager()`, so nothing changes on screen.
+- **A card is someone's own by its `personId`.** The cards had no owner, and "edit own bio card" needs one. With `edit_own_bio` only, a save must bring back every card that is not the caller's (including any card with no `personId`) unchanged and in the same order, so they can add, edit, move among and remove only their own. The guild row is locked for the check. Nothing sets `personId` yet; the new app's editor will when Team Leads get their page.
+- **Bio cards and payout settings are columns on `guilds`** (`officer_bios`, `boe_payout_floor`, `boe_payout_pivot`), public like the rest of the row, written only by their two functions. Production has one guild, so the `site_settings` values became We Go Again's (the first guild) and the old columns were dropped. Both functions take the guild (left out, the only guild while there is one, as for the grants in #1324); the current site passes We Go Again's id. `boe_record_sale()` prices from the finding team's guild.
+- **The team functions and both settings writers write their own audit row**, because the caller need not be an officer of the team, which `write_audit_log()` asks.
+- **Not done here:** "Change a team's Team Owner" and "Edit guild profile" have no function yet; they come with their pages.
+
+[Full discussion -> #1647](https://github.com/katogaming88/WGA-Raid-Hub/issues/1647).
+
+---
+
 ## 2026-10-27 -- Loot, priority, BoE, audit log and team-leader checks ask the team grid; team-leader-only becomes Team Owner (#1646, part 2)
 
 Shipped: 20261027204027_team_checks_ask_permission_loot.sql

@@ -1,7 +1,7 @@
 // Guild landing page (guild.html) -- #777.
 //
 // The one page on this site that is not scoped to a raid team. Everything it
-// shows is either guild-wide already (site_settings, the unfiltered streamers
+// shows is either guild-wide already (site_settings, guilds, the unfiltered streamers
 // read from #286, the static news.json) or is a link down into a team page.
 //
 // Unlike js/admin.js, which is standalone for the same team-free reason, this
@@ -502,8 +502,8 @@ function renderGuildBoe() {
 }
 
 /**
- * About the Guild (#782). Guild officer bios live on site_settings' singleton
- * row, guild-wide since #586 moved them off team_settings.config, and have
+ * About the Guild (#782). Guild officer bios live on the guild's row (#1647),
+ * guild-wide since #586 moved them off team_settings.config, and have
  * only ever been reachable through the About tab of a team page.
  *
  * js/roster.js's buildGuildBios() renders the same shape but cannot be called

@@ -23,7 +23,7 @@ begin
     if not public.can_settle_boe(v_team_id) then
       raise exception 'Not authorized';
     end if;
-  elsif not (public.is_boe_manager() or public.is_site_admin()) then
+  elsif not (v_team_id = any (public.my_guild_permission_team_ids('record_boe')) or public.is_site_admin()) then
     raise exception 'Not authorized';
   end if;
 

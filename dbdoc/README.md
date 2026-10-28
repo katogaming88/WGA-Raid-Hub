@@ -37,7 +37,7 @@
 | [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
 | [public.priority_order_stale_after_heroic](public.priority_order_stale_after_heroic.md) | 7 |  | VIEW |
 | [public.item_preferences](public.item_preferences.md) | 11 |  | BASE TABLE |
-| [public.site_settings](public.site_settings.md) | 10 |  | BASE TABLE |
+| [public.site_settings](public.site_settings.md) | 7 |  | BASE TABLE |
 | [public.incoming_roster](public.incoming_roster.md) | 8 |  | VIEW |
 | [public.tier_token_map](public.tier_token_map.md) | 6 |  | BASE TABLE |
 | [public.boe_items](public.boe_items.md) | 26 |  | BASE TABLE |
@@ -55,7 +55,7 @@
 | [public.team_discord_config](public.team_discord_config.md) | 12 | Per-team Discord infra config for the consolidated multi-tenant bot (#991): guild/channel/role ids and script URLs the bot needs to route a relayed action to the right place. Written and read only by the bot's service-role client; no read use case for an officer or end user. Mirrors raid_signup_sheets' locked-down shape (#900). | BASE TABLE |
 | [public.track_bonus_ids](public.track_bonus_ids.md) | 5 | Maps a WoW item bonus ID to its gear upgrade track and rank (e.g. 12853 -> Myth 5/6). Read by blizzard-gear-sync when syncing equipped gear, and the intended future home of the constants currently inlined in import_rclc_loot(). Seeded by hand per tier -- append the new block, never edit or delete old rows, since older gear keeps its original bonus IDs. | BASE TABLE |
 | [public.account_preferences](public.account_preferences.md) | 6 | Per-account preferences, one row per (account, team, key); team_id is null for guild-wide keys. The account_preferences_known_key CHECK lists every allowed key. Replaced no_character_dismissals (#940). | BASE TABLE |
-| [public.guilds](public.guilds.md) | 6 | One row per guild. url_key is the /g/<key> segment of an address: readable for WGA, a random code for any other guild (#1100, #1114). | BASE TABLE |
+| [public.guilds](public.guilds.md) | 9 | One row per guild. url_key is the /g/<key> segment of an address: readable for WGA, a random code for any other guild (#1100, #1114). | BASE TABLE |
 | [public.retired_url_keys](public.retired_url_keys.md) | 5 | Keys a guild (team_id null) or team used to have, so old addresses still resolve. Written only by the key-change triggers on guilds and teams (#1114). guild_id is the guild the key lived under. | BASE TABLE |
 | [public.people](public.people.md) | 4 | One row per human (#942). auth_user_id is their sign-in account, null for a Discord id listed on a grant before its owner signed in. discord_id is null for an account with no Discord linked. Grant tables point here through person_id. | BASE TABLE |
 | [public.seasons](public.seasons.md) | 5 | One row per raid tier (#932). code is the short form every season column references (MID2); display_name is what officers see and type (Midnight Season 2), and nothing keys to it since #936. A tier is added by a migration that closes the outgoing row and inserts the new one. | BASE TABLE |
@@ -116,7 +116,6 @@
 | public.admin_set_maintenance_mode | void | p_enabled boolean, p_message text DEFAULT NULL::text | FUNCTION |
 | public.submit_self_received | record | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text | FUNCTION |
 | public.direct_mark_received | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text | FUNCTION |
-| public.set_guild_officer_bios | jsonb | p_bios jsonb | FUNCTION |
 | public.flag_bis_list_changed | int4 | p_team_id integer, p_name_realm text, p_player_note text DEFAULT NULL::text | FUNCTION |
 | public.update_own_signup | int4 | p_signup_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text | FUNCTION |
 | public.add_signup_to_roster | int4 | p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer, p_is_backup_tank boolean DEFAULT false, p_is_backup_healer boolean DEFAULT false | FUNCTION |
@@ -131,7 +130,6 @@
 | public.boe_record_listing | void | p_id integer, p_price bigint, p_listed_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_note text DEFAULT NULL::text | FUNCTION |
 | public.boe_retire | void | p_id integer, p_note text DEFAULT NULL::text | FUNCTION |
 | public.boe_revert | text | p_id integer | FUNCTION |
-| public.set_boe_payout_settings | void | p_floor bigint, p_pivot bigint | FUNCTION |
 | public.delete_self_received_request | void | p_id integer | FUNCTION |
 | public.is_boe_manager | bool |  | FUNCTION |
 | public.is_any_team_officer | bool |  | FUNCTION |
@@ -273,6 +271,9 @@
 | public.has_guild_permission | bool | p_guild_id integer, p_permission text | FUNCTION |
 | public.my_permission_team_ids | _int4 | p_permission text | FUNCTION |
 | public.team_members_pass_ownership | trigger |  | FUNCTION |
+| public.my_guild_permission_team_ids | _int4 | p_permission text | FUNCTION |
+| public.set_guild_officer_bios | jsonb | p_bios jsonb, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
+| public.set_boe_payout_settings | void | p_floor bigint, p_pivot bigint, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
 
 ## Enums
 
@@ -810,9 +811,6 @@ erDiagram
   boolean maintenance_mode
   text maintenance_message
   timestamp_with_time_zone updated_at
-  jsonb guild_officer_bios
-  bigint boe_payout_floor
-  bigint boe_payout_pivot
   jsonb gear_sync_last_cron_run
   jsonb gear_sync_last_officer_run
   boolean guild_creation_open
@@ -1005,6 +1003,9 @@ erDiagram
   timestamp_with_time_zone created_at
   text region
   text realm
+  jsonb officer_bios
+  bigint boe_payout_floor
+  bigint boe_payout_pivot
 }
 "public.retired_url_keys" {
   bigint id

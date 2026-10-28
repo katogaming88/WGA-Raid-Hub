@@ -649,25 +649,34 @@ export type Database = {
       }
       guilds: {
         Row: {
+          boe_payout_floor: number
+          boe_payout_pivot: number
           created_at: string
           id: number
           name: string
+          officer_bios: Json
           realm: string | null
           region: string | null
           url_key: string
         }
         Insert: {
+          boe_payout_floor?: number
+          boe_payout_pivot?: number
           created_at?: string
           id?: never
           name: string
+          officer_bios?: Json
           realm?: string | null
           region?: string | null
           url_key?: string
         }
         Update: {
+          boe_payout_floor?: number
+          boe_payout_pivot?: number
           created_at?: string
           id?: never
           name?: string
+          officer_bios?: Json
           realm?: string | null
           region?: string | null
           url_key?: string
@@ -2899,36 +2908,27 @@ export type Database = {
       }
       site_settings: {
         Row: {
-          boe_payout_floor: number
-          boe_payout_pivot: number
           gear_sync_last_cron_run: Json | null
           gear_sync_last_officer_run: Json | null
           guild_creation_open: boolean
-          guild_officer_bios: Json
           id: number
           maintenance_message: string | null
           maintenance_mode: boolean
           updated_at: string
         }
         Insert: {
-          boe_payout_floor?: number
-          boe_payout_pivot?: number
           gear_sync_last_cron_run?: Json | null
           gear_sync_last_officer_run?: Json | null
           guild_creation_open?: boolean
-          guild_officer_bios?: Json
           id?: number
           maintenance_message?: string | null
           maintenance_mode?: boolean
           updated_at?: string
         }
         Update: {
-          boe_payout_floor?: number
-          boe_payout_pivot?: number
           gear_sync_last_cron_run?: Json | null
           gear_sync_last_officer_run?: Json | null
           guild_creation_open?: boolean
-          guild_officer_bios?: Json
           id?: number
           maintenance_message?: string | null
           maintenance_mode?: boolean
@@ -4588,6 +4588,10 @@ export type Database = {
       }
       my_active_player_ids: { Args: never; Returns: number[] }
       my_guild_officer_team_ids: { Args: never; Returns: number[] }
+      my_guild_permission_team_ids: {
+        Args: { p_permission: string }
+        Returns: number[]
+      }
       my_leader_team_ids: { Args: never; Returns: number[] }
       my_officer_team_ids: { Args: never; Returns: number[] }
       my_permission_team_ids: {
@@ -4765,7 +4769,7 @@ export type Database = {
         Returns: number
       }
       set_boe_payout_settings: {
-        Args: { p_floor: number; p_pivot: number }
+        Args: { p_floor: number; p_guild_id?: number; p_pivot: number }
         Returns: undefined
       }
       set_boss_group: {
@@ -4781,7 +4785,10 @@ export type Database = {
         Args: { p_cap?: number; p_encounter_id: number }
         Returns: undefined
       }
-      set_guild_officer_bios: { Args: { p_bios: Json }; Returns: Json }
+      set_guild_officer_bios: {
+        Args: { p_bios: Json; p_guild_id?: number }
+        Returns: Json
+      }
       set_lineup_role_targets: {
         Args: { p_healers: number; p_tanks: number; p_team_id: number }
         Returns: undefined

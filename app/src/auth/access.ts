@@ -124,10 +124,13 @@ export type Ability =
   // the same for every guild, so only a site admin keeps it right (#1324).
   | 'manageRaidReference'
   // The Guild officers page's bios (#1361): guild-wide, so a guild officer or
-  // site admin, as set_guild_officer_bios() checks.
+  // site admin. set_guild_officer_bios() asks the guild's edit_all_bios, or
+  // edit_own_bio for the caller's own card (#1647); a Team Lead's own-card
+  // editing comes with the guild rank pages.
   | 'editGuildOfficers'
   // Guild settings (#1644): adding, renaming, archiving and unlisting teams.
-  // A guild officer only, as is_guild_officer_of() checks; Staff are left out.
+  // A guild officer only, an Admin on the guild grid, which create_teams and
+  // rename_archive_teams default to (#1647); Staff are left out.
   | 'manageTeams';
 
 export function teamRole(access: Access, teamId: number | null | undefined): TeamRole | null {

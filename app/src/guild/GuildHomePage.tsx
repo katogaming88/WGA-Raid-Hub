@@ -311,7 +311,8 @@ function News() {
 // Nothing to say is better than an empty heading, so no officers (or a failed
 // read) leaves the section out, as today.
 function Officers() {
-  const bios = useGuildOfficers();
+  const { guild } = useAddress();
+  const bios = useGuildOfficers(guild.id);
   const titleId = useId();
   if (!bios.isSuccess) return null;
   const list = officers(bios.data);

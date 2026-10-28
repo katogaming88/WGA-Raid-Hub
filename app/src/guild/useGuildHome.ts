@@ -75,12 +75,12 @@ export function useTeamCardData(teamIds: number[], today: Date) {
   );
 }
 
-// The guild officers the site admin lists (site_settings, one row).
-export function useGuildOfficers() {
-  return useSupabaseQuery<OfficerBio[]>(['guild-officers'], async (client) => {
-    const result = await client.from('site_settings').select('guild_officer_bios').eq('id', 1).maybeSingle();
+// The guild's officer bio cards, on its own row (#1647).
+export function useGuildOfficers(guildId: number) {
+  return useSupabaseQuery<OfficerBio[]>(['guild-officers', guildId], async (client) => {
+    const result = await client.from('guilds').select('officer_bios').eq('id', guildId).maybeSingle();
     if (result.error) return { data: null, error: result.error };
-    const bios = result.data?.guild_officer_bios;
+    const bios = result.data?.officer_bios;
     return { data: Array.isArray(bios) ? (bios as OfficerBio[]) : [], error: null };
   });
 }

@@ -192,10 +192,6 @@ describe('a guild officer acts in their own guild', () => {
   });
 });
 
-// Only this one may still ask "a guild officer in any guild": the bio cards
-// are stored once for the whole site until #1647 moves them to the guild.
-const ANY_GUILD_OK = ['set_guild_officer_bios'];
-
 describe('no check asks about any guild', () => {
   it('no access rule, view or other function calls is_guild_officer()', async () => {
     // rls-pool-read-only: reads the catalog, writes nothing.
@@ -208,7 +204,21 @@ describe('no check asks about any guild', () => {
       union all
       select 'view ' || viewname, definition from pg_views where schemaname = 'public'
     `);
-    const callers = rows.filter((r) => /is_guild_officer\(\)/.test(r.body)).map((r) => r.what);
-    expect(callers.sort()).toEqual(ANY_GUILD_OK.map((f) => `function ${f}`));
+    // The bio cards moved to the guild in #1647, so nothing is left.
+    expect(rows.filter((r) => /is_guild_officer\(\)/.test(r.body)).map((r) => r.what)).toEqual([]);
+  });
+
+  it('no access rule, view or other function calls is_boe_manager() (#1647)', async () => {
+    // rls-pool-read-only: reads the catalog, writes nothing.
+    const { rows } = await pool.query(`
+      select 'function ' || proname as what, regexp_replace(prosrc, '--[^\\n]*', '', 'g') as body
+        from pg_proc where pronamespace = 'public'::regnamespace and proname <> 'is_boe_manager'
+      union all
+      select 'rule ' || tablename || ': ' || policyname, coalesce(qual, '') || ' ' || coalesce(with_check, '')
+        from pg_policies where schemaname = 'public'
+      union all
+      select 'view ' || viewname, definition from pg_views where schemaname = 'public'
+    `);
+    expect(rows.filter((r) => /is_boe_manager\(\)/.test(r.body)).map((r) => r.what)).toEqual([]);
   });
 });

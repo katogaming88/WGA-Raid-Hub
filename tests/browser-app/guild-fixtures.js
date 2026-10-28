@@ -16,7 +16,7 @@ export const GUILD_TABLES = {
   team_settings: SETTINGS,
   team_seasons: TEAM_SEASONS,
   streamers: STREAMS,
-  site_settings: [{ guild_officer_bios: OFFICER_BIOS }],
+  guilds: [{ officer_bios: OFFICER_BIOS }],
   players: [
     { team_id: 1, classes_specs: { role: 'Tank' } },
     { team_id: 1, classes_specs: { role: 'Heal' } },

@@ -14,15 +14,18 @@ declare
   v_first text;
   v_distinct integer;
 begin
-  -- The same pair boe_record_sale requires, so this admits exactly the people
-  -- who could have caused the message it feeds.
-  if not (public.is_boe_manager() or public.is_site_admin()) then
-    raise exception 'Not authorized';
-  end if;
-
   select * into v_row from public.boe_items where id = p_boe_id;
-  if not found then
+
+  -- The same check boe_record_sale makes, so this admits exactly the people
+  -- who could have caused the message it feeds.
+  if v_row.id is null then
+    if not (cardinality(public.my_guild_permission_team_ids('record_boe')) > 0 or public.is_site_admin()) then
+      raise exception 'Not authorized';
+    end if;
     return null;
+  end if;
+  if not (v_row.team_id = any (public.my_guild_permission_team_ids('record_boe')) or public.is_site_admin()) then
+    raise exception 'Not authorized';
   end if;
 
   -- 1. Stamped at submit, when the finder was signed in (#889). Trusted over

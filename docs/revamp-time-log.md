@@ -16,8 +16,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
-| Revamp 4: cutover                  |      6 h 10 m |
-| **All revamp work**                |  **123 h 6 m** |
+| Revamp 4: cutover                  |      6 h 40 m |
+| **All revamp work**                | **123 h 36 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -440,6 +440,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 7:17-7:45 PM | #1646 part 1 built: 25 access rules and 26 functions on roster, schedule, RSVPs, attendance, signups and reports ask the team grid's permission (rewritten by exact substitution from the generated definitions), my_permission_team_ids() for once-per-query rules, write_audit_log() for any staff permission; database tests (Assistant, a permission switched off), full database suite, generated docs, decision log, RLS.md, stamp, changelog, this row | Revamp 4 (#1646) | 30 m | ~30 m build | not read | Review and merge in the next row |
 | 7:53-8:36 PM | PR #1691 (#1646 part 1): CodeRabbit three times (audit log takes only permissions that change something, adding a signup asks Edit roster too, resolve_person keeps the BoE Manager flag to its old callers, a guild officer can still archive an Assistant, refused cases for wrong team and signed out); the fresh-agent review (approved; archiving an Assistant asks Promote Assistants, two RLS.md sentences); merged 8:36 PM | Revamp 4 (#1646) | 45 m | ~40 m build, ~5 m Kat | not read | |
 | 8:37-8:55 PM | #1692 filed (the Discord name lookup answers for any account); #1646 part 2 built: loot, priority, scoring, BoE, audit log and streamer checks ask the grid, team-leader-only checks become Team Owner through my_leader_team_ids(), wcl-sync and blizzard-gear-sync ask manage_loot, snapshot leader personas own their teams; two co-leader tests now have the owner act; database and Edge Function tests, generated docs, decision log, RLS.md, stamp, changelog, these rows | Revamp 4 (#1646) | 20 m | ~20 m build | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
+| 10:10-10:40 PM | #1647 part 1 built: create, rename, archive and unlist a team, the bio cards (own card by personId), BoE recording, paying any find and the payout settings, and the guild audit log ask the guild grid in their own guild; BoE Manager counts in its own guild until cutover; bio cards and payout settings moved from site_settings to guilds, both sites read and save them there; database tests (Team Lead, Admin, other guild, BoE manager), full database suite, frontend and app tests, generated docs, decision log, RLS.md, stamp, changelog, this row | Revamp 4 (#1647) | 30 m | ~30 m build | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

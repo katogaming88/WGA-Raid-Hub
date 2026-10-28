@@ -28,10 +28,10 @@ export function useSaveTeamOfficers(teamId: number) {
   );
 }
 
-export function useSaveGuildOfficers() {
+export function useSaveGuildOfficers(guildId: number) {
   return useSupabaseMutation<unknown, OfficerBio[]>(
-    (client, bios) => client.rpc('set_guild_officer_bios', { p_bios: bios as unknown as Json }),
-    { key: ['save-guild-officers'], refreshes: [['guild-officers']] }
+    (client, bios) => client.rpc('set_guild_officer_bios', { p_bios: bios as unknown as Json, p_guild_id: guildId }),
+    { key: ['save-guild-officers', guildId], refreshes: [['guild-officers', guildId]] }
   );
 }
 

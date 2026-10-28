@@ -190,7 +190,7 @@ export function guildLive(rows: StreamerRow[], teamNames: Map<number, string>): 
 // ---------------------------------------------------------------------------
 // Guild officers
 
-// site_settings.guild_officer_bios and team_settings.config.teamOfficerBios,
+// guilds.officer_bios and team_settings.config.teamOfficerBios,
 // as the officer editor on the current site writes them -- the same shape for
 // both (js/tabs/tab-bios.js).
 export type OfficerBio = {

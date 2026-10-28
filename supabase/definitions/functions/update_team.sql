@@ -21,7 +21,7 @@ begin
   end if;
   select t.guild_id, t.name, t.slug into v_guild_id, v_old_name, v_old_key
     from teams t where t.id = p_team_id;
-  if v_guild_id is null or not public.is_guild_officer_of(v_guild_id) then
+  if v_guild_id is null or not public.has_guild_permission(v_guild_id, 'rename_archive_teams') then
     raise exception 'Not authorized';
   end if;
 
@@ -49,7 +49,9 @@ begin
 
   update teams set name = v_name, slug = v_key where id = p_team_id;
 
-  perform public.write_audit_log(p_team_id, 'Team Updated', 'teams', p_team_id,
-                                 jsonb_build_object('name', v_name, 'key', v_key, 'old_name', v_old_name, 'old_key', v_old_key));
+  -- Its own row: the caller need not be on the team (see the header).
+  insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+  values (p_team_id, v_uid, 'Team Updated', 'teams', p_team_id,
+          jsonb_build_object('name', v_name, 'key', v_key, 'old_name', v_old_name, 'old_key', v_old_key));
 end;
 $function$;

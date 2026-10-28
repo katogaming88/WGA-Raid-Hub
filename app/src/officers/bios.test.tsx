@@ -49,7 +49,7 @@ function handlers(role: string, options: { guildOfficer?: boolean; upload?: unkn
     },
     from(read) {
       if (read.table === 'team_settings') return { data: { bios: [KAT, REX] } };
-      if (read.table === 'site_settings') return { data: { guild_officer_bios: [KAT] } };
+      if (read.table === 'guilds' && read.columns === 'officer_bios') return { data: { officer_bios: [KAT] } };
       if (read.table === 'players') return { data: [RAIDER] };
       return base.from!(read);
     },
@@ -176,7 +176,7 @@ describe('editing Guild officers', () => {
     await user.click(screen.getByRole('button', { name: 'Save officers' }));
     await vi.waitFor(() =>
       expect(saved(client, 'set_guild_officer_bios')).toEqual([
-        { p_bios: [{ ...KAT, bio: 'Runs the Hub. Also the guild site.' }] }
+        { p_bios: [{ ...KAT, bio: 'Runs the Hub. Also the guild site.' }], p_guild_id: 1 }
       ])
     );
   });

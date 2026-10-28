@@ -26,7 +26,8 @@ const overrides = ({ streamers = STREAMS, bios = OFFICER_BIOS, members = [] } = 
   team_settings: TEAM_SETTINGS,
   team_seasons: TEAM_SEASONS,
   streamers,
-  site_settings: [{ id: 1, maintenance_mode: false, maintenance_message: '', guild_officer_bios: bios }],
+  site_settings: [{ id: 1, maintenance_mode: false, maintenance_message: '' }],
+  guilds: [{ id: 1, officer_bios: bios }],
   team_members: members
 });
 

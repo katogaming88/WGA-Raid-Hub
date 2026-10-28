@@ -29,7 +29,8 @@ const BARE_ROLE_COMPARE_OK = [];
 // (my_officer_team_ids, my_leader_team_ids, my_active_player_ids): a
 // signed-out read evaluates the rules too, and each returns an empty array
 // when there is no auth.uid(). #1646 added my_permission_team_ids, the same
-// kind of helper for the team grid's permissions. Set equality, so an
+// kind of helper for the team grid's permissions, and #1647
+// my_guild_permission_team_ids for the guild grid's. Set equality, so an
 // accidental grant fails and so does an accidental revoke.
 const ANON_DEFINER_ALLOWLIST = [
   'app_version',
@@ -44,6 +45,7 @@ const ANON_DEFINER_ALLOWLIST = [
   'is_site_admin',
   'is_team_leader_anywhere',
   'my_active_player_ids',
+  'my_guild_permission_team_ids',
   'my_guild_officer_team_ids',
   'my_leader_team_ids',
   'my_officer_team_ids',

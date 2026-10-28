@@ -61,6 +61,9 @@ erDiagram
   timestamp_with_time_zone created_at
   text region
   text realm
+  jsonb officer_bios
+  bigint boe_payout_floor
+  bigint boe_payout_pivot
 }
 "public.people" {
   integer id

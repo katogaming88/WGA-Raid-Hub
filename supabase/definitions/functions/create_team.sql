@@ -18,7 +18,7 @@ begin
   if v_uid is null then
     raise exception 'Not signed in';
   end if;
-  if not public.is_guild_officer_of(p_guild_id) then
+  if not public.has_guild_permission(p_guild_id, 'create_teams') then
     raise exception 'Not authorized';
   end if;
 
@@ -46,6 +46,7 @@ begin
   insert into team_members (team_id, discord_id, role)
   values (v_team_id, v_discord_id, 'team_leader');
 
+  -- The caller is the new team's owner by now, so write_audit_log() admits them.
   perform public.write_audit_log(v_team_id, 'Team Created', 'teams', v_team_id,
                                  jsonb_build_object('name', v_name, 'key', v_team_key));
 
