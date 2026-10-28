@@ -156,6 +156,13 @@ from (values
   ('discord-guildofficer-1', 'guild_officer')
 ) as g(discord_id, grant_type);
 
+-- The guild's Owner (#1648): a team leader, as Kat is on production.
+-- Immolation's, whom no test leans on as an ungranted leader. The Owner gets
+-- the guild_officer grant through guild_ranks_keep_grant. The site admin
+-- stays Staff alone, unlike Rex, so the tests keep a Staff with no guild rank.
+insert into public.guild_ranks (guild_id, person_id, rank)
+values ((select id from public.guilds where url_key = 'wga'), public.person_for_discord_id('discord-leader-3'), 'owner');
+
 insert into public.classes_specs (id, class, spec, role) values
   (1, 'Mage', 'Frost', 'Ranged');
 

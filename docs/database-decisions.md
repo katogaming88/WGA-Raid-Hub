@@ -10,6 +10,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-28 -- We Go Again's people get their new ranks: Kat is the guild's Owner, both site admins Admins (#1648)
+
+Shipped: 20261028115219_wga_new_ranks.sql
+
+#1517's cutover list for We Go Again, done now so the guild test's testers have their ranks.
+
+- **Already done by #1645:** each team's team leader is its Team Owner, officers are Officers, raiders are Raiders, nobody is an Assistant, and the two guild officers are Admins.
+- **Each team's one team leader is its Team Owner** (Kat, 2026-10-28: there should never be more than one). Production has exactly one on every team; Hellfire Rollers and Wrathless share theirs. Should a second appear, `team_members_keep_rank_and_role` makes them an Officer, so the migration does not check for one.
+- **Both of We Go Again's site admins become Admins**, named by their `site_admin` grant rather than by id: Rex, so he keeps recording BoE sales, and Kat, whose row then becomes **Owner**. Kat is named by her Discord id: this is a one-off for one guild. The migration stops if We Go Again has members and no Owner results.
+- **`boe_manager` grants stay until cutover** for the current site; the new app ignores them.
+- **The seed's Owner is Immolation's team leader**, a persona no test uses as an ungranted leader. The seed's site admin stays Staff with no guild rank, unlike Rex, so the tests keep a Staff who gets nothing from the guild.
+
+[Full discussion -> #1648](https://github.com/katogaming88/WGA-Raid-Hub/issues/1648).
+
+---
+
 ## 2026-10-28 -- A guild rank only reads inside a team: "See every team (read-only)" on the guild grid, and the two per-person switches go (#1647, part 2)
 
 Shipped: 20261028000710_guild_officers_read_every_team.sql

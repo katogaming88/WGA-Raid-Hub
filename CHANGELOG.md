@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.222.0] - 2026-10-28
+
+### Backend
+
+- We Go Again's people get their new ranks (#1648). Kat is the guild's
+  Owner, and Rex is an Admin as well as Staff, so he keeps recording BoE
+  sales. Each team's team leader was already its Team Owner, officers
+  Officers, raiders Raiders and the two guild officers Admins (#1645).
+
+### Project
+
+- The local seed has a guild Owner, Immolation's team leader, and the
+  Owner tests use it (#1648).
+
+---
+
 ## [3.221.0] - 2026-10-28
 
 ### Backend

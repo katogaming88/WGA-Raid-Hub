@@ -5,7 +5,17 @@
 // 2026-10-28). We Go Again's guild officer (GUILD_OFFICER, a raider on
 // Phoenix) is an Admin. Every case runs in a rolled-back transaction.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedMember, seedPlayer, seedSignup, RLS_DENIED, GUILD_OFFICER, SITE_ADMIN } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  seedMember,
+  seedPlayer,
+  seedSignup,
+  RLS_DENIED,
+  GUILD_OFFICER,
+  SITE_ADMIN,
+  TEAM_LEADER_T3
+} from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -133,8 +143,8 @@ describe('See every team (read-only)', () => {
   it('reads for the Owner too, and not for a Team Lead or a Member', async () => {
     await withTxn(async ({ q, asUser }) => {
       await hellfireRows(q);
-      const owner = await ranked(q, 'owner');
-      expect(await reads(asUser, owner.uid)).toMatchObject({ rsvps: 1, notes: 1 });
+      // The seed's Owner (#1648), Immolation's team leader.
+      expect(await reads(asUser, TEAM_LEADER_T3)).toMatchObject({ rsvps: 1, notes: 1 });
       for (const rank of ['team_lead', 'member']) {
         const who = await ranked(q, rank);
         expect(await reads(asUser, who.uid)).toEqual(NOTHING);
