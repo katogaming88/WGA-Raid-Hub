@@ -20,9 +20,10 @@
 -- team_members_keep_rank_and_role already makes them an Officer.
 
 insert into public.guild_ranks (guild_id, person_id, rank)
-select guild_id, person_id, 'admin'
-  from public.guild_grants
- where grant_type = 'site_admin'
+select x.guild_id, x.person_id, 'admin'
+  from public.guild_grants x
+  join public.guilds g on g.id = x.guild_id
+ where x.grant_type = 'site_admin' and g.url_key = 'wga'
 on conflict (guild_id, person_id) do update set rank = 'admin'
  where guild_ranks.rank in ('member', 'team_lead');
 
@@ -36,7 +37,10 @@ update public.guild_ranks r
 -- migrations, so nobody is, and the seed sets its own Owner.
 do $$
 begin
-  if exists (select 1 from public.team_members)
+  if exists (select 1 from public.team_members m
+               join public.teams t on t.id = m.team_id
+               join public.guilds g on g.id = t.guild_id
+              where g.url_key = 'wga')
      and not exists (select 1 from public.guild_ranks r join public.guilds g on g.id = r.guild_id
                       where g.url_key = 'wga' and r.rank = 'owner') then
     raise exception 'We Go Again has no Owner: Kat was not found (#1648)';

@@ -16,8 +16,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
-| Revamp 4: cutover                  |      10 h 5 m |
-| **All revamp work**                | **127 h 1 m** |
+| Revamp 4: cutover                  |      9 h 40 m |
+| **All revamp work**                | **126 h 36 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -456,7 +456,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:55-1:10 AM | PR #1696 rebuilt: Kat dropped both per-person switches (a guild officer reads every team; a team rank, from the Team Owner, is what writes) and chose a guild grid row, "See every team (read-only)", on for Admins, read-only on the current site from merge; the migration rebuilt from the same generated pieces and renamed, the two switch columns dropped; 27 older tests that had a guild officer write on another team now refused, a new test file for the grid row; full database suite, generated docs, decision log, RLS.md, schema reference, changelog | Revamp 4 (#1647) | 15 m | ~12 m build, ~3 m Kat | not read | CodeRabbit again, a fresh-agent review of the rebuild and merge not yet counted |
 | 10:55-11:15 AM | PR #1696 (#1647 part 2): CodeRabbit's two nits on the old version (the read test adds the priority conflict dismissals and signed-out reads of every officer-only table; the other was about a dropped column), preflight, pushed the rebuild, PR body and title rewritten for the read-only model, CodeRabbit answered; Kat merged 11:42 AM | Revamp 4 (#1647) | 20 m | ~15 m build, ~5 m Kat | not read | No fresh-agent review of the rebuild before merge |
 | 11:42-11:52 AM | After #1696: branches cleaned up, #1487 row removed and totals redone; #1648's question answered by Kat (each team's one team leader is its Team Owner) and checked on production | Revamp 4 (#1648) | 10 m | ~5 m build, ~5 m Kat | not read | |
-| 11:52 AM- | #1648 built: Kat the guild's Owner, both site admins Admins (Rex keeps recording BoE sales), dry run on production and a restored snapshot; the seed's Owner is Immolation's leader, four Owner tests use it; full database suite, generated docs, decision log, stamp, changelog, these rows | Revamp 4 (#1648) | 45 m | ~45 m build | not read | Elapsed estimated; the wall clock ran longer with waits. CodeRabbit, the fresh-agent review and merge not yet counted |
+| 11:52 AM-12:03 PM | #1648 built: Kat the guild's Owner, both site admins Admins (Rex keeps recording BoE sales), dry run on production and a restored snapshot; the seed's Owner is Immolation's leader, four Owner tests use it; full database suite, generated docs, decision log, stamp, changelog, these rows; PR #1698 | Revamp 4 (#1648) | 10 m | ~10 m build | not read | |
+| 12:08-12:20 PM | PR #1698 (#1648): CodeRabbit (Admins and the Owner check scoped to We Go Again; a second-leader stop and a Staff-and-Admin persona declined); full database suite, snapshot re-checked | Revamp 4 (#1648) | 10 m | ~10 m build | not read | The fresh-agent review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
