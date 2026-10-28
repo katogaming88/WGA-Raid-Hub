@@ -11,9 +11,8 @@ AS $function$
 declare
   v_is_self boolean := p_discord_id is not distinct from public.current_discord_id();
   v_is_site_admin boolean := public.is_site_admin();
-  -- "Officer on every team" or "See every team" (#1647); the first also
-  -- passes edit_roster below.
-  v_guild_team_ids integer[] := public.my_sees_every_team_ids();
+  -- The guild grid's view_every_team (#1647).
+  v_guild_team_ids integer[] := public.my_guild_permission_team_ids('view_every_team');
   v_sees_all_teams boolean;
   v_person people%rowtype;
   v_grants text[];
@@ -47,8 +46,8 @@ begin
     'guild_officer', case when v_is_self or v_is_site_admin
                           then 'guild_officer' = any (v_grants) end,
     -- Shown to the callers who saw it before #1646 opened this function to
-    -- edit_roster: the person, site admins, team officers, and (#1647) the
-    -- two per-person switches, which today's guild officers hold.
+    -- edit_roster: the person, site admins, team officers, and (#1647)
+    -- view_every_team, which today's guild officers hold as Admins.
     'boe_manager', ('boe_manager' = any (v_grants))
                    and (v_sees_all_teams or public.is_any_team_officer() or cardinality(v_guild_team_ids) > 0),
     'teams', coalesce((

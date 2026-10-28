@@ -609,26 +609,20 @@ export type Database = {
         Row: {
           created_at: string
           guild_id: number
-          officer_on_every_team: boolean
           person_id: number
           rank: string
-          sees_every_team: boolean
         }
         Insert: {
           created_at?: string
           guild_id: number
-          officer_on_every_team?: boolean
           person_id: number
           rank?: string
-          sees_every_team?: boolean
         }
         Update: {
           created_at?: string
           guild_id?: number
-          officer_on_every_team?: boolean
           person_id?: number
           rank?: string
-          sees_every_team?: boolean
         }
         Relationships: [
           {
@@ -4606,7 +4600,6 @@ export type Database = {
           team_slug: string
         }[]
       }
-      my_sees_every_team_ids: { Args: never; Returns: number[] }
       my_team_role: { Args: { p_team_id: number }; Returns: string }
       my_wishlist_signup_ids: { Args: never; Returns: number[] }
       new_url_code: { Args: never; Returns: string }

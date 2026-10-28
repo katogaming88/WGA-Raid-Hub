@@ -13,6 +13,7 @@ import {
   RAIDER_T2,
   OFFICER_T1,
   OFFICER_T2,
+  TEAM_LEADER_T1,
   GUILD_OFFICER,
   SITE_ADMIN
 } from './helpers.js';
@@ -102,7 +103,9 @@ describe('set_boss_group()', () => {
       const { p1, p2 } = await seed(q);
       await setGroup(asUser, OFFICER_T1, FIRST, [p1, p2]);
       // A second officer still on the empty group they opened earlier.
-      await expect(setGroup(asUser, GUILD_OFFICER, FIRST, [p1], [])).rejects.toThrow(/Someone else changed this group/);
+      await expect(setGroup(asUser, TEAM_LEADER_T1, FIRST, [p1], [])).rejects.toThrow(
+        /Someone else changed this group/
+      );
       expect(await group(q, FIRST)).toEqual([p1, p2]);
     });
   });
@@ -131,14 +134,12 @@ describe('set_boss_group()', () => {
     });
   });
 
-  it('lets guild officers and site admins save, and nobody else', async () => {
+  it('lets site admins save, and nobody else (#1647: not a guild officer)', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { p1 } = await seed(q);
-      for (const uid of [GUILD_OFFICER, SITE_ADMIN]) {
-        expect((await setGroup(asUser, uid, FIRST, [p1])).rows[0].n).toBe(1);
-      }
+      expect((await setGroup(asUser, SITE_ADMIN, FIRST, [p1])).rows[0].n).toBe(1);
     });
-    for (const uid of [RAIDER_T1, OFFICER_T2]) {
+    for (const uid of [RAIDER_T1, OFFICER_T2, GUILD_OFFICER]) {
       await withTxn(async ({ q, asUser }) => {
         const { p1 } = await seed(q);
         await expect(setGroup(asUser, uid, FIRST, [p1])).rejects.toThrow(/Not authorized/);
@@ -284,7 +285,7 @@ describe('set_raid_night_lineup()', () => {
       await setGroup(asUser, OFFICER_T1, FIRST, [p1, p2]);
       await plan(asUser, OFFICER_T1, '2026-09-17');
       await setNight(asUser, OFFICER_T1, '2026-09-17', FIRST, [p1], [p1, p2]);
-      await expect(setNight(asUser, GUILD_OFFICER, '2026-09-17', FIRST, [p2], [p1, p2])).rejects.toThrow(
+      await expect(setNight(asUser, TEAM_LEADER_T1, '2026-09-17', FIRST, [p2], [p1, p2])).rejects.toThrow(
         /Someone else changed this boss/
       );
       expect((await night(q, '2026-09-17'))[0].players).toEqual([p1]);
@@ -426,16 +427,14 @@ describe('record_raid_night_participation()', () => {
     });
   });
 
-  it('lets guild officers and site admins write, and nobody else', async () => {
+  it('lets site admins write, and nobody else (#1647: not a guild officer)', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { p1 } = await seed(q);
       await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
       await plan(asUser, OFFICER_T1, '2026-09-17');
-      for (const uid of [GUILD_OFFICER, SITE_ADMIN]) {
-        expect((await record(asUser, uid, '2026-09-17', FIRST, [p1])).rows[0].n).toBe(1);
-      }
+      expect((await record(asUser, SITE_ADMIN, '2026-09-17', FIRST, [p1])).rows[0].n).toBe(1);
     });
-    for (const uid of [RAIDER_T1, OFFICER_T2]) {
+    for (const uid of [RAIDER_T1, OFFICER_T2, GUILD_OFFICER]) {
       await withTxn(async ({ q, asUser }) => {
         const { p1 } = await seed(q);
         await setGroup(asUser, OFFICER_T1, FIRST, [p1]);

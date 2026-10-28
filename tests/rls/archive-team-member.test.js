@@ -176,15 +176,17 @@ describe('archive_team_member: an officer is archived by the team leader or a si
     });
   });
 
-  it('a guild officer cannot archive an officer, but can still archive a raider', async () => {
+  // #1647: a guild rank writes nothing inside a team it is not on.
+  it('a guild officer archives nobody on a team they are not on', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const guildOfficer = await seedGrant(q, 'guild_officer');
-      await expect(archiveMember(asUser, guildOfficer, team.teamId, team.officer.memberId)).rejects.toThrow(
-        LEADER_OR_ADMIN
-      );
-      await archiveMember(asUser, guildOfficer, team.teamId, team.raider.memberId);
-      expect(await archivedAt(q, team.raider.memberId)).not.toBeNull();
+      for (const member of [team.officer, team.raider]) {
+        await expect(archiveMember(asUser, guildOfficer, team.teamId, member.memberId)).rejects.toThrow(
+          /Not authorized/
+        );
+        expect(await archivedAt(q, member.memberId)).toBeNull();
+      }
     });
   });
 

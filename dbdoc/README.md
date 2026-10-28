@@ -84,7 +84,7 @@
 | [public.rank_permissions](public.rank_permissions.md) | 4 | Every permission on the guild and team grids, with the ranks that have it in a new guild or team (#1517, #1645). Owners hold every permission and are not listed. | BASE TABLE |
 | [public.guild_rank_permissions](public.guild_rank_permissions.md) | 4 | Each guild's grid: a row means that guild rank has that permission there (#1645). Filled from rank_permissions.default_ranks when the guild is made; the Owner changes it later. | BASE TABLE |
 | [public.team_rank_permissions](public.team_rank_permissions.md) | 4 | Each team's grid: a row means that team rank has that permission there (#1645). Filled from rank_permissions.default_ranks when the team is made; the Team Owner changes it later. | BASE TABLE |
-| [public.guild_ranks](public.guild_ranks.md) | 6 | A person's rank in a guild (#1645): owner (one per guild), admin, team_lead or member. Member is automatic for anyone on a team in the guild, so a member has a row only to hold one of the two switches. Owner and admin are kept in step with a guild_officer grant until cutover, both ways. | BASE TABLE |
+| [public.guild_ranks](public.guild_ranks.md) | 4 | A person's rank in a guild (#1645): owner (one per guild), admin, team_lead or member. Member is automatic for anyone on a team in the guild, so a row is only needed for the other three. Owner and admin are kept in step with a guild_officer grant until cutover, both ways. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -272,7 +272,6 @@
 | public.my_guild_permission_team_ids | _int4 | p_permission text | FUNCTION |
 | public.set_guild_officer_bios | jsonb | p_bios jsonb, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
 | public.set_boe_payout_settings | void | p_floor bigint, p_pivot bigint, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
-| public.my_sees_every_team_ids | _int4 |  | FUNCTION |
 
 ## Enums
 
@@ -1244,8 +1243,6 @@ erDiagram
   integer guild_id FK
   integer person_id FK
   text rank
-  boolean sees_every_team
-  boolean officer_on_every_team
   timestamp_with_time_zone created_at
 }
 ```

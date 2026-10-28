@@ -12,7 +12,7 @@
 // before the removal cannot save the raider back onto a live list, and the
 // RCLootCouncil export leaves out an archived raider whatever the table holds.
 import { describe, it, expect } from 'vitest';
-import { withTxn, seedTeam, seedPlayer, seedSeason, GUILD_OFFICER } from './helpers.js';
+import { withTxn, seedTeam, seedPlayer, seedSeason, SITE_ADMIN } from './helpers.js';
 
 async function liveSeason(q) {
   return (await q('select public.current_season() as code')).rows[0].code;
@@ -54,10 +54,10 @@ describe('archiving a raider drops their live priority ranks', () => {
 
   // The priority write rule leaves guild officers out on purpose (#607), so a
   // delete made with their own rights would match nothing and say nothing.
-  it("a guild officer's archive_player() removes them too", async () => {
+  it("a site admin's archive_player() removes them too", async () => {
     await withTxn(async ({ q, asUser }) => {
       const { leaving } = await fixture(q);
-      await asUser(GUILD_OFFICER, "select public.archive_player($1, 'other', 'left the guild')", [leaving]);
+      await asUser(SITE_ADMIN, "select public.archive_player($1, 'other', 'left the guild')", [leaving]);
       expect(await ranksHeldBy(q, leaving)).toEqual([]);
     });
   });

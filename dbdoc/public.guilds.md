@@ -99,8 +99,6 @@ erDiagram
   integer guild_id FK
   integer person_id FK
   text rank
-  boolean sees_every_team
-  boolean officer_on_every_team
   timestamp_with_time_zone created_at
 }
 ```

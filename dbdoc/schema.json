@@ -4069,7 +4069,7 @@
           "nullable": true
         }
       ],
-      "def": "CREATE VIEW incoming_roster AS (\n SELECT s.id AS signup_id,\n    s.team_id,\n    s.signup_name_realm,\n    cs.class,\n    cs.spec,\n    cs.role,\n    s.swap_from_name_realm,\n    s.status\n   FROM ((season_signups s\n     JOIN team_seasons ts ON (((ts.team_id = s.team_id) AND (ts.season_code = s.season))))\n     LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))\n  WHERE ((s.approved_player_id IS NULL) AND ((s.status = 'approved'::text) OR ((s.status = 'pending'::text) AND ((my_team_role(s.team_id) IS NOT NULL) OR (s.team_id = ANY (my_permission_team_ids('manage_signups'::text))) OR (s.team_id = ANY (my_sees_every_team_ids())) OR is_site_admin()))))\n)",
+      "def": "CREATE VIEW incoming_roster AS (\n SELECT s.id AS signup_id,\n    s.team_id,\n    s.signup_name_realm,\n    cs.class,\n    cs.spec,\n    cs.role,\n    s.swap_from_name_realm,\n    s.status\n   FROM ((season_signups s\n     JOIN team_seasons ts ON (((ts.team_id = s.team_id) AND (ts.season_code = s.season))))\n     LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))\n  WHERE ((s.approved_player_id IS NULL) AND ((s.status = 'approved'::text) OR ((s.status = 'pending'::text) AND ((my_team_role(s.team_id) IS NOT NULL) OR (s.team_id = ANY (my_permission_team_ids('manage_signups'::text))) OR (s.team_id = ANY (my_guild_permission_team_ids('view_every_team'::text))) OR is_site_admin()))))\n)",
       "referenced_tables": [
         "public.season_signups",
         "public.team_seasons",
@@ -9748,7 +9748,7 @@
     {
       "name": "public.guild_ranks",
       "type": "BASE TABLE",
-      "comment": "A person's rank in a guild (#1645): owner (one per guild), admin, team_lead or member. Member is automatic for anyone on a team in the guild, so a member has a row only to hold one of the two switches. Owner and admin are kept in step with a guild_officer grant until cutover, both ways.",
+      "comment": "A person's rank in a guild (#1645): owner (one per guild), admin, team_lead or member. Member is automatic for anyone on a team in the guild, so a row is only needed for the other three. Owner and admin are kept in step with a guild_officer grant until cutover, both ways.",
       "columns": [
         {
           "name": "guild_id",
@@ -9765,20 +9765,6 @@
           "type": "text",
           "nullable": false,
           "default": "'member'::text"
-        },
-        {
-          "name": "sees_every_team",
-          "type": "boolean",
-          "nullable": false,
-          "default": "false",
-          "comment": "\"See every team, read-only\" (#1517): set by the guild Owner per person. Off for everyone; the read rules that use it come later."
-        },
-        {
-          "name": "officer_on_every_team",
-          "type": "boolean",
-          "nullable": false,
-          "default": "false",
-          "comment": "\"Officer on every team\" (#1517): set by the guild Owner per person. While on, has_team_permission() answers as an Officer on every team in the guild."
         },
         {
           "name": "created_at",
@@ -12744,12 +12730,6 @@
       "name": "public.set_boe_payout_settings",
       "return_type": "void",
       "arguments": "p_floor bigint, p_pivot bigint, p_guild_id integer DEFAULT NULL::integer",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.my_sees_every_team_ids",
-      "return_type": "_int4",
-      "arguments": "",
       "type": "FUNCTION"
     }
   ],

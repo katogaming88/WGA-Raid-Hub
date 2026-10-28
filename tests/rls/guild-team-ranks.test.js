@@ -319,22 +319,25 @@ describe('the permission checks', () => {
     });
   });
 
-  it('"Officer on every team" answers as an officer on every team in the guild', async () => {
+  // #1647: the guild grid's "See every team (read-only)" answers the
+  // read-only team permissions as an officer, and nothing else.
+  it('"See every team" answers the read-only permissions on every team in the guild', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { teamId } = await seedTeam(q);
-      expect(await can(asUser, RAIDER_T1, 'has_team_permission', teamId, 'manage_loot')).toBe(false);
+      expect(await can(asUser, RAIDER_T1, 'has_team_permission', teamId, 'view_loot')).toBe(false);
       await q(
-        `insert into public.guild_ranks (guild_id, person_id, officer_on_every_team)
-         values (${WGA}, public.person_for_discord_id('discord-raider-1'), true)`
+        `insert into public.guild_ranks (guild_id, person_id, rank)
+         values (${WGA}, public.person_for_discord_id('discord-raider-1'), 'admin')`
       );
-      expect(await can(asUser, RAIDER_T1, 'has_team_permission', teamId, 'manage_loot')).toBe(true);
+      expect(await can(asUser, RAIDER_T1, 'has_team_permission', teamId, 'view_loot')).toBe(true);
+      expect(await can(asUser, RAIDER_T1, 'has_team_permission', teamId, 'manage_loot')).toBe(false);
 
       // Only in that guild: a team in another guild stays shut.
       const otherGuild = (await q("insert into public.guilds (name) values ('Other') returning id")).rows[0].id;
       const otherTeam = (
         await q("insert into public.teams (name, guild_id) values ('Other Team', $1) returning id", [otherGuild])
       ).rows[0].id;
-      expect(await can(asUser, RAIDER_T1, 'has_team_permission', otherTeam, 'manage_loot')).toBe(false);
+      expect(await can(asUser, RAIDER_T1, 'has_team_permission', otherTeam, 'view_loot')).toBe(false);
     });
   });
 

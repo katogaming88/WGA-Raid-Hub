@@ -15,7 +15,7 @@ const archivedAt = (q, playerId) =>
 describe('a direct change to players.archived_at', () => {
   for (const [who, pick] of [
     ['an officer', (team) => team.officer.uid],
-    ['a guild officer', () => GUILD_OFFICER],
+    ['the team leader', (team) => team.leader.uid],
     ['a site admin', () => SITE_ADMIN]
   ]) {
     it(`is refused to ${who}, taking a character off the roster`, async () => {

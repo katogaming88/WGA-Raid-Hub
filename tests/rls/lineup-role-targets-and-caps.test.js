@@ -98,10 +98,8 @@ describe('set_lineup_role_targets()', () => {
     });
   });
 
-  it('lets a guild officer or a site admin set another team’s targets', async () => {
+  it('lets a site admin set another team’s targets', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await setTargets(asUser, GUILD_OFFICER, 3, 6);
-      expect(await targetsOf(q)).toEqual({ tanks_wanted: 3, healers_wanted: 6 });
       await setTargets(asUser, SITE_ADMIN, 2, 4);
       expect(await targetsOf(q)).toEqual({ tanks_wanted: 2, healers_wanted: 4 });
     });
@@ -111,6 +109,8 @@ describe('set_lineup_role_targets()', () => {
     await withTxn(async ({ q, asUser }) => {
       await expect(setTargets(asUser, OFFICER_T2, 3, 5)).rejects.toMatchObject({ message: /Not authorized/ });
       await expect(setTargets(asUser, RAIDER_T1, 3, 5)).rejects.toMatchObject({ message: /Not authorized/ });
+      // #1647: a guild rank writes nothing inside a team it is not on.
+      await expect(setTargets(asUser, GUILD_OFFICER, 3, 5)).rejects.toMatchObject({ message: /Not authorized/ });
       const rows = (await q('select 1 from public.team_lineup_settings where team_id = 1')).rows;
       expect(rows).toHaveLength(0);
     });

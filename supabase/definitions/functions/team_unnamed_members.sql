@@ -9,8 +9,7 @@ CREATE OR REPLACE FUNCTION public.team_unnamed_members(p_team_id integer)
  SET search_path TO 'public'
 AS $function$
 begin
-  -- Whoever can Assign: edit_roster on the team, "Officer on every team" in
-  -- its guild included (#1647), or a site admin.
+  -- Whoever can Assign: edit_roster on the team, or a site admin (#1647).
   if not (
     public.has_team_permission(p_team_id, 'edit_roster')
     or public.is_site_admin()

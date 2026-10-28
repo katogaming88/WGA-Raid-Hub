@@ -16,17 +16,15 @@ answers to.
 
 ### Backend
 
-- A guild rank alone no longer gives anything inside a team the person
-  is not on (#1647, part 2). Two per-person switches do instead:
-  "Officer on every team" acts as an Officer on every team in the guild,
-  and "See every team, read-only" reads every team's pages and changes
-  nothing. Both are off for everyone except We Go Again's two guild
-  officers, who get "Officer on every team". They keep everything they
-  could do on other teams, and can now also import loot, edit priority
-  and scoring, approve requests and add signups to the roster there.
-  A guild's Owner always counts as Officer on every team. Until cutover,
-  the current site's Grant Guild Officer switches it on and Revoke
-  switches it off.
+- A guild rank no longer lets anyone change anything inside a team they
+  are not on (#1647, part 2). A new guild permission, "See every team
+  (read-only)", on for Admins, lets them read every team's pages: roster,
+  RSVPs, signups, reports, loot and the audit log. Anyone who also runs a
+  team is promoted on that team by its Team Owner. We Go Again's two
+  guild officers keep reading every team and lose the roster, attendance,
+  schedule and bio edits they had on teams they are not on. The planned
+  per-person switches "See every team" and "Officer on every team" are
+  removed.
 
 ### Project
 
