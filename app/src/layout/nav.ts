@@ -247,12 +247,16 @@ export const GUILD_PAGES: Record<string, string> = {
   boe: 'BoE sales',
   streams: 'Streams',
   officers: 'Guild officers',
-  'settings/teams': 'Guild settings'
+  'settings/teams': 'Guild settings',
+  'settings/members': 'Guild settings'
 };
 
-// The tabs of Guild settings (#1644), one address each. Members (#1650) and
-// the rank permissions grid (#1652) join them.
-export const GUILD_SETTINGS_TABS: NavPage[] = [{ label: 'Teams', to: 'settings/teams' }];
+// The tabs of Guild settings (#1644), one address each. The rank permissions
+// grid (#1652) joins them.
+export const GUILD_SETTINGS_TABS: NavPage[] = [
+  { label: 'Teams', to: 'settings/teams' },
+  { label: 'Members', to: 'settings/members' }
+];
 
 // Pages about the site itself, at /<path> with no guild in the address (#1482).
 // Their old /g/<guild>/<path> addresses forward here.

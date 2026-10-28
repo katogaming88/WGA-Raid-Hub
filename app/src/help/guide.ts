@@ -116,6 +116,21 @@ export const GUIDES: Guide[] = [
     ]
   },
   {
+    id: 'guild-members',
+    topic: 'start',
+    title: 'Manage your guild’s ranks',
+    officers: true,
+    quick:
+      'The Members tab of Guild settings lists everyone in the guild with their guild rank. The Owner changes ranks and hands the guild over.',
+    place: { label: 'Members', to: (b) => `${b.guild}/settings/members` },
+    steps: [
+      'Open Guild settings, under Guild in the sidebar, then the Members tab. The Owner and Admins can open it.',
+      'Everyone in the guild is listed with their rank: Owner, Admin, Team Lead or Member. Anyone on a team is a Member until the Owner promotes them.',
+      'The Owner chooses Make Admin, Make Team Lead or Make Member beside a person. Admins help run the guild; Team Leads can start teams of their own. Admins see the list but have no buttons.',
+      'To give the guild to someone else, the Owner chooses Hand over ownership beside them and types their name to confirm. They become the Owner and you become an Admin; only the new Owner can undo it.'
+    ]
+  },
+  {
     id: 'team-setup',
     topic: 'start',
     title: 'Set up your team',
