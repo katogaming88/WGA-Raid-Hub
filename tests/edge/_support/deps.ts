@@ -40,8 +40,8 @@ export function fakeDb(state: FakeDbState = {}): FakeDb {
       record('isSiteAdmin', authHeader);
       return Promise.resolve(state.siteAdmin ?? false);
     },
-    readSale(id) {
-      record('readSale', id);
+    readSale(authHeader, id) {
+      record('readSale', authHeader, id);
       if (state.readFails) return Promise.reject(new Error(state.readFails));
       return Promise.resolve((state.rows ?? []).find((row) => row.id === id) ?? null);
     },

@@ -16,8 +16,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
-| Revamp 4: cutover                  |      7 h 10 m |
-| **All revamp work**                | **124 h 6 m** |
+| Revamp 4: cutover                  |      7 h 25 m |
+| **All revamp work**                | **124 h 21 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -443,6 +443,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:10-10:40 PM | #1647 part 1 built: create, rename, archive and unlist a team, the bio cards (own card by personId), BoE recording, paying any find and the payout settings, and the guild audit log ask the guild grid in their own guild; BoE Manager counts in its own guild until cutover; bio cards and payout settings moved from site_settings to guilds, both sites read and save them there; database tests (Team Lead, Admin, other guild, BoE manager), full database suite, frontend and app tests, generated docs, decision log, RLS.md, stamp, changelog, this row | Revamp 4 (#1647) | 30 m | ~30 m build | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
 | 10:45-11:00 PM | PR #1694 (#1647 part 1): CodeRabbit (the guild audit log also reads the guild's own rows with no team; refused cases for signed out, another guild's Admin on rename and unlist, another guild's BoE manager on a sale; the BoE read test asserts the exact rows and excludes another guild's; the any-guild guards match calls with arguments); full database suite, RLS.md, decision log | Revamp 4 (#1647) | 15 m | ~15 m build | not read | The fresh-agent review and merge not yet counted |
 | 11:00-11:15 PM | PR #1694 (#1647 part 1): the fresh-agent review (approved, seven notes): boe-sold-webhook asks Record BoE in the find's own guild, one bio card of your own, the guild row locked without blocking a new team, stale BoE comments, the PR body; cross-guild BoE pings filed as #1695; Edge Function and full database suites, restamp, changelog, docs | Revamp 4 (#1647) | 15 m | ~15 m build | not read | Merge not yet counted |
+| 11:20-11:35 PM | PR #1694 (#1647 part 1): CodeRabbit's outside-the-diff notes on boe-sold-webhook: the find is read as the caller, and only We Go Again's sales post to its channel; per-guild channels added to #1695; Edge Function tests | Revamp 4 (#1647) | 15 m | ~15 m build | not read | Merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

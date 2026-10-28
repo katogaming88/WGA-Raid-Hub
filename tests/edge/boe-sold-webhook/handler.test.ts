@@ -156,6 +156,23 @@ Deno.test('an id with no row is a 404', async () => {
   assertEquals(calls, []);
 });
 
+Deno.test("another guild's sale posts nothing to We Go Again's channel (#1647)", async () => {
+  const db = fakeDb({ boeTeamIds: [9], rows: [{ ...SOLD_ROW, team_id: 9, guild_id: 2 }] });
+  const { deps, calls } = testDeps({ db, responses: [discordNoContent()] });
+  const res = await handle(post({ id: 41 }), deps);
+  assertEquals(await json(res), {
+    status: 200,
+    body: { success: true, skipped: true, reason: "not this channel's guild" }
+  });
+  assertEquals(calls, []);
+});
+
+Deno.test('the find is read on the caller’s own session', async () => {
+  const { deps, db } = testDeps({ db: fakeDb({ rows: [SOLD_ROW] }), responses: [discordNoContent()] });
+  await handle(post({ id: 41 }), deps);
+  assertEquals(db.calls.find((c) => c.method === 'readSale')?.args, [MANAGER_AUTH, 41]);
+});
+
 Deno.test('a row that is no longer sold posts nothing and says why', async () => {
   const db = fakeDb({ rows: [{ ...SOLD_ROW, status: 'paid' }] });
   const { deps, calls } = testDeps({ db, responses: [discordNoContent()] });

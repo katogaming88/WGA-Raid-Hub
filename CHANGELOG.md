@@ -42,7 +42,9 @@ answers to.
 
 - The BoE "sold" Discord post (`boe-sold-webhook`) is sent only for a
   caller who may record BoE sales in the find's own guild, or a site
-  admin, instead of a BoE manager of any guild (#1647).
+  admin, instead of a BoE manager of any guild (#1647). It reads the find
+  as the caller, and posts only We Go Again's sales, since the channel is
+  We Go Again's.
 
 ---
 

@@ -23,6 +23,9 @@ import { VERSION } from './version.ts';
 
 export type { SaleRow };
 
+// We Go Again's guilds.id, whose Discord the sold channel is (#1647).
+const BOE_CHANNEL_GUILD_ID = 1;
+
 // One method per read the function performs. Production implements it over
 // supabase-js in deps.ts; a test hands in a plain object.
 export interface SaleDb {
@@ -31,7 +34,8 @@ export interface SaleDb {
   recordBoeTeamIds(authHeader: string): Promise<number[]>;
   isSiteAdmin(authHeader: string): Promise<boolean>;
   // Throws when the read itself fails; null when no row has the id.
-  readSale(id: number): Promise<SaleRow | null>;
+  // Read as the caller, so a find they cannot read is null too.
+  readSale(authHeader: string, id: number): Promise<SaleRow | null>;
   resolveFinderDiscordId(authHeader: string, id: number): Promise<string | null>;
   managerDiscordIds(): Promise<string[]>;
 }
@@ -99,7 +103,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     let row: SaleRow | null;
     try {
-      row = await deps.db.readSale(Number(id));
+      row = await deps.db.readSale(authHeader, Number(id));
     } catch (err) {
       console.error('boe-sold-webhook row read failed:', err instanceof Error ? err.message : err);
       return jsonResponse({ success: false, error: 'Could not read the find' }, 500);
@@ -109,6 +113,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
     if (isSiteAdmin !== true && !boeTeamIds.includes(row.team_id)) {
       return jsonResponse({ success: false, error: 'Not authorized' }, 403);
+    }
+    // The BoE channels this posts to are We Go Again's, so another guild's
+    // sale goes nowhere until each guild has its own (#1695).
+    if (row.guild_id !== BOE_CHANNEL_GUILD_ID) {
+      return jsonResponse({ success: true, skipped: true, reason: "not this channel's guild" });
     }
     // Only a sold row is news. A replay after Undo Sale, or an id that has
     // since been paid or retired, posts nothing rather than announcing a sale

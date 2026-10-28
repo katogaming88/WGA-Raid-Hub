@@ -33,6 +33,7 @@ export const LOCAL_STACK_SUPABASE_URL = 'http://kong:8000';
 export const SOLD_ROW: SaleRow = {
   id: 41,
   team_id: 1,
+  guild_id: 1,
   finder_name: 'Aeryn',
   item_name: 'Voidglass Cloak',
   track: 'Hero',
