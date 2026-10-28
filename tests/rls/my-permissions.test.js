@@ -26,7 +26,10 @@ describe('my_permissions()', () => {
       const { team } = await mine(asUser, assistant.uid, 1);
       expect(team).toEqual(expect.arrayContaining(['edit_roster', 'attendance', 'view_reports']));
       expect(team).not.toContain('manage_loot');
-      expect((await mine(asUser, (await seedMember(q, { teamId: 1 })).uid, 1)).team).toEqual(['own_character', 'edit_own_wishlist']);
+      expect((await mine(asUser, (await seedMember(q, { teamId: 1 })).uid, 1)).team).toEqual([
+        'own_character',
+        'edit_own_wishlist'
+      ]);
     });
   });
 
@@ -36,9 +39,8 @@ describe('my_permissions()', () => {
       await grantGuild(q, admin.discordId, 'guild_officer');
       const { guild } = await mine(asUser, admin.uid, 1);
       expect(guild).toEqual(expect.arrayContaining(['create_teams', 'rename_archive_teams']));
-      const other = (
-        await q(`insert into public.guilds (name, url_key) values ('Other', 'other-1649') returning id`)
-      ).rows[0].id;
+      const other = (await q(`insert into public.guilds (name, url_key) values ('Other', 'other-1649') returning id`))
+        .rows[0].id;
       expect((await mine(asUser, admin.uid, null, other)).guild).toEqual([]);
       // A team's own guild wins over the guild argument.
       expect((await mine(asUser, admin.uid, 1, other)).guild).toEqual(guild);
@@ -47,7 +49,10 @@ describe('my_permissions()', () => {
 
   it('answers with empty lists when nothing is named', async () => {
     await withTxn(async ({ q, asUser }) => {
-      expect(await mine(asUser, (await seedMember(q, { teamId: 1, role: 'officer' })).uid, null)).toEqual({ team: [], guild: [] });
+      expect(await mine(asUser, (await seedMember(q, { teamId: 1, role: 'officer' })).uid, null)).toEqual({
+        team: [],
+        guild: []
+      });
     });
   });
 

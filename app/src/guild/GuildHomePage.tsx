@@ -225,8 +225,7 @@ function Attention({ teams }: { teams: TeamInput[] }) {
   const staffed = useMemo(
     () =>
       teams.filter(
-        (t) =>
-          access.data?.siteAdmin === true || (loot.data?.has(t.id) ?? false) || (signups.data?.has(t.id) ?? false)
+        (t) => access.data?.siteAdmin === true || (loot.data?.has(t.id) ?? false) || (signups.data?.has(t.id) ?? false)
       ),
     [teams, access.data, loot.data, signups.data]
   );
