@@ -570,7 +570,7 @@ describe('Loot priority page', () => {
     );
 
     const loot = (council: boolean) =>
-      navGroups({ team: '/t', guild: '/g' }, { officer: true, council })
+      navGroups({ team: '/t', guild: '/g' }, { can: () => true, council })
         .find((g) => g.heading === 'Officer')!
         .items.find((i) => i.label === 'Loot')!;
     expect(loot(true).to).toBe('/t/officer/import');

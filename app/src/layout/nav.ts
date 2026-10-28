@@ -1,3 +1,4 @@
+import type { Ability } from '../auth/access';
 import type { IconName } from '../components/Icon';
 
 // `end`: current only on its exact address. Home needs it, since every team
@@ -26,7 +27,9 @@ export type NavGroup = { heading: string; items: NavItem[] };
 export function navGroups(
   base: { team: string; guild: string },
   show: {
-    officer: boolean;
+    // What the signed-in person's rank may do here (#1649): the Officer menu
+    // keeps only the pages its rank has the permission for.
+    can: (ability: Ability) => boolean;
     guildSettings?: boolean;
     // Left out on the preview for anyone limited to the test team (#1676).
     hideBoe?: boolean;
@@ -64,7 +67,7 @@ export function navGroups(
     },
     {
       heading: 'Officer',
-      items: officerMenu(`${base.team}/officer`, show.council ?? false)
+      items: officerMenu(`${base.team}/officer`, show.council ?? false, show.can)
     },
     {
       heading: 'Site',
@@ -79,8 +82,8 @@ export function navGroups(
       ]
     }
   ];
-  // The Officer group is only for people who can open those pages.
-  return show.officer ? groups : groups.filter((g) => g.heading !== 'Officer');
+  // The Officer group is only for people who can open one of those pages.
+  return groups.filter((g) => g.heading !== 'Officer' || g.items.length > 0);
 }
 
 const REPORT_TABS = {
@@ -118,7 +121,38 @@ export const pageHolds = (page: NavPage, pathname: string) =>
 // The officer menu from the #869 decision: similar pages in one group, one
 // group open at a time. Anything that changes the team as a whole is a setting.
 // A Loot council team (#1563) has no Priority page.
-function officerMenu(o: string, council: boolean): NavItem[] {
+function officerMenu(o: string, council: boolean, can: (ability: Ability) => boolean): NavItem[] {
+  const allowed = (page: NavPage) => can(officerAbility(page.to));
+  return allMenu(o, council)
+    .map((item) => {
+      const pages = (item.pages ?? []).filter(allowed);
+      return { ...item, pages, to: pages[0]?.to ?? item.to };
+    })
+    .filter((item) => item.pages.length > 0);
+}
+
+// What each officer page needs, by its path below the team (#1649). A page
+// the rank has no permission for is left out of the menu and closed on its
+// address; the database refuses it either way. Settings have no permission of
+// their own on the grid, so they ask 'manageTeam'.
+const OFFICER_ABILITY: Record<string, Ability> = {
+  'officer/priority': 'viewLoot',
+  'officer/reviews': 'viewLoot',
+  'officer/import': 'manageLoot',
+  'officer/reassign': 'manageLoot',
+  'officer/attendance': 'manageAttendance',
+  'officer/attendance/scores': 'manageAttendance',
+  'officer/groups': 'editRoster',
+  'officer/invite': 'editRoster',
+  'officer/settings/audit-log': 'viewAuditLog'
+};
+
+export function officerAbility(path: string): Ability {
+  const key = /(?:\/t\/[^/]+\/|^\/?)(officer\/.*)$/.exec(path)?.[1] ?? path;
+  return OFFICER_ABILITY[key] ?? (key.startsWith('officer/reports/') ? 'viewReports' : 'manageTeam');
+}
+
+function allMenu(o: string, council: boolean): (NavItem & { pages: NavPage[] })[] {
   return [
     {
       label: 'Loot',

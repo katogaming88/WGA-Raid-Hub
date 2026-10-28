@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { can, useAccess } from '../auth/access';
+import { usePageCan } from '../auth/access';
 import { useAddress } from '../data/address';
 import { useGuildOfficers } from '../guild/useGuildHome';
 import { DataState } from '../components/DataState';
@@ -14,13 +14,13 @@ import { useSaveGuildOfficers } from './useOfficers';
 // officer or site admin edits the cards in place (#1361), on a computer;
 // there is no one team's roster here to start a card from.
 export function GuildOfficersPage() {
-  const access = useAccess();
+  const { can } = usePageCan();
   const touch = useTouchScreen();
   const { guild } = useAddress();
   const bios = useGuildOfficers(guild.id);
   const save = useSaveGuildOfficers(guild.id);
   const [editing, setEditing] = useState(false);
-  const canEdit = can(access.data, 'editGuildOfficers') && !touch;
+  const canEdit = can('editGuildOfficers') && !touch;
 
   return (
     <section className="page officers-page" aria-labelledby="page-title">

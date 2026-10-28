@@ -272,6 +272,7 @@
 | public.my_guild_permission_team_ids | _int4 | p_permission text | FUNCTION |
 | public.set_guild_officer_bios | jsonb | p_bios jsonb, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
 | public.set_boe_payout_settings | void | p_floor bigint, p_pivot bigint, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
+| public.my_permissions | jsonb | p_team_id integer DEFAULT NULL::integer, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
 
 ## Enums
 

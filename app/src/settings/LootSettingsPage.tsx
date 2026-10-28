@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTeam } from '../data/address';
-import { can, useAccess } from '../auth/access';
+import { usePageCan } from '../auth/access';
 import { DataState } from '../components/DataState';
 import { useStatus } from '../components/Status';
 import { errorMessage } from '../lib/errors';
@@ -17,8 +17,8 @@ import './settings.css';
 export function LootSettingsPage() {
   const team = useTeam();
   const query = useLootSettings(team.id);
-  const access = useAccess();
-  const canEdit = can(access.data, 'leadTeam', team.id);
+  const { can } = usePageCan();
+  const canEdit = can('leadTeam');
   const responses = useLootResponses(team.id);
 
   return (
@@ -36,7 +36,7 @@ export function LootSettingsPage() {
               key={JSON.stringify(data.list)}
               teamId={team.id}
               data={data}
-              canEdit={can(access.data, 'actAsOfficer', team.id)}
+              canEdit={can('manageLoot')}
             />
           )}
         </DataState>

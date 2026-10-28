@@ -18,7 +18,7 @@ import { NotFoundPage, NotInTestPage, wayOn } from '../pages/NotFoundPage';
 import { AccountPanel } from '../auth/AccountPanel';
 import { ConnectPrompt } from '../auth/ConnectPrompt';
 import { AltsPickerProvider } from '../characters/AltsPicker';
-import { can, useAccess, usePreviewTeams } from '../auth/access';
+import { useAccess, useCan, usePreviewTeams } from '../auth/access';
 import { useSession } from '../auth/session';
 import { navGroups, pageHolds, type NavGroup, type NavItem } from './nav';
 import { defaultGuildKey, forgetGuild, lastGuildKey, rememberGuild } from './lastGuild';
@@ -99,11 +99,13 @@ export function AppShell() {
   // from the outlet.
   const base = { team: `/g/${guildKey}/t/${navTeamKey}`, guild: `/g/${guildKey}` };
   const council = useLootCouncil(navTeam?.id ?? 0);
+  const permissions = useCan(navTeam?.id, guildId);
+  const { can } = permissions;
   const groups = navGroups(base, {
-    officer: can(access.data, 'viewOfficerTools', navTeam?.id),
-    guildSettings: can(access.data, 'manageTeams') && !limited,
+    can,
+    guildSettings: can('manageTeams') && !limited,
     hideBoe: limited,
-    siteAdmin: can(access.data, 'adminSite'),
+    siteAdmin: can('adminSite'),
     newsUnread: news.isSuccess && hasUnread(news.data, newsSeen),
     liveCount: streamers.isSuccess ? liveCount(streamers.data) : 0,
     council
@@ -236,19 +238,18 @@ export function AppShell() {
         {() => null}
       </DataState>
     );
-  } else if (preview === undefined || (!sitePage && user && !access.isSuccess)) {
+  } else if (preview === undefined || (!sitePage && user && (!access.isSuccess || permissions.loading))) {
     content = (
-      <DataState query={access} label="your access">
+      <DataState query={permissions.query} label="your access">
         {() => null}
       </DataState>
     );
-  } else if (!sitePage && !access.data?.guildOfficer && !teamsQuery.data.some((t) => onTeamIds.has(t.id))) {
+  } else if (!sitePage && !can('viewEveryTeam') && !teamsQuery.data.some((t) => onTeamIds.has(t.id))) {
     // A guild's pages are for its members (#1264): anyone without a current
     // membership on one of its teams, signed out included, gets the front
-    // page, and so does Staff. A guild Owner or Admin gets in without a team.
+    // page, and so does Staff. Someone whose rank in this guild sees every
+    // team (an Owner or Admin by default, #1649) gets in without a team.
     // The database still lets them read until cutover (#1699).
-    // ponytail: guildOfficer is an Owner or Admin of any guild; per guild once
-    // resolve_person() names the guild (#1325).
     content = <Navigate to="/" replace />;
   } else if (
     limited &&
@@ -304,7 +305,7 @@ export function AppShell() {
         <TeamSwitcher
           guildKey={guildKey}
           guildId={guildId}
-          canAddTeam={can(access.data, 'manageTeams') && !limited}
+          canAddTeam={can('manageTeams') && !limited}
           teams={teams}
           currentKey={currentTeam?.key ?? null}
           label={currentTeam?.name ?? 'Choose a team'}
@@ -374,7 +375,7 @@ export function AppShell() {
           ))}
         </nav>
 
-        <AccountPanel teamId={currentTeam?.id ?? null} />
+        <AccountPanel teamId={currentTeam?.id ?? null} guildId={guildId ?? null} />
 
         {/* Help moved into the sidebar's Site group (#1102); this is the one
             link that stays outside the page list. */}

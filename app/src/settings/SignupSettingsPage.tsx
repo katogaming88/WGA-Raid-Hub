@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { Link } from 'react-router';
-import { can, useAccess } from '../auth/access';
+import { usePageCan } from '../auth/access';
 import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
@@ -27,8 +27,8 @@ import './settings.css';
 export function SignupSettingsPage() {
   const team = useTeam();
   const query = useSignupSettings(team.id);
-  const access = useAccess();
-  const canEdit = can(access.data, 'leadTeam', team.id);
+  const { can } = usePageCan();
+  const canEdit = can('leadTeam');
 
   return (
     <section className="page settings-page" aria-labelledby="page-title">

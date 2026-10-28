@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers, type Read } from '../test/fakeSupabase';
@@ -85,10 +85,18 @@ function namesHandlers(
   });
 }
 
+// The roster table, once the Names read behind it has had a turn: the table
+// shows as soon as the players are in, and the Names come a moment after.
+async function rosterTable() {
+  const table = await screen.findByRole('table', { name: 'Current roster' });
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+  return table;
+}
+
 describe('Names on the Roster page', () => {
   it('shows the claimed Name as the row, not the character name', async () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers());
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     expect(within(table).getByRole('rowheader', { name: /Raz/ })).toBeInTheDocument();
     expect(within(table).getByText('Torbjorn')).toBeInTheDocument();
   });
@@ -108,7 +116,7 @@ describe('Names on the Roster page', () => {
         }
       })
     );
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const bareRow = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
     await user.click(within(bareRow).getByRole('button', { name: 'More actions for Bare Raider' }));
     const menu = await screen.findByRole('menu', { name: 'More actions for Bare Raider' });
@@ -121,7 +129,7 @@ describe('Names on the Roster page', () => {
   it('hides a bare Name once a specific role tab is picked, since it has none', async () => {
     const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', namesHandlers());
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     expect(within(table).getByText('Bare Raider')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Melee' }));
     expect(within(table).queryByText('Bare Raider')).not.toBeInTheDocument();
@@ -131,7 +139,7 @@ describe('Names on the Roster page', () => {
   it('a bare Name with a role guess sits in that role group, on that tab', async () => {
     const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', namesHandlers());
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     expect(within(table).getByRole('rowheader', { name: 'Needs A Tank' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Tanks' }));
     expect(within(table).getByRole('rowheader', { name: 'Needs A Tank' })).toBeInTheDocument();
@@ -142,7 +150,7 @@ describe('Names on the Roster page', () => {
   it('shows officer-only actions on both a claimed row and a bare one, in the "..." menu', async () => {
     const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const claimedRow = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
     await user.click(within(claimedRow).getByRole('button', { name: 'More actions for Raz' }));
     const claimedMenu = await screen.findByRole('menu', { name: 'More actions for Raz' });
@@ -172,7 +180,7 @@ describe('Names on the Roster page', () => {
         }
       })
     );
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const claimedRow = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
     await user.click(within(claimedRow).getByRole('button', { name: 'More actions for Raz' }));
     const menu = await screen.findByRole('menu', { name: 'More actions for Raz' });
@@ -194,7 +202,7 @@ describe('Names on the Roster page', () => {
 
   it('an officer sees the Add a Member form, with a role picker', async () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
-    await screen.findByRole('table', { name: 'Current roster' });
+    await rosterTable();
     expect(screen.getByLabelText('Add a Member')).toBeInTheDocument();
     expect(screen.getByLabelText('Role')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add Member' })).toBeInTheDocument();
@@ -202,14 +210,14 @@ describe('Names on the Roster page', () => {
 
   it('a raider does not see the Add a Member form', async () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'raider' }));
-    await screen.findByRole('table', { name: 'Current roster' });
+    await rosterTable();
     expect(screen.queryByLabelText('Add a Member')).not.toBeInTheDocument();
   });
 
   it('a raider sees no "..." menu on an already-claimed row, but gets Claim-only on a bare one', async () => {
     const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'raider' }));
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const claimedRow = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
     expect(within(claimedRow).queryByRole('button', { name: 'More actions for Raz' })).not.toBeInTheDocument();
 
@@ -232,7 +240,7 @@ describe('a claimed Name with no character yet', () => {
     { id: 23, person_id: 123, archived_at: '2026-10-01T12:00:00Z' }
   ];
   const rowFor = async (label: string) => {
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     return (await within(table).findByRole('rowheader', { name: label })).closest('tr')!;
   };
 
@@ -306,7 +314,7 @@ describe('Archive Member on a row with no Name', () => {
         }
       })
     );
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table)
       .getByRole('rowheader', { name: /Brannoc/ })
       .closest('tr')!;
@@ -328,7 +336,7 @@ describe('Archive Member on a row with no Name', () => {
 
   it('gives a raider no menu there', async () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'raider', players: [TORBJORN, BRANNOC] }));
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table)
       .getByRole('rowheader', { name: /Brannoc/ })
       .closest('tr')!;
@@ -359,7 +367,7 @@ describe('Archive Member on a name-only row', () => {
         : from(read);
     renderApp('/g/wga/t/phoenix/roster', handlers);
 
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = (await within(table).findByRole('rowheader', { name: 'Wren' })).closest('tr')!;
     await user.click(within(row).getByRole('button', { name: 'More actions for Wren' }));
     await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Archive Member' }));
@@ -377,7 +385,7 @@ describe('Archive Member on a name-only row', () => {
 // action came from is gone.
 describe('focus after a row action', () => {
   const openMenu = async (user: ReturnType<typeof userEvent.setup>, rowName: RegExp | string, label: string) => {
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table).getByRole('rowheader', { name: rowName }).closest('tr')!;
     const trigger = within(row).getByRole('button', { name: `More actions for ${label}` });
     await user.click(trigger);
@@ -483,7 +491,7 @@ describe('messages after a row action', () => {
       NAMES.map((n) => (n.id === 1 ? { ...n, team_member_id: 1 } : n))
     );
     renderApp('/g/wga/t/phoenix/roster', handlers);
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
     await user.click(within(row).getByRole('button', { name: 'More actions for Bare Raider' }));
     await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Claim' }));
@@ -505,7 +513,7 @@ describe('messages after a row action', () => {
     });
     done = changing(handlers, 'players', []);
     renderApp('/g/wga/t/phoenix/roster', handlers);
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
     await user.click(within(row).getByRole('button', { name: 'More actions for Raz' }));
     await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Archive Member' }));
@@ -532,7 +540,7 @@ describe('messages after a row action', () => {
       NAMES.filter((n) => n.id !== 1)
     );
     renderApp('/g/wga/t/phoenix/roster', handlers);
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
     await user.click(within(row).getByRole('button', { name: 'More actions for Bare Raider' }));
     await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Delete Member' }));
@@ -550,7 +558,7 @@ describe('messages after a row action', () => {
         rpc: (name, args) => (name === 'archive_team_member' ? { data: null } : seededHandlers().rpc!(name, args))
       })
     );
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
     await user.click(within(row).getByRole('button', { name: 'More actions for Raz' }));
     await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Archive Member' }));
@@ -575,7 +583,7 @@ describe('a duplicate label', () => {
   it('reads as a sentence on Add a Member', async () => {
     const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer', write: () => DUPLICATE }));
-    await screen.findByRole('table', { name: 'Current roster' });
+    await rosterTable();
     await user.type(screen.getByLabelText('Add a Member'), 'Raz');
     await user.click(screen.getByRole('button', { name: 'Add Member' }));
     expect(await screen.findByText(SENTENCE)).toHaveAttribute('role', 'alert');
@@ -584,7 +592,7 @@ describe('a duplicate label', () => {
   it('reads as a sentence on Edit', async () => {
     const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer', write: () => DUPLICATE }));
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
     await user.click(within(row).getByRole('button', { name: 'More actions for Bare Raider' }));
     await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Edit' }));
@@ -602,7 +610,7 @@ describe('the officer writes and their audit rows', () => {
   const audits = (client: ReturnType<typeof renderApp>['client']) =>
     client.rpcs.filter(([name]) => name === 'write_audit_log').map(([, args]) => args);
   const openRowMenu = async (user: ReturnType<typeof userEvent.setup>, rowName: RegExp | string, label: string) => {
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table).getByRole('rowheader', { name: rowName }).closest('tr')!;
     await user.click(within(row).getByRole('button', { name: `More actions for ${label}` }));
     return screen.findByRole('menu', { name: `More actions for ${label}` });
@@ -611,7 +619,7 @@ describe('the officer writes and their audit rows', () => {
   it('Add a Member inserts the label and role and logs Name Created', async () => {
     const user = userEvent.setup();
     const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
-    await screen.findByRole('table', { name: 'Current roster' });
+    await rosterTable();
     await user.type(screen.getByLabelText('Add a Member'), 'Thalindra');
     await user.selectOptions(screen.getByLabelText('Role'), 'Heal');
     await user.click(screen.getByRole('button', { name: 'Add Member' }));
@@ -707,7 +715,7 @@ describe('the Archive dialog', () => {
   it('says an officer can bring them back', async () => {
     const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
     await user.click(within(row).getByRole('button', { name: 'More actions for Raz' }));
     await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Archive Member' }));
@@ -728,7 +736,7 @@ describe('the Archive dialog for a member with no Name', () => {
       classes_specs: { class: 'Paladin', spec: 'Holy', role: 'Heal' }
     };
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer', players: [TORBJORN, brannoc] }));
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table)
       .getByRole('rowheader', { name: /Brannoc/ })
       .closest('tr')!;
@@ -754,7 +762,7 @@ describe('what a write reads again', () => {
         rpc: (name, args) => (name === 'archive_team_member' ? { data: null } : seededHandlers().rpc!(name, args))
       })
     );
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
     await user.click(within(row).getByRole('button', { name: 'More actions for Raz' }));
     await user.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Archive Member' }));
@@ -776,7 +784,7 @@ describe('what a write reads again', () => {
         rpc: (name, args) => (name === 'claim_name' ? { data: null } : seededHandlers().rpc!(name, args))
       })
     );
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
     await user.click(within(row).getByRole('button', { name: 'More actions for Bare Raider' }));
     const menu = await screen.findByRole('menu');
@@ -793,7 +801,7 @@ describe('a Name that changed since the page read it', () => {
   const CHANGED =
     'That did not save: That Name has changed since the page loaded. Reload the page to see it as it is now.';
   const openRowMenu = async (user: ReturnType<typeof userEvent.setup>, rowName: RegExp | string, label: string) => {
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table).getByRole('rowheader', { name: rowName }).closest('tr')!;
     await user.click(within(row).getByRole('button', { name: `More actions for ${label}` }));
     return screen.findByRole('menu', { name: `More actions for ${label}` });
@@ -851,7 +859,7 @@ describe('a Name that changed since the page read it', () => {
 // Edit changes what the officer changed and nothing else, and keeps focus.
 describe('Edit', () => {
   const openRowMenu = async (user: ReturnType<typeof userEvent.setup>, rowName: RegExp | string, label: string) => {
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table).getByRole('rowheader', { name: rowName }).closest('tr')!;
     await user.click(within(row).getByRole('button', { name: `More actions for ${label}` }));
     return screen.findByRole('menu', { name: `More actions for ${label}` });
@@ -901,7 +909,7 @@ describe('the row menu and a scroll', () => {
   it('closes on a scroll with focus back on its "..." button', async () => {
     const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
     const trigger = within(row).getByRole('button', { name: 'More actions for Raz' });
     await user.click(trigger);
@@ -921,7 +929,7 @@ describe('the row menu beside a scrollbar', () => {
     Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, value: 1007 });
     try {
       renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
-      const table = await screen.findByRole('table', { name: 'Current roster' });
+      const table = await rosterTable();
       const row = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
       const trigger = within(row).getByRole('button', { name: 'More actions for Raz' });
       trigger.getBoundingClientRect = () => ({ top: 100, bottom: 124, left: 960, right: 992 }) as DOMRect;
@@ -940,7 +948,7 @@ describe('Add a Member and focus', () => {
   it('puts focus back in the label field once the Name is added', async () => {
     const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
-    await screen.findByRole('table', { name: 'Current roster' });
+    await rosterTable();
     const input = screen.getByLabelText('Add a Member');
     await user.type(input, 'Thalindra');
     await user.click(screen.getByRole('button', { name: 'Add Member' }));
@@ -955,7 +963,7 @@ describe("the officers' membership read", () => {
       '/g/wga/t/phoenix/roster',
       namesHandlers({ role: 'officer', members: [{ id: 9, person_id: 109, archived_at: null }] })
     );
-    await screen.findByRole('table', { name: 'Current roster' });
+    await rosterTable();
     await waitFor(() => expect(client.reads.some((r) => r.table === 'team_members')).toBe(true));
     const read = client.reads.find((r) => r.table === 'team_members')!;
     expect(read.filters).toContainEqual(['is', 'archived_at', null]);
@@ -967,7 +975,7 @@ describe('Roster page, quick Claim and accounts', () => {
   it('claims a bare Name straight from the link under it', async () => {
     const user = userEvent.setup();
     const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers());
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     // A bare Name with a role guess, in its role group, gets one too.
     expect(within(table).getByRole('button', { name: 'Claim Needs A Tank' })).toBeInTheDocument();
     await user.click(within(table).getByRole('button', { name: 'Claim Bare Raider' }));
@@ -977,7 +985,7 @@ describe('Roster page, quick Claim and accounts', () => {
 
   it('offers no quick Claim to someone who already holds a Name on the team', async () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ teamMemberId: 9 }));
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     await within(table).findByRole('rowheader', { name: 'Bare Raider' });
     await waitFor(() => expect(within(table).queryByRole('button', { name: /^Claim / })).not.toBeInTheDocument());
   });
@@ -994,7 +1002,7 @@ describe('Roster page, quick Claim and accounts', () => {
         }
       })
     );
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const raz = within(table).getByRole('rowheader', { name: /Raz/ });
     await within(raz).findByText('Battle.net connected');
     expect(raz).toHaveTextContent('Discord: Not linked');
@@ -1002,7 +1010,7 @@ describe('Roster page, quick Claim and accounts', () => {
 
   it('shows a raider no accounts, and does not read them', async () => {
     const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers());
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     await within(table).findByRole('rowheader', { name: /Raz/ });
     expect(within(table).queryByText(/Not linked|connected/)).not.toBeInTheDocument();
     expect(client.rpcs.some(([n]) => n === 'team_battlenet_connections')).toBe(false);
@@ -1020,7 +1028,7 @@ describe('Assign (#1355)', () => {
       rpc: (name, args) => (name === 'team_unnamed_members' ? { data: pool } : seededHandlers().rpc!(name, args))
     });
   const openAssign = async (user: ReturnType<typeof userEvent.setup>) => {
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const row = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
     await user.click(within(row).getByRole('button', { name: 'More actions for Bare Raider' }));
     const menu = await screen.findByRole('menu', { name: 'More actions for Bare Raider' });
@@ -1031,7 +1039,7 @@ describe('Assign (#1355)', () => {
   it('is on a bare row only, not a claimed one', async () => {
     const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', withPool());
-    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const table = await rosterTable();
     const claimedRow = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
     await user.click(within(claimedRow).getByRole('button', { name: 'More actions for Raz' }));
     const menu = await screen.findByRole('menu', { name: 'More actions for Raz' });
@@ -1100,7 +1108,7 @@ describe('Make my Member on the Roster (#1355)', () => {
 
   it('is not shown to someone who already holds a Member', async () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ teamMemberId: 9 }));
-    await screen.findByRole('table', { name: 'Current roster' });
+    await rosterTable();
     expect(screen.queryByRole('heading', { name: 'You don’t have a Member yet' })).not.toBeInTheDocument();
   });
 });

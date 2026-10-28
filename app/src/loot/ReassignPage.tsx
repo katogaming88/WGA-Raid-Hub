@@ -5,7 +5,7 @@ import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
 import { ItemLink } from '../components/ItemLink';
 import { useStatus } from '../components/Status';
-import { can, useAccess } from '../auth/access';
+import { usePageCan } from '../auth/access';
 import { errorMessage } from '../lib/errors';
 import { awardDate, formatInstant, formatInstantShort, localTimeZoneNote } from '../lib/dates';
 import { formatAuditDetail } from '../settings/audit';
@@ -36,7 +36,7 @@ const itemName = (row: ReassignRow) => row.items?.name ?? 'Unknown item';
 // someone else.
 export function ReassignPage() {
   const team = useTeam();
-  const access = useAccess();
+  const { can } = usePageCan();
   const players = useRosterPlayers(team.id);
   const history = useReassignHistory(team.id);
 
@@ -49,7 +49,7 @@ export function ReassignPage() {
           it on file, or the item itself, and move it. Everywhere received items show follows the change.
         </p>
       </div>
-      {can(access.data, 'actAsOfficer', team.id) ? (
+      {can('manageLoot') ? (
         <DataState query={players} label="the roster">
           {(roster) => <Reassign teamId={team.id} roster={roster} />}
         </DataState>

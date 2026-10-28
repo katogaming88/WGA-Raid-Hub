@@ -52,6 +52,84 @@ const nullFilters = (data: unknown, filters: Read['filters']) => {
   }, data);
 };
 
+// What the database's rank grids give, for the tests that describe a person
+// the old way (resolve_person: a role per team, the guild_officer flag). The
+// default grids from the ranks migration (#1645, #1647): an Officer has every
+// team permission, an Assistant the roster, schedule, attendance, signup and
+// report ones, and a guild Admin every guild one. A test that is about the
+// grid itself answers my_permissions / my_permission_team_ids on its own.
+const OFFICER_PERMISSIONS = [
+  'own_character',
+  'edit_own_wishlist',
+  'edit_roster',
+  'edit_schedule',
+  'see_rsvps',
+  'attendance',
+  'manage_signups',
+  'view_reports',
+  'view_loot',
+  'manage_loot',
+  'pay_boe_cuts',
+  'promote_assistants',
+  'view_team_audit_log'
+];
+const ASSISTANT_PERMISSIONS = [
+  'own_character',
+  'edit_own_wishlist',
+  'edit_roster',
+  'edit_schedule',
+  'see_rsvps',
+  'attendance',
+  'manage_signups',
+  'view_reports',
+  'view_loot'
+];
+const RAIDER_PERMISSIONS = ['own_character', 'edit_own_wishlist'];
+const ADMIN_PERMISSIONS = [
+  'create_teams',
+  'rename_archive_teams',
+  'change_team_owner',
+  'edit_guild_profile',
+  'edit_own_bio',
+  'edit_all_bios',
+  'record_boe',
+  'pay_any_boe',
+  'edit_boe_settings',
+  'view_guild_audit_log',
+  'view_every_team'
+];
+const EVERY_TEAM_READS = ['see_rsvps', 'view_reports', 'view_loot', 'view_team_audit_log'];
+
+type FakePerson = {
+  guild_officer?: boolean | null;
+  boe_manager?: boolean | null;
+  teams?: { team_id: number; role: string }[];
+} | null;
+
+async function derivedPermissions(handlers: FakeHandlers, name: string, args: Record<string, unknown>) {
+  const person = ((await handlers.rpc?.('resolve_person', { p_discord_id: 'discord-x' }))?.data ?? null) as FakePerson;
+  const teams = person?.teams ?? [];
+  const onTeam = (id: unknown) => {
+    const role = teams.find((t) => t.team_id === id)?.role;
+    if (role === 'officer' || role === 'team_leader') return OFFICER_PERMISSIONS;
+    if (role === 'assistant') return ASSISTANT_PERMISSIONS;
+    if (role === 'raider') return RAIDER_PERMISSIONS;
+    return person?.guild_officer ? EVERY_TEAM_READS : [];
+  };
+  const guild = [
+    ...(person?.guild_officer ? ADMIN_PERMISSIONS : []),
+    ...(person?.boe_manager ? ['record_boe', 'pay_any_boe'] : [])
+  ];
+  if (name === 'my_permission_team_ids') {
+    const ids = new Set<number>(teams.map((t) => t.team_id));
+    // A guild officer reads every team; the seeded world has teams 1 and 2.
+    if (person?.guild_officer) [1, 2].forEach((id) => ids.add(id));
+    return [...ids].filter((id) => onTeam(id).includes(String(args['p_permission'])));
+  }
+  const team = args['p_team_id'] === undefined ? [] : onTeam(args['p_team_id']);
+  return { team, guild: args['p_team_id'] === undefined && args['p_guild_id'] === undefined ? [] : guild };
+}
+
 export function fakeClient(
   handlers: FakeHandlers
 ): Client & { reads: Read[]; writes: Write[]; rpcs: [string, unknown][]; authCalls: AuthCall[] } {
@@ -95,6 +173,13 @@ export function fakeClient(
     },
     rpc(name: string, args: Record<string, unknown>) {
       rpcs.push([name, args]);
+      if (name === 'my_permissions' || name === 'my_permission_team_ids') {
+        const grid = async (): Promise<Answer> => {
+          const given = await (handlers.rpc ? handlers.rpc(name, args) : { data: null });
+          return given.data != null || given.error ? given : { data: await derivedPermissions(handlers, name, args) };
+        };
+        return settle(grid());
+      }
       return settle(handlers.rpc ? handlers.rpc(name, args) : { data: null });
     },
     from(table: string) {

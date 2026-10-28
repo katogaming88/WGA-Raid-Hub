@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { DataState } from '../components/DataState';
 import { useAddress } from '../data/address';
-import { can, useAccess, type Ability } from './access';
+import { useCan, type Ability } from './access';
 import { useSession } from './session';
 
 // Wraps a page only some people may open (the officer tools). The heading
@@ -21,19 +21,19 @@ export function RequireAbility({
   children: ReactNode;
 }) {
   const { user } = useSession();
-  const { team } = useAddress();
-  const access = useAccess();
+  const { team, guild } = useAddress();
+  const permissions = useCan(team?.id, guild.id);
 
   let body: ReactNode;
   if (!user) {
     body = <p>Sign in to see this page. It is for {forWhom ?? 'officers'}.</p>;
-  } else if (access.isPending || access.isError) {
+  } else if (permissions.loading || permissions.error) {
     body = (
-      <DataState query={access} label="your access">
+      <DataState query={permissions.query} label="your access">
         {() => null}
       </DataState>
     );
-  } else if (!can(access.data, ability, team?.id)) {
+  } else if (!permissions.can(ability)) {
     body = <p>This page is for {forWhom ?? `officers of ${team?.name ?? 'this team'}`}.</p>;
   } else {
     return <>{children}</>;

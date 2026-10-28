@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { can, useAccess } from '../auth/access';
+import { usePageCan } from '../auth/access';
 import { DataState } from '../components/DataState';
 import { useTeam } from '../data/address';
 import { bioCards, type OfficerBio } from '../guild/guild';
@@ -13,11 +13,11 @@ import { useSaveTeamOfficers, useTeamOfficers } from './useOfficers';
 // The team's officers edit the cards in place (#1361), on a computer.
 export function TeamOfficersPage() {
   const team = useTeam();
-  const access = useAccess();
+  const { can } = usePageCan();
   const touch = useTouchScreen();
   const bios = useTeamOfficers(team.id);
   const [editing, setEditing] = useState(false);
-  const canEdit = can(access.data, 'viewOfficerTools', team.id) && !touch;
+  const canEdit = can('manageTeam') && !touch;
 
   return (
     <section className="page officers-page" aria-labelledby="page-title">

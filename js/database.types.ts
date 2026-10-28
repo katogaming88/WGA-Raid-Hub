@@ -4587,6 +4587,10 @@ export type Database = {
         Args: { p_permission: string }
         Returns: number[]
       }
+      my_permissions: {
+        Args: { p_guild_id?: number; p_team_id?: number }
+        Returns: Json
+      }
       my_person_id: { Args: never; Returns: number }
       my_player_ids: { Args: never; Returns: number[] }
       my_recent_own_add: {

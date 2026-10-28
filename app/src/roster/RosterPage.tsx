@@ -1,6 +1,6 @@
 import { Fragment, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Link } from 'react-router';
-import { can, charactersOn, useAccess } from '../auth/access';
+import { charactersOn, useAccess, usePageCan } from '../auth/access';
 import { useSession } from '../auth/session';
 import { DataState } from '../components/DataState';
 import { useStatus } from '../components/Status';
@@ -63,12 +63,12 @@ export function RosterPage() {
   const incoming = bothQueries(useIncomingRoster(team.id), useSignupSeasons(team.id));
   const [tab, setTab] = useState<Tab>('current');
   // Archived (#1360 part 3) is an officer tab: it carries why people left.
-  const officer = useIsOfficer(team.id);
+  const officer = useIsOfficer();
   const archived = useArchivedPlayers(team.id, officer);
   // Trial, backup and Remove on the Projected Roster are officer writes, so
   // a guild officer looking in (#607) reads it as the team does.
-  const access = useAccess();
-  const canActAsOfficer = access.isSuccess && can(access.data, 'actAsOfficer', team.id);
+  const permissions = usePageCan();
+  const canActAsOfficer = !permissions.loading && permissions.can('editRoster');
 
   // Who is staying on a character they already play reads off the current
   // roster, so the tab waits for it.
@@ -216,8 +216,9 @@ function RosterTabs({
 function useProfileLinks(teamId: number): (raider: Raider) => string | null {
   const { user } = useSession();
   const access = useAccess();
-  if (!user || !access.isSuccess) return () => null;
-  const officer = can(access.data, 'viewOfficerTools', teamId);
+  const permissions = usePageCan();
+  if (!user || !access.isSuccess || permissions.loading) return () => null;
+  const officer = permissions.can('viewOfficerTools');
   const own = new Set(charactersOn(access.data, teamId).map((c) => c.playerId));
   return (raider) =>
     raider.urlCode && (officer || (raider.playerId !== null && own.has(raider.playerId)))
@@ -226,10 +227,10 @@ function useProfileLinks(teamId: number): (raider: Raider) => string | null {
 }
 
 // Whether the signed-in person is one of this team's officers.
-function useIsOfficer(teamId: number): boolean {
+function useIsOfficer(): boolean {
   const { user } = useSession();
-  const access = useAccess();
-  return !!user && access.isSuccess && can(access.data, 'viewOfficerTools', teamId);
+  const permissions = usePageCan();
+  return !!user && !permissions.loading && permissions.can('viewOfficerTools');
 }
 
 type RosterPlayers = Parameters<typeof toRoster>[0];
@@ -258,7 +259,7 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
   const profileLink = useProfileLinks(team.id);
   // Attendance and items awarded, for officers only (Kat, 2026-09-14): shown
   // to everyone they would invite loot and attendance comparisons.
-  const officer = useIsOfficer(team.id);
+  const officer = useIsOfficer();
   // Bare and claimed Names (#1355): a claimed one overrides a row's display
   // name; a bare one, or a claimed one whose member has no character yet, gets
   // its own row below the role groups rather than fitting into one.

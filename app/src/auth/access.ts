@@ -1,4 +1,6 @@
+import type { UseQueryResult } from '@tanstack/react-query';
 import { previewTeamKeys } from '../config';
+import { useAddress } from '../data/address';
 import { useSupabaseQuery } from '../data/query';
 import { useSession } from './session';
 
@@ -107,59 +109,143 @@ export function usePreviewTeams(): ReadonlySet<string> | null | undefined {
   return access.data?.siteAdmin ? null : new Set(keys);
 }
 
+// What the signed-in person's rank may do on the open team and its guild,
+// from my_permissions() (#1649): the same grids the database asks, so a screen
+// shows what the database will let them do.
+export type Permissions = { team: ReadonlySet<string>; guild: ReadonlySet<string> };
+export const NO_PERMISSIONS: Permissions = { team: new Set(), guild: new Set() };
+
+export function usePermissions(teamId: number | null | undefined, guildId: number | null | undefined) {
+  const { user } = useSession();
+  return useSupabaseQuery<Permissions>(
+    ['permissions', user?.id ?? null, teamId ?? null, guildId ?? null],
+    async (client) => {
+      const { data, error } = await client.rpc('my_permissions', {
+        ...(teamId != null ? { p_team_id: teamId } : {}),
+        ...(guildId != null ? { p_guild_id: guildId } : {})
+      });
+      if (error) return { data: null, error };
+      const grid = data as { team?: string[]; guild?: string[] } | null;
+      return { data: { team: new Set(grid?.team ?? []), guild: new Set(grid?.guild ?? []) }, error: null };
+    },
+    { enabled: user !== null && (teamId != null || guildId != null) }
+  );
+}
+
 // What a page can ask. The database enforces every one of these on its own;
 // this only decides what to show, so a wrong answer costs a button, never data.
+// Each one names the permission it reads, on the open team or its guild.
+// A site admin passes the team ones: the database lets them.
 export type Ability =
-  // Officer pages and controls on a team: its officers and leader, a site
-  // admin, or a guild officer (guild-wide view, #607).
+  // Any officer page at all: the person's rank has some officer tool on the team.
   | 'viewOfficerTools'
-  // Officer writes on a team. Leaves out guild officers: #607 gives them only
-  // a few writes on other teams (player edits, attendance, bios), which the
-  // officer pages add as their own abilities when they are built (#1103).
-  | 'actAsOfficer'
+  | 'editRoster'
+  | 'seeRsvps'
+  | 'manageAttendance'
+  | 'viewReports'
+  | 'viewLoot'
+  | 'manageLoot'
+  | 'viewAuditLog'
+  // Team settings and the team's officer cards. No grid permission means "Team
+  // Owner" (team_settings writes are the Owner's), so these ask
+  // promote_assistants, which only an Officer and the Owner hold, until a
+  // settings permission exists.
+  | 'manageTeam'
+  // Saving team settings that are the Owner's alone (loot buttons, signups).
   | 'leadTeam'
   | 'adminSite'
+  // BoE sales, guild-wide: record_boe or pay_any_boe on the guild grid.
   | 'manageBoe'
   // Editing a raid boss's own data (its cap, #1244): the cap is Blizzard's,
   // the same for every guild, so only a site admin keeps it right (#1324).
   | 'manageRaidReference'
-  // The Guild officers page's bios (#1361): guild-wide, so a guild officer or
-  // site admin. set_guild_officer_bios() asks the guild's edit_all_bios, or
-  // edit_own_bio for the caller's own card (#1647); a Team Lead's own-card
-  // editing comes with the guild rank pages.
+  // The Guild officers page's bios (#1361): edit_all_bios, or edit_own_bio
+  // for the caller's own card (#1647).
   | 'editGuildOfficers'
   // Guild settings (#1644): adding, renaming, archiving and unlisting teams.
-  // A guild officer only, an Admin on the guild grid, which create_teams and
-  // rename_archive_teams default to (#1647); Staff are left out.
-  | 'manageTeams';
+  | 'manageTeams'
+  // Into a guild's pages without a team of one's own (#1264): the guild
+  // grid's "See every team (read-only)".
+  | 'viewEveryTeam';
+
+const OFFICER_TOOLS = [
+  'edit_roster',
+  'edit_schedule',
+  'see_rsvps',
+  'attendance',
+  'manage_signups',
+  'view_reports',
+  'view_loot',
+  'manage_loot',
+  'pay_boe_cuts',
+  'view_team_audit_log'
+];
 
 export function teamRole(access: Access, teamId: number | null | undefined): TeamRole | null {
   if (teamId == null) return null;
   return access.teams.find((t) => t.teamId === teamId)?.role ?? null;
 }
 
-export function can(access: Access | null | undefined, ability: Ability, teamId?: number | null): boolean {
+export function can(
+  access: Access | null | undefined,
+  ability: Ability,
+  perms: Permissions | null | undefined,
+  teamId?: number | null
+): boolean {
   if (!access) return false;
-  const role = teamRole(access, teamId);
-  const staffsTeam = role === 'officer' || role === 'team_leader';
+  const team = (...names: string[]) => names.some((n) => perms?.team.has(n));
+  const guild = (...names: string[]) => names.some((n) => perms?.guild.has(n));
+  const admin = access.siteAdmin;
   switch (ability) {
     case 'viewOfficerTools':
-      return staffsTeam || access.siteAdmin || access.guildOfficer;
-    case 'actAsOfficer':
-      return staffsTeam || access.siteAdmin;
+      return admin || team(...OFFICER_TOOLS);
+    case 'editRoster':
+      return admin || team('edit_roster');
+    case 'seeRsvps':
+      return admin || team('see_rsvps');
+    case 'manageAttendance':
+      return admin || team('attendance');
+    case 'viewReports':
+      return admin || team('view_reports');
+    case 'viewLoot':
+      return admin || team('view_loot', 'manage_loot');
+    case 'manageLoot':
+      return admin || team('manage_loot');
+    case 'viewAuditLog':
+      return admin || team('view_team_audit_log');
+    case 'manageTeam':
+      return admin || team('promote_assistants');
     case 'leadTeam':
-      return role === 'team_leader' || access.siteAdmin;
+      return admin || teamRole(access, teamId) === 'team_leader';
     case 'adminSite':
-      return access.siteAdmin;
+      return admin;
     case 'manageBoe':
-      return access.boeManager || access.siteAdmin;
+      return admin || guild('record_boe', 'pay_any_boe');
     case 'manageTeams':
-      return access.guildOfficer;
+      return guild('create_teams', 'rename_archive_teams');
+    case 'viewEveryTeam':
+      return guild('view_every_team');
     case 'manageRaidReference':
-      return access.siteAdmin;
+      return admin;
     case 'editGuildOfficers':
-      return access.guildOfficer || access.siteAdmin;
+      return admin || guild('edit_all_bios', 'edit_own_bio');
   }
+}
+
+// What `can` answers for the open page: the team and guild it is on.
+// `loading` is true while either is still loading, so a page can wait
+// instead of flashing "closed".
+export function useCan(teamId: number | null | undefined, guildId: number | null | undefined) {
+  const access = useAccess();
+  const perms = usePermissions(teamId, guildId);
+  const loading = access.isPending || (perms.isPending && perms.fetchStatus !== 'idle');
+  return {
+    loading,
+    error: access.isError || perms.isError,
+    // The read to show while loading or failed: access first, then permissions.
+    query: (access.isSuccess ? perms : access) as UseQueryResult<unknown>,
+    can: (ability: Ability) => can(access.data, ability, perms.data, teamId)
+  };
 }
 
 export function charactersOn(access: Access | null | undefined, teamId: number | null | undefined): Character[] {
@@ -171,13 +257,23 @@ export function hasAnyCharacter(access: Access): boolean {
   return access.teams.some((t) => t.characters.length > 0);
 }
 
-// Mirrors the server's can_settle_boe(p_team_id) exactly (#1305): a BoE
-// manager or site admin anywhere, or the officer/team_leader of that row's
-// own team. Settling (Mark Paid, Donate to Guild, Undo Payout) is open to
-// this wider group; every other BoE action stays behind 'manageBoe'.
-export function canSettleBoe(access: Access | null | undefined, teamId: number): boolean {
-  if (!access) return false;
-  return (
-    can(access, 'manageBoe') || teamRole(access, teamId) === 'officer' || teamRole(access, teamId) === 'team_leader'
+// The teams where the caller's rank has one team permission, for lists that
+// span teams (BoE rows, the guild home's waiting work).
+export function usePermissionTeams(permission: string) {
+  const { user } = useSession();
+  return useSupabaseQuery<ReadonlySet<number>>(
+    ['permission-teams', user?.id ?? null, permission],
+    async (client) => {
+      const { data, error } = await client.rpc('my_permission_team_ids', { p_permission: permission });
+      if (error) return { data: null, error };
+      return { data: new Set<number>(data ?? []), error: null };
+    },
+    { enabled: user !== null }
   );
+}
+
+// useCan for the page being shown: its team (none on a guild page) and guild.
+export function usePageCan() {
+  const { team, guild } = useAddress();
+  return useCan(team?.id, guild.id);
 }

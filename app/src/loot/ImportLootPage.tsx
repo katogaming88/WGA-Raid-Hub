@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import { useTeam } from '../data/address';
 import { DataState } from '../components/DataState';
 import { useStatus } from '../components/Status';
-import { can, useAccess } from '../auth/access';
+import { usePageCan } from '../auth/access';
 import { errorMessage } from '../lib/errors';
 import { formatInstant, localTimeZoneNote } from '../lib/dates';
 import { useCurrentSeason } from '../profile/useProfile';
@@ -16,7 +16,7 @@ import './loot.css';
 // list of past imports.
 export function ImportLootPage() {
   const team = useTeam();
-  const access = useAccess();
+  const { can } = usePageCan();
   const history = useImportHistory(team.id);
 
   return (
@@ -28,7 +28,7 @@ export function ImportLootPage() {
           several nights at once: awards already on file are skipped.
         </p>
       </div>
-      {can(access.data, 'actAsOfficer', team.id) ? (
+      {can('manageLoot') ? (
         <ImportCard teamId={team.id} />
       ) : (
         // #607: the import's duplicate check is per team, so only the team's
