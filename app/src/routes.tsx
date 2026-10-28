@@ -91,6 +91,11 @@ const BUILT_GUILD_PAGES: Record<string, ReactElement> = {
     <RequireAbility ability="manageTeams" title="Guild settings" forWhom="guild officers">
       <GuildSettingsPage />
     </RequireAbility>
+  ),
+  'settings/members': (
+    <RequireAbility ability="manageMembers" title="Guild settings" forWhom="the guild's Owner and Admins">
+      <GuildSettingsPage />
+    </RequireAbility>
   )
 };
 

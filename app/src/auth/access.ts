@@ -165,6 +165,10 @@ export type Ability =
   | 'editGuildOfficers'
   // Guild settings (#1644): adding, renaming, archiving and unlisting teams.
   | 'manageTeams'
+  // Guild settings' Members tab (#1650): the Owner and Admins. No grid row
+  // names it, so it asks edit_guild_profile, which an Admin holds by default;
+  // the database decides who may change a rank.
+  | 'manageMembers'
   // Into a guild's pages without a team of one's own (#1264): the guild
   // grid's "See every team (read-only)".
   | 'viewEveryTeam';
@@ -226,6 +230,8 @@ export function can(
       return admin || guild('record_boe', 'pay_any_boe');
     case 'manageTeams':
       return guild('create_teams', 'rename_archive_teams');
+    case 'manageMembers':
+      return guild('edit_guild_profile');
     case 'viewEveryTeam':
       return guild('view_every_team');
     case 'manageRaidReference':

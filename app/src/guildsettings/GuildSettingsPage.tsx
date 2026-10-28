@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router';
 import { useAddress } from '../data/address';
 import { GUILD_SETTINGS_TABS } from '../layout/nav';
+import { MembersPanel } from './MembersPanel';
 import { TeamsPanel } from './TeamsPanel';
 import './guildsettings.css';
 
@@ -22,7 +23,7 @@ export function GuildSettingsPage() {
           );
         })}
       </nav>
-      <TeamsPanel />
+      {pathname.endsWith('/members') ? <MembersPanel /> : <TeamsPanel />}
     </section>
   );
 }

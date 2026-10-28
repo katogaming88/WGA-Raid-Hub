@@ -1244,6 +1244,20 @@ const GUILD_SETTINGS = {
   ]
 };
 
+// Guild settings, Members tab (#1650): the Owner, with an Admin and a Member.
+const GUILD_MEMBERS = {
+  ...GUILD_SETTINGS,
+  path: '/g/wga/settings/members',
+  sentinel: 'main .guildsettings-row',
+  rpc: {
+    guild_members: [
+      { person_id: 1, display_name: 'Katorri', rank: 'owner', is_you: true },
+      { person_id: 2, display_name: 'Rex', rank: 'admin', is_you: false },
+      { person_id: 3, display_name: 'Mira', rank: 'member', is_you: false }
+    ]
+  }
+};
+
 // History (#1102): a season with a roster to show behind the toggle.
 const HISTORY_ENTRY = {
   name: 'Season One',
@@ -1469,6 +1483,15 @@ const STATES = [
     label: 'guild settings, new team dialog',
     ...GUILD_SETTINGS,
     click: 'role=button[name="New team"]',
+    afterClick: '[role=dialog]'
+  },
+  { label: 'guild settings, members', ...GUILD_MEMBERS },
+  { label: 'guild settings, members, light', ...GUILD_MEMBERS, colorScheme: 'light' },
+  { label: 'guild settings, members, on a phone', ...GUILD_MEMBERS, viewport: NARROW },
+  {
+    label: 'guild settings, hand over ownership dialog',
+    ...GUILD_MEMBERS,
+    click: 'role=button[name="Hand over ownership to Rex"]',
     afterClick: '[role=dialog]'
   },
   { label: 'history', ...HISTORY },

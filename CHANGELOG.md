@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.223.1] - 2026-10-28
+
+### Project
+
+- The new app's Guild settings has a Members tab (#1650): everyone in
+  the guild with their guild rank. The Owner promotes and demotes
+  Admins and Team Leads, and hands over ownership after typing the new
+  Owner's name; Admins see the list only. The database functions it
+  calls (`guild_members`, `set_guild_rank`, `transfer_guild_ownership`)
+  and the Recruiter switch (#1550) are not built yet, so the tab shows
+  an error until they land.
+
 ## [3.223.0] - 2026-10-28
 
 ### Backend

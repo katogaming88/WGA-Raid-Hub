@@ -116,6 +116,7 @@ const OFFICER_GRID = [...ASSISTANT_GRID, 'manage_loot', 'pay_boe_cuts', 'promote
 const ADMIN_GRID = [
   'create_teams',
   'rename_archive_teams',
+  'edit_guild_profile',
   'edit_own_bio',
   'edit_all_bios',
   'record_boe',
