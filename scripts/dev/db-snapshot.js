@@ -22,7 +22,7 @@ import { spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { PERSONAS_SQL } from './snapshot-personas.js';
+import { PERSONAS_SQL, OWNERS_SQL } from './snapshot-personas.js';
 
 const BUCKET = 's3://wga-raid-hub-backups/pg/';
 
@@ -280,6 +280,8 @@ export function plan({ version, dumpPath }) {
     // persona rows go through the branch's migrations as the restored ones do.
     psql('personas', PERSONAS_SQL, true),
     { label: 'migrate', command: 'supabase', args: ['migration', 'up', '--local'] },
+    // After migrate, so the dump has team ranks whatever its age (#1646).
+    psql('owners', OWNERS_SQL, true),
     psql('counts', COUNTS, false)
   ];
 }

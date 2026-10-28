@@ -13,7 +13,7 @@ import {
   DEFAULT_BRANCH,
   EMPTY_CHECK_TABLES
 } from '../../scripts/dev/db-snapshot.js';
-import { PERSONAS_SQL } from '../../scripts/dev/snapshot-personas.js';
+import { PERSONAS_SQL, OWNERS_SQL } from '../../scripts/dev/snapshot-personas.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -136,8 +136,18 @@ describe('plan (#1056)', () => {
   const step = (label) => built.find((s) => s.label === label);
   const argsOf = (label) => step(label).args.join(' ');
 
-  it('orders reset, cron quiet, truncate, restore, unlink, personas, migrate, counts', () => {
-    expect(labels).toEqual(['reset', 'cron', 'truncate', 'restore', 'unlink', 'personas', 'migrate', 'counts']);
+  it('orders reset, cron quiet, truncate, restore, unlink, personas, migrate, owners, counts', () => {
+    expect(labels).toEqual([
+      'reset',
+      'cron',
+      'truncate',
+      'restore',
+      'unlink',
+      'personas',
+      'migrate',
+      'owners',
+      'counts'
+    ]);
   });
 
   it('resets to the computed version without the seed', () => {
@@ -182,7 +192,7 @@ describe('plan (#1056)', () => {
   it('stops every psql batch on the first error', () => {
     // A psql call with several statements exits 0 past a failed one and the
     // surrounding successes paper over the hole (2026-09-08).
-    for (const label of ['cron', 'truncate', 'unlink', 'personas', 'counts']) {
+    for (const label of ['cron', 'truncate', 'unlink', 'personas', 'owners', 'counts']) {
       expect(argsOf(label)).toContain('ON_ERROR_STOP=1');
     }
   });
@@ -222,9 +232,14 @@ describe('plan (#1056)', () => {
     expect(step('personas').args).toContain(PERSONAS_SQL);
   });
 
-  it('runs the branch own migrations on top, last', () => {
+  it('runs the branch own migrations on top, then hands the teams to the leader personas', () => {
     expect(argsOf('migrate')).toContain('--local');
     expect(labels.indexOf('migrate')).toBeGreaterThan(labels.indexOf('personas'));
+    // The leader personas take their teams over once the migrations have
+    // given the dump team ranks (#1646).
+    expect(labels.indexOf('owners')).toBeGreaterThan(labels.indexOf('migrate'));
+    expect(step('owners').args).toContain(OWNERS_SQL);
+    expect(argsOf('owners')).toContain('--single-transaction');
   });
 });
 

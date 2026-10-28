@@ -22,7 +22,7 @@
 // fixture no other file can be asked to stay away from.
 import { describe, it, expect, afterAll } from 'vitest';
 import { pool, withTxn } from './helpers.js';
-import { PERSONAS_SQL } from '../../scripts/dev/snapshot-personas.js';
+import { PERSONAS_SQL, OWNERS_SQL } from '../../scripts/dev/snapshot-personas.js';
 
 afterAll(() => pool.end());
 
@@ -50,6 +50,7 @@ function onSnapshot(fn) {
       players: (await q(SEEDED.players)).rows[0].n
     };
     await q(PERSONAS_SQL);
+    await q(OWNERS_SQL);
     return fn({ ...txn, before });
   });
 }
