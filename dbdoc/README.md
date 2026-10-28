@@ -84,7 +84,7 @@
 | [public.rank_permissions](public.rank_permissions.md) | 4 | Every permission on the guild and team grids, with the ranks that have it in a new guild or team (#1517, #1645). Owners hold every permission and are not listed. | BASE TABLE |
 | [public.guild_rank_permissions](public.guild_rank_permissions.md) | 4 | Each guild's grid: a row means that guild rank has that permission there (#1645). Filled from rank_permissions.default_ranks when the guild is made; the Owner changes it later. | BASE TABLE |
 | [public.team_rank_permissions](public.team_rank_permissions.md) | 4 | Each team's grid: a row means that team rank has that permission there (#1645). Filled from rank_permissions.default_ranks when the team is made; the Team Owner changes it later. | BASE TABLE |
-| [public.guild_ranks](public.guild_ranks.md) | 6 | A person's rank in a guild (#1645): owner (one per guild), admin, team_lead or member. Member is automatic for anyone on a team in the guild, so a member has a row only to hold one of the two switches. Owner and admin are kept in step with a guild_officer grant until cutover, both ways. | BASE TABLE |
+| [public.guild_ranks](public.guild_ranks.md) | 4 | A person's rank in a guild (#1645): owner (one per guild), admin, team_lead or member. Member is automatic for anyone on a team in the guild, so a row is only needed for the other three. Owner and admin are kept in step with a guild_officer grant until cutover, both ways. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -237,7 +237,6 @@
 | public.close_started_season_signups | int4 |  | FUNCTION |
 | public.declare_season_signup | int4 | p_team_id integer, p_season text, p_character_id integer, p_class_spec_id integer, p_off_specs text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_backup_tank boolean DEFAULT false, p_backup_healer boolean DEFAULT false | FUNCTION |
 | public.get_own_signup | record | p_team_id integer, p_season text DEFAULT NULL::text | FUNCTION |
-| public.is_guild_officer_of | bool | p_guild_id integer | FUNCTION |
 | public.create_team | record | p_guild_id integer, p_name text | FUNCTION |
 | public.update_team | void | p_team_id integer, p_name text, p_key text | FUNCTION |
 | public.set_team_archived | void | p_team_id integer, p_archived boolean | FUNCTION |
@@ -248,7 +247,6 @@
 | public.add_own_character | int4 | p_team_id integer, p_character_id integer, p_class_spec_id integer | FUNCTION |
 | public.my_recent_own_add | record | p_team_slug text | FUNCTION |
 | public.my_guild_officer_team_ids | _int4 |  | FUNCTION |
-| public.is_guild_officer_of_team | bool | p_team_id integer | FUNCTION |
 | public.admin_grant | int4 | p_grant_type text, p_discord_id text, p_label text, p_guild_id integer | FUNCTION |
 | public.admin_revoke | void | p_grant_type text, p_discord_id text, p_label text, p_guild_id integer | FUNCTION |
 | public.admin_list_grants | record | p_grant_type text | FUNCTION |
@@ -1245,8 +1243,6 @@ erDiagram
   integer guild_id FK
   integer person_id FK
   text rank
-  boolean sees_every_team
-  boolean officer_on_every_team
   timestamp_with_time_zone created_at
 }
 ```

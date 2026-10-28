@@ -14,7 +14,6 @@ begin
   if not (
     coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false)
     or public.is_site_admin()
-    or public.is_guild_officer_of_team(p_team_id)
   ) then
     raise exception 'Not authorized';
   end if;

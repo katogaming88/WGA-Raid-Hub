@@ -181,10 +181,11 @@ describe('team_unnamed_members()', () => {
     });
   });
 
-  it("is open to a guild officer of the team's own guild", async () => {
+  // #1647: a guild rank writes nothing inside a team it is not on, and this is an Assign tool.
+  it("is shut to a guild officer of the team's own guild", async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
-      expect((await unnamed(asUser, GUILD_OFFICER, team.teamId)).length).toBe(3);
+      await expect(unnamed(asUser, GUILD_OFFICER, team.teamId)).rejects.toThrow(/Not authorized/);
     });
   });
 

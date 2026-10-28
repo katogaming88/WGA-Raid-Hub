@@ -193,8 +193,8 @@ describe('team_schedule_settings', () => {
                 on conflict (team_id) do update set default_difficulty = excluded.default_difficulty`;
   const READ = 'select team_id, default_difficulty from public.team_schedule_settings order by team_id';
 
-  it("is written by the team's officers, guild officers and site admins", async () => {
-    for (const uid of [OFFICER_T1, GUILD_OFFICER, SITE_ADMIN]) {
+  it("is written by the team's officers and site admins", async () => {
+    for (const uid of [OFFICER_T1, SITE_ADMIN]) {
       await withTxn(async ({ q, asUser }) => {
         await asUser(uid, SAVE);
         expect((await q(READ)).rows).toEqual([{ team_id: 1, default_difficulty: 'mythic' }]);
@@ -203,7 +203,8 @@ describe('team_schedule_settings', () => {
   });
 
   it("refuses another team's officer and a raider: the insert fails, the update and delete touch nothing", async () => {
-    for (const uid of [OFFICER_T2, RAIDER_T1]) {
+    // #1647: nor a guild officer, from outside the team.
+    for (const uid of [OFFICER_T2, RAIDER_T1, GUILD_OFFICER]) {
       await withTxn(async ({ q, asUser }) => {
         await expect(asUser(uid, SAVE)).rejects.toMatchObject({ code: RLS_DENIED });
         await setDefault(q, 'heroic');

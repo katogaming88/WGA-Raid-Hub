@@ -1,7 +1,8 @@
 import { useSupabaseMutation } from '../data/query';
 
-// Guild settings' writes (#1644). Each is a guild-officer-only function in the
-// database (is_guild_officer_of()); the page gate only decides what to show.
+// Guild settings' writes (#1644). Each function asks the guild grid's
+// Create teams or Rename and archive teams (#1647); the page gate only
+// decides what to show.
 // Every one refreshes the guild's team list, which the sidebar and the Teams
 // list both read.
 const teamsKey = ['guild-teams'] as const;

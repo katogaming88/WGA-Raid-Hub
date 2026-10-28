@@ -78,7 +78,7 @@ describe('team permissions (#1646)', () => {
     });
   });
 
-  it('archiving an Assistant asks Promote Assistants: an Assistant, another team and signed out cannot; an Officer and a guild officer can', async () => {
+  it('archiving an Assistant asks Promote Assistants: an Assistant, another team and signed out cannot; an Officer can, a guild officer cannot', async () => {
     await withTxn(async ({ q, asUser, asAnon }) => {
       const team = await seedTeam(q);
       const assistant = await seedAssistant(q, team.teamId);
@@ -99,16 +99,18 @@ describe('team permissions (#1646)', () => {
       await archive(team.officer.uid);
       expect(await archived()).not.toBeNull();
 
-      // A guild officer of the team's guild could archive an Assistant (a
-      // raider on the current site) before #1646, and still can.
+      // A guild officer of the team's guild could archive an Assistant
+      // before #1647, and no longer can: no guild rank writes inside a team.
       const second = await seedAssistant(q, team.teamId);
-      await asUser(GUILD_OFFICER, "select public.archive_team_member($1, $2, 'other', null)", [
-        team.teamId,
-        second.memberId
-      ]);
+      await expect(
+        asUser(GUILD_OFFICER, "select public.archive_team_member($1, $2, 'other', null)", [
+          team.teamId,
+          second.memberId
+        ])
+      ).rejects.toThrow(/Not authorized/);
       expect(
         (await q('select archived_at from public.team_members where id = $1', [second.memberId])).rows[0].archived_at
-      ).not.toBeNull();
+      ).toBeNull();
     });
   });
 

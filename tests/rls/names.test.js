@@ -359,14 +359,15 @@ describe('who can write a Name, and what survives a membership ending', () => {
     });
   });
 
-  it('lets an officer and a guild officer rename a claimed Name', async () => {
+  it('lets an officer rename a claimed Name, and not a guild officer (#1647)', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const nameId = await insertName(q, team.teamId, 'Old Label', team.raider.memberId);
       await asUser(team.officer.uid, "update public.names set label = 'Officer Label' where id = $1", [nameId]);
       expect((await q('select label from public.names where id = $1', [nameId])).rows[0].label).toBe('Officer Label');
-      await asUser(GUILD_OFFICER, "update public.names set label = 'Guild Label' where id = $1", [nameId]);
-      expect((await q('select label from public.names where id = $1', [nameId])).rows[0].label).toBe('Guild Label');
+      const res = await asUser(GUILD_OFFICER, "update public.names set label = 'Guild Label' where id = $1", [nameId]);
+      expect(res.rowCount).toBe(0);
+      expect((await q('select label from public.names where id = $1', [nameId])).rows[0].label).toBe('Officer Label');
     });
   });
 

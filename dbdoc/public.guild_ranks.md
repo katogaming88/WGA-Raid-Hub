@@ -2,7 +2,7 @@
 
 ## Description
 
-A person's rank in a guild (#1645): owner (one per guild), admin, team_lead or member. Member is automatic for anyone on a team in the guild, so a member has a row only to hold one of the two switches. Owner and admin are kept in step with a guild_officer grant until cutover, both ways.
+A person's rank in a guild (#1645): owner (one per guild), admin, team_lead or member. Member is automatic for anyone on a team in the guild, so a row is only needed for the other three. Owner and admin are kept in step with a guild_officer grant until cutover, both ways.
 
 ## Columns
 
@@ -11,8 +11,6 @@ A person's rank in a guild (#1645): owner (one per guild), admin, team_lead or m
 | guild_id | integer |  | false |  | [public.guilds](public.guilds.md) |  |
 | person_id | integer |  | false |  | [public.people](public.people.md) |  |
 | rank | text | 'member'::text | false |  |  |  |
-| sees_every_team | boolean | false | false |  |  | "See every team, read-only" (#1517): set by the guild Owner per person. Off for everyone; the read rules that use it come later. |
-| officer_on_every_team | boolean | false | false |  |  | "Officer on every team" (#1517): set by the guild Owner per person. While on, has_team_permission() answers as an Officer on every team in the guild. |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 
 ## Constraints
@@ -50,8 +48,6 @@ erDiagram
   integer guild_id FK
   integer person_id FK
   text rank
-  boolean sees_every_team
-  boolean officer_on_every_team
   timestamp_with_time_zone created_at
 }
 "public.guilds" {

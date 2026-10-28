@@ -144,13 +144,15 @@ describe('restore_team_member()', () => {
     });
   });
 
-  it('a guild officer restores one', async () => {
+  it('a guild officer restores none (#1647)', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const guildOfficer = await seedGrant(q, 'guild_officer');
       await archiveMember(asUser, team.officer.uid, team.teamId, team.raider.memberId);
-      await restoreMember(asUser, guildOfficer, team.teamId, team.raider.memberId);
-      expect((await membership(q, team.raider.memberId)).archived_at).toBeNull();
+      await expect(restoreMember(asUser, guildOfficer, team.teamId, team.raider.memberId)).rejects.toThrow(
+        /Not authorized/
+      );
+      expect((await membership(q, team.raider.memberId)).archived_at).not.toBeNull();
     });
   });
 

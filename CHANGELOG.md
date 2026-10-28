@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.221.0] - 2026-10-28
+
+### Backend
+
+- A guild rank no longer lets anyone change anything inside a team they
+  are not on (#1647, part 2). A new guild permission, "See every team
+  (read-only)", on for Admins, lets them read every team's pages: roster,
+  RSVPs, signups, reports, loot and the audit log. Anyone who also runs a
+  team is promoted on that team by its Team Owner. We Go Again's two
+  guild officers keep reading every team and lose the roster, attendance,
+  schedule and bio edits they had on teams they are not on. The planned
+  per-person switches "See every team" and "Officer on every team" are
+  removed.
+
+### Project
+
+- The new app's guild settings comment names the guild permissions its
+  writes ask (#1647).
+
+---
+
 ## [3.220.0] - 2026-10-27
 
 ### Frontend

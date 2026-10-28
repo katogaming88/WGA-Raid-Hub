@@ -57,8 +57,7 @@ describe('team_battlenet_connections()', () => {
 
   it.each([
     ['the team leader', TEAM_LEADER_T1],
-    ['a site admin', SITE_ADMIN],
-    ['a guild officer', GUILD_OFFICER]
+    ['a site admin', SITE_ADMIN]
   ])('answers %s', async (_who, uid) => {
     await withTxn(async ({ q, asUser }) => {
       await connectBattlenet(q, RAIDER_T1, '900001');
@@ -71,6 +70,8 @@ describe('team_battlenet_connections()', () => {
     await withTxn(async ({ asUser }) => {
       await expect(ask(asUser, RAIDER_T1, 1)).rejects.toThrow(/Not authorized/);
       await expect(ask(asUser, OFFICER_T2, 1)).rejects.toThrow(/Not authorized/);
+      // #1647: a guild rank writes nothing inside a team it is not on, and this is an Assign tool.
+      await expect(ask(asUser, GUILD_OFFICER, 1)).rejects.toThrow(/Not authorized/);
     });
   });
 

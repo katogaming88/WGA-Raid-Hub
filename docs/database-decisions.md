@@ -10,6 +10,26 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-28 -- A guild rank only reads inside a team: "See every team (read-only)" on the guild grid, and the two per-person switches go (#1647, part 2)
+
+Shipped: 20261028000710_guild_officers_read_every_team.sql
+
+The second half of #1647. #1517 planned two per-person switches, "See every team, read-only" and "Officer on every team". Kat replaced them (2026-10-28): a guild officer reads every team, and anyone who also runs a team is promoted on it by its Team Owner.
+
+- **Read-only is a guild grid row, `view_every_team`** ("See every team (read-only)"), on for Admins in every guild, new and existing. The Owner has it, as every guild permission, and can switch it per rank like the rest of the grid. It reads what an Officer reads on every team in the guild and writes nothing. Two pieces carry it:
+  - `my_permission_team_ids()` answers the four read-only team permissions (`see_rsvps`, `view_reports`, `view_loot`, `view_team_audit_log`) as an Officer for it. Every rule and function asking those four only reads, and none is in `write_audit_log()`'s list.
+  - The officer reads that ask an edit permission take `my_guild_permission_team_ids('view_every_team')` (part 1's helper): memberships, people, characters, main swaps, removal reasons, boss groups, lineups, boss picks, raid night participation, signups, `incoming_roster`, `resolve_person()`, `also_on_teams()` and `earlier_characters()`. Officer notes and the priority list's two dismissal lists get a SELECT rule of their own, since their only rule was a write rule (fresh review).
+- **Left out of it on purpose:** invite links (the code is a key to join the team), the Battle.net and unnamed-member lookups (Assign tools), and BoE finds, which follow the guild's own BoE permissions (#1694).
+- **No guild rank writes inside a team.** 24 functions drop their separate guild officer arm. Of 21 rules, 12 drop it and 9 officer reads swap it for the grid row. Both were done by exact substitution from the generated definitions and `pg_policies`.
+- **The switch columns are dropped.** `guild_ranks.sees_every_team` and `officer_on_every_team` (#1645) were never set; #1646's `my_permission_team_ids()` read the second. A rank row is now only for owner, admin and team_lead.
+- **The current site: We Go Again's two guild officers lose their writes on other teams** (roster, attendance, schedule, bios, #607) and keep reading every team (Kat, 2026-10-28). Each keeps everything on the team they hold a rank on, and the current site's edit buttons on other teams fail until cutover. Its Grant and Revoke Guild Officer keep working as in #1645: an Admin reads every team.
+- **`is_guild_officer_of_team()` and `is_guild_officer_of()` are dropped**, since nothing asks them. `my_guild_officer_team_ids()` stays for the `guild_ranks` read rule.
+- **On the way there:** this PR first built the two switches, with today's guild officers given "Officer on every team". The tests showed that would also give them loot import, priority and approvals on every team, and Kat chose the read-only grid row instead.
+
+[Full discussion -> #1647](https://github.com/katogaming88/WGA-Raid-Hub/issues/1647).
+
+---
+
 ## 2026-10-27 -- Guild-level checks ask the guild grid in their own guild; bio cards and BoE payout settings move to the guild (#1647, part 1)
 
 Shipped: 20261027222102_guild_checks_ask_permission.sql

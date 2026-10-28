@@ -332,11 +332,9 @@ A person's rank in a guild ([#1645](https://github.com/katogaming88/WGA-Raid-Hub
 | `guild_id`              | int4        | FK -> `guilds.id`                                                       |
 | `person_id`             | int4        | FK -> `people.id`                                                       |
 | `rank`                  | text        | `owner` (one per guild), `admin`, `team_lead` or `member`              |
-| `sees_every_team`       | bool        | "See every team, read-only", set by the Owner per person; off by default |
-| `officer_on_every_team` | bool        | "Officer on every team", set by the Owner per person; off by default    |
 | `created_at`            | timestamptz | Row creation                                                            |
 
-Owner and admin hold a `guild_officer` grant in `guild_grants` and nobody else does, kept by trigger both ways until cutover.
+Owner and admin hold a `guild_officer` grant in `guild_grants` and nobody else does, kept by trigger both ways until cutover. The two per-person switches #1517 planned ("See every team" and "Officer on every team") were dropped in #1647: reading every team is the guild grid's `view_every_team` (Admins by default), and no guild rank writes inside a team.
 
 ---
 

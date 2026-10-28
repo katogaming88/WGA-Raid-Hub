@@ -26,12 +26,11 @@ const auditOf = (q) =>
   q("select action, target_id, detail from public.audit_log where target_type = 'team_invite_links' order by id");
 
 describe('team_invite_link_reset()', () => {
-  it('lets a team officer, leader, guild officer and site admin mint a code', async () => {
+  it('lets a team officer, leader and site admin mint a code', async () => {
     await withTxn(async ({ q, asUser }) => {
       for (const [uid, team] of [
         [OFFICER_T1, 1],
         [TEAM_LEADER_T1, 1],
-        [GUILD_OFFICER, 2],
         [SITE_ADMIN, 2]
       ]) {
         const { rows } = await reset(asUser, uid, team);
@@ -76,12 +75,11 @@ describe('team_invite_link_reset()', () => {
 });
 
 describe('team_invite_link_revoke()', () => {
-  it('lets a team officer, leader, guild officer and site admin delete the code', async () => {
+  it('lets a team officer, leader and site admin delete the code', async () => {
     await withTxn(async ({ q, asUser }) => {
       for (const [uid, team] of [
         [OFFICER_T1, 1],
         [TEAM_LEADER_T1, 1],
-        [GUILD_OFFICER, 2],
         [SITE_ADMIN, 2]
       ]) {
         await reset(asUser, uid, team);
@@ -174,8 +172,9 @@ describe('team_invite_links', () => {
       const officer1 = await asUser(OFFICER_T1, 'select team_id from public.team_invite_links');
       expect(officer1.rows).toEqual([{ team_id: 1 }]);
 
+      // #1647: "See every team" does not read a key to join the team.
       const guildOfficer = await asUser(GUILD_OFFICER, 'select team_id from public.team_invite_links order by team_id');
-      expect(guildOfficer.rows).toEqual([{ team_id: 1 }, { team_id: 2 }]);
+      expect(guildOfficer.rows).toEqual([]);
 
       const siteAdmin = await asUser(SITE_ADMIN, 'select team_id from public.team_invite_links order by team_id');
       expect(siteAdmin.rows).toEqual([{ team_id: 1 }, { team_id: 2 }]);

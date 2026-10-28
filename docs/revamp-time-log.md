@@ -16,8 +16,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
-| Revamp 4: cutover                  |      7 h 30 m |
-| **All revamp work**                | **124 h 26 m** |
+| Revamp 4: cutover                  |      8 h 50 m |
+| **All revamp work**                | **125 h 46 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -444,6 +444,16 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:45-11:00 PM | PR #1694 (#1647 part 1): CodeRabbit (the guild audit log also reads the guild's own rows with no team; refused cases for signed out, another guild's Admin on rename and unlist, another guild's BoE manager on a sale; the BoE read test asserts the exact rows and excludes another guild's; the any-guild guards match calls with arguments); full database suite, RLS.md, decision log | Revamp 4 (#1647) | 15 m | ~15 m build | not read | The fresh-agent review and merge not yet counted |
 | 11:00-11:15 PM | PR #1694 (#1647 part 1): the fresh-agent review (approved, seven notes): boe-sold-webhook asks Record BoE in the find's own guild, one bio card of your own, the guild row locked without blocking a new team, stale BoE comments, the PR body; cross-guild BoE pings filed as #1695; Edge Function and full database suites, restamp, changelog, docs | Revamp 4 (#1647) | 15 m | ~15 m build | not read | Merge not yet counted |
 | 11:30-11:50 PM | PR #1694 (#1647 part 1): CodeRabbit's outside-the-diff notes on boe-sold-webhook: the find is read as the caller, and only We Go Again's sales post to its channel; per-guild channels added to #1695; Edge Function tests | Revamp 4 (#1647) | 20 m | ~20 m build | not read | Merge not yet counted |
+| 11:50 PM-12:02 AM | PR #1694 (#1647 part 1): CodeRabbit's note on the sold post's BoE manager list answered (kept: nothing reaches the caller, only We Go Again's channel, the cross-guild list is #1695); merged 12:02 AM | Revamp 4 (#1647) | 10 m | ~5 m build, ~5 m Kat | not read | |
+
+### 2026-10-28
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 12:02-12:25 AM | #1647 part 2 built: cleanup after #1694, #1487 updated, today's guild officers looked up; Kat chose a full Officer on every team for them (the tests showed it widens their access to loot and approvals); the guild officer arm in 24 functions and 21 rules becomes the two switches, the current site's Grant and Revoke switch Officer on every team, two helpers dropped; database tests (both switches, grant and revoke, old guild-officer refusals now with the switch off), full database suite, generated docs, decision log, RLS.md, schema reference, stamp, changelog, these rows | Revamp 4 (#1647) | 25 m | ~20 m build, ~5 m Kat | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
+| 12:30-12:45 AM | PR #1696 (#1647 part 2): CodeRabbit (a switch in another guild reads and writes nothing, signed out reads no officer note, "Also on" asserts a row; the guild Owner question taken to Kat; the four team functions already moved in #1694) | Revamp 4 (#1647) | 15 m | ~15 m build | not read | The fresh-agent review and merge not yet counted |
+| 12:45-1:00 AM | PR #1696: Kat decided the guild Owner always counts as Officer on every team (the checks ask the rank as well as the switch); the fresh-agent review (approved, four notes): See every team reads the Signups tab and the priority list's two dismissal lists, the decision log's rule count, the current site's pages noted in the PR body; Owner, signups and dismissals tests, full database suite, generated docs, decision log, RLS.md, schema reference | Revamp 4 (#1647) | 15 m | ~15 m build | not read | Merge not yet counted |
+| 12:55-1:10 AM | PR #1696 rebuilt: Kat dropped both per-person switches (a guild officer reads every team; a team rank, from the Team Owner, is what writes) and chose a guild grid row, "See every team (read-only)", on for Admins, read-only on the current site from merge; the migration rebuilt from the same generated pieces and renamed, the two switch columns dropped; 27 older tests that had a guild officer write on another team now refused, a new test file for the grid row; full database suite, generated docs, decision log, RLS.md, schema reference, changelog | Revamp 4 (#1647) | 15 m | ~12 m build, ~3 m Kat | not read | CodeRabbit again, a fresh-agent review of the rebuild and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

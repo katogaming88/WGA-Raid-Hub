@@ -240,10 +240,10 @@ describe('add_signup_to_roster is officer-gated', () => {
 describe('guild officer tier (#607)', () => {
   // A standalone grant (guild_officers), not derived from any team_members
   // role -- GUILD_OFFICER is a plain raider on team 1 with no officer/
-  // team_leader role anywhere. Full access: players/attendance, on a team
-  // they hold no team-officer role on. Everything else stays a DENY, same
-  // as a raider, since is_guild_officer() is deliberately never OR'd into
-  // those policies.
+  // team_leader role anywhere. Since #1647 no guild rank writes inside a
+  // team it is not on (Kat, 2026-10-28): every write below is a DENY, same
+  // as a raider. They still read every team, as an Admin with the guild
+  // grid's "See every team (read-only)".
   const FULL_ACCESS_INSERTS = {
     players: DIRECT_TEAM_INSERTS.players,
     attendance: DIRECT_TEAM_INSERTS.attendance
@@ -254,15 +254,8 @@ describe('guild officer tier (#607)', () => {
     player_wcl_season_perf: DIRECT_TEAM_INSERTS.player_wcl_season_perf
   };
 
-  for (const [table, sql] of Object.entries(FULL_ACCESS_INSERTS)) {
-    it(`guild officer can insert into ${table} on a team with no officer role there`, async () => {
-      const res = await queryAs('authenticated', GUILD_OFFICER, sql);
-      expect(res.rowCount).toBe(1);
-    });
-  }
-
-  for (const [table, sql] of Object.entries(EXCLUDED_INSERTS)) {
-    it(`guild officer cannot insert into ${table} (excluded from the tier)`, async () => {
+  for (const [table, sql] of Object.entries({ ...FULL_ACCESS_INSERTS, ...EXCLUDED_INSERTS })) {
+    it(`guild officer cannot insert into ${table} on a team with no officer role there`, async () => {
       await expectDenied('authenticated', GUILD_OFFICER, sql);
     });
   }
@@ -293,13 +286,10 @@ describe('guild officer tier (#607)', () => {
     expect(res.rowCount).toBe(0);
   });
 
-  it('write_audit_log admits a guild officer', async () => {
-    const res = await queryAs(
-      'authenticated',
-      GUILD_OFFICER,
-      "select public.write_audit_log(1, 'guild officer test action') as id"
-    );
-    expect(res.rows[0].id).toBeGreaterThan(0);
+  it('write_audit_log refuses a guild officer (#1647)', async () => {
+    await expect(
+      queryAs('authenticated', GUILD_OFFICER, "select public.write_audit_log(1, 'guild officer test action') as id")
+    ).rejects.toThrow(/Not authorized/);
   });
 
   it('a plain raider (no guild_officers grant) still cannot write players -- regression guard', async () => {
@@ -349,9 +339,8 @@ describe('set_team_officer_bios admits any team-1 officer, not just team leaders
     const res = await queryAs('authenticated', SITE_ADMIN, sql);
     expect(res.rows[0].bios.teamOfficerBios).toEqual([]);
   });
-  it('guild officer can call it', async () => {
-    const res = await queryAs('authenticated', GUILD_OFFICER, sql);
-    expect(res.rows[0].bios.teamOfficerBios).toEqual([]);
+  it('a guild officer cannot call it for a team they hold no officer rank on (#1647)', async () => {
+    await expect(queryAs('authenticated', GUILD_OFFICER, sql)).rejects.toThrow(/Not authorized/);
   });
   it('a team 2 officer cannot call it for team 1', async () => {
     await expect(queryAs('authenticated', OFFICER_T2, sql)).rejects.toThrow(/Not authorized/);

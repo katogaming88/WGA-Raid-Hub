@@ -13,10 +13,12 @@ AS $function$
       from team_members m
      where m.person_id = my_person_id() and m.archived_at is null
     union all
+    -- "See every team, read-only" on the guild grid (#1647): the read-only
+    -- permissions, as an Officer. Nothing that writes asks any of these four.
     select t.id, 'officer'
-      from guild_ranks g
-      join teams t on t.guild_id = g.guild_id
-     where g.person_id = my_person_id() and g.officer_on_every_team
+      from teams t
+     where p_permission in ('see_rsvps', 'view_reports', 'view_loot', 'view_team_audit_log')
+       and has_guild_permission(t.guild_id, 'view_every_team')
   )
   select coalesce(array_agg(distinct r.team_id), '{}')
     from ranks r

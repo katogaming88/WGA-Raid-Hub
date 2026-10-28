@@ -240,16 +240,16 @@ describe('who may call restore_player()', () => {
     });
   });
 
-  it('a guild officer and a site admin, from outside the team', async () => {
+  it('a site admin from outside the team, and not a guild officer (#1647)', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const guildOfficer = await seedGrant(q, 'guild_officer');
       const admin = await seedGrant(q, 'site_admin');
       const byGuildOfficer = await seedPlayer(q, { teamId: team.teamId, archivedAt: ARCHIVED });
       const byAdmin = await seedPlayer(q, { teamId: team.teamId, archivedAt: ARCHIVED });
-      await restore(asUser, guildOfficer, byGuildOfficer);
+      await expect(restore(asUser, guildOfficer, byGuildOfficer)).rejects.toThrow(/Not authorized/);
       await restore(asUser, admin, byAdmin);
-      expect((await playerRow(q, byGuildOfficer)).archived_at).toBeNull();
+      expect((await playerRow(q, byGuildOfficer)).archived_at).not.toBeNull();
       expect((await playerRow(q, byAdmin)).archived_at).toBeNull();
     });
   });

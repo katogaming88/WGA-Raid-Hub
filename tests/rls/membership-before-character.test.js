@@ -127,12 +127,11 @@ describe('hold_team_member()', () => {
     });
   });
 
-  it('holds it for a guild officer and a site admin', async () => {
+  it('holds it for a site admin, and refuses a guild officer (#1647)', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
-      await hold((t, p) => asUser(GUILD_OFFICER, t, p), team.raider.memberId);
+      await expect(hold((t, p) => asUser(GUILD_OFFICER, t, p), team.raider.memberId)).rejects.toThrow(/Not authorized/);
       await hold((t, p) => asUser(SITE_ADMIN, t, p), team.officer.memberId);
-      expect(await rowLockModes(q, 'team_members', team.raider.memberId)).toContain('For Share');
       expect(await rowLockModes(q, 'team_members', team.officer.memberId)).toContain('For Share');
     });
   });

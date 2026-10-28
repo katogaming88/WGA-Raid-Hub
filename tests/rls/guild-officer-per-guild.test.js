@@ -155,8 +155,9 @@ describe('a guild officer acts in their own guild', () => {
       const addPlayer = (uid, team) =>
         asUser(uid, "insert into public.players (team_id, name_realm) values ($1, 'Probe-Stormrage')", [team]);
 
+      // #1647: no guild rank writes inside a team, in its own guild or another.
       await expect(addPlayer(GUILD_OFFICER, teamId)).rejects.toMatchObject({ code: RLS_DENIED });
-      await addPlayer(officer.uid, teamId);
+      await expect(addPlayer(officer.uid, teamId)).rejects.toMatchObject({ code: RLS_DENIED });
       await expect(addPlayer(officer.uid, 1)).rejects.toMatchObject({ code: RLS_DENIED });
     });
   });
@@ -167,7 +168,9 @@ describe('a guild officer acts in their own guild', () => {
       await expect(asUser(GUILD_OFFICER, 'select public.team_invite_link_reset($1)', [teamId])).rejects.toThrow(
         /Not authorized/
       );
-      await asUser(officer.uid, 'select public.team_invite_link_reset($1)', [teamId]);
+      await expect(asUser(officer.uid, 'select public.team_invite_link_reset($1)', [teamId])).rejects.toThrow(
+        /Not authorized/
+      );
       await expect(asUser(officer.uid, 'select public.team_invite_link_reset(1)')).rejects.toThrow(/Not authorized/);
       // A row with no team is a site admin's to write.
       await expect(asUser(officer.uid, "select public.write_audit_log(null, 'Probe')")).rejects.toThrow(
@@ -184,10 +187,7 @@ describe('a guild officer acts in their own guild', () => {
       expect(await ids(GUILD_OFFICER)).not.toContain(teamId);
       expect(await ids(SITE_ADMIN)).toEqual([]);
       expect((await asAnon('select public.my_guild_officer_team_ids() as v')).rows[0].v).toEqual([]);
-      const of = async (uid, team) =>
-        (await asUser(uid, 'select public.is_guild_officer_of_team($1) as v', [team])).rows[0].v;
-      expect(await of(officer.uid, teamId)).toBe(true);
-      expect(await of(officer.uid, null)).toBe(false);
+      // is_guild_officer_of_team() went in #1647: nothing asked it any more.
     });
   });
 });

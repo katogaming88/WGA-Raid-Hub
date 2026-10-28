@@ -2,7 +2,7 @@ table_name,policy_name,roles,operation,permissive,using_expression,with_check_ex
 account_preferences,Accounts manage own account_preferences,public,ALL,PERMISSIVE,(auth_user_id = ( SELECT auth.uid() AS uid)),(auth_user_id = ( SELECT auth.uid() AS uid))
 account_preferences,Claude readers read account_preferences,claude_readers,SELECT,PERMISSIVE,true,
 attendance,Claude readers read attendance,claude_readers,SELECT,PERMISSIVE,true,
-attendance,Officers write attendance,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('attendance'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('attendance'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
+attendance,Officers write attendance,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('attendance'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('attendance'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 attendance,Public read attendance,public,SELECT,PERMISSIVE,true,
 audit_log,Claude readers read audit_log,claude_readers,SELECT,PERMISSIVE,true,
 audit_log,Officers read audit_log,public,SELECT,PERMISSIVE,"((team_id = ANY (( SELECT my_permission_team_ids('view_team_audit_log'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_permission_team_ids('view_guild_audit_log'::text) AS my_guild_permission_team_ids)::integer[])) OR ((team_id IS NULL) AND (target_type = 'guilds'::text) AND (target_id IN ( SELECT t.guild_id
@@ -23,7 +23,7 @@ boe_listings,Raiders read own boe_listings,public,SELECT,PERMISSIVE,"(EXISTS ( S
    FROM boe_items b
   WHERE ((b.id = boe_listings.boe_item_id) AND ((b.player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])) OR ((b.finder_discord_id IS NOT NULL) AND (b.finder_discord_id = ( SELECT current_discord_id() AS current_discord_id)))))))",
 boss_groups,Claude readers read boss_groups,claude_readers,SELECT,PERMISSIVE,true,
-boss_groups,Officers read boss_groups,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+boss_groups,Officers read boss_groups,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 boss_groups,Team raiders read boss_groups,public,SELECT,PERMISSIVE,"(team_id IN ( SELECT p.team_id
    FROM players p
   WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))))",
@@ -32,7 +32,7 @@ characters,Officers read characters on their teams,public,SELECT,PERMISSIVE,"((p
    FROM team_members tm
   WHERE (tm.team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])))) OR (person_id IN ( SELECT tm.person_id
    FROM team_members tm
-  WHERE (tm.team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])))) OR ( SELECT is_site_admin() AS is_site_admin))",
+  WHERE (tm.team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])))) OR ( SELECT is_site_admin() AS is_site_admin))",
 characters,People read own characters,public,SELECT,PERMISSIVE,(person_id = ( SELECT my_person_id() AS my_person_id)),
 classes_specs,Claude readers read classes_specs,claude_readers,SELECT,PERMISSIVE,true,
 classes_specs,Public read classes_specs,public,SELECT,PERMISSIVE,true,
@@ -52,21 +52,21 @@ item_bosses,Claude readers read item_bosses,claude_readers,SELECT,PERMISSIVE,tru
 item_bosses,Public read item_bosses,public,SELECT,PERMISSIVE,true,
 item_preferences,Claude readers read item_preferences,claude_readers,SELECT,PERMISSIVE,true,
 item_preferences,Officers clear item_preferences note,public,UPDATE,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
-item_preferences,Officers read item_preferences,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('view_loot'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+item_preferences,Officers read item_preferences,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('view_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 item_preferences,Raiders manage own item_preferences,public,ALL,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))
 item_seasons,Claude readers read item_seasons,claude_readers,SELECT,PERMISSIVE,true,
 item_seasons,Public read item_seasons,public,SELECT,PERMISSIVE,true,
 items,Claude readers read items,claude_readers,SELECT,PERMISSIVE,true,
 items,Public read items,public,SELECT,PERMISSIVE,true,
 main_swap_requests,Claude readers read main swap requests,claude_readers,SELECT,PERMISSIVE,true,
-main_swap_requests,Officers read main swap requests on their teams,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+main_swap_requests,Officers read main swap requests on their teams,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 main_swap_requests,Raiders read own main swap requests,public,SELECT,PERMISSIVE,(person_id = ( SELECT my_person_id() AS my_person_id)),
 mplus_exclusion_requests,Claude readers read mplus_exclusion_requests,claude_readers,SELECT,PERMISSIVE,true,
 mplus_exclusion_requests,Officers read mplus_exclusion_requests,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('view_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 mplus_exclusion_requests,Officers update mplus_exclusion_requests,public,UPDATE,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 mplus_exclusion_requests,Raiders read own mplus_exclusion_requests,public,SELECT,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),
 names,Claude readers read names,claude_readers,SELECT,PERMISSIVE,true,
-names,Officers write names,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
+names,Officers write names,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 names,Public read names,public,SELECT,PERMISSIVE,true,
 notifications,Claude readers read notifications,claude_readers,SELECT,PERMISSIVE,true,
 notifications,Raiders mark own notifications read,public,UPDATE,PERMISSIVE,(player_id = ANY (( SELECT my_player_ids() AS my_player_ids)::integer[])),(player_id = ANY (( SELECT my_player_ids() AS my_player_ids)::integer[]))
@@ -76,7 +76,7 @@ people,Officers read people on their teams,public,SELECT,PERMISSIVE,"((id IN ( S
    FROM team_members tm
   WHERE (tm.team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])))) OR (id IN ( SELECT tm.person_id
    FROM team_members tm
-  WHERE (tm.team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])))) OR ( SELECT is_site_admin() AS is_site_admin))",
+  WHERE (tm.team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])))) OR ( SELECT is_site_admin() AS is_site_admin))",
 people,People read own people row,public,SELECT,PERMISSIVE,(auth_user_id = ( SELECT auth.uid() AS uid)),
 player_equipped_gear,Claude readers read player_equipped_gear,claude_readers,SELECT,PERMISSIVE,true,
 player_equipped_gear,Officers write player_equipped_gear,public,ALL,PERMISSIVE,"((( SELECT players.team_id
@@ -86,15 +86,17 @@ player_equipped_gear,Officers write player_equipped_gear,public,ALL,PERMISSIVE,"
   WHERE (players.id = player_equipped_gear.player_id)) = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))"
 player_equipped_gear,Public read player_equipped_gear,public,SELECT,PERMISSIVE,true,
 player_officer_notes,Claude readers read player_officer_notes,claude_readers,SELECT,PERMISSIVE,true,
-player_officer_notes,Officers write player_officer_notes,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
+player_officer_notes,Every-team viewers read player_officer_notes,authenticated,SELECT,PERMISSIVE,(team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])),
+player_officer_notes,Officers write player_officer_notes,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 player_wcl_season_perf,Claude readers read player_wcl_season_perf,claude_readers,SELECT,PERMISSIVE,true,
 player_wcl_season_perf,Officers write player_wcl_season_perf,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 player_wcl_season_perf,Public read player_wcl_season_perf,public,SELECT,PERMISSIVE,true,
 players,Claude readers read players,claude_readers,SELECT,PERMISSIVE,true,
-players,Officers write players,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
+players,Officers write players,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 players,Public read players,public,SELECT,PERMISSIVE,true,
 players,Raiders update own bonus_roll_encounter_id,public,UPDATE,PERMISSIVE,(id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),(id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))
 priority_conflict_dismissals,Claude readers read priority_conflict_dismissals,claude_readers,SELECT,PERMISSIVE,true,
+priority_conflict_dismissals,Every-team viewers read priority_conflict_dismissals,authenticated,SELECT,PERMISSIVE,(team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])),
 priority_conflict_dismissals,Officers manage priority_conflict_dismissals,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 priority_order,Claude readers read priority_order,claude_readers,SELECT,PERMISSIVE,true,
 priority_order,Officers write priority_order,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
@@ -103,33 +105,34 @@ priority_order_confirmed_empty,Claude readers read priority_order_confirmed_empt
 priority_order_confirmed_empty,Officers write priority_order_confirmed_empty,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 priority_order_confirmed_empty,Public read priority_order_confirmed_empty,public,SELECT,PERMISSIVE,true,
 priority_stale_dismissals,Claude readers read priority_stale_dismissals,claude_readers,SELECT,PERMISSIVE,true,
+priority_stale_dismissals,Every-team viewers read priority_stale_dismissals,authenticated,SELECT,PERMISSIVE,(team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])),
 priority_stale_dismissals,Officers manage priority_stale_dismissals,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 raid_encounters,Claude readers read raid_encounters,claude_readers,SELECT,PERMISSIVE,true,
 raid_encounters,Public read raid_encounters,public,SELECT,PERMISSIVE,true,
 raid_night_bosses,Claude readers read raid_night_bosses,claude_readers,SELECT,PERMISSIVE,true,
-raid_night_bosses,Officers read raid_night_bosses,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_permission_team_ids('attendance'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+raid_night_bosses,Officers read raid_night_bosses,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_permission_team_ids('attendance'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 raid_night_bosses,Team raiders read raid_night_bosses,public,SELECT,PERMISSIVE,"(team_id IN ( SELECT p.team_id
    FROM players p
   WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))))",
 raid_night_lineups,Claude readers read raid_night_lineups,claude_readers,SELECT,PERMISSIVE,true,
-raid_night_lineups,Officers read raid_night_lineups,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_permission_team_ids('attendance'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+raid_night_lineups,Officers read raid_night_lineups,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_permission_team_ids('attendance'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 raid_night_lineups,Team raiders read raid_night_lineups,public,SELECT,PERMISSIVE,"(team_id IN ( SELECT p.team_id
    FROM players p
   WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))))",
 raid_night_participation,Claude readers read raid_night_participation,claude_readers,SELECT,PERMISSIVE,true,
-raid_night_participation,Officers read raid_night_participation,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('attendance'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+raid_night_participation,Officers read raid_night_participation,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('attendance'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 raid_night_participation,Team raiders read raid_night_participation,public,SELECT,PERMISSIVE,"(team_id IN ( SELECT p.team_id
    FROM players p
   WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))))",
 raid_rsvp_reminders_sent,Claude readers read raid_rsvp_reminders_sent,claude_readers,SELECT,PERMISSIVE,true,
 raid_rsvps,Claude readers read raid_rsvps,claude_readers,SELECT,PERMISSIVE,true,
-raid_rsvps,Officers read raid_rsvps,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('see_rsvps'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+raid_rsvps,Officers read raid_rsvps,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('see_rsvps'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 raid_rsvps,Own raid_rsvps read,public,SELECT,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),
 raid_schedule,Claude readers read raid_schedule,claude_readers,SELECT,PERMISSIVE,true,
-raid_schedule,Officers write raid_schedule,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
+raid_schedule,Officers write raid_schedule,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 raid_schedule,Public read raid_schedule,public,SELECT,PERMISSIVE,true,
 raid_schedule_exceptions,Claude readers read raid_schedule_exceptions,claude_readers,SELECT,PERMISSIVE,true,
-raid_schedule_exceptions,Officers write raid_schedule_exceptions,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
+raid_schedule_exceptions,Officers write raid_schedule_exceptions,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 raid_schedule_exceptions,Public read raid_schedule_exceptions,public,SELECT,PERMISSIVE,true,
 raid_signup_sheets,Claude readers read raid_signup_sheets,claude_readers,SELECT,PERMISSIVE,true,
 raid_zones,Claude readers read raid_zones,claude_readers,SELECT,PERMISSIVE,true,
@@ -140,7 +143,7 @@ rclc_loot,Claude readers read rclc_loot,claude_readers,SELECT,PERMISSIVE,true,
 rclc_loot,Officer write loot,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 rclc_loot,Public read loot,public,SELECT,PERMISSIVE,true,
 removal_reasons,Claude readers read removal_reasons,claude_readers,SELECT,PERMISSIVE,true,
-removal_reasons,Officers read removal_reasons,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+removal_reasons,Officers read removal_reasons,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 retired_url_keys,Claude readers read retired_url_keys,claude_readers,SELECT,PERMISSIVE,true,
 retired_url_keys,Public read retired_url_keys,public,SELECT,PERMISSIVE,true,
 scoring,Claude readers read scoring,claude_readers,SELECT,PERMISSIVE,true,
@@ -151,7 +154,7 @@ scoring,Officers write scoring,public,ALL,PERMISSIVE,"((( SELECT players.team_id
   WHERE (players.id = scoring.player_id)) = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))"
 scoring,Public read scoring,public,SELECT,PERMISSIVE,true,
 season_signups,Claude readers read season_signups,claude_readers,SELECT,PERMISSIVE,true,
-season_signups,Officers read signups,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_signups'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+season_signups,Officers read signups,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_signups'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 season_signups,Officers update signups,public,UPDATE,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_signups'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('manage_signups'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 season_track_floors,Claude readers read season_track_floors,claude_readers,SELECT,PERMISSIVE,true,
 season_track_floors,Public read season_track_floors,public,SELECT,PERMISSIVE,true,
@@ -171,16 +174,16 @@ streamers,Public read streamers,public,SELECT,PERMISSIVE,true,
 streamers,Raiders manage own streamer,public,ALL,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))
 team_discord_config,Claude readers read team_discord_config,claude_readers,SELECT,PERMISSIVE,true,
 team_invite_links,Claude readers read team_invite_links,claude_readers,SELECT,PERMISSIVE,true,
-team_invite_links,Officers read team_invite_links,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+team_invite_links,Officers read team_invite_links,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 team_lineup_settings,Claude readers read team_lineup_settings,claude_readers,SELECT,PERMISSIVE,true,
 team_lineup_settings,Public read team_lineup_settings,public,SELECT,PERMISSIVE,true,
 team_members,Claude readers read team_members,claude_readers,SELECT,PERMISSIVE,true,
 team_members,Members read own team_members,public,SELECT,PERMISSIVE,(person_id = ( SELECT my_person_id() AS my_person_id)),
-team_members,Officers read own team_members,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+team_members,Officers read own team_members,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 team_members,Team leaders insert team_members,public,INSERT,PERMISSIVE,,((team_id = ANY (( SELECT my_leader_team_ids() AS my_leader_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 team_members,Team leaders update team_members,public,UPDATE,PERMISSIVE,((team_id = ANY (( SELECT my_leader_team_ids() AS my_leader_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_leader_team_ids() AS my_leader_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 team_raid_kills,Claude readers read team_raid_kills,claude_readers,SELECT,PERMISSIVE,true,
-team_raid_kills,Officers read team_raid_kills,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('view_reports'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+team_raid_kills,Officers read team_raid_kills,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('view_reports'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 team_raid_kills,Team raiders read team_raid_kills,public,SELECT,PERMISSIVE,"(team_id IN ( SELECT p.team_id
    FROM players p
   WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))))",
@@ -188,14 +191,14 @@ team_raid_progress,Claude readers read team_raid_progress,claude_readers,SELECT,
 team_raid_progress,Officers write team_raid_progress,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 team_raid_progress,Public read team_raid_progress,public,SELECT,PERMISSIVE,true,
 team_raid_reports,Claude readers read team_raid_reports,claude_readers,SELECT,PERMISSIVE,true,
-team_raid_reports,Officers read team_raid_reports,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('view_reports'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+team_raid_reports,Officers read team_raid_reports,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('view_reports'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 team_raid_reports,Team raiders read team_raid_reports,public,SELECT,PERMISSIVE,"(team_id IN ( SELECT p.team_id
    FROM players p
   WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))))",
 team_rank_permissions,Anyone reads team_rank_permissions,anon;authenticated,SELECT,PERMISSIVE,true,
 team_rank_permissions,Claude readers read team_rank_permissions,claude_readers,SELECT,PERMISSIVE,true,
 team_schedule_settings,Claude readers read team_schedule_settings,claude_readers,SELECT,PERMISSIVE,true,
-team_schedule_settings,Officers write team_schedule_settings,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
+team_schedule_settings,Officers write team_schedule_settings,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 team_schedule_settings,Public read team_schedule_settings,public,SELECT,PERMISSIVE,true,
 team_seasons,Claude readers read team_seasons,claude_readers,SELECT,PERMISSIVE,true,
 team_seasons,Public read team_seasons,public,SELECT,PERMISSIVE,true,
