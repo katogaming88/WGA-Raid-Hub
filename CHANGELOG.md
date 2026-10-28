@@ -31,8 +31,12 @@ answers to.
   shown, not any guild's. A guild Owner or Admin gets into a guild's
   pages without a team only in their own guild. Team settings (Loot,
   Signups) stay the Team Owner's.
-- A guild officer from another team no longer opens Import loot or
-  Reassign loot on a team: since #1647 a guild rank only reads there.
+- A guild officer on a team they are not on (an Admin's "See every team
+  (read-only)", #1647) gets only the read-only officer pages there:
+  Priority, Reviews, Reports and the Audit log. Import and Reassign loot,
+  Attendance, Boss groups, the Invite link and the team settings are left
+  out, though the database still lets them read attendance and boss
+  groups.
 - App, browser and database tests for an Officer, an Assistant and a
   Raider on the same team.
 - Revamp time log row for #1649.

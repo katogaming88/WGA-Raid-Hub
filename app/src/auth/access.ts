@@ -140,6 +140,7 @@ export type Ability =
   // Any officer page at all: the person's rank has some officer tool on the team.
   | 'viewOfficerTools'
   | 'editRoster'
+  | 'editSchedule'
   | 'seeRsvps'
   | 'manageAttendance'
   | 'viewReports'
@@ -201,6 +202,8 @@ export function can(
       return admin || team(...OFFICER_TOOLS);
     case 'editRoster':
       return admin || team('edit_roster');
+    case 'editSchedule':
+      return admin || team('edit_schedule');
     case 'seeRsvps':
       return admin || team('see_rsvps');
     case 'manageAttendance':

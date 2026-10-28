@@ -49,6 +49,14 @@ describe('my_permissions()', () => {
       expect((await mine(asUser, admin.uid, null, other)).guild).toEqual([]);
       // A team's own guild wins over the guild argument.
       expect((await mine(asUser, admin.uid, 1, other)).guild).toEqual(guild);
+      // On a team they are not on, the guild's "See every team (read-only)"
+      // gives exactly the four read-only team permissions (#1647).
+      expect((await mine(asUser, admin.uid, 2)).team).toEqual([
+        'see_rsvps',
+        'view_reports',
+        'view_loot',
+        'view_team_audit_log'
+      ]);
     });
   });
 

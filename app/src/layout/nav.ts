@@ -142,7 +142,7 @@ const OFFICER_ABILITY: Record<string, Ability> = {
   'officer/reassign': 'manageLoot',
   'officer/attendance': 'manageAttendance',
   'officer/attendance/scores': 'manageAttendance',
-  'officer/groups': 'editRoster',
+  'officer/groups': 'editSchedule',
   'officer/invite': 'editRoster',
   'officer/settings/audit-log': 'viewAuditLog'
 };
