@@ -16,8 +16,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
-| Revamp 4: cutover                  |      9 h 40 m |
-| **All revamp work**                | **126 h 36 m** |
+| Revamp 4: cutover                  |     10 h 15 m |
+| **All revamp work**                | **127 h 11 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -457,7 +457,10 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:55-11:15 AM | PR #1696 (#1647 part 2): CodeRabbit's two nits on the old version (the read test adds the priority conflict dismissals and signed-out reads of every officer-only table; the other was about a dropped column), preflight, pushed the rebuild, PR body and title rewritten for the read-only model, CodeRabbit answered; Kat merged 11:42 AM | Revamp 4 (#1647) | 20 m | ~15 m build, ~5 m Kat | not read | No fresh-agent review of the rebuild before merge |
 | 11:42-11:52 AM | After #1696: branches cleaned up, #1487 row removed and totals redone; #1648's question answered by Kat (each team's one team leader is its Team Owner) and checked on production | Revamp 4 (#1648) | 10 m | ~5 m build, ~5 m Kat | not read | |
 | 11:52 AM-12:03 PM | #1648 built: Kat the guild's Owner, both site admins Admins (Rex keeps recording BoE sales), dry run on production and a restored snapshot; the seed's Owner is Immolation's leader, four Owner tests use it; full database suite, generated docs, decision log, stamp, changelog, these rows; PR #1698 | Revamp 4 (#1648) | 10 m | ~10 m build | not read | |
-| 12:08-12:20 PM | PR #1698 (#1648): CodeRabbit (Admins and the Owner check scoped to We Go Again; a second-leader stop and a Staff-and-Admin persona declined); full database suite, snapshot re-checked | Revamp 4 (#1648) | 10 m | ~10 m build | not read | The fresh-agent review and merge not yet counted |
+| 12:08-12:20 PM | PR #1698 (#1648): CodeRabbit (Admins and the Owner check scoped to We Go Again; a second-leader stop and a Staff-and-Admin persona declined); full database suite, snapshot re-checked | Revamp 4 (#1648) | 10 m | ~10 m build | not read | |
+| 12:20-12:41 PM | PR #1698 (#1648): the fresh-agent review (approved, three notes: #1648's body still named the second-leader stop, the PR body names the leader-without-owner check, the production check after deploy); Kat confirmed person 68 is Rex; merged 12:41 PM | Revamp 4 (#1648) | 20 m | ~15 m build, ~5 m Kat | not read | |
+| 12:41-12:46 PM | After #1698: branches cleaned up, ranks checked on production after the deploy (Kat Owner; the two guild officers and Rex Admins), #1648's boxes ticked with a status comment, #1487 row removed and totals redone | Revamp 4 (#1648) | 5 m | ~5 m build | not read | |
+| 12:46-12:55 PM | #1286: 34 tables readable by anyone (26 at filing), each sorted with its readers; Kat chose own rows plus officers for priority, and officers only for scores and parses; the inventory posted on #1286, the cutover migration filed as #1699 (blocks #1105), #1264's step pointed at both, the new-table rule in docs/RLS.md, this PR | Revamp 4 (#1286) | 10 m | ~8 m build, ~2 m Kat | not read | CodeRabbit and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
