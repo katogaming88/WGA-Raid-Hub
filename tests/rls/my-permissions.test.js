@@ -39,6 +39,11 @@ describe('my_permissions()', () => {
       await grantGuild(q, admin.discordId, 'guild_officer');
       const { guild } = await mine(asUser, admin.uid, 1);
       expect(guild).toEqual(expect.arrayContaining(['create_teams', 'rename_archive_teams']));
+      // A Raider on a team in the same guild is only a Member there.
+      const raider = await seedMember(q, { teamId: 1 });
+      const member = (await mine(asUser, raider.uid, 1)).guild;
+      expect(member).not.toContain('create_teams');
+      expect(member).not.toContain('rename_archive_teams');
       const other = (await q(`insert into public.guilds (name, url_key) values ('Other', 'other-1649') returning id`))
         .rows[0].id;
       expect((await mine(asUser, admin.uid, null, other)).guild).toEqual([]);
