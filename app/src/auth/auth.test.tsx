@@ -45,21 +45,14 @@ const sidebar = () => screen.getByRole('complementary', { name: 'Site' });
 
 describe('signed out', () => {
   it('offers Battle.net first and Discord second, and Battle.net starts an OAuth sign-in back to this page', async () => {
-    const { client } = renderApp('/g/wga/t/phoenix/roster');
-    await screen.findByRole('heading', { level: 1, name: 'Roster' });
+    const { client } = renderApp('/news');
+    await screen.findByRole('heading', { level: 1, name: 'News' });
     await userEvent.click(within(sidebar()).getByRole('button', { name: 'Sign in with Battle.net' }));
     expect(within(sidebar()).getByRole('button', { name: 'Sign in with Discord' })).toBeInTheDocument();
     expect(client.authCalls[0]).toEqual([
       'signInWithOAuth',
       { provider: 'custom:battlenet', options: { redirectTo: 'http://localhost:3000/' } }
     ]);
-  });
-
-  it('hides the Officer group and closes officer pages with a sign-in message', async () => {
-    renderApp('/g/wga/t/phoenix/officer/priority');
-    expect(await screen.findByRole('heading', { level: 1, name: 'Loot priority' })).toBeInTheDocument();
-    expect(screen.getByText('Sign in to see this page. It is for officers.')).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Officer' })).not.toBeInTheDocument();
   });
 });
 

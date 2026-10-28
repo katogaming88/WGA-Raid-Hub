@@ -61,6 +61,23 @@ export const PEOPLE = {
       ]
     }
   },
+  // A raider on team 1 with no character, so nothing is marked as theirs: guild pages are for members only (#1264).
+  member: {
+    discordId: 'discord-member-1',
+    person: {
+      site_admin: false,
+      guild_officer: false,
+      boe_manager: false,
+      teams: [
+        {
+          team_id: 1,
+          team_member_id: 900,
+          role: 'raider',
+          characters: []
+        }
+      ]
+    }
+  },
   battlenetOnly: { discordId: null, person: null }
 };
 
@@ -316,4 +333,11 @@ export async function openApp(browser, port, state) {
   // What the click opens, when it loads data of its own first.
   if (state.afterClick) await page.waitForSelector(state.afterClick, { timeout: 20000 });
   return { context, page, unexpected, pageErrors };
+}
+
+// Guild pages are for members only (#1264): a state that opens a /g/ page
+// without signing anyone in opens it as a raider on team 1 instead.
+export function asMember(state) {
+  if (!state.path?.startsWith('/g/') || state.session || state.who || state.person) return state;
+  return { ...state, session: storedSession({ battlenet: 'Member#1', discord: 'Member' }), who: 'member' };
 }

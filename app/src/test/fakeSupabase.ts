@@ -205,6 +205,38 @@ export function fakeSession(logins: { battlenet?: string; discord?: { id: string
   return { access_token: 't', user: { id: userId, identities, user_metadata: {} } };
 }
 
+// Signed in as a raider on a team, since a guild's pages are only for its
+// members and send everyone else to the front page (#1264). The test's own rpc
+// handler answers everything else.
+export function asMember(handlers: FakeHandlers = seededHandlers(), teamId = 1): FakeHandlers {
+  return {
+    ...handlers,
+    session:
+      handlers.session ?? fakeSession({ battlenet: 'Member#1', discord: { id: 'discord-member', name: 'Member' } }),
+    rpc(name, args) {
+      if (name === 'current_discord_id') return { data: 'discord-member' };
+      if (name === 'resolve_person') {
+        return {
+          data: {
+            site_admin: false,
+            guild_officer: false,
+            boe_manager: false,
+            teams: [
+              {
+                team_id: teamId,
+                team_member_id: 900,
+                role: 'raider',
+                characters: [{ player_id: 900, name_realm: 'Member-Illidan', url_code: 'member00', archived_at: null }]
+              }
+            ]
+          }
+        };
+      }
+      return handlers.rpc ? handlers.rpc(name, args) : { data: null };
+    }
+  };
+}
+
 export const filterValue = (read: Read, column: string) => read.filters.find(([, c]) => c === column)?.[2];
 
 // The seeded world most tests run in: WGA with Phoenix and Hellfire, an

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { AxeBuilder } from '@axe-core/playwright';
 import { GUIDES } from '../../app/src/help/guide.ts';
-import { DIST, launchBrowser, openApp, startApp, storedSession, NARROW, PEOPLE } from './harness.js';
+import { DIST, launchBrowser, openApp, asMember, startApp, storedSession, NARROW, PEOPLE } from './harness.js';
 import { GUILD_TABLES, GUILD_TEAMS, WAITING } from './guild-fixtures.js';
 import { OFFICER_BIOS } from '../behavior/guild.js';
 import { ENTRIES as NEWS_ENTRIES } from '../behavior/news.js';
@@ -1487,14 +1487,14 @@ const STATES = [
     sentinel: 'main:has(.stream-directory)',
     tables: { streamers: DIRECTORY_OFFLINE }
   },
-  { label: 'guild home, signed out', ...GUILD },
-  { label: 'guild home, signed out, light', ...GUILD, colorScheme: 'light' },
+  { label: 'guild home, member', ...GUILD },
+  { label: 'guild home, member, light', ...GUILD, colorScheme: 'light' },
   { label: 'guild home, officer', ...GUILD_OFFICER },
   { label: 'guild home, officer, light', ...GUILD_OFFICER, colorScheme: 'light' },
   { label: 'calendar month, officer', ...CAL_MONTH },
   { label: 'calendar month, officer, light', ...CAL_MONTH, colorScheme: 'light' },
   {
-    label: 'calendar month, signed out',
+    label: 'calendar month, member',
     path: '/g/wga/t/phoenix/calendar',
     sentinel: 'main:has(.night-chip[data-date])',
     clock: CAL_TODAY,
@@ -1751,24 +1751,19 @@ const STATES = [
     afterClick: '[role="dialog"]'
   },
   {
-    label: 'home, signed out',
+    label: 'home, member',
     path: '/g/wga/t/phoenix',
     sentinel: HOME_SENTINEL,
     tables: HOME_TABLES,
     clock: TODAY
   },
   {
-    label: 'home, signed out, light',
+    label: 'home, member, light',
     path: '/g/wga/t/phoenix',
     sentinel: HOME_SENTINEL,
     tables: HOME_TABLES,
     clock: TODAY,
     colorScheme: 'light'
-  },
-  {
-    label: 'officer page, signed out',
-    path: '/g/wga/t/phoenix/officer/priority',
-    sentinel: 'text=Sign in to see this page'
   },
   {
     label: 'officer page, officer',
@@ -1815,10 +1810,10 @@ const STATES = [
     click: 'role=button[name="Show alts"]'
   },
   {
-    label: 'BoE sales, signed out',
+    label: 'BoE sales, member',
     path: '/g/wga/boe',
     sentinel: 'text=Report a BoE',
-    tables: { items: [], raid_zones: [] }
+    tables: { items: [], raid_zones: [], boe_listings: [] }
   },
   boeState('BoE sales, raider', 'raider', false),
   boeState('BoE sales, BoE manager', 'officer', true),
@@ -1998,8 +1993,7 @@ const STATES = [
   }),
   profileState('officer opening a profile with a refused M+ request', 'officer', 'dodgey', {
     sentinel: 'main .mplus-status'
-  }),
-  { label: 'my profile, signed out', path: '/g/wga/t/phoenix/me', sentinel: 'text=Sign in to see your profile' }
+  })
 ];
 
 let server;
@@ -2024,7 +2018,7 @@ async function axe(page) {
   return results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
 }
 
-describe.each(STATES)('$label', (state) => {
+describe.each(STATES.map(asMember))('$label', (state) => {
   it('has no WCAG 2.1 AA violations, makes no unexpected requests, and throws nothing', async () => {
     const { context, page, unexpected, pageErrors } = await openApp(browser, server.port, state);
     try {
@@ -2049,13 +2043,17 @@ describe.each(STATES)('$label', (state) => {
 
 describe('narrow-screen drawer', () => {
   it('opens as a dialog-like panel with no violations and returns focus on Escape', async () => {
-    const { context, page } = await openApp(browser, server.port, {
-      path: '/g/wga/t/phoenix',
-      sentinel: HOME_SENTINEL,
-      tables: HOME_TABLES,
-      clock: TODAY,
-      viewport: NARROW
-    });
+    const { context, page } = await openApp(
+      browser,
+      server.port,
+      asMember({
+        path: '/g/wga/t/phoenix',
+        sentinel: HOME_SENTINEL,
+        tables: HOME_TABLES,
+        clock: TODAY,
+        viewport: NARROW
+      })
+    );
     try {
       const menu = page.getByRole('button', { name: 'Open menu' });
       await menu.click();

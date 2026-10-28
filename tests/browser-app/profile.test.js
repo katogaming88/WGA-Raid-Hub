@@ -192,16 +192,6 @@ describe('Profile (new app), the raider’s own, checked against the current sit
 });
 
 describe('Profile (new app), who may open it', () => {
-  it('does not open for a visitor who is not signed in', async () => {
-    const opened = await open(`/g/wga/t/phoenix/p/${TORBJORN.url_code}`, null, TORBJORN);
-    try {
-      await opened.page.waitForSelector('text=Sign in to see this profile');
-      await expect(opened.page.locator('main .profile-name').count()).resolves.toBe(0);
-    } finally {
-      await opened.context.close();
-    }
-  });
-
   it('does not open another raider’s profile for a raider', async () => {
     const opened = await open(`/g/wga/t/phoenix/p/${TORBJORN.url_code}`, 'dodgey', TORBJORN);
     try {

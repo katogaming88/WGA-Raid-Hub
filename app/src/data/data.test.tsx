@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
-import { seededHandlers } from '../test/fakeSupabase';
+import { asMember, seededHandlers } from '../test/fakeSupabase';
 import { setErrorReporter } from '../lib/errors';
 import { canonicalPath } from './address';
 import { readSupabaseConfig } from '../lib/supabase';
@@ -65,14 +65,14 @@ describe('address lookup (#1114)', () => {
   });
 
   it('moves a retired team key to the current one, keeping the page', async () => {
-    const { router } = renderApp('/g/wga/t/old-phoenix/roster?tab=trials');
+    const { router } = renderApp('/g/wga/t/old-phoenix/roster?tab=trials', asMember());
     expect(await screen.findByRole('heading', { level: 1, name: 'Roster' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/roster');
     expect(router.state.location.search).toBe('?tab=trials');
   });
 
   it('moves different capitals to the current keys', async () => {
-    const { router } = renderApp('/g/WGA/t/Phoenix');
+    const { router } = renderApp('/g/WGA/t/Phoenix', asMember());
     await screen.findByRole('heading', { level: 1, name: 'Phoenix' });
     expect(router.state.location.pathname).toBe('/g/wga/t/phoenix');
   });
@@ -103,12 +103,14 @@ describe('the data layer never hides a failed read (#1101)', () => {
     const base = homeHandlers();
     renderApp(
       '/g/wga/t/phoenix',
-      seededHandlers({
-        from: (read) =>
-          read.table === 'players' && failing
-            ? { error: { message: 'canceling statement due to statement timeout' } }
-            : base.from!(read)
-      })
+      asMember(
+        seededHandlers({
+          from: (read) =>
+            read.table === 'players' && failing
+              ? { error: { message: 'canceling statement due to statement timeout' } }
+              : base.from!(read)
+        })
+      )
     );
 
     // Inside the page: the app-wide status area keeps an empty alert region too.
@@ -142,12 +144,14 @@ describe('the data layer never hides a failed read (#1101)', () => {
     const base = homeHandlers();
     renderApp(
       '/g/wga/t/phoenix',
-      seededHandlers({
-        from: async (read) => {
-          if (read.table === 'players') await gate;
-          return base.from!(read);
-        }
-      })
+      asMember(
+        seededHandlers({
+          from: async (read) => {
+            if (read.table === 'players') await gate;
+            return base.from!(read);
+          }
+        })
+      )
     );
     expect(await screen.findByText('Loading the team’s season…')).toHaveAttribute('role', 'status');
     release();
@@ -157,7 +161,7 @@ describe('the data layer never hides a failed read (#1101)', () => {
 
 describe('reads through the data layer', () => {
   it('counts the raiders on this team, reading only its active players', async () => {
-    const { client } = renderApp('/g/wga/t/phoenix', homeHandlers());
+    const { client } = renderApp('/g/wga/t/phoenix', asMember(homeHandlers()));
     expect(await raiders()).toHaveTextContent('2');
     const read = client.reads.find((r) => r.table === 'players')!;
     expect(read.filters).toEqual([
@@ -167,7 +171,7 @@ describe('reads through the data layer', () => {
   });
 
   it('reuses cached reads when coming back to a page', async () => {
-    const { client } = renderApp('/g/wga/t/phoenix', homeHandlers());
+    const { client } = renderApp('/g/wga/t/phoenix', asMember(homeHandlers()));
     await raiders();
     await userEvent.click(screen.getByRole('link', { name: 'Roster' }));
     await screen.findByRole('heading', { level: 1, name: 'Roster' });
@@ -181,7 +185,7 @@ describe('reads through the data layer', () => {
 
 describe('team switcher', () => {
   it('lists the active teams in team id order and keeps the current page when switching', async () => {
-    const { router } = renderApp('/g/wga/t/phoenix/roster');
+    const { router } = renderApp('/g/wga/t/phoenix/roster', asMember());
     await screen.findByRole('heading', { level: 1, name: 'Roster' });
     const toggle = await screen.findByRole('button', { name: /Phoenix/ });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
@@ -202,7 +206,7 @@ describe('team switcher', () => {
   });
 
   it('closes when clicking outside it', async () => {
-    renderApp('/g/wga/t/phoenix');
+    renderApp('/g/wga/t/phoenix', asMember());
     const toggle = await screen.findByRole('button', { name: /Phoenix/ });
     await userEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
@@ -211,7 +215,7 @@ describe('team switcher', () => {
   });
 
   it('works from the keyboard: arrows open it and move between teams, Enter picks one', async () => {
-    const { router } = renderApp('/g/wga/t/phoenix/roster');
+    const { router } = renderApp('/g/wga/t/phoenix/roster', asMember());
     const toggle = await screen.findByRole('button', { name: /Phoenix/ });
     toggle.focus();
 
@@ -235,7 +239,7 @@ describe('team switcher', () => {
   });
 
   it('opens on the last team with Up, and closes when focus tabs out', async () => {
-    renderApp('/g/wga/t/phoenix');
+    renderApp('/g/wga/t/phoenix', asMember());
     const toggle = await screen.findByRole('button', { name: /Phoenix/ });
     toggle.focus();
     await userEvent.keyboard('{ArrowUp}');
@@ -245,7 +249,7 @@ describe('team switcher', () => {
   });
 
   it('closes on Escape and returns focus to its button', async () => {
-    renderApp('/g/wga/t/phoenix');
+    renderApp('/g/wga/t/phoenix', asMember());
     const toggle = await screen.findByRole('button', { name: /Phoenix/ });
     await userEvent.click(toggle);
     await userEvent.keyboard('{Escape}');

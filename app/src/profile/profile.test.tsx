@@ -187,11 +187,6 @@ function profileHandlers(
 }
 
 describe('Profile page', () => {
-  it('asks a visitor to sign in', async () => {
-    renderApp('/g/wga/t/phoenix/me', profileHandlers(null));
-    expect(await screen.findByText('Sign in to see your profile.')).toBeInTheDocument();
-  });
-
   // The summary stat, not the card heading of the same name.
   const attendanceStat = () => screen.getAllByText('Attendance').find((el) => el.tagName === 'DT')!.parentElement!;
 

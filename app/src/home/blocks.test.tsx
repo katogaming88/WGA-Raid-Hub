@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
-import { seededHandlers, type FakeHandlers, type Read } from '../test/fakeSupabase';
+import { asMember, seededHandlers, type FakeHandlers, type Read } from '../test/fakeSupabase';
 import { calendarMonth, raidNights, type RsvpRow } from '../calendar/nights';
 import { killDate, raidCards, type ProgressRow } from './progression';
 import { liveStreams, liveText, type StreamerRow } from '../streams/streams';
@@ -171,14 +171,16 @@ const handlers = (options: { fail?: string; raids?: unknown[]; live?: boolean } 
       }
     ]
   };
-  return seededHandlers({
-    from: (read) => {
-      if (read.table === options.fail) return { error: { message: 'statement timeout' } };
-      const answer = answers[read.table];
-      if (answer && !(read.table === 'players' && read.single)) return { data: answer(read) };
-      return base.from!(read);
-    }
-  });
+  return asMember(
+    seededHandlers({
+      from: (read) => {
+        if (read.table === options.fail) return { error: { message: 'statement timeout' } };
+        const answer = answers[read.table];
+        if (answer && !(read.table === 'players' && read.single)) return { data: answer(read) };
+        return base.from!(read);
+      }
+    })
+  );
 };
 
 const region = async (name: string) => within(await screen.findByRole('region', { name }));
@@ -218,12 +220,6 @@ describe('the Home page’s progression and calendar', () => {
     expect(await card.findByRole('alert')).toHaveTextContent('Couldn’t load the raid calendar.');
     expect(await screen.findByRole('region', { name: 'Recent loot' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Raid progression' })).toBeInTheDocument();
-  });
-
-  it('does not ask for anyone’s answers when signed out', async () => {
-    const { client } = renderApp('/g/wga/t/phoenix', handlers());
-    await (await region('Calendar')).findAllByRole('link', { name: /Present/ });
-    expect(client.reads.some((r) => r.table === 'raid_rsvps')).toBe(false);
   });
 });
 

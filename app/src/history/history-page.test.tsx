@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
-import { seededHandlers } from '../test/fakeSupabase';
+import { asMember, seededHandlers } from '../test/fakeSupabase';
 
 const HISTORY = [
   {
@@ -26,9 +26,11 @@ describe('History', () => {
     const base = seededHandlers();
     renderApp(
       '/g/wga/t/phoenix/history',
-      seededHandlers({
-        from: (read) => (read.table === 'team_settings' ? { data: { history: HISTORY } } : base.from!(read))
-      })
+      asMember(
+        seededHandlers({
+          from: (read) => (read.table === 'team_settings' ? { data: { history: HISTORY } } : base.from!(read))
+        })
+      )
     );
     await screen.findByRole('heading', { level: 1, name: 'History' });
     const card = within(
@@ -44,7 +46,7 @@ describe('History', () => {
   });
 
   it('says so when there is no past season', async () => {
-    renderApp('/g/wga/t/phoenix/history');
+    renderApp('/g/wga/t/phoenix/history', asMember());
     expect(await screen.findByText('No past seasons yet.')).toBeInTheDocument();
   });
 });

@@ -77,7 +77,7 @@ describe('who sees Guild settings and New team', () => {
   });
 
   it('Staff without the guild officer grant, and raiders, see neither, and the page stays closed', async () => {
-    renderApp('/g/wga/settings/teams', signedIn({ guildOfficer: false, siteAdmin: true }));
+    renderApp('/g/wga/settings/teams', signedIn({ guildOfficer: false, siteAdmin: true, memberOf: [1] }));
     expect(await screen.findByText('This page is for guild officers.')).toBeInTheDocument();
     expect(within(sidebar()).queryByRole('link', { name: 'Guild settings' })).not.toBeInTheDocument();
     expect(within(sidebar()).queryByRole('button', { name: 'New team' })).not.toBeInTheDocument();

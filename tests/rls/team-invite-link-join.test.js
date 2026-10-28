@@ -72,6 +72,29 @@ describe('team_invite_link_join()', () => {
     });
   });
 
+  // There is no separate guild membership to add: the team membership is it,
+  // and has_guild_permission() counts it as the guild's Member rank.
+  it('makes the person a Member of the team guild', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await q(
+        `insert into public.guild_rank_permissions (guild_id, rank, permission)
+         values ((select guild_id from public.teams where id = 1), 'member', 'export_guild_data')`
+      );
+      const code = await mint(asUser);
+      const uid = await newcomer(q);
+      const isMember = async () =>
+        (
+          await asUser(
+            uid,
+            "select public.has_guild_permission((select guild_id from public.teams where id = 1), 'export_guild_data') as ok"
+          )
+        ).rows[0].ok;
+      expect(await isMember()).toBe(false);
+      await join(asUser, uid, code, null);
+      expect(await isMember()).toBe(true);
+    });
+  });
+
   it('writes one audit entry naming the character', async () => {
     await withTxn(async ({ q, asUser }) => {
       const code = await mint(asUser);

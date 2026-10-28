@@ -12,6 +12,24 @@ answers to.
 
 ---
 
+## [3.222.2] - 2026-10-28
+
+### Project
+
+- The new app's guild and team pages are for the guild's members
+  (#1264). Anyone without a current spot on one of its teams, signed
+  out included, is sent to the front page; so is Staff. A guild Owner
+  or Admin gets in without a team. Site pages stay open to everyone,
+  and an old `/g/wga/news` link still forwards. The database still lets
+  anyone read until cutover (#1699). App and browser tests now sign in
+  as a member, with a shared `asMember()` test helper.
+- A database test shows that joining by invite link makes the person a
+  Member of the team's guild: the team membership is the guild
+  membership, so nothing else is written.
+- Revamp time log row for #1264.
+
+---
+
 ## [3.222.1] - 2026-10-28
 
 ### Project

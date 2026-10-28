@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
-import { fakeSession, seededHandlers, type Read } from '../test/fakeSupabase';
+import { asMember, fakeSession, seededHandlers, type Read } from '../test/fakeSupabase';
 import { existsSync, readdirSync } from 'node:fs';
 import { SPEC_ICON_KEYS, specIcon } from './specIcons';
 import {
@@ -180,16 +180,18 @@ const SEASON_ROWS = [
 ];
 
 function rosterHandlers(tables: Record<string, unknown>) {
-  return seededHandlers({
-    from(read: Read) {
-      const seeded = seededHandlers();
-      if (read.table in tables) {
-        const value = tables[read.table];
-        return typeof value === 'function' ? (value as (r: Read) => unknown)(read) : { data: value };
+  return asMember(
+    seededHandlers({
+      from(read: Read) {
+        const seeded = seededHandlers();
+        if (read.table in tables) {
+          const value = tables[read.table];
+          return typeof value === 'function' ? (value as (r: Read) => unknown)(read) : { data: value };
+        }
+        return seeded.from!(read);
       }
-      return seeded.from!(read);
-    }
-  } as never);
+    } as never)
+  );
 }
 
 describe('Roster page', () => {

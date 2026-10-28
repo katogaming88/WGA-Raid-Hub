@@ -289,47 +289,6 @@ describe('Calendar (new app): a raider sees answers, not notes', () => {
   });
 });
 
-describe('Calendar (new app): signed out', () => {
-  it('shows the schedule, but nobody’s answers', async () => {
-    const opened = await openApp(browser, server.port, {
-      path: BASE,
-      sentinel: '.month-grid .night-chip',
-      clock: TODAY,
-      tables: tables()
-    });
-    try {
-      const month = await readMonth(opened.page);
-      expect(month.map((m) => m.date)).toEqual(EXPECTED_MONTH.map((m) => m.date));
-      expect(month.every((m) => m.status === null)).toBe(true);
-      expect(await opened.page.locator('.night-count').count()).toBe(0);
-      await expect(opened.page.locator('.calendar-note').textContent()).resolves.toBe(
-        'Sign in to see who’s coming and to give your answer.'
-      );
-      expect(opened.unexpected).toEqual([]);
-    } finally {
-      await opened.context.close();
-    }
-  });
-
-  it('shows a night’s time, but not the roster', async () => {
-    const opened = await openApp(browser, server.port, {
-      path: `${BASE}?date=${NIGHT}`,
-      sentinel: '.calendar-note',
-      clock: TODAY,
-      tables: tables()
-    });
-    try {
-      await expect(opened.page.locator('main h1').textContent()).resolves.toBe('Thursday, May 14');
-      await expect(opened.page.locator('.page-subtitle').textContent()).resolves.toBe(
-        '9:00 PM to midnight Eastern · Raid night'
-      );
-      expect(await opened.page.locator('.night-row').count()).toBe(0);
-    } finally {
-      await opened.context.close();
-    }
-  });
-});
-
 describe('Calendar (new app): moving between nights', () => {
   it('steps to the previous and next raid night, not the next calendar day', async () => {
     const opened = await openApp(browser, server.port, asOfficer(`${BASE}?date=${NIGHT}`, '.own-answer'));

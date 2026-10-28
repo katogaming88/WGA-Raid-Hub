@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { launchBrowser, openApp, startApp } from './harness.js';
+import { asMember, launchBrowser, openApp, startApp } from './harness.js';
 import {
   TEAMS,
   STREAMS,
@@ -14,7 +14,7 @@ import {
 // site's Streamers tab (tests/behavior/streams.js, #1102 step 1), plus what
 // the redesign changes on purpose.
 
-const STATE = { path: '/g/wga/streams', sentinel: 'main h1', teams: TEAMS };
+const STATE = asMember({ path: '/g/wga/streams', sentinel: 'main h1', teams: TEAMS });
 
 // The shape tests/behavior/streams.js describes, read from the new markup.
 const readCards = (page, selector) =>

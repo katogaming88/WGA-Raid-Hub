@@ -139,13 +139,6 @@ describe('Names on the Roster page', () => {
     expect(within(table).queryByRole('rowheader', { name: 'Needs A Tank' })).not.toBeInTheDocument();
   });
 
-  it('shows no "..." menu at all for a signed-out visitor on a bare row', async () => {
-    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: null }));
-    const table = await screen.findByRole('table', { name: 'Current roster' });
-    const bareRow = within(table).getByRole('rowheader', { name: 'Bare Raider' }).closest('tr')!;
-    expect(within(bareRow).queryByRole('button', { name: 'More actions for Bare Raider' })).not.toBeInTheDocument();
-  });
-
   it('shows officer-only actions on both a claimed row and a bare one, in the "..." menu', async () => {
     const user = userEvent.setup();
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer' }));
@@ -281,12 +274,6 @@ describe('a claimed Name with no character yet', () => {
     const mine: NameRow = { id: 6, label: 'Mine', team_member_id: 1, role: null };
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'raider', names: [...NAMES, WREN, mine] }));
     await rowFor('Mine');
-    expect(screen.queryByRole('rowheader', { name: 'Wren' })).not.toBeInTheDocument();
-  });
-
-  it('shows a signed-out visitor none', async () => {
-    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: null, names: [...NAMES, WREN] }));
-    await rowFor('Bare Raider');
     expect(screen.queryByRole('rowheader', { name: 'Wren' })).not.toBeInTheDocument();
   });
 });
@@ -995,18 +982,6 @@ describe('Roster page, quick Claim and accounts', () => {
     await waitFor(() => expect(within(table).queryByRole('button', { name: /^Claim / })).not.toBeInTheDocument());
   });
 
-  it('sends a signed-out visitor through Battle.net sign-in first', async () => {
-    const user = userEvent.setup();
-    const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: null }));
-    const table = await screen.findByRole('table', { name: 'Current roster' });
-    await user.click(within(table).getByRole('button', { name: 'Claim Bare Raider' }));
-    expect(client.authCalls).toContainEqual([
-      'signInWithOAuth',
-      expect.objectContaining({ provider: 'custom:battlenet' })
-    ]);
-    expect(client.rpcs.some(([n]) => n === 'claim_name')).toBe(false);
-  });
-
   it('shows an officer which accounts each member has connected', async () => {
     renderApp(
       '/g/wga/t/phoenix/roster',
@@ -1125,12 +1100,6 @@ describe('Make my Member on the Roster (#1355)', () => {
 
   it('is not shown to someone who already holds a Member', async () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ teamMemberId: 9 }));
-    await screen.findByRole('table', { name: 'Current roster' });
-    expect(screen.queryByRole('heading', { name: 'You don’t have a Member yet' })).not.toBeInTheDocument();
-  });
-
-  it('is not shown to a signed-out visitor', async () => {
-    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: null }));
     await screen.findByRole('table', { name: 'Current roster' });
     expect(screen.queryByRole('heading', { name: 'You don’t have a Member yet' })).not.toBeInTheDocument();
   });
