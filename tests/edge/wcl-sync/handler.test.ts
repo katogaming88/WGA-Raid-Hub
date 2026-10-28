@@ -120,17 +120,20 @@ Deno.test('a valid body with no Authorization header is not signed in, and no cl
   assertEquals(built, []);
 });
 
-Deno.test('a signed-in caller without the loot permission on the team is not authorized, after both gate reads ran', async () => {
-  const { deps, built, rpcCalls } = clientFactory();
-  const res = await handle(post({ action: 'refreshPerformance', teamId: 1 }, { Authorization: OFFICER_AUTH }), deps);
-  assertEquals(await json(res), refusal('Not authorized'));
-  assertEquals(built, [OFFICER_AUTH]);
-  assertEquals(rpcCalls[0], {
-    name: 'has_team_permission',
-    args: { p_team_id: 1, p_permission: 'manage_loot' }
-  });
-  assertEquals(rpcCalls[1].name, 'is_site_admin');
-});
+Deno.test(
+  'a signed-in caller without the loot permission on the team is not authorized, after both gate reads ran',
+  async () => {
+    const { deps, built, rpcCalls } = clientFactory();
+    const res = await handle(post({ action: 'refreshPerformance', teamId: 1 }, { Authorization: OFFICER_AUTH }), deps);
+    assertEquals(await json(res), refusal('Not authorized'));
+    assertEquals(built, [OFFICER_AUTH]);
+    assertEquals(rpcCalls[0], {
+      name: 'has_team_permission',
+      args: { p_team_id: 1, p_permission: 'manage_loot' }
+    });
+    assertEquals(rpcCalls[1].name, 'is_site_admin');
+  }
+);
 
 // The report window (#1269): the current tier's start date as Eastern
 // midnight, the instant the reports query filters on. The fake answers
