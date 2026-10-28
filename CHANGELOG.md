@@ -22,7 +22,8 @@ answers to.
   Owner's name; Admins see the list only. The database functions it
   calls (`guild_members`, `set_guild_rank`, `transfer_guild_ownership`)
   and the Recruiter switch (#1550) are not built yet, so the tab shows
-  an error until they land.
+  an error until they land. Help has a guide for it, "Manage your
+  guild's ranks".
 
 ## [3.223.0] - 2026-10-28
 
