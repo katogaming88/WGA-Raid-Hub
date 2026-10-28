@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
+import { asMember, launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
 import { GUILD_TABLES, WAITING } from './guild-fixtures.js';
 import {
   TEAMS,
@@ -92,10 +92,10 @@ afterAll(async () => {
 });
 
 async function open(state) {
-  return openApp(browser, server.port, { ...STATE, ...state });
+  return openApp(browser, server.port, asMember({ ...STATE, ...state }));
 }
 
-describe('Guild home (new app), signed out', () => {
+describe('Guild home (new app), as a member', () => {
   let opened;
 
   beforeAll(async () => {

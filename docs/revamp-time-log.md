@@ -16,8 +16,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
-| Revamp 4: cutover                  |     10 h 15 m |
-| **All revamp work**                | **127 h 11 m** |
+| Revamp 4: cutover                  |     11 h 40 m |
+| **All revamp work**                | **128 h 36 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -461,6 +461,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:20-12:41 PM | PR #1698 (#1648): the fresh-agent review (approved, three notes: #1648's body still named the second-leader stop, the PR body names the leader-without-owner check, the production check after deploy); Kat confirmed person 68 is Rex; merged 12:41 PM | Revamp 4 (#1648) | 20 m | ~15 m build, ~5 m Kat | not read | |
 | 12:41-12:46 PM | After #1698: branches cleaned up, ranks checked on production after the deploy (Kat Owner; the two guild officers and Rex Admins), #1648's boxes ticked with a status comment, #1487 row removed and totals redone | Revamp 4 (#1648) | 5 m | ~5 m build | not read | |
 | 12:46-12:55 PM | #1286: 34 tables readable by anyone (26 at filing), each sorted with its readers; Kat chose own rows plus officers for priority, and officers only for scores and parses; the inventory posted on #1286, the cutover migration filed as #1699 (blocks #1105), #1264's step pointed at both, the new-table rule in docs/RLS.md, this PR | Revamp 4 (#1286) | 10 m | ~8 m build, ~2 m Kat | not read | CodeRabbit and merge not yet counted |
+| 5:00-6:25 PM | #1264: the guild membership step checked (the team membership is it; a database test proves joining by link makes a guild Member); Kat chose guild Owner/Admin get in without a team and Sonnet for the test rewrites; guild and team pages send anyone not on one of the guild's teams to the front page, old site-page links forward for anyone; the gate's own tests, an `asMember()` helper, about 60 app and browser tests signed in as a member (a Sonnet subagent, ~50 m), 13 signed-out tests dropped; preflight, stamp, changelog, this row | Revamp 4 (#1264) | 1 h 25 m | ~1 h 23 m build, ~2 m Kat | not read | CodeRabbit and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

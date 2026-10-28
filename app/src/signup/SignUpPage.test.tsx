@@ -51,14 +51,6 @@ function handlers(
   });
 }
 
-describe('Sign Up, signed out', () => {
-  it('asks to sign in', async () => {
-    renderApp('/g/wga/t/phoenix/signup', handlers(null));
-    await screen.findByRole('heading', { level: 1, name: 'Sign up' });
-    expect(screen.getByText('You must sign in to do this.')).toBeInTheDocument();
-  });
-});
-
 describe('Sign Up, signups closed', () => {
   it('says so', async () => {
     renderApp('/g/wga/t/phoenix/signup', handlers(person(null), { tables: { team_seasons: () => [] } }));

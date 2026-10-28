@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import { renderApp } from '../test/renderApp';
-import { fakeSession, seededHandlers, type FakeHandlers, type Read } from '../test/fakeSupabase';
+import { asMember, fakeSession, seededHandlers, type FakeHandlers, type Read } from '../test/fakeSupabase';
 import type { PlayerRow } from '../roster/roster';
 import {
   ago,
@@ -231,20 +231,13 @@ function handlers(
 
 describe('the Calendar page', () => {
   it('shows a month’s nights, each linking to its own page', async () => {
-    renderApp('/g/wga/t/phoenix/calendar?month=2026-05', handlers(null));
+    renderApp('/g/wga/t/phoenix/calendar?month=2026-05', asMember(handlers(null)));
     const grid = within(await screen.findByRole('region', { name: 'Raid nights in May 2026' }));
     const links = await grid.findAllByRole('link');
     expect(links).toHaveLength(8);
     expect(links[0]).toHaveAttribute('href', '/g/wga/t/phoenix/calendar?date=2026-05-05');
-    expect(links[0]).toHaveAccessibleName('Tue, May 5, Raid night, 9:00 PM');
+    expect(links[0]).toHaveAccessibleName('Tue, May 5, Raid night, 9:00 PM, 3 in');
     expect(screen.getByText('Raids Tuesday and Thursday, 9:00 PM to midnight Eastern.')).toBeInTheDocument();
-  });
-
-  it('never asks for answers when signed out', async () => {
-    const { client } = renderApp('/g/wga/t/phoenix/calendar?date=2026-05-14', handlers(null));
-    expect(await screen.findByText('Sign in to see who’s coming and to give your answer.')).toBeInTheDocument();
-    expect(client.reads.some((r) => r.table === 'raid_rsvps')).toBe(false);
-    expect(client.rpcs.some(([name]) => name === 'team_rsvp_answers')).toBe(false);
   });
 
   it('reads a raider’s teammates through the notes-free read', async () => {
@@ -283,7 +276,7 @@ describe('the Calendar page', () => {
   });
 
   it('shows the error when the schedule cannot load, and keeps the heading', async () => {
-    renderApp('/g/wga/t/phoenix/calendar?month=2026-05', handlers(null, { fail: 'raid_schedule' }));
+    renderApp('/g/wga/t/phoenix/calendar?month=2026-05', asMember(handlers(null, { fail: 'raid_schedule' })));
     expect(await screen.findByText('Couldn’t load the calendar.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Calendar' })).toBeInTheDocument();
   });

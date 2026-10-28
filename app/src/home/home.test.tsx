@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
-import { seededHandlers, type FakeHandlers } from '../test/fakeSupabase';
+import { asMember, seededHandlers, type FakeHandlers } from '../test/fakeSupabase';
 import { isOffSpec, lootFeed, mainSpecCount, raiderCount, searchFeed, type FeedLootRow } from './home';
 import type { SeasonWindow } from '../profile/profile';
 
@@ -159,7 +159,7 @@ const lootCard = async () => within(await screen.findByRole('region', { name: 'R
 
 describe('the Home page', () => {
   it('names the team and its season, and shows both numbers', async () => {
-    renderApp('/g/wga/t/phoenix', handlers(AWARDS));
+    renderApp('/g/wga/t/phoenix', asMember(handlers(AWARDS)));
     await lootCard();
     expect(screen.getByRole('heading', { level: 1, name: 'Phoenix' })).toBeInTheDocument();
     expect(screen.getByText('Midnight Season 3')).toBeInTheDocument();
@@ -168,7 +168,7 @@ describe('the Home page', () => {
   });
 
   it('reads the season’s loot for this team only', async () => {
-    const { client } = renderApp('/g/wga/t/phoenix', handlers(AWARDS));
+    const { client } = renderApp('/g/wga/t/phoenix', asMember(handlers(AWARDS)));
     await lootCard();
     const read = client.reads.find((r) => r.table === 'rclc_loot')!;
     expect(read.filters.filter(([op]) => op === 'eq')).toEqual([
@@ -178,7 +178,7 @@ describe('the Home page', () => {
   });
 
   it('filters the feed as the reader types, and says how many matched', async () => {
-    renderApp('/g/wga/t/phoenix', handlers(AWARDS));
+    renderApp('/g/wga/t/phoenix', asMember(handlers(AWARDS)));
     const card = await lootCard();
     // A header row plus four awards.
     expect(card.getAllByRole('row')).toHaveLength(5);
@@ -192,7 +192,7 @@ describe('the Home page', () => {
   });
 
   it('says so when a search matches nothing, instead of showing an empty table', async () => {
-    renderApp('/g/wga/t/phoenix', handlers(AWARDS));
+    renderApp('/g/wga/t/phoenix', asMember(handlers(AWARDS)));
     const card = await lootCard();
     await userEvent.type(searchBox(), 'zzzz');
     expect(card.getByRole('status')).toHaveTextContent('No matching items.');
@@ -200,14 +200,14 @@ describe('the Home page', () => {
   });
 
   it('says when the team has no loot yet', async () => {
-    renderApp('/g/wga/t/phoenix', handlers([]));
+    renderApp('/g/wga/t/phoenix', asMember(handlers([])));
     const card = await lootCard();
     expect(card.getByRole('status')).toHaveTextContent('No loot recorded in Midnight Season 3 yet.');
     expect(card.queryByRole('table')).not.toBeInTheDocument();
   });
 
   it('marks an off-spec award in words, not by colour', async () => {
-    renderApp('/g/wga/t/phoenix', handlers(AWARDS));
+    renderApp('/g/wga/t/phoenix', asMember(handlers(AWARDS)));
     const card = await lootCard();
     const row = card.getByRole('row', { name: /Ashwarden Bulwark/ });
     expect(row).toHaveTextContent('Off spec');

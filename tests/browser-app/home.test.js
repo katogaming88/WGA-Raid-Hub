@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { launchBrowser, openApp, startApp, storedSession } from './harness.js';
+import { asMember, launchBrowser, openApp, startApp, storedSession } from './harness.js';
 import {
   SCENARIO,
   SEASON,
@@ -25,7 +25,7 @@ import {
 // behavior recorded from the current site's landing view
 // (tests/browser/home-recorded.test.js, #1102 step 1).
 
-const STATE = {
+const STATE = asMember({
   path: '/g/wga/t/phoenix',
   sentinel: '.home-loot-table tbody tr',
   tables: {
@@ -34,7 +34,7 @@ const STATE = {
     seasons: [{ code: SEASON.code, display_name: SEASON.name, starts_at: SEASON.start || '2026-01-01', ends_at: null }],
     team_settings: [{}]
   }
-};
+});
 
 // The shapes tests/behavior/home.js describes, read from the new markup.
 const readStats = (page) =>

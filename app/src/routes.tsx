@@ -127,6 +127,9 @@ const crashed = standalone(<ErrorPage />);
 
 export const routes: RouteObject[] = [
   { path: '/join/:code', element: <JoinRoute />, errorElement: crashed },
+  // Outside the guild frame, so an old link forwards for anyone, not only the
+  // guild's members (#1264).
+  ...Object.keys(SITE_PAGES).map((path) => ({ path: `/g/:guildKey/${path}`, element: <ToSitePage path={path} /> })),
   {
     element: <AppShell />,
     errorElement: crashed,
@@ -170,7 +173,6 @@ export const routes: RouteObject[] = [
           })),
           // Guild settings opens on its first tab.
           { path: 'settings', element: <Navigate to="teams" replace /> },
-          ...Object.keys(SITE_PAGES).map((path) => ({ path, element: <ToSitePage path={path} /> })),
           {
             path: 't/:teamKey',
             children: [

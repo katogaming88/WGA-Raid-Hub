@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
-import { fakeSession, seededHandlers, type FakeHandlers } from '../test/fakeSupabase';
+import { asMember, fakeSession, seededHandlers, type FakeHandlers } from '../test/fakeSupabase';
 
 // The preview shows only the test team to anyone but a site admin (#1676).
 const TEAMS = [
@@ -84,9 +84,9 @@ describe('the preview with a test team set', () => {
     );
   });
 
-  it('signed out, a real team is not part of the test either', async () => {
+  it('a member’s real team is not part of the test either', async () => {
     vi.stubEnv('VITE_PREVIEW_TEAMS', 'sandbox');
-    renderApp('/g/wga/t/phoenix', seededHandlers());
+    renderApp('/g/wga/t/phoenix', asMember());
     expect(await screen.findByRole('heading', { name: 'Not part of the test' })).toBeInTheDocument();
   });
 

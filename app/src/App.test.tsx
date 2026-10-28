@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp as renderAt } from './test/renderApp';
+import { asMember, fakeSession, seededHandlers } from './test/fakeSupabase';
 
 describe('routing', () => {
   it('marks the current page in the sidebar and the breadcrumb', async () => {
-    renderAt('/g/wga/t/phoenix');
+    renderAt('/g/wga/t/phoenix', asMember());
     await screen.findByRole('heading', { level: 1, name: 'Phoenix' });
     await userEvent.click(screen.getByRole('link', { name: 'Roster' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Roster' })).toBeInTheDocument();
@@ -15,14 +16,14 @@ describe('routing', () => {
   });
 
   it('routes officer tools under /officer/ and guild pages without a team', async () => {
-    renderAt('/g/wga/t/phoenix/officer/priority');
+    renderAt('/g/wga/t/phoenix/officer/priority', asMember());
     expect(await screen.findByRole('heading', { level: 1, name: 'Loot priority' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('link', { name: 'BoE sales' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'BoE sales' })).toBeInTheDocument();
   });
 
   it('shows page not found inside the frame for an unknown team page', async () => {
-    renderAt('/g/wga/t/phoenix/nope');
+    renderAt('/g/wga/t/phoenix/nope', asMember());
     expect(await screen.findByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
   });
@@ -35,7 +36,7 @@ describe('routing', () => {
   it.each(['/g/wga', '/g/wga/t/phoenix', '/g/wga/t/phoenix/me', '/g/wga/news', '/g/wga/t/phoenix/nope'])(
     'has exactly one h1 at %s',
     async (path) => {
-      renderAt(path);
+      renderAt(path, asMember());
       await screen.findAllByRole('heading', { level: 1 });
       expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     }
@@ -44,7 +45,7 @@ describe('routing', () => {
 
 describe('page structure', () => {
   it('has a skip link to the main content', async () => {
-    renderAt('/g/wga/t/phoenix');
+    renderAt('/g/wga/t/phoenix', asMember());
     await screen.findByRole('heading', { level: 1 });
     expect(screen.getByRole('link', { name: 'Skip to content' })).toHaveAttribute('href', '#main');
     expect(screen.getByRole('main')).toHaveAttribute('id', 'main');
@@ -53,7 +54,7 @@ describe('page structure', () => {
 
 describe('theme', () => {
   it('switches to light mode, remembers it, and reports the pressed state', async () => {
-    renderAt('/g/wga/t/phoenix');
+    renderAt('/g/wga/t/phoenix', asMember());
     await screen.findByRole('heading', { level: 1 });
     const light = screen.getByRole('button', { name: 'Light mode' });
     expect(light).toHaveAttribute('aria-pressed', 'false');
@@ -66,7 +67,7 @@ describe('theme', () => {
 
   it('starts from a saved choice', async () => {
     localStorage.setItem('wga-theme', 'light');
-    renderAt('/g/wga/t/phoenix');
+    renderAt('/g/wga/t/phoenix', asMember());
     await screen.findByRole('heading', { level: 1 });
     expect(screen.getByRole('button', { name: 'Light mode' })).toHaveAttribute('aria-pressed', 'true');
   });
@@ -74,7 +75,7 @@ describe('theme', () => {
 
 describe('narrow-screen drawer', () => {
   it('opens from the menu button, moves focus in, and Escape closes it and returns focus', async () => {
-    renderAt('/g/wga/t/phoenix');
+    renderAt('/g/wga/t/phoenix', asMember());
     await screen.findByRole('heading', { level: 1 });
     const menu = screen.getByRole('button', { name: 'Open menu' });
     expect(menu).toHaveAttribute('aria-expanded', 'false');
@@ -90,11 +91,51 @@ describe('narrow-screen drawer', () => {
   });
 
   it('closes when a link is followed', async () => {
-    renderAt('/g/wga/t/phoenix');
+    renderAt('/g/wga/t/phoenix', asMember());
     await screen.findByRole('heading', { level: 1 });
     await userEvent.click(screen.getByRole('button', { name: 'Open menu' }));
     await userEvent.click(screen.getByRole('link', { name: 'Calendar' }));
     await screen.findByRole('heading', { level: 1, name: 'Calendar' });
     expect(screen.getByRole('button', { name: 'Open menu' })).toHaveAttribute('aria-expanded', 'false');
+  });
+});
+
+describe('guild pages are for members (#1264)', () => {
+  const person = (patch: object) => ({
+    ...seededHandlers(),
+    session: fakeSession({ battlenet: 'Someone#1', discord: { id: 'discord-x', name: 'Someone' } }),
+    rpc: (name: string, args: Record<string, unknown>) =>
+      name === 'current_discord_id'
+        ? { data: 'discord-x' }
+        : name === 'resolve_person'
+          ? { data: { site_admin: false, guild_officer: false, boe_manager: false, teams: [], ...patch } }
+          : seededHandlers().rpc!(name, args)
+  });
+
+  it.each([
+    ['signed out', seededHandlers()],
+    ['signed in with no team', person({})],
+    ['Staff with no team', person({ site_admin: true })],
+    [
+      'only on an archived membership',
+      person({ teams: [{ team_id: 1, team_member_id: 5, role: 'raider', archived_at: '2026-01-01', characters: [] }] })
+    ]
+  ])('sends someone %s to the front page', async (_, handlers) => {
+    const { router } = renderAt('/g/wga/t/phoenix/roster', handlers);
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+  });
+
+  it.each([
+    ['on any team in the guild', asMember(seededHandlers(), 2)],
+    ['a guild Owner or Admin with no team', person({ guild_officer: true })]
+  ])('opens them for someone %s', async (_, handlers) => {
+    const { router } = renderAt('/g/wga/t/phoenix/roster', handlers);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Roster' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/g/wga/t/phoenix/roster');
+  });
+
+  it('still forwards an old guild link to a site page for anyone', async () => {
+    const { router } = renderAt('/g/wga/news');
+    await waitFor(() => expect(router.state.location.pathname).toBe('/news'));
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { launchBrowser, openApp, startApp, storedSession } from './harness.js';
+import { asMember, launchBrowser, openApp, startApp, storedSession } from './harness.js';
 import {
   SCENARIO,
   SIGNUP_SEASON_APP_ROW,
@@ -17,11 +17,11 @@ const ROSTER_TABLES = {
   team_seasons: [SIGNUP_SEASON_APP_ROW]
 };
 
-const STATE = {
+const STATE = asMember({
   path: '/g/wga/t/phoenix/roster',
   sentinel: 'table.roster-table',
   tables: ROSTER_TABLES
-};
+});
 
 // The shape tests/behavior/roster.js describes, read from the new markup.
 function readTable(table) {
@@ -209,7 +209,7 @@ describe('Roster page (new app), attendance and items awarded', () => {
     }
   });
 
-  it('are not shown to a visitor, who never reads them', async () => {
+  it('are not shown to a raider, who never reads them', async () => {
     const reads = [];
     const opened = await openApp(browser, server.port, { ...STATE, tables: OFFICER_TABLES });
     opened.page.on('request', (r) => reads.push(new URL(r.url()).pathname));

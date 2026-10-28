@@ -19,6 +19,7 @@ import { AccountPanel } from '../auth/AccountPanel';
 import { ConnectPrompt } from '../auth/ConnectPrompt';
 import { AltsPickerProvider } from '../characters/AltsPicker';
 import { can, useAccess, usePreviewTeams } from '../auth/access';
+import { useSession } from '../auth/session';
 import { navGroups, pageHolds, type NavGroup, type NavItem } from './nav';
 import { defaultGuildKey, forgetGuild, lastGuildKey, rememberGuild } from './lastGuild';
 import { TeamSwitcher } from './TeamSwitcher';
@@ -62,6 +63,7 @@ export function AppShell() {
   const guildQuery = useGuild(guildId);
   const teamsQuery = useGuildTeams(guildId);
 
+  const { user } = useSession();
   const access = useAccess();
   // On the preview, everyone but a site admin sees only the test team (#1676).
   const preview = usePreviewTeams();
@@ -234,12 +236,20 @@ export function AppShell() {
         {() => null}
       </DataState>
     );
-  } else if (preview === undefined) {
+  } else if (preview === undefined || (!sitePage && user && !access.isSuccess)) {
     content = (
       <DataState query={access} label="your access">
         {() => null}
       </DataState>
     );
+  } else if (!sitePage && !access.data?.guildOfficer && !teamsQuery.data.some((t) => onTeamIds.has(t.id))) {
+    // A guild's pages are for its members (#1264): anyone without a current
+    // membership on one of its teams, signed out included, gets the front
+    // page, and so does Staff. A guild Owner or Admin gets in without a team.
+    // The database still lets them read until cutover (#1699).
+    // ponytail: guildOfficer is an Owner or Admin of any guild; per guild once
+    // resolve_person() names the guild (#1325).
+    content = <Navigate to="/" replace />;
   } else if (
     limited &&
     (resolved.teamKey

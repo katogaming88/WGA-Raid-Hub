@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
+import { asMember } from '../test/fakeSupabase';
 import { setErrorReporter } from '../lib/errors';
 import { wayOn } from './NotFoundPage';
 
@@ -62,7 +63,7 @@ describe('page not found', () => {
     const reported: unknown[] = [];
     // The frame's own reads (news.json has no server here) may report; the 404 must not.
     setErrorReporter((_error, context) => reported.push(context.where));
-    renderApp('/g/wga/t/phoenix/nope');
+    renderApp('/g/wga/t/phoenix/nope', asMember());
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Page not found' })).toBeVisible();
     expect(screen.getByRole('link', { name: "Go to the team's home" })).toHaveAttribute('href', '/g/wga/t/phoenix');
@@ -70,7 +71,7 @@ describe('page not found', () => {
   });
 
   it('offers the guild page for a wrong guild page', async () => {
-    renderApp('/g/wga/nope');
+    renderApp('/g/wga/nope', asMember());
     expect(await screen.findByRole('link', { name: 'Go to the guild page' })).toHaveAttribute('href', '/g/wga');
   });
 
@@ -80,7 +81,7 @@ describe('page not found', () => {
   });
 
   it('offers the site home when the team in the address does not exist, not a link back to it', async () => {
-    renderApp('/g/wga/t/nope');
+    renderApp('/g/wga/t/nope', asMember());
     expect(await screen.findByRole('link', { name: 'Go to the home page' })).toHaveAttribute('href', '/');
   });
 

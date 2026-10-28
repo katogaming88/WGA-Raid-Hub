@@ -34,7 +34,14 @@ function boeManager(): FakeHandlers {
     rpc(name, args) {
       if (name === 'current_discord_id') return { data: 'discord-boe' };
       if (name === 'resolve_person')
-        return { data: { site_admin: false, guild_officer: false, boe_manager: true, teams: [] } };
+        return {
+          data: {
+            site_admin: false,
+            guild_officer: false,
+            boe_manager: true,
+            teams: [{ team_id: 2, team_member_id: 2, role: 'raider', characters: [] }]
+          }
+        };
       if (name === 'boe_record_sale') return { data: [] };
       return base.rpc!(name, args);
     },
