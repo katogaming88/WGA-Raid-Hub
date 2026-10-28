@@ -16,8 +16,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
-| Revamp 4: cutover                  |      8 h 20 m |
-| **All revamp work**                | **125 h 16 m** |
+| Revamp 4: cutover                  |      8 h 45 m |
+| **All revamp work**                | **125 h 41 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -451,7 +451,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 12:02-12:25 AM | #1647 part 2 built: cleanup after #1694, #1487 updated, today's guild officers looked up; Kat chose a full Officer on every team for them (the tests showed it widens their access to loot and approvals); the guild officer arm in 24 functions and 21 rules becomes the two switches, the current site's Grant and Revoke switch Officer on every team, two helpers dropped; database tests (both switches, grant and revoke, old guild-officer refusals now with the switch off), full database suite, generated docs, decision log, RLS.md, schema reference, stamp, changelog, these rows | Revamp 4 (#1647) | 25 m | ~20 m build, ~5 m Kat | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
-| 12:35-12:50 AM | PR #1696 (#1647 part 2): CodeRabbit (a switch in another guild reads and writes nothing, signed out reads no officer note, "Also on" asserts a row; the guild Owner kept with both switches off as #1517 says, noted on #1648; the four team functions already moved in #1694) | Revamp 4 (#1647) | 15 m | ~15 m build | not read | The fresh-agent review and merge not yet counted |
+| 12:30-12:45 AM | PR #1696 (#1647 part 2): CodeRabbit (a switch in another guild reads and writes nothing, signed out reads no officer note, "Also on" asserts a row; the guild Owner question taken to Kat; the four team functions already moved in #1694) | Revamp 4 (#1647) | 15 m | ~15 m build | not read | The fresh-agent review and merge not yet counted |
+| 12:45-1:10 AM | PR #1696: Kat decided the guild Owner always counts as Officer on every team (the checks ask the rank as well as the switch); the fresh-agent review (approved, four notes): See every team reads the Signups tab and the priority list's two dismissal lists, the decision log's rule count, the current site's pages noted in the PR body; Owner, signups and dismissals tests, full database suite, generated docs, decision log, RLS.md, schema reference | Revamp 4 (#1647) | 25 m | ~20 m build, ~5 m Kat | not read | Merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

@@ -16,7 +16,7 @@ AS $function$
     select t.id, 'officer'
       from guild_ranks g
       join teams t on t.guild_id = g.guild_id
-     where g.person_id = my_person_id() and g.officer_on_every_team
+     where g.person_id = my_person_id() and (g.officer_on_every_team or g.rank = 'owner')
     union all
     -- "See every team, read-only": the read-only permissions, as an Officer.
     -- Nothing that writes asks any of these four.

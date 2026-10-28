@@ -16,7 +16,9 @@
 --                               out: they are a key to join the team.
 --
 -- Without either switch, a guild Admin cannot see or change anything inside
--- a team they are not on.
+-- a team they are not on. The guild's Owner always counts as "Officer on
+-- every team" (Kat, 2026-10-28), however they became Owner, so the checks
+-- ask the rank as well as the switch.
 --
 -- The current site keeps working: today's guild officers (Admins since
 -- #1645) get "Officer on every team" (Kat, 2026-10-28), and until cutover
@@ -90,7 +92,7 @@ as $function$
     select t.id, 'officer'
       from guild_ranks g
       join teams t on t.guild_id = g.guild_id
-     where g.person_id = my_person_id() and g.officer_on_every_team
+     where g.person_id = my_person_id() and (g.officer_on_every_team or g.rank = 'owner')
     union all
     -- "See every team, read-only": the read-only permissions, as an Officer.
     -- Nothing that writes asks any of these four.
@@ -110,9 +112,9 @@ as $function$
 $function$;
 
 comment on function public.my_permission_team_ids(text) is
-  'The teams where the caller''s rank has this permission on the team''s grid (#1646): every team they own, any other where their rank''s row is there, with "Officer on every team" every team in that guild as an officer, and with "See every team" the read-only permissions there as an officer (#1647). Empty, never null.';
+  'The teams where the caller''s rank has this permission on the team''s grid (#1646): every team they own, any other where their rank''s row is there, with "Officer on every team", or as the guild''s Owner, every team in that guild as an officer, and with "See every team" the read-only permissions there as an officer (#1647). Empty, never null.';
 
--- Every team in a guild where the caller has either switch, for the officer
+-- Every team in a guild where the caller has either switch or is the Owner, for the officer
 -- reads that ask an edit permission. Anon runs it because the rules are
 -- evaluated for signed-out reads too; empty there.
 create function public.my_sees_every_team_ids()
@@ -125,11 +127,12 @@ as $$
   select coalesce(array_agg(t.id), '{}')
     from guild_ranks g
     join teams t on t.guild_id = g.guild_id
-   where g.person_id = my_person_id() and (g.sees_every_team or g.officer_on_every_team);
+   where g.person_id = my_person_id()
+     and (g.sees_every_team or g.officer_on_every_team or g.rank = 'owner');
 $$;
 
 comment on function public.my_sees_every_team_ids() is
-  'Every team, archived included, in a guild where the caller has "See every team, read-only" or "Officer on every team" (#1647). For read rules only. Empty, never null.';
+  'Every team, archived included, in a guild where the caller has "See every team, read-only" or "Officer on every team", or is the Owner (#1647). For read rules only. Empty, never null.';
 
 revoke all on function public.my_sees_every_team_ids() from public;
 grant execute on function public.my_sees_every_team_ids() to anon, authenticated;
@@ -150,10 +153,23 @@ create or replace view public.incoming_roster with (security_barrier=true) as
      LEFT JOIN classes_specs cs ON cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id)
   WHERE s.approved_player_id IS NULL AND (s.status = 'approved'::text OR s.status = 'pending'::text AND (my_team_role(s.team_id) IS NOT NULL OR s.team_id = ANY (my_permission_team_ids('manage_signups'::text)) OR s.team_id = ANY (my_sees_every_team_ids()) OR is_site_admin()));
 
--- "See every team" reads officer notes, which only an officer rule reads.
+-- "See every team" reads the officer pages whose only rule is a write rule:
+-- officer notes and the priority list's two dismissal lists (fresh review).
 create policy "Every-team viewers read player_officer_notes" on public.player_officer_notes
   for select to authenticated
   using (team_id = any ((select my_sees_every_team_ids())::integer[]));
+create policy "Every-team viewers read priority_conflict_dismissals" on public.priority_conflict_dismissals
+  for select to authenticated
+  using (team_id = any ((select my_sees_every_team_ids())::integer[]));
+create policy "Every-team viewers read priority_stale_dismissals" on public.priority_stale_dismissals
+  for select to authenticated
+  using (team_id = any ((select my_sees_every_team_ids())::integer[]));
+
+-- And the Signups tab, whose read asks manage_signups (fresh review).
+alter policy "Officers read signups" on public.season_signups
+  using (team_id = any ((select my_permission_team_ids('manage_signups'))::integer[])
+         or team_id = any ((select my_sees_every_team_ids())::integer[])
+         or (select is_site_admin()));
 
 
 -- resolve_person: a person's teams show to the two switches instead of a
@@ -1282,11 +1298,11 @@ begin
   if not (
     coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false)
     or public.is_site_admin()
-    -- "Officer on every team" in this team's guild (#1647): the role
-    -- check above does not see it.
+    -- "Officer on every team", or the Owner, of this team's guild (#1647):
+    -- the role check above does not see it.
     or exists (select 1 from public.guild_ranks g join public.teams t on t.guild_id = g.guild_id
                 where t.id = p_team_id and g.person_id = public.my_person_id()
-                  and g.officer_on_every_team)
+                  and (g.officer_on_every_team or g.rank = 'owner'))
   ) then
     raise exception 'Not authorized';
   end if;

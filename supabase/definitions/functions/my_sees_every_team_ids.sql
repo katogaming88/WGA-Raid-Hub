@@ -11,5 +11,6 @@ AS $function$
   select coalesce(array_agg(t.id), '{}')
     from guild_ranks g
     join teams t on t.guild_id = g.guild_id
-   where g.person_id = my_person_id() and (g.sees_every_team or g.officer_on_every_team);
+   where g.person_id = my_person_id()
+     and (g.sees_every_team or g.officer_on_every_team or g.rank = 'owner');
 $function$;

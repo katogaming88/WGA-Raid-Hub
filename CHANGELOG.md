@@ -24,8 +24,9 @@ answers to.
   officers, who get "Officer on every team". They keep everything they
   could do on other teams, and can now also import loot, edit priority
   and scoring, approve requests and add signups to the roster there.
-  Until cutover, the current site's Grant Guild Officer switches it on
-  and Revoke switches it off.
+  A guild's Owner always counts as Officer on every team. Until cutover,
+  the current site's Grant Guild Officer switches it on and Revoke
+  switches it off.
 
 ### Project
 
