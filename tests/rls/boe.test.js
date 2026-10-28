@@ -61,12 +61,22 @@ describe('no public read; officer reads are team-scoped unless granted', () => {
 
   // A guild officer is an Admin (#1645), and the guild grid gives Admins
   // record_boe (#1647): every find in their guild, any team.
-  it('a guild officer reads every find in their own guild', async () => {
+  it('a guild officer reads every find in their own guild, and none in another', async () => {
     await withTxn(async ({ q, asUser }) => {
       const id = await addTeam2Item(q);
-      const items = await asUser(GUILD_OFFICER, 'select id from public.boe_items');
-      expect(items.rows.map((r) => r.id)).toEqual(expect.arrayContaining([1, 2, id]));
-      expect((await asUser(GUILD_OFFICER, 'select id from public.boe_listings')).rows.length).toBe(1);
+      const guild = (await q("insert into public.guilds (name) values ('Other Guild') returning id")).rows[0].id;
+      const team = (
+        await q("insert into public.teams (name, guild_id) values ('Other Team', $1) returning id", [guild])
+      ).rows[0].id;
+      const other = (
+        await q("insert into public.boe_items (team_id, item_name) values ($1, 'Other Find') returning id", [team])
+      ).rows[0].id;
+      await q('insert into public.boe_listings (team_id, boe_item_id, price) values ($1, $2, 1)', [team, other]);
+
+      const items = await asUser(GUILD_OFFICER, 'select id from public.boe_items order by id');
+      expect(items.rows.map((r) => r.id)).toEqual([1, 2, id]);
+      const listings = await asUser(GUILD_OFFICER, 'select id from public.boe_listings order by id');
+      expect(listings.rows.map((r) => r.id)).toEqual([1]);
     });
   });
 

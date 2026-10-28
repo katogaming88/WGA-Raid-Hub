@@ -91,7 +91,25 @@ describe('teams', () => {
       await expect(asUser(officer, `select * from public.create_team(${WGA}, 'Nope')`)).rejects.toThrow(
         /Not authorized/
       );
+      await expect(asUser(officer, "select public.update_team(2, 'Nope', 'nope')")).rejects.toThrow(/Not authorized/);
       await expect(asUser(officer, 'select public.set_team_archived(2, true)')).rejects.toThrow(/Not authorized/);
+      await expect(asUser(officer, 'select public.set_team_unlisted(2, true)')).rejects.toThrow(/Not authorized/);
+    });
+  });
+
+  it('signed out, none of the guild writers runs', async () => {
+    await withTxn(async ({ asAnon }) => {
+      for (const sql of [
+        `select * from public.create_team(${WGA}, 'Nope')`,
+        "select public.update_team(2, 'Nope', 'nope')",
+        'select public.set_team_archived(2, true)',
+        'select public.set_team_unlisted(2, true)',
+        `select public.set_guild_officer_bios('[]'::jsonb, ${WGA})`,
+        `select public.set_boe_payout_settings(1, 2, ${WGA})`,
+        'select * from public.boe_record_sale(1, 100000)'
+      ]) {
+        await expect(asAnon(sql)).rejects.toThrow();
+      }
     });
   });
 });
@@ -156,6 +174,9 @@ describe('BoE', () => {
     await withTxn(async ({ q, asUser }) => {
       const { manager } = await otherGuild(q, { boeManager: true });
       await expect(asUser(manager, 'select public.boe_record_listing(1, 50000)')).rejects.toThrow(/Not authorized/);
+      await expect(asUser(manager, 'select * from public.boe_record_sale(1, 100000)')).rejects.toThrow(
+        /Not authorized/
+      );
       expect((await asUser(manager, 'select id from public.boe_items')).rows).toEqual([]);
       expect((await asUser(manager, 'select public.can_settle_boe(1) as v')).rows[0].v).toBe(false);
     });
@@ -204,6 +225,23 @@ describe('the guild audit log', () => {
       expect((await probe(officer)).rows).toEqual([]);
       const lead = await teamLead(q);
       expect((await probe(lead.uid)).rows).toEqual([]);
+    });
+  });
+
+  it("the guild's own rows, with no team, read to its Admins only (CodeRabbit)", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await asUser(GUILD_OFFICER, `select public.set_guild_officer_bios('[]'::jsonb, ${WGA})`);
+      await asUser(GUILD_OFFICER, `select public.set_boe_payout_settings(20000, 100000, ${WGA})`);
+      const read = (uid) =>
+        asUser(uid, "select action from public.audit_log where team_id is null and target_type = 'guilds' order by id");
+      expect((await read(GUILD_OFFICER)).rows.map((r) => r.action)).toEqual([
+        'Guild Officer Bios Saved',
+        'boe_payout_settings_updated'
+      ]);
+      const { officer } = await otherGuild(q);
+      expect((await read(officer)).rows).toEqual([]);
+      const lead = await teamLead(q);
+      expect((await read(lead.uid)).rows).toEqual([]);
     });
   });
 });

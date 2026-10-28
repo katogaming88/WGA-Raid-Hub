@@ -783,7 +783,13 @@ alter policy "Officers read boe_listings" on public.boe_listings
          or team_id = any ((select my_guild_permission_team_ids('pay_any_boe'))::integer[])
          or (select is_site_admin()));
 
+-- The guild's own rows (bio cards, payout settings) have no team and name
+-- the guild as their target, so the guild audit log reads them too
+-- (CodeRabbit). Every guild has a team: create_guild() makes its first.
 alter policy "Officers read audit_log" on public.audit_log
   using (team_id = any ((select my_permission_team_ids('view_team_audit_log'))::integer[])
          or team_id = any ((select my_guild_permission_team_ids('view_guild_audit_log'))::integer[])
+         or (team_id is null and target_type = 'guilds'
+             and target_id in (select t.guild_id from teams t
+                                where t.id = any ((select my_guild_permission_team_ids('view_guild_audit_log'))::integer[])))
          or (select is_site_admin()));

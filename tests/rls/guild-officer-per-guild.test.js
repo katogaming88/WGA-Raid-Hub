@@ -205,7 +205,8 @@ describe('no check asks about any guild', () => {
       select 'view ' || viewname, definition from pg_views where schemaname = 'public'
     `);
     // The bio cards moved to the guild in #1647, so nothing is left.
-    expect(rows.filter((r) => /is_guild_officer\(\)/.test(r.body)).map((r) => r.what)).toEqual([]);
+    // Any call, with or without arguments (CodeRabbit).
+    expect(rows.filter((r) => /\bis_guild_officer\s*\(/.test(r.body)).map((r) => r.what)).toEqual([]);
   });
 
   it('no access rule, view or other function calls is_boe_manager() (#1647)', async () => {
@@ -219,6 +220,6 @@ describe('no check asks about any guild', () => {
       union all
       select 'view ' || viewname, definition from pg_views where schemaname = 'public'
     `);
-    expect(rows.filter((r) => /is_boe_manager\(\)/.test(r.body)).map((r) => r.what)).toEqual([]);
+    expect(rows.filter((r) => /\bis_boe_manager\s*\(/.test(r.body)).map((r) => r.what)).toEqual([]);
   });
 });
