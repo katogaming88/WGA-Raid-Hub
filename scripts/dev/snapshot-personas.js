@@ -98,6 +98,23 @@ select p.discord_id,
 insert into public.team_members (team_id, discord_id, auth_user_id, role)
 select team_id, discord_id, user_id, role from persona where team_id is not null;
 
+-- From #1645 a team has one Team Owner, and from #1646 only the owner passes
+-- the team leader checks (settings, season start, roles). The real owners have
+-- no account on a snapshot, so each team's leader persona takes the team over
+-- and the real one becomes an Officer. Older dumps have no rank.
+do $owners$
+begin
+  if exists (select 1 from information_schema.columns
+              where table_schema = 'public' and table_name = 'team_members' and column_name = 'rank') then
+    update public.team_members set rank = 'officer'
+     where rank = 'owner' and archived_at is null
+       and team_id in (select team_id from persona where role = 'team_leader');
+    update public.team_members m set rank = 'owner'
+      from persona p
+     where p.role = 'team_leader' and m.team_id = p.team_id and m.discord_id = p.discord_id;
+  end if;
+end $owners$;
+
 -- This runs on the schema the dump came from, before the branch's migrations.
 -- From #942 step 2 the guild-wide grants are guild_grants rows and the old
 -- table names are read-only views; before it they are the three tables.

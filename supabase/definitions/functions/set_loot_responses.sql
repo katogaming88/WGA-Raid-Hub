@@ -15,7 +15,7 @@ declare
   v_count integer := 0;
 begin
   if not (
-    coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false)
+    public.has_team_permission(p_team_id, 'manage_loot')
     or public.is_site_admin()
   ) then
     raise exception 'Not authorized';

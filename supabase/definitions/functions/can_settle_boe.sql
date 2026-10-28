@@ -10,5 +10,5 @@ CREATE OR REPLACE FUNCTION public.can_settle_boe(p_team_id integer)
 AS $function$
   select public.is_boe_manager()
     or public.is_site_admin()
-    or coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false);
+    or public.has_team_permission(p_team_id, 'pay_boe_cuts');
 $function$;

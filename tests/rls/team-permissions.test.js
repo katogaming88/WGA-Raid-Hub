@@ -1,7 +1,7 @@
-// #1646: the roster, schedule, RSVP, attendance, signup and report checks ask
-// the team grid's permission (#1645), so an Assistant can run raids, can't
-// make loot decisions, and a permission switched off on a team's grid
-// refuses at once.
+// #1646: the team checks ask the team grid's permission (#1645), so an
+// Assistant can run raids and read loot but can't make loot decisions, team
+// settings are the Team Owner's, and a permission switched off on a team's
+// grid refuses at once.
 import { describe, it, expect, afterAll } from 'vitest';
 import {
   pool,
@@ -122,6 +122,81 @@ describe('team permissions (#1646)', () => {
 
       expect(await boeManager(assistant.uid)).toBe(false);
       expect(await boeManager(team.officer.uid)).toBe(true);
+    });
+  });
+
+  it('an Assistant reads wishlists and BiS requests but cannot act on them or read the audit log', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const assistant = await seedAssistant(q, team.teamId);
+      const player = await seedPlayer(q, { teamId: team.teamId });
+      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values ($1, $2, 1, 'bis')", [
+        team.teamId,
+        player
+      ]);
+      const request = (
+        await q(
+          "insert into public.bis_requests (team_id, player_id, bis_link) values ($1, $2, 'https://example.com/t') returning id",
+          [team.teamId, player]
+        )
+      ).rows[0].id;
+      await q("insert into public.audit_log (team_id, action) values ($1, 'fixture')", [team.teamId]);
+      const count = async (uid, table) =>
+        (await asUser(uid, `select count(*)::int as n from public.${table} where team_id = $1`, [team.teamId])).rows[0]
+          .n;
+
+      expect(await count(assistant.uid, 'item_preferences')).toBe(1);
+      expect(await count(assistant.uid, 'bis_requests')).toBe(1);
+      expect(await count(assistant.uid, 'audit_log')).toBe(0);
+      expect(await count(team.officer.uid, 'audit_log')).toBeGreaterThan(0);
+      expect(await count(team.raider.uid, 'bis_requests')).toBe(0);
+
+      const reject = (uid) =>
+        asUser(uid, "update public.bis_requests set status = 'rejected' where id = $1 returning id", [request]);
+      expect((await reject(assistant.uid)).rowCount).toBe(0);
+      expect((await reject(team.officer.uid)).rowCount).toBe(1);
+    });
+  });
+
+  it("team settings are the Team Owner's: a second team leader is an Officer by rank", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const coLeader = await seedMember(q, { teamId: team.teamId, role: 'team_leader' });
+      expect((await q('select rank from public.team_members where id = $1', [coLeader.memberId])).rows[0].rank).toBe(
+        'officer'
+      );
+      const write = (uid) =>
+        asUser(
+          uid,
+          `update public.team_settings set config = '{"minted": true}' where team_id = $1 returning team_id`,
+          [team.teamId]
+        );
+
+      expect((await write(coLeader.uid)).rowCount).toBe(0);
+      expect((await write(team.officer.uid)).rowCount).toBe(0);
+      expect((await write(team.leader.uid)).rowCount).toBe(1);
+    });
+  });
+
+  it("Import loot switched off refuses an Officer's loot writes at once", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const player = await seedPlayer(q, { teamId: team.teamId });
+      const writeLoot = (uid) =>
+        asUser(
+          uid,
+          `insert into public.rclc_loot (team_id, player_id, item_id, track, season)
+           values ($1, $2, 1, 'Myth', 'seed-season') returning id`,
+          [team.teamId, player]
+        );
+      expect((await writeLoot(team.officer.uid)).rowCount).toBe(1);
+
+      await switchOff(q, team.teamId, 'officer', ['manage_loot']);
+      await expect(writeLoot(team.officer.uid)).rejects.toMatchObject({ code: RLS_DENIED });
+      await expect(
+        asUser(team.officer.uid, "select public.import_rclc_loot($1, 'seed-season', '[]'::jsonb)", [team.teamId])
+      ).rejects.toThrow(/Not authorized/);
+      expect((await writeLoot(team.leader.uid)).rowCount).toBe(1);
     });
   });
 

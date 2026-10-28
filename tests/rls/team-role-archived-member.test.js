@@ -151,18 +151,19 @@ describe('admin_grant_team_role() on an archived membership', () => {
 
   // Only a site admin archives a team leader, and only a site admin brings
   // anyone who left back as one. A team leader brings them back as a raider or
-  // an officer.
+  // an officer. Since #1646 the one acting is the Team Owner: a second team
+  // leader is an Officer by rank (#1517) and has none of the owner's checks.
   it('a team leader cannot bring an archived team leader back as team leader', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const coLeader = await seedMember(q, { teamId: team.teamId, role: 'team_leader' });
-      await archiveMember(asUser, SITE_ADMIN, team.teamId, team.leader.memberId);
-      expect(await membership(q, team.leader.memberId)).toMatchObject({
+      await archiveMember(asUser, SITE_ADMIN, team.teamId, coLeader.memberId);
+      expect(await membership(q, coLeader.memberId)).toMatchObject({
         role: 'team_leader',
         archived_at: expect.any(Date)
       });
 
-      await expect(grant(asUser, coLeader.uid, team.teamId, team.leader.discordId, 'team_leader')).rejects.toThrow(
+      await expect(grant(asUser, team.leader.uid, team.teamId, coLeader.discordId, 'team_leader')).rejects.toThrow(
         /^Only a site admin can bring someone who left back as team leader$/
       );
     });
@@ -188,15 +189,15 @@ describe('admin_grant_team_role() on an archived membership', () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const coLeader = await seedMember(q, { teamId: team.teamId, role: 'team_leader' });
-      await archiveMember(asUser, SITE_ADMIN, team.teamId, team.leader.memberId);
-      expect(await membership(q, team.leader.memberId)).toMatchObject({
+      await archiveMember(asUser, SITE_ADMIN, team.teamId, coLeader.memberId);
+      expect(await membership(q, coLeader.memberId)).toMatchObject({
         role: 'team_leader',
         archived_at: expect.any(Date)
       });
 
-      await grant(asUser, coLeader.uid, team.teamId, team.leader.discordId, 'officer');
+      await grant(asUser, team.leader.uid, team.teamId, coLeader.discordId, 'officer');
 
-      expect(await membership(q, team.leader.memberId)).toEqual({ role: 'officer', archived_at: null });
+      expect(await membership(q, coLeader.memberId)).toEqual({ role: 'officer', archived_at: null });
     });
   });
 

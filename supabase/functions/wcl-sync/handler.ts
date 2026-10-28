@@ -1214,16 +1214,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return jsonResponse({ success: false, error: 'Not signed in' });
     }
 
-    // The caller's own JWT rather than the service role, so RLS/my_team_role
-    // resolve exactly as they would for a direct frontend call -- see the
-    // file header comment for why. Built in deps.ts.
+    // The caller's own JWT rather than the service role, so RLS and
+    // has_team_permission resolve exactly as they would for a direct
+    // frontend call -- see the file header comment for why. Built in
+    // deps.ts. Scoring and progress are the grid's "Import loot, edit
+    // priority and scoring" (#1646).
     const supabase = deps.supabase(authHeader);
 
-    const [{ data: role }, { data: isSiteAdmin }] = await Promise.all([
-      supabase.rpc('my_team_role', { p_team_id: teamId }),
+    const [{ data: allowed }, { data: isSiteAdmin }] = await Promise.all([
+      supabase.rpc('has_team_permission', { p_team_id: teamId, p_permission: 'manage_loot' }),
       supabase.rpc('is_site_admin')
     ]);
-    const authorized = role === 'officer' || role === 'team_leader' || isSiteAdmin === true;
+    const authorized = allowed === true || isSiteAdmin === true;
     if (!authorized) {
       return jsonResponse({ success: false, error: 'Not authorized' });
     }

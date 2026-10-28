@@ -144,6 +144,10 @@ describe('the persona batch on a snapshot-shaped stack (#1065)', () => {
       expect(await role(officer, 2)).toBeNull();
       expect(await role(leader, 2)).toBe('team_leader');
       expect(await role(leader, 1)).toBeNull();
+      // The leader persona owns its team (#1646), so the owner checks pass.
+      const owned = async (uid) => (await asUser(uid, 'select public.my_leader_team_ids() as t')).rows[0].t;
+      expect(await owned(leader)).toEqual([2]);
+      expect(await owned(officer)).toEqual([]);
       expect(await role(admin, 1)).toBeNull();
 
       expect(await flag(admin, 'is_site_admin')).toBe(true);

@@ -159,7 +159,9 @@ describe('function invariants (#1010)', () => {
   // through. Every gate wraps the comparison in coalesce(..., false) except
   // the three this case was written red against, and nothing else would
   // notice the next one. The coalesced count is asserted beside the empty
-  // list so a regex that matched nothing could not pass on its own.
+  // list so a regex that matched nothing could not pass on its own. #1646
+  // moved the team checks to the grid, leaving set_team_officer_bios (bio
+  // cards, the guild-level issue) as the last comparison.
   it('T6: every my_team_role() comparison in a function body is wrapped in coalesce', async () => {
     const fns = await publicFunctions();
     const bare = new Set();
@@ -171,7 +173,7 @@ describe('function invariants (#1010)', () => {
         else bare.add(f.proname);
       }
     }
-    expect(coalesced).toBeGreaterThanOrEqual(15);
+    expect(coalesced).toBeGreaterThanOrEqual(1);
     expect([...bare].sort()).toEqual([]);
   });
 });
