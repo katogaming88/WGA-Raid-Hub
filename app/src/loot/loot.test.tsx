@@ -155,10 +155,9 @@ describe('Import loot page', () => {
     expect(screen.getByText('Hero - Belt')).toBeInTheDocument();
   });
 
-  it('shows a guild officer the history but not the form', async () => {
+  it('closes the page to a guild officer from another team: a guild rank only reads (#1647), and import asks manage_loot', async () => {
     renderApp('/g/wga/t/phoenix/officer/import', handlers({ ...OFFICER_PERSON, guild_officer: true, teams: [] }));
-    expect(await screen.findByText("Only this team's officers can import loot.")).toBeInTheDocument();
+    expect(await screen.findByText('This page is for officers of Phoenix.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Import' })).not.toBeInTheDocument();
-    expect(await screen.findByText('No loot imported yet.')).toBeInTheDocument();
   });
 });

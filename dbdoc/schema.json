@@ -12731,6 +12731,12 @@
       "return_type": "void",
       "arguments": "p_floor bigint, p_pivot bigint, p_guild_id integer DEFAULT NULL::integer",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_permissions",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer DEFAULT NULL::integer, p_guild_id integer DEFAULT NULL::integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

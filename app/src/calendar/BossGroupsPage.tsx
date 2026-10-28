@@ -1,6 +1,6 @@
 import { useId, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
-import { can, useAccess } from '../auth/access';
+import { usePageCan } from '../auth/access';
 import { Dialog } from '../components/Dialog';
 import { DataState } from '../components/DataState';
 import { useStatus } from '../components/Status';
@@ -117,7 +117,7 @@ function Groups({
 }) {
   const team = useTeam();
   const { guild } = useAddress();
-  const access = useAccess();
+  const { can } = usePageCan();
   const { announce } = useStatus();
   const [edits, setEdits] = useState<ReadonlyMap<number, ReadonlySet<number>>>(new Map());
   const [editingTargets, setEditingTargets] = useState(false);
@@ -291,7 +291,7 @@ function Groups({
           coming={coming}
           changedBosses={changed.bosses}
           targets={targets}
-          canEditCap={can(access.data, 'manageRaidReference')}
+          canEditCap={can('manageRaidReference')}
           busy={save.isPending}
           onToggle={(boss, id) => {
             setEdits((e) => toggle(saved, e, boss, id));

@@ -78,8 +78,58 @@ export const PEOPLE = {
       ]
     }
   },
+  // An Assistant on team 1 (#1649): the roster, calendar, attendance and report tools, no loot import.
+  assistant: {
+    discordId: 'discord-assistant-1',
+    person: {
+      site_admin: false,
+      guild_officer: false,
+      boe_manager: false,
+      teams: [
+        {
+          team_id: 1,
+          team_member_id: 901,
+          role: 'assistant',
+          characters: [{ player_id: 2, name_realm: 'Seedassistant-Illidan', url_code: 'efgh5678', archived_at: null }]
+        }
+      ]
+    }
+  },
   battlenetOnly: { discordId: null, person: null }
 };
+
+// What each rank has on a team and a guild, from the default grids the ranks
+// migration seeds (#1645, #1647). The real my_permissions() reads the grids;
+// here a state's person stands in for them.
+const RAIDER_GRID = ['own_character', 'edit_own_wishlist'];
+const ASSISTANT_GRID = [
+  ...RAIDER_GRID,
+  'edit_roster',
+  'edit_schedule',
+  'see_rsvps',
+  'attendance',
+  'manage_signups',
+  'view_reports',
+  'view_loot'
+];
+const OFFICER_GRID = [...ASSISTANT_GRID, 'manage_loot', 'pay_boe_cuts', 'promote_assistants', 'view_team_audit_log'];
+const ADMIN_GRID = [
+  'create_teams',
+  'rename_archive_teams',
+  'edit_own_bio',
+  'edit_all_bios',
+  'record_boe',
+  'pay_any_boe',
+  'view_every_team'
+];
+
+function permissionsOf(person, teamId) {
+  const role = person?.teams?.find((t) => t.team_id === teamId)?.role;
+  const team = { officer: OFFICER_GRID, team_leader: OFFICER_GRID, assistant: ASSISTANT_GRID, raider: RAIDER_GRID }[
+    role
+  ];
+  return { team: team ?? [], guild: person?.guild_officer ? ADMIN_GRID : [] };
+}
 
 // A session as supabase-js stores it. The token only has to look like a JWT
 // that has not expired, so the client reads it from storage without calling
@@ -266,6 +316,16 @@ export async function openApp(browser, port, state) {
       // state says otherwise, which reads as the tier's own start.
       if (rest === 'rpc/team_season_start' && !state.rpc?.team_season_start) return route.fulfill(json(null));
       if (rest === 'rpc/resolve_person') return route.fulfill(json(who?.person ?? null));
+      if (rest === 'rpc/my_permissions' && !state.rpc?.my_permissions) {
+        return route.fulfill(json(permissionsOf(who?.person, request.postDataJSON()?.p_team_id ?? null)));
+      }
+      if (rest === 'rpc/my_permission_team_ids' && !state.rpc?.my_permission_team_ids) {
+        const perm = request.postDataJSON()?.p_permission;
+        const ids = (who?.person?.teams ?? [])
+          .map((t) => t.team_id)
+          .filter((id) => permissionsOf(who.person, id).team.includes(perm));
+        return route.fulfill(json(ids));
+      }
       // The signed-in raider's signup, which My profile reads for a character
       // not on the roster yet (#1609): none unless the state says otherwise.
       if (rest === 'rpc/get_own_signup' && !state.rpc?.get_own_signup) return route.fulfill(json([]));

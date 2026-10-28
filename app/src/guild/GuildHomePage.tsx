@@ -1,7 +1,7 @@
 import { useId, useMemo } from 'react';
 import { Link } from 'react-router';
 import { DataState } from '../components/DataState';
-import { can, teamRole, useAccess, type Access } from '../auth/access';
+import { usePermissionTeams, useAccess, type Access } from '../auth/access';
 import { useAddress, useGuildDetails } from '../data/address';
 import { useGuildStreamers } from '../streams/StreamWidget';
 import { embedParent, embedSrc } from '../streams/streams';
@@ -219,15 +219,15 @@ function LiveCard({ stream }: { stream: GuildStream }) {
 function Attention({ teams }: { teams: TeamInput[] }) {
   const { guild } = useAddress();
   const access = useAccess();
+  const loot = usePermissionTeams('manage_loot');
+  const signups = usePermissionTeams('manage_signups');
   const titleId = useId();
   const staffed = useMemo(
     () =>
-      teams.filter((t) => {
-        if (!access.data) return false;
-        const role = teamRole(access.data, t.id);
-        return role === 'officer' || role === 'team_leader' || can(access.data, 'adminSite');
-      }),
-    [teams, access.data]
+      teams.filter(
+        (t) => access.data?.siteAdmin === true || (loot.data?.has(t.id) ?? false) || (signups.data?.has(t.id) ?? false)
+      ),
+    [teams, access.data, loot.data, signups.data]
   );
   const ids = useMemo(() => staffed.map((t) => t.id), [staffed]);
   const counts = useAttention(ids);

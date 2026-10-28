@@ -10,6 +10,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-28 -- The new app asks the rank grids what to show: `my_permissions()` (#1649)
+
+Shipped: 20261028150447_my_permissions.sql
+
+The new app decided what to show from role names (`officer`, `team_leader`, the any-guild `guild_officer` flag). Since #1646 and #1647 the database asks each rank's permission instead, so the screens could show tools the database refuses, or hide ones it allows (an Assistant had no officer menu at all).
+
+- **One function, `my_permissions(team, guild)`**, returns the permissions the caller's rank has on that team and on its guild: `{"team": [...], "guild": [...]}`. It runs `has_team_permission()` and `has_guild_permission()` over every row of `rank_permissions`, so it can never disagree with the rules. Asking one permission at a time would have been about two dozen calls per page (Kat, 2026-10-28, chose the one function).
+- **Both arguments are optional.** A guild page names no team. When a team is named, its own guild is asked about, whatever guild is passed, so naming a team cannot borrow another guild's rank.
+- **Runs as the caller (not SECURITY DEFINER).** `has_team_permission()` and `has_guild_permission()` already take identity from `auth.uid()`, and `rank_permissions` is public. EXECUTE for `authenticated` only.
+- **Site admins are not in it**, matching the two functions it calls. The app adds Staff itself where the database lets them.
+- **Team settings stay the Team Owner's.** The grid has no "edit team settings" permission, so the app's Loot and Signup settings still ask whether the person leads the team.
+
+[Full discussion -> #1649](https://github.com/katogaming88/WGA-Raid-Hub/issues/1649).
+
+---
+
 ## 2026-10-28 -- We Go Again's people get their new ranks: Kat is the guild's Owner, both site admins Admins (#1648)
 
 Shipped: 20261028115219_wga_new_ranks.sql

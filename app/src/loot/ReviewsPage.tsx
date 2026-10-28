@@ -7,7 +7,7 @@ import { Dialog } from '../components/Dialog';
 import { ItemLink } from '../components/ItemLink';
 import { Menu } from '../components/Menu';
 import { useStatus } from '../components/Status';
-import { can, useAccess } from '../auth/access';
+import { usePageCan } from '../auth/access';
 import { errorMessage } from '../lib/errors';
 import { formatInstant, formatInstantShort, localTimeZoneNote } from '../lib/dates';
 import { itemLinkData } from '../profile/lootPriority';
@@ -32,9 +32,9 @@ import './loot.css';
 // an officer approves them.
 export function ReviewsPage() {
   const team = useTeam();
-  const access = useAccess();
+  const { can } = usePageCan();
   const reviews = bothQueries(useReviews(team.id), useSeasons());
-  const officer = can(access.data, 'actAsOfficer', team.id);
+  const officer = can('manageLoot');
 
   return (
     <section className="page settings-page" aria-labelledby="page-title">

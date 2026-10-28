@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStatus } from '../components/Status';
 import { errorMessage } from '../lib/errors';
-import { can, charactersOn, teamRole, useAccess } from './access';
+import { charactersOn, teamRole, useAccess, useCan } from './access';
 import { BATTLENET, DISCORD, useSession, type Provider } from './session';
 import './auth.css';
 
@@ -9,9 +9,10 @@ const ROLE_LABEL = { raider: 'Raider', officer: 'Officer', team_leader: 'Team le
 
 // The bottom of the sidebar: sign-in buttons when signed out, and who is
 // signed in, with their role on this team, when signed in.
-export function AccountPanel({ teamId }: { teamId: number | null }) {
+export function AccountPanel({ teamId, guildId }: { teamId: number | null; guildId: number | null }) {
   const { user, signIn, signOut } = useSession();
   const access = useAccess();
+  const { can } = useCan(teamId, guildId);
   const { announce } = useStatus();
   const [busy, setBusy] = useState(false);
 
@@ -44,8 +45,8 @@ export function AccountPanel({ teamId }: { teamId: number | null }) {
   if (access.isPending) detail = 'Loading your access…';
   else if (access.isError) detail = 'Could not load your access';
   else if (role) detail = ROLE_LABEL[role] + (main ? ` · ${main.nameRealm.split('-')[0]}` : '');
-  else if (can(access.data, 'adminSite')) detail = 'Site admin';
-  else if (can(access.data, 'viewOfficerTools', teamId)) detail = 'Guild officer';
+  else if (can('adminSite')) detail = 'Site admin';
+  else if (can('viewOfficerTools')) detail = 'Guild officer';
   else detail = user.battleTag ?? 'Not on this team';
 
   return (

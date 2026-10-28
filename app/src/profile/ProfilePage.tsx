@@ -4,7 +4,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { DataState } from '../components/DataState';
 import { bothQueries } from '../data/query';
 import { useAddress, useTeam } from '../data/address';
-import { can, charactersOn, useAccess, usePreviewTeams } from '../auth/access';
+import { charactersOn, useAccess, usePageCan, usePreviewTeams } from '../auth/access';
 import { useSession } from '../auth/session';
 import { classColor, equippedItemLevel } from '../roster/roster';
 import {
@@ -227,6 +227,7 @@ export function PlayerProfilePage() {
   const { guild } = useAddress();
   const team = useTeam();
   const access = useAccess();
+  const permissions = usePageCan();
   const base = `/g/${guild.key}/t/${team.key}/p/${playerCode}`;
   if (!user) {
     return (
@@ -235,16 +236,16 @@ export function PlayerProfilePage() {
       </Closed>
     );
   }
-  if (!access.isSuccess) {
+  if (!access.isSuccess || permissions.loading || permissions.error) {
     return (
       <Closed>
-        <DataState query={access} label="your access">
+        <DataState query={permissions.query} label="your access">
           {() => null}
         </DataState>
       </Closed>
     );
   }
-  const isOfficer = can(access.data, 'viewOfficerTools', team.id);
+  const isOfficer = permissions.can('viewOfficerTools');
   const isOwn = charactersOn(access.data, team.id).some((c) => c.urlCode === playerCode.toLowerCase());
   if (!isOfficer && !isOwn) {
     return (

@@ -12,6 +12,37 @@ answers to.
 
 ---
 
+## [3.223.0] - 2026-10-28
+
+### Backend
+
+- `my_permissions(team, guild)` lists what the signed-in person's rank
+  may do on a team and in its guild, in one call, from the same grids
+  the database's rules ask (#1649).
+
+### Project
+
+- The new app shows each officer page and button only to someone whose
+  rank has that permission, instead of reading role names (#1649). An
+  Assistant gets an Officer menu with Priority, Reviews, Attendance,
+  Boss groups, Reports and the Invite link, and no loot import,
+  reassign or team settings. Guild settings, New team, BoE management
+  and the guild officer cards follow the guild rank of the guild being
+  shown, not any guild's. A guild Owner or Admin gets into a guild's
+  pages without a team only in their own guild. Team settings (Loot,
+  Signups) stay the Team Owner's.
+- A guild officer on a team they are not on (an Admin's "See every team
+  (read-only)", #1647) gets only the read-only officer pages there:
+  Priority, Reviews, Reports and the Audit log. Import and Reassign loot,
+  Attendance, Boss groups, the Invite link and the team settings are left
+  out, though the database still lets them read attendance and boss
+  groups.
+- App, browser and database tests for an Officer, an Assistant and a
+  Raider on the same team.
+- Revamp time log row for #1649.
+
+---
+
 ## [3.222.2] - 2026-10-28
 
 ### Project

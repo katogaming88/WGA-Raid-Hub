@@ -42,7 +42,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { ErrorPage } from './pages/ErrorPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { RequireAbility } from './auth/RequireAbility';
-import { GUILD_PAGES, SITE_PAGES, TEAM_PAGES } from './layout/nav';
+import { GUILD_PAGES, SITE_PAGES, TEAM_PAGES, officerAbility } from './layout/nav';
 
 export type RouteHandle = { title: string };
 
@@ -182,7 +182,7 @@ export const routes: RouteObject[] = [
                 path: path === 'me' ? 'me/:tab?' : path,
                 // Officer tools open only for the people who may use them (#1100: they sit under /officer/).
                 element: path.startsWith('officer/') ? (
-                  <RequireAbility ability="viewOfficerTools" title={title}>
+                  <RequireAbility ability={officerAbility(path)} title={title}>
                     {BUILT_PAGES[path] ?? <PlaceholderPage title={title} />}
                   </RequireAbility>
                 ) : (

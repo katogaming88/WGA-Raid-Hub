@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { useAccess, can } from '../auth/access';
+import { usePageCan } from '../auth/access';
 import { useSeasons } from '../calendar/useCalendar';
 import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
@@ -125,8 +125,8 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
       ? tabParam
       : 'list';
   const picked = Number(params.get('item')) || null;
-  const access = useAccess();
-  const officer = can(access.data, 'actAsOfficer', teamId);
+  const { can } = usePageCan();
+  const officer = can('manageLoot');
   // Unsaved orders, by item and track, kept while the officer looks around.
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [scoreDraft, setScoreDraft] = useState<ScoreDraft | null>(null);

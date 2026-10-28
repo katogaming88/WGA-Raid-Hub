@@ -105,6 +105,41 @@ describe('signed in', () => {
     expect(screen.queryByRole('heading', { name: 'Officer' })).not.toBeInTheDocument();
   });
 
+  it('shows each rank only the officer pages its permissions allow (#1649)', async () => {
+    const menu = () => screen.getAllByRole('button').map((b) => b.textContent);
+    // An Officer holds every team permission: all four groups.
+    const officer = renderApp('/g/wga/t/phoenix/roster', signedIn(OFFICER, person('officer')));
+    await screen.findByRole('heading', { name: 'Officer' });
+    expect(menu()).toEqual(expect.arrayContaining(['Loot', 'Attendance', 'Reports', 'Settings']));
+    officer.view.unmount();
+
+    // An Assistant has the roster, calendar, attendance and report tools and no
+    // loot import.
+    const assistant = renderApp('/g/wga/t/phoenix/officer/attendance', signedIn(OFFICER, person('assistant')));
+    await screen.findByRole('heading', { name: 'Officer' });
+    expect(menu()).toEqual(expect.arrayContaining(['Attendance', 'Reports']));
+    // Settings keeps only the Invite link (edit_roster), none of the team's own settings.
+    await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(screen.getByRole('link', { name: 'Invite link' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Danger zone' })).not.toBeInTheDocument();
+    // Loot keeps Priority and Reviews (view_loot) but not Import or Reassign.
+    await userEvent.click(screen.getByRole('button', { name: 'Loot' }));
+    expect(screen.getByRole('link', { name: 'Priority' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Import' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Reassign' })).not.toBeInTheDocument();
+    assistant.view.unmount();
+
+    // The Import page itself is closed to the Assistant.
+    const closed = renderApp('/g/wga/t/phoenix/officer/import', signedIn(OFFICER, person('assistant')));
+    expect(await screen.findByText('This page is for officers of Phoenix.')).toBeInTheDocument();
+    closed.view.unmount();
+
+    // A Raider has none of it.
+    renderApp('/g/wga/t/phoenix/roster', signedIn(OFFICER, person('raider')));
+    await screen.findByRole('heading', { level: 1, name: 'Roster' });
+    expect(screen.queryByRole('heading', { name: 'Officer' })).not.toBeInTheDocument();
+  });
+
   it('does not carry an officer role on one team to another team', async () => {
     renderApp('/g/wga/t/hellfire/officer/priority', signedIn(OFFICER, person('officer')));
     expect(await screen.findByText('This page is for officers of Hellfire Rollers.')).toBeInTheDocument();
@@ -321,24 +356,36 @@ describe('session and access helpers', () => {
       false
     );
     expect(access.teams.map((t) => t.teamId)).toEqual([2, 3]);
-    expect(can(access, 'actAsOfficer', 1)).toBe(false);
-    expect(can(access, 'actAsOfficer', 2)).toBe(true);
   });
 
-  it('answers each ability from the right grant', () => {
+  it('answers each ability from the permissions on the open team and guild', () => {
     const on = (patch: Partial<Access>): Access => ({ ...NO_ACCESS, ...patch });
-    const team = (role: 'raider' | 'officer' | 'team_leader') =>
-      on({ teams: [{ teamId: 1, teamMemberId: 1, role, characters: [] }] });
+    const grid = (team: string[], guild: string[] = []) => ({ team: new Set(team), guild: new Set(guild) });
+    const officer = grid(['edit_roster', 'manage_loot', 'view_loot', 'view_reports', 'promote_assistants']);
+    const assistant = grid(['edit_roster', 'attendance', 'view_reports']);
+    const raider = grid(['own_character', 'edit_own_wishlist']);
 
-    expect(can(team('officer'), 'actAsOfficer', 1)).toBe(true);
-    expect(can(team('officer'), 'actAsOfficer', 2)).toBe(false);
-    expect(can(team('officer'), 'leadTeam', 1)).toBe(false);
-    expect(can(team('team_leader'), 'leadTeam', 1)).toBe(true);
-    expect(can(team('raider'), 'viewOfficerTools', 1)).toBe(false);
-    expect(can(on({ guildOfficer: true }), 'viewOfficerTools', 2)).toBe(true);
-    expect(can(on({ guildOfficer: true }), 'actAsOfficer', 2)).toBe(false);
-    expect(can(on({ siteAdmin: true }), 'actAsOfficer', 2)).toBe(true);
-    expect(can(on({ boeManager: true }), 'manageBoe')).toBe(true);
-    expect(can(null, 'adminSite')).toBe(false);
+    // An Officer, an Assistant and a Raider on the same team.
+    expect(can(NO_ACCESS, 'manageLoot', officer)).toBe(true);
+    expect(can(NO_ACCESS, 'manageLoot', assistant)).toBe(false);
+    expect(can(NO_ACCESS, 'editRoster', assistant)).toBe(true);
+    expect(can(NO_ACCESS, 'viewReports', assistant)).toBe(true);
+    expect(can(NO_ACCESS, 'viewOfficerTools', assistant)).toBe(true);
+    expect(can(NO_ACCESS, 'manageTeam', assistant)).toBe(false);
+    expect(can(NO_ACCESS, 'viewOfficerTools', raider)).toBe(false);
+    expect(can(NO_ACCESS, 'editRoster', raider)).toBe(false);
+    // The guild grid answers guild abilities; a team rank does not.
+    expect(can(NO_ACCESS, 'manageTeams', grid([], ['create_teams']))).toBe(true);
+    expect(can(NO_ACCESS, 'manageTeams', officer)).toBe(false);
+    expect(can(NO_ACCESS, 'manageBoe', grid([], ['pay_any_boe']))).toBe(true);
+    expect(can(NO_ACCESS, 'editGuildOfficers', grid([], ['edit_own_bio']))).toBe(true);
+    // Owner-only settings and Staff.
+    const owner = on({ teams: [{ teamId: 1, teamMemberId: 1, role: 'team_leader', characters: [] }] });
+    expect(can(owner, 'leadTeam', raider, 1)).toBe(true);
+    expect(can(owner, 'leadTeam', raider, 2)).toBe(false);
+    expect(can(on({ siteAdmin: true }), 'manageLoot', raider)).toBe(true);
+    expect(can(on({ siteAdmin: true }), 'manageTeams', raider)).toBe(false);
+    expect(can(null, 'adminSite', null)).toBe(false);
+    expect(can(NO_ACCESS, 'viewOfficerTools', null)).toBe(false);
   });
 });

@@ -5,7 +5,7 @@ import { formatInstant, localTimeZoneNote, monthLabel } from '../lib/dates';
 import { Dialog } from '../components/Dialog';
 import { Icon } from '../components/Icon';
 import { useStatus } from '../components/Status';
-import { can, charactersOn, useAccess } from '../auth/access';
+import { charactersOn, useAccess, usePageCan } from '../auth/access';
 import { useSession } from '../auth/session';
 import { useAddress, useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
@@ -91,9 +91,10 @@ function useViewer(roster: PlayerRow[] | undefined): Viewer {
   const { user } = useSession();
   const access = useAccess();
   const mine = charactersOn(access.data, team.id).map((c) => c.playerId);
-  const officer = can(access.data, 'viewOfficerTools', team.id);
+  const permissions = usePageCan();
+  const officer = permissions.can('seeRsvps');
   const me = rosterOf(roster ?? []).find((p) => mine.includes(p.id)) ?? null;
-  const ready = !user || access.isSuccess || access.isError;
+  const ready = !user || ((access.isSuccess || access.isError) && !permissions.loading);
   return {
     signedIn: !!user,
     access: officer ? { kind: 'officer' } : mine.length ? { kind: 'raider', playerIds: mine } : { kind: 'none' },

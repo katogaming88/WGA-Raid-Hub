@@ -166,7 +166,7 @@ describe('Reassign page', () => {
 
   it('tells a guild officer from another team it is for the team officers', async () => {
     renderApp(PATH, handlers(person(null, true)));
-    expect(await screen.findByText("Only this team's officers can reassign loot.")).toBeInTheDocument();
+    expect(await screen.findByText('This page is for officers of Phoenix.')).toBeInTheDocument();
     expect(screen.queryByLabelText('Find a raider or an item')).not.toBeInTheDocument();
   });
 });

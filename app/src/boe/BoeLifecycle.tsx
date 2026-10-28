@@ -1,6 +1,6 @@
 import { localTimeZoneNote } from '../lib/dates';
 import { useId, useMemo, useState } from 'react';
-import { canSettleBoe, can, useAccess, type Access } from '../auth/access';
+import { usePageCan, usePermissionTeams } from '../auth/access';
 import { Dialog } from '../components/Dialog';
 import { DataState } from '../components/DataState';
 import { useAddress } from '../data/address';
@@ -64,14 +64,17 @@ type Action =
 
 function BoeLifecycleView({ items, listings }: { items: BoeItemRow[]; listings: BoeListingRow[] }) {
   const { teams } = useAddress();
-  const access = useAccess();
+  const { can } = usePageCan();
+  const payTeams = usePermissionTeams('pay_boe_cuts');
   const [action, setAction] = useState<Action | null>(null);
   const [historyPage, setHistoryPage] = useState(0);
   const revert = useRevertBoe();
 
-  const manage = can(access.data, 'manageBoe');
-  const isRaiderView =
-    !manage && !(access.data?.teams.some((t) => t.role === 'officer' || t.role === 'team_leader') ?? false);
+  const manage = can('manageBoe');
+  const isRaiderView = !manage && !(payTeams.data?.size ?? 0);
+  // Mirrors can_settle_boe(p_team_id) (#1305): pay_any_boe on the guild, or
+  // pay_boe_cuts on that row's own team. Every other action stays behind `manage`.
+  const settle = (teamId: number) => manage || (payTeams.data?.has(teamId) ?? false);
   const teamName = (teamId: number) => teams.find((t) => t.id === teamId)?.name ?? `Team ${teamId}`;
 
   const sections = useMemo(() => groupByStatus(items), [items]);
@@ -164,7 +167,7 @@ function BoeLifecycleView({ items, listings }: { items: BoeItemRow[]; listings: 
       ) : (
         <AwaitingTable
           rows={sections.awaiting}
-          access={access.data}
+          settle={settle}
           manage={manage}
           teamName={teamName}
           onAction={setAction}
@@ -178,7 +181,7 @@ function BoeLifecycleView({ items, listings }: { items: BoeItemRow[]; listings: 
         <>
           <HistoryTable
             rows={historyRows}
-            access={access.data}
+            settle={settle}
             manage={manage}
             teamName={teamName}
             onAction={setAction}
@@ -292,18 +295,18 @@ function statusBadge(item: BoeItemRow) {
 
 function AwaitingTable({
   rows,
-  access,
+  settle,
   manage,
   teamName,
   onAction
 }: {
   rows: BoeItemRow[];
-  access: Access | null | undefined;
+  settle: (teamId: number) => boolean;
   manage: boolean;
   teamName: (id: number) => string;
   onAction: (a: Action) => void;
 }) {
-  const showActions = manage || rows.some((item) => canSettleBoe(access, item.team_id));
+  const showActions = manage || rows.some((item) => settle(item.team_id));
   return (
     <div className="boe-table-wrap">
       <table className="boe-table">
@@ -336,7 +339,7 @@ function AwaitingTable({
               {showActions && (
                 <td>
                   <div className="boe-actions">
-                    {canSettleBoe(access, item.team_id) && (
+                    {settle(item.team_id) && (
                       <>
                         <MarkPaidButton item={item} donated={false} label="Mark Paid" />
                         <MarkPaidButton item={item} donated={true} label="Donate to Guild" />
@@ -365,20 +368,20 @@ function AwaitingTable({
 
 function HistoryTable({
   rows,
-  access,
+  settle,
   manage,
   teamName,
   onAction,
   onUnretire
 }: {
   rows: BoeItemRow[];
-  access: Access | null | undefined;
+  settle: (teamId: number) => boolean;
   manage: boolean;
   teamName: (id: number) => string;
   onAction: (a: Action) => void;
   onUnretire: (item: BoeItemRow) => void;
 }) {
-  const showActions = manage || rows.some((item) => item.status === 'paid' && canSettleBoe(access, item.team_id));
+  const showActions = manage || rows.some((item) => item.status === 'paid' && settle(item.team_id));
   return (
     <div className="boe-table-wrap">
       <table className="boe-table">
@@ -412,7 +415,7 @@ function HistoryTable({
                 <td>
                   <div className="boe-actions">
                     {item.status === 'paid'
-                      ? canSettleBoe(access, item.team_id) && (
+                      ? settle(item.team_id) && (
                           <button
                             type="button"
                             className="button"
