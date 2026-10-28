@@ -31,6 +31,11 @@ async function hellfireRows(q) {
     [HELLFIRE]
   );
   await q(
+    `insert into public.priority_conflict_dismissals (team_id, player_id, season, boss, track)
+     values ($1, $2, 'seed-season', 'Probe Boss', 'Hero')`,
+    [HELLFIRE, player]
+  );
+  await q(
     "insert into public.team_invite_links (team_id, code) values ($1, 'hellfire-probe1647') on conflict do nothing",
     [HELLFIRE]
   );
@@ -45,9 +50,10 @@ const reads = async (asUser, uid) => ({
   notes: await count(asUser, uid, 'player_officer_notes'),
   members: await count(asUser, uid, 'team_members'),
   signups: await count(asUser, uid, 'season_signups'),
-  dismissals: await count(asUser, uid, 'priority_stale_dismissals')
+  dismissals: await count(asUser, uid, 'priority_stale_dismissals'),
+  conflicts: await count(asUser, uid, 'priority_conflict_dismissals')
 });
-const NOTHING = { rsvps: 0, notes: 0, members: 0, signups: 0, dismissals: 0 };
+const NOTHING = { rsvps: 0, notes: 0, members: 0, signups: 0, dismissals: 0, conflicts: 0 };
 
 // Someone on both Hellfire and Phoenix, with a character on each, so
 // Hellfire's "Also on" has a row to show.
@@ -81,7 +87,7 @@ describe('See every team (read-only)', () => {
     await withTxn(async ({ q, asUser }) => {
       await hellfireRows(q);
       const seen = await reads(asUser, GUILD_OFFICER);
-      expect(seen).toMatchObject({ rsvps: 1, notes: 1, dismissals: 1 });
+      expect(seen).toMatchObject({ rsvps: 1, notes: 1, dismissals: 1, conflicts: 1 });
       expect(seen.signups).toBeGreaterThan(0);
       expect(seen.members).toBeGreaterThan(0);
       const both = await onBothTeams(q);
@@ -175,10 +181,17 @@ describe('See every team (read-only)', () => {
     });
   });
 
-  it('signed out, no officer note reads', async () => {
+  it('signed out, none of the officer-only rows read', async () => {
     await withTxn(async ({ q, asAnon }) => {
       await hellfireRows(q);
-      expect((await asAnon('select 1 from public.player_officer_notes')).rows).toEqual([]);
+      for (const table of [
+        'player_officer_notes',
+        'season_signups',
+        'priority_stale_dismissals',
+        'priority_conflict_dismissals'
+      ]) {
+        expect((await asAnon(`select 1 from public.${table}`)).rows).toEqual([]);
+      }
     });
   });
 });
