@@ -1695,7 +1695,10 @@ begin
                        then 'site_admin' = any (v_grants) end,
     'guild_officer', case when v_is_self or v_is_site_admin
                           then 'guild_officer' = any (v_grants) end,
-    'boe_manager', 'boe_manager' = any (v_grants),
+    -- Shown to the callers who saw it before #1646 opened this function to
+    -- edit_roster: BoE Manager is a guild grant, the next issue's to move.
+    'boe_manager', ('boe_manager' = any (v_grants))
+                   and (v_sees_all_teams or public.is_any_team_officer() or cardinality(v_guild_team_ids) > 0),
     'teams', coalesce((
       select jsonb_agg(
                jsonb_build_object(

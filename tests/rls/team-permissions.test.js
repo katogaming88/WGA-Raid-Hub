@@ -3,7 +3,7 @@
 // make loot decisions, and a permission switched off on a team's grid
 // refuses at once.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedTeam, seedMember, seedPlayer, seedSignup, RLS_DENIED } from './helpers.js';
+import { pool, withTxn, seedTeam, seedMember, seedPlayer, seedSignup, grantGuild, RLS_DENIED } from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -58,6 +58,12 @@ describe('team permissions (#1646)', () => {
       expect(
         (await asAnon("update public.players set nickname = 'Renamed' where id = $1 returning id", [player])).rowCount
       ).toBe(0);
+      await expect(
+        asAnon(
+          "insert into public.attendance (team_id, player_id, raid_date, status) values ($1, $2, '2026-08-01', 'Present')",
+          [team.teamId, player]
+        )
+      ).rejects.toMatchObject({ code: RLS_DENIED });
     });
   });
 
@@ -78,8 +84,22 @@ describe('team permissions (#1646)', () => {
     });
   });
 
-  it('the audit log takes a row only from a permission that changes something', async () => {
+  it('resolve_person shows an Assistant the person but not their BoE Manager grant; an Officer sees both', async () => {
     await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const assistant = await seedAssistant(q, team.teamId);
+      const target = await seedMember(q, { teamId: team.teamId });
+      await grantGuild(q, target.discordId, 'boe_manager');
+      const boeManager = async (uid) =>
+        (await asUser(uid, 'select public.resolve_person($1) as p', [target.discordId])).rows[0].p.boe_manager;
+
+      expect(await boeManager(assistant.uid)).toBe(false);
+      expect(await boeManager(team.officer.uid)).toBe(true);
+    });
+  });
+
+  it('the audit log takes a row only from a permission that changes something', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
       const team = await seedTeam(q);
       const assistant = await seedAssistant(q, team.teamId);
       const log = () => asUser(assistant.uid, "select public.write_audit_log($1, 'fixture') as id", [team.teamId]);
@@ -88,6 +108,12 @@ describe('team permissions (#1646)', () => {
       // Left with See RSVPs, View reports and View loot only.
       await switchOff(q, team.teamId, 'assistant', ['edit_roster', 'edit_schedule', 'attendance', 'manage_signups']);
       await expect(log()).rejects.toThrow(/Not authorized/);
+
+      const other = await seedTeam(q);
+      const logAs = (run) => run("select public.write_audit_log($1, 'fixture')", [team.teamId]);
+      await expect(logAs((t, p) => asUser(other.officer.uid, t, p))).rejects.toThrow(/Not authorized/);
+      await expect(logAs((t, p) => asUser(team.raider.uid, t, p))).rejects.toThrow(/Not authorized/);
+      await expect(logAs(asAnon)).rejects.toThrow(/permission denied|Not signed in/);
     });
   });
 
