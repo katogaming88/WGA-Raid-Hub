@@ -18,7 +18,7 @@ begin
      where id = (select id from team_members
                   where team_id = old.team_id and role = 'team_leader' and archived_at is null
                     and id <> old.id
-                  order by id
+                  order by auth_user_id is null, id
                   limit 1);
   end if;
   return null;

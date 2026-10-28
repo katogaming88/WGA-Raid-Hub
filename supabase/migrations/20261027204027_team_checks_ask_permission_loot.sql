@@ -54,7 +54,8 @@ comment on function public.my_leader_team_ids() is
 -- the step down would leave the team with no owner and the newcomer locked
 -- out of them. So when a current owner stops being one (another rank,
 -- archived, moved or deleted), the earliest other current team leader takes
--- the team; with none, it waits for a site admin, as before.
+-- the team, one who has signed in ahead of one listed but not yet signed in;
+-- with none, it waits for a site admin, as before.
 create function public.team_members_pass_ownership()
 returns trigger
 language plpgsql
@@ -71,7 +72,7 @@ begin
      where id = (select id from team_members
                   where team_id = old.team_id and role = 'team_leader' and archived_at is null
                     and id <> old.id
-                  order by id
+                  order by auth_user_id is null, id
                   limit 1);
   end if;
   return null;

@@ -186,8 +186,16 @@ describe('team permissions (#1646)', () => {
   });
 
   it('a team handed over on the current site keeps an owner: the next team leader takes it', async () => {
-    await withTxn(async ({ q, asUser }) => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
       const team = await seedTeam(q);
+      // A co-leader listed but never signed in does not take the team ahead
+      // of one who has, though their membership is the earlier one.
+      const unlinked = (
+        await q(
+          "insert into public.team_members (team_id, discord_id, role) values ($1, $2, 'team_leader') returning id",
+          [team.teamId, `fixture-unlinked-${team.teamId}`]
+        )
+      ).rows[0].id;
       const successor = await seedMember(q, { teamId: team.teamId });
       const setRole = (id, role) =>
         asUser(team.leader.uid, 'update public.team_members set role = $2 where id = $1', [id, role]);
@@ -199,20 +207,41 @@ describe('team permissions (#1646)', () => {
           [team.teamId]
         );
 
+      // Nobody but the owner changes a role: an Officer, another team's
+      // owner and someone signed out change nothing.
+      const other = await seedTeam(q);
+      const promote = "update public.team_members set role = 'team_leader' where id = $1";
+      expect((await asUser(team.officer.uid, promote, [successor.memberId])).rowCount).toBe(0);
+      expect((await asUser(other.leader.uid, promote, [successor.memberId])).rowCount).toBe(0);
+      expect((await asAnon(promote, [successor.memberId]).catch(() => ({ rowCount: 0 }))).rowCount).toBe(0);
+      expect(await rank(successor.memberId)).toBe('raider');
+
       await setRole(successor.memberId, 'team_leader');
       expect(await rank(successor.memberId)).toBe('officer');
       await setRole(team.leader.memberId, 'officer');
 
       expect(await rank(team.leader.memberId)).toBe('officer');
       expect(await rank(successor.memberId)).toBe('owner');
+      expect(await rank(unlinked)).toBe('officer');
       expect((await writeSettings(successor.uid)).rowCount).toBe(1);
       expect((await writeSettings(team.leader.uid)).rowCount).toBe(0);
     });
   });
 
   it('an owner who leaves with no other team leader leaves the team to a site admin', async () => {
-    await withTxn(async ({ q, asUser }) => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
       const team = await seedTeam(q);
+      const other = await seedTeam(q);
+      const archiveOwner = "select public.archive_team_member($1, $2, 'other', null)";
+      const args = [team.teamId, team.leader.memberId];
+      await expect(asUser(team.officer.uid, archiveOwner, args)).rejects.toThrow(/site admin/);
+      await expect(asUser(other.leader.uid, archiveOwner, args)).rejects.toThrow(/Not authorized/);
+      await expect(asAnon(archiveOwner, args)).rejects.toThrow(/permission denied|Not authorized/);
+      expect(
+        (await q('select archived_at from public.team_members where id = $1', [team.leader.memberId])).rows[0]
+          .archived_at
+      ).toBeNull();
+
       await asUser(SITE_ADMIN, "select public.archive_team_member($1, $2, 'other', null)", [
         team.teamId,
         team.leader.memberId
