@@ -15,7 +15,8 @@ import {
   TEAM_LEADER_T1,
   RAIDER_T1,
   RAIDER_T2,
-  TEAM_LEADER_T2
+  TEAM_LEADER_T2,
+  TEAM_LEADER_T3
 } from './helpers.js';
 
 afterAll(() => pool.end());
@@ -229,9 +230,10 @@ describe('guild ranks and the guild_officer grant', () => {
         [who]
       );
       expect(await hasGrant(q, who)).toBe(false);
+      // The seed's Owner (#1648), Immolation's team leader.
+      expect(await hasGrant(q, 'discord-leader-3')).toBe(true);
       for (const [rank, grant] of [
         ['admin', true],
-        ['owner', true],
         ['member', false]
       ]) {
         await q('update public.guild_ranks set rank = $2 where person_id = public.person_for_discord_id($1)', [
@@ -245,19 +247,18 @@ describe('guild ranks and the guild_officer grant', () => {
 
   it("a guild has one owner, whose guild officer grant can't be revoked", async () => {
     await withTxn(async ({ q, asUser }) => {
-      const [a, b] = [`discord-1645-${randomUUID()}`, `discord-1645-${randomUUID()}`];
-      const add = (who) =>
+      // The seed's Owner (#1648), Immolation's team leader.
+      await expect(
+        asUser(SITE_ADMIN, `select public.admin_revoke_guild_officer($1, ${WGA})`, ['discord-leader-3'])
+      ).rejects.toThrow(/guild's Owner/);
+      // Last: a failed statement outside asUser ends the transaction.
+      await expect(
         q(
           `insert into public.guild_ranks (guild_id, person_id, rank)
            values (${WGA}, public.person_for_discord_id($1), 'owner')`,
-          [who]
-        );
-      await add(a);
-      await expect(asUser(SITE_ADMIN, `select public.admin_revoke_guild_officer($1, ${WGA})`, [a])).rejects.toThrow(
-        /guild's Owner/
-      );
-      // Last: a failed statement outside asUser ends the transaction.
-      await expect(add(b)).rejects.toThrow(/guild_ranks_one_owner/);
+          [`discord-1645-${randomUUID()}`]
+        )
+      ).rejects.toThrow(/guild_ranks_one_owner/);
     });
   });
 
@@ -358,11 +359,9 @@ describe('the permission checks', () => {
       expect(await check(RAIDER_T1, 'create_teams')).toBe(true);
       expect(await check(RAIDER_T1, 'record_boe')).toBe(false);
 
-      await q(
-        "update public.guild_ranks set rank = 'owner' where person_id = public.person_for_discord_id('discord-raider-1')"
-      );
-      expect(await check(RAIDER_T1, 'export_guild_data')).toBe(true);
-      expect(await check(RAIDER_T1, 'manage_loot')).toBe(false);
+      // The seed's Owner (#1648) has every guild permission, and no team one.
+      expect(await check(TEAM_LEADER_T3, 'export_guild_data')).toBe(true);
+      expect(await check(TEAM_LEADER_T3, 'manage_loot')).toBe(false);
     });
   });
 
