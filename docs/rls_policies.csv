@@ -105,12 +105,12 @@ priority_stale_dismissals,Officers manage priority_stale_dismissals,public,ALL,P
 raid_encounters,Claude readers read raid_encounters,claude_readers,SELECT,PERMISSIVE,true,
 raid_encounters,Public read raid_encounters,public,SELECT,PERMISSIVE,true,
 raid_night_bosses,Claude readers read raid_night_bosses,claude_readers,SELECT,PERMISSIVE,true,
-raid_night_bosses,Officers read raid_night_bosses,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+raid_night_bosses,Officers read raid_night_bosses,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_permission_team_ids('attendance'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 raid_night_bosses,Team raiders read raid_night_bosses,public,SELECT,PERMISSIVE,"(team_id IN ( SELECT p.team_id
    FROM players p
   WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))))",
 raid_night_lineups,Claude readers read raid_night_lineups,claude_readers,SELECT,PERMISSIVE,true,
-raid_night_lineups,Officers read raid_night_lineups,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+raid_night_lineups,Officers read raid_night_lineups,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_permission_team_ids('attendance'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 raid_night_lineups,Team raiders read raid_night_lineups,public,SELECT,PERMISSIVE,"(team_id IN ( SELECT p.team_id
    FROM players p
   WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))))",

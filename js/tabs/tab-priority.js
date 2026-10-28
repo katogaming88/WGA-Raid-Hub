@@ -322,7 +322,7 @@ function getPriorityListConflicts() {
 }
 
 // Dismiss/restore write straight to priority_conflict_dismissals (RLS-gated
-// to officer/team_leader/site_admin, no RPC needed -- see the
+// to the team's manage_loot permission or site_admin, no RPC needed -- see the
 // 20260831132302 migration) then patch DATA.priorityConflictDismissals
 // in-memory and re-render, same optimistic-update shape submitDirectMarkReceived()
 // (js/common.js) uses rather than a full data reload.

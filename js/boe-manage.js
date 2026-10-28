@@ -79,8 +79,8 @@ function buildBoeManage(access) {
   // Neither read filters on team since #765. BoEs are guild property and the
   // manager grant went guild-wide in #766, so this shows every find the caller
   // may see rather than one team at a time. The scoping is the read policies'
-  // job: my_team_role(team_id) in (officer, team_leader) or is_boe_manager()
-  // or is_site_admin(), which gives a manager or site admin every team and a
+  // job: the team's pay_boe_cuts permission (#1646) or is_boe_manager() or
+  // is_site_admin(), which gives a manager or site admin every team and a
   // plain officer exactly the teams they staff. A client-side
   // .eq('team_id', ...) on top would re-implement that, worse, and would keep
   // Wrathless finds invisible -- it has no members, so nobody holds a team

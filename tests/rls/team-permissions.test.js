@@ -173,6 +173,12 @@ describe('team permissions (#1646)', () => {
         );
 
       expect((await write(coLeader.uid)).rowCount).toBe(0);
+      await expect(
+        asUser(coLeader.uid, "select public.admin_grant_team_role($1, $2, 'officer')", [
+          team.teamId,
+          team.raider.discordId
+        ])
+      ).rejects.toThrow(/Not authorized/);
       expect((await write(team.officer.uid)).rowCount).toBe(0);
       expect((await write(team.leader.uid)).rowCount).toBe(1);
     });
@@ -197,6 +203,36 @@ describe('team permissions (#1646)', () => {
         asUser(team.officer.uid, "select public.import_rclc_loot($1, 'seed-season', '[]'::jsonb)", [team.teamId])
       ).rejects.toThrow(/Not authorized/);
       expect((await writeLoot(team.leader.uid)).rowCount).toBe(1);
+    });
+  });
+
+  it('Attendance alone reads the lineup it is taken against', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await q(`insert into public.raid_zones (id, wcl_zone_id, name, season, sort_index)
+               values (9001, 99001, 'Test Raid', 'MID2', 0)`);
+      await q(`insert into public.raid_encounters (id, zone_id, wcl_encounter_id, name, sort_index)
+               values (9102, 9001, 99102, 'First Boss', 1)`);
+      const player = await seedPlayer(q, { teamId: team.teamId });
+      await q(
+        "insert into public.raid_night_bosses (team_id, raid_date, encounter_id, position) values ($1, '2026-08-01', 9102, 1)",
+        [team.teamId]
+      );
+      await q(
+        "insert into public.raid_night_lineups (team_id, raid_date, encounter_id, player_id) values ($1, '2026-08-01', 9102, $2)",
+        [team.teamId, player]
+      );
+      await switchOff(q, team.teamId, 'officer', ['edit_schedule']);
+      const visible = async (uid) => {
+        const n = async (table) =>
+          (await asUser(uid, `select count(*)::int as n from public.${table} where team_id = $1`, [team.teamId]))
+            .rows[0].n;
+        return [await n('raid_night_bosses'), await n('raid_night_lineups')];
+      };
+
+      expect(await visible(team.officer.uid)).toEqual([1, 1]);
+      await switchOff(q, team.teamId, 'officer', ['attendance']);
+      expect(await visible(team.officer.uid)).toEqual([0, 0]);
     });
   });
 

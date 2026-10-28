@@ -12,6 +12,8 @@
 --   pay_boe_cuts         the team's own BoE finds and listings, and settling
 --   view_team_audit_log  the audit log and the names on it
 --   edit_roster          the streamer list (part 1's permission)
+--   attendance           also reads the lineup and its bosses, beside part
+--                        1's edit_schedule
 --   Team Owner           team settings, the team leaders' direct membership
 --                        writes, season start, granting and revoking roles,
 --                        archiving an officer
@@ -164,6 +166,21 @@ alter policy "Officers write streamers" on public.streamers
   using (team_id = any ((select my_permission_team_ids('edit_roster'))::integer[])
          or (select is_site_admin()))
   with check (team_id = any ((select my_permission_team_ids('edit_roster'))::integer[])
+         or (select is_site_admin()));
+
+-- Attendance is taken against the planned lineup (wcl-sync's attendance
+-- pull reads both), so the lineup reads part 1 gave to edit_schedule take
+-- attendance as well; on the default grid the two go together.
+alter policy "Officers read raid_night_lineups" on public.raid_night_lineups
+  using (team_id = any ((select my_permission_team_ids('edit_schedule'))::integer[])
+         or team_id = any ((select my_permission_team_ids('attendance'))::integer[])
+         or team_id = any ((select my_guild_officer_team_ids())::integer[])
+         or (select is_site_admin()));
+
+alter policy "Officers read raid_night_bosses" on public.raid_night_bosses
+  using (team_id = any ((select my_permission_team_ids('edit_schedule'))::integer[])
+         or team_id = any ((select my_permission_team_ids('attendance'))::integer[])
+         or team_id = any ((select my_guild_officer_team_ids())::integer[])
          or (select is_site_admin()));
 
 -- The functions. Each body is as it was except its check.

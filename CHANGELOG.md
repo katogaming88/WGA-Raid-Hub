@@ -14,6 +14,11 @@ answers to.
 
 ## [3.219.0] - 2026-10-27
 
+### Frontend
+
+- Code comments on the current site name the team permissions the database
+  now checks instead of "officer or team leader" (#1646). No visible change.
+
 ### Backend
 
 - Loot, priority, scoring, BoE, audit log and team-leader checks ask the
@@ -24,7 +29,8 @@ answers to.
   cuts. The team-leader-only checks (team settings, season start,
   granting and revoking roles, archiving an officer) are the Team
   Owner's. Every team's one team leader is its Team Owner, so nobody's
-  access changes on the current site.
+  access changes on the current site. "Attendance and bench" also reads
+  the night's lineup, which attendance is taken against.
 
 ### Functions
 

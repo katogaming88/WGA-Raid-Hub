@@ -3036,7 +3036,7 @@ function featureEnabledIn(features, key) {
  * Merges p_updates into team_settings.config for the current team and
  * returns the new config, mirroring the old jsonpRequest(...&action=set...)
  * callback pattern but via the set_team_setting RPC (#221). Restricted to
- * team_leader/site_admin by the "Team leaders write settings" RLS policy.
+ * the Team Owner/site_admin by the "Team leaders write settings" RLS policy.
  * set_team_setting logs its own generic 'team_setting_updated' audit_log
  * entry for every call by default -- pass skipAudit: true when the caller is
  * about to write its own friendlier-named entry for this same save (e.g.
