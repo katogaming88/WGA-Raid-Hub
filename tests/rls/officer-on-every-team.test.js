@@ -44,6 +44,37 @@ async function hellfireRows(q) {
   return player;
 }
 
+// Someone on both Hellfire and Phoenix, with a character on each, so
+// Hellfire's "Also on" has a row to show.
+async function onBothTeams(q) {
+  const who = await seedMember(q, { teamId: HELLFIRE });
+  const phoenix = (
+    await q("insert into public.team_members (team_id, discord_id, role) values (1, $1, 'raider') returning id", [
+      who.discordId
+    ])
+  ).rows[0].id;
+  const player = await seedPlayer(q, { teamId: HELLFIRE, memberId: who.memberId });
+  await seedPlayer(q, { teamId: 1, memberId: phoenix });
+  return player;
+}
+
+const alsoOn = async (asUser, uid) =>
+  (await asUser(uid, 'select player_id from public.also_on_teams($1)', [HELLFIRE])).rows.map((r) => r.player_id);
+
+// A second guild with one team, and someone there holding one of the switches.
+async function otherGuildSwitch(q, column) {
+  const guild = (await q("insert into public.guilds (name) values ('Other Guild') returning id")).rows[0].id;
+  const team = (await q("insert into public.teams (name, guild_id) values ('Other Team', $1) returning id", [guild]))
+    .rows[0].id;
+  const who = await seedMember(q, { teamId: team });
+  await q(
+    `insert into public.guild_ranks (guild_id, person_id, rank, ${column})
+     values ($1, public.person_for_discord_id($2), 'admin', true)`,
+    [guild, who.discordId]
+  );
+  return who;
+}
+
 const reads = async (asUser, uid) => ({
   rsvps: (await asUser(uid, 'select 1 from public.raid_rsvps where team_id = $1', [HELLFIRE])).rows.length,
   notes: (await asUser(uid, 'select 1 from public.player_officer_notes where team_id = $1', [HELLFIRE])).rows.length,
@@ -113,6 +144,8 @@ describe('Officer on every team', () => {
       await expect(asUser(GUILD_OFFICER, 'select * from public.team_unnamed_members($1)', [HELLFIRE])).rejects.toThrow(
         /Not authorized/
       );
+      const both = await onBothTeams(q);
+      expect(await alsoOn(asUser, GUILD_OFFICER)).not.toContain(both);
       // Still an Admin of the guild: the guild's own checks pass.
       await asUser(GUILD_OFFICER, 'select public.set_team_unlisted($1, true)', [HELLFIRE]);
     });
@@ -140,7 +173,8 @@ describe('See every team, read-only', () => {
       expect(seen.notes).toBe(1);
       expect(seen.members).toBeGreaterThan(0);
       await asUser(who.uid, 'select * from public.team_rsvp_answers($1, current_date, current_date)', [HELLFIRE]);
-      await asUser(who.uid, 'select * from public.also_on_teams($1)', [HELLFIRE]);
+      const both = await onBothTeams(q);
+      expect(await alsoOn(asUser, who.uid)).toContain(both);
       const perms = await asUser(
         who.uid,
         `select public.has_team_permission($1, 'view_loot') as loot, public.has_team_permission($1, 'edit_roster') as roster`,
@@ -179,6 +213,28 @@ describe('See every team, read-only', () => {
       expect(
         (await asUser(who.uid, 'select 1 from public.team_invite_links where team_id = $1', [HELLFIRE])).rows
       ).toEqual([]);
+    });
+  });
+});
+
+describe('a switch in one guild gives nothing in another (CodeRabbit)', () => {
+  for (const column of ['officer_on_every_team', 'sees_every_team']) {
+    it(`${column} in another guild reads and writes nothing on Hellfire`, async () => {
+      await withTxn(async ({ q, asUser }) => {
+        await hellfireRows(q);
+        const who = await otherGuildSwitch(q, column);
+        expect(await reads(asUser, who.uid)).toEqual({ rsvps: 0, notes: 0, members: 0 });
+        await expect(
+          asUser(who.uid, "insert into public.players (team_id, name_realm) values ($1, 'Probe-Illidan')", [HELLFIRE])
+        ).rejects.toMatchObject({ code: RLS_DENIED });
+      });
+    });
+  }
+
+  it('signed out, no officer note reads', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      await hellfireRows(q);
+      expect((await asAnon('select 1 from public.player_officer_notes')).rows).toEqual([]);
     });
   });
 });
