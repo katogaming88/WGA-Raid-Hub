@@ -3,7 +3,17 @@
 // make loot decisions, and a permission switched off on a team's grid
 // refuses at once.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedTeam, seedMember, seedPlayer, seedSignup, grantGuild, RLS_DENIED } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  seedTeam,
+  seedMember,
+  seedPlayer,
+  seedSignup,
+  grantGuild,
+  RLS_DENIED,
+  GUILD_OFFICER
+} from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -67,8 +77,8 @@ describe('team permissions (#1646)', () => {
     });
   });
 
-  it('archiving an Assistant asks Promote Assistants: an Assistant cannot, an Officer can', async () => {
-    await withTxn(async ({ q, asUser }) => {
+  it('archiving an Assistant asks Promote Assistants: an Assistant, another team and signed out cannot; an Officer and a guild officer can', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
       const team = await seedTeam(q);
       const assistant = await seedAssistant(q, team.teamId);
       const target = await seedAssistant(q, team.teamId);
@@ -79,8 +89,25 @@ describe('team permissions (#1646)', () => {
 
       await expect(archive(assistant.uid)).rejects.toThrow(/promote Assistants/);
       expect(await archived()).toBeNull();
+      const other = await seedTeam(q);
+      await expect(archive(other.officer.uid)).rejects.toThrow(/Not authorized/);
+      await expect(
+        asAnon("select public.archive_team_member($1, $2, 'other', null)", [team.teamId, target.memberId])
+      ).rejects.toThrow(/permission denied|Not authorized/);
+      expect(await archived()).toBeNull();
       await archive(team.officer.uid);
       expect(await archived()).not.toBeNull();
+
+      // A guild officer of the team's guild could archive an Assistant (a
+      // raider on the current site) before #1646, and still can.
+      const second = await seedAssistant(q, team.teamId);
+      await asUser(GUILD_OFFICER, "select public.archive_team_member($1, $2, 'other', null)", [
+        team.teamId,
+        second.memberId
+      ]);
+      expect(
+        (await q('select archived_at from public.team_members where id = $1', [second.memberId])).rows[0].archived_at
+      ).not.toBeNull();
     });
   });
 
