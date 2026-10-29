@@ -9,9 +9,11 @@
 -- * transfer_guild_ownership(guild_id, person_id): the Owner hands the guild
 --   to someone else in it and becomes an Admin.
 --
--- Someone is in a guild when they hold a guild_ranks row there or are on a
+-- Someone is in a guild when they hold a rank above Member there or are on a
 -- current team of it. Member is automatic, so making someone a Member removes
--- their row.
+-- their row. A row left at 'member' (the current site's Revoke Guild Officer
+-- leaves one) counts for nothing, so someone who has left every team is not
+-- kept in the guild by it (fresh-agent review).
 --
 -- guild_ranks has no write rule for any client role, so these are the only
 -- way the new app changes a rank. The guild_ranks_keep_grant trigger moves
@@ -34,7 +36,7 @@ begin
 
   return query
   with members as (
-    select g.person_id from guild_ranks g where g.guild_id = p_guild_id
+    select g.person_id from guild_ranks g where g.guild_id = p_guild_id and g.rank <> 'member'
     union
     select m.person_id
       from team_members m
@@ -43,14 +45,14 @@ begin
   )
   select
     pe.id,
-    -- Their Name on a team in this guild, else their Discord name, as
-    -- team_unnamed_members() reads it.
+    -- Their Name on a current team in this guild, else their Discord name,
+    -- as team_unnamed_members() reads it.
     coalesce(
       (select min(n.label)
          from names n
          join team_members m on m.id = n.team_member_id
          join teams t on t.id = m.team_id
-        where m.person_id = pe.id and t.guild_id = p_guild_id),
+        where m.person_id = pe.id and t.guild_id = p_guild_id and m.archived_at is null),
       (select coalesce(nullif(i.identity_data -> 'custom_claims' ->> 'global_name', ''),
                        nullif(i.identity_data ->> 'full_name', ''),
                        nullif(i.identity_data ->> 'name', ''))
@@ -105,14 +107,12 @@ begin
   if v_old = 'owner' then
     raise exception 'That person is the guild''s Owner. Hand the guild to someone else first.';
   end if;
-  if v_old is null and not exists (
+  v_old := coalesce(v_old, 'member');
+  if v_old = 'member' and not exists (
     select 1 from team_members m join teams t on t.id = m.team_id
      where t.guild_id = p_guild_id and m.person_id = p_person_id and m.archived_at is null
   ) then
     raise exception 'That person is not in this guild';
-  end if;
-  if coalesce(v_old, 'member') = p_rank then
-    return;
   end if;
 
   if p_rank = 'member' then
@@ -122,10 +122,14 @@ begin
     values (p_guild_id, p_person_id, p_rank)
     on conflict (guild_id, person_id) do update set rank = excluded.rank;
   end if;
+  -- Unchanged (a leftover 'member' row is cleared above): nothing to log.
+  if v_old = p_rank then
+    return;
+  end if;
 
   insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (null, v_uid, 'Guild Rank Changed', 'guilds', p_guild_id,
-          jsonb_build_object('person_id', p_person_id, 'from', coalesce(v_old, 'member'), 'to', p_rank));
+          jsonb_build_object('person_id', p_person_id, 'from', v_old, 'to', p_rank));
 end;
 $$;
 
@@ -163,11 +167,17 @@ begin
     from guild_ranks g
    where g.guild_id = p_guild_id and g.person_id = p_person_id
      for update;
-  if v_old is null and not exists (
+  v_old := coalesce(v_old, 'member');
+  if v_old = 'member' and not exists (
     select 1 from team_members m join teams t on t.id = m.team_id
      where t.guild_id = p_guild_id and m.person_id = p_person_id and m.archived_at is null
   ) then
     raise exception 'That person is not in this guild';
+  end if;
+  -- An Owner nobody can sign in as would leave the guild with no one to act
+  -- for it (fresh-agent review).
+  if not exists (select 1 from people pe where pe.id = p_person_id and pe.auth_user_id is not null) then
+    raise exception 'That person has not signed in yet';
   end if;
 
   -- The caller steps down first: a guild has one owner (guild_ranks_one_owner).
@@ -179,7 +189,7 @@ begin
   insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (null, v_uid, 'Guild Ownership Transferred', 'guilds', p_guild_id,
           jsonb_build_object('from_person_id', v_me, 'to_person_id', p_person_id,
-                             'to_old_rank', coalesce(v_old, 'member')));
+                             'to_old_rank', v_old));
 end;
 $$;
 

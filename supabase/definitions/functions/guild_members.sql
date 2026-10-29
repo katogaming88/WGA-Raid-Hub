@@ -18,7 +18,7 @@ begin
 
   return query
   with members as (
-    select g.person_id from guild_ranks g where g.guild_id = p_guild_id
+    select g.person_id from guild_ranks g where g.guild_id = p_guild_id and g.rank <> 'member'
     union
     select m.person_id
       from team_members m
@@ -27,14 +27,14 @@ begin
   )
   select
     pe.id,
-    -- Their Name on a team in this guild, else their Discord name, as
-    -- team_unnamed_members() reads it.
+    -- Their Name on a current team in this guild, else their Discord name,
+    -- as team_unnamed_members() reads it.
     coalesce(
       (select min(n.label)
          from names n
          join team_members m on m.id = n.team_member_id
          join teams t on t.id = m.team_id
-        where m.person_id = pe.id and t.guild_id = p_guild_id),
+        where m.person_id = pe.id and t.guild_id = p_guild_id and m.archived_at is null),
       (select coalesce(nullif(i.identity_data -> 'custom_claims' ->> 'global_name', ''),
                        nullif(i.identity_data ->> 'full_name', ''),
                        nullif(i.identity_data ->> 'name', ''))

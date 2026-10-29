@@ -33,14 +33,12 @@ begin
   if v_old = 'owner' then
     raise exception 'That person is the guild''s Owner. Hand the guild to someone else first.';
   end if;
-  if v_old is null and not exists (
+  v_old := coalesce(v_old, 'member');
+  if v_old = 'member' and not exists (
     select 1 from team_members m join teams t on t.id = m.team_id
      where t.guild_id = p_guild_id and m.person_id = p_person_id and m.archived_at is null
   ) then
     raise exception 'That person is not in this guild';
-  end if;
-  if coalesce(v_old, 'member') = p_rank then
-    return;
   end if;
 
   if p_rank = 'member' then
@@ -50,9 +48,13 @@ begin
     values (p_guild_id, p_person_id, p_rank)
     on conflict (guild_id, person_id) do update set rank = excluded.rank;
   end if;
+  -- Unchanged (a leftover 'member' row is cleared above): nothing to log.
+  if v_old = p_rank then
+    return;
+  end if;
 
   insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (null, v_uid, 'Guild Rank Changed', 'guilds', p_guild_id,
-          jsonb_build_object('person_id', p_person_id, 'from', coalesce(v_old, 'member'), 'to', p_rank));
+          jsonb_build_object('person_id', p_person_id, 'from', v_old, 'to', p_rank));
 end;
 $function$;

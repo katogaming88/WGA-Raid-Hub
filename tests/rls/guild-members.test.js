@@ -26,14 +26,35 @@ describe('guild_members', () => {
   it('the Owner and an Admin read everyone with a rank, and is_you marks the caller', async () => {
     await withTxn(async ({ q, asUser }) => {
       const raider = await personOf(q, RAIDER_T1);
+      await q(
+        "insert into public.names (team_id, label, team_member_id) select 1, 'Katorri', id from public.team_members where team_id = 1 and person_id = $1",
+        [raider]
+      );
       for (const uid of [OWNER, GUILD_OFFICER]) {
         const rows = (await asUser(uid, `select * from public.guild_members(${WGA})`)).rows;
         const me = await personOf(q, uid);
         expect(rows.filter((r) => r.is_you).map((r) => r.person_id)).toEqual([me]);
         expect(rows[0].rank).toBe('owner');
-        expect(rows.find((r) => r.person_id === raider).rank).toBe('member');
-        expect(rows.every((r) => r.display_name)).toBe(true);
+        expect(rows.find((r) => r.person_id === raider)).toMatchObject({ rank: 'member', display_name: 'Katorri' });
       }
+    });
+  });
+
+  // The current site's Revoke Guild Officer leaves a 'member' row behind.
+  it('someone who left every team is out of the guild, a leftover member row or not', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const raider = await personOf(q, RAIDER_T1);
+      await q(`insert into public.guild_ranks (guild_id, person_id, rank) values (${WGA}, $1, 'member')`, [raider]);
+      await q('update public.team_members set archived_at = now() where person_id = $1', [raider]);
+
+      const rows = (await asUser(OWNER, `select * from public.guild_members(${WGA})`)).rows;
+      expect(rows.map((r) => r.person_id)).not.toContain(raider);
+      await expect(asUser(OWNER, `select public.set_guild_rank(${WGA}, $1, 'admin')`, [raider])).rejects.toThrow(
+        /not in this guild/
+      );
+      await expect(asUser(OWNER, `select public.transfer_guild_ownership(${WGA}, $1)`, [raider])).rejects.toThrow(
+        /not in this guild/
+      );
     });
   });
 
@@ -66,6 +87,15 @@ describe('set_guild_rank', () => {
         [OWNER]
       );
       expect(log.rows.map((r) => r.detail.to)).toEqual(['admin', 'member']);
+    });
+  });
+
+  it('the Owner makes an Admin a Team Lead, and the grant goes', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const admin = await personOf(q, GUILD_OFFICER);
+      await asUser(OWNER, `select public.set_guild_rank(${WGA}, $1, 'team_lead')`, [admin]);
+      expect(await rankOf(q, admin)).toBe('team_lead');
+      expect(await grantOf(q, admin)).toBe(0);
     });
   });
 
@@ -121,6 +151,16 @@ describe('transfer_guild_ownership', () => {
       // The old Owner is an Admin now, so cannot hand it back.
       await expect(asUser(OWNER, `select public.transfer_guild_ownership(${WGA}, $1)`, [me])).rejects.toThrow(
         /Not authorized/
+      );
+    });
+  });
+
+  it('the Owner cannot hand the guild to someone who has never signed in', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const raider = await personOf(q, RAIDER_T1);
+      await q('update public.people set auth_user_id = null where id = $1', [raider]);
+      await expect(asUser(OWNER, `select public.transfer_guild_ownership(${WGA}, $1)`, [raider])).rejects.toThrow(
+        /not signed in yet/
       );
     });
   });
