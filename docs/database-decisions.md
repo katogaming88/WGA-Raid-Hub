@@ -10,6 +10,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-10-29 -- The guild's Members tab: list, change a rank, hand over the guild (#1650)
+
+Shipped: 20261029103849_guild_members_and_ranks.sql
+
+`guild_ranks` has no write rule for any client role, so the Members tab (merged as #1704) needed functions of its own.
+
+- **`guild_members(guild)`** lists everyone in the guild: anyone with a rank above Member there, or on a current team of it, since Member is automatic. A row left at `member` counts for nothing: the current site's Revoke Guild Officer leaves one behind, and counting it would keep someone who has left every team in the guild for good, able to be ranked or handed the guild (fresh-agent review). Each row has a name to show (their Name on a team in the guild, else their Discord name, else "Unnamed"), their rank, and whether it is the caller. It is for the Owner and anyone whose rank has `edit_guild_profile` (Admins by default), the same people the app lets onto Guild settings. There is no "manage members" permission on the grid, so it borrows that one, as the app's `manageMembers` already does.
+- **`set_guild_rank(guild, person, rank)`** and **`transfer_guild_ownership(guild, person)`** are the Owner's only, checked against the Owner's own `guild_ranks` row rather than the grid: #1517's grid has no line for them, and an Owner is the one rank that holds every permission. Making someone a Member deletes their row, a leftover one included; a rank of Owner is refused here and goes through the handover. The guild can only be handed to someone who has signed in, so it is never left with an Owner nobody can act as.
+- **A handover locks the Owner's row first**, so a rank change and a handover from the same Owner at the same moment run one after the other, and the second finds the caller no longer the Owner. The old Owner becomes an Admin before the new one is written, because a guild has one owner (`guild_ranks_one_owner`).
+- **The current site's guild officer grant follows by the existing trigger** (`guild_ranks_keep_grant`): an Owner or Admin holds it, nobody else does. Nothing new was needed for it.
+- Each change writes a guild-level `audit_log` row (no team, target the guild), as `set_boe_payout_settings()` does.
+
+[Full discussion -> #1650](https://github.com/katogaming88/WGA-Raid-Hub/issues/1650).
+
 ## 2026-10-28 -- The new app asks the rank grids what to show: `my_permissions()` (#1649)
 
 Shipped: 20261028150447_my_permissions.sql

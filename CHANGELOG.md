@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.224.0] - 2026-10-29
+
+### Backend
+
+- The new app's guild Members tab (#1650) works: three database
+  functions behind it. `guild_members` lists everyone in the guild
+  with their rank, for the Owner and Admins. `set_guild_rank` lets the
+  Owner make someone an Admin, a Team Lead or a Member, and
+  `transfer_guild_ownership` lets the Owner hand the guild to someone
+  else in it, becoming an Admin. Each change is in the guild's audit
+  log, and the current site's guild officer access follows the rank.
+
+### Project
+
+- The Members tab calls the three functions directly now that the
+  generated types have them.
+
 ## [3.223.1] - 2026-10-28
 
 ### Project
