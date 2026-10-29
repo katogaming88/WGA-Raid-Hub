@@ -16,8 +16,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
-| Revamp 4: cutover                  |      13 h 5 m |
-| **All revamp work**                | **130 h 1 m** |
+| Revamp 4: cutover                  |     13 h 25 m |
+| **All revamp work**                | **130 h 21 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -470,6 +470,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 10:30-10:50 AM | #1650 database: `guild_members`, `set_guild_rank`, `transfer_guild_ownership` (Owner-only changes lock the Owner's row; Member deletes the rank row; the guild officer grant follows by the existing trigger); database tests (Owner, Admin, Member, outsider, signed out), the Members tab calls them directly, generated docs and types, decision log, RLS.md, stamp, changelog, this row | Revamp 4 (#1650) | 20 m | ~20 m build | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
+| 11:00-11:20 AM | PR #1705 (#1650): the push waited on a ledger check that cannot reach production from here (stopped, PR body corrected); CodeRabbit's two test notes (the handover's audit row; another guild's Owner refused on all three) | Revamp 4 (#1650) | 20 m | ~15 m build, ~5 m Kat | not read | The fresh-agent review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

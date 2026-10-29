@@ -111,6 +111,12 @@ describe('transfer_guild_ownership', () => {
       expect(await rankOf(q, me)).toBe('admin');
       expect(await grantOf(q, raider)).toBe(1);
       expect(await grantOf(q, me)).toBe(1);
+      const log = await q(
+        `select actor_id, detail from public.audit_log
+          where action = 'Guild Ownership Transferred' and target_type = 'guilds' and target_id = ${WGA}`
+      );
+      expect(log.rows).toHaveLength(1);
+      expect(log.rows[0]).toMatchObject({ actor_id: OWNER, detail: { from_person_id: me, to_person_id: raider } });
 
       // The old Owner is an Admin now, so cannot hand it back.
       await expect(asUser(OWNER, `select public.transfer_guild_ownership(${WGA}, $1)`, [me])).rejects.toThrow(
@@ -128,6 +134,33 @@ describe('transfer_guild_ownership', () => {
       ).rejects.toThrow(/Not authorized/);
       await expect(asUser(OWNER, `select public.transfer_guild_ownership(${WGA}, $1)`, [me])).rejects.toThrow(
         /someone else/
+      );
+    });
+  });
+});
+
+describe('another guild', () => {
+  it("another guild's Owner reads and changes nothing in We Go Again", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const guild = (
+        await q(
+          "insert into public.guilds (name, region, realm) values ('Other Guild', 'us', 'Stormrage') returning id"
+        )
+      ).rows[0].id;
+      const owner = randomUUID();
+      await insertDiscordUser(q, owner, `discord-1650-${owner}`);
+      await q("insert into public.guild_ranks (guild_id, person_id, rank) values ($1, $2, 'owner')", [
+        guild,
+        await personOf(q, owner)
+      ]);
+      const raider = await personOf(q, RAIDER_T1);
+
+      await expect(asUser(owner, `select * from public.guild_members(${WGA})`)).rejects.toThrow(/Not authorized/);
+      await expect(asUser(owner, `select public.set_guild_rank(${WGA}, $1, 'admin')`, [raider])).rejects.toThrow(
+        /Not authorized/
+      );
+      await expect(asUser(owner, `select public.transfer_guild_ownership(${WGA}, $1)`, [raider])).rejects.toThrow(
+        /Not authorized/
       );
     });
   });
