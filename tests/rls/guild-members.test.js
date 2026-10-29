@@ -9,8 +9,7 @@ afterAll(() => pool.end());
 const WGA = "(select id from public.guilds where url_key = 'wga')";
 const OWNER = TEAM_LEADER_T3;
 
-const personOf = async (q, uid) =>
-  (await q('select id from public.people where auth_user_id = $1', [uid])).rows[0].id;
+const personOf = async (q, uid) => (await q('select id from public.people where auth_user_id = $1', [uid])).rows[0].id;
 const rankOf = async (q, personId) =>
   (await q(`select rank from public.guild_ranks where guild_id = ${WGA} and person_id = $1`, [personId])).rows[0]
     ?.rank ?? null;
@@ -77,9 +76,9 @@ describe('set_guild_rank', () => {
       await expect(
         asUser(GUILD_OFFICER, `select public.set_guild_rank(${WGA}, $1, 'admin')`, [raider])
       ).rejects.toThrow(/Not authorized/);
-      await expect(
-        asUser(RAIDER_T1, `select public.set_guild_rank(${WGA}, $1, 'member')`, [admin])
-      ).rejects.toThrow(/Not authorized/);
+      await expect(asUser(RAIDER_T1, `select public.set_guild_rank(${WGA}, $1, 'member')`, [admin])).rejects.toThrow(
+        /Not authorized/
+      );
     });
   });
 
