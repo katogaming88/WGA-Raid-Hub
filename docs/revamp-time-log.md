@@ -16,8 +16,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
-| Revamp 4: cutover                  |     12 h 45 m |
-| **All revamp work**                | **129 h 41 m** |
+| Revamp 4: cutover                  |      13 h 5 m |
+| **All revamp work**                | **130 h 1 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -464,6 +464,12 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 5:00-6:25 PM | #1264: the guild membership step checked (the team membership is it; a database test proves joining by link makes a guild Member); Kat chose guild Owner/Admin get in without a team and Sonnet for the test rewrites; guild and team pages send anyone not on one of the guild's teams to the front page, old site-page links forward for anyone; the gate's own tests, an `asMember()` helper, about 60 app and browser tests signed in as a member (a Sonnet subagent, ~50 m), 13 signed-out tests dropped; preflight, stamp, changelog, this row | Revamp 4 (#1264) | 1 h 25 m | ~1 h 23 m build, ~2 m Kat | not read | CodeRabbit and merge not yet counted |
 | 2:58-3:35 PM | #1649 built: Kat chose one new database function, `my_permissions(team, guild)`, over about 18 calls per sign-in, and that this makes it a database PR too (moved to Opus); the app's pages, the Officer menu (per page), routes, BoE settling, Guild home's waiting work and the members-only gate ask the rank's permissions instead of role names, Team settings stay the Team Owner's; database test (Officer, Assistant, Raider, another guild), app and browser tests for the three ranks, the test fakes answer the permission reads, a Roster test timing fix; generated docs, decision log, RLS.md, stamp, changelog, this row | Revamp 4 (#1649) | 35 m | ~33 m build, ~2 m Kat | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
 | 4:10-4:40 PM | #1650 Members tab: Kat chose tab only, database waits (the three functions and the Recruiter switch are not built); everyone listed with their rank, Owner promotes, demotes and hands over after typing the name, Admins read only; unit and browser tests, accessibility states, stamp, changelog | Revamp 4 (#1650) | 30 m | ~25 m build, ~5 m Kat | not read | |
+
+### 2026-10-29
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 10:30-10:50 AM | #1650 database: `guild_members`, `set_guild_rank`, `transfer_guild_ownership` (Owner-only changes lock the Owner's row; Member deletes the rank row; the guild officer grant follows by the existing trigger); database tests (Owner, Admin, Member, outsider, signed out), the Members tab calls them directly, generated docs and types, decision log, RLS.md, stamp, changelog, this row | Revamp 4 (#1650) | 20 m | ~20 m build | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

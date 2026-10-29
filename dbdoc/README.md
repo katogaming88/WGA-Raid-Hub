@@ -273,6 +273,9 @@
 | public.set_guild_officer_bios | jsonb | p_bios jsonb, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
 | public.set_boe_payout_settings | void | p_floor bigint, p_pivot bigint, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
 | public.my_permissions | jsonb | p_team_id integer DEFAULT NULL::integer, p_guild_id integer DEFAULT NULL::integer | FUNCTION |
+| public.guild_members | record | p_guild_id integer | FUNCTION |
+| public.set_guild_rank | void | p_guild_id integer, p_person_id integer, p_rank text | FUNCTION |
+| public.transfer_guild_ownership | void | p_guild_id integer, p_person_id integer | FUNCTION |
 
 ## Enums
 

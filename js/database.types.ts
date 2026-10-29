@@ -4505,6 +4505,15 @@ export type Database = {
         }[]
       }
       guild_creation_open: { Args: never; Returns: boolean }
+      guild_members: {
+        Args: { p_guild_id: number }
+        Returns: {
+          display_name: string
+          is_you: boolean
+          person_id: number
+          rank: string
+        }[]
+      }
       has_guild_permission: {
         Args: { p_guild_id: number; p_permission: string }
         Returns: boolean
@@ -4782,6 +4791,10 @@ export type Database = {
         Args: { p_bios: Json; p_guild_id?: number }
         Returns: Json
       }
+      set_guild_rank: {
+        Args: { p_guild_id: number; p_person_id: number; p_rank: string }
+        Returns: undefined
+      }
       set_lineup_role_targets: {
         Args: { p_healers: number; p_tanks: number; p_team_id: number }
         Returns: undefined
@@ -4981,6 +4994,10 @@ export type Database = {
           discord_name: string
           team_member_id: number
         }[]
+      }
+      transfer_guild_ownership: {
+        Args: { p_guild_id: number; p_person_id: number }
+        Returns: undefined
       }
       update_own_signup: {
         Args: {
