@@ -123,6 +123,9 @@ export const GUIDES: Guide[] = [
     quick:
       'The Members tab of Guild settings lists everyone in the guild with their guild rank. The Owner changes ranks and hands the guild over.',
     place: { label: 'Members', to: (b) => `${b.guild}/settings/members` },
+    picture: 'The Members tab of Guild settings, with a Member’s rank, the Make Admin button and Hand over ownership marked.',
+    popup: 'The Hand over ownership pop-up, with the box for the new Owner’s name marked.',
+    marked: [1, 2, 3, 4],
     steps: [
       'Open Guild settings, under Guild in the sidebar, then the Members tab. The Owner and Admins can open it.',
       'Everyone in the guild is listed with their rank: Owner, Admin, Team Lead or Member. Anyone on a team is a Member until the Owner promotes them.',

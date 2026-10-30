@@ -2494,6 +2494,15 @@ const HELP_SHOT_STATES = {
     ],
     frame: 'main .guildsettings-list'
   },
+  'guild-members': {
+    state: GUILD_MEMBERS,
+    markers: [
+      'main .report-tabs >> role=link[name="Members"]',
+      '.guildsettings-row:has-text("Mira") .guildsettings-team',
+      'role=button[name="Make Admin Mira"]',
+      'role=button[name="Hand over ownership to Rex"]'
+    ]
+  },
   attendance: {
     state: ATTENDANCE_MANAGE,
     markers: [
@@ -2551,6 +2560,16 @@ const HELP_POPUP_SHOTS = {
   'add-team': {
     state: { ...GUILD_SETTINGS, click: 'main >> role=button[name="New team"]', afterClick: '[role="dialog"]' },
     markers: [null, '[role="dialog"] input', null, null],
+    frame: '.dialog',
+    viewport: { width: 1000, height: 900 }
+  },
+  'guild-members': {
+    state: {
+      ...GUILD_MEMBERS,
+      click: 'role=button[name="Hand over ownership to Rex"]',
+      afterClick: '[role="dialog"]'
+    },
+    markers: [null, null, null, '[role="dialog"] input'],
     frame: '.dialog',
     viewport: { width: 1000, height: 900 }
   },

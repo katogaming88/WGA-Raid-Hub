@@ -12,6 +12,14 @@ answers to.
 
 ---
 
+## [3.224.1] - 2026-10-29
+
+### Project
+
+- The new app's Help guide for managing the guild's ranks (#1650) has
+  pictures: the Members tab with the steps marked, and the Hand over
+  ownership pop-up.
+
 ## [3.224.0] - 2026-10-29
 
 ### Backend
