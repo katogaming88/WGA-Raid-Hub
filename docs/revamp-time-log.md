@@ -12,12 +12,19 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 | Phase                              |   Time so far |
 | ---------------------------------- | ------------: |
-| Planning and design                |      16 h 0 m |
+| Planning and design                |     16 h 40 m |
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| **All revamp work**                | **131 h 1 m** |
+| Phase 1: For the guild test        |          45 m |
+| Phase 2: Before the new site goes live |       0 m |
+| Phase 3: After the new site goes live  |       0 m |
+| Phase 4: Anytime, alongside        |           0 m |
+| Phase 5: Back burner               |           0 m |
+| **All revamp work**                | **132 h 26 m** |
+
+**Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -474,6 +481,10 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:20-11:34 AM | PR #1705 (#1650): the fresh-agent review (changes requested): a leftover `member` row from the current site's Revoke kept someone who left every team in the guild (counts for nothing now; Member always clears it); the guild can't go to someone who never signed in; the shown Name from current teams only; tests for each, a Team Lead and a real Name; full database suite, generated docs, decision log, RLS.md; the re-review approved; Kat merged 11:34 AM | Revamp 4 (#1650) | 15 m | ~12 m build, ~3 m Kat | not read | |
 | 11:34-11:40 AM | After #1705: branches cleaned up, status comment on #1650, handoff note | Revamp 4 (#1650) | 5 m | ~5 m build | not read | |
 | 9:59-10:20 PM | #1650 Help guide pictures: the Owners and Admins guide gets a picture of the Members tab (the tab, a rank, Make Admin and Hand over ownership marked) and of the Hand over ownership pop-up; `help:shots` showed two older pictures (the sign-in sidebar and the front page's across-the-guild) failing on main too: both opened pages that send anyone signed out to the front page since #1264; Kat asked to fix them here (the sign-in picture now on the front page, the guild one signed in as a member); stamp, changelog, this row | Revamp 4 (#1650) | 20 m | ~18 m build, ~2 m Kat | not read | Merge not yet counted |
+| 10:24-10:27 PM | After #1707: branches cleaned up; #1537 (recruiters, the Members tab's Recruiter switch waits on it) taken over from Rex, its #1487 row moved | Planning and design | 5 m | ~3 m build, ~2 m Kat | not read | |
+| 10:27-10:49 PM | Discord order: Kat moved the Discord area first for the guild test, #921 right after #994; the new bot gets Mention Everyone and 17 more permissions (Kat: one bot for every guild, least setup), recorded on #959 and #963 | Planning and design | 20 m | ~12 m build, ~8 m Kat | not read | |
+| 10:49-11:32 PM | #994 design: six mockups on the real app frame (a row per kind of post, each its own dialog; the server card with the bot's health; signup sheets per raid day, kept posted or hours before; quiet hours hold posts); Kat chose officers pick the server, ping roles only, #921 folded in, commands follow site ranks (#961); a look through WowUtils' settings, #1709-#1711 filed | Phase 1: For the guild test (#994) | 45 m | ~30 m build, ~15 m Kat | not read | |
+| 11:32-11:45 PM | #1712 filed (#994's database half) and blocking #994; #1487 regrouped into five phases, five milestones made, 206 issues moved with a topic label for their old milestone, the old milestones closed; this log by phase | Planning and design | 15 m | ~10 m build, ~5 m Kat | not read | |
 
 ## Not counted (same sessions, not revamp)
 
@@ -512,6 +523,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 None. Revamp 1 finished 2026-09-14, all 11 issues closed, against a due date of 2026-10-31.
 
 ## Remaining work and estimate (as of 2026-09-19)
+
+Kept as it was written. The live estimate is the "Where it adds up" table on #1487, by phase.
 
 The estimate uses the pace in this log: about 37 hours of revamp work over seven working days (2026-09-13 to 09-19), about 5.3 hours a day. Hours are logged time, the same way the rows above are counted.
 
