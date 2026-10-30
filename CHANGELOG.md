@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.224.1] - 2026-10-29
+
+### Project
+
+- The new app's Help guide for managing the guild's ranks (#1650) has
+  pictures: the Members tab with the steps marked, and the Hand over
+  ownership pop-up.
+- The Sign in guide's picture is taken on the front page, and the
+  front page's "across the guild" picture signed in as a member: both had
+  opened pages that now send anyone signed out to the front page (#1264).
+
 ## [3.224.0] - 2026-10-29
 
 ### Backend

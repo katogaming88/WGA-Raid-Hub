@@ -16,8 +16,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 1: decisions and foundation |      6 h 55 m |
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
-| Revamp 4: cutover                  |     13 h 50 m |
-| **All revamp work**                | **130 h 46 m** |
+| Revamp 4: cutover                  |      14 h 5 m |
+| **All revamp work**                | **131 h 1 m** |
 
 Totals are the sum of the rows below. They were kept by hand until 2026-09-18, when they turned out 12 minutes short (the 2026-09-15 review row for PR #1204 had never been added).
 
@@ -471,7 +471,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 10:30-10:50 AM | #1650 database: `guild_members`, `set_guild_rank`, `transfer_guild_ownership` (Owner-only changes lock the Owner's row; Member deletes the rank row; the guild officer grant follows by the existing trigger); database tests (Owner, Admin, Member, outsider, signed out), the Members tab calls them directly, generated docs and types, decision log, RLS.md, stamp, changelog, this row | Revamp 4 (#1650) | 20 m | ~20 m build | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
 | 11:00-11:20 AM | PR #1705 (#1650): the push waited on a ledger check that cannot reach production from here (stopped, PR body corrected); CodeRabbit's two test notes (the handover's audit row; another guild's Owner refused on all three) | Revamp 4 (#1650) | 20 m | ~15 m build, ~5 m Kat | not read | The fresh-agent review and merge not yet counted |
-| 11:20-11:45 AM | PR #1705 (#1650): the fresh-agent review (changes requested): a leftover `member` row from the current site's Revoke kept someone who left every team in the guild (counts for nothing now; Member always clears it); the guild can't go to someone who never signed in; the shown Name from current teams only; tests for each, a Team Lead and a real Name; full database suite, generated docs, decision log, RLS.md | Revamp 4 (#1650) | 25 m | ~25 m build | not read | Merge not yet counted |
+| 11:20-11:34 AM | PR #1705 (#1650): the fresh-agent review (changes requested): a leftover `member` row from the current site's Revoke kept someone who left every team in the guild (counts for nothing now; Member always clears it); the guild can't go to someone who never signed in; the shown Name from current teams only; tests for each, a Team Lead and a real Name; full database suite, generated docs, decision log, RLS.md; the re-review approved; Kat merged 11:34 AM | Revamp 4 (#1650) | 15 m | ~12 m build, ~3 m Kat | not read | |
+| 11:34-11:40 AM | After #1705: branches cleaned up, status comment on #1650, handoff note | Revamp 4 (#1650) | 5 m | ~5 m build | not read | |
+| 9:59-10:20 PM | #1650 Help guide pictures: the Owners and Admins guide gets a picture of the Members tab (the tab, a rank, Make Admin and Hand over ownership marked) and of the Hand over ownership pop-up; `help:shots` showed two older pictures (the sign-in sidebar and the front page's across-the-guild) failing on main too: both opened pages that send anyone signed out to the front page since #1264; Kat asked to fix them here (the sign-in picture now on the front page, the guild one signed in as a member); stamp, changelog, this row | Revamp 4 (#1650) | 20 m | ~18 m build, ~2 m Kat | not read | Merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

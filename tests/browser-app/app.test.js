@@ -2494,6 +2494,15 @@ const HELP_SHOT_STATES = {
     ],
     frame: 'main .guildsettings-list'
   },
+  'guild-members': {
+    state: GUILD_MEMBERS,
+    markers: [
+      'main .report-tabs >> role=link[name="Members"]',
+      '.guildsettings-row:has-text("Mira") .guildsettings-team',
+      'role=button[name="Make Admin Mira"]',
+      'role=button[name="Hand over ownership to Rex"]'
+    ]
+  },
   attendance: {
     state: ATTENDANCE_MANAGE,
     markers: [
@@ -2512,17 +2521,9 @@ const HELP_SHOT_STATES = {
 // already open.
 const katOnPage = (path, sentinel = 'main h1') => ({ ...katProfile(), path, sentinel });
 const HELP_MENU_SHOTS = {
-  // Signed out: the button at the bottom of the sidebar. Nobody live, so the
-  // sidebar's live count isn't mistaken for a marker.
-  'sign-in': {
-    state: {
-      path: '/g/wga/t/phoenix',
-      sentinel: 'main:has(.home-loot-table)',
-      tables: { ...HOME_TABLES, streamers: [] },
-      clock: TODAY
-    },
-    item: '.sidebar >> role=button[name="Sign in with Battle.net"]'
-  },
+  // Signed out: the button at the bottom of the sidebar, on the front page,
+  // since a team's pages send anyone signed out there (#1264).
+  'sign-in': { state: FRONT, item: '.sidebar >> role=button[name="Sign in with Battle.net"]' },
   'officer-settings': { state: SETTINGS_GENERAL, item: '.sidebar >> text="Settings"' },
   'officer-invite': {
     state: { session: OFFICER, who: 'officer', path: '/g/wga/t/phoenix/officer/invite', sentinel: '.sidebar' },
@@ -2551,6 +2552,16 @@ const HELP_POPUP_SHOTS = {
   'add-team': {
     state: { ...GUILD_SETTINGS, click: 'main >> role=button[name="New team"]', afterClick: '[role="dialog"]' },
     markers: [null, '[role="dialog"] input', null, null],
+    frame: '.dialog',
+    viewport: { width: 1000, height: 900 }
+  },
+  'guild-members': {
+    state: {
+      ...GUILD_MEMBERS,
+      click: 'role=button[name="Hand over ownership to Rex"]',
+      afterClick: '[role="dialog"]'
+    },
+    markers: [null, null, null, '[role="dialog"] input'],
     frame: '.dialog',
     viewport: { width: 1000, height: 900 }
   },
@@ -2749,7 +2760,7 @@ const FRONT_SHOTS = {
     state: { ...REPORT, path: '/g/wga/t/phoenix/officer/reports/loot-fairness' },
     frame: '.card.fairness'
   },
-  'across-the-guild': { state: GUILD, frame: 'main', at: '.guild-team' }
+  'across-the-guild': { state: asMember(GUILD), frame: 'main', at: '.guild-team' }
 };
 const FRONT_FILLED = { ...FRONT, news: NEWS_ENTRIES, tables: { seasons: REPORT_TABLES.seasons } };
 
