@@ -12,6 +12,14 @@ answers to.
 
 ---
 
+## [3.224.2] - 2026-10-29
+
+### Project
+
+- The revamp time log counts time by the five phases #1487 now uses
+  (each its own milestone) from 2026-10-29, beside the old Revamp 1-4
+  totals, with tonight's Discord planning and design rows.
+
 ## [3.224.1] - 2026-10-29
 
 ### Project
