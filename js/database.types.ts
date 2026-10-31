@@ -3005,7 +3005,10 @@ export type Database = {
           created_at: string
           guild_id: string
           mplus_ping_role_id: string | null
-          officer_channel_id: string
+          officer_channel_id: string | null
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          quiet_hours_timezone: string | null
           roster_ping_role_id: string | null
           roster_script_url: string | null
           rsvp_ping_role_id: string | null
@@ -3019,7 +3022,10 @@ export type Database = {
           created_at?: string
           guild_id: string
           mplus_ping_role_id?: string | null
-          officer_channel_id: string
+          officer_channel_id?: string | null
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          quiet_hours_timezone?: string | null
           roster_ping_role_id?: string | null
           roster_script_url?: string | null
           rsvp_ping_role_id?: string | null
@@ -3033,7 +3039,10 @@ export type Database = {
           created_at?: string
           guild_id?: string
           mplus_ping_role_id?: string | null
-          officer_channel_id?: string
+          officer_channel_id?: string | null
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          quiet_hours_timezone?: string | null
           roster_ping_role_id?: string | null
           roster_script_url?: string | null
           rsvp_ping_role_id?: string | null
@@ -3048,6 +3057,88 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "teams"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_discord_posts: {
+        Row: {
+          channel_id: string | null
+          kind: string
+          last_posted_at: string | null
+          ping_role_id: string | null
+          team_id: number
+          updated_at: string
+        }
+        Insert: {
+          channel_id?: string | null
+          kind: string
+          last_posted_at?: string | null
+          ping_role_id?: string | null
+          team_id: number
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string | null
+          kind?: string
+          last_posted_at?: string | null
+          ping_role_id?: string | null
+          team_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_discord_posts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "team_discord_config"
+            referencedColumns: ["team_id"]
+          },
+        ]
+      }
+      team_discord_signup_sheets: {
+        Row: {
+          channel_id: string
+          created_at: string
+          hours_before: number | null
+          id: number
+          keep_raids_posted: number | null
+          last_posted_at: string | null
+          ping_role_id: string | null
+          raid_days: number[]
+          team_id: number
+          updated_at: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string
+          hours_before?: number | null
+          id?: never
+          keep_raids_posted?: number | null
+          last_posted_at?: string | null
+          ping_role_id?: string | null
+          raid_days: number[]
+          team_id: number
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string
+          hours_before?: number | null
+          id?: never
+          keep_raids_posted?: number | null
+          last_posted_at?: string | null
+          ping_role_id?: string | null
+          raid_days?: number[]
+          team_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_discord_signup_sheets_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "team_discord_config"
+            referencedColumns: ["team_id"]
           },
         ]
       }
@@ -4678,6 +4769,10 @@ export type Database = {
         }
         Returns: number
       }
+      remove_team_discord_signup_sheet: {
+        Args: { p_sheet_id: number; p_team_id: number }
+        Returns: undefined
+      }
       request_main_swap: {
         Args: {
           p_character_id: number
@@ -4770,6 +4865,18 @@ export type Database = {
         }
         Returns: number
       }
+      save_team_discord_signup_sheet: {
+        Args: {
+          p_channel_id: string
+          p_hours_before: number
+          p_keep_raids_posted: number
+          p_ping_role_id: string
+          p_raid_days: number[]
+          p_sheet_id: number
+          p_team_id: number
+        }
+        Returns: number
+      }
       set_boe_payout_settings: {
         Args: { p_floor: number; p_guild_id?: number; p_pivot: number }
         Returns: undefined
@@ -4833,6 +4940,28 @@ export type Database = {
       }
       set_team_archived: {
         Args: { p_archived: boolean; p_team_id: number }
+        Returns: undefined
+      }
+      set_team_discord_post: {
+        Args: {
+          p_channel_id: string
+          p_kind: string
+          p_ping_role_id: string
+          p_team_id: number
+        }
+        Returns: undefined
+      }
+      set_team_discord_quiet_hours: {
+        Args: {
+          p_end: string
+          p_start: string
+          p_team_id: number
+          p_timezone: string
+        }
+        Returns: undefined
+      }
+      set_team_discord_server: {
+        Args: { p_server_id: string; p_team_id: number }
         Returns: undefined
       }
       set_team_officer_bios: {
@@ -4939,6 +5068,7 @@ export type Database = {
           team_member_id: number
         }[]
       }
+      team_discord_settings: { Args: { p_team_id: number }; Returns: Json }
       team_invite_link_join: {
         Args: { p_blizzard_id: number; p_code: string }
         Returns: string

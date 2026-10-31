@@ -3105,3 +3105,21 @@ Found by the fresh-agent migration review on #1617. `review_main_swap_request()`
 **`restore_player()` keeps them.** An officer restoring a character is deliberately undoing an archive, so its exceptions coming back with it is what they asked for. That is the one way back onto the roster from the site that keeps them. The old sheet import (`scripts/import/tables/players.js`, service role) also brings a character back without touching them; it predates both flags being used and is not changed here.
 
 [Full discussion -> #1618](https://github.com/katogaming88/WGA-Raid-Hub/issues/1618).
+
+## #1712 -- a team's Discord settings: a row per kind of post, signup sheets and quiet hours, changed by its officers
+
+Shipped: 20261031095545_team_discord_settings.sql
+
+**Two tables, no direct access.** `team_discord_posts` holds one row per kind of post (officer requests, M+ requests, RSVP changes, with main swap requests and more joining the kind list later), each with its own channel, optional ping role and when it last posted. `team_discord_signup_sheets` holds any number of sheets per team. Both revoke everything from `anon` and `authenticated`: the six functions are the only way the site reads or writes them, and the posting function reads them with the service key. Both reference `team_discord_config`, so a team picks its server before anything else.
+
+**The officers pick the server, not site admins** (Kat, 2026-10-29). The functions only check an id looks like a Discord id (17 to 20 digits); that the bot and the officer are both in that server is checked by the call that reads Discord, #994's other half. A new team permission, `change_discord_settings`, gates all six, on for Officers by default.
+
+**Changing the server clears the posts and removes the sheets.** Channel ids are global in Discord, so a channel left over from the old server would keep the bot posting there.
+
+**A day on one sheet only, checked in the save.** The save takes the team's `team_discord_config` row lock, so two saves cannot both claim a day, and refuses a clash with the day named in the message and the other sheet's channel id in the error's detail, for the page to name the channel. No exclusion constraint: nothing else writes the table.
+
+**Quiet hours carry their own time zone.** A team has no time zone of its own (each `raid_schedule` row has one), so the start and end are stored with an IANA zone name, checked against `pg_timezone_names`.
+
+**The old bot keeps working.** Saving officer requests, M+ requests or RSVP changes also writes the old columns (`officer_channel_id`, `attendance_channel_id` and the three ping roles) until #959 and #960 move posting into the site. The old bot has no "off": turning officer requests off leaves its officer channel as it was, and RSVP changes with no channel fall back to the officer channel there. The three one-team-per-channel unique constraints are dropped, since teams in one server may share a channel now, and `officer_channel_id` may be empty for a team that has only picked its server. Today's rows were copied into `team_discord_posts`, so the page opens on what the bot posts now.
+
+[Full discussion -> #1712](https://github.com/katogaming88/WGA-Raid-Hub/issues/1712).

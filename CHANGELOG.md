@@ -12,6 +12,29 @@ answers to.
 
 ---
 
+## [3.225.0] - 2026-10-31
+
+### Backend
+
+- A team's Discord settings live in the database, ready for the new
+  Settings > Discord page (#1712, #994). Each kind of post the bot makes
+  (officer requests, M+ requests, RSVP changes) has its own channel and
+  optional ping role; a team can have several signup sheets, each with
+  its raid days and either "keep 1 to 4 raids posted" or "post N hours
+  before"; and quiet hours have a start, an end and a time zone. A
+  team's officers pick the server and change all of it through six
+  database functions, each one logged in the audit log, behind a new
+  "Change discord settings" permission that Officers have by default.
+  A raid day can be on only one sheet. Changing the server clears the
+  channels. The old bot keeps posting where it does today: saving the
+  original three kinds also updates the columns it reads.
+
+### Project
+
+- Database tests for the Discord settings functions, the schema docs,
+  the decision log and RLS.md, and the time log's rows for 2026-10-29
+  and 2026-10-31.
+
 ## [3.224.2] - 2026-10-29
 
 ### Project

@@ -2,15 +2,15 @@
 
 ## Description
 
-Per-team Discord infra config for the consolidated multi-tenant bot (#991): guild/channel/role ids and script URLs the bot needs to route a relayed action to the right place. Written and read only by the bot's service-role client; no read use case for an officer or end user. Mirrors raid_signup_sheets' locked-down shape (#900).
+A team's Discord server, quiet hours and the old bot's channel and ping role ids (#991, #1712). Read and changed by the team's officers through team_discord_settings() and the set_team_discord_* functions; the old bot reads it with the service key. Each kind of post is in team_discord_posts, each signup sheet in team_discord_signup_sheets.
 
 ## Columns
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
+| team_id | integer |  | false | [public.team_discord_posts](public.team_discord_posts.md) [public.team_discord_signup_sheets](public.team_discord_signup_sheets.md) | [public.teams](public.teams.md) |  |
 | guild_id | text |  | false |  |  |  |
-| officer_channel_id | text |  | false |  |  |  |
+| officer_channel_id | text |  | true |  |  |  |
 | attendance_channel_id | text |  | true |  |  |  |
 | signup_channel_id | text |  | true |  |  |  |
 | mplus_ping_role_id | text |  | true |  |  |  |
@@ -20,25 +20,23 @@ Per-team Discord infra config for the consolidated multi-tenant bot (#991): guil
 | roster_script_url | text |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
+| quiet_hours_start | time without time zone |  | true |  |  | When quiet hours start, in quiet_hours_timezone (#1712). Posts made in quiet hours are held until they end. Empty with the end and the time zone for off. |
+| quiet_hours_end | time without time zone |  | true |  |  | When quiet hours end, in quiet_hours_timezone (#1712). Earlier than the start when they run past midnight. |
+| quiet_hours_timezone | text |  | true |  |  | The time zone quiet hours are in, an IANA name such as America/New_York (#1712). |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| team_discord_config_quiet_hours | CHECK | CHECK ((((quiet_hours_start IS NULL) AND (quiet_hours_end IS NULL) AND (quiet_hours_timezone IS NULL)) OR ((quiet_hours_start IS NOT NULL) AND (quiet_hours_end IS NOT NULL) AND (quiet_hours_timezone IS NOT NULL) AND (quiet_hours_start <> quiet_hours_end)))) |
 | team_discord_config_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | team_discord_config_pkey | PRIMARY KEY | PRIMARY KEY (team_id) |
-| team_discord_config_officer_channel_id_key | UNIQUE | UNIQUE (officer_channel_id) |
-| team_discord_config_attendance_channel_id_key | UNIQUE | UNIQUE (attendance_channel_id) |
-| team_discord_config_signup_channel_id_key | UNIQUE | UNIQUE (signup_channel_id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | team_discord_config_pkey | CREATE UNIQUE INDEX team_discord_config_pkey ON public.team_discord_config USING btree (team_id) |
-| team_discord_config_officer_channel_id_key | CREATE UNIQUE INDEX team_discord_config_officer_channel_id_key ON public.team_discord_config USING btree (officer_channel_id) |
-| team_discord_config_attendance_channel_id_key | CREATE UNIQUE INDEX team_discord_config_attendance_channel_id_key ON public.team_discord_config USING btree (attendance_channel_id) |
-| team_discord_config_signup_channel_id_key | CREATE UNIQUE INDEX team_discord_config_signup_channel_id_key ON public.team_discord_config USING btree (signup_channel_id) |
 
 ## Relations
 
@@ -46,6 +44,8 @@ Per-team Discord infra config for the consolidated multi-tenant bot (#991): guil
 erDiagram
 
 "public.team_discord_config" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_discord_posts" }o--|| "public.team_discord_config" : "FOREIGN KEY (team_id) REFERENCES team_discord_config(team_id) ON DELETE CASCADE"
+"public.team_discord_signup_sheets" }o--|| "public.team_discord_config" : "FOREIGN KEY (team_id) REFERENCES team_discord_config(team_id) ON DELETE CASCADE"
 
 "public.team_discord_config" {
   integer team_id FK
@@ -60,6 +60,9 @@ erDiagram
   text roster_script_url
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  time_without_time_zone quiet_hours_start
+  time_without_time_zone quiet_hours_end
+  text quiet_hours_timezone
 }
 "public.teams" {
   integer id
@@ -69,6 +72,26 @@ erDiagram
   integer wcl_guild_id
   integer guild_id FK
   boolean unlisted
+}
+"public.team_discord_posts" {
+  integer team_id FK
+  text kind
+  text channel_id
+  text ping_role_id
+  timestamp_with_time_zone last_posted_at
+  timestamp_with_time_zone updated_at
+}
+"public.team_discord_signup_sheets" {
+  integer id
+  integer team_id FK
+  text channel_id
+  integer__ raid_days
+  integer keep_raids_posted
+  integer hours_before
+  text ping_role_id
+  timestamp_with_time_zone last_posted_at
+  timestamp_with_time_zone created_at
+  timestamp_with_time_zone updated_at
 }
 ```
 
