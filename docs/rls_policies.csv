@@ -36,6 +36,7 @@ characters,Officers read characters on their teams,public,SELECT,PERMISSIVE,"((p
 characters,People read own characters,public,SELECT,PERMISSIVE,(person_id = ( SELECT my_person_id() AS my_person_id)),
 classes_specs,Claude readers read classes_specs,claude_readers,SELECT,PERMISSIVE,true,
 classes_specs,Public read classes_specs,public,SELECT,PERMISSIVE,true,
+discord_server_access,Claude readers read discord_server_access,claude_readers,SELECT,PERMISSIVE,true,
 guild_grants,Claude readers read guild_grants,claude_readers,SELECT,PERMISSIVE,true,
 guild_grants,Officers read BoE manager grants,public,SELECT,PERMISSIVE,((grant_type = 'boe_manager'::text) AND ( SELECT is_any_team_officer() AS is_any_team_officer)),
 guild_grants,Site Admins read guild_grants,public,SELECT,PERMISSIVE,( SELECT is_site_admin() AS is_site_admin),
@@ -173,6 +174,8 @@ streamers,Officers write streamers,public,ALL,PERMISSIVE,((team_id = ANY (( SELE
 streamers,Public read streamers,public,SELECT,PERMISSIVE,true,
 streamers,Raiders manage own streamer,public,ALL,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))
 team_discord_config,Claude readers read team_discord_config,claude_readers,SELECT,PERMISSIVE,true,
+team_discord_posts,Claude readers read team_discord_posts,claude_readers,SELECT,PERMISSIVE,true,
+team_discord_signup_sheets,Claude readers read team_discord_signup_sheets,claude_readers,SELECT,PERMISSIVE,true,
 team_invite_links,Claude readers read team_invite_links,claude_readers,SELECT,PERMISSIVE,true,
 team_invite_links,Officers read team_invite_links,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 team_lineup_settings,Claude readers read team_lineup_settings,claude_readers,SELECT,PERMISSIVE,true,

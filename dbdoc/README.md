@@ -52,7 +52,7 @@
 | [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) | 6 | Dedup log for the optional-night DM reminder sweep (#895, part of #640) -- records that a 24h/2h reminder was already sent for a player/raid_date/checkpoint so the cron sweep does not re-DM on every tick. Insert-only, written solely by the optional-rsvp-reminders Edge Function via the service role. Not the source of truth for whether a player has responded -- that is raid_rsvps. | BASE TABLE |
 | [public.raid_signup_sheets](public.raid_signup_sheets.md) | 6 | Bookkeeping for the bot-owned aggregated signup-sheet Discord message (#900, part of #640): tracks which channel/message holds the one edited-in-place embed per team/raid_date. Written and read only by the bot's service-role client via claim_raid_signup_sheet(); no read use case for an officer or end user. Mirrors raid_rsvp_reminders_sent's locked-down shape (#895). | BASE TABLE |
 | [public.player_officer_notes](public.player_officer_notes.md) | 6 | Officer-only annotations on a roster slot (#925): the private officer note, and why a player was removed plus the freeform specifics (#476). One row per players row, created on first write. These lived on players until #925, where the table's public read policy and its table-level anon grant made them readable with the publishable key and by every signed-in raider. m_plus_note stayed on players because the public profile renders it. archived_reason keeps the fixed vocabulary its old CHECK constraint carried. | BASE TABLE |
-| [public.team_discord_config](public.team_discord_config.md) | 12 | Per-team Discord infra config for the consolidated multi-tenant bot (#991): guild/channel/role ids and script URLs the bot needs to route a relayed action to the right place. Written and read only by the bot's service-role client; no read use case for an officer or end user. Mirrors raid_signup_sheets' locked-down shape (#900). | BASE TABLE |
+| [public.team_discord_config](public.team_discord_config.md) | 16 | A team's Discord server, quiet hours and the old bot's channel and ping role ids (#991, #1712). Read and changed by the team's officers through team_discord_settings() and the set_team_discord_* functions; the old bot reads it with the service key. Each kind of post is in team_discord_posts, each signup sheet in team_discord_signup_sheets. | BASE TABLE |
 | [public.track_bonus_ids](public.track_bonus_ids.md) | 5 | Maps a WoW item bonus ID to its gear upgrade track and rank (e.g. 12853 -> Myth 5/6). Read by blizzard-gear-sync when syncing equipped gear, and the intended future home of the constants currently inlined in import_rclc_loot(). Seeded by hand per tier -- append the new block, never edit or delete old rows, since older gear keeps its original bonus IDs. | BASE TABLE |
 | [public.account_preferences](public.account_preferences.md) | 6 | Per-account preferences, one row per (account, team, key); team_id is null for guild-wide keys. The account_preferences_known_key CHECK lists every allowed key. Replaced no_character_dismissals (#940). | BASE TABLE |
 | [public.guilds](public.guilds.md) | 9 | One row per guild. url_key is the /g/<key> segment of an address: readable for WGA, a random code for any other guild (#1100, #1114). | BASE TABLE |
@@ -85,6 +85,9 @@
 | [public.guild_rank_permissions](public.guild_rank_permissions.md) | 4 | Each guild's grid: a row means that guild rank has that permission there (#1645). Filled from rank_permissions.default_ranks when the guild is made; the Owner changes it later. | BASE TABLE |
 | [public.team_rank_permissions](public.team_rank_permissions.md) | 4 | Each team's grid: a row means that team rank has that permission there (#1645). Filled from rank_permissions.default_ranks when the team is made; the Team Owner changes it later. | BASE TABLE |
 | [public.guild_ranks](public.guild_ranks.md) | 4 | A person's rank in a guild (#1645): owner (one per guild), admin, team_lead or member. Member is automatic for anyone on a team in the guild, so a row is only needed for the other three. Owner and admin are kept in step with a guild_officer grant until cutover, both ways. | BASE TABLE |
+| [public.team_discord_posts](public.team_discord_posts.md) | 6 | One row per kind of post the bot makes for a team (#1712, #921): its channel, an optional ping role and when it last posted. No channel (or no row) means that kind is off. Changed only through set_team_discord_post(); the posting function reads it with the service key. | BASE TABLE |
+| [public.team_discord_signup_sheets](public.team_discord_signup_sheets.md) | 10 | A team's signup sheets in Discord (#1712): the channel, its raid days (raid_schedule's weekday, 0 = Sunday, each day on one sheet of a team at most), and either keep_raids_posted (1 to 4) or hours_before each raid. Changed only through save_team_discord_signup_sheet() and remove_team_discord_signup_sheet(). | BASE TABLE |
+| [public.discord_server_access](public.discord_server_access.md) | 3 | Discord servers a person and the bot were both found in, and when (#1712). Written with the service key by the function that reads Discord (#994); set_team_discord_server() takes only a server verified for the caller in the last hour. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -276,6 +279,12 @@
 | public.guild_members | record | p_guild_id integer | FUNCTION |
 | public.set_guild_rank | void | p_guild_id integer, p_person_id integer, p_rank text | FUNCTION |
 | public.transfer_guild_ownership | void | p_guild_id integer, p_person_id integer | FUNCTION |
+| public.team_discord_settings | jsonb | p_team_id integer | FUNCTION |
+| public.set_team_discord_server | void | p_team_id integer, p_server_id text | FUNCTION |
+| public.set_team_discord_post | void | p_team_id integer, p_kind text, p_channel_id text, p_ping_role_id text | FUNCTION |
+| public.save_team_discord_signup_sheet | int4 | p_team_id integer, p_sheet_id integer, p_channel_id text, p_raid_days integer[], p_keep_raids_posted integer, p_hours_before integer, p_ping_role_id text | FUNCTION |
+| public.remove_team_discord_signup_sheet | void | p_team_id integer, p_sheet_id integer | FUNCTION |
+| public.set_team_discord_quiet_hours | void | p_team_id integer, p_start time without time zone, p_end time without time zone, p_timezone text | FUNCTION |
 
 ## Enums
 
@@ -436,6 +445,9 @@ erDiagram
 "public.team_rank_permissions" }o--|| "public.rank_permissions" : "FOREIGN KEY (permission, scope) REFERENCES rank_permissions(permission, scope)"
 "public.guild_ranks" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
 "public.guild_ranks" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
+"public.team_discord_posts" }o--|| "public.team_discord_config" : "FOREIGN KEY (team_id) REFERENCES team_discord_config(team_id) ON DELETE CASCADE"
+"public.team_discord_signup_sheets" }o--|| "public.team_discord_config" : "FOREIGN KEY (team_id) REFERENCES team_discord_config(team_id) ON DELETE CASCADE"
+"public.discord_server_access" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -982,6 +994,10 @@ erDiagram
   text roster_script_url
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  boolean old_bot
+  time_without_time_zone quiet_hours_start
+  time_without_time_zone quiet_hours_end
+  text quiet_hours_timezone
 }
 "public.track_bonus_ids" {
   integer bonus_id
@@ -1248,6 +1264,31 @@ erDiagram
   integer person_id FK
   text rank
   timestamp_with_time_zone created_at
+}
+"public.team_discord_posts" {
+  integer team_id FK
+  text kind
+  text channel_id
+  text ping_role_id
+  timestamp_with_time_zone last_posted_at
+  timestamp_with_time_zone updated_at
+}
+"public.team_discord_signup_sheets" {
+  integer id
+  integer team_id FK
+  text channel_id
+  integer__ raid_days
+  integer keep_raids_posted
+  integer hours_before
+  text ping_role_id
+  timestamp_with_time_zone last_posted_at
+  timestamp_with_time_zone created_at
+  timestamp_with_time_zone updated_at
+}
+"public.discord_server_access" {
+  integer person_id FK
+  text server_id
+  timestamp_with_time_zone verified_at
 }
 ```
 

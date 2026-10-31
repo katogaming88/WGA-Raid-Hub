@@ -6060,7 +6060,7 @@
     {
       "name": "public.team_discord_config",
       "type": "BASE TABLE",
-      "comment": "Per-team Discord infra config for the consolidated multi-tenant bot (#991): guild/channel/role ids and script URLs the bot needs to route a relayed action to the right place. Written and read only by the bot's service-role client; no read use case for an officer or end user. Mirrors raid_signup_sheets' locked-down shape (#900).",
+      "comment": "A team's Discord server, quiet hours and the old bot's channel and ping role ids (#991, #1712). Read and changed by the team's officers through team_discord_settings() and the set_team_discord_* functions; the old bot reads it with the service key. Each kind of post is in team_discord_posts, each signup sheet in team_discord_signup_sheets.",
       "columns": [
         {
           "name": "team_id",
@@ -6075,7 +6075,7 @@
         {
           "name": "officer_channel_id",
           "type": "text",
-          "nullable": false
+          "nullable": true
         },
         {
           "name": "attendance_channel_id",
@@ -6123,6 +6123,31 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "old_bot",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "The old bot on the VM serves this team (#1712): it reads only rows with this on. On for the teams it served when #1712 shipped; off for any team that picks its server later. Goes with the old bot at #960."
+        },
+        {
+          "name": "quiet_hours_start",
+          "type": "time without time zone",
+          "nullable": true,
+          "comment": "When quiet hours start, in quiet_hours_timezone (#1712). Posts made in quiet hours are held until they end. Empty with the end and the time zone for off."
+        },
+        {
+          "name": "quiet_hours_end",
+          "type": "time without time zone",
+          "nullable": true,
+          "comment": "When quiet hours end, in quiet_hours_timezone (#1712). Earlier than the start when they run past midnight."
+        },
+        {
+          "name": "quiet_hours_timezone",
+          "type": "text",
+          "nullable": true,
+          "comment": "The time zone quiet hours are in, an IANA name such as America/New_York (#1712)."
         }
       ],
       "indexes": [
@@ -6133,33 +6158,21 @@
           "columns": [
             "team_id"
           ]
-        },
-        {
-          "name": "team_discord_config_officer_channel_id_key",
-          "def": "CREATE UNIQUE INDEX team_discord_config_officer_channel_id_key ON public.team_discord_config USING btree (officer_channel_id)",
-          "table": "public.team_discord_config",
-          "columns": [
-            "officer_channel_id"
-          ]
-        },
-        {
-          "name": "team_discord_config_attendance_channel_id_key",
-          "def": "CREATE UNIQUE INDEX team_discord_config_attendance_channel_id_key ON public.team_discord_config USING btree (attendance_channel_id)",
-          "table": "public.team_discord_config",
-          "columns": [
-            "attendance_channel_id"
-          ]
-        },
-        {
-          "name": "team_discord_config_signup_channel_id_key",
-          "def": "CREATE UNIQUE INDEX team_discord_config_signup_channel_id_key ON public.team_discord_config USING btree (signup_channel_id)",
-          "table": "public.team_discord_config",
-          "columns": [
-            "signup_channel_id"
-          ]
         }
       ],
       "constraints": [
+        {
+          "name": "team_discord_config_quiet_hours",
+          "type": "CHECK",
+          "def": "CHECK ((((quiet_hours_start IS NULL) AND (quiet_hours_end IS NULL) AND (quiet_hours_timezone IS NULL)) OR ((quiet_hours_start IS NOT NULL) AND (quiet_hours_end IS NOT NULL) AND (quiet_hours_timezone IS NOT NULL) AND (quiet_hours_start \u003c\u003e quiet_hours_end))))",
+          "table": "public.team_discord_config",
+          "referenced_table": "",
+          "columns": [
+            "quiet_hours_start",
+            "quiet_hours_end",
+            "quiet_hours_timezone"
+          ]
+        },
         {
           "name": "team_discord_config_team_id_fkey",
           "type": "FOREIGN KEY",
@@ -6181,36 +6194,6 @@
           "referenced_table": "",
           "columns": [
             "team_id"
-          ]
-        },
-        {
-          "name": "team_discord_config_officer_channel_id_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (officer_channel_id)",
-          "table": "public.team_discord_config",
-          "referenced_table": "",
-          "columns": [
-            "officer_channel_id"
-          ]
-        },
-        {
-          "name": "team_discord_config_attendance_channel_id_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (attendance_channel_id)",
-          "table": "public.team_discord_config",
-          "referenced_table": "",
-          "columns": [
-            "attendance_channel_id"
-          ]
-        },
-        {
-          "name": "team_discord_config_signup_channel_id_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (signup_channel_id)",
-          "table": "public.team_discord_config",
-          "referenced_table": "",
-          "columns": [
-            "signup_channel_id"
           ]
         }
       ]
@@ -9855,6 +9838,305 @@
           "def": "CREATE TRIGGER guild_ranks_keep_grant AFTER INSERT OR DELETE OR UPDATE OF rank ON public.guild_ranks FOR EACH ROW EXECUTE FUNCTION guild_ranks_keep_grant()"
         }
       ]
+    },
+    {
+      "name": "public.team_discord_posts",
+      "type": "BASE TABLE",
+      "comment": "One row per kind of post the bot makes for a team (#1712, #921): its channel, an optional ping role and when it last posted. No channel (or no row) means that kind is off. Changed only through set_team_discord_post(); the posting function reads it with the service key.",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "channel_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "ping_role_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "last_posted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_discord_posts_pkey",
+          "def": "CREATE UNIQUE INDEX team_discord_posts_pkey ON public.team_discord_posts USING btree (team_id, kind)",
+          "table": "public.team_discord_posts",
+          "columns": [
+            "team_id",
+            "kind"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_discord_posts_check",
+          "type": "CHECK",
+          "def": "CHECK (((channel_id IS NOT NULL) OR (ping_role_id IS NULL)))",
+          "table": "public.team_discord_posts",
+          "referenced_table": "",
+          "columns": [
+            "channel_id",
+            "ping_role_id"
+          ]
+        },
+        {
+          "name": "team_discord_posts_kind_check",
+          "type": "CHECK",
+          "def": "CHECK ((kind = ANY (ARRAY['officer_requests'::text, 'mplus_requests'::text, 'rsvp_changes'::text])))",
+          "table": "public.team_discord_posts",
+          "referenced_table": "",
+          "columns": [
+            "kind"
+          ]
+        },
+        {
+          "name": "team_discord_posts_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES team_discord_config(team_id) ON DELETE CASCADE",
+          "table": "public.team_discord_posts",
+          "referenced_table": "public.team_discord_config",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "team_id"
+          ]
+        },
+        {
+          "name": "team_discord_posts_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id, kind)",
+          "table": "public.team_discord_posts",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "kind"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.team_discord_signup_sheets",
+      "type": "BASE TABLE",
+      "comment": "A team's signup sheets in Discord (#1712): the channel, its raid days (raid_schedule's weekday, 0 = Sunday, each day on one sheet of a team at most), and either keep_raids_posted (1 to 4) or hours_before each raid. Changed only through save_team_discord_signup_sheet() and remove_team_discord_signup_sheet().",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "channel_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "raid_days",
+          "type": "integer[]",
+          "nullable": false
+        },
+        {
+          "name": "keep_raids_posted",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "hours_before",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "ping_role_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "last_posted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_discord_signup_sheets_pkey",
+          "def": "CREATE UNIQUE INDEX team_discord_signup_sheets_pkey ON public.team_discord_signup_sheets USING btree (id)",
+          "table": "public.team_discord_signup_sheets",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_discord_signup_sheets_team_id",
+          "def": "CREATE INDEX team_discord_signup_sheets_team_id ON public.team_discord_signup_sheets USING btree (team_id)",
+          "table": "public.team_discord_signup_sheets",
+          "columns": [
+            "team_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_discord_signup_sheets_check",
+          "type": "CHECK",
+          "def": "CHECK ((num_nonnulls(keep_raids_posted, hours_before) = 1))",
+          "table": "public.team_discord_signup_sheets",
+          "referenced_table": "",
+          "columns": [
+            "keep_raids_posted",
+            "hours_before"
+          ]
+        },
+        {
+          "name": "team_discord_signup_sheets_hours_before_check",
+          "type": "CHECK",
+          "def": "CHECK (((hours_before \u003e= 1) AND (hours_before \u003c= 168)))",
+          "table": "public.team_discord_signup_sheets",
+          "referenced_table": "",
+          "columns": [
+            "hours_before"
+          ]
+        },
+        {
+          "name": "team_discord_signup_sheets_keep_raids_posted_check",
+          "type": "CHECK",
+          "def": "CHECK (((keep_raids_posted \u003e= 1) AND (keep_raids_posted \u003c= 4)))",
+          "table": "public.team_discord_signup_sheets",
+          "referenced_table": "",
+          "columns": [
+            "keep_raids_posted"
+          ]
+        },
+        {
+          "name": "team_discord_signup_sheets_raid_days_check",
+          "type": "CHECK",
+          "def": "CHECK (((cardinality(raid_days) \u003e 0) AND (raid_days \u003c@ ARRAY[0, 1, 2, 3, 4, 5, 6])))",
+          "table": "public.team_discord_signup_sheets",
+          "referenced_table": "",
+          "columns": [
+            "raid_days"
+          ]
+        },
+        {
+          "name": "team_discord_signup_sheets_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES team_discord_config(team_id) ON DELETE CASCADE",
+          "table": "public.team_discord_signup_sheets",
+          "referenced_table": "public.team_discord_config",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "team_id"
+          ]
+        },
+        {
+          "name": "team_discord_signup_sheets_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.team_discord_signup_sheets",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.discord_server_access",
+      "type": "BASE TABLE",
+      "comment": "Discord servers a person and the bot were both found in, and when (#1712). Written with the service key by the function that reads Discord (#994); set_team_discord_server() takes only a server verified for the caller in the last hour.",
+      "columns": [
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "server_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "verified_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "discord_server_access_pkey",
+          "def": "CREATE UNIQUE INDEX discord_server_access_pkey ON public.discord_server_access USING btree (person_id, server_id)",
+          "table": "public.discord_server_access",
+          "columns": [
+            "person_id",
+            "server_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "discord_server_access_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE",
+          "table": "public.discord_server_access",
+          "referenced_table": "public.people",
+          "columns": [
+            "person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "discord_server_access_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (person_id, server_id)",
+          "table": "public.discord_server_access",
+          "referenced_table": "",
+          "columns": [
+            "person_id",
+            "server_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -11637,6 +11919,45 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (person_id) REFERENCES people(id)"
+    },
+    {
+      "table": "public.team_discord_posts",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_discord_config",
+      "parent_columns": [
+        "team_id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES team_discord_config(team_id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_discord_signup_sheets",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_discord_config",
+      "parent_columns": [
+        "team_id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES team_discord_config(team_id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.discord_server_access",
+      "columns": [
+        "person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -12754,6 +13075,42 @@
       "name": "public.transfer_guild_ownership",
       "return_type": "void",
       "arguments": "p_guild_id integer, p_person_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_discord_settings",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_discord_server",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_server_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_discord_post",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_kind text, p_channel_id text, p_ping_role_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.save_team_discord_signup_sheet",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_sheet_id integer, p_channel_id text, p_raid_days integer[], p_keep_raids_posted integer, p_hours_before integer, p_ping_role_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.remove_team_discord_signup_sheet",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_sheet_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_discord_quiet_hours",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_start time without time zone, p_end time without time zone, p_timezone text",
       "type": "FUNCTION"
     }
   ],

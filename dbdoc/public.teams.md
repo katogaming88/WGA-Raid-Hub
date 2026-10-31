@@ -463,6 +463,10 @@ erDiagram
   text roster_script_url
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  boolean old_bot
+  time_without_time_zone quiet_hours_start
+  time_without_time_zone quiet_hours_end
+  text quiet_hours_timezone
 }
 "public.account_preferences" {
   bigint id
