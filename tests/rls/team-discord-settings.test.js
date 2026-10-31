@@ -285,7 +285,7 @@ describe('team Discord settings', () => {
     });
   });
 
-  it("lets the team's Owner and a site admin change it, and refuses an Assistant, an archived Officer and a guild Admin not on the team", async () => {
+  it("lets the team's Owner and a site admin change it, and refuses an Assistant, an archived Officer and a guild officer who is only a Raider there", async () => {
     await txn(async ({ q, asUser }) => {
       await asUser(TEAM_LEADER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
       await asUser(SITE_ADMIN, "select public.set_team_discord_post(1, 'rsvp_changes', $1, null)", [CH_RSVPS]);
