@@ -113,6 +113,20 @@ const isRole = (role: string | null | undefined): role is Role => ROLE_ORDER.inc
 
 export const firstName = (nameRealm: string) => nameRealm.split('-')[0]!.trim();
 
+export type SignupSeasonRow = {
+  season_code: string;
+  seasons: { starts_at: string | null; display_name: string } | null;
+};
+
+// The seasons with signups open, newest first. An undated season (#1714) is
+// the newest, so the Sign up button offers it over the running one.
+export function newestSignupSeasons(rows: SignupSeasonRow[]): { code: string; name: string }[] {
+  const startOf = (r: SignupSeasonRow) => (r.seasons ? (r.seasons.starts_at ?? '9999-12-31') : '');
+  return [...rows]
+    .sort((a, b) => (startOf(a) < startOf(b) ? 1 : -1))
+    .map((r) => ({ code: r.season_code, name: r.seasons?.display_name ?? r.season_code }));
+}
+
 // Blizzard's equipped item level: the sixteen gear slots averaged, with a
 // two-handed weapon counted in both hands when the off hand is empty. The shirt
 // and tabard carry no item level that counts.

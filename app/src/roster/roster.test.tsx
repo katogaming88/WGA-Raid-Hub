@@ -8,6 +8,7 @@ import { SPEC_ICON_KEYS, specIcon } from './specIcons';
 import {
   equippedItemLevel,
   nameOnlyRows,
+  newestSignupSeasons,
   officerStats,
   summarize,
   summaryLine,
@@ -51,6 +52,18 @@ const SIXTEEN = [
   'MAIN_HAND',
   'OFF_HAND'
 ];
+
+// The Sign up button offers the first of these.
+describe('newestSignupSeasons', () => {
+  it('puts an undated next season ahead of the running one (#1714)', () => {
+    const rows = [
+      { season_code: 'MID3', seasons: { starts_at: null, display_name: 'Midnight Season 3' } },
+      { season_code: 'MID2', seasons: { starts_at: '2026-08-11', display_name: 'Midnight Season 2' } }
+    ];
+    expect(newestSignupSeasons(rows).map((s) => s.code)).toEqual(['MID3', 'MID2']);
+    expect(newestSignupSeasons([...rows].reverse()).map((s) => s.code)).toEqual(['MID3', 'MID2']);
+  });
+});
 
 describe('equippedItemLevel', () => {
   it('averages the sixteen gear slots and ignores the shirt and tabard', () => {
