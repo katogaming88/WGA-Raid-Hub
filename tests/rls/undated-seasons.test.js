@@ -74,18 +74,20 @@ describe('undated seasons', () => {
     });
   });
 
-  it("its open wishlist counts in the wishlist nudge, after the live season's", async () => {
+  it("its open wishlist counts in the wishlist nudge, after the live season's, undated ones in order", async () => {
     await withTxn(async ({ q, asUser }) => {
       const code = await undated(q);
+      const later = await undated(q);
+      // Opened in the other order, so only position puts them right.
       await q(
-        "insert into public.team_seasons (team_id, season_code, wishlist_open) values (1, 'MID2', true), (1, $1, true)",
-        [code]
+        "insert into public.team_seasons (team_id, season_code, wishlist_open) values (1, $2, true), (1, 'MID2', true), (1, $1, true)",
+        [code, later]
       );
       const player = await seedPlayer(q, { teamId: 1, memberId: 3 });
       const rows = (await asUser(OFFICER_T1, 'select * from public.wishlist_setup_status(1)')).rows.filter(
         (r) => r.player_id === player
       );
-      expect(rows.map((r) => r.season)).toEqual(['MID2', code]);
+      expect(rows.map((r) => r.season)).toEqual(['MID2', code, later]);
     });
   });
 });
