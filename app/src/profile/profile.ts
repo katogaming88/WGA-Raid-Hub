@@ -8,6 +8,15 @@ export type SeasonWindow = { name: string; code: string | null; start: string | 
 
 export type SeasonRow = { code: string; display_name: string; starts_at: string | null; ends_at: string | null };
 
+// The seasons a team sees (#1714): every one that has started, plus only the
+// next one. Seasons go in an expansion at a time, undated until Blizzard
+// dates them, so the rest stay hidden until the one before them starts.
+// Takes the rows in season order: dated by date, then undated by position.
+export function visibleSeasons<T extends { starts_at: string | null }>(rows: T[], today = easternToday()): T[] {
+  const next = rows.findIndex((s) => s.starts_at === null || s.starts_at > today);
+  return next === -1 ? rows : rows.slice(0, next + 1);
+}
+
 // The tier current today, by the same rule as current_season() (#933): the
 // latest seasons row whose start has passed, or null before the first tier.
 // A season with no date yet (#1717) has not started.

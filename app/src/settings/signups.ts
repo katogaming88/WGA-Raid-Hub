@@ -1,18 +1,15 @@
-// Settings > Signups (#1342): which seasons a team can open signups for, and
-// when the team leader can close them. Kept apart from the page so the date
-// rules are tested without rendering.
+// Settings > Signups (#1342): which seasons a team can open signups for. Kept
+// apart from the page so the date rules are tested without rendering. The
+// team leader closes signups whenever they choose (#1714).
 
 export type SignupSeason = {
   code: string;
   name: string;
-  startsAt: string;
+  // Null until Blizzard dates the season (#1714).
+  startsAt: string | null;
   endsAt: string | null;
   open: boolean;
 };
-
-// The page holds Close back until 14 days before the season starts (#648).
-// The database no longer refuses earlier (#1717); #1714 drops this window.
-export const CLOSE_WINDOW_DAYS = 14;
 
 export function addDays(isoDate: string, days: number): string {
   const d = new Date(`${isoDate}T00:00:00Z`);
@@ -20,25 +17,20 @@ export function addDays(isoDate: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export const closeOpensOn = (season: SignupSeason): string => addDays(season.startsAt, -CLOSE_WINDOW_DAYS);
-
-export const canClose = (season: SignupSeason, today: string): boolean => today >= closeOpensOn(season);
-
 // A season that has started takes no new signups (declare_season_signup()),
-// so there is nothing to open it for.
-export const hasStarted = (season: SignupSeason, today: string): boolean => season.startsAt <= today;
+// so there is nothing to open it for. An undated season has not started.
+export const hasStarted = (season: SignupSeason, today: string): boolean =>
+  season.startsAt !== null && season.startsAt <= today;
 
 // The seasons worth showing: any not yet started, and any with signups still
-// open (Midnight Season 2 is started and still open on two teams). Soonest
-// first.
+// open (Midnight Season 2 is started and still open on two teams), in the
+// order given: soonest first, an undated season last.
 export function signupSeasons(
   seasons: { code: string; display_name: string; starts_at: string | null; ends_at: string | null }[],
   openCodes: ReadonlySet<string>,
   today: string
 ): SignupSeason[] {
-  // A season with no date yet (#1717) is left out until #1714 shows one.
   return seasons
-    .filter((s): s is typeof s & { starts_at: string } => s.starts_at !== null)
     .map((s) => ({
       code: s.code,
       name: s.display_name,
@@ -46,8 +38,7 @@ export function signupSeasons(
       endsAt: s.ends_at,
       open: openCodes.has(s.code)
     }))
-    .filter((s) => s.open || !hasStarted(s, today))
-    .sort((a, b) => (a.startsAt < b.startsAt ? -1 : 1));
+    .filter((s) => s.open || !hasStarted(s, today));
 }
 
 // What the page opens on: a season with signups open, else the next one.
