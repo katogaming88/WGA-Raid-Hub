@@ -29,6 +29,9 @@ answers to.
 
 - Database tests for undated seasons, the schema docs, the decision log
   and RLS.md, and the time log's row.
+- The new app reads a season with no date as not started: never the
+  current season, on no raid night, and left off Settings > Signups
+  until #1714 shows it.
 
 ## [3.225.0] - 2026-10-31
 

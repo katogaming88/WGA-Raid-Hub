@@ -32,11 +32,13 @@ export const hasStarted = (season: SignupSeason, today: string): boolean => seas
 // open (Midnight Season 2 is started and still open on two teams). Soonest
 // first.
 export function signupSeasons(
-  seasons: { code: string; display_name: string; starts_at: string; ends_at: string | null }[],
+  seasons: { code: string; display_name: string; starts_at: string | null; ends_at: string | null }[],
   openCodes: ReadonlySet<string>,
   today: string
 ): SignupSeason[] {
+  // A season with no date yet (#1717) is left out until #1714 shows one.
   return seasons
+    .filter((s): s is typeof s & { starts_at: string } => s.starts_at !== null)
     .map((s) => ({
       code: s.code,
       name: s.display_name,
