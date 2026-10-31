@@ -116,7 +116,11 @@ describe('team_season_start', () => {
   // to null would overlap it, so the case reads it rather than minting.
   it('counts every night after the start of the open-ended tier', async () => {
     await withTxn(async ({ q }) => {
-      const open = (await q('select code, starts_at::text as day from public.seasons where ends_at is null')).rows[0];
+      const open = (
+        await q(
+          'select code, starts_at::text as day from public.seasons where ends_at is null and starts_at is not null'
+        )
+      ).rows[0];
       const team = await seedTeam(q);
       const player = await seedPlayer(q, { teamId: team.teamId });
       await night(q, team.teamId, player, plus(open.day, 400));

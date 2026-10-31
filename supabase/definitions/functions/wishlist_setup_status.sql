@@ -30,7 +30,7 @@ begin
       select s.code, s.display_name, s.starts_at
       from team_seasons ts
       join seasons s on s.code = ts.season_code
-      join live l on s.starts_at >= l.starts_at
+      join live l on s.starts_at is null or s.starts_at >= l.starts_at
       where ts.team_id = p_team_id
         and ts.wishlist_open
     )
@@ -51,7 +51,7 @@ begin
     ) t
     where p.team_id = p_team_id
       and p.archived_at is null
-    order by p.id, t.starts_at
+    order by p.id, t.starts_at nulls last
   loop
     -- Raider's tags: wishlistCompleteness()'s bisRows/offHandRequired pass.
     -- item_preferences.slot is present for Finger/Trinket/Weapon/Off Hand

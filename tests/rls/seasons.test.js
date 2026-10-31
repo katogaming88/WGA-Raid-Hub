@@ -225,7 +225,7 @@ describe('seasons', () => {
   // open-ended row runs to the end of time and a second one overlaps it.
   it('has exactly one open-ended row, and refuses a second', async () => {
     await withTxn(async ({ q }) => {
-      const open = await q('select code from public.seasons where ends_at is null');
+      const open = await q('select code from public.seasons where ends_at is null and starts_at is not null');
       expect(open.rows.map((r) => r.code)).toEqual(['MID2']);
       await expect(
         q(
@@ -253,8 +253,21 @@ describe('seasons', () => {
       await q(
         "insert into public.seasons (code, display_name, starts_at) values ('MID9', 'Midnight Season 9', '2027-01-05')"
       );
-      const open = await q('select code from public.seasons where ends_at is null');
+      const open = await q('select code from public.seasons where ends_at is null and starts_at is not null');
       expect(open.rows.map((r) => r.code)).toEqual(['MID9']);
+    });
+  });
+
+  // Dating an undated season (#1717): its start, and the running season's
+  // end the day before. Here, with the other tiers' cases, since an
+  // open-ended tier conflicts with theirs.
+  it('(control) dating an undated season is its start and MID2 ending the day before', async () => {
+    await withTxn(async ({ q }) => {
+      await q("insert into public.seasons (code, display_name) values ('MID3', 'Midnight Season 3')");
+      await q("update public.seasons set ends_at = '2027-01-04' where code = 'MID2'");
+      await q("update public.seasons set starts_at = '2027-01-05' where code = 'MID3'");
+      expect((await q("select public.current_season('2027-01-04') as c")).rows[0].c).toBe('MID2');
+      expect((await q("select public.current_season('2027-01-05') as c")).rows[0].c).toBe('MID3');
     });
   });
 

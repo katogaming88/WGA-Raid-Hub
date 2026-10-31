@@ -2762,21 +2762,24 @@ export type Database = {
           created_at: string
           display_name: string
           ends_at: string | null
-          starts_at: string
+          position: number
+          starts_at: string | null
         }
         Insert: {
           code: string
           created_at?: string
           display_name: string
           ends_at?: string | null
-          starts_at: string
+          position?: number
+          starts_at?: string | null
         }
         Update: {
           code?: string
           created_at?: string
           display_name?: string
           ends_at?: string | null
-          starts_at?: string
+          position?: number
+          starts_at?: string | null
         }
         Relationships: []
       }

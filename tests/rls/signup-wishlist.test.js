@@ -12,7 +12,7 @@ const SEASON = 'wish-season';
 
 // A tier that has not started, with the team's wishlist switch for it.
 async function nextSeason(q, { wishlistOpen = true } = {}) {
-  await q("update public.seasons set ends_at = '2098-12-31' where ends_at is null");
+  await q("update public.seasons set ends_at = '2098-12-31' where ends_at is null and starts_at is not null");
   await q(
     "insert into public.seasons (code, display_name, starts_at, ends_at) values ($1, $1, '2099-01-01', '2099-03-01')",
     [SEASON]

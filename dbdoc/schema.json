@@ -6785,20 +6785,26 @@
         {
           "name": "starts_at",
           "type": "date",
-          "nullable": false,
-          "comment": "The day the tier launched."
+          "nullable": true,
+          "comment": "The day the season launched. Empty until Blizzard dates it (#1717): an undated season is never current and matches no raid date."
         },
         {
           "name": "ends_at",
           "type": "date",
           "nullable": true,
-          "comment": "Null while the tier is open-ended; the next tier's migration sets it. Tiers do not overlap (seasons_no_overlap), so at most one row is null."
+          "comment": "Null while the season is open-ended, and always for an undated one; the migration that dates the next season sets it. Dated seasons do not overlap (seasons_no_overlap)."
         },
         {
           "name": "created_at",
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "nullable": false,
+          "comment": "The order of seasons (#1717). Dated seasons sort by starts_at; undated ones come after them by position, so the next season is the first undated one."
         }
       ],
       "indexes": [
@@ -6820,10 +6826,18 @@
         },
         {
           "name": "seasons_no_overlap",
-          "def": "CREATE INDEX seasons_no_overlap ON public.seasons USING gist (daterange(starts_at, ends_at, '[]'::text))",
+          "def": "CREATE INDEX seasons_no_overlap ON public.seasons USING gist (daterange(starts_at, ends_at, '[]'::text)) WHERE (starts_at IS NOT NULL)",
           "table": "public.seasons",
           "columns": [
             "daterange"
+          ]
+        },
+        {
+          "name": "seasons_position_key",
+          "def": "CREATE UNIQUE INDEX seasons_position_key ON public.seasons USING btree (\"position\")",
+          "table": "public.seasons",
+          "columns": [
+            "position"
           ]
         }
       ],
@@ -6831,12 +6845,12 @@
         {
           "name": "seasons_window_check",
           "type": "CHECK",
-          "def": "CHECK (((ends_at IS NULL) OR (ends_at \u003e= starts_at)))",
+          "def": "CHECK ((((starts_at IS NOT NULL) OR (ends_at IS NULL)) AND ((ends_at IS NULL) OR (ends_at \u003e= starts_at))))",
           "table": "public.seasons",
           "referenced_table": "",
           "columns": [
-            "ends_at",
-            "starts_at"
+            "starts_at",
+            "ends_at"
           ]
         },
         {
@@ -6862,9 +6876,19 @@
         {
           "name": "seasons_no_overlap",
           "type": "x",
-          "def": "EXCLUDE USING gist (daterange(starts_at, ends_at, '[]'::text) WITH \u0026\u0026)",
+          "def": "EXCLUDE USING gist (daterange(starts_at, ends_at, '[]'::text) WITH \u0026\u0026) WHERE ((starts_at IS NOT NULL))",
           "table": "public.seasons",
           "referenced_table": ""
+        },
+        {
+          "name": "seasons_position_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (\"position\")",
+          "table": "public.seasons",
+          "referenced_table": "",
+          "columns": [
+            "position"
+          ]
         }
       ]
     },

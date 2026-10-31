@@ -55,7 +55,7 @@ async function scene(q, { open = true } = {}) {
 const startIn = async (q, season, days) => {
   await q(
     `update public.seasons set ends_at = (now() at time zone 'America/New_York')::date + $1::int - 1
-      where ends_at is null`,
+      where ends_at is null and starts_at is not null`,
     [days]
   );
   await q(

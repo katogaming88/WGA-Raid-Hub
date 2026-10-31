@@ -10,18 +10,20 @@ One row per raid tier (#932). code is the short form every season column referen
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | code | text |  | false | [public.rclc_loot](public.rclc_loot.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.raid_zones](public.raid_zones.md) [public.item_preferences](public.item_preferences.md) [public.tier_token_map](public.tier_token_map.md) [public.boe_items](public.boe_items.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.track_bonus_ids](public.track_bonus_ids.md) [public.team_seasons](public.team_seasons.md) [public.item_seasons](public.item_seasons.md) [public.season_track_floors](public.season_track_floors.md) |  |  |
 | display_name | text |  | false |  |  |  |
-| starts_at | date |  | false |  |  | The day the tier launched. |
-| ends_at | date |  | true |  |  | Null while the tier is open-ended; the next tier's migration sets it. Tiers do not overlap (seasons_no_overlap), so at most one row is null. |
+| starts_at | date |  | true |  |  | The day the season launched. Empty until Blizzard dates it (#1717): an undated season is never current and matches no raid date. |
+| ends_at | date |  | true |  |  | Null while the season is open-ended, and always for an undated one; the migration that dates the next season sets it. Dated seasons do not overlap (seasons_no_overlap). |
 | created_at | timestamp with time zone | now() | false |  |  |  |
+| position | integer |  | false |  |  | The order of seasons (#1717). Dated seasons sort by starts_at; undated ones come after them by position, so the next season is the first undated one. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| seasons_window_check | CHECK | CHECK (((ends_at IS NULL) OR (ends_at >= starts_at))) |
+| seasons_window_check | CHECK | CHECK ((((starts_at IS NOT NULL) OR (ends_at IS NULL)) AND ((ends_at IS NULL) OR (ends_at >= starts_at)))) |
 | seasons_pkey | PRIMARY KEY | PRIMARY KEY (code) |
 | seasons_display_name_key | UNIQUE | UNIQUE (display_name) |
-| seasons_no_overlap | x | EXCLUDE USING gist (daterange(starts_at, ends_at, '[]'::text) WITH &&) |
+| seasons_no_overlap | x | EXCLUDE USING gist (daterange(starts_at, ends_at, '[]'::text) WITH &&) WHERE ((starts_at IS NOT NULL)) |
+| seasons_position_key | UNIQUE | UNIQUE ("position") |
 
 ## Indexes
 
@@ -29,7 +31,8 @@ One row per raid tier (#932). code is the short form every season column referen
 | ---- | ---------- |
 | seasons_pkey | CREATE UNIQUE INDEX seasons_pkey ON public.seasons USING btree (code) |
 | seasons_display_name_key | CREATE UNIQUE INDEX seasons_display_name_key ON public.seasons USING btree (display_name) |
-| seasons_no_overlap | CREATE INDEX seasons_no_overlap ON public.seasons USING gist (daterange(starts_at, ends_at, '[]'::text)) |
+| seasons_no_overlap | CREATE INDEX seasons_no_overlap ON public.seasons USING gist (daterange(starts_at, ends_at, '[]'::text)) WHERE (starts_at IS NOT NULL) |
+| seasons_position_key | CREATE UNIQUE INDEX seasons_position_key ON public.seasons USING btree ("position") |
 
 ## Relations
 
@@ -59,6 +62,7 @@ erDiagram
   date starts_at
   date ends_at
   timestamp_with_time_zone created_at
+  integer position
 }
 "public.rclc_loot" {
   integer id

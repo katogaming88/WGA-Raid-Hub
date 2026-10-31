@@ -14,8 +14,8 @@ declare
   v_raids jsonb;
   v_entry jsonb;
 begin
-  -- Locked through the same select the write policy filters, so a caller the
-  -- policy refuses sees no row and gets one Not authorized.
+  -- Locked through the same select the write rule filters, so a caller the
+  -- rule refuses sees no row and gets one Not authorized.
   select config into v_config from public.team_settings where team_id = p_team_id for update;
   if v_config is null then
     raise exception 'Not authorized';
@@ -28,7 +28,8 @@ begin
 
   select s.starts_at into v_current_start
     from public.seasons s where s.code = public.current_season();
-  if v_current_start is null or v_tier.starts_at >= v_current_start then
+  -- An undated season has not started, let alone ended.
+  if v_current_start is null or v_tier.starts_at is null or v_tier.starts_at >= v_current_start then
     raise exception '% has not ended', v_tier.display_name;
   end if;
 

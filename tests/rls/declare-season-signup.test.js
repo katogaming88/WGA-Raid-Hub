@@ -19,7 +19,7 @@ async function openSignups(q, season = 'next-season', open = true) {
   if (STARTS[season]) {
     // The running tier ends before the next one, as the migration adding a
     // tier sets it (the seed leaves MID2 open-ended).
-    await q("update public.seasons set ends_at = '2098-12-31' where ends_at is null");
+    await q("update public.seasons set ends_at = '2098-12-31' where ends_at is null and starts_at is not null");
     await q('insert into public.seasons (code, display_name, starts_at, ends_at) values ($1, $1, $2, $2::date + 60)', [
       season,
       STARTS[season]
@@ -84,6 +84,18 @@ describe('declare_season_signup()', () => {
         status: 'pending',
         auth_user_id: RAIDER_T1
       });
+    });
+  });
+
+  // An undated season (#1717) takes signups like any season that has not
+  // started.
+  it('takes a signup for a season Blizzard has not dated yet', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await q("insert into public.seasons (code, display_name) values ('undated-next', 'Undated Next')");
+      await openSignups(q, 'undated-next');
+      const characterId = await character(q, await personOf(q));
+      const id = (await declare(asUser, RAIDER_T1, characterId, { season: 'undated-next' })).rows[0].id;
+      expect(await signup(q, id)).toMatchObject({ season: 'undated-next', status: 'pending' });
     });
   });
 
