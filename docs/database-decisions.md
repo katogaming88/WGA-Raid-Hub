@@ -3123,3 +3123,19 @@ Shipped: 20261031095545_team_discord_settings.sql
 **The old bot keeps working.** Saving officer requests, M+ requests or RSVP changes also writes the old columns (`officer_channel_id`, `attendance_channel_id` and the three ping roles) until #959 and #960 move posting into the site. The old bot has no "off": turning officer requests off leaves its officer channel as it was, and RSVP changes with no channel fall back to the officer channel there. The three one-team-per-channel unique constraints are dropped, since teams in one server may share a channel now, and `officer_channel_id` may be empty for a team that has only picked its server. Today's rows were copied into `team_discord_posts`, so the page opens on what the bot posts now. From the fresh-agent review: the old bot fell back to the officer channel for RSVP changes and its signup sheet, so the backfill writes that channel into the empty RSVP and signup columns, and moving officer requests later moves nothing else. `old_bot` marks the teams the old bot served when this shipped, and the bot reads only those rows: a team that picks its first server on the new page is not picked up by the old bot, which would list it in slash commands and fall back to its officer channel. Changing an old-bot team's server takes it off the old bot, since its channels are cleared. The first pick's insert skips a row another officer made a moment before and changes that row instead, and removing a sheet takes the same team lock as a save.
 
 [Full discussion -> #1712](https://github.com/katogaming88/WGA-Raid-Hub/issues/1712).
+
+## #1717 -- a season can be on file before Blizzard dates it, and signups close any time
+
+Shipped: 20261031114741_undated_seasons.sql
+
+**Undated seasons, added an expansion at a time** (Kat, 2026-10-30, #1714). Blizzard dates a season about two weeks ahead, which left no window to collect signups early. `seasons.starts_at` may now be empty. An undated season also has no end (`seasons_window_check`), and `seasons_no_overlap` skips undated rows, so it is never the current season and matches no raid date. Dating one stays a short migration: the running season's end first, then the next season's start the day after, in that order. The other way round, the new start overlaps the open-ended running season and `seasons_no_overlap` refuses it (fresh-agent review).
+
+**`position` orders them.** Dated seasons sort by date; undated ones come after every dated one by `position`, so the next season is the first undated one. Existing rows are numbered by date, and a new row takes the next number from an identity unless its migration names one, so an expansion's seasons inserted in order land in order.
+
+**No undated season in this migration.** Midnight Season 3 goes in with #1714. Today's current site lists seasons newest date first, and an empty date sorts to the top of that list, so the row waits for the pages that know how to show it.
+
+**The eight functions that read `starts_at`.** Five were already right, because a comparison with an empty date is never true: `current_season`, `close_started_season_signups`, `fill_raid_night` and `declare_season_signup` skip it or take signups for it, and `team_season_start` returns no start. Three change. `close_season` refuses an undated season, which had slipped past "has not ended" for that same reason. `promote_season_signups` drops the 14-day rule (#648): a leader closes signups whenever they choose. `wishlist_setup_status` counts an undated next season's open wishlist, as it does a dated future one's, and sorts it last.
+
+**Tests that close "the running season".** Several test files ended the open-ended season with `where ends_at is null`, which now also matches an undated row. They name `starts_at is not null` too, as a migration dating the next season will.
+
+[Full discussion -> #1717](https://github.com/katogaming88/WGA-Raid-Hub/issues/1717).

@@ -6,14 +6,16 @@ import { awardDate, easternToday } from '../lib/dates';
 
 export type SeasonWindow = { name: string; code: string | null; start: string | null; end: string | null };
 
-export type SeasonRow = { code: string; display_name: string; starts_at: string; ends_at: string | null };
+export type SeasonRow = { code: string; display_name: string; starts_at: string | null; ends_at: string | null };
 
 // The tier current today, by the same rule as current_season() (#933): the
 // latest seasons row whose start has passed, or null before the first tier.
+// A season with no date yet (#1717) has not started.
 export function currentSeason(seasons: SeasonRow[], today = easternToday()): SeasonRow | null {
-  return (
-    [...seasons].filter((s) => s.starts_at <= today).sort((a, b) => (a.starts_at < b.starts_at ? 1 : -1))[0] ?? null
+  const started = seasons.filter(
+    (s): s is SeasonRow & { starts_at: string } => s.starts_at !== null && s.starts_at <= today
   );
+  return started.sort((a, b) => (a.starts_at < b.starts_at ? 1 : -1))[0] ?? null;
 }
 
 // Attendance

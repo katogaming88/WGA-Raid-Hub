@@ -180,7 +180,7 @@ export function seasonPerfFetchedText(count: number): string {
     : 'Not fetched yet -- do this before generating Heroic priority.';
 }
 
-export type SeasonRow = { code: string; display_name: string; starts_at: string; ends_at: string | null };
+export type SeasonRow = { code: string; display_name: string; starts_at: string | null; ends_at: string | null };
 
 // closableSeasonCodes(): tiers that started before the current one and are
 // not already in seasonHistory, oldest first.
@@ -189,10 +189,12 @@ export function closableSeasonCodes(
   seasons: SeasonRow[],
   closedCodes: readonly string[]
 ): string[] {
-  if (!current) return [];
+  const currentStart = current?.starts_at;
+  if (!currentStart) return [];
   const closed = new Set(closedCodes);
   return seasons
-    .filter((s) => s.starts_at < current.starts_at && !closed.has(s.code))
+    .filter((s): s is SeasonRow & { starts_at: string } => s.starts_at !== null && s.starts_at < currentStart)
+    .filter((s) => !closed.has(s.code))
     .sort((a, b) => (a.starts_at < b.starts_at ? -1 : 1))
     .map((s) => s.code);
 }

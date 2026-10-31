@@ -485,6 +485,24 @@ describe('fill_upcoming_raid_nights()', () => {
     });
   });
 
+  // A season with no date yet (#1717) matches no raid night, so its bosses
+  // stay off tonight's lineup even with a standing group.
+  it("leaves an undated season's bosses off every night", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1 } = await seed(q);
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      await q("insert into public.seasons (code, display_name) values ('undated-lineup', 'Undated Lineup')");
+      await q(`insert into public.raid_zones (id, wcl_zone_id, name, season, sort_index)
+               values (9002, 99002, 'Next Raid', 'undated-lineup', 0)`);
+      await q(`insert into public.raid_encounters (id, zone_id, wcl_encounter_id, name, sort_index)
+               values (9103, 9002, 99103, 'Next Boss', 1)`);
+      await q('insert into public.boss_groups (team_id, encounter_id, player_id) values (1, 9103, $1)', [p1]);
+      await q('select public.fill_upcoming_raid_nights()');
+      const bosses = await q('select distinct encounter_id from public.raid_night_bosses where team_id = 1');
+      expect(bosses.rows.map((r) => r.encounter_id)).toEqual([FIRST]);
+    });
+  });
+
   it('is scheduled hourly', async () => {
     await withTxn(async ({ q }) => {
       const job = await q("select schedule, command from cron.job where jobname = 'fill-raid-night-lineups'");

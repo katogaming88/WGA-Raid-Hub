@@ -12,7 +12,6 @@ declare
   v_plan jsonb;
   v_step record;
   v_season_name text;
-  v_starts_at date;
   v_reviewer integer;
   v_player_id integer;
 begin
@@ -23,15 +22,9 @@ begin
     raise exception 'Not authorized';
   end if;
 
-  select display_name, starts_at into v_season_name, v_starts_at from public.seasons where code = p_season;
+  select display_name into v_season_name from public.seasons where code = p_season;
   if v_season_name is null then
     raise exception '% is not a season this site knows', p_season;
-  end if;
-
-  -- Not until two weeks before the season starts (#648), so a pick made
-  -- months early is not locked in while raiders still change their minds.
-  if (now() at time zone 'America/New_York')::date < v_starts_at - 14 then
-    raise exception 'Signups for % can be closed from % (14 days before it starts).', v_season_name, v_starts_at - 14;
   end if;
 
   -- 1.

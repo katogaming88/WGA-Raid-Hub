@@ -53,7 +53,7 @@ function LineupReport({ teamId, season, seasons }: { teamId: number; season: str
   const today = easternToday();
   const row = seasons.find((s) => s.code === season)!;
   const end = row.ends_at && row.ends_at < today ? row.ends_at : today;
-  const lineups = bothQueries(useLineupReport(teamId, row.starts_at, end), useEncounters());
+  const lineups = bothQueries(useLineupReport(teamId, row.starts_at ?? today, end), useEncounters());
   const roster = bothQueries(useRosterPlayers(teamId), useBonusRolls(teamId));
   const names = useNames(teamId);
   return (

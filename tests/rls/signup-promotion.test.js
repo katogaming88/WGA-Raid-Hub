@@ -235,26 +235,15 @@ describe('promote_season_signups()', () => {
     });
   });
 
-  it('is refused until 14 days before the season starts (#648)', async () => {
+  // The 14-day rule (#648) is gone (#1717): a leader closes signups whenever
+  // they choose, months ahead or before Blizzard dates the season.
+  it('closes any time, even before the season is dated', async () => {
     await withTxn(async ({ q, asUser }) => {
       const s = await scene(q);
-      // The running season ends today, as the migration adding the next one
-      // sets it (the seed leaves it open-ended).
-      await q(
-        "update public.seasons set ends_at = (now() at time zone 'America/New_York')::date where ends_at is null"
-      );
-      const startIn = (days) =>
-        q(
-          `update public.seasons set starts_at = (now() at time zone 'America/New_York')::date + $2::int,
-                                     ends_at = (now() at time zone 'America/New_York')::date + $2::int
-            where code = $1`,
-          [s.season, days]
-        );
-      await startIn(15);
+      await q('update public.seasons set starts_at = null, ends_at = null where code = $1', [s.season]);
       const p = await preview(asUser, s.team.leader.uid, s);
-      await expect(promote(asUser, s.team.leader.uid, s, p.expected, [])).rejects.toThrow(/14 days before it starts/);
-      await startIn(14);
       await promote(asUser, s.team.leader.uid, s, p.expected, []);
+      expect(await player(q, s.n.first, s.team.teamId)).toBeTruthy();
     });
   });
 

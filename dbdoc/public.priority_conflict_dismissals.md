@@ -102,6 +102,7 @@ erDiagram
   date starts_at
   date ends_at
   timestamp_with_time_zone created_at
+  integer position
 }
 ```
 

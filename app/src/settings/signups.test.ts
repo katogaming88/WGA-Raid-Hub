@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { currentSeason } from '../profile/profile';
+import { seasonOn } from '../calendar/lineup';
 import { addDays, canClose, closeOpensOn, defaultSeason, signupSeasons } from './signups';
 
-const season = (code: string, starts_at: string, ends_at: string | null = null) => ({
+const season = (code: string, starts_at: string | null, ends_at: string | null = null) => ({
   code,
   display_name: `Season ${code}`,
   starts_at,
@@ -29,6 +31,17 @@ describe('signupSeasons()', () => {
     const none = signupSeasons([season('MID2', '2026-08-11'), season('MID3', '2027-01-20')], new Set(), today);
     expect(defaultSeason(none)?.code).toBe('MID3');
     expect(defaultSeason([])).toBeNull();
+  });
+});
+
+// A season with no date yet (#1717): never current, on no raid night, and
+// off the signup list until #1714 shows it.
+describe('an undated season', () => {
+  const seasons = [season('MID2', '2026-08-11'), season('MID3', null)];
+  it('is never current, matches no night, and is not listed yet', () => {
+    expect(currentSeason(seasons, '2099-01-01')?.code).toBe('MID2');
+    expect(seasonOn(seasons, '2099-01-01')).toBe('MID2');
+    expect(signupSeasons(seasons, new Set(), '2026-10-23')).toEqual([]);
   });
 });
 

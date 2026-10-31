@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.226.0] - 2026-10-31
+
+### Backend
+
+- A season can be on file before Blizzard announces its date (#1717,
+  the database half of #1714). It is never treated as the current
+  season, never matches a raid night, and its signups don't close by
+  themselves until it is dated; dating it later is one short migration.
+  Team leaders can also close signups whenever they choose: the rule that
+  they could only close in the last 14 days before a season starts is
+  gone. No undated season is added yet: Midnight Season 3 comes with
+  #1714's page changes.
+
+### Project
+
+- Database tests for undated seasons, the schema docs, the decision log
+  and RLS.md, and the time log's row.
+- The new app reads a season with no date as not started: never the
+  current season, on no raid night, and left off Settings > Signups
+  until #1714 shows it.
+
 ## [3.225.0] - 2026-10-31
 
 ### Backend

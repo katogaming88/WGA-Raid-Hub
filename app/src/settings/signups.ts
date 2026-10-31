@@ -10,8 +10,8 @@ export type SignupSeason = {
   open: boolean;
 };
 
-// Closing signups (#1467) is refused until 14 days before the season starts
-// (#648); the page says so instead of offering a Close that fails.
+// The page holds Close back until 14 days before the season starts (#648).
+// The database no longer refuses earlier (#1717); #1714 drops this window.
 export const CLOSE_WINDOW_DAYS = 14;
 
 export function addDays(isoDate: string, days: number): string {
@@ -32,11 +32,13 @@ export const hasStarted = (season: SignupSeason, today: string): boolean => seas
 // open (Midnight Season 2 is started and still open on two teams). Soonest
 // first.
 export function signupSeasons(
-  seasons: { code: string; display_name: string; starts_at: string; ends_at: string | null }[],
+  seasons: { code: string; display_name: string; starts_at: string | null; ends_at: string | null }[],
   openCodes: ReadonlySet<string>,
   today: string
 ): SignupSeason[] {
+  // A season with no date yet (#1717) is left out until #1714 shows one.
   return seasons
+    .filter((s): s is typeof s & { starts_at: string } => s.starts_at !== null)
     .map((s) => ({
       code: s.code,
       name: s.display_name,
