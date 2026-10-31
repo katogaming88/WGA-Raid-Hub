@@ -10,8 +10,8 @@ export type SignupSeason = {
   open: boolean;
 };
 
-// Closing signups (#1467) is refused until 14 days before the season starts
-// (#648); the page says so instead of offering a Close that fails.
+// The page holds Close back until 14 days before the season starts (#648).
+// The database no longer refuses earlier (#1717); #1714 drops this window.
 export const CLOSE_WINDOW_DAYS = 14;
 
 export function addDays(isoDate: string, days: number): string {

@@ -3128,7 +3128,7 @@ Shipped: 20261031095545_team_discord_settings.sql
 
 Shipped: 20261031114741_undated_seasons.sql
 
-**Undated seasons, added an expansion at a time** (Kat, 2026-10-30, #1714). Blizzard dates a season about two weeks ahead, which left no window to collect signups early. `seasons.starts_at` may now be empty. An undated season also has no end (`seasons_window_check`), and `seasons_no_overlap` skips undated rows, so it is never the current season and matches no raid date. Dating one stays a short migration: its start, and the running season's end the day before, in that order.
+**Undated seasons, added an expansion at a time** (Kat, 2026-10-30, #1714). Blizzard dates a season about two weeks ahead, which left no window to collect signups early. `seasons.starts_at` may now be empty. An undated season also has no end (`seasons_window_check`), and `seasons_no_overlap` skips undated rows, so it is never the current season and matches no raid date. Dating one stays a short migration: the running season's end first, then the next season's start the day after, in that order. The other way round, the new start overlaps the open-ended running season and `seasons_no_overlap` refuses it (fresh-agent review).
 
 **`position` orders them.** Dated seasons sort by date; undated ones come after every dated one by `position`, so the next season is the first undated one. Existing rows are numbered by date, and a new row takes the next number from an identity unless its migration names one, so an expansion's seasons inserted in order land in order.
 

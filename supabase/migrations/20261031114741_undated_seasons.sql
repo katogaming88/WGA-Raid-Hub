@@ -5,8 +5,9 @@
 -- on file with a start date left no window to collect signups early. Now:
 --
 -- * seasons.starts_at may be empty. An expansion's seasons go in together,
---   undated; each is dated later by one short migration that sets its start
---   and the previous season's end, the day before.
+--   undated; each is dated later by one short migration that ends the
+--   running season, then sets the next one's start the day after (the other
+--   order overlaps the open-ended running season and is refused).
 -- * An undated season has no end either, and the no-overlap and window
 --   checks skip it, so it is never the current season and matches no raid
 --   date.

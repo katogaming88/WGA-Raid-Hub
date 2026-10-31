@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |      2 h 50 m |
+| Phase 1: For the guild test        |      3 h 10 m |
 | Phase 2: Before the new site goes live |       0 m |
 | Phase 3: After the new site goes live  |       0 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **135 h 1 m** |
+| **All revamp work**                | **135 h 21 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -498,6 +498,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:50-11:00 AM | PR #1715 (#1712): the re-review approved (a test renamed); Kat merged; branches cleaned up | Phase 1: For the guild test (#1712) | 10 m | ~8 m build, ~2 m Kat | not read | |
 | 11:00-11:55 AM | #1717 filed as #1714's database half (blocking it, its #1487 row ahead of #1714); undated seasons: `starts_at` may be empty, the overlap and window checks skip undated rows, a `position` order, `close_season` refuses one, the 14-day close rule gone, the wishlist nudge counts an undated next season; Midnight Season 3 moved to #1714 since today's pages would sort an undated row first; tests per function and six older tests that ended "the running season", generated docs, decision log, RLS.md, stamp, changelog, this row | Phase 1: For the guild test (#1717) | 55 m | ~50 m build, ~5 m Kat | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
 | 12:20-12:30 PM | PR #1718 (#1717): CodeRabbit's note: two undated seasons' wishlist rows now sort by position, with a test opening them out of order | Phase 1: For the guild test (#1717) | 10 m | ~10 m build | not read | The fresh-agent review and merge not yet counted |
+| 12:30-12:50 PM | PR #1718 (#1717): the fresh-agent review approved with three notes: the dating order (end the running season first, or the new start overlaps it) fixed in the decision log, the migration's comment and the new-tier runbook, which now dates an undated row instead of inserting it; a test that an undated season's bosses stay off every raid night; an old comment on the signup page's 14-day window; Kat asked how undated seasons are ordered | Phase 1: For the guild test (#1717) | 20 m | ~15 m build, ~5 m Kat | not read | Merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
