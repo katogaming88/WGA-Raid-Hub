@@ -140,9 +140,10 @@ export function useSignupSeasons(teamId: number) {
     if (error) return { data: null, error };
     const rows = (data ?? []) as {
       season_code: string;
-      seasons: { starts_at: string; display_name: string } | null;
+      seasons: { starts_at: string | null; display_name: string } | null;
     }[];
-    const startOf = (r: (typeof rows)[number]) => r.seasons?.starts_at ?? '';
+    // An undated season (#1714) is the newest.
+    const startOf = (r: (typeof rows)[number]) => (r.seasons ? (r.seasons.starts_at ?? '9999-12-31') : '');
     return {
       data: [...rows]
         .sort((a, b) => (startOf(a) < startOf(b) ? 1 : -1))

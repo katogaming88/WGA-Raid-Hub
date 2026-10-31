@@ -339,6 +339,32 @@ Deno.test("a raid filed under an earlier tier keeps its tier and is read from th
   );
 });
 
+// A raid filed under a season with no date yet (#1714) reads nothing extra:
+// it counts from the current tier's start, not the start of the guild's logs.
+Deno.test('a raid filed under an undated season adds no earlier read', async () => {
+  const { deps, calls } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: { raidProgression: TWO_RAIDS.raidProgression } },
+      currentSeason: 'MID3',
+      seasonStart: '2026-11-10',
+      zones: { 44: 'MID4' },
+      tiers: {}
+    },
+    responses: [
+      tokenResponse(),
+      reportsResponse([REPORT_N]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }])
+    ]
+  });
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
+  assertEquals(res.status, 200);
+  const fetched = reportsCalls(calls);
+  assertEquals(fetched.length, 1);
+  assertMatch(fetched[0].body ?? '', new RegExp(`page: 1, startTime: ${TIER3_START_MS}\\)`));
+});
+
 // Raids filed under two earlier tiers share one read, from the earlier of
 // the two starts up to this tier's.
 Deno.test("raids filed under two earlier tiers share one read, from the earlier start to this tier's", async () => {
@@ -1107,28 +1133,6 @@ Deno.test('a raid with no bosses filed under an earlier tier costs no read', asy
   assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [], reports: 2 } });
   assertEquals(reportsCalls(calls).length, 1);
   assertEquals(db.calls.filter((c) => c.method === 'tierStart').length, 0);
-});
-
-// An earlier tier with no start date reads every report before this tier's
-// start, as a current tier with none reads every report.
-Deno.test('a raid filed under an earlier tier with no start date reads every report before this tier', async () => {
-  const { deps, calls } = testDeps({
-    state: { teams: [TEAM], configs: { 1: ONE_RAID }, zones: { 44: 'MID1' } },
-    responses: [
-      tokenResponse(),
-      reportsResponse([]),
-      zoneResponse('Test Raid Zone', ENCOUNTERS),
-      reportsResponse(REPORTS)
-    ]
-  });
-  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
-  assertEquals(res.body.errors, []);
-  const fetched = reportsCalls(calls);
-  assertEquals(fetched.length, 2);
-  assertMatch(
-    fetched[1].body ?? '',
-    new RegExp(`reports\\(guildID: 777, limit: 50, page: 1, endTime: ${TIER_START_MS}\\)`)
-  );
 });
 
 // A page of the earlier tier's reports Warcraft Logs does not return leaves a

@@ -12,6 +12,38 @@ answers to.
 
 ---
 
+## [3.227.0] - 2026-10-31
+
+### Frontend
+
+- Midnight Season 3 shows on the Signups tab before Blizzard announces
+  its date, so a team can open signups for it now (#1714). The site
+  lists every season that has started plus only the next one, newest
+  first; later seasons stay hidden until the one before them starts. A
+  raider's wishlist can be for it once its wishlist is open.
+
+### Backend
+
+- Midnight Season 3 is on file with no start date (#1714). It isn't the
+  current season and matches no raid night until a later migration
+  dates it.
+
+### Functions
+
+- `wcl-progression-sync`: a raid filed under a season with no date yet
+  counts from the current season's start, instead of reading a team's
+  whole Warcraft Logs history (#1714).
+
+### Project
+
+- The new app's Settings > Signups offers a season Blizzard hasn't
+  dated ("starts on a date Blizzard has not announced yet"), and the
+  team leader can close signups any time: the two-week wait is gone
+  (#1714). Every season list in the app shows started seasons plus the
+  next one.
+- Tests for the season list on both sites, the signup page, and the
+  progression sync; the decision log and the time log's rows.
+
 ## [3.226.0] - 2026-10-31
 
 ### Backend

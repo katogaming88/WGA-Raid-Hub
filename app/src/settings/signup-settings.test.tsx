@@ -45,12 +45,13 @@ function handlers({
   rpcs = []
 }: {
   role?: 'officer' | 'team_leader';
-  startsIn: number;
+  // Days until MID3 starts; null for a season Blizzard has not dated (#1714).
+  startsIn: number | null;
   open: boolean;
   rpcs?: [string, Record<string, unknown>][];
 }): FakeHandlers {
   const base = seededHandlers();
-  const starts = addDays(easternToday(), startsIn);
+  const starts = startsIn === null ? null : addDays(easternToday(), startsIn);
   return seededHandlers({
     session: fakeSession({ battlenet: 'Katorri#1', discord: { id: 'd', name: 'Katorri' } }),
     rpc(name, args) {
@@ -67,7 +68,12 @@ function handlers({
       if (read.table === 'seasons')
         return {
           data: [
-            { code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-01-01', ends_at: addDays(starts, -1) },
+            {
+              code: 'MID2',
+              display_name: 'Midnight Season 2',
+              starts_at: '2026-01-01',
+              ends_at: starts && addDays(starts, -1)
+            },
             { code: 'MID3', display_name: 'Midnight Season 3', starts_at: starts, ends_at: null }
           ]
         };
@@ -88,10 +94,20 @@ describe('Signup settings', () => {
     expect(rpcs[0]).toEqual(['set_team_season', { p_team_id: 1, p_season_code: 'MID3', p_signups_open: true }]);
   });
 
-  it('holds Close until two weeks before the season starts (#648)', async () => {
-    renderApp(PATH, handlers({ startsIn: 30, open: true }));
-    expect(await screen.findByRole('button', { name: 'Close signups…' })).toBeDisabled();
-    expect(screen.getByText(/You can close signups from/)).toBeInTheDocument();
+  // The 14-day wait (#648) is gone (#1714): the leader closes whenever they
+  // choose, even months ahead.
+  it('lets the team leader close signups any time', async () => {
+    renderApp(PATH, handlers({ startsIn: 90, open: true }));
+    expect(await screen.findByRole('button', { name: 'Close signups…' })).toBeEnabled();
+  });
+
+  it('opens signups for a season Blizzard has not dated yet', async () => {
+    const rpcs: [string, Record<string, unknown>][] = [];
+    renderApp(PATH, handlers({ startsIn: null, open: false, rpcs }));
+    expect(await screen.findByRole('combobox', { name: 'Season' })).toHaveValue('MID3');
+    expect(screen.getByText('Midnight Season 3 starts on a date Blizzard has not announced yet.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Open signups' }));
+    await expect.poll(() => rpcs.length).toBe(1);
   });
 
   it('is read-only for an officer', async () => {

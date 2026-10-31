@@ -1,22 +1,29 @@
 import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import { easternToday } from '../lib/dates';
+import { visibleSeasons } from '../profile/profile';
 import { signupSeasons, type PromotionPreview, type SignupSeason } from './signups';
 
 const settingsKey = (teamId: number) => ['signup-settings', teamId] as const;
 
-// Every season, and which of them this team has signups open for (#939: one
-// team_seasons row per season, no row means closed).
+// The seasons a team sees (started ones plus the next, #1714), and which of
+// them this team has signups open for (#939: one team_seasons row per season,
+// no row means closed).
 export function useSignupSettings(teamId: number) {
   return useSupabaseQuery<SignupSeason[]>(settingsKey(teamId), async (client) => {
     const [seasons, rows] = await Promise.all([
-      client.from('seasons').select('code, display_name, starts_at, ends_at').order('starts_at'),
+      client
+        .from('seasons')
+        .select('code, display_name, starts_at, ends_at')
+        .order('starts_at', { nullsFirst: false })
+        .order('position'),
       // team-read-guard: one row per season the team has, a handful
       client.from('team_seasons').select('season_code, signups_open').eq('team_id', teamId)
     ]);
     if (seasons.error) return { data: null, error: seasons.error };
     if (rows.error) return { data: null, error: rows.error };
     const open = new Set((rows.data ?? []).filter((r) => r.signups_open).map((r) => r.season_code));
-    return { data: signupSeasons(seasons.data ?? [], open, easternToday()), error: null };
+    const today = easternToday();
+    return { data: signupSeasons(visibleSeasons(seasons.data ?? [], today), open, today), error: null };
   });
 }
 
