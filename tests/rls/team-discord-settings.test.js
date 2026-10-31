@@ -1,7 +1,18 @@
 // #1712: a team's Discord settings, read and changed by its officers through
 // functions, with the old bot's columns kept in step.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedTeam, OFFICER_T1, OFFICER_T2, RAIDER_T1, SITE_ADMIN } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  seedTeam,
+  OFFICER_T1,
+  OFFICER_T2,
+  RAIDER_T1,
+  SITE_ADMIN,
+  TEAM_LEADER_T1,
+  GUILD_OFFICER,
+  seedMember
+} from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -46,7 +57,7 @@ const verify = (q, uid, server, at = 'now()') =>
   );
 const txn = (fn) =>
   withTxn(async (ctx) => {
-    for (const uid of [OFFICER_T1, OFFICER_T2])
+    for (const uid of [OFFICER_T1, OFFICER_T2, TEAM_LEADER_T1, SITE_ADMIN, GUILD_OFFICER])
       for (const server of [SERVER, OTHER_SERVER]) await verify(ctx.q, uid, server);
     return fn(ctx);
   });
@@ -271,6 +282,71 @@ describe('team Discord settings', () => {
       await expect(asUser(SITE_ADMIN, 'select public.set_team_discord_server(999999, $1)', [SERVER])).rejects.toThrow(
         /team does not exist/
       );
+    });
+  });
+
+  it("lets the team's Owner and a site admin change it, and refuses an Assistant, an archived Officer and a guild Admin not on the team", async () => {
+    await txn(async ({ q, asUser }) => {
+      await asUser(TEAM_LEADER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
+      await asUser(SITE_ADMIN, "select public.set_team_discord_post(1, 'rsvp_changes', $1, null)", [CH_RSVPS]);
+      expect((await settings(asUser, TEAM_LEADER_T1)).posts[2].channel_id).toBe(CH_RSVPS);
+
+      const assistant = await seedMember(q, { teamId: 1 });
+      await q("update public.team_members set rank = 'assistant' where id = $1", [assistant.memberId]);
+      const archived = await seedMember(q, { teamId: 1, role: 'officer' });
+      await q('update public.team_members set archived_at = now() where id = $1', [archived.memberId]);
+      for (const uid of [assistant.uid, archived.uid, GUILD_OFFICER]) {
+        await expect(settings(asUser, uid)).rejects.toThrow(/Not authorized/);
+        await expect(asUser(uid, "select public.set_team_discord_post(1, 'rsvp_changes', null, null)")).rejects.toThrow(
+          /Not authorized/
+        );
+      }
+    });
+  });
+
+  it('with the permission taken off, every write is refused too', async () => {
+    await txn(async ({ q, asUser }) => {
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
+      const id = (await sheet(asUser, OFFICER_T1)).rows[0].id;
+      await q("delete from public.team_rank_permissions where team_id = 1 and permission = 'change_discord_settings'");
+      for (const [sql, params] of [
+        ['select public.set_team_discord_server(1, $1)', [OTHER_SERVER]],
+        ["select public.set_team_discord_post(1, 'rsvp_changes', $1, null)", [CH_RSVPS]],
+        ['select public.save_team_discord_signup_sheet(1, $1, $2, $3, 2, null, null)', [id, CH_TUESDAY, [3]]],
+        ['select public.remove_team_discord_signup_sheet(1, $1)', [id]],
+        ["select public.set_team_discord_quiet_hours(1, '00:00', '08:00', 'UTC')", []]
+      ]) {
+        await expect(asUser(OFFICER_T1, sql, params)).rejects.toThrow(/Not authorized/);
+      }
+    });
+  });
+
+  it('a team that picks its first server here is not on the old bot, and an old-bot team leaves it when its server changes', async () => {
+    await txn(async ({ q, asUser }) => {
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
+      expect((await config(q)).old_bot).toBe(false);
+      await q('update public.team_discord_config set old_bot = true where team_id = 1');
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [OTHER_SERVER]);
+      expect((await config(q)).old_bot).toBe(false);
+    });
+  });
+
+  // The shape the migration leaves an old-bot team in: its RSVP and signup
+  // channels filled with the officer channel the old bot fell back to.
+  it('moving officer requests on an old-bot team leaves RSVP changes and the signup sheet where they post', async () => {
+    await txn(async ({ q, asUser }) => {
+      await q(
+        `insert into public.team_discord_config
+           (team_id, guild_id, officer_channel_id, attendance_channel_id, signup_channel_id, old_bot)
+         values (1, $1, $2, $2, $2, true)`,
+        [SERVER, CH_OFFICERS]
+      );
+      await asUser(OFFICER_T1, "select public.set_team_discord_post(1, 'officer_requests', $1, null)", [CH_TUESDAY]);
+      expect(await config(q)).toMatchObject({
+        officer_channel_id: CH_TUESDAY,
+        attendance_channel_id: CH_OFFICERS,
+        signup_channel_id: CH_OFFICERS
+      });
     });
   });
 

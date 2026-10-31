@@ -6125,6 +6125,13 @@
           "default": "now()"
         },
         {
+          "name": "old_bot",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "The old bot on the VM serves this team (#1712): it reads only rows with this on. On for the teams it served when #1712 shipped; off for any team that picks its server later. Goes with the old bot at #960."
+        },
+        {
           "name": "quiet_hours_start",
           "type": "time without time zone",
           "nullable": true,

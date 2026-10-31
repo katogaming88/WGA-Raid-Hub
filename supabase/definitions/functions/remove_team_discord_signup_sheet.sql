@@ -19,6 +19,8 @@ begin
     raise exception 'Not authorized';
   end if;
 
+  -- The team's lock, as the save takes, so a save in flight finishes first.
+  perform 1 from team_discord_config c where c.team_id = p_team_id for update;
   delete from team_discord_signup_sheets s
    where s.id = p_sheet_id and s.team_id = p_team_id
   returning * into v_old;

@@ -3032,6 +3032,7 @@ export type Database = {
           guild_id: string
           mplus_ping_role_id: string | null
           officer_channel_id: string | null
+          old_bot: boolean
           quiet_hours_end: string | null
           quiet_hours_start: string | null
           quiet_hours_timezone: string | null
@@ -3049,6 +3050,7 @@ export type Database = {
           guild_id: string
           mplus_ping_role_id?: string | null
           officer_channel_id?: string | null
+          old_bot?: boolean
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           quiet_hours_timezone?: string | null
@@ -3066,6 +3068,7 @@ export type Database = {
           guild_id?: string
           mplus_ping_role_id?: string | null
           officer_channel_id?: string | null
+          old_bot?: boolean
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           quiet_hours_timezone?: string | null

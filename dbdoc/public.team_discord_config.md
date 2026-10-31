@@ -20,6 +20,7 @@ A team's Discord server, quiet hours and the old bot's channel and ping role ids
 | roster_script_url | text |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
+| old_bot | boolean | false | false |  |  | The old bot on the VM serves this team (#1712): it reads only rows with this on. On for the teams it served when #1712 shipped; off for any team that picks its server later. Goes with the old bot at #960. |
 | quiet_hours_start | time without time zone |  | true |  |  | When quiet hours start, in quiet_hours_timezone (#1712). Posts made in quiet hours are held until they end. Empty with the end and the time zone for off. |
 | quiet_hours_end | time without time zone |  | true |  |  | When quiet hours end, in quiet_hours_timezone (#1712). Earlier than the start when they run past midnight. |
 | quiet_hours_timezone | text |  | true |  |  | The time zone quiet hours are in, an IANA name such as America/New_York (#1712). |
@@ -60,6 +61,7 @@ erDiagram
   text roster_script_url
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  boolean old_bot
   time_without_time_zone quiet_hours_start
   time_without_time_zone quiet_hours_end
   text quiet_hours_timezone

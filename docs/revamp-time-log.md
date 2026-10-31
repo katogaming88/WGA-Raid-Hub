@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |      1 h 25 m |
+| Phase 1: For the guild test        |      1 h 35 m |
 | Phase 2: Before the new site goes live |       0 m |
 | Phase 3: After the new site goes live  |       0 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **133 h 36 m** |
+| **All revamp work**                | **133 h 46 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -494,6 +494,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:32-9:52 AM | Where we left off; the 35 open issues with no phase, placed one by one by Kat (32 given a milestone, #708, #1407 and #1336 closed); 26 joined #1487 as rows, which moves phases 1 and 2 to about Dec 17 to Jan 1 and going live to about mid-January | Planning and design | 20 m | ~12 m build, ~8 m Kat | not read | |
 | 9:52-10:10 AM | #1712: two new tables (a row per kind of post, signup sheets), quiet hours with their own time zone, `change_discord_settings` on for Officers, six functions with audit rows; the old bot's columns kept in step, its three unique-channel rules dropped, today's channels copied in; changing the server clears the posts and sheets; database tests, generated docs, decision log, RLS.md, stamp, changelog, this row | Phase 1: For the guild test (#1712) | 20 m | ~20 m build | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
 | 10:20-10:40 AM | PR #1715 (#1712): CodeRabbit's notes. Kat chose the recorded list for its security note (an officer could point posts at another guild's server from the browser console): a `discord_server_access` table the Discord-reading call writes, and the server save takes only a server recorded for the caller in the last hour; a plain message for an unknown team; a test for another team's sheet ids; the audit helper note declined; tests, generated docs, decision log, RLS.md | Phase 1: For the guild test (#1712) | 20 m | ~15 m build, ~5 m Kat | not read | The fresh-agent review and merge not yet counted |
+| 10:40-10:50 AM | PR #1715 (#1712): the fresh-agent review (changes requested): the old bot's RSVP and signup channels filled with the officer channel so moving officer requests moves nothing else; `old_bot` marks the teams the old bot serves and the bot reads only those; the first pick's race and the sheet remove's lock; the backup guide; tests for the Owner, a site admin, an Assistant, an archived Officer, a guild Admin, writes after the permission is off; Kat asked what the old bot is | Phase 1: For the guild test (#1712) | 10 m | ~8 m build, ~2 m Kat | not read | The re-review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

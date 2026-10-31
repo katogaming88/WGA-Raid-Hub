@@ -3,7 +3,7 @@
   "pieces": {
     "frontend": "3.220.0",
     "db": "3.225.0",
-    "bot": "3.214.0",
+    "bot": "3.225.0",
     "functions": {
       "battlenet-characters": "3.205.0",
       "blizzard-gear-sync": "3.219.0",

@@ -36,6 +36,8 @@
 -- Changing the server clears every post's channel and ping role and removes
 -- the team's signup sheets: channel ids are global in Discord, so a channel
 -- left behind would keep the bot posting into the old server.
+-- It also takes the team off the old bot, which has no channels left to post
+-- in for it.
 --
 -- The old bot on the VM keeps reading the old columns until #959 and #960 move
 -- posting into the site, so saving the three kinds of post writes them too:
@@ -55,12 +57,21 @@
 -- The three one-team-per-channel unique constraints come off: teams in one
 -- server may share a channel now. officer_channel_id may be empty, for a team
 -- that has picked its server and nothing else yet.
+--
+-- The old bot serves only the teams it serves today. old_bot marks them, and
+-- the bot reads only those rows, so a team that picks its first server here
+-- is not offered in its slash commands, and gets no signup sheet in its
+-- officer channel, before #959 and #960 (fresh-agent review). Those teams
+-- also get their empty RSVP and signup channels filled with the officer
+-- channel, where the old bot already posts them, so moving officer requests
+-- later moves nothing else (fresh-agent review).
 
 alter table public.team_discord_config
   drop constraint team_discord_config_officer_channel_id_key,
   drop constraint team_discord_config_attendance_channel_id_key,
   drop constraint team_discord_config_signup_channel_id_key,
   alter column officer_channel_id drop not null,
+  add column old_bot boolean not null default false,
   add column quiet_hours_start time,
   add column quiet_hours_end time,
   add column quiet_hours_timezone text,
@@ -150,6 +161,17 @@ create policy "Claude readers read discord_server_access" on public.discord_serv
 
 revoke all on table public.discord_server_access from public, anon, authenticated, service_role;
 grant select, insert, update, delete on table public.discord_server_access to service_role;
+
+comment on column public.team_discord_config.old_bot is
+  'The old bot on the VM serves this team (#1712): it reads only rows with this on. On for the teams it served when #1712 shipped; off for any team that picks its server later. Goes with the old bot at #960.';
+
+-- The teams the old bot serves today, with the channels it falls back to
+-- written in, so moving officer requests leaves RSVP changes and the signup
+-- sheet where they post now.
+update public.team_discord_config
+   set old_bot = true,
+       attendance_channel_id = coalesce(attendance_channel_id, officer_channel_id),
+       signup_channel_id = coalesce(signup_channel_id, officer_channel_id);
 
 -- What the old columns already say, so the new page opens on what the bot
 -- posts today.
@@ -255,16 +277,17 @@ begin
     raise exception 'Pick a server you and the bot are both in';
   end if;
 
-  select c.guild_id into v_old from team_discord_config c where c.team_id = p_team_id for update;
-  if v_old = p_server_id then
-    return;
-  end if;
-
-  if v_old is null then
-    insert into team_discord_config (team_id, guild_id) values (p_team_id, p_server_id);
-  else
+  -- A team's first pick inserts its row. Two officers making it at once: the
+  -- second finds the first's row and changes it as any later pick does.
+  insert into team_discord_config (team_id, guild_id) values (p_team_id, p_server_id)
+  on conflict (team_id) do nothing;
+  if not found then
+    select c.guild_id into v_old from team_discord_config c where c.team_id = p_team_id for update;
+    if v_old = p_server_id then
+      return;
+    end if;
     update team_discord_config
-       set guild_id = p_server_id,
+       set guild_id = p_server_id, old_bot = false,
            officer_channel_id = null, attendance_channel_id = null, signup_channel_id = null,
            mplus_ping_role_id = null, roster_ping_role_id = null, rsvp_ping_role_id = null,
            updated_at = now()
@@ -487,6 +510,8 @@ begin
     raise exception 'Not authorized';
   end if;
 
+  -- The team's lock, as the save takes, so a save in flight finishes first.
+  perform 1 from team_discord_config c where c.team_id = p_team_id for update;
   delete from team_discord_signup_sheets s
    where s.id = p_sheet_id and s.team_id = p_team_id
   returning * into v_old;

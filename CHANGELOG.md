@@ -29,12 +29,20 @@ answers to.
   officer and the bot were both just found in, so it can't be pointed
   at another guild's server from the browser console. Changing the
   server clears the channels. The old bot keeps posting where it does today: saving the
-  original three kinds also updates the columns it reads.
+  original three kinds also updates the columns it reads, and a team
+  set up on the new page isn't picked up by it.
+
+### Bot
+
+- The bot reads only the teams it served before the site took over
+  Discord settings (#1712). A team that sets up Discord on the new page
+  waits for the site to post for it (#959, #960), instead of showing up
+  in the bot's slash commands with posts that fail.
 
 ### Project
 
 - Database tests for the Discord settings functions, the schema docs,
-  the decision log and RLS.md, and the time log's rows for 2026-10-29
+  the decision log, RLS.md and the backup guide, and the time log's rows for 2026-10-29
   and 2026-10-31.
 
 ## [3.224.2] - 2026-10-29

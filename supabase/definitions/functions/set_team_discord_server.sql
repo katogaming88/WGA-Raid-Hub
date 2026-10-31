@@ -31,16 +31,17 @@ begin
     raise exception 'Pick a server you and the bot are both in';
   end if;
 
-  select c.guild_id into v_old from team_discord_config c where c.team_id = p_team_id for update;
-  if v_old = p_server_id then
-    return;
-  end if;
-
-  if v_old is null then
-    insert into team_discord_config (team_id, guild_id) values (p_team_id, p_server_id);
-  else
+  -- A team's first pick inserts its row. Two officers making it at once: the
+  -- second finds the first's row and changes it as any later pick does.
+  insert into team_discord_config (team_id, guild_id) values (p_team_id, p_server_id)
+  on conflict (team_id) do nothing;
+  if not found then
+    select c.guild_id into v_old from team_discord_config c where c.team_id = p_team_id for update;
+    if v_old = p_server_id then
+      return;
+    end if;
     update team_discord_config
-       set guild_id = p_server_id,
+       set guild_id = p_server_id, old_bot = false,
            officer_channel_id = null, attendance_channel_id = null, signup_channel_id = null,
            mplus_ping_role_id = null, roster_ping_role_id = null, rsvp_ping_role_id = null,
            updated_at = now()

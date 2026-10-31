@@ -54,7 +54,10 @@ async function loadTeamConfigs(supabase: SupabaseClient): Promise<TeamConfig[]> 
     .from('team_discord_config')
     .select(
       'team_id, guild_id, officer_channel_id, attendance_channel_id, signup_channel_id, mplus_ping_role_id, roster_ping_role_id, rsvp_ping_role_id, apps_script_url, roster_script_url, teams(slug, name)'
-    );
+    )
+    // Only the teams this bot served when the site took over Discord
+    // settings (#1712); a team set up on the site waits for #959 and #960.
+    .eq('old_bot', true);
   if (error) throw new Error(`team_discord_config query failed: ${error.message}`);
 
   return ((data ?? []) as unknown as TeamDiscordConfigRow[]).map((row): TeamConfig => {
