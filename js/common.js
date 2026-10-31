@@ -2897,7 +2897,12 @@ function fetchSupabaseSeasons() {
         console.warn('Supabase seasons query failed.', result.error.message);
         return [];
       }
-      var rows = result.data || [];
+      // Oldest first, undated last in the order read (by position). Sorted
+      // here too, so the list never depends on the read's order.
+      var rows = (result.data || []).slice().sort(function (a, b) {
+        if (!a.starts_at || !b.starts_at) return (a.starts_at ? 0 : 1) - (b.starts_at ? 0 : 1);
+        return a.starts_at < b.starts_at ? -1 : a.starts_at > b.starts_at ? 1 : 0;
+      });
       var today = easternToday();
       var shown = [];
       for (var i = 0; i < rows.length; i++) {
