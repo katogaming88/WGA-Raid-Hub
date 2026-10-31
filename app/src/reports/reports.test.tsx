@@ -259,6 +259,23 @@ describe('BiS demand page', () => {
     const read = client.reads.find((r) => r.table === 'bis_demand_vs_awards')!;
     expect(read.filters).toContainEqual(['eq', 'season', 'MID2']);
   });
+
+  it('leaves a season that has not started out of the picker (#1714)', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/officer/reports/bis-demand',
+      handlers({
+        ...TABLES,
+        seasons: [...SEASONS, { code: 'MID3', display_name: 'Midnight Season 3', starts_at: null, ends_at: null }],
+        bis_demand_vs_awards: []
+      })
+    );
+    const picker = await screen.findByLabelText('Season');
+    expect(
+      within(picker)
+        .getAllByRole('option')
+        .map((o) => o.textContent)
+    ).toEqual(['Midnight Season 2', 'Midnight Season 1']);
+  });
 });
 
 describe('Loot pace page', () => {

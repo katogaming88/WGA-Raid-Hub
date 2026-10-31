@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { useSeasons } from '../calendar/useCalendar';
 import { DataState } from '../components/DataState';
 import { useTeam } from '../data/address';
+import { easternToday } from '../lib/dates';
 import { currentSeason, difficultyOf, type SeasonRow } from '../profile/profile';
 import { classColor, firstName, toRoster } from '../roster/roster';
 import { useNames } from '../roster/useNames';
@@ -14,7 +15,8 @@ import { useBisDemand, useLootPace, usePriorityHealth, type BisDemandRow, type P
 // site's tab-reports.js reports that pick a season.
 
 // The season list, newest first, opening on the current one. A season with
-// nothing in a report still shows, so an officer can see it is clean.
+// nothing in a report still shows, so an officer can see it is clean. One that
+// has not started yet is left out (Kat, 2026-10-31, #1714).
 export function SeasonReport({
   title,
   intro,
@@ -29,8 +31,10 @@ export function SeasonReport({
   return (
     <ReportPage title={title} intro={intro}>
       <DataState query={seasons} label="the seasons">
-        {(rows) => {
-          const season = picked ?? currentSeason(rows)?.code ?? rows[rows.length - 1]?.code ?? null;
+        {(all) => {
+          const today = easternToday();
+          const rows = all.filter((s) => s.starts_at !== null && s.starts_at <= today);
+          const season = picked ?? currentSeason(rows, today)?.code ?? null;
           if (!season) {
             return (
               <div className="card placeholder">

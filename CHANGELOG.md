@@ -40,9 +40,11 @@ answers to.
   dated ("starts on a date Blizzard has not announced yet"), and the
   team leader can close signups any time: the two-week wait is gone
   (#1714). Every season list in the app shows started seasons plus the
-  next one.
-- Tests for the season list on both sites, the signup page, and the
-  progression sync; the decision log and the time log's rows.
+  next one, except the Reports season picker, which lists only started
+  seasons.
+- Tests for the season list on both sites, the signup page, the Reports
+  picker, the wishlist and Sign up button with an undated season, and
+  the progression sync; the decision log and the time log's rows.
 
 ## [3.226.0] - 2026-10-31
 
