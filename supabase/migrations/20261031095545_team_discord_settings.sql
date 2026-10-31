@@ -21,10 +21,17 @@
 --   set_team_discord_quiet_hours() change one thing each, writing an audit
 --   row only when something changed.
 --
--- The server is picked by the team's officers now, not site admins. These
--- functions only check an id looks like a Discord id; that the bot and the
--- officer are both in that server is checked by the call that reads Discord
--- (#994's other half).
+-- The server is picked by the team's officers now, not site admins, and only
+-- from servers they share with the bot. The function that reads Discord
+-- (#994's other half) records each server it finds the bot and the signed-in
+-- person both in, in discord_server_access, and set_team_discord_server()
+-- refuses a server not recorded for the caller in the last hour. Without it
+-- anyone with the permission could call the function from the browser
+-- console with another guild's server, and the bot, which sits in many
+-- guilds' servers, would post the team's applications and RSVPs there
+-- (CodeRabbit). Channels and ping roles are only checked to look like Discord
+-- ids here: the posting function (#959) refuses one outside the team's
+-- server.
 --
 -- Changing the server clears every post's channel and ping role and removes
 -- the team's signup sheets: channel ids are global in Discord, so a channel
@@ -122,6 +129,28 @@ grant select, insert, update, delete on table public.team_discord_posts to servi
 revoke all on table public.team_discord_signup_sheets from public, anon, authenticated, service_role;
 grant select, insert, update, delete on table public.team_discord_signup_sheets to service_role;
 
+-- The servers a person was last seen sharing with the bot, written with the
+-- service key by the function that reads Discord, after Discord says both
+-- are in it.
+create table public.discord_server_access (
+  person_id integer not null references public.people(id) on delete cascade,
+  server_id text not null,
+  verified_at timestamp with time zone not null default now(),
+  primary key (person_id, server_id)
+);
+
+comment on table public.discord_server_access is
+  'Discord servers a person and the bot were both found in, and when (#1712). Written with the service key by the function that reads Discord (#994); set_team_discord_server() takes only a server verified for the caller in the last hour.';
+
+alter table public.discord_server_access owner to postgres;
+alter table public.discord_server_access enable row level security;
+
+create policy "Claude readers read discord_server_access" on public.discord_server_access
+  for select to claude_readers using (true);
+
+revoke all on table public.discord_server_access from public, anon, authenticated, service_role;
+grant select, insert, update, delete on table public.discord_server_access to service_role;
+
 -- What the old columns already say, so the new page opens on what the bot
 -- posts today.
 insert into public.team_discord_posts (team_id, kind, channel_id, ping_role_id)
@@ -217,6 +246,14 @@ begin
   if p_server_id is null or p_server_id !~ '^[0-9]{17,20}$' then
     raise exception 'That is not a Discord server id';
   end if;
+  if not exists (select 1 from teams t where t.id = p_team_id) then
+    raise exception 'That team does not exist';
+  end if;
+  if not exists (select 1 from discord_server_access a
+                  where a.person_id = my_person_id() and a.server_id = p_server_id
+                    and a.verified_at > now() - interval '1 hour') then
+    raise exception 'Pick a server you and the bot are both in';
+  end if;
 
   select c.guild_id into v_old from team_discord_config c where c.team_id = p_team_id for update;
   if v_old = p_server_id then
@@ -246,7 +283,7 @@ end;
 $$;
 
 comment on function public.set_team_discord_server(integer, text) is
-  'Picks the team''s Discord server (#1712). Changing it clears every kind of post''s channel and ping role and removes the team''s signup sheets, since they belong to the old server.';
+  'Picks the team''s Discord server (#1712), one discord_server_access verified for the caller in the last hour. Changing it clears every kind of post''s channel and ping role and removes the team''s signup sheets, since they belong to the old server.';
 
 revoke all on function public.set_team_discord_server(integer, text) from public, anon;
 grant execute on function public.set_team_discord_server(integer, text) to authenticated;

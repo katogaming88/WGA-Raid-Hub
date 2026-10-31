@@ -530,6 +530,32 @@ export type Database = {
         }
         Relationships: []
       }
+      discord_server_access: {
+        Row: {
+          person_id: number
+          server_id: string
+          verified_at: string
+        }
+        Insert: {
+          person_id: number
+          server_id: string
+          verified_at?: string
+        }
+        Update: {
+          person_id?: number
+          server_id?: string
+          verified_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discord_server_access_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guild_grants: {
         Row: {
           created_at: string

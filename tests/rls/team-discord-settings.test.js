@@ -1,7 +1,7 @@
 // #1712: a team's Discord settings, read and changed by its officers through
 // functions, with the old bot's columns kept in step.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedTeam, OFFICER_T1, OFFICER_T2, RAIDER_T1 } from './helpers.js';
+import { pool, withTxn, seedTeam, OFFICER_T1, OFFICER_T2, RAIDER_T1, SITE_ADMIN } from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -35,9 +35,25 @@ const sheet = (
     role
   ]);
 
+// Both test officers were found sharing both servers with the bot, as the
+// function that reads Discord (#994) records it.
+const verify = (q, uid, server, at = 'now()') =>
+  q(
+    `insert into public.discord_server_access (person_id, server_id, verified_at)
+     select id, $2, ${at} from public.people where auth_user_id = $1
+     on conflict (person_id, server_id) do update set verified_at = excluded.verified_at`,
+    [uid, server]
+  );
+const txn = (fn) =>
+  withTxn(async (ctx) => {
+    for (const uid of [OFFICER_T1, OFFICER_T2])
+      for (const server of [SERVER, OTHER_SERVER]) await verify(ctx.q, uid, server);
+    return fn(ctx);
+  });
+
 describe('team Discord settings', () => {
   it("an Officer reads and changes every setting, and each change lands in the team's audit log once", async () => {
-    await withTxn(async ({ q, asUser }) => {
+    await txn(async ({ q, asUser }) => {
       await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
       await asUser(OFFICER_T1, "select public.set_team_discord_post(1, 'officer_requests', $1, $2)", [
         CH_OFFICERS,
@@ -80,7 +96,7 @@ describe('team Discord settings', () => {
   });
 
   it("refuses raiders, another team's officers and signed-out visitors", async () => {
-    await withTxn(async ({ asUser, asAnon }) => {
+    await txn(async ({ asUser, asAnon }) => {
       await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
       const calls = [
         ['select public.team_discord_settings(1)', []],
@@ -99,7 +115,7 @@ describe('team Discord settings', () => {
   });
 
   it("goes by the rank grid: an Officer has it, and taking it off a team's Officers locks them out", async () => {
-    await withTxn(async ({ q, asUser }) => {
+    await txn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       expect(
         (await asUser(team.officer.uid, 'select public.team_discord_settings($1) as s', [team.teamId])).rows[0].s
@@ -115,7 +131,7 @@ describe('team Discord settings', () => {
   });
 
   it("refuses a raid day another sheet already has, naming that sheet's channel", async () => {
-    await withTxn(async ({ asUser }) => {
+    await txn(async ({ asUser }) => {
       await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
       const id = (await sheet(asUser, OFFICER_T1, { days: [2] })).rows[0].id;
       const err = await sheet(asUser, OFFICER_T1, { channel: CH_RSVPS, days: [4, 2], keep: null, hours: 12 }).catch(
@@ -130,7 +146,7 @@ describe('team Discord settings', () => {
   });
 
   it('refuses a malformed setting before saving anything', async () => {
-    await withTxn(async ({ asUser }) => {
+    await txn(async ({ asUser }) => {
       await expect(
         asUser(OFFICER_T1, "select public.set_team_discord_post(1, 'rsvp_changes', $1, null)", [CH_RSVPS])
       ).rejects.toThrow(/server first/);
@@ -158,7 +174,7 @@ describe('team Discord settings', () => {
   });
 
   it("saving the three kinds of post keeps the old bot's columns in step", async () => {
-    await withTxn(async ({ q, asUser }) => {
+    await txn(async ({ q, asUser }) => {
       await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
       await asUser(OFFICER_T1, "select public.set_team_discord_post(1, 'officer_requests', $1, $2)", [
         CH_OFFICERS,
@@ -183,7 +199,7 @@ describe('team Discord settings', () => {
   });
 
   it('two teams may share a channel now', async () => {
-    await withTxn(async ({ asUser }) => {
+    await txn(async ({ asUser }) => {
       for (const [uid, team] of [
         [OFFICER_T1, 1],
         [OFFICER_T2, 2]
@@ -195,7 +211,7 @@ describe('team Discord settings', () => {
   });
 
   it("changing the server clears every post's channel and removes the sheets", async () => {
-    await withTxn(async ({ q, asUser }) => {
+    await txn(async ({ q, asUser }) => {
       await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
       await asUser(OFFICER_T1, "select public.set_team_discord_post(1, 'officer_requests', $1, $2)", [
         CH_OFFICERS,
@@ -212,9 +228,55 @@ describe('team Discord settings', () => {
     });
   });
 
+  it('takes only a server the caller was found sharing with the bot in the last hour', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await expect(asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER])).rejects.toThrow(
+        /you and the bot are both in/
+      );
+      // Someone else's check does not count for the caller.
+      await verify(q, OFFICER_T2, SERVER);
+      await expect(asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER])).rejects.toThrow(
+        /you and the bot are both in/
+      );
+      await verify(q, OFFICER_T1, SERVER, "now() - interval '2 hours'");
+      await expect(asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER])).rejects.toThrow(
+        /you and the bot are both in/
+      );
+      await verify(q, OFFICER_T1, SERVER);
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
+    });
+  });
+
+  it("refuses changing or removing another team's sheet by its id", async () => {
+    await txn(async ({ asUser }) => {
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
+      const id = (await sheet(asUser, OFFICER_T1)).rows[0].id;
+      await asUser(OFFICER_T2, 'select public.set_team_discord_server(2, $1)', [OTHER_SERVER]);
+      await expect(asUser(OFFICER_T2, 'select public.remove_team_discord_signup_sheet(2, $1)', [id])).rejects.toThrow(
+        /not on this team/
+      );
+      await expect(
+        asUser(OFFICER_T2, 'select public.save_team_discord_signup_sheet(2, $1, $2, $3, 2, null, null)', [
+          id,
+          CH_RSVPS,
+          [3]
+        ])
+      ).rejects.toThrow(/not on this team/);
+    });
+  });
+
+  it('a site admin naming a team that does not exist gets a plain message', async () => {
+    await txn(async ({ q, asUser }) => {
+      await verify(q, SITE_ADMIN, SERVER);
+      await expect(asUser(SITE_ADMIN, 'select public.set_team_discord_server(999999, $1)', [SERVER])).rejects.toThrow(
+        /team does not exist/
+      );
+    });
+  });
+
   it('nobody reads or writes the new tables directly', async () => {
-    await withTxn(async ({ asUser, asAnon }) => {
-      for (const table of ['team_discord_posts', 'team_discord_signup_sheets']) {
+    await txn(async ({ asUser, asAnon }) => {
+      for (const table of ['team_discord_posts', 'team_discord_signup_sheets', 'discord_server_access']) {
         await expect(asUser(OFFICER_T1, `select * from public.${table}`)).rejects.toThrow(/permission denied/);
         await expect(asAnon(`select * from public.${table}`)).rejects.toThrow(/permission denied/);
       }

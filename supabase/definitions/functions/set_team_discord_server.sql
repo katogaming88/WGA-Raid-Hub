@@ -22,6 +22,14 @@ begin
   if p_server_id is null or p_server_id !~ '^[0-9]{17,20}$' then
     raise exception 'That is not a Discord server id';
   end if;
+  if not exists (select 1 from teams t where t.id = p_team_id) then
+    raise exception 'That team does not exist';
+  end if;
+  if not exists (select 1 from discord_server_access a
+                  where a.person_id = my_person_id() and a.server_id = p_server_id
+                    and a.verified_at > now() - interval '1 hour') then
+    raise exception 'Pick a server you and the bot are both in';
+  end if;
 
   select c.guild_id into v_old from team_discord_config c where c.team_id = p_team_id for update;
   if v_old = p_server_id then

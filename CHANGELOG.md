@@ -25,8 +25,10 @@ answers to.
   team's officers pick the server and change all of it through six
   database functions, each one logged in the audit log, behind a new
   "Change discord settings" permission that Officers have by default.
-  A raid day can be on only one sheet. Changing the server clears the
-  channels. The old bot keeps posting where it does today: saving the
+  A raid day can be on only one sheet. The server must be one the
+  officer and the bot were both just found in, so it can't be pointed
+  at another guild's server from the browser console. Changing the
+  server clears the channels. The old bot keeps posting where it does today: saving the
   original three kinds also updates the columns it reads.
 
 ### Project

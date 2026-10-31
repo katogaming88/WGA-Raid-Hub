@@ -10070,6 +10070,66 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.discord_server_access",
+      "type": "BASE TABLE",
+      "comment": "Discord servers a person and the bot were both found in, and when (#1712). Written with the service key by the function that reads Discord (#994); set_team_discord_server() takes only a server verified for the caller in the last hour.",
+      "columns": [
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "server_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "verified_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "discord_server_access_pkey",
+          "def": "CREATE UNIQUE INDEX discord_server_access_pkey ON public.discord_server_access USING btree (person_id, server_id)",
+          "table": "public.discord_server_access",
+          "columns": [
+            "person_id",
+            "server_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "discord_server_access_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE",
+          "table": "public.discord_server_access",
+          "referenced_table": "public.people",
+          "columns": [
+            "person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "discord_server_access_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (person_id, server_id)",
+          "table": "public.discord_server_access",
+          "referenced_table": "",
+          "columns": [
+            "person_id",
+            "server_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -11878,6 +11938,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES team_discord_config(team_id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.discord_server_access",
+      "columns": [
+        "person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
     }
   ],
   "functions": [

@@ -87,6 +87,7 @@
 | [public.guild_ranks](public.guild_ranks.md) | 4 | A person's rank in a guild (#1645): owner (one per guild), admin, team_lead or member. Member is automatic for anyone on a team in the guild, so a row is only needed for the other three. Owner and admin are kept in step with a guild_officer grant until cutover, both ways. | BASE TABLE |
 | [public.team_discord_posts](public.team_discord_posts.md) | 6 | One row per kind of post the bot makes for a team (#1712, #921): its channel, an optional ping role and when it last posted. No channel (or no row) means that kind is off. Changed only through set_team_discord_post(); the posting function reads it with the service key. | BASE TABLE |
 | [public.team_discord_signup_sheets](public.team_discord_signup_sheets.md) | 10 | A team's signup sheets in Discord (#1712): the channel, its raid days (raid_schedule's weekday, 0 = Sunday, each day on one sheet of a team at most), and either keep_raids_posted (1 to 4) or hours_before each raid. Changed only through save_team_discord_signup_sheet() and remove_team_discord_signup_sheet(). | BASE TABLE |
+| [public.discord_server_access](public.discord_server_access.md) | 3 | Discord servers a person and the bot were both found in, and when (#1712). Written with the service key by the function that reads Discord (#994); set_team_discord_server() takes only a server verified for the caller in the last hour. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -446,6 +447,7 @@ erDiagram
 "public.guild_ranks" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.team_discord_posts" }o--|| "public.team_discord_config" : "FOREIGN KEY (team_id) REFERENCES team_discord_config(team_id) ON DELETE CASCADE"
 "public.team_discord_signup_sheets" }o--|| "public.team_discord_config" : "FOREIGN KEY (team_id) REFERENCES team_discord_config(team_id) ON DELETE CASCADE"
+"public.discord_server_access" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -1281,6 +1283,11 @@ erDiagram
   timestamp_with_time_zone last_posted_at
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+}
+"public.discord_server_access" {
+  integer person_id FK
+  text server_id
+  timestamp_with_time_zone verified_at
 }
 ```
 
