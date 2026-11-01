@@ -35,7 +35,8 @@ answers to.
   in says which permissions to add in Discord. A channel or role deleted
   in Discord is flagged. If the bot is in none of the officer's servers,
   an Add WGA Raid Hub to Discord button opens Discord's add-a-bot page
-  (#1706).
+  (#1706). Until the site posts by itself (#959), the page says posting
+  starts in an upcoming update; Send test message works now.
 - New app: the Discord signup sheet box is gone from General settings. No
   team had saved a value in it.
 - New app: a Help guide, Set up Discord for your team.

@@ -58,6 +58,10 @@ export function DiscordSettingsPage() {
         What the bot posts in your Discord for this team, where, and who it pings. New to this?{' '}
         <Link to="/help/discord-setup">Set up Discord for your team</Link>.
       </p>
+      {/* Until the site posts by itself (#959, #960). Delete with #959. */}
+      <p className="text-muted">
+        The bot starts posting with these settings in an upcoming update. Send test message works now.
+      </p>
       <DataState query={bothQueries(settings, discord)} label="your Discord settings">
         {([saved, read]) => (
           <DiscordBody
