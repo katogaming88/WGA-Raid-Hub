@@ -112,7 +112,14 @@ const ASSISTANT_GRID = [
   'view_reports',
   'view_loot'
 ];
-const OFFICER_GRID = [...ASSISTANT_GRID, 'manage_loot', 'pay_boe_cuts', 'promote_assistants', 'view_team_audit_log'];
+const OFFICER_GRID = [
+  ...ASSISTANT_GRID,
+  'manage_loot',
+  'pay_boe_cuts',
+  'promote_assistants',
+  'view_team_audit_log',
+  'change_discord_settings'
+];
 const ADMIN_GRID = [
   'create_teams',
   'rename_archive_teams',

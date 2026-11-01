@@ -150,6 +150,23 @@ export const GUIDES: Guide[] = [
     ]
   },
   {
+    id: 'discord-setup',
+    topic: 'start',
+    title: 'Set up Discord for your team',
+    officers: true,
+    quick:
+      'Add the WGA Raid Hub bot to your Discord server, then pick where it posts and who it pings on Settings › Discord.',
+    place: { label: 'Discord settings', to: (b) => `${b.team}/officer/settings/discord` },
+    steps: [
+      'In the Officer menu, open Settings, then Discord.',
+      'If the bot isn’t in your server yet, choose Add WGA Raid Hub to Discord, pick your server and authorize it. You need Manage Server in that server. Then come back and choose I’ve added it.',
+      'Pick your team’s server. Only servers that you and the bot are both in are listed.',
+      'Choose each kind of post to pick its channel and, if you like, a role to ping. Send test message checks that the bot can post there.',
+      'Private channels: the bot only sees public channels on its own. For each private channel it posts in (or the category holding them), in Discord choose Edit Channel, then Permissions, add the WGA Raid Hub role, and turn on View Channel, Send Messages, Embed Links and Read Message History. The page marks any channel still missing one.',
+      'Add a signup sheet for each set of raid days that should post in its own channel, and set quiet hours if the bot should stay silent overnight.'
+    ]
+  },
+  {
     id: 'invite',
     topic: 'start',
     title: 'Invite your raiders',

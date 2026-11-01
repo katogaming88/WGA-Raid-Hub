@@ -152,6 +152,8 @@ export type Ability =
   // promote_assistants, which only an Officer and the Owner hold, until a
   // settings permission exists.
   | 'manageTeam'
+  // Settings › Discord (#994): Change Discord settings on the team's grid.
+  | 'manageDiscord'
   // Saving team settings that are the Owner's alone (loot buttons, signups).
   | 'leadTeam'
   | 'adminSite'
@@ -183,7 +185,8 @@ const OFFICER_TOOLS = [
   'view_loot',
   'manage_loot',
   'pay_boe_cuts',
-  'view_team_audit_log'
+  'view_team_audit_log',
+  'change_discord_settings'
 ];
 
 export function teamRole(access: Access, teamId: number | null | undefined): TeamRole | null {
@@ -222,6 +225,8 @@ export function can(
       return admin || team('view_team_audit_log');
     case 'manageTeam':
       return admin || team('promote_assistants');
+    case 'manageDiscord':
+      return admin || team('change_discord_settings');
     case 'leadTeam':
       return admin || teamRole(access, teamId) === 'team_leader';
     case 'adminSite':

@@ -998,6 +998,70 @@ const SETTINGS_SIGNUPS_CLOSE = {
   afterClick: 'role=dialog >> .close-signups-archive'
 };
 
+// Settings > Discord (#994): the server read from Discord, RSVP changes in a
+// channel the bot can't post in, and a signup sheet; then the RSVP dialog
+// with its problem, and the sheet dialog with another sheet's days taken.
+const SETTINGS_DISCORD = {
+  session: OFFICER,
+  who: 'officer',
+  path: '/g/wga/t/phoenix/officer/settings/discord',
+  sentinel: 'main:has(.discord-rows) button:text("Add a signup sheet")',
+  rpc: {
+    team_discord_settings: {
+      server_id: '100000000000000001',
+      quiet_hours: { start: '00:00:00', end: '08:00:00', timezone: 'America/New_York' },
+      posts: [
+        { kind: 'officer_requests', channel_id: '201', ping_role_id: '301', last_posted_at: null },
+        { kind: 'mplus_requests', channel_id: '201', ping_role_id: '301', last_posted_at: null },
+        { kind: 'rsvp_changes', channel_id: '202', ping_role_id: null, last_posted_at: null }
+      ],
+      sheets: [
+        {
+          id: 9,
+          channel_id: '203',
+          raid_days: [2],
+          keep_raids_posted: 2,
+          hours_before: null,
+          ping_role_id: null,
+          last_posted_at: null
+        }
+      ]
+    }
+  },
+  functionAnswers: {
+    'discord-settings': {
+      success: true,
+      hasDiscord: true,
+      servers: [{ id: '100000000000000001', name: 'We Go Again' }],
+      server: {
+        id: '100000000000000001',
+        name: 'We Go Again',
+        botIn: true,
+        channels: [
+          { id: '201', name: 'phoenix-officers', category: 'OFFICERS', missing: [] },
+          { id: '202', name: 'phoenix-attendance', category: 'OFFICERS', missing: ['View Channel', 'Send Messages'] },
+          { id: '203', name: 'tuesday-raids', category: 'RAIDS', missing: [] },
+          { id: '204', name: 'thursday-raids', category: 'RAIDS', missing: [] }
+        ],
+        roles: [
+          { id: '301', name: 'Phoenix Officer' },
+          { id: '302', name: 'Phoenix Raider' }
+        ]
+      }
+    }
+  }
+};
+const SETTINGS_DISCORD_POST = {
+  ...SETTINGS_DISCORD,
+  click: 'button.discord-row:has-text("RSVP changes")',
+  afterClick: 'role=dialog >> .discord-problem'
+};
+const SETTINGS_DISCORD_SHEET = {
+  ...SETTINGS_DISCORD,
+  click: 'button:text("Add a signup sheet")',
+  afterClick: 'role=dialog >> .discord-days'
+};
+
 const SETTINGS_DANGER = {
   session: OFFICER,
   who: 'officer',
@@ -1739,6 +1803,11 @@ const STATES = [
   { label: 'settings signups, team leader', ...SETTINGS_SIGNUPS },
   { label: 'settings signups, close confirm', ...SETTINGS_SIGNUPS_CLOSE },
   { label: 'settings signups, close confirm, light', ...SETTINGS_SIGNUPS_CLOSE, colorScheme: 'light' },
+  { label: 'settings discord, officer', ...SETTINGS_DISCORD },
+  { label: 'settings discord, officer, light', ...SETTINGS_DISCORD, colorScheme: 'light' },
+  { label: 'settings discord, post dialog', ...SETTINGS_DISCORD_POST },
+  { label: 'settings discord, post dialog, light', ...SETTINGS_DISCORD_POST, colorScheme: 'light' },
+  { label: 'settings discord, sheet dialog', ...SETTINGS_DISCORD_SHEET },
   { label: 'settings danger zone, officer', ...SETTINGS_DANGER },
   { label: 'settings danger zone, officer, light', ...SETTINGS_DANGER, colorScheme: 'light' },
   { label: 'site admin, staff', ...SITE_ADMIN },
@@ -2154,7 +2223,9 @@ describe('sidebar folding', () => {
         .toEqual({ overflow: 0, folds: 1, open: ['You', 'Team', 'Officer', 'Site'] });
       await nav.getByRole('button', { name: 'Settings', exact: true }).click();
       await nav.getByRole('link', { name: 'General', exact: true }).click();
-      await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 3, open: ['Officer', 'Site'] });
+      // Settings is the longest officer menu (nine pages since Discord, #994),
+      // so at this height Site folds too.
+      await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 5, open: ['Officer'] });
       expect(pageErrors).toEqual([]);
     } finally {
       await context.close();

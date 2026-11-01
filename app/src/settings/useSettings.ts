@@ -47,8 +47,6 @@ export type GeneralSettings = {
   targetTankCount: number | null;
   targetHealCount: number | null;
   warcraftLogsUrl: string;
-  discordSignupChannelId: string | null;
-  signupSheetLeadHours: number | null;
 };
 
 const generalKey = (teamId: number) => ['general-settings', teamId] as const;
@@ -58,7 +56,7 @@ export function useGeneralSettings(teamId: number) {
     const result = await client
       .from('team_settings')
       .select(
-        'seasonView:config->>seasonView, trialWeeks:config->trialWeeks, trialAttend:config->trialAttend, targetTankCount:config->targetTankCount, targetHealCount:config->targetHealCount, warcraftLogsUrl:config->externalLinks->>warcraftLogsUrl, discordSignupChannelId:config->>discordSignupChannelId, signupSheetLeadHours:config->signupSheetLeadHours'
+        'seasonView:config->>seasonView, trialWeeks:config->trialWeeks, trialAttend:config->trialAttend, targetTankCount:config->targetTankCount, targetHealCount:config->targetHealCount, warcraftLogsUrl:config->externalLinks->>warcraftLogsUrl'
       )
       .eq('team_id', teamId)
       .maybeSingle();
@@ -71,9 +69,7 @@ export function useGeneralSettings(teamId: number) {
         trialAttend: row.trialAttend ?? 75,
         targetTankCount: row.targetTankCount ?? null,
         targetHealCount: row.targetHealCount ?? null,
-        warcraftLogsUrl: row.warcraftLogsUrl ?? '',
-        discordSignupChannelId: row.discordSignupChannelId ?? null,
-        signupSheetLeadHours: row.signupSheetLeadHours ?? null
+        warcraftLogsUrl: row.warcraftLogsUrl ?? ''
       },
       error: null
     };
@@ -146,49 +142,6 @@ export function useSaveWclUrl(teamId: number) {
       return { data: null, error: null };
     },
     { key: ['save-wcl-url', teamId], refreshes: [generalKey(teamId)] }
-  );
-}
-
-export function useSaveDiscordSignupSheet(teamId: number) {
-  return useSupabaseMutation<null, { channelId: string | null; leadHours: number | null }>(
-    async (client, { channelId, leadHours }) => {
-      const result = await setTeamSetting(
-        client,
-        teamId,
-        { discordSignupChannelId: channelId, signupSheetLeadHours: leadHours },
-        true
-      );
-      if (result.error) return { data: null, error: result.error };
-      await writeAuditLog(
-        client,
-        teamId,
-        'Discord Signup Sheet Settings Set',
-        `${channelId ?? ''} / ${leadHours ?? 48}h`
-      );
-      return { data: null, error: null };
-    },
-    { key: ['save-discord-signup-sheet', teamId], refreshes: [generalKey(teamId)] }
-  );
-}
-
-export type ChannelVerifyResult = { ok: true; name: string } | { ok: false; error: string };
-
-// verifyDiscordSignupChannel(): read-only, no team-leader role required,
-// unlike Save above.
-export function useVerifyDiscordChannel(teamSlug: string) {
-  return useSupabaseMutation<ChannelVerifyResult, string>(
-    async (client, channelId) => {
-      const res = await client.functions.invoke('discord-bot-webhook', {
-        body: { action: 'verifyChannel', team: teamSlug, payload: { channelId } }
-      });
-      if (res.error) return { data: null, error: { message: res.error.message } };
-      const body = res.data as ChannelVerifyResult | null;
-      return {
-        data: body?.ok ? body : { ok: false, error: (body as { error?: string })?.error ?? 'Channel not found.' },
-        error: null
-      };
-    },
-    { key: ['verify-discord-channel', teamSlug], refreshes: [] }
   );
 }
 

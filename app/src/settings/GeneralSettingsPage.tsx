@@ -7,19 +7,18 @@ import { errorMessage } from '../lib/errors';
 import { clampInt } from './settings';
 import {
   useGeneralSettings,
-  useSaveDiscordSignupSheet,
   useSaveRosterTargets,
   useSaveSeasonView,
   useSaveTrialThresholds,
   useSaveWclUrl,
   useSeasonViewOptions,
-  useVerifyDiscordChannel,
   type GeneralSettings
 } from './useSettings';
 import './settings.css';
 
 // The officer dashboard's General settings (#1357, #1103 row 1), ported from
-// tab-season.js's Settings sub-tab: five independent cards, each its own Save.
+// tab-season.js's Settings sub-tab: four independent cards, each its own Save.
+// The Discord signup sheet moved to Settings › Discord (#994).
 export function GeneralSettingsPage() {
   const team = useTeam();
   const page = bothQueries(useGeneralSettings(team.id), useSeasonViewOptions());
@@ -36,7 +35,6 @@ export function GeneralSettingsPage() {
             <TrialThresholdsCard teamId={team.id} settings={settings} />
             <RosterTargetsCard teamId={team.id} settings={settings} />
             <WclUrlCard teamId={team.id} settings={settings} />
-            <DiscordSignupSheetCard teamId={team.id} teamSlug={team.key} settings={settings} />
           </div>
         )}
       </DataState>
@@ -233,93 +231,6 @@ function WclUrlCard({ teamId, settings }: { teamId: number; settings: GeneralSet
           placeholder="https://www.warcraftlogs.com/guild/id/..."
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-        />
-        <button type="button" className="button button-primary" onClick={onSave} disabled={save.isPending}>
-          {save.isPending ? 'Saving…' : 'Save'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function DiscordSignupSheetCard({
-  teamId,
-  teamSlug,
-  settings
-}: {
-  teamId: number;
-  teamSlug: string;
-  settings: GeneralSettings;
-}) {
-  const { announce } = useStatus();
-  const [channelId, setChannelId] = useState(settings.discordSignupChannelId ?? '');
-  const [leadHours, setLeadHours] = useState(
-    settings.signupSheetLeadHours == null ? '' : String(settings.signupSheetLeadHours)
-  );
-  const [verifyResult, setVerifyResult] = useState<{ ok: boolean; text: string } | null>(null);
-  const save = useSaveDiscordSignupSheet(teamId);
-  const verify = useVerifyDiscordChannel(teamSlug);
-
-  const onVerify = () => {
-    const trimmed = channelId.trim();
-    if (!trimmed) {
-      setVerifyResult({ ok: false, text: 'Enter a channel ID first.' });
-      return;
-    }
-    verify.mutate(trimmed, {
-      onSuccess: (result) =>
-        setVerifyResult(result.ok ? { ok: true, text: `#${result.name}` } : { ok: false, text: result.error }),
-      onError: (error) => setVerifyResult({ ok: false, text: errorMessage(error) })
-    });
-  };
-
-  const onSave = () => {
-    const trimmedChannel = channelId.trim();
-    const hours = leadHours.trim() === '' ? null : Number(leadHours);
-    save.mutate(
-      { channelId: trimmedChannel || null, leadHours: hours },
-      { onSuccess: () => announce('success', 'Saved!'), onError: (error) => announce('error', errorMessage(error)) }
-    );
-  };
-
-  return (
-    <div className="card settings-card">
-      <h2>Discord Signup Sheet</h2>
-      <p className="text-muted">
-        The bot posts one message per raid night showing the whole roster's RSVP status. Channel ID: leave blank to use
-        the bot's default attendance channel. Lead Time: how many hours before the raid the sheet gets posted (default
-        48). Use Verify to confirm a channel ID resolves to the channel you expect.
-      </p>
-      <div className="settings-row">
-        <label className="visually-hidden" htmlFor="discord-channel-input">
-          Discord channel ID
-        </label>
-        <input
-          id="discord-channel-input"
-          type="text"
-          className="input settings-channel"
-          placeholder="Discord channel ID"
-          value={channelId}
-          onChange={(e) => setChannelId(e.target.value)}
-        />
-        <button type="button" className="button" onClick={onVerify} disabled={verify.isPending}>
-          {verify.isPending ? 'Checking…' : 'Verify'}
-        </button>
-        {verifyResult && (
-          <span className={verifyResult.ok ? 'settings-verify-ok' : 'settings-verify-error'}>{verifyResult.text}</span>
-        )}
-      </div>
-      <div className="settings-row">
-        <label htmlFor="discord-lead-hours-input">Lead time (hours)</label>
-        <input
-          id="discord-lead-hours-input"
-          type="number"
-          className="input settings-number"
-          min={1}
-          max={336}
-          placeholder="48"
-          value={leadHours}
-          onChange={(e) => setLeadHours(e.target.value)}
         />
         <button type="button" className="button button-primary" onClick={onSave} disabled={save.isPending}>
           {save.isPending ? 'Saving…' : 'Save'}

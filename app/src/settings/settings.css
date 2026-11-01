@@ -24,17 +24,8 @@
   max-width: 80px;
 }
 
-.settings-url,
-.settings-channel {
+.settings-url {
   max-width: 320px;
-}
-
-.settings-verify-ok {
-  color: var(--good, var(--text));
-}
-
-.settings-verify-error {
-  color: var(--bad);
 }
 
 /* Season History */
@@ -437,4 +428,123 @@
 .close-signups-archive legend {
   font-weight: 700;
   padding: 0 var(--space-1);
+}
+
+/* Settings > Discord (#994). */
+.discord-card {
+  max-width: 52rem;
+}
+
+.discord-card > p {
+  margin: 0;
+}
+
+.discord-good {
+  color: var(--good);
+}
+
+.discord-problem {
+  color: var(--bad);
+}
+
+.discord-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px var(--space-4);
+  margin: 0;
+}
+
+.discord-facts dt {
+  color: var(--text-muted);
+}
+
+.discord-facts dd {
+  margin: 0;
+}
+
+.discord-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.discord-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.discord-rows li + li {
+  border-top: 1px solid var(--border);
+}
+
+.discord-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px var(--space-3);
+  width: 100%;
+  padding: var(--space-2) 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.discord-row:hover .discord-row-title {
+  text-decoration: underline;
+}
+
+.discord-row-main,
+.discord-row-side {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--text-sm);
+}
+
+.discord-row-side {
+  text-align: right;
+}
+
+.discord-row-title {
+  font-weight: 600;
+  font-size: var(--text-md);
+}
+
+.discord-fieldset {
+  border: 0;
+  padding: 0;
+  margin-inline: 0;
+}
+
+.discord-days .picker-choice-option:disabled {
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+.settings-row .discord-keep,
+.settings-row .discord-time {
+  width: auto;
+}
+
+.discord-fieldset .picker-choice {
+  align-self: flex-start;
+}
+
+.discord-test {
+  margin-bottom: var(--space-2);
+}
+
+/* Turn off and Remove sheet sit apart from Cancel and Save. */
+.discord-actions-start {
+  margin-right: auto;
+}
+
+.discord-quiet-save {
+  margin-left: auto;
 }

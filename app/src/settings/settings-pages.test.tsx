@@ -60,9 +60,7 @@ describe('General settings', () => {
     trialAttend: 80,
     targetTankCount: 2,
     targetHealCount: 5,
-    warcraftLogsUrl: 'https://www.warcraftlogs.com/guild/id/12345',
-    discordSignupChannelId: '999',
-    signupSheetLeadHours: 48
+    warcraftLogsUrl: 'https://www.warcraftlogs.com/guild/id/12345'
   };
 
   it('shows every card with its saved value', async () => {
@@ -80,7 +78,8 @@ describe('General settings', () => {
     await screen.findByRole('heading', { name: 'Season View' });
     expect((screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value).toBe('6');
     expect(screen.getByDisplayValue('https://www.warcraftlogs.com/guild/id/12345')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('999')).toBeInTheDocument();
+    // The signup sheet moved to Settings › Discord (#994).
+    expect(screen.queryByRole('heading', { name: 'Discord Signup Sheet' })).not.toBeInTheDocument();
   });
 
   it('saves Trial Promotion Thresholds, clamped into range', async () => {
@@ -114,24 +113,6 @@ describe('General settings', () => {
       p_updates: { trialWeeks: 52, trialAttend: 80 },
       p_skip_audit: true
     });
-  });
-
-  it('verifies a Discord channel', async () => {
-    renderApp(
-      '/g/wga/t/phoenix/officer/settings',
-      officerHandlers({
-        from: (read) =>
-          read.table === 'team_settings'
-            ? { data: GENERAL_ROW }
-            : read.table === 'raid_zones'
-              ? { data: [] }
-              : undefined,
-        invoke: (name) => (name === 'discord-bot-webhook' ? { data: { ok: true, name: 'raid-attendance' } } : undefined)
-      })
-    );
-    await screen.findByRole('heading', { name: 'Discord Signup Sheet' });
-    await userEvent.click(screen.getByRole('button', { name: 'Verify' }));
-    expect(await screen.findByText('#raid-attendance')).toBeInTheDocument();
   });
 });
 

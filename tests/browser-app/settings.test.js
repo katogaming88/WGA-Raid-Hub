@@ -77,23 +77,19 @@ describe('General settings (new app)', () => {
         trialAttend: 80,
         targetTankCount: 2,
         targetHealCount: 5,
-        warcraftLogsUrl: 'https://www.warcraftlogs.com/guild/id/12345',
-        discordSignupChannelId: '999',
-        signupSheetLeadHours: 48
+        warcraftLogsUrl: 'https://www.warcraftlogs.com/guild/id/12345'
       }
     ],
     raid_zones: [{ season: 'MID1' }, { season: 'MID2' }]
   };
   const BASE = '/g/wga/t/phoenix/officer/settings';
 
-  it('shows all five cards with their saved values', async () => {
+  it('shows all four cards with their saved values', async () => {
     const opened = await openApp(browser, server.port, state(BASE, '.settings-cards', { tables: GENERAL_TABLES }));
     try {
       await expect(opened.page.locator('#wcl-url-input').inputValue()).resolves.toBe(
         'https://www.warcraftlogs.com/guild/id/12345'
       );
-      await expect(opened.page.locator('#discord-channel-input').inputValue()).resolves.toBe('999');
-      await expect(opened.page.locator('#discord-lead-hours-input').inputValue()).resolves.toBe('48');
       expect(opened.unexpected).toEqual([]);
       expect(opened.pageErrors).toEqual([]);
     } finally {

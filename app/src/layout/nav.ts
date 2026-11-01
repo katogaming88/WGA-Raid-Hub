@@ -144,7 +144,8 @@ const OFFICER_ABILITY: Record<string, Ability> = {
   'officer/attendance/scores': 'manageAttendance',
   'officer/groups': 'editSchedule',
   'officer/invite': 'editRoster',
-  'officer/settings/audit-log': 'viewAuditLog'
+  'officer/settings/audit-log': 'viewAuditLog',
+  'officer/settings/discord': 'manageDiscord'
 };
 
 export function officerAbility(path: string): Ability {
@@ -198,6 +199,7 @@ function allMenu(o: string, council: boolean): (NavItem & { pages: NavPage[] })[
         { label: 'Raid progression', to: `${o}/settings/progression` },
         { label: 'Loot', to: `${o}/settings/loot` },
         { label: 'Signups', to: `${o}/settings/signups` },
+        { label: 'Discord', to: `${o}/settings/discord` },
         { label: 'Invite link', to: `${o}/invite` },
         { label: 'Audit log', to: `${o}/settings/audit-log` },
         { label: 'Danger zone', to: `${o}/settings/danger`, danger: true }
@@ -236,6 +238,7 @@ export const TEAM_PAGES: Record<string, string> = {
   'officer/settings/progression': 'Raid progression',
   'officer/settings/loot': 'Loot settings',
   'officer/settings/signups': 'Signup settings',
+  'officer/settings/discord': 'Discord settings',
   'officer/invite': 'Invite link',
   'officer/settings/audit-log': 'Audit log',
   'officer/settings/danger': 'Danger zone',
