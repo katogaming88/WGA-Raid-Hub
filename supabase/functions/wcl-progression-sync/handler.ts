@@ -595,11 +595,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         // more read, from the earliest such start up to the current tier's; a
         // tier that starts later is inside the current read already, and so is
         // every tier when the current one has no start. A raid with no bosses
-        // needs no reports.
+        // needs no reports. A raid filed under a season Blizzard has not dated
+        // yet (#1714) has no reports of its own and counts from the current
+        // tier's start, not from the beginning of the guild's logs.
         const zoneStarts = new Map<string, number | null>([[season.code, startMs]]);
         for (const zone of zones) {
           if (zone.encounterIdByWcl.size === 0 || zoneStarts.has(zone.season)) continue;
-          zoneStarts.set(zone.season, tierStartTimeMs(await deps.db.tierStart(zone.season)));
+          zoneStarts.set(zone.season, tierStartTimeMs(await deps.db.tierStart(zone.season)) ?? startMs);
         }
         const earlierStarts =
           startMs === null ? [] : [...zoneStarts.values()].filter((start) => start === null || start < startMs);

@@ -9,8 +9,6 @@ import { easternToday, isoDateLong } from '../lib/dates';
 import { errorMessage } from '../lib/errors';
 import {
   SKIP_REASONS,
-  canClose,
-  closeOpensOn,
   defaultSeason,
   hasStarted,
   type PromotionEntry,
@@ -99,28 +97,18 @@ function SignupsCard({ teamId, seasons, canEdit }: { teamId: number; seasons: Si
         </div>
       </div>
       <p className="text-muted">
-        {hasStarted(season, today)
-          ? `${season.name} started ${isoDateLong(season.startsAt)}.`
-          : `${season.name} starts ${isoDateLong(season.startsAt)}.`}
+        {season.startsAt === null
+          ? `${season.name} starts on a date Blizzard has not announced yet.`
+          : hasStarted(season, today)
+            ? `${season.name} started ${isoDateLong(season.startsAt)}.`
+            : `${season.name} starts ${isoDateLong(season.startsAt)}.`}
       </p>
       {!canEdit ? (
         <p className="text-muted">Only the team leader can open or close signups.</p>
       ) : season.open ? (
-        <>
-          <button
-            type="button"
-            className="button button-primary"
-            disabled={!canClose(season, today)}
-            onClick={() => setClosing(true)}
-          >
-            Close signups…
-          </button>
-          {!canClose(season, today) && (
-            <p className="text-muted">
-              You can close signups from {isoDateLong(closeOpensOn(season))}, two weeks before the season starts.
-            </p>
-          )}
-        </>
+        <button type="button" className="button button-primary" onClick={() => setClosing(true)}>
+          Close signups…
+        </button>
       ) : hasStarted(season, today) ? (
         <p className="text-muted">This season has started, so it takes no new signups.</p>
       ) : (

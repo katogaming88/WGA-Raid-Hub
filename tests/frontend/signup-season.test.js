@@ -121,6 +121,28 @@ describe('openSignupSeasonCodes and signupsOpen (common.js)', () => {
   });
 });
 
+// #1714: an expansion's seasons go in together, undated until Blizzard
+// dates them. The site shows every started tier plus only the next one,
+// newest first, so the next one leads the Signups tab's select.
+describe('fetchSupabaseSeasons (common.js)', () => {
+  it('keeps the started tiers and the next one, newest first, and hides the undated ones after it', async () => {
+    const s = loadSandbox();
+    const rows = [
+      { code: 'MID1', display_name: 'Midnight Season 1', starts_at: '2026-03-17', ends_at: '2026-08-10' },
+      { code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-08-11', ends_at: null },
+      { code: 'MID3', display_name: 'Midnight Season 3', starts_at: null, ends_at: null },
+      { code: 'MID4', display_name: 'Midnight Season 4', starts_at: null, ends_at: null }
+    ];
+    const query = { data: rows, error: null };
+    query.select = query.order = () => query;
+    s.supabaseClient = { from: () => query };
+    const seasons = await s.fetchSupabaseSeasons();
+    expect(seasons.map((t) => t.code)).toEqual(['MID3', 'MID2', 'MID1']);
+    s.DATA.seasons = seasons;
+    expect(s.currentSeasonCode()).toBe('MID2');
+  });
+});
+
 describe('the Signups tab tier select (tab-signups.js)', () => {
   function tabEls() {
     return {

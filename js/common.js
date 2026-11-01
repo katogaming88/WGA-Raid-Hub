@@ -113,14 +113,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.226.0';
+var VERSION = '3.227.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20261031114741';
+var REQUIRED_SCHEMA = '20261031125349';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -2878,6 +2878,10 @@ function fetchSupabaseSettings() {
 // on the Signups tab and the order of a team's open tiers read it (#934). A
 // handful of rows, public read; a failed read leaves the select empty and
 // the toggle disabled, which is what a site with no tier shows anyway.
+// Every tier that has started, plus only the next one (#1714): an
+// expansion's seasons go in together, undated until Blizzard dates them, and
+// the rest stay hidden until the one before them starts. The next one, dated
+// or not, is first.
 function fetchSupabaseSeasons() {
   if (!supabaseClient) return Promise.resolve([]);
   // team-read-guard: one row per tier, bounded by the seasons table.
@@ -2885,14 +2889,27 @@ function fetchSupabaseSeasons() {
     supabaseClient
       .from('seasons')
       .select('code, display_name, starts_at, ends_at')
-      .order('starts_at', { ascending: false })
+      .order('starts_at', { ascending: true, nullsFirst: false })
+      .order('position', { ascending: true })
   ).then(
     function (result) {
       if (result.error) {
         console.warn('Supabase seasons query failed.', result.error.message);
         return [];
       }
-      return result.data || [];
+      // Oldest first, undated last in the order read (by position). Sorted
+      // here too, so the list never depends on the read's order.
+      var rows = (result.data || []).slice().sort(function (a, b) {
+        if (!a.starts_at || !b.starts_at) return (a.starts_at ? 0 : 1) - (b.starts_at ? 0 : 1);
+        return a.starts_at < b.starts_at ? -1 : a.starts_at > b.starts_at ? 1 : 0;
+      });
+      var today = easternToday();
+      var shown = [];
+      for (var i = 0; i < rows.length; i++) {
+        shown.push(rows[i]);
+        if (!rows[i].starts_at || rows[i].starts_at > today) break;
+      }
+      return shown.reverse();
     },
     function (err) {
       console.warn('Supabase seasons query failed.', err);

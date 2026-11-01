@@ -1,5 +1,6 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
+import { visibleSeasons } from '../profile/profile';
 import type { Answer, ScheduleChange, ScheduleRule } from './calendar';
 import { asDifficulty, type Difficulty } from './schedule';
 import {
@@ -209,12 +210,18 @@ export function useRotatorWeek(teamId: number) {
 
 export const lineupKey = (teamId: number) => ['boss-lineup', teamId] as const;
 
-// Every season's dates, and every boss the progression sync has loaded. Both
+// The seasons a team sees, oldest first (started ones plus the next,
+// visibleSeasons()), and every boss the progression sync has loaded. Both
 // are small lookups every visitor can read.
 export function useSeasons() {
-  return useSupabaseQuery<SeasonRow[]>(['seasons'], (client) =>
-    client.from('seasons').select('code, display_name, starts_at, ends_at').order('starts_at')
-  );
+  return useSupabaseQuery<SeasonRow[]>(['seasons'], async (client) => {
+    const { data, error } = await client
+      .from('seasons')
+      .select('code, display_name, starts_at, ends_at')
+      .order('starts_at', { nullsFirst: false })
+      .order('position');
+    return error ? { data: null, error } : { data: visibleSeasons(data ?? []), error: null };
+  });
 }
 
 export function useEncounters() {

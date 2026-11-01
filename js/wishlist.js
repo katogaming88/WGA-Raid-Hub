@@ -186,7 +186,8 @@ function wishlistSeasonCode() {
   var liveStart = seasonRow(live).starts_at;
   var ahead = open.filter(function (code) {
     var tier = seasonRow(code);
-    return !!tier && tier.starts_at > liveStart;
+    // An undated season (#1714) is ahead of the live one.
+    return !!tier && (!tier.starts_at || tier.starts_at > liveStart);
   });
   return ahead[0] || live;
 }

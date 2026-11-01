@@ -62,6 +62,10 @@ const SEASONS = [
   { code: ODD_SEASON.code, display_name: ODD_SEASON.name, starts_at: ODD_SEASON.start, ends_at: null }
 ];
 
+// A team sees started seasons plus only the next one (#1714), so the odd
+// name's cases leave MID3 out to make it the next.
+const ODD_NEXT = SEASONS.filter((s) => s.code !== NEXT_SEASON.code);
+
 function open({
   path = '/g/wga/t/phoenix/me/wishlist',
   viewer = 'torbjorn',
@@ -475,7 +479,7 @@ describe('Wishlist (new app), the season picker', () => {
 
   // The name on file, whatever the code looks like (#1368).
   it('names a season by its stored name, not one worked out from its code', async () => {
-    const opened = await open({ openSeasons: [ODD_SEASON.code] });
+    const opened = await open({ openSeasons: [ODD_SEASON.code], seasons: ODD_NEXT });
     try {
       await expect(seasonName(opened.page)).resolves.toBe(`Wishlist for ${ODD_SEASON.name}`);
       await expect(opened.page.locator('main .wishlist-summary').textContent()).resolves.toMatch(
@@ -488,7 +492,7 @@ describe('Wishlist (new app), the season picker', () => {
   });
 
   it('lists a season by its stored name, and the count follows the pick', async () => {
-    const opened = await open({ openSeasons: [SEASON.code, ODD_SEASON.code] });
+    const opened = await open({ openSeasons: [SEASON.code, ODD_SEASON.code], seasons: ODD_NEXT });
     try {
       await showEditor(opened.page);
       const options = await picker(opened.page)

@@ -88,6 +88,13 @@ describe('the season a raider’s own wishlist is on', () => {
     expect(sandbox.wishlistSeasonCode()).toBe('MID3');
   });
 
+  // #1714: the next season is on file before Blizzard dates it.
+  it('is the newest open season when that season has no date yet', () => {
+    const sandbox = makeSandbox({ teamSeasons: open('MID3') });
+    sandbox.DATA.seasons = [{ ...MID3, starts_at: null }, MID2, MID1];
+    expect(sandbox.wishlistSeasonCode()).toBe('MID3');
+  });
+
   // The override opens editing without a team switch, and it is for the tier
   // being raided. With no picker on this page, sending an allowed raider to
   // another open season would leave them no way back to the live tier.

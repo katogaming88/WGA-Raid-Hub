@@ -2,7 +2,7 @@ import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import type { AttendanceRow, LootRow, SeasonWindow } from '../profile/profile';
 import { countedLoot } from '../settings/useSettings';
-import type { GearRow, IncomingRow, PlayerRow } from './roster';
+import { newestSignupSeasons, type GearRow, type IncomingRow, type PlayerRow, type SignupSeasonRow } from './roster';
 
 // The active roster, one row per character (80 on the largest team).
 export function useRosterPlayers(teamId: number) {
@@ -138,17 +138,7 @@ export function useSignupSeasons(teamId: number) {
       .eq('team_id', teamId)
       .eq('signups_open', true);
     if (error) return { data: null, error };
-    const rows = (data ?? []) as {
-      season_code: string;
-      seasons: { starts_at: string; display_name: string } | null;
-    }[];
-    const startOf = (r: (typeof rows)[number]) => r.seasons?.starts_at ?? '';
-    return {
-      data: [...rows]
-        .sort((a, b) => (startOf(a) < startOf(b) ? 1 : -1))
-        .map((r) => ({ code: r.season_code, name: r.seasons?.display_name ?? r.season_code })),
-      error: null
-    };
+    return { data: newestSignupSeasons((data ?? []) as SignupSeasonRow[]), error: null };
   });
 }
 

@@ -3139,3 +3139,13 @@ Shipped: 20261031114741_undated_seasons.sql
 **Tests that close "the running season".** Several test files ended the open-ended season with `where ends_at is null`, which now also matches an undated row. They name `starts_at is not null` too, as a migration dating the next season will.
 
 [Full discussion -> #1717](https://github.com/katogaming88/WGA-Raid-Hub/issues/1717).
+
+## #1714 -- Midnight Season 3 on file before Blizzard dates it
+
+Shipped: 20261031125349_midnight_season_3_undated.sql
+
+**One row, undated.** `MID3` goes in with no start, as #1717 allows, so teams can open signups for it now. It lands with the pages that know how to show an undated season: the current site and the new app list every started season plus only the next one, and the next one leads. The insert names no `position`, so the identity numbers it after every season on file.
+
+**Dating it later** is one migration in the order #1717's review found: end `MID2` the day before launch, then set `MID3`'s start, then its six track floors (docs/updating-fetch-items-for-new-tier.md).
+
+[Full discussion -> #1714](https://github.com/katogaming88/WGA-Raid-Hub/issues/1714).

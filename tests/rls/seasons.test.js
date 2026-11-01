@@ -208,7 +208,7 @@ describe('current_season()', () => {
 describe('seasons', () => {
   // The seed adds one closed fixture season of its own (supabase/seed.sql),
   // so a local stack holds three rows and production two.
-  it('holds the two tiers with their dates, plus the seed fixture', async () => {
+  it('holds the two dated tiers, Midnight Season 3 undated, and the seed fixture', async () => {
     await withTxn(async ({ q }) => {
       const res = await q(
         'select code, display_name, starts_at::text as starts_at, ends_at::text as ends_at from public.seasons order by starts_at'
@@ -216,7 +216,8 @@ describe('seasons', () => {
       expect(res.rows).toEqual([
         { code: 'seed-season', display_name: 'seed-season', starts_at: '2026-01-01', ends_at: '2026-01-31' },
         { code: 'MID1', display_name: 'Midnight Season 1', starts_at: '2026-03-17', ends_at: '2026-08-10' },
-        { code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-08-11', ends_at: null }
+        { code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-08-11', ends_at: null },
+        { code: 'MID3', display_name: 'Midnight Season 3', starts_at: null, ends_at: null }
       ]);
     });
   });
@@ -261,9 +262,8 @@ describe('seasons', () => {
   // Dating an undated season (#1717): its start, and the running season's
   // end the day before. Here, with the other tiers' cases, since an
   // open-ended tier conflicts with theirs.
-  it('(control) dating an undated season is its start and MID2 ending the day before', async () => {
+  it('(control) dating MID3 is MID2 ending the day before, then its start', async () => {
     await withTxn(async ({ q }) => {
-      await q("insert into public.seasons (code, display_name) values ('MID3', 'Midnight Season 3')");
       await q("update public.seasons set ends_at = '2027-01-04' where code = 'MID2'");
       await q("update public.seasons set starts_at = '2027-01-05' where code = 'MID3'");
       expect((await q("select public.current_season('2027-01-04') as c")).rows[0].c).toBe('MID2');
@@ -284,9 +284,9 @@ describe('seasons', () => {
   it('is readable by anyone and writable by nobody through the API roles', async () => {
     await withTxn(async ({ q, asAnon, asUser }) => {
       const anon = await asAnon('select code from public.seasons order by code');
-      expect(anon.rows.map((r) => r.code)).toEqual(['MID1', 'MID2', 'seed-season']);
+      expect(anon.rows.map((r) => r.code)).toEqual(['MID1', 'MID2', 'MID3', 'seed-season']);
       const raider = await asUser(RAIDER_T1, 'select code from public.seasons order by code');
-      expect(raider.rows.map((r) => r.code)).toEqual(['MID1', 'MID2', 'seed-season']);
+      expect(raider.rows.map((r) => r.code)).toEqual(['MID1', 'MID2', 'MID3', 'seed-season']);
       const insert =
         "insert into public.seasons (code, display_name, starts_at, ends_at) values ('MID0', 'Midnight Season 0', '2025-12-01', '2025-12-02')";
       await expect(asAnon(insert)).rejects.toMatchObject({ code: RLS_DENIED });
