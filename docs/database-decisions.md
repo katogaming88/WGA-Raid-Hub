@@ -3163,10 +3163,12 @@ Shipped: no migration. `discord-bot-webhook` and `optional-rsvp-reminders`.
 | Class | Actions | Gate |
 | --- | --- | --- |
 | The reminders job | `optionalReminder` (a DM) | `x-cron-secret` matching `OPTIONAL_RSVP_REMINDERS_SECRET`; an unset secret refuses |
-| Signed in | `signup`, `addCharacter`, `rsvp`, `signupSheetSync`, `verifyChannel` | a signed-in user's token |
-| A request just written | `selfreceived`, `bis`, `mplus` | a row in `self_received_requests`, `bis_requests` or `mplus_exclusion_requests` for that character on that team from the last minute (these forms work signed out on the current site) |
+| Signed in | `signup`, `addCharacter`, `rsvp`, `signupSheetSync`, `verifyChannel` | a signed-in user's token; `verifyChannel` also needs Change Discord settings on the team |
+| Signed out | `selfreceived`, `bis`, `mplus` | none (these forms work signed out on the current site) |
 
-**The posting rule, as far as this goes.** Every post names `allowed_mentions` with `parse: []`, so text that says "@everyone" stays text, and only the team's own ping role may notify. The bot holds Mention Everyone (Kat, 2026-10-29), so that line is the only guard, and a test fails on any post without it. The 2026-09-06 rule's first line, "a post says what the database holds", holds for `addCharacter` (the Audit Log row) and for whether the other requests are real (their row); the text of those posts still comes from the caller, inside the minute the row proves. Reading every field back from its row is #962's outbox.
+On top of that, every post about a character needs that character's row on that team from the last minute: `season_signups` for a signup (by `signup_name_realm`), `raid_rsvps` for an RSVP (by when it last changed), and `self_received_requests`, `bis_requests` or `mplus_exclusion_requests` for the three requests. A sign-in alone would let any account post a signup or an RSVP for any team (CodeRabbit on #1727); the row ties the post to that team and to something that really happened.
+
+**The posting rule, as far as this goes.** Every post names `allowed_mentions` with `parse: []`, so text that says "@everyone" stays text, and only the team's own ping role may notify. The bot holds Mention Everyone (Kat, 2026-10-29), so that line is the only guard, and a test fails on any post without it. The 2026-09-06 rule's first line, "a post says what the database holds", holds for `addCharacter` (the Audit Log row) and for whether the others are real (their row); the text of those posts still comes from the caller, inside the minute the row proves. Reading every field back from its row is #962's outbox.
 
 **Each post stays inside its team's server.** The channel is fetched and must belong to `team_discord_config.guild_id`, and the ping role must be one of that server's roles, before anything is sent: ids are global in Discord and the bot sits in many guilds' servers, and the database only checks the ids' shape (#1712). A role from elsewhere is dropped and the notice posts without it; a channel from elsewhere is refused.
 

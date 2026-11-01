@@ -85,6 +85,17 @@ function supabaseDb(): RelayDb {
       return (data as { guild_id: string } | null)?.guild_id ?? null;
     },
     async recentRecord(table, teamId, nameRealm, since) {
+      // A signup names its character itself; the rest point at a roster row.
+      if (table === 'season_signups') {
+        const { count, error } = await db()
+          .from('season_signups')
+          .select('id', { count: 'exact', head: true })
+          .eq('team_id', teamId)
+          .eq('signup_name_realm', nameRealm)
+          .gte('submitted_at', since.toISOString());
+        if (error) throw new Error(error.message);
+        return (count ?? 0) > 0;
+      }
       const players = await db().from('players').select('id').eq('team_id', teamId).eq('name_realm', nameRealm);
       if (players.error) throw new Error(players.error.message);
       const ids = ((players.data as { id: number }[] | null) ?? []).map((p) => p.id);
@@ -94,9 +105,14 @@ function supabaseDb(): RelayDb {
         .select('id', { count: 'exact', head: true })
         .eq('team_id', teamId)
         .in('player_id', ids)
-        .gte('submitted_at', since.toISOString());
+        .gte(table === 'raid_rsvps' ? 'updated_at' : 'submitted_at', since.toISOString());
       if (error) throw new Error(error.message);
       return (count ?? 0) > 0;
+    },
+    async canManageDiscord(authHeader, teamId) {
+      // team_discord_settings() refuses anyone without Change Discord settings.
+      const { error } = await caller(authHeader).rpc('team_discord_settings', { p_team_id: teamId });
+      return !error;
     },
     async markPosted(teamId, kind) {
       const { error } = await db()

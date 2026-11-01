@@ -9,10 +9,13 @@
 //   - optionalReminder: the optional-rsvp-reminders job's x-cron-secret.
 //   - signup, addCharacter, rsvp, signupSheetSync, verifyChannel: a signed-in
 //     caller. addCharacter posts the caller's own add as the database records
-//     it, not their text (#1674).
-//   - selfreceived, bis, mplus: a request row for that character on that team
-//     written in the last minute. These forms work signed out on the current
-//     site, so the row is the proof the post is about something real.
+//     it, not their text (#1674). verifyChannel is for whoever may change the
+//     team's Discord settings.
+//   - selfreceived, bis, mplus: no sign-in; these forms work signed out on the
+//     current site.
+//   - signup, rsvp, selfreceived, bis, mplus also need that character's row on
+//     that team from the last minute, so the post is about something real and
+//     about that team (CodeRabbit on #1727).
 //
 // Before a post goes out, its channel and ping role must be in the team's own
 // server (#1712): ids are global in Discord and the bot sits in many servers,
@@ -63,9 +66,12 @@ export interface RelayDb {
   // null when the team has no Discord server set.
   postSetting(teamId: number, kind: Kind): Promise<PostSetting | null>;
   serverOf(teamId: number): Promise<string | null>;
-  // A row in `table` for that character on that team since `since`.
+  // A row in `table` for that character on that team since `since` (an RSVP
+  // counts when it last changed).
   recentRecord(table: RecordTable, teamId: number, nameRealm: string, since: Date): Promise<boolean>;
   markPosted(teamId: number, kind: Kind): Promise<void>;
+  // Whether the caller may change this team's Discord settings.
+  canManageDiscord(authHeader: string, teamId: number): Promise<boolean>;
 }
 
 export type Env = { get(name: string): string | undefined };
@@ -188,6 +194,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const team = await deps.db.team(teamKey, teamId);
   if (team === 'ambiguous') return refuse('Two teams use that key; send teamId', 400);
   if (!team) return refuse('Unknown team: ' + teamKey, 400);
+
+  if (def.officer && !(await deps.db.canManageDiscord(authHeader!, team.id))) return refuse('Not authorized', 403);
 
   if (def.record) {
     const nameRealm = def.record.nameRealm(payload);

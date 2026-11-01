@@ -23,8 +23,10 @@ answers to.
   received-item and BiS requests), M+ requests and RSVP changes. A kind of
   post that is off posts nothing.
   - Who may ask: the reminders job by its secret; signed-in pages for
-    signups, adds, RSVPs and the channel check; and the request forms only
-    when that character's request was saved in the last minute.
+    signups, adds, RSVPs and the channel check (that one only for the
+    team's Discord admins); and the request forms, signed out. A post about
+    a character also needs that character's signup, RSVP or request on that
+    team from the last minute.
   - Every post names whom it may ping. Text that says "@everyone" stays
     text, and only the team's own role is pinged.
   - A channel or ping role from outside the team's own Discord server is

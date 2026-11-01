@@ -24,11 +24,15 @@ export type Kind = 'officer_requests' | 'mplus_requests' | 'rsvp_changes';
 // Who may ask for each action (#959):
 //   cron     the optional-rsvp-reminders job, by its own secret;
 //   signedIn a signed-in caller (the pages behind it need a sign-in);
-//   record   a request row for that character on that team written in the
-//            last minute, since these forms work signed out on the current
+//   record   no sign-in, since these forms work signed out on the current
 //            site.
+// On top of the gate, a post about a character needs that character's row on
+// that team from the last minute (`record`), so nobody can post a signup or
+// an RSVP about another team or a character that did nothing (CodeRabbit on
+// #1727). The channel check is for the team's own Discord admins (`officer`).
 export type Gate = 'cron' | 'signedIn' | 'record';
-export type RecordTable = 'self_received_requests' | 'bis_requests' | 'mplus_exclusion_requests';
+export type RecordTable =
+  'self_received_requests' | 'bis_requests' | 'mplus_exclusion_requests' | 'season_signups' | 'raid_rsvps';
 
 export type Action = {
   gate: Gate;
@@ -36,10 +40,20 @@ export type Action = {
   // signup sheet.
   kind?: Kind;
   record?: { table: RecordTable; nameRealm: (p: Payload) => string };
+  // Only someone who may change the team's Discord settings.
+  officer?: boolean;
 };
 
 export const ACTIONS: Record<string, Action> = {
-  signup: { gate: 'signedIn', kind: 'officer_requests' },
+  signup: {
+    gate: 'signedIn',
+    kind: 'officer_requests',
+    // submit_season_signup() keeps the character as "Name-Realm".
+    record: {
+      table: 'season_signups',
+      nameRealm: (p) => (text(p.realm) ? `${text(p.charName)}-${text(p.realm)}` : text(p.charName))
+    }
+  },
   addCharacter: { gate: 'signedIn', kind: 'officer_requests' },
   selfreceived: {
     gate: 'record',
@@ -56,12 +70,12 @@ export const ACTIONS: Record<string, Action> = {
     kind: 'mplus_requests',
     record: { table: 'mplus_exclusion_requests', nameRealm: (p) => text(p.nameRealm || p.characterName) }
   },
-  rsvp: { gate: 'signedIn', kind: 'rsvp_changes' },
+  rsvp: { gate: 'signedIn', kind: 'rsvp_changes', record: { table: 'raid_rsvps', nameRealm: (p) => text(p.charName) } },
   optionalReminder: { gate: 'cron' },
   // The sheet moves into a function with #960; until then this answers OK and
   // posts nothing (Kat, 2026-11-01: the old bots are out of the server).
   signupSheetSync: { gate: 'signedIn' },
-  verifyChannel: { gate: 'signedIn' }
+  verifyChannel: { gate: 'signedIn', officer: true }
 };
 
 const text = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');

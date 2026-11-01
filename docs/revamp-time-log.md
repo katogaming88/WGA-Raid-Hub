@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |      5 h 35 m |
+| Phase 1: For the guild test        |      5 h 50 m |
 | Phase 2: Before the new site goes live |       0 m |
 | Phase 3: After the new site goes live  |       0 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **137 h 46 m** |
+| **All revamp work**                | **138 h 1 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -514,7 +514,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:05-9:25 AM | PR #1726 (#994): the browser checks and the functions' env example; Kat's two answers (#1706 closes here; a line saying posting starts in an upcoming update); the PR and six screenshots | Phase 1: For the guild test (#994) | 20 m | ~18 m build, ~2 m Kat | 64,100 | |
 | 9:35-9:45 AM | PR #1726 (#994): CodeRabbit's four notes: a test message Discord didn't create now fails; a note naming the member-read ceiling; mentionable roles declined (the bot holds Mention Everyone); the caller's channel access declined (Kat) | Phase 1: For the guild test (#994) | 10 m | ~8 m build, ~2 m Kat | 15,400 | |
 | 9:51-10:06 AM | After #1726: Kat merged; branches cleaned up; #994, #1706 and #921 off #1487 (#921 closed); why #1151 is next; Kat on the bot's Developer Team set its install permissions, removed the old VM bots and reinstalled the new one, so #959's Needs cleared; the bot shows offline (a line on Settings › Discord, Kat) | Phase 1: For the guild test | 15 m | ~10 m build, ~5 m Kat | 32,600 | |
-| 10:06-10:25 AM | #959: the relay posts as the bot with the team's Settings › Discord channels and roles, each checked against the team's server; gates for the reminders job, signed-in actions and just-written requests; every post names its mentions, with a test over all of them; a local stack posts to the test webhook; the deploy hold lifted; `optional-rsvp-reminders` sends its secret; the new app sends the team id; Kat chose to leave quiet hours to #962 and the sheet to #960; decision log, stamp, changelog, this row | Phase 1: For the guild test (#959) | 20 m | ~18 m build, ~2 m Kat | 157,700 | CodeRabbit, review and merge not yet counted |
+| 10:06-10:35 AM | #959: the relay posts as the bot with the team's Settings › Discord channels and roles, each checked against the team's server; gates for the reminders job, signed-in actions and just-written requests; every post names its mentions, with a test over all of them; a local stack posts to the test webhook; the deploy hold lifted; `optional-rsvp-reminders` sends its secret; the new app sends the team id; Kat chose to leave quiet hours to #962 and the sheet to #960; decision log, stamp, changelog, this row; PR #1727 and its screenshot; #962 moved up on #1487 with a note on #962; Kat asked why Tokens said "not read" (filled in from the transcript) | Phase 1: For the guild test (#959) | 30 m | ~27 m build, ~3 m Kat | 195,700 |  |
+| 10:39-10:45 AM | PR #1727 (#959): CodeRabbit's note (any signed-in account could post a signup or RSVP for any team, or probe its channels): a signup and an RSVP now need that character's row on that team from the last minute, and the channel check needs Change Discord settings; tests, decision log, changelog | Phase 1: For the guild test (#959) | 5 m | ~5 m build | 20,700 | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

@@ -48,6 +48,7 @@ type State = {
   record?: boolean;
   team?: { id: number } | 'ambiguous' | null;
   add?: OwnAdd | null;
+  officer?: boolean;
 };
 
 function fakeDb(state: State = {}) {
@@ -73,6 +74,7 @@ function fakeDb(state: State = {}) {
       log.push(`recentRecord ${table} ${nameRealm}`);
       return Promise.resolve(state.record ?? true);
     },
+    canManageDiscord: () => Promise.resolve(state.officer ?? true),
     markPosted: (_team, kind) => {
       log.push('markPosted ' + kind);
       return Promise.resolve();
@@ -191,6 +193,26 @@ Deno.test('a request form posts only after its row was just written, for that ch
     assertEquals([real.status, posted(real.calls).length], [200, 1], action);
     assertEquals(real.log.includes(`recentRecord ${table} Katorrí-Stormrage`), true, action);
   }
+});
+
+Deno.test("a signed-in RSVP or signup posts only after that character's row on that team just changed", async () => {
+  for (const [action, table, nameRealm] of [
+    ['rsvp', 'raid_rsvps', '@everyone'],
+    ['signup', 'season_signups', '@everyone-Stormrage']
+  ]) {
+    const none = await run(notice(action), { state: { record: false } });
+    assertEquals([none.status, none.body.error, posted(none.calls).length], [403, NO_RECORD, 0], action);
+    const real = await run(notice(action));
+    assertEquals([real.status, posted(real.calls).length], [200, 1], action);
+    assertEquals(real.log.includes(`recentRecord ${table} ${nameRealm}`), true, action);
+  }
+});
+
+Deno.test("the channel check is only for someone who may change the team's Discord settings", async () => {
+  const { status: code, calls } = await run(notice('verifyChannel', { channelId: CHANNEL }), {
+    state: { officer: false }
+  });
+  assertEquals([code, calls.length], [403, 0]);
 });
 
 Deno.test('an unknown action is refused, and so is a key two teams share', async () => {
