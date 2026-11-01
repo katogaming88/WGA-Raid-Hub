@@ -527,9 +527,13 @@
   cursor: not-allowed;
 }
 
-.discord-keep,
-.discord-time {
+.settings-row .discord-keep,
+.settings-row .discord-time {
   width: auto;
+}
+
+.discord-fieldset .picker-choice {
+  align-self: flex-start;
 }
 
 .discord-test {
