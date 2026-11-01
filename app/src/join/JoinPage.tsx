@@ -16,16 +16,14 @@ import '../signup/signup.css';
 
 // /join/<code> (#1264): the page an invite link opens. Team and guild name,
 // Battle.net sign-in, joining, which Member is you (#1355), character pick, then onto the roster -- the
-// link is the approval. Sits outside the app shell: a visitor has no guild
-// yet, so there is no sidebar to show. Same character pick as Sign Up (#1162).
+// link is the approval. A site page, so it sits in the frame of the guild last
+// visited. Same character pick as Sign Up (#1162).
 export function JoinPage({ code }: { code: string }) {
   const target = useInviteTarget(code);
   return (
-    <main className="content join-page">
-      <DataState query={target} label="this invite link">
-        {(t) => (t ? <Join code={code} target={t} /> : <DeadLink />)}
-      </DataState>
-    </main>
+    <DataState query={target} label="this invite link">
+      {(t) => (t ? <Join code={code} target={t} /> : <DeadLink />)}
+    </DataState>
   );
 }
 

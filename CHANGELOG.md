@@ -12,6 +12,14 @@ answers to.
 
 ---
 
+## [3.227.1] - 2026-11-01
+
+### Project
+
+- The new app's invite link page keeps the sidebar and top bar on every
+  step, like the other site pages, instead of standing alone with no
+  way to the rest of the site.
+
 ## [3.227.0] - 2026-10-31
 
 ### Frontend

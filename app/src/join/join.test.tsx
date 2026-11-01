@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers } from '../test/fakeSupabase';
@@ -97,7 +97,11 @@ describe('the Join page', () => {
   it('names the team and guild and offers Battle.net sign-in to a visitor', async () => {
     renderApp('/join/phoenix-abc', handlers({ signedIn: false }));
     expect(await screen.findByRole('heading', { name: 'Join Phoenix (WGA)' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Sign in with Battle.net' })).toBeInTheDocument();
+    // The sidebar keeps its own sign-in button too.
+    expect(
+      within(screen.getByRole('main')).getByRole('button', { name: 'Sign in with Battle.net' })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
   });
 
   it('asks for Discord first when the account has none', async () => {

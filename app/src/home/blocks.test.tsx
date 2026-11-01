@@ -204,7 +204,8 @@ describe('the Home page’s progression and calendar', () => {
   it('links each raid day to its day on the calendar, saying what it shows', async () => {
     renderApp('/g/wga/t/phoenix', handlers());
     const card = await region('Calendar');
-    const links = await card.findAllByRole('link', { name: /1\/2 raiders expected, Present/ });
+    // On the 1st, the first day is also today.
+    const links = await card.findAllByRole('link', { name: /1\/2 raiders expected, (today, )?Present/ });
     expect(links.length).toBeGreaterThanOrEqual(28);
     expect(links[0]).toHaveAttribute(
       'href',
