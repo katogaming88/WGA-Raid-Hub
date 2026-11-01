@@ -131,7 +131,6 @@ const standalone = (page: ReactElement) => (
 const crashed = standalone(<ErrorPage />);
 
 export const routes: RouteObject[] = [
-  { path: '/join/:code', element: <JoinRoute />, errorElement: crashed },
   // Outside the guild frame, so an old link forwards for anyone, not only the
   // guild's members (#1264).
   ...Object.keys(SITE_PAGES).map((path) => ({ path: `/g/:guildKey/${path}`, element: <ToSitePage path={path} /> })),
@@ -150,6 +149,8 @@ export const routes: RouteObject[] = [
             element: <CreateGuildPage />,
             handle: { title: 'Create your guild' } satisfies RouteHandle
           },
+          // An invite link (#1264), in the frame so its steps keep the sidebar.
+          { path: '/join/:code', element: <JoinRoute />, handle: { title: 'Join a team' } satisfies RouteHandle },
           ...Object.entries(SITE_PAGES).map(([path, title]) => ({
             // A guide open over the Help page has its own address, to post in
             // Discord (#1526); one route, so the page stays put as guides open.

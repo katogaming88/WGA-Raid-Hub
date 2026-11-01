@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |      3 h 45 m |
+| Phase 1: For the guild test        |      3 h 50 m |
 | Phase 2: Before the new site goes live |       0 m |
 | Phase 3: After the new site goes live  |       0 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **135 h 56 m** |
+| **All revamp work**                | **136 h 1 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -502,6 +502,12 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:40-12:45 PM | After #1718: Kat merged; branches cleaned up, #1717's #1487 row out | Phase 1: For the guild test (#1717) | 5 m | ~4 m build, ~1 m Kat | not read | |
 | 12:45-1:10 PM | #1714: Midnight Season 3 on file undated; both sites list started seasons plus the next one (the next first on the current site); the new app's Settings > Signups names an undated season and drops the two-week close wait; the current site's wishlist counts an undated season as ahead; `wcl-progression-sync` reads a raid under an undated season from the current start, not the whole log (an old test of the "no start means read everything" case dropped); the bot needed nothing; tests on both sites and the sync, four screenshots, decision log, stamp, changelog, this row | Phase 1: For the guild test (#1714) | 25 m | ~23 m build, ~2 m Kat | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
 | 4:45-5:00 PM | PR #1719 (#1714): CodeRabbit (nothing to act on); the four screenshots put in the PR body; the fresh-agent review approved with three notes: a test for the wishlist with an undated season, the Sign up button's season order moved into a tested function, and Kat chose to leave seasons that have not started out of the Reports picker (a test for it) | Phase 1: For the guild test (#1714) | 15 m | ~13 m build, ~2 m Kat | not read | Merge not yet counted |
+
+### 2026-11-01
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 8:29-8:35 AM | Invite link page inside the site frame, so its steps keep the sidebar (Kat: "the invite link steps don't show the nav at all"); the frame's Connect card hidden there since the steps ask for both logins; a test for the sidebar; stamp, changelog, this row | Phase 1: For the guild test | 5 m | ~5 m build | not read | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
