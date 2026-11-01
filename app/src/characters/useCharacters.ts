@@ -149,7 +149,7 @@ export function useEarlierLoot(teamId: number, season: SeasonWindow | null, enab
   );
 }
 
-// A refusal from the battlenet-characters function, with its status, so the
+// A refusal from an Edge Function, with its status, so the
 // picker can offer the way out that fits (sign in again, connect Battle.net).
 export class FunctionRefusal extends Error {
   constructor(
@@ -168,7 +168,7 @@ export const refusalStatus = (error: unknown): number | null => {
 
 // supabase-js reports a function's non-2xx answer as a generic error with the
 // Response attached; the function's own message is in its body.
-async function refusalOf(error: { message: string; context?: unknown }): Promise<FunctionRefusal> {
+export async function refusalOf(error: { message: string; context?: unknown }): Promise<FunctionRefusal> {
   const response = error.context;
   if (!(response instanceof Response)) return new FunctionRefusal(error.message, null);
   let message = error.message;

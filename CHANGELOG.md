@@ -12,6 +12,34 @@ answers to.
 
 ---
 
+## [3.228.0] - 2026-11-01
+
+### Functions
+
+- `discord-settings` (new): what the new app's Settings › Discord page
+  reads from Discord through the bot (#994). It lists the Discord servers
+  an officer and the bot are both in, and records them so the officer can
+  pick one as the team's server. For the team's server it lists the text
+  channels, each with any permission the bot is missing there, and the
+  roles a post can ping. It also sends a test message, which pings nobody,
+  to a channel in the team's own server. Only someone allowed to change
+  the team's Discord settings can use it.
+
+### Project
+
+- New app: Settings › Discord (#994). An officer picks the team's server,
+  then where each kind of post goes (officer requests, M+ requests, RSVP
+  changes) and which role it pings. They can also add signup sheets for
+  chosen raid days and set quiet hours. Everything is picked from lists
+  read from Discord, so nobody copies an id. A channel the bot can't post
+  in says which permissions to add in Discord. A channel or role deleted
+  in Discord is flagged. If the bot is in none of the officer's servers,
+  an Add WGA Raid Hub to Discord button opens Discord's add-a-bot page
+  (#1706).
+- New app: the Discord signup sheet box is gone from General settings. No
+  team had saved a value in it.
+- New app: a Help guide, Set up Discord for your team.
+
 ## [3.227.1] - 2026-11-01
 
 ### Project

@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |      3 h 50 m |
+| Phase 1: For the guild test        |      4 h 30 m |
 | Phase 2: Before the new site goes live |       0 m |
 | Phase 3: After the new site goes live  |       0 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **136 h 1 m** |
+| **All revamp work**                | **136 h 41 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -508,6 +508,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 8:29-8:35 AM | Invite link page inside the site frame, so its steps keep the sidebar (Kat: "the invite link steps don't show the nav at all"); the frame's Connect card hidden there since the steps ask for both logins; a test for the sidebar; stamp, changelog, this row | Phase 1: For the guild test | 5 m | ~5 m build | not read | Review and merge not yet counted |
+| 8:08-8:10 AM | After #1719: branches cleaned up, #1714's #1487 row out, #994 picked as the next row | Phase 1: For the guild test | 5 m | ~4 m build, ~1 m Kat | not read | |
+| 8:10-8:22 AM | The dev site's Sandbox check: its "Sandbox only" setting matched no team (the Sandbox's address was `asiqsaxa`, not `sandbox`), so testers would have seen no team at all; Kat changed the address and ticked Unlisted; why Unlisted (keeps test loot and "Also on" off the real teams); the empty sidebar for someone on no team left as it is (Kat) | Phase 1: For the guild test | 10 m | ~7 m build, ~3 m Kat | not read | |
+| 8:22-8:30 AM, 8:48-9:05 AM | #994: Settings › Discord from the approved mockup; a `discord-settings` function reads the servers an officer shares with the bot (recorded for the server save), the server's channels with what the bot lacks in each, and its roles, and sends test messages; the page's server, posts, signup sheets and quiet hours; the General tab's signup box gone; the Add the bot button (#1706); a Help guide; function and page tests, stamp, changelog, this row | Phase 1: For the guild test (#994) | 25 m | ~25 m build | not read | Paused 8:30-8:48 for #1720. CodeRabbit, review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
