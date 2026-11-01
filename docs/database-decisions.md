@@ -3149,3 +3149,29 @@ Shipped: 20261031125349_midnight_season_3_undated.sql
 **Dating it later** is one migration in the order #1717's review found: end `MID2` the day before launch, then set `MID3`'s start, then its six track floors (docs/updating-fetch-items-for-new-tier.md).
 
 [Full discussion -> #1714](https://github.com/katogaming88/WGA-Raid-Hub/issues/1714).
+
+---
+
+## #959 -- the site's Discord notices post as the bot, from a function, and the VM bot stands down
+
+Shipped: no migration. `discord-bot-webhook` and `optional-rsvp-reminders`.
+
+**Supersedes the runtime paragraph of 2026-09-06 (#953).** That entry kept the bot on the VM because it needed a host that never exits. From here the notices don't: the relay posts each one itself with `DISCORD_BOT_TOKEN`, to the channel and ping role the team picked on Settings › Discord (#994, #1712). Kat removed the old VM bots from WGA's Discord on 2026-11-01, so nothing forwards to them any more and `BOT_WEBHOOK_URL` / `BOT_WEBHOOK_SECRET` are retired. The new bot shows offline in Discord's member list, since nothing holds a gateway connection for it; Settings › Discord says that is normal.
+
+**Who may ask, by caller class.** The relay stays `verify_jwt` off, so it carries its own gate:
+
+| Class | Actions | Gate |
+| --- | --- | --- |
+| The reminders job | `optionalReminder` (a DM) | `x-cron-secret` matching `OPTIONAL_RSVP_REMINDERS_SECRET`; an unset secret refuses |
+| Signed in | `signup`, `addCharacter`, `rsvp`, `signupSheetSync`, `verifyChannel` | a signed-in user's token; `verifyChannel` also needs Change Discord settings on the team |
+| Signed out | `selfreceived`, `bis`, `mplus` | none (these forms work signed out on the current site) |
+
+On top of that, every post about a character needs that character's row on that team from the last minute: `season_signups` for a signup (by `signup_name_realm`), `raid_rsvps` for an RSVP (by when it last changed), and `self_received_requests`, `bis_requests` or `mplus_exclusion_requests` for the three requests. A sign-in alone would let any account post a signup or an RSVP for any team (CodeRabbit on #1727); the row ties the post to that team and to something that really happened. For a signed-in action the row is the caller's own, read as the caller (their RSVP, or their signup through `get_own_signup()`), so the answer never reveals another person's activity; only the signed-out forms' proof is read with the service role.
+
+**The posting rule, as far as this goes.** Every post names `allowed_mentions` with `parse: []`, so text that says "@everyone" stays text, and only the team's own ping role may notify. The bot holds Mention Everyone (Kat, 2026-10-29), so that line is the only guard, and a test fails on any post without it. The 2026-09-06 rule's first line, "a post says what the database holds", holds for `addCharacter` (the Audit Log row) and for whether the others are real (their row); the text of those posts still comes from the caller, inside the minute the row proves. Reading every field back from its row, and posting each row once (today a row can be replayed inside its minute), are #962's outbox, next after this (Kat, 2026-11-01, on CodeRabbit's notes on #1727).
+
+**Each post stays inside its team's server.** The channel is fetched and must belong to `team_discord_config.guild_id`, and the ping role must be one of that server's roles, before anything is sent: ids are global in Discord and the bot sits in many guilds' servers, and the database only checks the ids' shape (#1712). A role from elsewhere is dropped and the notice posts without it; a channel from elsewhere is refused.
+
+**Left for later, on purpose.** Quiet hours don't hold posts yet: holding needs a queue, which is #962 (Kat, 2026-11-01). `signupSheetSync` answers OK and posts nothing until the sheet moves into a function (#960). A local stack posts every notice to `DISCORD_TEST_WEBHOOK_URL` marked `[local]`, never as the bot.
+
+[Full discussion -> #959](https://github.com/katogaming88/WGA-Raid-Hub/issues/959).

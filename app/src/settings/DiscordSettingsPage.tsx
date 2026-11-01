@@ -57,8 +57,8 @@ export function DiscordSettingsPage() {
       <p className="text-muted">
         What the bot posts in your Discord for this team, where, and who it pings. New to this?{' '}
         <Link to="/help/discord-setup">Set up Discord for your team</Link>.{' '}
-        {/* Until the site posts by itself (#959, #960). Delete with #959. */}
-        The bot starts posting with these settings in an upcoming update. Send test message works now.
+        {/* Until the sheet moves (#960) and quiet hours hold posts (#962). */}
+        Signup sheets and quiet hours start working in an upcoming update.
       </p>
       <DataState query={bothQueries(settings, discord)} label="your Discord settings">
         {([saved, read]) => (
@@ -273,6 +273,10 @@ function ServerCard({
         <dt>The bot</dt>
         <dd className={server.botIn ? 'discord-good' : 'discord-problem'}>
           {server.botIn ? 'In the server' : 'Not in this server any more. Nothing posts until it is added back.'}
+        </dd>
+        <dt>Status</dt>
+        <dd className="text-muted">
+          Discord lists the bot as offline. That’s normal: it posts without staying connected.
         </dd>
         <dt>Checked</dt>
         <dd>{timeAgoLabel(new Date(checkedAt).toISOString()) || 'just now'}</dd>

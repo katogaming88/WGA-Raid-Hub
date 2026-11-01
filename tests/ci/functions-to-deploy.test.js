@@ -5,6 +5,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HOLD, importersOf, listFunctions, selectFunctions } from '../../scripts/ci/functions-to-deploy.js';
 
+// The real hold list is empty since #959; the hold itself is pinned with this
+// one, so the rule keeps a test while nothing is held.
+const FIXTURE_HOLD = [{ name: 'discord-bot-webhook', reason: 'a fixture hold (#959)' }];
+
 // The rule the `functions` job in deploy.yml applies to a push (#1083): a
 // changed function deploys, a change under _shared/ deploys its importers, a
 // config.toml change deploys everything, anything else deploys nothing, and
@@ -72,7 +76,7 @@ describe('listing the functions', () => {
 });
 
 describe('selecting from a push', () => {
-  const select = (changed) => selectFunctions({ changed, root: fixture });
+  const select = (changed) => selectFunctions({ changed, root: fixture, hold: FIXTURE_HOLD });
 
   it('deploys the function a changed file belongs to, once', () => {
     const result = select(['supabase/functions/beta/index.ts', 'supabase/functions/beta/format.ts']);
@@ -98,7 +102,7 @@ describe('selecting from a push', () => {
   it('deploys everything not held when config.toml changes', () => {
     expect(select(['supabase/config.toml'])).toEqual({
       deploy: ['alpha', 'beta', 'gamma'],
-      held: [{ name: 'discord-bot-webhook', reason: HOLD[0].reason }]
+      held: FIXTURE_HOLD
     });
   });
 
@@ -120,7 +124,7 @@ describe('selecting from a push', () => {
   it('removes a held function from a push that changed it, and says so', () => {
     expect(select(['supabase/functions/discord-bot-webhook/index.ts'])).toEqual({
       deploy: [],
-      held: [{ name: 'discord-bot-webhook', reason: HOLD[0].reason }]
+      held: FIXTURE_HOLD
     });
   });
 
@@ -131,16 +135,18 @@ describe('selecting from a push', () => {
 
 describe('selecting by name for a workflow_dispatch', () => {
   it('"all" is every function not held', () => {
-    expect(selectFunctions({ names: 'all', root: fixture })).toEqual({
+    expect(selectFunctions({ names: 'all', root: fixture, hold: FIXTURE_HOLD })).toEqual({
       deploy: ['alpha', 'beta', 'gamma'],
-      held: [{ name: 'discord-bot-webhook', reason: HOLD[0].reason }]
+      held: FIXTURE_HOLD
     });
   });
 
   it('a list is those functions, sorted, with a held one reported', () => {
-    expect(selectFunctions({ names: ['gamma', 'alpha', 'discord-bot-webhook'], root: fixture })).toEqual({
+    expect(
+      selectFunctions({ names: ['gamma', 'alpha', 'discord-bot-webhook'], root: fixture, hold: FIXTURE_HOLD })
+    ).toEqual({
       deploy: ['alpha', 'gamma'],
-      held: [{ name: 'discord-bot-webhook', reason: HOLD[0].reason }]
+      held: FIXTURE_HOLD
     });
   });
 
@@ -156,6 +162,14 @@ describe('selecting by name for a workflow_dispatch', () => {
 });
 
 describe('the hold list against the real tree', () => {
+  it('holds nothing, so every function deploys when it changes (#959)', () => {
+    expect(HOLD).toEqual([]);
+    expect(selectFunctions({ changed: ['supabase/functions/discord-bot-webhook/index.ts'], root: ROOT })).toEqual({
+      deploy: ['discord-bot-webhook'],
+      held: []
+    });
+  });
+
   it('names only functions that exist, each with a reason', () => {
     const real = listFunctions(ROOT);
     expect(real.length).toBeGreaterThan(0);

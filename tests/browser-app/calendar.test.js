@@ -30,6 +30,11 @@ import {
 
 const BASE = '/g/wga/t/phoenix/calendar';
 
+// The new app also sends the team's id with each Discord notice (#959), so two
+// guilds using the same team key can't mix them up; the current site does not.
+const withTeamId = (writes) =>
+  writes.map((w) => (w.name === 'discord-bot-webhook' ? { ...w, body: { ...w.body, teamId: 1 } } : w));
+
 const person = (viewer, role) => ({
   discordId: viewer.discordId,
   person: {
@@ -191,7 +196,7 @@ describe('Calendar (new app): a raid night, checked against the current site', (
     await form.getByLabel('Note for officers (required)').fill(OWN_ANSWER.note);
     await form.getByRole('button', { name: 'Save' }).click();
     await expect.poll(() => calls.length).toBe(OWN_WRITES.length);
-    expect(calls).toEqual(OWN_WRITES);
+    expect(calls).toEqual(withTeamId(OWN_WRITES));
     await expect(opened.page.getByRole('status').filter({ hasText: 'Saved: Tentative' }).count()).resolves.toBe(1);
     calls.length = 0;
   });
@@ -210,7 +215,7 @@ describe('Calendar (new app): a raid night, checked against the current site', (
     await dialog.getByLabel('Reason (required, the raider sees it)').fill(OFFICER_CHANGE.note);
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect.poll(() => calls.length).toBe(OFFICER_WRITES.length);
-    expect(calls).toEqual(OFFICER_WRITES);
+    expect(calls).toEqual(withTeamId(OFFICER_WRITES));
     await expect(opened.page.getByRole('dialog').count()).resolves.toBe(0);
     calls.length = 0;
   });
@@ -219,7 +224,7 @@ describe('Calendar (new app): a raid night, checked against the current site', (
     await opened.page.getByRole('button', { name: `Change ${ROTATOR.nickname}’s answer` }).click();
     await opened.page.getByRole('dialog').getByRole('button', { name: 'In for the week' }).click();
     await expect.poll(() => calls.length).toBe(ROTATOR_WRITES.length);
-    expect(calls).toEqual(ROTATOR_WRITES);
+    expect(calls).toEqual(withTeamId(ROTATOR_WRITES));
   });
 });
 
@@ -232,7 +237,7 @@ describe('Calendar (new app): going back to the default', () => {
       await form.getByRole('radio', { name: 'Present' }).check();
       await form.getByRole('button', { name: 'Save' }).click();
       await expect.poll(() => calls.length).toBe(CLEAR_WRITES.length);
-      expect(calls).toEqual(CLEAR_WRITES);
+      expect(calls).toEqual(withTeamId(CLEAR_WRITES));
     } finally {
       await opened.context.close();
     }

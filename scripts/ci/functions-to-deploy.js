@@ -13,17 +13,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 // is not one (the same rule tests/ci/functions-config.test.js applies).
 export const FUNCTION_SLUG = /^[A-Za-z][A-Za-z0-9_-]*$/;
 
-// Functions main cannot deploy yet, each with the reason and the PR that
-// lifts the hold. discord-bot-webhook: main reads the single BOT_WEBHOOK_URL
-// and BOT_WEBHOOK_SECRET pair from #992 and production has neither, so a
-// deploy from main breaks every relay call (#997); #959 sets DISCORD_BOT_TOKEN
-// ahead of its merge and deletes this entry.
-export const HOLD = [
-  {
-    name: 'discord-bot-webhook',
-    reason: 'main needs BOT_WEBHOOK_URL and BOT_WEBHOOK_SECRET, which prod does not have (#997); #959 lifts it'
-  }
-];
+// Functions main cannot deploy yet, each as { name, reason }, the reason
+// naming the issue that lifts the hold. Empty since #959 moved
+// discord-bot-webhook off the bot process it used to forward to.
+export const HOLD = [];
 
 export function listFunctions(root = ROOT) {
   const dir = join(root, 'supabase', 'functions');
@@ -113,7 +106,7 @@ export function importersOf(modulePath, root = ROOT) {
  * `names` wins when given: 'all', or an array of function names (an unknown
  * one throws). Otherwise `changed` is the push's changed paths, repo-relative.
  */
-export function selectFunctions({ changed = [], names = null, root = ROOT } = {}) {
+export function selectFunctions({ changed = [], names = null, root = ROOT, hold = HOLD } = {}) {
   const all = listFunctions(root);
   const wanted = new Set();
 
@@ -145,8 +138,8 @@ export function selectFunctions({ changed = [], names = null, root = ROOT } = {}
     }
   }
 
-  const held = HOLD.filter((entry) => wanted.has(entry.name)).map(({ name, reason }) => ({ name, reason }));
-  const deploy = [...wanted].filter((name) => !HOLD.some((entry) => entry.name === name)).sort();
+  const held = hold.filter((entry) => wanted.has(entry.name)).map(({ name, reason }) => ({ name, reason }));
+  const deploy = [...wanted].filter((name) => !hold.some((entry) => entry.name === name)).sort();
   return { deploy, held };
 }
 

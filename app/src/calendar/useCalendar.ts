@@ -155,10 +155,11 @@ export function useSetOwnAnswer(teamId: number) {
         await tellBot(client, {
           action: 'rsvp',
           team: a.teamKey,
+          teamId,
           payload: { charName: a.nameRealm, raidDate: a.date, status: a.status, note: a.note }
         });
       }
-      await tellBot(client, { action: 'signupSheetSync', team: a.teamKey, payload: { raidDate: a.date } });
+      await tellBot(client, { action: 'signupSheetSync', team: a.teamKey, teamId, payload: { raidDate: a.date } });
       return { data: null, error: null };
     },
     { key: ['set-own-answer', teamId], refreshes: refreshes(teamId) }
@@ -179,7 +180,7 @@ export function useOfficerSetAnswer(teamId: number) {
         p_note: orNull(a.note.trim() || null)
       });
       if (error) return { data: null, error };
-      await tellBot(client, { action: 'signupSheetSync', team: a.teamKey, payload: { raidDate: a.date } });
+      await tellBot(client, { action: 'signupSheetSync', team: a.teamKey, teamId, payload: { raidDate: a.date } });
       return { data: null, error: null };
     },
     { key: ['officer-set-answer', teamId], refreshes: refreshes(teamId) }
@@ -199,7 +200,7 @@ export function useRotatorWeek(teamId: number) {
         p_in: w.isIn
       });
       if (error) return { data: null, error };
-      await tellBot(client, { action: 'signupSheetSync', team: w.teamKey, payload: { raidDate: w.date } });
+      await tellBot(client, { action: 'signupSheetSync', team: w.teamKey, teamId, payload: { raidDate: w.date } });
       return { data: null, error: null };
     },
     { key: ['rotator-week', teamId], refreshes: refreshes(teamId) }

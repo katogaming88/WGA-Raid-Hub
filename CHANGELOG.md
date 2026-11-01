@@ -12,6 +12,40 @@ answers to.
 
 ---
 
+## [3.229.0] - 2026-11-01
+
+### Functions
+
+- `discord-bot-webhook` posts the site's Discord notices itself, as the new
+  WGA Raid Hub bot, instead of forwarding them to the old bots on the VM
+  (#959). Each notice goes to the channel and ping role the team picked on
+  Settings › Discord: officer requests (signups, character adds,
+  received-item and BiS requests), M+ requests and RSVP changes. A kind of
+  post that is off posts nothing.
+  - Who may ask: the reminders job by its secret; signed-in pages for
+    signups, adds, RSVPs and the channel check (that one only for the
+    team's Discord admins); and the request forms, signed out. A post about
+    a character also needs that character's signup, RSVP or request on that
+    team from the last minute.
+  - Every post names whom it may ping. Text that says "@everyone" stays
+    text, and only the team's own role is pinged.
+  - A channel or ping role from outside the team's own Discord server is
+    refused before anything posts.
+  - Quiet hours don't hold posts yet (#962), and the signup sheet posts
+    nothing until #960.
+- `optional-rsvp-reminders` sends its secret with each reminder.
+- `boe-webhook`, `boe-sold-webhook`, `contact-webhook`: no change in what
+  they do; the shared module they read now also says where the bot posts.
+
+### Project
+
+- New app: Settings › Discord says the bot shows as offline in Discord's
+  member list and that this is normal, and that signup sheets and quiet
+  hours start working in an upcoming update. The new app's notices send
+  the team's id, so two guilds using the same team address can't mix them
+  up.
+- The deploy hold on `discord-bot-webhook` is lifted; nothing is held.
+
 ## [3.228.0] - 2026-11-01
 
 ### Functions

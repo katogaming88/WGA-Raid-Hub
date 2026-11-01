@@ -21,7 +21,8 @@ export function useAddCharacter(teamId: number, teamKey: string) {
       if (error) return { data: null, error };
       await notifyOfficers(client, {
         action: 'addCharacter',
-        team: teamKey
+        team: teamKey,
+        teamId
       });
       return { data: data as number, error: null };
     },
