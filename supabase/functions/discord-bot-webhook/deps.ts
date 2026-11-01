@@ -84,23 +84,24 @@ function supabaseDb(): RelayDb {
       if (error) throw new Error(error.message);
       return (data as { guild_id: string } | null)?.guild_id ?? null;
     },
-    async recentRecord(table, teamId, nameRealm, since) {
-      // A signup names its character itself; the rest point at a roster row.
+    async recentRecord(table, teamId, nameRealm, since, authHeader) {
+      // A signup: the caller's own, which get_own_signup() returns (raiders
+      // can't read season_signups themselves).
       if (table === 'season_signups') {
-        const { count, error } = await db()
-          .from('season_signups')
-          .select('id', { count: 'exact', head: true })
-          .eq('team_id', teamId)
-          .eq('signup_name_realm', nameRealm)
-          .gte('submitted_at', since.toISOString());
+        if (!authHeader) return false;
+        const { data, error } = await caller(authHeader).rpc('get_own_signup', { p_team_id: teamId });
         if (error) throw new Error(error.message);
-        return (count ?? 0) > 0;
+        const own = ((data as { signup_name_realm: string; submitted_at: string }[] | null) ?? [])[0];
+        return !!own && own.signup_name_realm === nameRealm && new Date(own.submitted_at) >= since;
       }
-      const players = await db().from('players').select('id').eq('team_id', teamId).eq('name_realm', nameRealm);
+      // The rest point at a roster row: as the caller when there is one (their
+      // own RSVP), else as the service role (a signed-out form's request).
+      const read = authHeader ? caller(authHeader) : db();
+      const players = await read.from('players').select('id').eq('team_id', teamId).eq('name_realm', nameRealm);
       if (players.error) throw new Error(players.error.message);
       const ids = ((players.data as { id: number }[] | null) ?? []).map((p) => p.id);
       if (ids.length === 0) return false;
-      const { count, error } = await db()
+      const { count, error } = await read
         .from(table)
         .select('id', { count: 'exact', head: true })
         .eq('team_id', teamId)

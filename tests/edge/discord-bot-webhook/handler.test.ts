@@ -70,8 +70,8 @@ function fakeDb(state: State = {}) {
       );
     },
     serverOf: () => Promise.resolve(SERVER),
-    recentRecord: (table, _team, nameRealm) => {
-      log.push(`recentRecord ${table} ${nameRealm}`);
+    recentRecord: (table, _team, nameRealm, _since, authHeader) => {
+      log.push(`recentRecord ${table} ${nameRealm}`, `as ${authHeader ?? 'service role'}`);
       return Promise.resolve(state.record ?? true);
     },
     canManageDiscord: () => Promise.resolve(state.officer ?? true),
@@ -205,7 +205,12 @@ Deno.test("a signed-in RSVP or signup posts only after that character's row on t
     const real = await run(notice(action));
     assertEquals([real.status, posted(real.calls).length], [200, 1], action);
     assertEquals(real.log.includes(`recentRecord ${table} ${nameRealm}`), true, action);
+    // The caller's own row, read as them, never another team's through the
+    // service role (CodeRabbit on #1727).
+    assertEquals(real.log.includes('as Bearer user-jwt'), true, action);
   }
+  const form = await run(notice('mplus'), { headers: {} });
+  assertEquals(form.log.includes('as service role'), true);
 });
 
 Deno.test("the channel check is only for someone who may change the team's Discord settings", async () => {

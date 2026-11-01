@@ -67,8 +67,16 @@ export interface RelayDb {
   postSetting(teamId: number, kind: Kind): Promise<PostSetting | null>;
   serverOf(teamId: number): Promise<string | null>;
   // A row in `table` for that character on that team since `since` (an RSVP
-  // counts when it last changed).
-  recentRecord(table: RecordTable, teamId: number, nameRealm: string, since: Date): Promise<boolean>;
+  // counts when it last changed). With `authHeader`, read as that caller, so
+  // only a row they could read themselves counts (their own RSVP or signup);
+  // without it, as the service role, for the forms that work signed out.
+  recentRecord(
+    table: RecordTable,
+    teamId: number,
+    nameRealm: string,
+    since: Date,
+    authHeader: string | null
+  ): Promise<boolean>;
   markPosted(teamId: number, kind: Kind): Promise<void>;
   // Whether the caller may change this team's Discord settings.
   canManageDiscord(authHeader: string, teamId: number): Promise<boolean>;
@@ -200,7 +208,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (def.record) {
     const nameRealm = def.record.nameRealm(payload);
     const since = new Date(now.getTime() - RECORD_WINDOW_MS);
-    if (!nameRealm || !(await deps.db.recentRecord(def.record.table, team.id, nameRealm, since))) {
+    // A signed-in action's proof is the caller's own row (CodeRabbit on #1727).
+    const asCaller = def.gate === 'signedIn' ? authHeader : null;
+    if (!nameRealm || !(await deps.db.recentRecord(def.record.table, team.id, nameRealm, since, asCaller))) {
       return refuse(NO_RECORD, 403);
     }
   }
