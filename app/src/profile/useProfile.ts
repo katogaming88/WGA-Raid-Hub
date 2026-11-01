@@ -385,6 +385,7 @@ export function useSubmitReport(teamId: number, playerId: number) {
         await notifyOfficers(client, {
           action: 'selfreceived',
           team: report.teamKey,
+          teamId,
           payload: {
             player: report.nameRealm,
             item: report.itemName,
@@ -415,6 +416,7 @@ export function useSubmitMplusRequest(teamId: number, playerId: number) {
       await notifyOfficers(client, {
         action: 'mplus',
         team: request.teamKey,
+        teamId,
         payload: { nameRealm: request.nameRealm, raiderioUrl: request.raiderioUrl, notes: request.reason }
       });
       return { data: null, error: null };

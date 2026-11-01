@@ -2,9 +2,9 @@
 // SUPABASE_URL, which the platform sets and nothing else can: the one
 // production host posts to the poster's live name, and anything else is a
 // local stack that posts to DISCORD_TEST_WEBHOOK_URL marked [local] with
-// nobody pinged. The three webhook posters resolve here; discord-bot-webhook
-// forwards to a bot process over its own protocol and is outside this rule
-// until #959.
+// nobody pinged. The three webhook posters resolve here, and so does
+// discord-bot-webhook's bot (#959): on production it posts as the bot, and a
+// local stack never holds the bot token.
 
 export const PLATFORM_URL = 'SUPABASE_URL';
 
@@ -63,4 +63,13 @@ export function marker(source: Source): string | null {
 // is a line somebody can read; the users allowlist survives production only.
 export function allowedMentions(source: Source, users: string[]): { parse: never[]; users: string[] } {
   return { parse: [], users: source === 'production' ? users : [] };
+}
+
+// Where the bot's posts go (#959): as the bot on production, and to the test
+// webhook on a local stack, marked [local] and pinging nobody.
+export function resolveBot(env: Env): { kind: 'bot' } | Destination {
+  if (isProductionStack(env)) return { kind: 'bot' };
+  const url = env.get(TEST_WEBHOOK);
+  if (!url) return { kind: 'skip', reason: TEST_WEBHOOK + ' is not set on this local stack' };
+  return { kind: 'post', url, source: 'local', via: TEST_WEBHOOK };
 }

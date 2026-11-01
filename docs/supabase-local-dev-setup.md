@@ -597,11 +597,10 @@ is for the times you want to see it rather than trust it.
 
 **Point the functions at it.** A function decides where its Discord post
 goes from where it is running (#1081): on a local stack the three webhook
-posters (`boe-webhook`, `boe-sold-webhook`, `contact-webhook`) send to
-`DISCORD_TEST_WEBHOOK_URL`, marked `[local]` with nobody pinged, and never
-to a live name, whatever the file holds. `discord-bot-webhook` is outside
-that rule until #959: it forwards to `BOT_WEBHOOK_URL`, so point that at the
-sink too if a rehearsal reaches it. Copy `supabase/functions/.env.example`
+posters (`boe-webhook`, `boe-sold-webhook`, `contact-webhook`) and
+`discord-bot-webhook`'s notices (#959) send to `DISCORD_TEST_WEBHOOK_URL`,
+marked `[local]` with nobody pinged, and never to a live name or as the bot,
+whatever the file holds. Copy `supabase/functions/.env.example`
 to `supabase/functions/.env` (gitignored) and set that one variable to the
 sink, plus any value you like for the secret of each timed function you will
 call (`OPTIONAL_RSVP_REMINDERS_SECRET`, `TWITCH_LIVE_CHECK_SECRET`,

@@ -238,7 +238,8 @@ Deno.serve(async (req) => {
 
           const res = await fetch(supabaseUrl + '/functions/v1/discord-bot-webhook', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            // The relay takes this action only with the job's own secret (#959).
+            headers: { 'Content-Type': 'application/json', 'x-cron-secret': cronSecret },
             body: JSON.stringify({
               action: 'optionalReminder',
               team: teamSlug,

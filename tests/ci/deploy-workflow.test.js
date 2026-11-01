@@ -261,8 +261,8 @@ describe('the functions half of Deploy (#1083)', () => {
     expect(verify).toMatch(/!inputs\.dry_run/);
   });
 
+  // Nothing is held since #959; a later hold must still name a real function.
   it('holds only functions that exist', () => {
-    expect(HOLD.length).toBeGreaterThan(0);
     for (const held of HOLD) {
       expect(existsSync(join(ROOT, 'supabase', 'functions', held.name, 'index.ts'))).toBe(true);
     }

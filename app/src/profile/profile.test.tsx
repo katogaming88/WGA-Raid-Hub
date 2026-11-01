@@ -363,7 +363,8 @@ describe('Profile page', () => {
         expect(invoke).toHaveBeenCalledWith('discord-bot-webhook', {
           body: {
             action: 'addCharacter',
-            team: 'phoenix'
+            team: 'phoenix',
+            teamId: 1
           }
         })
       );

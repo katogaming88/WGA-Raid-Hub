@@ -1,5 +1,5 @@
 {
-  "version": "3.228.0",
+  "version": "3.229.0",
   "pieces": {
     "frontend": "3.227.0",
     "db": "3.227.0",
@@ -7,12 +7,13 @@
     "functions": {
       "battlenet-characters": "3.205.0",
       "blizzard-gear-sync": "3.219.0",
-      "boe-sold-webhook": "3.220.0",
-      "boe-webhook": "3.119.2",
-      "contact-webhook": "3.119.2",
+      "boe-sold-webhook": "3.229.0",
+      "boe-webhook": "3.229.0",
+      "contact-webhook": "3.229.0",
       "discard-empty-account": "3.114.0",
+      "discord-bot-webhook": "3.229.0",
       "discord-settings": "3.228.0",
-      "optional-rsvp-reminders": "3.112.13",
+      "optional-rsvp-reminders": "3.229.0",
       "twitch-live-check": "3.112.13",
       "upload-bio-photo": "3.112.13",
       "wcl-progression-sync": "3.227.0",

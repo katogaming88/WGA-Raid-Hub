@@ -1,7 +1,7 @@
-// The production side of handler.ts's Deps (#1006): supabase-js over the
-// caller's session, the platform fetch, Deno.env. The only module here that
-// reaches a network or an environment.
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+// The production side of handler.ts's Deps (#1006): supabase-js, the platform
+// fetch, Deno.env. The only module here that reaches a network or an
+// environment.
+import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import type { Deps, OwnAdd, RelayDb } from './handler.ts';
 
 type OwnAddRow = {
@@ -14,11 +14,19 @@ type OwnAddRow = {
 };
 
 function supabaseDb(): RelayDb {
-  // Every read is the caller's own, as the caller: no service role here.
+  // Who the caller is, and their own newest add, are read as the caller. The
+  // rest is the service role: the team's Discord settings and the request
+  // tables are not the caller's to read, and the relay only reads them to
+  // decide where its own post goes.
   const caller = (authHeader: string) =>
     createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: authHeader } }
     });
+  let service: SupabaseClient<any> | undefined;
+  const db = () => {
+    if (!service) service = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    return service;
+  };
 
   return {
     async getUser(authHeader) {
@@ -40,6 +48,64 @@ function supabaseDb(): RelayDb {
         classSpec: row.class_spec,
         addedAt: row.added_at
       };
+    },
+    async team(key, id) {
+      let query = db().from('teams').select('id').eq('slug', key);
+      if (id !== null) query = query.eq('id', id);
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+      const rows = (data as { id: number }[] | null) ?? [];
+      if (rows.length > 1) return 'ambiguous';
+      return rows[0] ?? null;
+    },
+    async postSetting(teamId, kind) {
+      const [config, post] = await Promise.all([
+        db().from('team_discord_config').select('guild_id').eq('team_id', teamId).maybeSingle(),
+        db()
+          .from('team_discord_posts')
+          .select('channel_id, ping_role_id')
+          .eq('team_id', teamId)
+          .eq('kind', kind)
+          .maybeSingle()
+      ]);
+      if (config.error) throw new Error(config.error.message);
+      if (post.error) throw new Error(post.error.message);
+      const server = (config.data as { guild_id: string } | null)?.guild_id;
+      if (!server) return null;
+      const row = post.data as { channel_id: string | null; ping_role_id: string | null } | null;
+      return { serverId: server, channelId: row?.channel_id ?? null, roleId: row?.ping_role_id ?? null };
+    },
+    async serverOf(teamId) {
+      const { data, error } = await db()
+        .from('team_discord_config')
+        .select('guild_id')
+        .eq('team_id', teamId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return (data as { guild_id: string } | null)?.guild_id ?? null;
+    },
+    async recentRecord(table, teamId, nameRealm, since) {
+      const players = await db().from('players').select('id').eq('team_id', teamId).eq('name_realm', nameRealm);
+      if (players.error) throw new Error(players.error.message);
+      const ids = ((players.data as { id: number }[] | null) ?? []).map((p) => p.id);
+      if (ids.length === 0) return false;
+      const { count, error } = await db()
+        .from(table)
+        .select('id', { count: 'exact', head: true })
+        .eq('team_id', teamId)
+        .in('player_id', ids)
+        .gte('submitted_at', since.toISOString());
+      if (error) throw new Error(error.message);
+      return (count ?? 0) > 0;
+    },
+    async markPosted(teamId, kind) {
+      const { error } = await db()
+        .from('team_discord_posts')
+        .update({ last_posted_at: new Date().toISOString() })
+        .eq('team_id', teamId)
+        .eq('kind', kind);
+      // "Last posted" is for the settings page; the post itself went out.
+      if (error) console.error('discord-bot-webhook: last_posted_at not saved: ' + error.message);
     }
   };
 }

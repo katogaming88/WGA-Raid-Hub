@@ -11,6 +11,7 @@ import {
   isLocalStack,
   isProductionStack,
   marker,
+  resolveBot,
   resolveDestination
 } from '../../../supabase/functions/_shared/discord-destination.ts';
 import {
@@ -176,4 +177,15 @@ Deno.test('allowed mentions keep the users on production and nobody on a local s
   assertEquals(allowedMentions('production', [FINDER_ID]), { parse: [], users: [FINDER_ID] });
   assertEquals(allowedMentions('local', [FINDER_ID]), { parse: [], users: [] });
   assertEquals(allowedMentions('production', []), { parse: [], users: [] });
+});
+
+Deno.test('the bot posts as itself on production only, and a local stack goes to the test webhook (#959)', () => {
+  assertEquals(resolveBot(production()), { kind: 'bot' });
+  assertEquals(resolveBot(local()), {
+    kind: 'post',
+    url: TEST_WEBHOOK_URL,
+    source: 'local',
+    via: 'DISCORD_TEST_WEBHOOK_URL'
+  });
+  assertEquals(resolveBot(local({ DISCORD_TEST_WEBHOOK_URL: '' })).kind, 'skip');
 });
