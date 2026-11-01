@@ -12,13 +12,20 @@ vi.mock('../about/AboutPage', () => ({
     throw new Error('boom: secret detail');
   }
 }));
-vi.mock('../join/JoinRoute', () => ({
-  JoinRoute: () => {
-    throw new Error('join boom');
-  }
-}));
+// The frame itself crashing, when a test asks for it.
+const frame = vi.hoisted(() => ({ crash: false }));
+vi.mock('../layout/TeamSwitcher', async (original) => {
+  const { TeamSwitcher } = await original<typeof import('../layout/TeamSwitcher')>();
+  return {
+    TeamSwitcher: (props: Parameters<typeof TeamSwitcher>[0]) => {
+      if (frame.crash) throw new Error('frame boom');
+      return TeamSwitcher(props);
+    }
+  };
+});
 
 afterEach(() => {
+  frame.crash = false;
   setErrorReporter(null);
   vi.restoreAllMocks();
 });
@@ -47,10 +54,11 @@ describe('crash screen', () => {
     expect(screen.getByRole('link', { name: /support Discord/ })).toBeInTheDocument();
   });
 
-  it('shows on its own for a page outside the frame', async () => {
+  it('shows on its own when the frame itself crashes', async () => {
     quietConsole();
     setErrorReporter(() => {});
-    renderApp('/join/abc');
+    frame.crash = true;
+    renderApp('/help');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Something went wrong on this page' })).toBeVisible();
     expect(screen.queryByRole('navigation', { name: 'Main' })).not.toBeInTheDocument();
