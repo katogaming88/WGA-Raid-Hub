@@ -217,6 +217,15 @@ Deno.test("test: a channel the bot can't see or post in says so", async () => {
   assertEquals([mute.status, mute.body.error], [409, CANT_POST]);
 });
 
+Deno.test('test: a channel gone before the post is a failure, not a success', async () => {
+  const { status: code, body } = await run(
+    { teamId: 1, action: 'test', channelId: CHANNEL, kind: 'rsvp_changes' },
+    fakeDb(),
+    { ...testRoutes, [`POST /channels/${CHANNEL}/messages`]: status(404) }
+  );
+  assertEquals([code, body.error], [404, NOT_IN_SERVER]);
+});
+
 Deno.test('test: no saved server, a bad channel id or kind are refused before Discord', async () => {
   const noServer = await run(
     { teamId: 1, action: 'test', channelId: CHANNEL, kind: 'rsvp_changes' },

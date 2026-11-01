@@ -150,6 +150,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         allowed_mentions: { parse: [] }
       });
       if (sent === 'forbidden') return refuse(CANT_POST, 409);
+      // Gone between the lookup and the post (CodeRabbit on #1726).
+      if (!sent) return refuse(NOT_IN_SERVER, 404);
       return jsonResponse({ success: true });
     }
 
@@ -159,6 +161,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     let servers: Array<{ id: string; name: string }> = [];
     if (person?.discordId) {
+      // ponytail: one member read per server the bot is in, all at once.
+      // Fine while the bot is in a handful of servers; near Discord's global
+      // 50 requests a second, batch these and honor 429's retry_after.
       const found = await Promise.all(
         botGuilds.map(async (g) => {
           const member = await api<DiscordMember>(`/guilds/${g.id}/members/${person.discordId}`);
