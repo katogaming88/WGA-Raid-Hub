@@ -231,7 +231,9 @@ describe('Mark Received (new app), checked against the current site', () => {
       const calls = recordCalls(opened.page);
       const dialog = await fillReport(opened.page, REVIEW_REPORT);
       await dialog.getByRole('button', { name: 'Mark received' }).click();
-      await expect.poll(() => calls.find((c) => c.name === 'discord-bot-webhook')?.body).toEqual(REVIEW_REPORT.webhook);
+      await expect
+        .poll(() => calls.find((c) => c.name === 'discord-bot-webhook')?.body)
+        .toEqual({ ...REVIEW_REPORT.webhook, teamId: 1 });
       await expect.poll(() => statusText(opened.page)).toContain('to an officer for review');
     } finally {
       await opened.context.close();
@@ -345,7 +347,9 @@ describe('M+ exclusion request (new app), checked against the current site', () 
       await dialog.getByLabel('Gem sockets filled (helm, bracers, belt)').selectOption('2');
       await submit.click();
       await expect.poll(() => calls.find((c) => c.name === 'submit_mplus_exclusion')?.body).toEqual(MPLUS_REQUEST.call);
-      await expect.poll(() => calls.find((c) => c.name === 'discord-bot-webhook')?.body).toEqual(MPLUS_REQUEST.webhook);
+      await expect
+        .poll(() => calls.find((c) => c.name === 'discord-bot-webhook')?.body)
+        .toEqual({ ...MPLUS_REQUEST.webhook, teamId: 1 });
       await expect.poll(() => statusText(opened.page)).toContain('An officer will review it');
     } finally {
       await opened.context.close();
