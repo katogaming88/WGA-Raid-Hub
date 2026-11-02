@@ -81,8 +81,8 @@ type State = {
   rows?: WishlistSetupStatusRow[];
   recent?: { discordId: string; category: NudgeCategory }[];
   statusFails?: boolean;
-  // Whether the caller holds Manage loot on the team; true unless set.
-  allowed?: boolean;
+  // The team permissions the caller holds; both nudge ones unless set.
+  held?: string[];
 };
 
 // One log for the database and Discord both, so the order between them is
@@ -107,7 +107,7 @@ function setup(state: State = {}, discord: Response[] = []) {
     },
     hasTeamPermission(discordId, teamId, permission) {
       log.push(`db:hasTeamPermission:${discordId}:${teamId}:${permission}`);
-      return Promise.resolve(state.allowed ?? true);
+      return Promise.resolve((state.held ?? ['manage_loot', 'view_loot']).includes(permission));
     },
     recordNudge(discordId, categories) {
       log.push('db:recordNudge:' + discordId);
@@ -260,8 +260,9 @@ Deno.test('/nudge-missing answers "thinking" before any setup read or Discord ca
   assertEquals([...log], ['db:teamsInServer:' + SERVER, 'waitUntil']);
   assertEquals(await res.json(), { type: 5, data: { flags: 64 } });
   await settle();
-  assertEquals(log.slice(2, 5), [
+  assertEquals(log.slice(2, 6), [
     `db:hasTeamPermission:${OFFICER}:1:manage_loot`,
+    `db:hasTeamPermission:${OFFICER}:1:view_loot`,
     'db:setupStatus:1',
     `db:nudgedSince:500000000000000005:${new Date(NOW.getTime() - COOLDOWN_MS).toISOString()}`
   ]);
@@ -278,7 +279,7 @@ Deno.test('/nudge-missing DMs the raider, then records the cooldown, then edits 
   const { deps, log, calls, recorded, settle } = setup({}, [dmChannel(), ok(), ok()]);
   await handle(await signed(command('nudge-missing')), deps);
   await settle();
-  assertEquals(log.slice(5), [
+  assertEquals(log.slice(6), [
     'fetch:POST /users/@me/channels',
     'fetch:POST /channels/600000000000000006/messages',
     'db:recordNudge:500000000000000005',
@@ -336,14 +337,22 @@ Deno.test('/nudge-missing: a DM that fails records no cooldown and is listed', a
   assertEquals(fields[2], { name: "Couldn't DM -- DMs closed? (1)", value: 'Katorrí-Stormrage' });
 });
 
-Deno.test("/nudge-missing from someone who doesn't manage the team's loot reads and DMs nothing", async () => {
-  const { deps, log, calls, settle } = setup({ allowed: false }, [ok()]);
+for (const held of [[], ['view_loot'], ['manage_loot']]) {
+  Deno.test(`/nudge-missing from someone holding only [${held}] reads and DMs nothing`, async () => {
+    const { deps, log, calls, settle } = setup({ held }, [ok()]);
+    await handle(await signed(command('nudge-missing')), deps);
+    await settle();
+    assert(!log.includes('db:setupStatus:1'));
+    assertEquals(calls.length, 1);
+    assertEquals(JSON.parse(calls[0].body!).content, NOT_ALLOWED('Phoenix'));
+  });
+}
+
+Deno.test("/nudge-missing refused: the answer is an edit of the caller's own reply", async () => {
+  const { deps, calls, settle } = setup({ held: [] }, [ok()]);
   await handle(await signed(command('nudge-missing')), deps);
   await settle();
-  assert(!log.includes('db:setupStatus:1'));
-  assertEquals(calls.length, 1);
-  assert(calls[0].url.endsWith('/messages/@original'));
-  assertEquals(JSON.parse(calls[0].body!).content, NOT_ALLOWED('Phoenix'));
+  assert(calls[0].url.endsWith(`/webhooks/${APP}/interaction-token/messages/@original`));
 });
 
 Deno.test('/nudge-missing with no member on the interaction is refused the same way', async () => {

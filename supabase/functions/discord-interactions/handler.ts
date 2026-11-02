@@ -68,10 +68,12 @@ export const NO_TEAMS = "No team has set this Discord server on Settings › Dis
 export const PICK_TEAM = 'This server has more than one team. Pick one in the team box.';
 export const UNKNOWN_TEAM = "That team isn't one of this server's teams.";
 export const UNKNOWN_COMMAND = "This bot doesn't know that command yet.";
-// Who may nudge: the team's Manage loot permission, officers by default.
-// Discord's own command setting is only a default a server admin can open
-// to any role, so the function checks again (CodeRabbit on #1743).
-export const NUDGE_PERMISSION = 'manage_loot';
+// Who may nudge: the team's Manage loot and View loot permissions, both
+// officers' by default; the summary names who is missing loot setup, which
+// is a View loot read. Discord's own command setting is only a default a
+// server admin can open to any role, so the function checks again
+// (CodeRabbit on #1743).
+export const NUDGE_PERMISSIONS = ['manage_loot', 'view_loot'];
 export const NOT_ALLOWED = (team: string) =>
   `Only people who manage loot for ${team} on Raid Hub can nudge its raiders. If that's you, make sure this Discord account is the one on your Raid Hub profile.`;
 export const FAILED = "Couldn't finish the check. Nobody past the ones listed was nudged; try again in a minute.";
@@ -204,7 +206,10 @@ async function nudge(deps: Deps, interaction: Interaction, team: Team): Promise<
   try {
     // Checked here rather than before the answer, so the 3 seconds stay free.
     const caller = interaction.member?.user?.id;
-    if (!caller || !(await deps.db.hasTeamPermission(caller, team.id, NUDGE_PERMISSION))) {
+    const allowed =
+      !!caller &&
+      (await Promise.all(NUDGE_PERMISSIONS.map((p) => deps.db.hasTeamPermission(caller, team.id, p)))).every(Boolean);
+    if (!allowed) {
       await finish(deps, interaction, { content: NOT_ALLOWED(team.name) });
       return;
     }
