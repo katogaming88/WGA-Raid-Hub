@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.230.2] - 2026-11-02
+
+### Project
+
+- The new app's invite page no longer dead-ends someone who already uses
+  WGA Raid Hub with Discord (#1739). Before, "Connect Discord" sent them to
+  Discord, Discord was refused because it is on their real account, and they
+  came back to the same button with no message. Now a refused connect opens
+  "Switch to my Discord account", and an "Already use WGA Raid Hub with
+  Discord?" link offers the switch before any trip to Discord.
+
 ## [3.230.1] - 2026-11-02
 
 ### Frontend

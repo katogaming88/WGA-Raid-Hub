@@ -270,8 +270,9 @@ export function AppShell() {
     content = (
       <AddressProvider value={address}>
         <AltsPickerProvider>
-          {/* The join steps ask for both logins themselves. */}
-          {!location.pathname.startsWith('/join/') && <ConnectPrompt />}
+          {/* The join steps ask for both logins themselves, so there it only
+              finishes round trips and offers the switch. */}
+          <ConnectPrompt cards={!location.pathname.startsWith('/join/')} />
           <Outlet context={base} />
           {currentTeam && <StreamWidget teamId={currentTeam.id} teamIds={teamIds} />}
         </AltsPickerProvider>

@@ -110,6 +110,23 @@ describe('the Join page', () => {
     expect(await screen.findByRole('button', { name: 'Connect Discord' })).toBeInTheDocument();
   });
 
+  // #1739: a Discord already on another account used to come back to the same
+  // button with no word, so people went round Discord again and again.
+  it('offers the switch when connecting Discord was refused because that Discord has an account', async () => {
+    const noDiscord = { ...handlers(), session: fakeSession({ battlenet: 'K#1' }) };
+    renderApp('/join/phoenix-abc', noDiscord, {
+      authReturn: { intent: 'connect-discord', error: 'Identity is already linked to another user' }
+    });
+    expect(await screen.findByRole('dialog', { name: 'Use your Discord account' })).toBeInTheDocument();
+  });
+
+  it('offers the switch before any trip to Discord', async () => {
+    const noDiscord = { ...handlers(), session: fakeSession({ battlenet: 'K#1' }) };
+    renderApp('/join/phoenix-abc', noDiscord);
+    await userEvent.click(await screen.findByRole('button', { name: 'Already use WGA Raid Hub with Discord?' }));
+    expect(screen.getByRole('dialog', { name: 'Use your Discord account' })).toBeInTheDocument();
+  });
+
   it('joins the team with no character, then asks which Member is you', async () => {
     const user = userEvent.setup();
     const { client } = renderApp('/join/phoenix-abc', handlers({ world: { name: 'bare' } }), {

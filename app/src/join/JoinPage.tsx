@@ -2,10 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { DataState } from '../components/DataState';
 import { useAccess } from '../auth/access';
+import { SwitchDialog } from '../auth/ConnectPrompt';
 import { BATTLENET, DISCORD, useSession } from '../auth/session';
 import { useStatus } from '../components/Status';
 import { CharacterIcon } from '../characters/CharacterIcon';
 import { pickerRows, type AccountCharacter, type CharactersAnswer } from '../characters/characters';
+import { errorMessage } from '../lib/errors';
 import { refusalStatus, useBattlenetCharacters } from '../characters/useCharacters';
 import { defaultGuildPath } from '../config';
 import { OwnNameForm } from '../roster/OwnNameForm';
@@ -74,9 +76,7 @@ function Join({ code, target }: { code: string; target: InviteTarget }) {
       <section className="card signup-card">
         {heading}
         <p className="text-muted">Connect your Discord too: your team roles and raid notifications come from it.</p>
-        <button type="button" className="button" onClick={() => void connect(DISCORD, 'signup-character')}>
-          Connect Discord
-        </button>
+        <DiscordStep onConnect={() => void connect(DISCORD)} />
       </section>
     );
   }
@@ -85,6 +85,36 @@ function Join({ code, target }: { code: string; target: InviteTarget }) {
       {heading}
       <Steps code={code} target={target} />
     </section>
+  );
+}
+
+// Someone who already uses the site with Discord can't connect it here: that
+// Discord is on their real account. They switch to it instead. A refused
+// connect opens the same switch from the app frame.
+function DiscordStep({ onConnect }: { onConnect: () => void }) {
+  const { switchToDiscord } = useSession();
+  const { announce } = useStatus();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const onSwitch = () => {
+    setBusy(true);
+    switchToDiscord().catch((error: unknown) => {
+      setBusy(false);
+      announce('error', `Could not switch to your Discord account: ${errorMessage(error)}`);
+    });
+  };
+  return (
+    <>
+      <div className="connect-actions">
+        <button type="button" className="button" onClick={onConnect}>
+          Connect Discord
+        </button>
+        <button type="button" className="link-button" onClick={() => setOpen(true)}>
+          Already use WGA Raid Hub with Discord?
+        </button>
+      </div>
+      {open && <SwitchDialog busy={busy} onClose={() => setOpen(false)} onSwitch={onSwitch} />}
+    </>
   );
 }
 
