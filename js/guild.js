@@ -163,7 +163,7 @@ function guildLoginWithDiscord() {
   // round-trips ?team= on purpose, and this page has no team to preserve.
   supabaseClient.auth.signInWithOAuth({
     provider: 'discord',
-    options: { redirectTo: window.location.origin + window.location.pathname }
+    options: { redirectTo: window.location.origin + window.location.pathname, queryParams: { prompt: 'none' } }
   });
 }
 

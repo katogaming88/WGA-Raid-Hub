@@ -40,7 +40,7 @@ function boePageLogin() {
   // back on the records rather than on a team roster.
   supabaseClient.auth.signInWithOAuth({
     provider: 'discord',
-    options: { redirectTo: window.location.origin + window.location.pathname }
+    options: { redirectTo: window.location.origin + window.location.pathname, queryParams: { prompt: 'none' } }
   });
 }
 
