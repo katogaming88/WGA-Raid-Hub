@@ -153,19 +153,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (name === 'about') return say(`The bot was last updated in Raid Hub release ${VERSION}.`);
   if (name !== 'nudge-missing') return say(UNKNOWN_COMMAND);
 
-  if (!interaction.guild_id) return say(NOT_IN_SERVER);
-  const teams = await deps.db.teamsInServer(interaction.guild_id);
-  if (teams.length === 0) return say(NO_TEAMS);
-  const picked = option(interaction, 'team')?.value;
-  // A team picked from another server's list is refused: the choice has to
-  // be one of this server's teams, whatever was typed.
-  const team =
-    picked === undefined ? (teams.length === 1 ? teams[0] : null) : teams.find((t) => String(t.id) === picked);
-  if (!team) return say(picked === undefined ? PICK_TEAM : UNKNOWN_TEAM);
+  const serverId = interaction.guild_id;
+  if (!serverId) return say(NOT_IN_SERVER);
 
-  // Started from a timer, so the answer below is out before any read; a cold
-  // supabase-js client could otherwise eat Discord's 3 seconds.
-  deps.waitUntil(new Promise((r) => setTimeout(r, 0)).then(() => nudge(deps, interaction, team)));
+  // Started from a timer, so the answer below is out before any read, the
+  // server's teams included; a cold supabase-js client could otherwise eat
+  // Discord's 3 seconds.
+  deps.waitUntil(new Promise((r) => setTimeout(r, 0)).then(() => nudge(deps, interaction, serverId)));
   return json({ type: DEFERRED_MESSAGE, data: { flags: EPHEMERAL } });
 }
 
@@ -199,12 +193,24 @@ const finish = (deps: Deps, i: Interaction, data: unknown) =>
     allowed_mentions: { parse: [] }
   });
 
-async function nudge(deps: Deps, interaction: Interaction, team: Team): Promise<void> {
+// The team the command is for: the one picked, which has to be one of this
+// server's teams whatever was typed, or the server's only team.
+function pickTeam(teams: Team[], picked: string | undefined): Team | string {
+  if (teams.length === 0) return NO_TEAMS;
+  if (picked === undefined) return teams.length === 1 ? teams[0] : PICK_TEAM;
+  return teams.find((t) => String(t.id) === picked) ?? UNKNOWN_TEAM;
+}
+
+async function nudge(deps: Deps, interaction: Interaction, serverId: string): Promise<void> {
   const nudged: string[] = [];
   const skipped: string[] = [];
   const failed: string[] = [];
   try {
-    // Checked here rather than before the answer, so the 3 seconds stay free.
+    const team = pickTeam(await deps.db.teamsInServer(serverId), option(interaction, 'team')?.value);
+    if (typeof team === 'string') {
+      await finish(deps, interaction, { content: team });
+      return;
+    }
     const caller = interaction.member?.user?.id;
     const allowed =
       !!caller &&

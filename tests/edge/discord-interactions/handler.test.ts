@@ -234,20 +234,31 @@ Deno.test("the team box lists this server's teams, filtered by what's typed", as
   assertEquals(log, ['db:teamsInServer:' + SERVER]);
 });
 
-const refusals: [string, Record<string, unknown>, Team[], unknown[] | undefined, string][] = [
-  ['in a DM', { guild_id: undefined }, [PHOENIX], undefined, NOT_IN_SERVER],
-  ['in a server no team has set', {}, [], undefined, NO_TEAMS],
-  ['with no team picked in a server with two', {}, [PHOENIX, HELLFIRE], undefined, PICK_TEAM],
-  ["with another server's team", {}, [PHOENIX], [{ name: 'team', value: '9' }], UNKNOWN_TEAM]
+Deno.test('/nudge-missing in a DM is refused at once and reads nothing', async () => {
+  const { deps, log } = setup();
+  const res = await handle(await signed(command('nudge-missing', { guild_id: undefined })), deps);
+  assertEquals(await res.json(), { type: 4, data: { content: NOT_IN_SERVER, flags: 64 } });
+  assertEquals(log, []);
+});
+
+// Settled after "thinking", since reading the server's teams could take
+// Discord's 3 seconds: the refusal edits that answer.
+const refusals: [string, Team[], unknown[] | undefined, string][] = [
+  ['in a server no team has set', [], undefined, NO_TEAMS],
+  ['with no team picked in a server with two', [PHOENIX, HELLFIRE], undefined, PICK_TEAM],
+  ["with another server's team", [PHOENIX], [{ name: 'team', value: '9' }], UNKNOWN_TEAM]
 ];
 
-for (const [what, over, teams, options, message] of refusals) {
+for (const [what, teams, options, message] of refusals) {
   Deno.test(`/nudge-missing ${what} is refused and nudges nobody`, async () => {
-    const { deps, log } = setup({ teams });
-    const res = await handle(await signed(command('nudge-missing', over, options)), deps);
-    assertEquals(await res.json(), { type: 4, data: { content: message, flags: 64 } });
-    assert(!log.includes('waitUntil'));
-    assert(!log.some((l) => l.startsWith('fetch:')));
+    const { deps, log, calls, settle } = setup({ teams }, [ok()]);
+    const res = await handle(await signed(command('nudge-missing', {}, options)), deps);
+    assertEquals(await res.json(), { type: 5, data: { flags: 64 } });
+    await settle();
+    assert(!log.some((l) => l.startsWith('db:hasTeamPermission') || l.startsWith('db:setupStatus')));
+    assertEquals(calls.length, 1);
+    assert(calls[0].url.endsWith('/messages/@original'));
+    assertEquals(JSON.parse(calls[0].body!).content, message);
   });
 }
 
@@ -256,11 +267,12 @@ for (const [what, over, teams, options, message] of refusals) {
 Deno.test('/nudge-missing answers "thinking" before any setup read or Discord call', async () => {
   const { deps, log, settle } = setup({}, [dmChannel(), ok(), ok()]);
   const res = await handle(await signed(command('nudge-missing')), deps);
-  // Nothing but the server's teams was read before the answer came back.
-  assertEquals([...log], ['db:teamsInServer:' + SERVER, 'waitUntil']);
+  // Nothing was read before the answer came back, not even the server's teams.
+  assertEquals([...log], ['waitUntil']);
   assertEquals(await res.json(), { type: 5, data: { flags: 64 } });
   await settle();
-  assertEquals(log.slice(2, 6), [
+  assertEquals(log.slice(1, 6), [
+    'db:teamsInServer:' + SERVER,
     `db:hasTeamPermission:${OFFICER}:1:manage_loot`,
     `db:hasTeamPermission:${OFFICER}:1:view_loot`,
     'db:setupStatus:1',
