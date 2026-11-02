@@ -44,4 +44,40 @@ describe('site addresses', () => {
     expect(screen.queryByRole('heading', { name: 'Page not found' })).not.toBeInTheDocument();
     expect(localStorage.getItem('wga_last_guild')).toBeNull();
   });
+
+  it('points the team links at the team last visited in the guild, on guild and site pages', async () => {
+    const roster = () => within(sidebar()).getByRole('link', { name: /^Roster/ });
+    const view = renderApp('/g/wga/t/hellfire');
+    await waitFor(() => expect(localStorage.getItem('wga_last_team:wga')).toBe('hellfire'));
+    view.view.unmount();
+
+    renderApp('/g/wga');
+    await within(sidebar()).findByText('We Go Again');
+    await waitFor(() => expect(roster()).toHaveAttribute('href', '/g/wga/t/hellfire/roster'));
+    expect(screen.getByRole('button', { name: /Choose a team/ })).toBeInTheDocument();
+  });
+
+  it('keeps the remembered team through a site page', async () => {
+    localStorage.setItem('wga_last_team:wga', 'hellfire');
+    renderApp('/help');
+    await within(sidebar()).findByText('We Go Again');
+    await waitFor(() =>
+      expect(within(sidebar()).getByRole('link', { name: /^Roster/ })).toHaveAttribute(
+        'href',
+        '/g/wga/t/hellfire/roster'
+      )
+    );
+  });
+
+  it('skips a remembered team the guild no longer lists', async () => {
+    localStorage.setItem('wga_last_team:wga', 'gone');
+    renderApp('/help');
+    await within(sidebar()).findByText('We Go Again');
+    await waitFor(() =>
+      expect(within(sidebar()).getByRole('link', { name: /^Roster/ })).not.toHaveAttribute(
+        'href',
+        '/g/wga/t/gone/roster'
+      )
+    );
+  });
 });

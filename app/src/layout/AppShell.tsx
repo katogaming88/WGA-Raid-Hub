@@ -21,7 +21,7 @@ import { AltsPickerProvider } from '../characters/AltsPicker';
 import { useAccess, useCan, usePreviewTeams } from '../auth/access';
 import { useSession } from '../auth/session';
 import { navGroups, pageHolds, type NavGroup, type NavItem } from './nav';
-import { defaultGuildKey, forgetGuild, lastGuildKey, rememberGuild } from './lastGuild';
+import { defaultGuildKey, forgetGuild, lastGuildKey, lastTeamKey, rememberGuild, rememberTeam } from './lastGuild';
 import { TeamSwitcher } from './TeamSwitcher';
 import { StreamWidget } from '../streams/StreamWidget';
 import { hasUnread } from '../news/news';
@@ -81,6 +81,10 @@ export function AppShell() {
       archived: t.archived_at !== null
     }));
   const currentTeam = resolved?.teamId ? teams.find((t) => t.id === resolved.teamId) : undefined;
+  const currentTeamKey = currentTeam?.key;
+  useEffect(() => {
+    if (currentTeamKey) rememberTeam(guildKey, currentTeamKey);
+  }, [guildKey, currentTeamKey]);
 
   const matches = useMatches();
   const pageTitle = (matches.at(-1)?.handle as RouteHandle | undefined)?.title ?? '';
@@ -88,7 +92,18 @@ export function AppShell() {
   const [newsSeen] = useNewsSeen();
   // Read from the build setting, so the links are right while access loads.
   const testKey = limited ? previewTeamKeys()?.[0] : undefined;
-  const navTeamKey = teamKey ?? testKey ?? defaultTeamKey();
+  // On a guild or site page: the team last visited in this guild, else the first
+  // team the person is on, else the default team, else any team (#1725). The
+  // default team is skipped where the guild has none, so no link says Phoenix
+  // in a guild without it.
+  const remembered = lastTeamKey(guildKey);
+  const hasTeam = (key: string | null) => teams.length === 0 || teams.some((t) => t.key === key);
+  const navTeamKey =
+    teamKey ??
+    testKey ??
+    (remembered && hasTeam(remembered) ? remembered : null) ??
+    teams.find((t) => onTeamIds.has(t.id))?.key ??
+    (hasTeam(defaultTeamKey()) ? defaultTeamKey() : (teams[0]?.key ?? defaultTeamKey()));
   // A guild page has no team of its own, so its team links and Officer group
   // follow the team those links go to.
   const navTeam = currentTeam ?? teams.find((t) => t.key === navTeamKey);
