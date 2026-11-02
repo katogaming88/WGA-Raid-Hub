@@ -168,14 +168,16 @@ export function buildPost(action: string, p: Payload, roleId: string | null, sub
     case 'mplus': {
       const player = text(p.nameRealm || p.characterName);
       const profile = text(p.raiderioUrl || p.mplusLink);
-      need(player, profile);
+      // submit_mplus_exclusion() takes a request with no link, and the pages
+      // always send one; a request without still reaches the officers.
+      need(player);
       return withPing(roleId, 'New M+ exclusion request received!', {
         color: 0x9b59b6,
         title: 'New M+ Exclusion Request',
         fields: [
           field('Player', player, ''),
           { name: 'Submitted At', value: when(submittedAt) },
-          field('Raider.io / Profile', profile, ''),
+          field('Raider.io / Profile', profile, '*(none)*'),
           ...(text(p.raidLink) ? [field('Raid Droptimizer', p.raidLink, '')] : []),
           field('Notes', p.notes, '*(none)*')
         ],

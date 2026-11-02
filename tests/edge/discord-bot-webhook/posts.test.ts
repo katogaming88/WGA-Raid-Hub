@@ -97,8 +97,13 @@ Deno.test('a field longer than Discord allows is cut, not refused', () => {
   assertEquals(embed.fields?.find((f) => f.name === 'Notes')?.value.length, 1024);
 });
 
+Deno.test('an M+ request with no Raider.io link still posts, saying so', () => {
+  const embed = buildPost('mplus', { nameRealm: 'Katorrí-Stormrage', raiderioUrl: null }, null, AT).embeds[0];
+  assertEquals(embed.fields[2], { name: 'Raider.io / Profile', value: '*(none)*' });
+});
+
 Deno.test('a post missing what it needs is refused', () => {
   assertThrows(() => buildPost('rsvp', { charName: 'Katorrí-Stormrage' }, null, AT), MissingFields);
-  assertThrows(() => buildPost('mplus', { nameRealm: 'Katorrí-Stormrage' }, null, AT), MissingFields);
+  assertThrows(() => buildPost('mplus', { raiderioUrl: 'https://raider.io/x' }, null, AT), MissingFields);
   assertThrows(() => buildReminder({ checkpoint: '2h' }), MissingFields);
 });

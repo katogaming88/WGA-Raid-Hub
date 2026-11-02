@@ -74,6 +74,7 @@ create policy "Claude readers read discord_post_queue" on public.discord_post_qu
 
 revoke all on table public.discord_post_queue from public, anon, authenticated, service_role;
 grant select, insert, update, delete on table public.discord_post_queue to service_role;
+grant select on table public.discord_post_queue to claude_readers;
 
 -- The one way a notice is queued. Not SECURITY DEFINER: the functions below
 -- are, and run as the table's owner; nobody else may call it.
