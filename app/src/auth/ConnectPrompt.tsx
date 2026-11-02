@@ -11,8 +11,9 @@ import './auth.css';
 // - Discord only: connect Battle.net, which the new site signs in with.
 //
 // Also says how a round trip to Battle.net or Discord went, once, when the
-// person comes back.
-export function ConnectPrompt() {
+// person comes back. With cards off (the join page, which asks for both logins
+// itself) it does only that, and offers the switch.
+export function ConnectPrompt({ cards = true }: { cards?: boolean }) {
   const { user, authReturn, clearAuthReturn, connect, switchToDiscord } = useSession();
   const { announce } = useStatus();
   const [busy, setBusy] = useState(false);
@@ -74,7 +75,7 @@ export function ConnectPrompt() {
     />
   );
 
-  if (!user || (user.hasBattlenet && user.hasDiscord)) return switchDialog || null;
+  if (!cards || !user || (user.hasBattlenet && user.hasDiscord)) return switchDialog || null;
 
   if (!user.hasDiscord) {
     return (
@@ -126,7 +127,15 @@ export function ConnectPrompt() {
   );
 }
 
-function SwitchDialog({ busy, onClose, onSwitch }: { busy: boolean; onClose: () => void; onSwitch: () => void }) {
+export function SwitchDialog({
+  busy,
+  onClose,
+  onSwitch
+}: {
+  busy: boolean;
+  onClose: () => void;
+  onSwitch: () => void;
+}) {
   const confirm = useRef<HTMLButtonElement>(null);
   return (
     <Dialog title="Use your Discord account" onClose={onClose} busy={busy} initialFocus={confirm}>
