@@ -95,6 +95,8 @@ export const BOT_TOKEN = 'DISCORD_BOT_TOKEN';
 // (1, 2, 4 then 8 minutes).
 export const MAX_TRIES = 5;
 const retryWaitMs = (attempts: number) => 60_000 * 2 ** (attempts - 1);
+// The longest one Discord call may take.
+const CALL_TIMEOUT_MS = 10_000;
 // The longest a 429 is waited out before giving up on the post.
 const MAX_RETRY_WAIT_MS = 5_000;
 
@@ -127,7 +129,10 @@ async function discord(deps: Deps, token: string, path: string, body?: unknown):
     deps.fetch(API + path, {
       method: body === undefined ? 'GET' : 'POST',
       headers: { Authorization: 'Bot ' + token, 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body)
+      body: body === undefined ? undefined : JSON.stringify(body),
+      // A hung call fails its try instead of running the drain out of time,
+      // which would leave its row claimed and never counted as failed.
+      signal: AbortSignal.timeout(CALL_TIMEOUT_MS)
     });
   let res = await call();
   if (res.status === 429) {
