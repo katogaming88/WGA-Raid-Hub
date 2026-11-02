@@ -4,8 +4,8 @@
 // typed into a note from pinging the whole server.
 import { assertEquals, assertThrows } from 'jsr:@std/assert@1';
 import {
-  ACTIONS,
   MissingFields,
+  QUEUED_ACTIONS,
   buildPost,
   buildReminder
 } from '../../../supabase/functions/discord-bot-webhook/posts.ts';
@@ -31,11 +31,9 @@ export const PAYLOADS: Record<string, Record<string, unknown>> = {
   rsvp: { charName: '@everyone', raidDate: '2026-11-04', status: 'Late', note: '@here' }
 };
 
-const CHANNEL_POSTS = Object.entries(ACTIONS)
-  .filter(([, a]) => a.kind)
-  .map(([name]) => name);
+const CHANNEL_POSTS = [...QUEUED_ACTIONS];
 
-Deno.test('every action that posts in a channel has a payload here, so the checks below cover all of them', () => {
+Deno.test('every queued channel post has a payload here, so the checks below cover all of them', () => {
   assertEquals(CHANNEL_POSTS.sort(), Object.keys(PAYLOADS).sort());
 });
 

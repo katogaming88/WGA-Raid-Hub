@@ -113,14 +113,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.229.0';
+var VERSION = '3.230.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20261031125349';
+var REQUIRED_SCHEMA = '20261101202408';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -5711,19 +5711,7 @@ function submitMPlusExclusionForm(nameRealm, firstName) {
           ? '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
           : '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Request submitted! An officer will review it shortly.</p>';
       }
-      if (!result.error) {
-        supabaseClient.functions.invoke('discord-bot-webhook', {
-          body: {
-            action: 'mplus',
-            team: TEAM_SLUG,
-            payload: {
-              nameRealm: nameRealm,
-              raiderioUrl: urlEl.value.trim(),
-              notes: notesEl ? notesEl.value.trim() : ''
-            }
-          }
-        });
-      }
+      // submit_mplus_exclusion() queues the officers' Discord post (#962).
     });
 }
 
@@ -5764,19 +5752,7 @@ function submitBiSForm(nameRealm, firstName) {
             '</p>'
           : '<p style="font-size:1.3rem;font-weight:700;color:var(--melee);padding:0.5rem 0;">Submitted -- pending officer review.</p>';
       }
-      if (!result.error) {
-        supabaseClient.functions.invoke('discord-bot-webhook', {
-          body: {
-            action: 'bis',
-            team: TEAM_SLUG,
-            payload: {
-              nameRealm: nameRealm,
-              bisLink: urlEl.value.trim(),
-              notes: notesEl ? notesEl.value.trim() : ''
-            }
-          }
-        });
-      }
+      // submit_bis_link() queues the officers' Discord post (#962).
     });
 }
 
@@ -5853,21 +5829,7 @@ function submitBisFlag(nameRealm, firstName, idSuffix) {
           ? '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
           : '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Flagged for officer review.</p>';
       }
-      if (!result.error) {
-        var player = findRosterPlayerByNameRealm(nameRealm);
-        supabaseClient.functions.invoke('discord-bot-webhook', {
-          body: {
-            action: 'bis',
-            team: TEAM_SLUG,
-            payload: {
-              nameRealm: nameRealm,
-              bisLink: player ? player.bisLink : '',
-              notes: notesEl ? notesEl.value.trim() : '',
-              sameLink: true
-            }
-          }
-        });
-      }
+      // flag_bis_list_changed() queues the officers' Discord post (#962).
     });
 }
 
@@ -6252,21 +6214,9 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId, dbSl
           // dbSlot, not the display `slot` -- selfReceivedEntryForRow() matches
           // on the raw slot, same as the server-side row this mirrors.
           DATA.selfReceived[firstName].push({ item: item, slot: dbSlot || '', source: diff + ': ' + sourceEl.value });
-        } else {
-          supabaseClient.functions.invoke('discord-bot-webhook', {
-            body: {
-              action: 'selfreceived',
-              team: TEAM_SLUG,
-              payload: {
-                player: nameRealm,
-                item: item,
-                slot: slot,
-                source: sourceEl.value,
-                notes: notesEl ? notesEl.value : ''
-              }
-            }
-          });
         }
+        // A report held for review: submit_self_received() queues the
+        // officers' Discord post (#962).
         formEl.innerHTML =
           '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">' +
           (autoApproved ? 'Marked as received.' : 'Request submitted -- pending officer approval.') +

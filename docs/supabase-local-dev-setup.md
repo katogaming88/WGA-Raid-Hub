@@ -611,6 +611,16 @@ DISCORD_TEST_WEBHOOK_URL=http://host.docker.internal:8899/webhooks/test-channel
 OPTIONAL_RSVP_REMINDERS_SECRET=any-local-value
 ```
 
+RSVP changes, signups and requests are queued by the database and posted by
+`discord-bot-webhook`'s drain, which pg_cron calls every minute on production
+(#962). The local stack's pg_cron jobs are off (`seed.sql`), so post the queue
+by hand:
+
+```sh
+curl -X POST http://127.0.0.1:54321/functions/v1/discord-bot-webhook \
+  -H 'x-cron-secret: any-local-value' -d '{"action":"drain"}'
+```
+
 A function that calls an outside service also needs that service's client
 pair, a real credential from its developer site rather than any value: the
 Warcraft Logs pair (`WCL_CLIENT_ID`, `WCL_CLIENT_SECRET`) for

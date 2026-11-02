@@ -29,5 +29,8 @@ begin
   values (p_team_id, v_player_id, nullif(p_reason, ''), nullif(p_raiderio_url, ''), 'pending')
   returning id into v_request_id;
 
+  perform queue_discord_post(p_team_id, 'mplus_requests', 'mplus', jsonb_build_object(
+    'nameRealm', p_name_realm, 'raiderioUrl', nullif(p_raiderio_url, ''), 'notes', nullif(p_reason, '')));
+
   return v_request_id;
 end $function$;

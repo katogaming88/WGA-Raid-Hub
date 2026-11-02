@@ -38,5 +38,9 @@ begin
   values (p_team_id, v_player_id, v_bis_link, nullif(trim(p_player_note), ''), 'pending')
   returning id into v_request_id;
 
+  perform queue_discord_post(p_team_id, 'officer_requests', 'bis', jsonb_build_object(
+    'nameRealm', p_name_realm, 'bisLink', v_bis_link, 'notes', nullif(trim(p_player_note), ''),
+    'sameLink', true));
+
   return v_request_id;
 end $function$;

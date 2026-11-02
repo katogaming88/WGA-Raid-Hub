@@ -77,6 +77,11 @@ begin
       v_player_id,
       jsonb_build_object('item', p_item_name, 'track', p_track, 'source', p_source)
     );
+  else
+    -- Only a report an officer has to review goes to Discord.
+    perform queue_discord_post(p_team_id, 'officer_requests', 'selfreceived', jsonb_build_object(
+      'player', p_name_realm, 'item', p_item_name, 'slot', nullif(p_slot, ''),
+      'source', nullif(p_source, ''), 'notes', nullif(p_note, '')));
   end if;
 
   return query select v_request_id, coalesce(v_auto_approved, false);

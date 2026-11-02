@@ -10,6 +10,25 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-11-01 -- Every Discord notice goes through a queue (#962)
+
+Shipped: 20261101202408_discord_post_queue.sql
+
+Until now the page that made a change called `discord-bot-webhook` straight after it, and the relay posted right away. A post that failed was lost, quiet hours on Settings › Discord could hold nothing, a request row could be replayed into repeated posts inside a minute, and the text came from what the page sent, with the row only proving the request was real (CodeRabbit on #1727).
+
+- **The write queues the notice, built from what it saved.** `set_own_rsvp()`, `submit_season_signup()`, `add_own_character()`, `submit_bis_link()`, `flag_bis_list_changed()`, `submit_self_received()` (a report held for review only) and `submit_mplus_exclusion()` each add a `discord_post_queue` row in the same transaction as the change, with the fields the message is built from. Nobody else can add one: `queue_discord_post()` is revoked from every site role and is not SECURITY DEFINER, so only those functions, running as the owner, reach it. The page calls for those notices are gone, and so are the relay's six actions and their row-from-the-last-minute check. A queued row carries the text as of the change, so a notice held by quiet hours still says what happened then and when.
+- **Enqueued in each function, not by triggers on the tables.** An officer changing a raider's RSVP, or a signup an officer adds, never posted, and a trigger cannot tell those writes from the raider's own.
+- **A row only when the team has a channel for that kind of post**, so teams without Discord leave nothing behind. The drain reads the channel and ping role again when it posts, so a kind turned off in the meantime is skipped.
+- **The drain is discord-bot-webhook's, called every minute by pg_cron** with the optional-rsvp-reminders secret the function and Vault already hold, so no new secret and no new function name (#998 is the first new name through the merge deploy). A notice posts up to about a minute after the change.
+- **Each row posts once.** `claim_discord_posts()` takes rows `for update skip locked` and marks them taken, so two runs never share one. A run that dies holding rows frees them after ten minutes; a run that dies between Discord's answer and marking the row could post it twice, which is rare enough to accept.
+- **Quiet hours are checked in the claim**, in the team's own time zone, running past midnight when the end is earlier than the start.
+- **A failed try waits and tries again**: 1, 2, 4 then 8 minutes, five tries in all, then the row stays `failed` with `last_error`. A row whose own fields are short is `failed` at once, since no later try can fix it. Nothing reads the failures yet; #1711 (Discord activity) will.
+- **`flag_bis_list_changed()` queues nothing when its flag is already waiting**, so a second click no longer pings the officers again.
+- **`my_recent_own_add()` is dropped.** It read an add back from the Audit Log for the relay's notice (#1674); `add_own_character()` queues that notice itself now.
+- **Kept for now, with no cleanup job:** posted and skipped rows stay. Only teams with channels add rows, and #1711 will want the history.
+
+[Full discussion -> #962](https://github.com/katogaming88/WGA-Raid-Hub/issues/962).
+
 ## 2026-10-29 -- The guild's Members tab: list, change a rank, hand over the guild (#1650)
 
 Shipped: 20261029103849_guild_members_and_ranks.sql

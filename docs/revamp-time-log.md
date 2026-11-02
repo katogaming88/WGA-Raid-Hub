@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |      5 h 55 m |
+| Phase 1: For the guild test        |      7 h 40 m |
 | Phase 2: Before the new site goes live |       0 m |
 | Phase 3: After the new site goes live  |       0 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **138 h 6 m** |
+| **All revamp work**                | **139 h 51 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -517,6 +517,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:06-10:35 AM | #959: the relay posts as the bot with the team's Settings › Discord channels and roles, each checked against the team's server; gates for the reminders job, signed-in actions and just-written requests; every post names its mentions, with a test over all of them; a local stack posts to the test webhook; the deploy hold lifted; `optional-rsvp-reminders` sends its secret; the new app sends the team id; Kat chose to leave quiet hours to #962 and the sheet to #960; decision log, stamp, changelog, this row; PR #1727 and its screenshot; #962 moved up on #1487 with a note on #962; Kat asked why Tokens said "not read" (filled in from the transcript) | Phase 1: For the guild test (#959) | 30 m | ~27 m build, ~3 m Kat | 195,700 |  |
 | 10:39-10:45 AM | PR #1727 (#959): CodeRabbit's note (any signed-in account could post a signup or RSVP for any team, or probe its channels): a signup and an RSVP now need that character's row on that team from the last minute, and the channel check needs Change Discord settings; tests, decision log, changelog | Phase 1: For the guild test (#959) | 5 m | ~5 m build | 20,700 | |
 | 11:23-11:30 AM | PR #1727 (#959): CodeRabbit's next three notes; Kat chose to fix one here and move two to #962: a signup's or RSVP's proof is now the caller's own row, read as them (`get_own_signup()` for a signup); replaying a row inside its minute and building the post from the row went to #962 with a comment there; test, decision log | Phase 1: For the guild test (#959) | 5 m | ~4 m build, ~1 m Kat | 19,600 | Review and merge not yet counted |
+| 11:52-11:56 AM | After #1727: Kat merged; branches cleaned up; #959's #1487 row out; the where-we-left-off note and handoff for the stop | Phase 1: For the guild test (#959) | 5 m | ~4 m build, ~1 m Kat | 11,200 | |
+| 8:08-8:20 PM | #1728: Kat asked for the server pick on Settings › Discord not to look through her servers; Discord's own picker first, then Kat's version (the server another team in the guild already set up, with one-click Use this, and Discord's picker for the first team or a different server); the issue filed and rewritten, added to #1487 after #962; #962 explained (every notice goes through the queue, not only failed ones) | Phase 1: For the guild test (#1728) | 10 m | ~7 m build, ~5 m Kat | 90,200 | |
+| 8:20-9:50 PM | #962: the Discord post queue. The seven writes that post queue their notice from what they saved, only when the team has a channel; `claim_discord_posts()` takes due rows once, holding a team in its quiet hours; `discord-bot-webhook`'s drain, every minute by pg_cron with the reminders secret, posts them as the bot and retries a failed one four times; the six page calls and relay actions gone, `my_recent_own_add()` dropped; edge, database and browser tests; docs, stamp, changelog | Phase 1: For the guild test (#962) | 1 h 30 m | ~1 h 30 m build | 290,000 | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

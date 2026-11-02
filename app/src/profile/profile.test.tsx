@@ -345,7 +345,7 @@ describe('Profile page', () => {
       expect(screen.getByRole('button', { name: 'Add character to roster' })).toBeInTheDocument();
     });
 
-    it('adds the character with the chosen spec and tells the officers', async () => {
+    it('adds the character with the chosen spec, and the database tells the officers', async () => {
       const user = userEvent.setup();
       const invoke = vi.fn(() => ({ data: { success: true } }));
       const { client } = renderApp('/g/wga/t/phoenix/me', handlers(invoke));
@@ -359,15 +359,8 @@ describe('Profile page', () => {
           { p_team_id: 1, p_character_id: 5, p_class_spec_id: 1 }
         ])
       );
-      await waitFor(() =>
-        expect(invoke).toHaveBeenCalledWith('discord-bot-webhook', {
-          body: {
-            action: 'addCharacter',
-            team: 'phoenix',
-            teamId: 1
-          }
-        })
-      );
+      // add_own_character() queues the notice itself (#962).
+      expect(invoke).not.toHaveBeenCalledWith('discord-bot-webhook', expect.anything());
     });
 
     it('shows the database’s refusal in the dialog and leaves the officers alone', async () => {

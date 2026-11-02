@@ -13,7 +13,7 @@ export function AddCharacterDialog({ character, onClose }: { character: SavedCha
   const team = useTeam();
   const { announce } = useStatus();
   const specs = useClassSpecs();
-  const add = useAddCharacter(team.id, team.key);
+  const add = useAddCharacter(team.id);
   const id = useId();
   const choices = specs.isSuccess ? specsFor(specs.data, character.class_name) : [];
   const suggested = choices.find((s) => s.spec === character.spec_name)?.id;

@@ -2,22 +2,22 @@
 // fetch, Deno.env. The only module here that reaches a network or an
 // environment.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
-import type { Deps, OwnAdd, RelayDb } from './handler.ts';
+import type { Deps, QueuedPost, RelayDb } from './handler.ts';
 
-type OwnAddRow = {
-  audit_id: number;
-  team_slug: string;
-  member: string | null;
-  name_realm: string;
-  class_spec: string;
-  added_at: string;
+type QueuedRow = {
+  id: number;
+  team_id: number;
+  kind: QueuedPost['kind'];
+  action: string;
+  payload: QueuedPost['payload'];
+  created_at: string;
+  attempts: number;
 };
 
 function supabaseDb(): RelayDb {
-  // Who the caller is, and their own newest add, are read as the caller. The
-  // rest is the service role: the team's Discord settings and the request
-  // tables are not the caller's to read, and the relay only reads them to
-  // decide where its own post goes.
+  // Who the caller is, and whether they may change the team's Discord
+  // settings, are read as the caller. The rest is the service role: the
+  // team's Discord settings and the post queue are not the caller's to read.
   const caller = (authHeader: string) =>
     createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: authHeader } }
@@ -34,20 +34,6 @@ function supabaseDb(): RelayDb {
         data: { user }
       } = await caller(authHeader).auth.getUser();
       return user ? { id: user.id } : null;
-    },
-    async latestOwnAdd(authHeader, team): Promise<OwnAdd | null> {
-      const { data, error } = await caller(authHeader).rpc('my_recent_own_add', { p_team_slug: team });
-      if (error) throw new Error(error.message);
-      const row = ((data as OwnAddRow[] | null) ?? [])[0];
-      if (!row) return null;
-      return {
-        auditId: row.audit_id,
-        team: row.team_slug,
-        member: row.member ?? 'A member',
-        nameRealm: row.name_realm,
-        classSpec: row.class_spec,
-        addedAt: row.added_at
-      };
     },
     async team(key, id) {
       let query = db().from('teams').select('id').eq('slug', key);
@@ -84,31 +70,32 @@ function supabaseDb(): RelayDb {
       if (error) throw new Error(error.message);
       return (data as { guild_id: string } | null)?.guild_id ?? null;
     },
-    async recentRecord(table, teamId, nameRealm, since, authHeader) {
-      // A signup: the caller's own, which get_own_signup() returns (raiders
-      // can't read season_signups themselves).
-      if (table === 'season_signups') {
-        if (!authHeader) return false;
-        const { data, error } = await caller(authHeader).rpc('get_own_signup', { p_team_id: teamId });
-        if (error) throw new Error(error.message);
-        const own = ((data as { signup_name_realm: string; submitted_at: string }[] | null) ?? [])[0];
-        return !!own && own.signup_name_realm === nameRealm && new Date(own.submitted_at) >= since;
-      }
-      // The rest point at a roster row: as the caller when there is one (their
-      // own RSVP), else as the service role (a signed-out form's request).
-      const read = authHeader ? caller(authHeader) : db();
-      const players = await read.from('players').select('id').eq('team_id', teamId).eq('name_realm', nameRealm);
-      if (players.error) throw new Error(players.error.message);
-      const ids = ((players.data as { id: number }[] | null) ?? []).map((p) => p.id);
-      if (ids.length === 0) return false;
-      const { count, error } = await read
-        .from(table)
-        .select('id', { count: 'exact', head: true })
-        .eq('team_id', teamId)
-        .in('player_id', ids)
-        .gte(table === 'raid_rsvps' ? 'updated_at' : 'submitted_at', since.toISOString());
+    async claimPosts() {
+      const { data, error } = await db().rpc('claim_discord_posts');
       if (error) throw new Error(error.message);
-      return (count ?? 0) > 0;
+      return ((data as QueuedRow[] | null) ?? []).map((r) => ({
+        id: r.id,
+        teamId: r.team_id,
+        kind: r.kind,
+        action: r.action,
+        payload: r.payload,
+        createdAt: r.created_at,
+        attempts: r.attempts
+      }));
+    },
+    async finishPost(id, finish) {
+      const { error } = await db()
+        .from('discord_post_queue')
+        .update({
+          status: finish.status,
+          last_error: finish.lastError,
+          claimed_at: null,
+          ...(finish.nextTryAt ? { next_try_at: finish.nextTryAt } : {}),
+          ...(finish.status === 'posted' ? { posted_at: new Date().toISOString() } : {})
+        })
+        .eq('id', id);
+      // Left claimed, the row is taken again after ten minutes.
+      if (error) console.error(`discord-bot-webhook: queued post ${id} not updated: ${error.message}`);
     },
     async canManageDiscord(authHeader, teamId) {
       // team_discord_settings() refuses anyone without Change Discord settings.

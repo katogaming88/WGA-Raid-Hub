@@ -850,30 +850,9 @@ function submitSignup() {
       return;
     }
 
-    if (!isEdit) {
-      // Best-effort Discord notification via the discord-bot-webhook Edge
-      // Function -- only for a fresh submission, not an edit; officers don't
-      // need a second "someone signed up" ping. Not gated on its result --
-      // the Supabase insert above is the write of record.
-      supabaseClient.functions.invoke('discord-bot-webhook', {
-        body: {
-          action: 'signup',
-          team: TEAM_SLUG,
-          payload: {
-            charName: signupData.charName || '',
-            realm: signupData.realm || '',
-            className: signupData.className || '',
-            mainSpec: signupData.mainSpec || '',
-            offSpecs: (signupData.offSpecs || []).join(', '),
-            role: signupData.role || '',
-            discord: (discordSession && discordSession.username) || '',
-            mainSwap: !!signupData.mainSwap,
-            swapFromNameRealm: claimDiffers ? discordSession.nameRealm : '',
-            notes: signupData.notes || ''
-          }
-        }
-      });
-    }
+    // A fresh submission's Discord post is submit_season_signup()'s own: it
+    // queues it (#962). An edit posts nothing; officers don't need a second
+    // "someone signed up" ping.
 
     signupStep = 5;
     renderSignupStep();

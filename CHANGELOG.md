@@ -12,6 +12,51 @@ answers to.
 
 ---
 
+## [3.230.0] - 2026-11-01
+
+### Backend
+
+- Every Discord notice now goes through a queue (#962). RSVP changes,
+  signups, character adds, BiS submissions and "list changed" flags,
+  received-item reports held for review, and M+ requests each queue their
+  notice in the same save, built from what was saved. Nobody can queue
+  made-up text.
+  - A notice queues only when the team has a channel for that kind of
+    post.
+  - A scheduled job posts the queue every minute, so a notice shows up
+    within about a minute of the change.
+  - During a team's quiet hours its notices wait, then post when quiet
+    hours end. Each still shows when the change was made.
+  - Each notice posts once. A failed post tries again after 1, 2, 4 and 8
+    minutes, then stays marked as failed.
+  - Clicking "My list changed" again while the first flag is still waiting
+    no longer pings the officers a second time.
+- `my_recent_own_add()` is removed; adding a character queues its own
+  notice now.
+
+### Functions
+
+- `discord-bot-webhook` posts the queue (#962): a new `drain` action, called
+  every minute by the scheduled job with its secret. A kind of post turned
+  off since the notice was queued is skipped. The six notice actions the
+  pages used to call are gone, and so is the check for a matching row from
+  the last minute.
+
+### Frontend
+
+- The calendar, signup, profile request and Mark Received pages no longer
+  call the Discord relay after saving; the database queues the notice
+  (#962). The calendar still asks for a signup sheet refresh.
+
+### Project
+
+- New app: the calendar answer, Mark Received, M+ request and Add character
+  forms no longer call the Discord relay; the database queues each notice.
+  Settings › Discord no longer says quiet hours are coming; they hold posts
+  now.
+- Edge, database and browser tests follow the queue. The local setup guide
+  says how to post the queue by hand on a local stack.
+
 ## [3.229.0] - 2026-11-01
 
 ### Functions
