@@ -43,12 +43,40 @@ function supabaseDb(): InteractionsDb {
       return ((data as any[] | null) ?? []).map((r) => ({ discordId: r.discord_id, category: r.category }));
     },
     async recordNudge(discordId, categories) {
-      const sentAt = new Date().toISOString();
-      const { error } = await db()
-        .from('discord_nudges_sent')
-        .upsert(categories.map((category) => ({ discord_id: discordId, category, sent_at: sentAt })));
-      // The DM went out; a lost row only means the next run may nudge again.
-      if (error) console.error('discord-interactions: nudge not recorded: ' + error.message);
+      const rows = categories.map((category) => ({
+        discord_id: discordId,
+        category,
+        sent_at: new Date().toISOString()
+      }));
+      // Tried twice. The DM went out either way; a lost row only means the
+      // next run may nudge that raider again.
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const { error } = await db().from('discord_nudges_sent').upsert(rows);
+        if (!error) return;
+        if (attempt === 2) console.error('discord-interactions: nudge not recorded: ' + error.message);
+      }
+    },
+    async hasTeamPermission(discordId, teamId, permission) {
+      // my_permission_team_ids()'s rule, for a Discord account rather than
+      // the signed-in user: the person's rank on the team, owners holding all.
+      const { data, error } = await db()
+        .from('team_members')
+        .select('rank, people!inner(discord_id)')
+        .eq('team_id', teamId)
+        .eq('people.discord_id', discordId)
+        .is('archived_at', null);
+      if (error) throw new Error(error.message);
+      const ranks = ((data as { rank: string }[] | null) ?? []).map((m) => m.rank);
+      if (ranks.includes('owner')) return true;
+      if (ranks.length === 0) return false;
+      const granted = await db()
+        .from('team_rank_permissions')
+        .select('rank')
+        .eq('team_id', teamId)
+        .eq('permission', permission)
+        .in('rank', ranks);
+      if (granted.error) throw new Error(granted.error.message);
+      return ((granted.data as unknown[] | null) ?? []).length > 0;
     }
   };
 }

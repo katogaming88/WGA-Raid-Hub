@@ -20,7 +20,9 @@ answers to.
   commands arrive here from Discord as signed requests, so no process has to
   stay connected. `/nudge-missing` is back: officers DM raiders missing a
   wishlist, a BiS source link, or a real BiS pick. In a server with more than
-  one team it asks which team, listing only that server's teams. `/about`
+  one team it asks which team, listing only that server's teams. Only people
+  who manage loot for that team on Raid Hub (its officers, by default) can
+  run it, whatever Discord's own command setting allows. `/about`
   says which Raid Hub release last changed the bot. A raider is nudged at most
   once a day for each thing, across every team, and a DM that fails no longer
   uses up the day.

@@ -13,6 +13,7 @@ import {
   PICK_TEAM,
   type Team,
   UNKNOWN_COMMAND,
+  NOT_ALLOWED,
   UNKNOWN_TEAM,
   handle,
   verifySignature
@@ -25,6 +26,8 @@ const URL = 'http://edge.test/functions/v1/discord-interactions';
 const SERVER = '100000000000000001';
 const APP = '400000000000000004';
 const NOW = new Date('2026-11-02T14:00:00.000Z');
+// The officer running the command.
+const OFFICER = '700000000000000007';
 const PHOENIX: Team = { id: 1, name: 'Phoenix' };
 const HELLFIRE: Team = { id: 2, name: 'Hellfire Rollers' };
 
@@ -56,6 +59,7 @@ const command = (name: string, over: Record<string, unknown> = {}, options?: unk
   application_id: APP,
   token: 'interaction-token',
   guild_id: SERVER,
+  member: { user: { id: OFFICER } },
   data: { name, ...(options ? { options } : {}) },
   ...over
 });
@@ -77,6 +81,8 @@ type State = {
   rows?: WishlistSetupStatusRow[];
   recent?: { discordId: string; category: NudgeCategory }[];
   statusFails?: boolean;
+  // Whether the caller holds Manage loot on the team; true unless set.
+  allowed?: boolean;
 };
 
 // One log for the database and Discord both, so the order between them is
@@ -98,6 +104,10 @@ function setup(state: State = {}, discord: Response[] = []) {
     nudgedSince(ids, since) {
       log.push(`db:nudgedSince:${ids.join(',')}:${since.toISOString()}`);
       return Promise.resolve(state.recent ?? []);
+    },
+    hasTeamPermission(discordId, teamId, permission) {
+      log.push(`db:hasTeamPermission:${discordId}:${teamId}:${permission}`);
+      return Promise.resolve(state.allowed ?? true);
     },
     recordNudge(discordId, categories) {
       log.push('db:recordNudge:' + discordId);
@@ -250,7 +260,8 @@ Deno.test('/nudge-missing answers "thinking" before any setup read or Discord ca
   assertEquals([...log], ['db:teamsInServer:' + SERVER, 'waitUntil']);
   assertEquals(await res.json(), { type: 5, data: { flags: 64 } });
   await settle();
-  assertEquals(log.slice(2, 4), [
+  assertEquals(log.slice(2, 5), [
+    `db:hasTeamPermission:${OFFICER}:1:manage_loot`,
     'db:setupStatus:1',
     `db:nudgedSince:500000000000000005:${new Date(NOW.getTime() - COOLDOWN_MS).toISOString()}`
   ]);
@@ -267,7 +278,7 @@ Deno.test('/nudge-missing DMs the raider, then records the cooldown, then edits 
   const { deps, log, calls, recorded, settle } = setup({}, [dmChannel(), ok(), ok()]);
   await handle(await signed(command('nudge-missing')), deps);
   await settle();
-  assertEquals(log.slice(4), [
+  assertEquals(log.slice(5), [
     'fetch:POST /users/@me/channels',
     'fetch:POST /channels/600000000000000006/messages',
     'db:recordNudge:500000000000000005',
@@ -323,6 +334,24 @@ Deno.test('/nudge-missing: a DM that fails records no cooldown and is listed', a
   assertEquals(recorded, []);
   const fields = JSON.parse(calls[2].body!).embeds[0].fields;
   assertEquals(fields[2], { name: "Couldn't DM -- DMs closed? (1)", value: 'Katorrí-Stormrage' });
+});
+
+Deno.test("/nudge-missing from someone who doesn't manage the team's loot reads and DMs nothing", async () => {
+  const { deps, log, calls, settle } = setup({ allowed: false }, [ok()]);
+  await handle(await signed(command('nudge-missing')), deps);
+  await settle();
+  assert(!log.includes('db:setupStatus:1'));
+  assertEquals(calls.length, 1);
+  assert(calls[0].url.endsWith('/messages/@original'));
+  assertEquals(JSON.parse(calls[0].body!).content, NOT_ALLOWED('Phoenix'));
+});
+
+Deno.test('/nudge-missing with no member on the interaction is refused the same way', async () => {
+  const { deps, log, calls, settle } = setup({}, [ok()]);
+  await handle(await signed(command('nudge-missing', { member: undefined })), deps);
+  await settle();
+  assert(!log.some((l) => l.startsWith('db:hasTeamPermission') || l.startsWith('db:setupStatus')));
+  assertEquals(JSON.parse(calls[0].body!).content, NOT_ALLOWED('Phoenix'));
 });
 
 Deno.test('/nudge-missing: a failed read still answers the officer', async () => {

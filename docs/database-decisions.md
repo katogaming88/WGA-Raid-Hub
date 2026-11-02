@@ -3210,6 +3210,8 @@ Shipped: `20261102093745_discord_nudges_sent.sql`. `discord-interactions`.
 
 **`/nudge-missing` asks for a team only when its server has more than one** (Kat, 2026-11-02). The choices are the teams whose `team_discord_config.guild_id` is the server the command was typed in, and a team id from another server is refused, whatever was typed. The old fixed list of every team would not survive a second guild.
 
+**Only the team's loot managers may nudge** (Kat, 2026-11-02, after CodeRabbit on #1743). Discord's "Manage Server" setting on the command is only a default a server admin can open to any role, so the function checks again: the caller's Discord account must belong to a Raid Hub person whose rank on that team holds `manage_loot` (officers by default; owners hold every permission), read from `team_members` and `team_rank_permissions` the way `my_permission_team_ids()` reads them. Anyone else gets a refusal and nothing is read or sent.
+
 **`discord_nudges_sent` holds the cooldown.** One row per Discord id and category, overwritten on each DM. The VM bot kept a JSON file per process, so a raider on two teams could be nudged twice for the same thing; one table makes the 24-hour window hold across every team, on purpose. The row is written after the DM went out: the file was stamped before the send, so a DM that failed used up the day. Service role and `claude_readers` only, the `raid_rsvp_reminders_sent` shape, with the grants in the migration.
 
 **Left for later, on purpose.** The other nine commands move here in #961. The signup sheet's Refresh button comes with the sheet in #960: a button routes to the application that posted its message, and this bot has posted no sheet yet. `bot/` stays until #999.
