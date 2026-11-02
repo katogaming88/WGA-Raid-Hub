@@ -33,3 +33,24 @@ export function forgetGuild() {
     // Nothing stored to forget.
   }
 }
+
+// The sidebar's team links on a guild or site page go to the team this browser
+// was last on in that guild (#1725). Per guild; losing it only means the
+// first team the person is on.
+const teamKeyFor = (guild: string) => `wga_last_team:${guild}`;
+
+export function lastTeamKey(guild: string): string | null {
+  try {
+    return localStorage.getItem(teamKeyFor(guild));
+  } catch {
+    return null;
+  }
+}
+
+export function rememberTeam(guild: string, team: string) {
+  try {
+    localStorage.setItem(teamKeyFor(guild), team);
+  } catch {
+    // Storage blocked: the team links fall back to the first team.
+  }
+}

@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.230.3] - 2026-11-02
+
+### Project
+
+- In the new app, the sidebar's team links on a guild or site page (BoE,
+  Streams, Guild home, Help, News) go to the team you were last on in that
+  guild, not always Phoenix (#1725). With nothing remembered they go to the
+  first team you are on, and a guild without a Phoenix never falls back to it.
+  The team picker still reads "Choose a team" on those pages.
+
 ## [3.230.2] - 2026-11-02
 
 ### Project
