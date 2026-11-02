@@ -34,7 +34,7 @@ function adminLoginWithDiscord() {
   if (!supabaseClient) return;
   supabaseClient.auth.signInWithOAuth({
     provider: 'discord',
-    options: { redirectTo: window.location.origin + window.location.pathname }
+    options: { redirectTo: window.location.origin + window.location.pathname, queryParams: { prompt: 'none' } }
   });
 }
 

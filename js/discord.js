@@ -144,11 +144,16 @@ function renderDiscordNavLoading() {
 
 // ── Login (full-page redirect) ──────────────────────────────────────────────
 
+// prompt=none: without it Discord asks to authorize the app again on every
+// sign-in. Someone who has never said yes still sees the screen once.
 function loginWithDiscord() {
   if (!supabaseClient) return;
   supabaseClient.auth.signInWithOAuth({
     provider: 'discord',
-    options: { redirectTo: window.location.origin + window.location.pathname + window.location.search }
+    options: {
+      redirectTo: window.location.origin + window.location.pathname + window.location.search,
+      queryParams: { prompt: 'none' }
+    }
   });
 }
 

@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.230.1] - 2026-11-02
+
+### Frontend
+
+- Signing in with Discord no longer asks you to authorize WGA Raid Hub
+  again every time. Discord shows that screen once, the first time.
+
+### Project
+
+- The new app's Discord sign-in, connect and switch steps skip Discord's
+  authorize screen the same way, so someone moving their account over sees
+  it at most once.
+
 ## [3.230.0] - 2026-11-01
 
 ### Backend

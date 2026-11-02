@@ -174,7 +174,8 @@ describe('keeping both logins on one account', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Connect Discord' }));
     expect(client.authCalls[0]).toEqual([
       'linkIdentity',
-      { provider: 'discord', options: { redirectTo: 'http://localhost:3000/' } }
+      // prompt=none, or Discord asks to authorize the app on every sign-in.
+      { provider: 'discord', options: { redirectTo: 'http://localhost:3000/', queryParams: { prompt: 'none' } } }
     ]);
   });
 

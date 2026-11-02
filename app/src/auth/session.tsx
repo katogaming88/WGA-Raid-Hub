@@ -192,6 +192,14 @@ const returnAddress = () => {
   return origin + withoutAuthError({ pathname, search, hash: '' });
 };
 
+// Discord asks to authorize the app again on every sign-in unless told not to.
+// prompt=none skips that screen once someone has said yes; the first time it
+// still shows.
+const oauthOptions = (provider: Provider) => ({
+  redirectTo: returnAddress(),
+  ...(provider === DISCORD && { queryParams: { prompt: 'none' } })
+});
+
 export function SessionProvider({
   initialUser,
   initialAuthReturn = { intent: null, error: null },
@@ -240,7 +248,7 @@ export function SessionProvider({
   const value = useMemo<SessionValue>(() => {
     const signIn = async (provider: Provider) => {
       setIntent('sign-in', provider);
-      const { error } = await client.auth.signInWithOAuth({ provider, options: { redirectTo: returnAddress() } });
+      const { error } = await client.auth.signInWithOAuth({ provider, options: oauthOptions(provider) });
       if (error) throw error;
     };
     return {
@@ -255,13 +263,13 @@ export function SessionProvider({
         setIntent(intent, BATTLENET);
         const { error } = await client.auth.signInWithOAuth({
           provider: BATTLENET,
-          options: { redirectTo: returnAddress() }
+          options: oauthOptions(BATTLENET)
         });
         if (error) throw error;
       },
       async connect(provider, intent) {
         setIntent(intent ?? (provider === DISCORD ? 'connect-discord' : 'connect-battlenet'), provider);
-        const { error } = await client.auth.linkIdentity({ provider, options: { redirectTo: returnAddress() } });
+        const { error } = await client.auth.linkIdentity({ provider, options: oauthOptions(provider) });
         if (error) throw error;
       },
       async switchToDiscord() {
@@ -272,7 +280,7 @@ export function SessionProvider({
         setIntent('switch-to-discord', DISCORD);
         const { error: signInError } = await client.auth.signInWithOAuth({
           provider: DISCORD,
-          options: { redirectTo: returnAddress() }
+          options: oauthOptions(DISCORD)
         });
         if (signInError) throw signInError;
       },
