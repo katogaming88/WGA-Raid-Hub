@@ -530,6 +530,24 @@ export type Database = {
         }
         Relationships: []
       }
+      discord_nudges_sent: {
+        Row: {
+          category: string
+          discord_id: string
+          sent_at: string
+        }
+        Insert: {
+          category: string
+          discord_id: string
+          sent_at?: string
+        }
+        Update: {
+          category?: string
+          discord_id?: string
+          sent_at?: string
+        }
+        Relationships: []
+      }
       discord_post_queue: {
         Row: {
           action: string

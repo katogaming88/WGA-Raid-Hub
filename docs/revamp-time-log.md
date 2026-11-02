@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |      7 h 40 m |
+| Phase 1: For the guild test        |      8 h 15 m |
 | Phase 2: Before the new site goes live |       0 m |
 | Phase 3: After the new site goes live  |       0 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **139 h 51 m** |
+| **All revamp work**                | **140 h 26 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -520,6 +520,13 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:52-11:56 AM | After #1727: Kat merged; branches cleaned up; #959's #1487 row out; the where-we-left-off note and handoff for the stop | Phase 1: For the guild test (#959) | 5 m | ~4 m build, ~1 m Kat | 11,200 | |
 | 8:08-8:20 PM | #1728: Kat asked for the server pick on Settings › Discord not to look through her servers; Discord's own picker first, then Kat's version (the server another team in the guild already set up, with one-click Use this, and Discord's picker for the first team or a different server); the issue filed and rewritten, added to #1487 after #962; #962 explained (every notice goes through the queue, not only failed ones) | Phase 1: For the guild test (#1728) | 10 m | ~7 m build, ~5 m Kat | 90,200 | |
 | 8:20-9:50 PM | #962: the Discord post queue. The seven writes that post queue their notice from what they saved, only when the team has a channel; `claim_discord_posts()` takes due rows once, holding a team in its quiet hours; `discord-bot-webhook`'s drain, every minute by pg_cron with the reminders secret, posts them as the bot and retries a failed one four times; the six page calls and relay actions gone, `my_recent_own_add()` dropped; edge, database and browser tests; docs, stamp, changelog | Phase 1: For the guild test (#962) | 1 h 30 m | ~1 h 30 m build | 290,000 | Review and merge not yet counted |
+
+### 2026-11-02
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 9:23-9:34 AM | What next after #1728 (Kat: it can wait until before cutover); what #1151 does; which Discord rows can wait: Kat kept #1709 and #1710 for the guild test, and #1728, #1613 and #1087 moved to Phase 2 and #1151 to Phase 4, on #1487 and on their milestones | Phase 1: For the guild test | 10 m | ~6 m build, ~4 m Kat | 74,300 | |
+| 9:34-10:00 AM | #998: re-audit against `main` (the old VM bots are gone, five deploy flags exist, no public key secret yet), Kat's three answers (commands global, the team from the server's own teams, Kat deploys the new function once by hand), recorded on #998; `discord-interactions` with the signature check, `/nudge-missing` and `/about`; `discord_nudges_sent`; the registration script; tests, decision log, RLS.md, stamp, changelog, this row | Phase 1: For the guild test (#998) | 25 m | ~23 m build, ~2 m Kat | 241,100 | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
