@@ -19,6 +19,10 @@ begin
   if v_auth_user_id is null then
     raise exception 'Not signed in';
   end if;
+  -- A signup with no character could not be posted (CodeRabbit on #1729).
+  if coalesce(btrim(p_name_realm), '') = '' then
+    raise exception 'Character name is required';
+  end if;
 
   if p_season is null then
     -- The deploy window's case: a bundle that names no tier gets the team's

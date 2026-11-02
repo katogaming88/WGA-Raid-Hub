@@ -177,6 +177,24 @@ describe('discord_post_queue', () => {
     });
   });
 
+  it('a signup with a blank character is refused, so nothing unpostable is queued', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await teamWithChannels(q);
+      await seedSeason(q, 'QUEUE2');
+      await q("insert into public.team_seasons (team_id, season_code, signups_open) values ($1, 'QUEUE2', true)", [
+        team.teamId
+      ]);
+      await expect(
+        asUser(
+          team.leader.uid,
+          "select public.submit_season_signup($1, '  ', 'Mage', 'Frost', '', false, null, null, 'QUEUE2')",
+          [team.teamId]
+        )
+      ).rejects.toThrow('Character name is required');
+      expect(await queue(q, team.teamId)).toEqual([]);
+    });
+  });
+
   it('claim_discord_posts() hands each notice out once, and holds a team in its quiet hours', async () => {
     await withTxn(async ({ q, asRole }) => {
       const quiet = await teamWithChannels(q);

@@ -23,7 +23,8 @@
 --   changes), submit_season_signup(), add_own_character(), submit_bis_link(),
 --   flag_bis_list_changed() and submit_self_received() when an officer has to
 --   review it (officer requests), and submit_mplus_exclusion() (M+ requests).
---   Each body is otherwise unchanged. flag_bis_list_changed() queues nothing
+--   Each body is otherwise unchanged, except that submit_season_signup()
+--   refuses a blank character, whose notice could not be posted. flag_bis_list_changed() queues nothing
 --   when it finds its flag already waiting, so a second click no longer pings.
 -- * discord-post-queue: a pg_cron job every minute that calls
 --   discord-bot-webhook's drain with the optional-rsvp-reminders secret, which
@@ -207,6 +208,10 @@ declare
 begin
   if v_auth_user_id is null then
     raise exception 'Not signed in';
+  end if;
+  -- A signup with no character could not be posted (CodeRabbit on #1729).
+  if coalesce(btrim(p_name_realm), '') = '' then
+    raise exception 'Character name is required';
   end if;
 
   if p_season is null then
