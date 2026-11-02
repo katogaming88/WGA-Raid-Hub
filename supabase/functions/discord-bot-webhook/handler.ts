@@ -3,28 +3,27 @@
 // with the bot's token, to the channel and ping role the team picked on
 // Settings › Discord (#994).
 //
-// POST { action, team, teamId?, payload }. `team` is the team's address key;
-// `teamId` settles it where two guilds use the same key. What each action
-// posts is in posts.ts; who may ask for it is its gate:
-//   - optionalReminder: the optional-rsvp-reminders job's x-cron-secret.
-//   - signup, addCharacter, rsvp, signupSheetSync, verifyChannel: a signed-in
-//     caller. addCharacter posts the caller's own add as the database records
-//     it, not their text (#1674). verifyChannel is for whoever may change the
-//     team's Discord settings.
-//   - selfreceived, bis, mplus: no sign-in; these forms work signed out on the
-//     current site.
-//   - signup, rsvp, selfreceived, bis, mplus also need that character's row on
-//     that team from the last minute, so the post is about something real and
-//     about that team (CodeRabbit on #1727).
+// Every channel notice is queued by the write behind it (#962): RSVP changes,
+// signups, adds, BiS, Mark Received and M+ requests each add a
+// discord_post_queue row built from what they saved. The drain, called every
+// minute by pg_cron, takes the due rows of teams not in quiet hours and posts
+// each once. A post that fails waits and tries again, five tries in all, then
+// stays as failed.
+//
+// POST { action, team?, teamId?, payload? }:
+//   - drain and optionalReminder: a scheduled job's x-cron-secret.
+//   - signupSheetSync, verifyChannel: a signed-in caller; verifyChannel is for
+//     whoever may change the team's Discord settings. `team` is the team's
+//     address key; `teamId` settles it where two guilds use the same key.
 //
 // Before a post goes out, its channel and ping role must be in the team's own
 // server (#1712): ids are global in Discord and the bot sits in many servers,
 // so a channel picked from another guild's server is refused here. A kind of
-// post with no channel is off and posts nothing. A 429 waits Discord's
-// retry_after and tries once more.
+// post with no channel is off, and its queued notices are skipped. A 429
+// waits Discord's retry_after and tries once more.
 //
-// Quiet hours are not held yet: that needs the outbox (#962). The signup sheet
-// is #960's; until then signupSheetSync answers OK and posts nothing.
+// The signup sheet is #960's; until then signupSheetSync answers OK and posts
+// nothing.
 //
 // handle() takes its reads, its fetch and its environment as an argument
 // (#1006), so tests/edge/ runs it against plain objects; deps.ts supplies the
@@ -36,29 +35,35 @@ import {
   MissingFields,
   type Message,
   type Payload,
-  type RecordTable,
   buildPost,
   buildReminder,
   mentions
 } from './posts.ts';
 import { VERSION } from './version.ts';
 
-// What add_own_character() wrote, as my_recent_own_add() reads it back.
-export type OwnAdd = {
-  auditId: number;
-  team: string;
-  member: string;
-  nameRealm: string;
-  classSpec: string;
-  addedAt: string;
+// A row claim_discord_posts() took: counted as a try already.
+export type QueuedPost = {
+  id: number;
+  teamId: number;
+  kind: Kind;
+  action: string;
+  payload: Payload;
+  createdAt: string;
+  attempts: number;
+};
+
+// What a try leaves on its row.
+export type Finish = {
+  status: 'queued' | 'posted' | 'skipped' | 'failed';
+  lastError: string | null;
+  // When a row left queued may try again.
+  nextTryAt?: string;
 };
 
 export type PostSetting = { serverId: string; channelId: string | null; roleId: string | null };
 
 export interface RelayDb {
   getUser(authHeader: string): Promise<{ id: string } | null>;
-  // The caller's own newest add on this team from the last five minutes.
-  latestOwnAdd(authHeader: string, team: string): Promise<OwnAdd | null>;
   // The team with this address key (and id, when given); 'ambiguous' when
   // the key alone matches more than one.
   team(key: string, id: number | null): Promise<{ id: number } | 'ambiguous' | null>;
@@ -66,17 +71,8 @@ export interface RelayDb {
   // null when the team has no Discord server set.
   postSetting(teamId: number, kind: Kind): Promise<PostSetting | null>;
   serverOf(teamId: number): Promise<string | null>;
-  // A row in `table` for that character on that team since `since` (an RSVP
-  // counts when it last changed). With `authHeader`, read as that caller, so
-  // only a row they could read themselves counts (their own RSVP or signup);
-  // without it, as the service role, for the forms that work signed out.
-  recentRecord(
-    table: RecordTable,
-    teamId: number,
-    nameRealm: string,
-    since: Date,
-    authHeader: string | null
-  ): Promise<boolean>;
+  claimPosts(): Promise<QueuedPost[]>;
+  finishPost(id: number, finish: Finish): Promise<void>;
   markPosted(teamId: number, kind: Kind): Promise<void>;
   // Whether the caller may change this team's Discord settings.
   canManageDiscord(authHeader: string, teamId: number): Promise<boolean>;
@@ -95,14 +91,16 @@ export type Deps = {
 export const API = 'https://discord.com/api/v10';
 export const CRON_SECRET = 'OPTIONAL_RSVP_REMINDERS_SECRET';
 export const BOT_TOKEN = 'DISCORD_BOT_TOKEN';
-// How long a request row proves a signed-out post (#959): the form posts
-// straight after the row is written.
-export const RECORD_WINDOW_MS = 60_000;
+// Tries before a queued post stays failed, and the wait after a failed try
+// (1, 2, 4 then 8 minutes).
+export const MAX_TRIES = 5;
+const retryWaitMs = (attempts: number) => 60_000 * 2 ** (attempts - 1);
+// The longest one Discord call may take.
+const CALL_TIMEOUT_MS = 10_000;
 // The longest a 429 is waited out before giving up on the post.
 const MAX_RETRY_WAIT_MS = 5_000;
 
 export const NOT_SIGNED_IN = 'Not signed in';
-export const NO_RECORD = 'No matching request was just made';
 export const NOT_IN_SERVER = "That channel is not in the team's Discord server";
 export const CANT_SEE = "Channel not found, or the bot can't see it";
 
@@ -131,7 +129,10 @@ async function discord(deps: Deps, token: string, path: string, body?: unknown):
     deps.fetch(API + path, {
       method: body === undefined ? 'GET' : 'POST',
       headers: { Authorization: 'Bot ' + token, 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body)
+      body: body === undefined ? undefined : JSON.stringify(body),
+      // A hung call fails its try instead of running the drain out of time,
+      // which would leave its row claimed and never counted as failed.
+      signal: AbortSignal.timeout(CALL_TIMEOUT_MS)
     });
   let res = await call();
   if (res.status === 429) {
@@ -155,7 +156,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const action = typeof parsed?.action === 'string' ? parsed.action : '';
   const def = Object.hasOwn(ACTIONS, action) ? ACTIONS[action] : undefined;
   if (!def) return refuse('Unknown action: ' + action, 400);
-  let payload: Payload = parsed.payload && typeof parsed.payload === 'object' ? (parsed.payload as Payload) : {};
+  const payload: Payload = parsed.payload && typeof parsed.payload === 'object' ? (parsed.payload as Payload) : {};
   const now = (deps.now ?? (() => new Date()))();
 
   // The gate, before anything is read on the caller's behalf.
@@ -196,6 +197,27 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return jsonResponse({ success: true });
   }
 
+  if (action === 'drain') {
+    const rows = await deps.db.claimPosts();
+    for (const row of rows) {
+      let finish: Finish;
+      try {
+        finish = await postQueued(deps, dest, token, row);
+      } catch (e) {
+        finish = { status: 'queued', lastError: e instanceof Error ? e.message : String(e) };
+      }
+      if (finish.status === 'queued') {
+        console.error(`discord-bot-webhook: queued post ${row.id} (try ${row.attempts}): ${finish.lastError}`);
+        finish =
+          row.attempts >= MAX_TRIES
+            ? { ...finish, status: 'failed' }
+            : { ...finish, nextTryAt: new Date(now.getTime() + retryWaitMs(row.attempts)).toISOString() };
+      }
+      await deps.db.finishPost(row.id, finish);
+    }
+    return jsonResponse({ success: true, claimed: rows.length });
+  }
+
   const teamKey = typeof parsed.team === 'string' ? parsed.team : '';
   if (!teamKey) return refuse('Missing team', 400);
   const teamId = typeof parsed.teamId === 'number' ? parsed.teamId : null;
@@ -204,16 +226,6 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (!team) return refuse('Unknown team: ' + teamKey, 400);
 
   if (def.officer && !(await deps.db.canManageDiscord(authHeader!, team.id))) return refuse('Not authorized', 403);
-
-  if (def.record) {
-    const nameRealm = def.record.nameRealm(payload);
-    const since = new Date(now.getTime() - RECORD_WINDOW_MS);
-    // A signed-in action's proof is the caller's own row (CodeRabbit on #1727).
-    const asCaller = def.gate === 'signedIn' ? authHeader : null;
-    if (!nameRealm || !(await deps.db.recentRecord(def.record.table, team.id, nameRealm, since, asCaller))) {
-      return refuse(NO_RECORD, 403);
-    }
-  }
 
   if (action === 'signupSheetSync') return jsonResponse({ success: true, posted: false });
 
@@ -236,53 +248,58 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return jsonResponse({ success: true, ok: true, name: channel.body.name });
   }
 
-  if (action === 'addCharacter') {
-    const add = await deps.db.latestOwnAdd(authHeader!, teamKey);
-    if (!add) return refuse('No character added', 404);
-    payload = { member: add.member, nameRealm: add.nameRealm, classSpec: add.classSpec, submittedAt: add.addedAt };
-  }
+  return refuse('Unknown action: ' + action, 400);
+}
 
-  const kind = def.kind!;
-  const setting = await deps.db.postSetting(team.id, kind);
-  if (!setting?.channelId) return jsonResponse({ success: true, posted: false });
+// One queued notice: built from its row, to the team's channel for its kind
+// as they are now. Answers what the try leaves on the row; 'queued' means it
+// failed and may try again.
+async function postQueued(
+  deps: Deps,
+  dest: ReturnType<typeof resolveBot>,
+  token: string | undefined,
+  row: QueuedPost
+): Promise<Finish> {
+  const setting = await deps.db.postSetting(row.teamId, row.kind);
+  if (!setting?.channelId) return { status: 'skipped', lastError: 'That kind of post is off' };
 
+  const build = (roleId: string | null) => buildPost(row.action, row.payload, roleId, row.createdAt);
   let message: Message;
   try {
-    message = buildPost(action, payload, dest.kind === 'bot' ? setting.roleId : null, now.toISOString());
+    message = build(dest.kind === 'bot' ? setting.roleId : null);
   } catch (e) {
-    if (e instanceof MissingFields) return refuse('Missing required fields', 400);
+    // The row's own fields are short: no later try can fix that.
+    if (e instanceof MissingFields) return { status: 'failed', lastError: 'Missing required fields' };
     throw e;
   }
 
-  if (dest.kind === 'skip') return jsonResponse({ success: true, posted: false });
+  if (dest.kind === 'skip') return { status: 'skipped', lastError: 'Nowhere to post on this stack' };
   if (dest.kind === 'post') {
     await localPost(deps, dest.url, message);
-    return jsonResponse({ success: true, posted: true });
+    return { status: 'posted', lastError: null };
   }
 
   // The channel and the role must be in the team's own server (#1712).
   const channel = await discord(deps, token!, `/channels/${setting.channelId}`);
   if (channel.status !== 200 || channel.body?.guild_id !== setting.serverId) {
-    console.error(`discord-bot-webhook: ${action} for team ${team.id}: channel ${setting.channelId} refused`);
-    return refuse(channel.status === 200 ? NOT_IN_SERVER : CANT_SEE, 409);
+    return { status: 'queued', lastError: channel.status === 200 ? NOT_IN_SERVER : CANT_SEE };
   }
   if (setting.roleId) {
     const roles = await discord(deps, token!, `/guilds/${setting.serverId}/roles`);
     const inServer = Array.isArray(roles.body) && roles.body.some((r: { id?: string }) => r.id === setting.roleId);
     if (!inServer) {
       // Post without the ping rather than drop the notice.
-      console.error(`discord-bot-webhook: team ${team.id}'s ${kind} role ${setting.roleId} is not in its server`);
-      message = buildPost(action, payload, null, now.toISOString());
+      console.error(
+        `discord-bot-webhook: team ${row.teamId}'s ${row.kind} role ${setting.roleId} is not in its server`
+      );
+      message = build(null);
     }
   }
 
   const sent = await discord(deps, token!, `/channels/${setting.channelId}/messages`, message);
-  if (sent.status !== 200) {
-    console.error(`discord-bot-webhook: ${action} for team ${team.id} answered ${sent.status}`);
-    return refuse('Discord answered ' + sent.status, 502);
-  }
-  await deps.db.markPosted(team.id, kind);
-  return jsonResponse({ success: true, posted: true });
+  if (sent.status !== 200) return { status: 'queued', lastError: 'Discord answered ' + sent.status };
+  await deps.db.markPosted(row.teamId, row.kind);
+  return { status: 'posted', lastError: null };
 }
 
 // A local stack's post to the test webhook: marked, pinging nobody.

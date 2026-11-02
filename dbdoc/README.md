@@ -88,6 +88,7 @@
 | [public.team_discord_posts](public.team_discord_posts.md) | 6 | One row per kind of post the bot makes for a team (#1712, #921): its channel, an optional ping role and when it last posted. No channel (or no row) means that kind is off. Changed only through set_team_discord_post(); the posting function reads it with the service key. | BASE TABLE |
 | [public.team_discord_signup_sheets](public.team_discord_signup_sheets.md) | 10 | A team's signup sheets in Discord (#1712): the channel, its raid days (raid_schedule's weekday, 0 = Sunday, each day on one sheet of a team at most), and either keep_raids_posted (1 to 4) or hours_before each raid. Changed only through save_team_discord_signup_sheet() and remove_team_discord_signup_sheet(). | BASE TABLE |
 | [public.discord_server_access](public.discord_server_access.md) | 3 | Discord servers a person and the bot were both found in, and when (#1712). Written with the service key by the function that reads Discord (#994); set_team_discord_server() takes only a server verified for the caller in the last hour. | BASE TABLE |
+| [public.discord_post_queue](public.discord_post_queue.md) | 12 | Every Discord notice the bot posts to a team's channels, queued by the write behind it and posted by discord-bot-webhook's drain every minute (#962). Added only through queue_discord_post(), taken only through claim_discord_posts(). Service role only. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -248,7 +249,6 @@
 | public.team_unnamed_members | record | p_team_id integer | FUNCTION |
 | public.players_archived_at_through_functions | trigger |  | FUNCTION |
 | public.add_own_character | int4 | p_team_id integer, p_character_id integer, p_class_spec_id integer | FUNCTION |
-| public.my_recent_own_add | record | p_team_slug text | FUNCTION |
 | public.my_guild_officer_team_ids | _int4 |  | FUNCTION |
 | public.admin_grant | int4 | p_grant_type text, p_discord_id text, p_label text, p_guild_id integer | FUNCTION |
 | public.admin_revoke | void | p_grant_type text, p_discord_id text, p_label text, p_guild_id integer | FUNCTION |
@@ -285,6 +285,8 @@
 | public.save_team_discord_signup_sheet | int4 | p_team_id integer, p_sheet_id integer, p_channel_id text, p_raid_days integer[], p_keep_raids_posted integer, p_hours_before integer, p_ping_role_id text | FUNCTION |
 | public.remove_team_discord_signup_sheet | void | p_team_id integer, p_sheet_id integer | FUNCTION |
 | public.set_team_discord_quiet_hours | void | p_team_id integer, p_start time without time zone, p_end time without time zone, p_timezone text | FUNCTION |
+| public.queue_discord_post | void | p_team_id integer, p_kind text, p_action text, p_payload jsonb | FUNCTION |
+| public.claim_discord_posts | record | p_limit integer DEFAULT 25 | FUNCTION |
 
 ## Enums
 
@@ -448,6 +450,7 @@ erDiagram
 "public.team_discord_posts" }o--|| "public.team_discord_config" : "FOREIGN KEY (team_id) REFERENCES team_discord_config(team_id) ON DELETE CASCADE"
 "public.team_discord_signup_sheets" }o--|| "public.team_discord_config" : "FOREIGN KEY (team_id) REFERENCES team_discord_config(team_id) ON DELETE CASCADE"
 "public.discord_server_access" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
+"public.discord_post_queue" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -1290,6 +1293,20 @@ erDiagram
   integer person_id FK
   text server_id
   timestamp_with_time_zone verified_at
+}
+"public.discord_post_queue" {
+  bigint id
+  integer team_id FK
+  text kind
+  text action
+  jsonb payload
+  text status
+  integer attempts
+  timestamp_with_time_zone next_try_at
+  timestamp_with_time_zone claimed_at
+  timestamp_with_time_zone posted_at
+  text last_error
+  timestamp_with_time_zone created_at
 }
 ```
 

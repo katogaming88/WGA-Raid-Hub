@@ -719,7 +719,6 @@ function _saveMyRsvpStatus(dateStr) {
         }
         return;
       }
-      _notifyRsvpBot(dateStr, _calMyStatus, note);
       _syncSignupSheet(dateStr);
       _calInvalidateDateMonth(dateStr);
       buildCalendarWidget('full');
@@ -978,30 +977,9 @@ function _toggleRotatorWeek(playerId, dateStr, isIn) {
     });
 }
 
-// Fire-and-forget, same pattern as js/signup.js -- the Supabase write above
-// is already committed and is the record of truth; a failed/slow Discord
-// notification is not something the raider needs to see or wait on.
-function _notifyRsvpBot(raidDate, status, note) {
-  if (!supabaseClient || !window.DATA || !DATA.roster) return;
-  var myPlayer = _calResolveMyPlayer();
-  if (!myPlayer) return;
-  supabaseClient.functions
-    .invoke('discord-bot-webhook', {
-      body: {
-        action: 'rsvp',
-        team: TEAM_SLUG,
-        payload: { charName: myPlayer.nameRealm, raidDate: raidDate, status: status, note: note }
-      }
-    })
-    .then(
-      function () {},
-      function () {}
-    );
-}
-
 // Fire-and-forget trigger for the bot-owned aggregated signup sheet (#900,
-// part of #640) -- fully separate from _notifyRsvpBot above, which is the
-// existing per-status-change ping and stays untouched. All the actual
+// part of #640). The per-status-change post is set_own_rsvp()'s own: it
+// queues it for Discord (#962). All the actual
 // grouping/embed/message-bookkeeping logic lives bot-side
 // (wga-raid-bot's src/signupSheet.ts); this just tells it "the RSVP picture
 // for this date changed, go re-sync." No player/status data needed in the

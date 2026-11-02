@@ -87,23 +87,13 @@ export const REPORTS = [
   }
 ];
 
-// A report the database holds for review tells the officers in Discord.
+// A report the database holds for review. submit_self_received() queues the
+// officers' Discord post itself (#962), so the page calls no bot.
 export const REVIEW_REPORT = {
   row: 'Band of the Hollow Choir',
   difficulty: 'Heroic',
   source: 'Other',
-  note: 'timewalking vendor',
-  webhook: {
-    action: 'selfreceived',
-    team: 'phoenix',
-    payload: {
-      player: 'Torbjorn-Illidan',
-      item: 'Band of the Hollow Choir',
-      slot: 'Finger',
-      source: 'Other',
-      notes: 'timewalking vendor'
-    }
-  }
+  note: 'timewalking vendor'
 };
 
 // Other goes to an officer, so it is not sent without a note saying where the
@@ -119,7 +109,8 @@ export const MPLUS_NONE_OPEN = { status: null, note: null, canRequest: true };
 
 // The form refuses a request until the raider confirms Myth track in every M+
 // slot and at least 2 of 3 gem sockets, then sends this, with the Raider.IO
-// link filled in for them.
+// link filled in for them. submit_mplus_exclusion() queues the officers'
+// Discord post itself (#962).
 export const MPLUS_REQUEST = {
   note: 'Hero raid trinket has no Myth M+ match',
   call: {
@@ -127,14 +118,5 @@ export const MPLUS_REQUEST = {
     p_name_realm: 'Dodgey-Illidan',
     p_raiderio_url: 'https://raider.io/characters/us/illidan/Dodgey',
     p_reason: 'Hero raid trinket has no Myth M+ match'
-  },
-  webhook: {
-    action: 'mplus',
-    team: 'phoenix',
-    payload: {
-      nameRealm: 'Dodgey-Illidan',
-      raiderioUrl: 'https://raider.io/characters/us/illidan/Dodgey',
-      notes: 'Hero raid trinket has no Myth M+ match'
-    }
   }
 };

@@ -23,8 +23,7 @@ export type BoeReport = {
 };
 
 // Best-effort Discord notice; the RPC insert is the write of record, so a
-// failed notice does not undo it (same stance as profile/useProfile.ts's
-// notifyOfficers).
+// failed notice does not undo it.
 async function notifyBoeWebhook(client: Client, id: number) {
   try {
     await client.functions.invoke('boe-webhook', { body: { id } });

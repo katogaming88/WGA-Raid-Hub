@@ -688,7 +688,7 @@ function Coming({
       {viewer.me && <YourBosses night={night} me={viewer.me} className="your-bosses-narrow" />}
       <div className="night-layout">
         <aside className="card night-rail" aria-label="Your answer and tonight’s numbers">
-          {canAnswer && mine && <OwnAnswer night={night} player={mine.player} answer={mine.answer} />}
+          {canAnswer && mine && <OwnAnswer night={night} answer={mine.answer} />}
           <section aria-labelledby="tonight-title" className="rail-section">
             {/* The total coming heads the panel; each row below is its own
                 group, so the rows add up to the roster (Kat, 2026-10-06). */}
@@ -853,7 +853,7 @@ function EditButton({ name, onClick }: { name: string; onClick: () => void }) {
 // The reader's own answer. Present clears it back to the default; anything
 // else needs a note so officers know why (Attending on an optional night
 // does not).
-function OwnAnswer({ night, player, answer }: { night: RaidNight; player: PlayerRow; answer: Answer | null }) {
+function OwnAnswer({ night, answer }: { night: RaidNight; answer: Answer | null }) {
   const team = useTeam();
   const { announce } = useStatus();
   const save = useSetOwnAnswer(team.id);
@@ -874,7 +874,7 @@ function OwnAnswer({ night, player, answer }: { night: RaidNight; player: Player
     setMissing(false);
     const status = choice === PRESENT ? null : choice;
     save.mutate(
-      { date: night.date, status, note: note.trim(), teamKey: team.key, nameRealm: player.name_realm },
+      { date: night.date, status, note: note.trim(), teamKey: team.key },
       {
         onSuccess: () => {
           if (status === null) setNote('');

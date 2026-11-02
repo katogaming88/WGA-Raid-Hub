@@ -530,6 +530,59 @@ export type Database = {
         }
         Relationships: []
       }
+      discord_post_queue: {
+        Row: {
+          action: string
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          id: number
+          kind: string
+          last_error: string | null
+          next_try_at: string
+          payload: Json
+          posted_at: string | null
+          status: string
+          team_id: number
+        }
+        Insert: {
+          action: string
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          id?: never
+          kind: string
+          last_error?: string | null
+          next_try_at?: string
+          payload: Json
+          posted_at?: string | null
+          status?: string
+          team_id: number
+        }
+        Update: {
+          action?: string
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          id?: never
+          kind?: string
+          last_error?: string | null
+          next_try_at?: string
+          payload?: Json
+          posted_at?: string | null
+          status?: string
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discord_post_queue_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       discord_server_access: {
         Row: {
           person_id: number
@@ -4481,6 +4534,18 @@ export type Database = {
           role: string
         }[]
       }
+      claim_discord_posts: {
+        Args: { p_limit?: number }
+        Returns: {
+          action: string
+          attempts: number
+          created_at: string
+          id: number
+          kind: string
+          payload: Json
+          team_id: number
+        }[]
+      }
       claim_name: {
         Args: { p_name_id: number; p_team_id: number }
         Returns: undefined
@@ -4725,17 +4790,6 @@ export type Database = {
       }
       my_person_id: { Args: never; Returns: number }
       my_player_ids: { Args: never; Returns: number[] }
-      my_recent_own_add: {
-        Args: { p_team_slug: string }
-        Returns: {
-          added_at: string
-          audit_id: number
-          class_spec: string
-          member: string
-          name_realm: string
-          team_slug: string
-        }[]
-      }
       my_team_role: { Args: { p_team_id: number }; Returns: string }
       my_wishlist_signup_ids: { Args: never; Returns: number[] }
       new_url_code: { Args: never; Returns: string }
@@ -4777,6 +4831,15 @@ export type Database = {
           p_archive_player_ids?: number[]
           p_expected: string
           p_season: string
+          p_team_id: number
+        }
+        Returns: undefined
+      }
+      queue_discord_post: {
+        Args: {
+          p_action: string
+          p_kind: string
+          p_payload: Json
           p_team_id: number
         }
         Returns: undefined

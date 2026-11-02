@@ -10,6 +10,7 @@ CREATE OR REPLACE FUNCTION public.submit_season_signup(p_team_id integer, p_name
 AS $function$
 declare
   v_class_spec_id integer;
+  v_role text;
   v_season text;
   v_open_count integer;
   v_signup_id integer;
@@ -17,6 +18,10 @@ declare
 begin
   if v_auth_user_id is null then
     raise exception 'Not signed in';
+  end if;
+  -- A signup with no character could not be posted (CodeRabbit on #1729).
+  if coalesce(btrim(p_name_realm), '') = '' then
+    raise exception 'Character name is required';
   end if;
 
   if p_season is null then
@@ -41,7 +46,7 @@ begin
     end if;
   end if;
 
-  select id into v_class_spec_id from public.classes_specs
+  select id, role into v_class_spec_id, v_role from public.classes_specs
    where class = p_class and spec = p_spec;
   if not found then
     raise exception 'unknown class/spec: % / %', p_class, p_spec;
@@ -60,6 +65,15 @@ begin
     case when p_main_swap then nullif(p_swap_from_name_realm, '') else null end,
     v_auth_user_id
   ) returning id into v_signup_id;
+
+  -- The Discord name is for display only, as the signup page showed it.
+  perform queue_discord_post(p_team_id, 'officer_requests', 'signup', jsonb_build_object(
+    'charName', p_name_realm, 'className', p_class, 'mainSpec', p_spec, 'role', v_role,
+    'offSpecs', nullif(p_off_specs, ''), 'mainSwap', p_main_swap,
+    'swapFromNameRealm', case when p_main_swap then nullif(p_swap_from_name_realm, '') end,
+    'notes', nullif(p_player_note, ''),
+    'discord', (select coalesce(u.raw_user_meta_data ->> 'full_name', u.raw_user_meta_data ->> 'name')
+                  from auth.users u where u.id = v_auth_user_id)));
 
   return v_signup_id;
 end $function$;

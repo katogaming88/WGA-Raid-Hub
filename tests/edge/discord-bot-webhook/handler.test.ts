@@ -1,20 +1,23 @@
-// discord-bot-webhook's handler (#959): who may ask for each notice, that the
-// post goes to the channel and role the team picked and only inside its own
-// server, and what it answers when Discord or the settings say no.
+// discord-bot-webhook's handler (#959, #962): who may ask for each action,
+// and the queue's drain: that each queued notice goes to the channel and role
+// the team picked and only inside its own server, and what a try leaves on
+// its row when Discord or the settings say no.
 import { assertEquals } from 'jsr:@std/assert@1';
 import {
   API,
   CANT_SEE,
+  MAX_TRIES,
   NOT_IN_SERVER,
-  NO_RECORD,
   type Deps,
-  type OwnAdd,
+  type Finish,
   type PostSetting,
+  type QueuedPost,
   type RelayDb,
   handle
 } from '../../../supabase/functions/discord-bot-webhook/handler.ts';
 import { PRODUCTION_HOST } from '../../../supabase/functions/_shared/discord-destination.ts';
 import { VERSION } from '../../../supabase/functions/discord-bot-webhook/version.ts';
+import type { Kind } from '../../../supabase/functions/discord-bot-webhook/posts.ts';
 import { PAYLOADS } from './posts.test.ts';
 
 const URL = 'http://edge.test/functions/v1/discord-bot-webhook';
@@ -22,6 +25,8 @@ const SERVER = '100000000000000001';
 const CHANNEL = '200000000000000002';
 const ROLE = '300000000000000003';
 const TEST_WEBHOOK_URL = 'https://discord.test/api/webhooks/1/x';
+const NOW = '2026-11-01T14:00:00.000Z';
+const CRON = { 'x-cron-secret': 'cron-secret' };
 
 const PROD_ENV: Record<string, string> = {
   SUPABASE_URL: `https://${PRODUCTION_HOST}`,
@@ -30,49 +35,66 @@ const PROD_ENV: Record<string, string> = {
 };
 const LOCAL_ENV: Record<string, string> = {
   SUPABASE_URL: 'http://127.0.0.1:54321',
-  DISCORD_TEST_WEBHOOK_URL: TEST_WEBHOOK_URL
+  DISCORD_TEST_WEBHOOK_URL: TEST_WEBHOOK_URL,
+  OPTIONAL_RSVP_REMINDERS_SECRET: 'cron-secret'
 };
 
-const ADD: OwnAdd = {
-  auditId: 41,
-  team: 'phoenix',
-  member: 'Kat',
-  nameRealm: 'Katorrí-Stormrage',
-  classSpec: 'Warlock Demonology DPS',
-  addedAt: '2026-10-27T19:59:58Z'
+const KINDS: Record<string, Kind> = {
+  signup: 'officer_requests',
+  addCharacter: 'officer_requests',
+  selfreceived: 'officer_requests',
+  bis: 'officer_requests',
+  mplus: 'mplus_requests',
+  rsvp: 'rsvp_changes'
 };
+
+// A row as claim_discord_posts() hands it over: queued at 1 AM, first try.
+const queued = (action: string, over: Partial<QueuedPost> = {}): QueuedPost => ({
+  id: 7,
+  teamId: 1,
+  kind: KINDS[action],
+  action,
+  payload: PAYLOADS[action],
+  createdAt: '2026-11-01T05:00:00.000Z',
+  attempts: 1,
+  ...over
+});
 
 type State = {
   user?: { id: string } | null;
   setting?: PostSetting | null;
-  record?: boolean;
   team?: { id: number } | 'ambiguous' | null;
-  add?: OwnAdd | null;
   officer?: boolean;
+  rows?: QueuedPost[];
+  // postSetting throws on these calls (1 = the first).
+  failOn?: number[];
 };
 
 function fakeDb(state: State = {}) {
   const log: string[] = [];
+  const finished: Array<{ id: number } & Finish> = [];
+  let settingReads = 0;
   const db: RelayDb = {
     getUser: () => Promise.resolve(state.user === undefined ? { id: 'u1' } : state.user),
-    latestOwnAdd: (_auth, team) => {
-      log.push('latestOwnAdd ' + team);
-      return Promise.resolve(state.add === undefined ? ADD : state.add);
-    },
     team: (key) => {
       log.push('team ' + key);
       return Promise.resolve(state.team === undefined ? { id: 1 } : state.team);
     },
     postSetting: (_team, kind) => {
       log.push('postSetting ' + kind);
+      if (state.failOn?.includes(++settingReads)) return Promise.reject(new Error('database hiccup'));
       return Promise.resolve(
         state.setting === undefined ? { serverId: SERVER, channelId: CHANNEL, roleId: ROLE } : state.setting
       );
     },
     serverOf: () => Promise.resolve(SERVER),
-    recentRecord: (table, _team, nameRealm, _since, authHeader) => {
-      log.push(`recentRecord ${table} ${nameRealm}`, `as ${authHeader ?? 'service role'}`);
-      return Promise.resolve(state.record ?? true);
+    claimPosts: () => {
+      log.push('claimPosts');
+      return Promise.resolve(state.rows ?? []);
+    },
+    finishPost: (id, finish) => {
+      finished.push({ id, ...finish });
+      return Promise.resolve();
     },
     canManageDiscord: () => Promise.resolve(state.officer ?? true),
     markPosted: (_team, kind) => {
@@ -80,7 +102,7 @@ function fakeDb(state: State = {}) {
       return Promise.resolve();
     }
   };
-  return { db, log };
+  return { db, log, finished };
 }
 
 // Discord, answered by "METHOD path"; anything unscripted is a 404.
@@ -100,16 +122,18 @@ const DISCORD: Record<string, Route> = {
   [`POST /channels/${CHANNEL}/messages`]: ok({ id: 'm1' })
 };
 
+type Options = {
+  state?: State;
+  routes?: Record<string, Route>;
+  env?: Record<string, string>;
+  headers?: Record<string, string>;
+};
+
 async function run(
   body: unknown,
-  {
-    state = {},
-    routes = DISCORD,
-    env = PROD_ENV,
-    headers = { Authorization: 'Bearer user-jwt' } as Record<string, string>
-  } = {}
+  { state = {}, routes = DISCORD, env = PROD_ENV, headers = { Authorization: 'Bearer user-jwt' } }: Options = {}
 ) {
-  const { db, log } = fakeDb(state);
+  const { db, log, finished } = fakeDb(state);
   const calls: Array<{ key: string; body: any }> = [];
   const fetch = async (input: string | URL | Request, init?: RequestInit) => {
     const req = new Request(input, init);
@@ -124,7 +148,7 @@ async function run(
     fetch: fetch as typeof globalThis.fetch,
     env: { get: (name) => env[name] },
     db,
-    now: () => new Date('2026-11-01T14:00:00.000Z'),
+    now: () => new Date(NOW),
     sleep: (ms) => {
       slept.push(ms);
       return Promise.resolve();
@@ -138,18 +162,21 @@ async function run(
     }),
     deps
   );
-  return { status: res.status, body: await res.json(), calls, log, slept };
+  return { status: res.status, body: await res.json(), calls, log, slept, finished };
 }
 
-const notice = (action: string, payload: unknown = PAYLOADS[action]) => ({ action, team: 'phoenix', payload });
+const notice = (action: string, payload: unknown = {}) => ({ action, team: 'phoenix', payload });
 const posted = (calls: Array<{ key: string; body: any }>) => calls.filter((c) => c.key.startsWith('POST /channels/'));
+const drain = (rows: QueuedPost[], options: Options = {}) =>
+  run({ action: 'drain' }, { headers: CRON, ...options, state: { rows, ...options.state } });
+const minutesAfterNow = (n: number) => new Date(Date.parse(NOW) + n * 60_000).toISOString();
 
 // -- The gate ---------------------------------------------------------------
 
 Deno.test('every signed-in action refuses a request with no sign-in, and calls Discord for none', async () => {
-  for (const action of ['signup', 'addCharacter', 'rsvp', 'signupSheetSync', 'verifyChannel']) {
+  for (const action of ['signupSheetSync', 'verifyChannel']) {
     for (const headers of [{}, { Authorization: 'Bearer anon-key' }]) {
-      const { status: code, calls } = await run(notice(action, PAYLOADS[action] ?? {}), {
+      const { status: code, calls } = await run(notice(action), {
         headers,
         state: { user: 'Authorization' in headers ? null : undefined }
       });
@@ -158,19 +185,23 @@ Deno.test('every signed-in action refuses a request with no sign-in, and calls D
   }
 });
 
-Deno.test('the reminder takes only the job secret, and an unset secret refuses everything', async () => {
+Deno.test('the reminder and the drain take only the job secret, and an unset secret refuses everything', async () => {
   const reminder = {
     action: 'optionalReminder',
     team: 'phoenix',
     payload: { discordId: '400000000000000004', checkpoint: '24h', raidDate: '2026-11-04' }
   };
-  assertEquals((await run(reminder)).status, 401);
-  assertEquals((await run(reminder, { headers: { 'x-cron-secret': 'wrong' } })).status, 401);
-  const unset = { ...PROD_ENV, OPTIONAL_RSVP_REMINDERS_SECRET: '' };
-  assertEquals((await run(reminder, { headers: { 'x-cron-secret': '' }, env: unset })).status, 401);
+  for (const body of [reminder, { action: 'drain' }]) {
+    assertEquals((await run(body)).status, 401);
+    assertEquals((await run(body, { headers: { 'x-cron-secret': 'wrong' } })).status, 401);
+    const unset = { ...PROD_ENV, OPTIONAL_RSVP_REMINDERS_SECRET: '' };
+    assertEquals((await run(body, { headers: { 'x-cron-secret': '' }, env: unset })).status, 401);
+  }
+  const refused = await run({ action: 'drain' }, { state: { rows: [queued('rsvp')] } });
+  assertEquals(refused.log.includes('claimPosts'), false);
 
   const sent = await run(reminder, {
-    headers: { 'x-cron-secret': 'cron-secret' },
+    headers: CRON,
     routes: { 'POST /users/@me/channels': ok({ id: '900000000000000009' }) }
   });
   assertEquals(sent.status, 200);
@@ -181,36 +212,11 @@ Deno.test('the reminder takes only the job secret, and an unset secret refuses e
   assertEquals(sent.calls[1].body.allowed_mentions, { parse: [], roles: [], users: [] });
 });
 
-Deno.test('a request form posts only after its row was just written, for that character', async () => {
-  for (const [action, table] of [
-    ['selfreceived', 'self_received_requests'],
-    ['bis', 'bis_requests'],
-    ['mplus', 'mplus_exclusion_requests']
-  ]) {
-    const none = await run(notice(action), { headers: {}, state: { record: false } });
-    assertEquals([none.status, none.body.error, posted(none.calls).length], [403, NO_RECORD, 0], action);
-    const real = await run(notice(action), { headers: {} });
-    assertEquals([real.status, posted(real.calls).length], [200, 1], action);
-    assertEquals(real.log.includes(`recentRecord ${table} Katorrí-Stormrage`), true, action);
+Deno.test('the notices the queue carries can no longer be asked for directly', async () => {
+  for (const action of Object.keys(KINDS)) {
+    const { status: code, calls } = await run(notice(action, PAYLOADS[action]), { headers: {} });
+    assertEquals([code, calls.length], [400, 0], action);
   }
-});
-
-Deno.test("a signed-in RSVP or signup posts only after that character's row on that team just changed", async () => {
-  for (const [action, table, nameRealm] of [
-    ['rsvp', 'raid_rsvps', '@everyone'],
-    ['signup', 'season_signups', '@everyone-Stormrage']
-  ]) {
-    const none = await run(notice(action), { state: { record: false } });
-    assertEquals([none.status, none.body.error, posted(none.calls).length], [403, NO_RECORD, 0], action);
-    const real = await run(notice(action));
-    assertEquals([real.status, posted(real.calls).length], [200, 1], action);
-    assertEquals(real.log.includes(`recentRecord ${table} ${nameRealm}`), true, action);
-    // The caller's own row, read as them, never another team's through the
-    // service role (CodeRabbit on #1727).
-    assertEquals(real.log.includes('as Bearer user-jwt'), true, action);
-  }
-  const form = await run(notice('mplus'), { headers: {} });
-  assertEquals(form.log.includes('as service role'), true);
 });
 
 Deno.test("the channel check is only for someone who may change the team's Discord settings", async () => {
@@ -222,15 +228,15 @@ Deno.test("the channel check is only for someone who may change the team's Disco
 
 Deno.test('an unknown action is refused, and so is a key two teams share', async () => {
   assertEquals((await run({ action: 'everything', team: 'phoenix' })).status, 400);
-  const shared = await run(notice('rsvp'), { state: { team: 'ambiguous' } });
+  const shared = await run(notice('verifyChannel', { channelId: CHANNEL }), { state: { team: 'ambiguous' } });
   assertEquals([shared.status, shared.calls.length], [400, 0]);
 });
 
-// -- The post ---------------------------------------------------------------
+// -- The drain --------------------------------------------------------------
 
-Deno.test("posts in the team's channel, pinging only its role, and records when", async () => {
-  const { status: code, calls, log } = await run(notice('rsvp'));
-  assertEquals(code, 200);
+Deno.test("posts a queued notice in the team's channel, pinging only its role, and records when", async () => {
+  const { status: code, body, calls, log, finished } = await drain([queued('rsvp')]);
+  assertEquals([code, body.claimed], [200, 1]);
   assertEquals(
     calls.map((c) => c.key),
     [`GET /channels/${CHANNEL}`, `GET /guilds/${SERVER}/roles`, `POST /channels/${CHANNEL}/messages`]
@@ -240,43 +246,69 @@ Deno.test("posts in the team's channel, pinging only its role, and records when"
   assertEquals(message.allowed_mentions, { parse: [], roles: [ROLE], users: [] });
   assertEquals(log.includes('postSetting rsvp_changes'), true);
   assertEquals(log.at(-1), 'markPosted rsvp_changes');
+  assertEquals(finished, [{ id: 7, status: 'posted', lastError: null }]);
 });
 
-Deno.test('each action reads its own setting', async () => {
-  for (const [action, kind] of [
-    ['signup', 'officer_requests'],
-    ['selfreceived', 'officer_requests'],
-    ['bis', 'officer_requests'],
-    ['mplus', 'mplus_requests'],
-    ['rsvp', 'rsvp_changes']
-  ]) {
-    const { log } = await run(notice(action));
-    assertEquals(log.includes('postSetting ' + kind), true, action);
+Deno.test('a notice held by quiet hours says when it was made, not when it posted', async () => {
+  const { calls } = await drain([queued('mplus')]);
+  const at = posted(calls)[0].body.embeds[0].fields.find((f: { name: string }) => f.name === 'Submitted At');
+  assertEquals(at.value, `<t:${Date.parse('2026-11-01T05:00:00.000Z') / 1000}:f>`);
+});
+
+Deno.test('each queued notice reads its own kind of post, and every one posts', async () => {
+  const rows = Object.keys(KINDS).map((action, i) => queued(action, { id: i + 1 }));
+  const { log, calls, finished } = await drain(rows);
+  for (const kind of new Set(Object.values(KINDS))) assertEquals(log.includes('postSetting ' + kind), true, kind);
+  assertEquals(posted(calls).length, rows.length);
+  assertEquals(
+    finished.map((f) => f.status),
+    rows.map(() => 'posted')
+  );
+});
+
+Deno.test("a channel in another guild's server, or one the bot can't see, is tried again later", async () => {
+  const cases: Array<[Route, string]> = [
+    [ok({ guild_id: '100000000000000777' }), NOT_IN_SERVER],
+    [status(403), CANT_SEE]
+  ];
+  for (const [route, error] of cases) {
+    const { calls, log, finished } = await drain([queued('rsvp')], {
+      routes: { ...DISCORD, [`GET /channels/${CHANNEL}`]: route }
+    });
+    assertEquals(posted(calls).length, 0);
+    assertEquals(log.includes('markPosted rsvp_changes'), false);
+    // The first try failed: the next waits a minute.
+    assertEquals(finished, [{ id: 7, status: 'queued', lastError: error, nextTryAt: minutesAfterNow(1) }]);
   }
 });
 
-Deno.test("a channel in another guild's server is refused, and nothing posts", async () => {
-  const {
-    status: code,
-    body,
-    calls,
-    log
-  } = await run(notice('rsvp'), {
-    routes: { ...DISCORD, [`GET /channels/${CHANNEL}`]: ok({ guild_id: '100000000000000777' }) }
-  });
-  assertEquals([code, body.error, posted(calls).length], [409, NOT_IN_SERVER, 0]);
-  assertEquals(log.includes('markPosted rsvp_changes'), false);
+Deno.test('each failed try waits twice as long, and the fifth stays failed', async () => {
+  const refuse = { routes: { ...DISCORD, [`POST /channels/${CHANNEL}/messages`]: status(403) } };
+  const third = await drain([queued('rsvp', { attempts: 3 })], refuse);
+  assertEquals(third.finished, [
+    { id: 7, status: 'queued', lastError: 'Discord answered 403', nextTryAt: minutesAfterNow(4) }
+  ]);
+  const last = await drain([queued('rsvp', { attempts: MAX_TRIES })], refuse);
+  assertEquals(last.finished, [{ id: 7, status: 'failed', lastError: 'Discord answered 403' }]);
+  assertEquals(last.log.includes('markPosted rsvp_changes'), false);
 });
 
-Deno.test("a channel the bot can't see is refused", async () => {
-  const { status: code, body } = await run(notice('rsvp'), {
-    routes: { ...DISCORD, [`GET /channels/${CHANNEL}`]: status(403) }
+Deno.test('one notice that throws does not stop the rest of the run', async () => {
+  const { status: code, finished } = await drain([queued('rsvp', { id: 1 }), queued('rsvp', { id: 2 })], {
+    state: { failOn: [1] }
   });
-  assertEquals([code, body.error], [409, CANT_SEE]);
+  assertEquals(code, 200);
+  assertEquals(
+    finished.map((f) => [f.id, f.status, f.lastError]),
+    [
+      [1, 'queued', 'database hiccup'],
+      [2, 'posted', null]
+    ]
+  );
 });
 
 Deno.test("a ping role from outside the team's server is dropped, and the notice still posts", async () => {
-  const { calls } = await run(notice('rsvp'), {
+  const { calls } = await drain([queued('rsvp')], {
     routes: { ...DISCORD, [`GET /guilds/${SERVER}/roles`]: ok([{ id: SERVER }]) }
   });
   const message = posted(calls)[0].body;
@@ -284,60 +316,56 @@ Deno.test("a ping role from outside the team's server is dropped, and the notice
   assertEquals(message.allowed_mentions, { parse: [], roles: [], users: [] });
 });
 
-Deno.test('a kind of post that is off, or a team with no server, posts nothing', async () => {
+Deno.test('a kind of post turned off, or a team with no server, skips its queued notices', async () => {
   for (const setting of [null, { serverId: SERVER, channelId: null, roleId: null }]) {
-    const { status: code, body, calls } = await run(notice('rsvp'), { state: { setting } });
-    assertEquals([code, body.posted, calls.length], [200, false, 0]);
+    const { calls, finished } = await drain([queued('rsvp')], { state: { setting } });
+    assertEquals([calls.length, finished[0].status], [0, 'skipped']);
   }
 });
 
 Deno.test("a 429 waits Discord's retry_after and posts once", async () => {
   let tries = 0;
-  const {
-    status: code,
-    calls,
-    slept
-  } = await run(notice('rsvp'), {
+  const { calls, slept, finished } = await drain([queued('rsvp')], {
     routes: {
       ...DISCORD,
       [`POST /channels/${CHANNEL}/messages`]: () =>
         ++tries === 1 ? new Response(JSON.stringify({ retry_after: 0.4 }), { status: 429 }) : ok({ id: 'm1' })()
     }
   });
-  assertEquals([code, posted(calls).length, slept], [200, 2, [400]]);
+  assertEquals([posted(calls).length, slept, finished[0].status], [2, [400], 'posted']);
 });
 
-Deno.test('Discord refusing the post is a 502, and when is not recorded', async () => {
-  const { status: code, log } = await run(notice('rsvp'), {
-    routes: { ...DISCORD, [`POST /channels/${CHANNEL}/messages`]: status(403) }
+Deno.test('a queued notice missing what it needs stays failed, since no later try can fix it', async () => {
+  const { calls, finished } = await drain([queued('rsvp', { payload: { charName: 'Katorrí-Stormrage' } })]);
+  assertEquals(posted(calls).length, 0);
+  assertEquals(finished, [{ id: 7, status: 'failed', lastError: 'Missing required fields' }]);
+});
+
+Deno.test('no bot token on production is a plain refusal, and nothing is claimed', async () => {
+  const {
+    status: code,
+    calls,
+    log
+  } = await drain([queued('rsvp')], {
+    env: { ...PROD_ENV, DISCORD_BOT_TOKEN: '' }
   });
-  assertEquals(code, 502);
-  assertEquals(log.includes('markPosted rsvp_changes'), false);
+  assertEquals([code, calls.length, log.includes('claimPosts')], [500, 0, false]);
 });
 
-Deno.test("addCharacter posts the caller's own add as recorded, never their text", async () => {
-  const { calls, log } = await run({
-    ...notice('addCharacter'),
-    payload: { member: 'Faker', nameRealm: 'Fake-Illidan' }
-  });
-  assertEquals(log.includes('latestOwnAdd phoenix'), true);
-  const embed = posted(calls)[0].body.embeds[0];
-  assertEquals(embed.fields[1], { name: 'Character', value: 'Katorrí-Stormrage', inline: true });
-  const none = await run(notice('addCharacter'), { state: { add: null } });
-  assertEquals([none.status, posted(none.calls).length], [404, 0]);
+Deno.test('a local stack posts to the test webhook, marked and pinging nobody, never as the bot', async () => {
+  const { calls, finished } = await drain([queued('rsvp')], { env: LOCAL_ENV });
+  assertEquals(
+    calls.map((c) => c.key),
+    [`POST ${TEST_WEBHOOK_URL}`]
+  );
+  assertEquals(calls[0].body.content, '[local] ');
+  assertEquals(calls[0].body.allowed_mentions, { parse: [], roles: [], users: [] });
+  assertEquals(finished[0].status, 'posted');
+  const quiet = await drain([queued('rsvp')], { env: { ...LOCAL_ENV, DISCORD_TEST_WEBHOOK_URL: '' } });
+  assertEquals([quiet.calls.length, quiet.finished[0].status], [0, 'skipped']);
 });
 
-Deno.test('a post missing what it needs is a 400, and nothing posts', async () => {
-  const { status: code, calls } = await run(notice('rsvp', { charName: 'Katorrí-Stormrage' }));
-  assertEquals([code, posted(calls).length], [400, 0]);
-});
-
-Deno.test('no bot token on production is a plain refusal', async () => {
-  const { status: code, calls } = await run(notice('rsvp'), { env: { ...PROD_ENV, DISCORD_BOT_TOKEN: '' } });
-  assertEquals([code, calls.length], [500, 0]);
-});
-
-// -- verifyChannel, the signup sheet, a local stack --------------------------
+// -- verifyChannel, the signup sheet -----------------------------------------
 
 Deno.test(
   'verifyChannel answers ok and the name for a channel in the team server, and says why otherwise',
@@ -356,18 +384,6 @@ Deno.test(
 Deno.test('signupSheetSync answers OK and posts nothing until #960', async () => {
   const { status: code, body, calls } = await run(notice('signupSheetSync', { raidDate: '2026-11-04' }));
   assertEquals([code, body.posted, calls.length], [200, false, 0]);
-});
-
-Deno.test('a local stack posts to the test webhook, marked and pinging nobody, never as the bot', async () => {
-  const { calls } = await run(notice('rsvp'), { env: LOCAL_ENV });
-  assertEquals(
-    calls.map((c) => c.key),
-    [`POST ${TEST_WEBHOOK_URL}`]
-  );
-  assertEquals(calls[0].body.content, '[local] ');
-  assertEquals(calls[0].body.allowed_mentions, { parse: [], roles: [], users: [] });
-  const quiet = await run(notice('rsvp'), { env: { SUPABASE_URL: 'http://127.0.0.1:54321' } });
-  assertEquals([quiet.body.posted, quiet.calls.length], [false, 0]);
 });
 
 Deno.test('answers its preflight with the stamped version', async () => {

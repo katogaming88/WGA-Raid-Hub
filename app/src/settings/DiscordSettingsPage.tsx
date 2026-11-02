@@ -56,9 +56,8 @@ export function DiscordSettingsPage() {
       </div>
       <p className="text-muted">
         What the bot posts in your Discord for this team, where, and who it pings. New to this?{' '}
-        <Link to="/help/discord-setup">Set up Discord for your team</Link>.{' '}
-        {/* Until the sheet moves (#960) and quiet hours hold posts (#962). */}
-        Signup sheets and quiet hours start working in an upcoming update.
+        <Link to="/help/discord-setup">Set up Discord for your team</Link>. {/* Until the sheet moves (#960). */}
+        Signup sheets start working in an upcoming update.
       </p>
       <DataState query={bothQueries(settings, discord)} label="your Discord settings">
         {([saved, read]) => (

@@ -1,5 +1,4 @@
 import { useSupabaseMutation } from '../data/query';
-import { notifyOfficers } from '../profile/useProfile';
 
 export type AddCharacter = {
   characterId: number;
@@ -7,10 +6,9 @@ export type AddCharacter = {
 };
 
 // "Add character to roster" (#1463, #1464): the member puts one of their own
-// saved characters on the team's roster, no officer step. The notice to the
-// officers is best-effort; the character is on the roster either way. The
-// relay builds it from the add's Audit Log row (#1674), so nothing is sent.
-export function useAddCharacter(teamId: number, teamKey: string) {
+// saved characters on the team's roster, no officer step. add_own_character()
+// queues the officers' Discord notice itself (#962).
+export function useAddCharacter(teamId: number) {
   return useSupabaseMutation<number, AddCharacter>(
     async (client, add) => {
       const { data, error } = await client.rpc('add_own_character', {
@@ -19,11 +17,6 @@ export function useAddCharacter(teamId: number, teamKey: string) {
         p_class_spec_id: add.classSpecId
       });
       if (error) return { data: null, error };
-      await notifyOfficers(client, {
-        action: 'addCharacter',
-        team: teamKey,
-        teamId
-      });
       return { data: data as number, error: null };
     },
     {

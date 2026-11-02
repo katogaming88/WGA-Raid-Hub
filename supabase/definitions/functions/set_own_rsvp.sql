@@ -13,12 +13,13 @@ declare
   v_player_id integer;
   v_is_bench boolean;
   v_is_optional boolean;
+  v_name_realm text;
 begin
   if v_uid is null then
     raise exception 'Not signed in';
   end if;
 
-  select p.id, p.is_bench into v_player_id, v_is_bench
+  select p.id, p.is_bench, p.name_realm into v_player_id, v_is_bench, v_name_realm
   from players p
   join team_members tm on tm.id = p.team_member_id
   where tm.person_id = public.my_person_id()
@@ -53,5 +54,8 @@ begin
   values (p_team_id, v_player_id, p_raid_date, p_status, p_note)
   on conflict (team_id, player_id, raid_date)
   do update set status = excluded.status, note = excluded.note, updated_at = now();
+
+  perform queue_discord_post(p_team_id, 'rsvp_changes', 'rsvp', jsonb_build_object(
+    'charName', v_name_realm, 'raidDate', p_raid_date::text, 'status', p_status, 'note', p_note));
 end;
 $function$;

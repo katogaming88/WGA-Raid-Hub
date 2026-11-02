@@ -103,27 +103,14 @@ export const CURRENT_COUNTS = { in: 5, out: 1 };
 export const NEW_COUNTS = { in: 4, out: 1 };
 
 // Saving your own answer. A note is required for anything but Present (and
-// Attending on an optional night), and the save tells the Discord bot twice:
-// once to post the answer, once to refresh the signup sheet.
+// Attending on an optional night). set_own_rsvp() queues the answer's Discord
+// post itself (#962); the page only asks the bot to refresh the signup sheet.
 export const OWN_ANSWER = { status: 'Tentative', note: 'Might be late from work' };
 export const OWN_NOTE_REQUIRED = 'A note is required so officers know why.';
 export const OWN_WRITES = [
   {
     name: 'set_own_rsvp',
     body: { p_team_id: TEAM_ID, p_raid_date: NIGHT, p_status: 'Tentative', p_note: 'Might be late from work' }
-  },
-  {
-    name: 'discord-bot-webhook',
-    body: {
-      action: 'rsvp',
-      team: 'phoenix',
-      payload: {
-        charName: VIEWER.nameRealm,
-        raidDate: NIGHT,
-        status: 'Tentative',
-        note: 'Might be late from work'
-      }
-    }
   },
   { name: 'discord-bot-webhook', body: { action: 'signupSheetSync', team: 'phoenix', payload: { raidDate: NIGHT } } }
 ];

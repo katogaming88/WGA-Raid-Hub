@@ -85,7 +85,6 @@ function MarkReceivedDialog({
     }
     submit.mutate(
       {
-        teamKey: team.key,
         nameRealm: player.name_realm,
         itemName: row.itemName,
         slot: row.slot,
@@ -251,7 +250,7 @@ function MplusRequestDialog({
     setTried(true);
     if (!ready) return;
     submit.mutate(
-      { teamKey: team.key, nameRealm: player.name_realm, raiderioUrl: url.trim(), reason: reason.trim() },
+      { nameRealm: player.name_realm, raiderioUrl: url.trim(), reason: reason.trim() },
       {
         onSuccess: () => {
           announce('success', 'M+ exclusion request sent. An officer will review it.');

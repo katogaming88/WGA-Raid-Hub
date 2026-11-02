@@ -1,5 +1,4 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
-import type { Client } from '../lib/supabase';
 import type { AttendanceRow, GearRow, LootRow, SeasonWindow } from './profile';
 import { currentSeason } from './profile';
 import { countedLoot } from '../settings/useSettings';
@@ -345,18 +344,7 @@ export function useRequestSettings(teamId: number) {
   });
 }
 
-// Tells the officers in Discord about a request waiting for them. A failed
-// notice does not undo the request, which is already saved.
-export async function notifyOfficers(client: Client, body: Record<string, unknown>) {
-  try {
-    await client.functions.invoke('discord-bot-webhook', { body });
-  } catch {
-    // The request is in the officers' queue either way.
-  }
-}
-
 export type Report = {
-  teamKey: string;
   nameRealm: string;
   itemName: string;
   slot: string;
@@ -366,7 +354,8 @@ export type Report = {
 };
 
 // A Mark Received report. Saved at once for the raider's own character unless
-// it is Other or its note mentions a raid, which go to officer review.
+// it is Other or its note mentions a raid, which go to officer review;
+// submit_self_received() queues the officers' Discord post for those (#962).
 export function useSubmitReport(teamId: number, playerId: number) {
   return useSupabaseMutation<{ autoApproved: boolean }, Report>(
     async (client, report) => {
@@ -381,28 +370,15 @@ export function useSubmitReport(teamId: number, playerId: number) {
       });
       if (error) return { data: null, error };
       const autoApproved = !!(data as { auto_approved: boolean }[] | null)?.[0]?.auto_approved;
-      if (!autoApproved) {
-        await notifyOfficers(client, {
-          action: 'selfreceived',
-          team: report.teamKey,
-          teamId,
-          payload: {
-            player: report.nameRealm,
-            item: report.itemName,
-            slot: report.slot,
-            source: report.source,
-            notes: report.note
-          }
-        });
-      }
       return { data: { autoApproved }, error: null };
     },
     { key: ['submit-report', playerId], refreshes: [['self-received', playerId]] }
   );
 }
 
-export type MplusRequest = { teamKey: string; nameRealm: string; raiderioUrl: string; reason: string };
+export type MplusRequest = { nameRealm: string; raiderioUrl: string; reason: string };
 
+// submit_mplus_exclusion() queues the officers' Discord post (#962).
 export function useSubmitMplusRequest(teamId: number, playerId: number) {
   return useSupabaseMutation<null, MplusRequest>(
     async (client, request) => {
@@ -413,12 +389,6 @@ export function useSubmitMplusRequest(teamId: number, playerId: number) {
         p_reason: request.reason
       });
       if (error) return { data: null, error };
-      await notifyOfficers(client, {
-        action: 'mplus',
-        team: request.teamKey,
-        teamId,
-        payload: { nameRealm: request.nameRealm, raiderioUrl: request.raiderioUrl, notes: request.reason }
-      });
       return { data: null, error: null };
     },
     { key: ['submit-mplus', playerId], refreshes: [['mplus-refusal', teamId, playerId]] }

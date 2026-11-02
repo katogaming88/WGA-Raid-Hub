@@ -225,16 +225,14 @@ describe('Mark Received (new app), checked against the current site', () => {
     });
   }
 
-  it('tells the officers in Discord about a report held for review', async () => {
+  it('sends a report held for review to the officers, and leaves Discord to the database', async () => {
     const opened = await openOwnProfile('torbjorn', { autoApproved: false });
     try {
       const calls = recordCalls(opened.page);
       const dialog = await fillReport(opened.page, REVIEW_REPORT);
       await dialog.getByRole('button', { name: 'Mark received' }).click();
-      await expect
-        .poll(() => calls.find((c) => c.name === 'discord-bot-webhook')?.body)
-        .toEqual({ ...REVIEW_REPORT.webhook, teamId: 1 });
       await expect.poll(() => statusText(opened.page)).toContain('to an officer for review');
+      expect(calls.some((c) => c.name === 'discord-bot-webhook')).toBe(false);
     } finally {
       await opened.context.close();
     }
@@ -347,10 +345,8 @@ describe('M+ exclusion request (new app), checked against the current site', () 
       await dialog.getByLabel('Gem sockets filled (helm, bracers, belt)').selectOption('2');
       await submit.click();
       await expect.poll(() => calls.find((c) => c.name === 'submit_mplus_exclusion')?.body).toEqual(MPLUS_REQUEST.call);
-      await expect
-        .poll(() => calls.find((c) => c.name === 'discord-bot-webhook')?.body)
-        .toEqual({ ...MPLUS_REQUEST.webhook, teamId: 1 });
       await expect.poll(() => statusText(opened.page)).toContain('An officer will review it');
+      expect(calls.some((c) => c.name === 'discord-bot-webhook')).toBe(false);
     } finally {
       await opened.context.close();
     }

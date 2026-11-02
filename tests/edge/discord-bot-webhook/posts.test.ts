@@ -4,8 +4,8 @@
 // typed into a note from pinging the whole server.
 import { assertEquals, assertThrows } from 'jsr:@std/assert@1';
 import {
-  ACTIONS,
   MissingFields,
+  QUEUED_ACTIONS,
   buildPost,
   buildReminder
 } from '../../../supabase/functions/discord-bot-webhook/posts.ts';
@@ -31,11 +31,9 @@ export const PAYLOADS: Record<string, Record<string, unknown>> = {
   rsvp: { charName: '@everyone', raidDate: '2026-11-04', status: 'Late', note: '@here' }
 };
 
-const CHANNEL_POSTS = Object.entries(ACTIONS)
-  .filter(([, a]) => a.kind)
-  .map(([name]) => name);
+const CHANNEL_POSTS = [...QUEUED_ACTIONS];
 
-Deno.test('every action that posts in a channel has a payload here, so the checks below cover all of them', () => {
+Deno.test('every queued channel post has a payload here, so the checks below cover all of them', () => {
   assertEquals(CHANNEL_POSTS.sort(), Object.keys(PAYLOADS).sort());
 });
 
@@ -99,8 +97,13 @@ Deno.test('a field longer than Discord allows is cut, not refused', () => {
   assertEquals(embed.fields?.find((f) => f.name === 'Notes')?.value.length, 1024);
 });
 
+Deno.test('an M+ request with no Raider.io link still posts, saying so', () => {
+  const embed = buildPost('mplus', { nameRealm: 'Katorrí-Stormrage', raiderioUrl: null }, null, AT).embeds[0];
+  assertEquals(embed.fields[2], { name: 'Raider.io / Profile', value: '*(none)*' });
+});
+
 Deno.test('a post missing what it needs is refused', () => {
   assertThrows(() => buildPost('rsvp', { charName: 'Katorrí-Stormrage' }, null, AT), MissingFields);
-  assertThrows(() => buildPost('mplus', { nameRealm: 'Katorrí-Stormrage' }, null, AT), MissingFields);
+  assertThrows(() => buildPost('mplus', { raiderioUrl: 'https://raider.io/x' }, null, AT), MissingFields);
   assertThrows(() => buildReminder({ checkpoint: '2h' }), MissingFields);
 });

@@ -22,6 +22,7 @@ afterAll(() => pool.end());
 const SCHEDULED = [
   'blizzard-gear-sync',
   'close-started-season-signups',
+  'discord-post-queue',
   'fill-raid-night-lineups',
   'optional-rsvp-reminders',
   'twitch-live-check',

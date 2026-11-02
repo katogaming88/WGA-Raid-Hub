@@ -10161,6 +10161,166 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.discord_post_queue",
+      "type": "BASE TABLE",
+      "comment": "Every Discord notice the bot posts to a team's channels, queued by the write behind it and posted by discord-bot-webhook's drain every minute (#962). Added only through queue_discord_post(), taken only through claim_discord_posts(). Service role only.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "nullable": false,
+          "comment": "The kind of post (team_discord_posts.kind) whose channel and ping role it uses, read when it posts."
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "nullable": false,
+          "comment": "What the notice is: the builder in discord-bot-webhook's posts.ts that turns payload into the message."
+        },
+        {
+          "name": "payload",
+          "type": "jsonb",
+          "nullable": false,
+          "comment": "The fields the message is built from, written by the function that made the change from what it saved."
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'queued'::text",
+          "comment": "queued until it posts (posted), its kind of post is off or its team's server is gone when it comes up (skipped), or it fails five times (failed)."
+        },
+        {
+          "name": "attempts",
+          "type": "integer",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "next_try_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()",
+          "comment": "When it may post: now when queued, later after a failed try."
+        },
+        {
+          "name": "claimed_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "When a posting run took it. A run that dies holding it frees it after ten minutes."
+        },
+        {
+          "name": "posted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "last_error",
+          "type": "text",
+          "nullable": true,
+          "comment": "Why the last try did not post."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "discord_post_queue_pkey",
+          "def": "CREATE UNIQUE INDEX discord_post_queue_pkey ON public.discord_post_queue USING btree (id)",
+          "table": "public.discord_post_queue",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "discord_post_queue_queued",
+          "def": "CREATE INDEX discord_post_queue_queued ON public.discord_post_queue USING btree (id) WHERE (status = 'queued'::text)",
+          "table": "public.discord_post_queue",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "discord_post_queue_team",
+          "def": "CREATE INDEX discord_post_queue_team ON public.discord_post_queue USING btree (team_id, created_at)",
+          "table": "public.discord_post_queue",
+          "columns": [
+            "team_id",
+            "created_at"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "discord_post_queue_action_check",
+          "type": "CHECK",
+          "def": "CHECK ((action = ANY (ARRAY['signup'::text, 'addCharacter'::text, 'selfreceived'::text, 'bis'::text, 'mplus'::text, 'rsvp'::text])))",
+          "table": "public.discord_post_queue",
+          "referenced_table": "",
+          "columns": [
+            "action"
+          ]
+        },
+        {
+          "name": "discord_post_queue_kind_check",
+          "type": "CHECK",
+          "def": "CHECK ((kind = ANY (ARRAY['officer_requests'::text, 'mplus_requests'::text, 'rsvp_changes'::text])))",
+          "table": "public.discord_post_queue",
+          "referenced_table": "",
+          "columns": [
+            "kind"
+          ]
+        },
+        {
+          "name": "discord_post_queue_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['queued'::text, 'posted'::text, 'skipped'::text, 'failed'::text])))",
+          "table": "public.discord_post_queue",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "discord_post_queue_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.discord_post_queue",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "discord_post_queue_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.discord_post_queue",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -11982,6 +12142,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.discord_post_queue",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -12916,12 +13089,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.my_recent_own_add",
-      "return_type": "record",
-      "arguments": "p_team_slug text",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.my_guild_officer_team_ids",
       "return_type": "_int4",
       "arguments": "",
@@ -13135,6 +13302,18 @@
       "name": "public.set_team_discord_quiet_hours",
       "return_type": "void",
       "arguments": "p_team_id integer, p_start time without time zone, p_end time without time zone, p_timezone text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.queue_discord_post",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_kind text, p_action text, p_payload jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.claim_discord_posts",
+      "return_type": "record",
+      "arguments": "p_limit integer DEFAULT 25",
       "type": "FUNCTION"
     }
   ],

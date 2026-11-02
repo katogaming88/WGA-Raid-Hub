@@ -99,6 +99,10 @@ begin
   values (p_team_id, v_uid, 'Player Added', 'players', v_player_id,
           to_jsonb(v_spec_label || ', added by the member'));
 
+  perform queue_discord_post(p_team_id, 'officer_requests', 'addCharacter', jsonb_build_object(
+    'member', coalesce((select n.label from public.names n where n.team_member_id = v_member_id limit 1), 'A member'),
+    'nameRealm', v_character.name_realm, 'classSpec', v_spec_label));
+
   return v_player_id;
 end;
 $function$;

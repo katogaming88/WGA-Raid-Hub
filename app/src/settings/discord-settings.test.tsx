@@ -110,7 +110,7 @@ describe('Settings › Discord (#994)', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('In the server')).toBeInTheDocument();
     expect(screen.getByText(/Discord lists the bot as offline/)).toBeInTheDocument();
-    expect(screen.getByText(/Signup sheets and quiet hours start working in an upcoming update/)).toBeInTheDocument();
+    expect(screen.getByText(/Signup sheets start working in an upcoming update/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /M\+ requests.*Off/ })).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /RSVP changes.*The bot can't post in #phoenix-attendance/ })

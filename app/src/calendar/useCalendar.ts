@@ -126,8 +126,8 @@ export function useAnswers(teamId: number, from: string, to: string, access: Ans
   );
 }
 
-// The Discord bot posts an answer and keeps the signup sheet current. A failed
-// post does not undo the answer, which is already saved.
+// The Discord bot keeps the signup sheet current. A failed call does not undo
+// the answer, which is already saved.
 async function tellBot(client: Client, body: Record<string, unknown>) {
   try {
     await client.functions.invoke('discord-bot-webhook', { body });
@@ -138,9 +138,10 @@ async function tellBot(client: Client, body: Record<string, unknown>) {
 
 const refreshes = (teamId: number) => [answersKey(teamId), ['calendar-month', teamId]];
 
-export type OwnAnswer = { date: string; status: string | null; note: string; teamKey: string; nameRealm: string };
+export type OwnAnswer = { date: string; status: string | null; note: string; teamKey: string };
 
 // The reader's own answer. A null status goes back to the default.
+// set_own_rsvp() queues the RSVP change for Discord itself (#962).
 export function useSetOwnAnswer(teamId: number) {
   return useSupabaseMutation<null, OwnAnswer>(
     async (client, a) => {
@@ -151,14 +152,6 @@ export function useSetOwnAnswer(teamId: number) {
         p_note: orNull(a.status === null ? null : a.note)
       });
       if (error) return { data: null, error };
-      if (a.status !== null) {
-        await tellBot(client, {
-          action: 'rsvp',
-          team: a.teamKey,
-          teamId,
-          payload: { charName: a.nameRealm, raidDate: a.date, status: a.status, note: a.note }
-        });
-      }
       await tellBot(client, { action: 'signupSheetSync', team: a.teamKey, teamId, payload: { raidDate: a.date } });
       return { data: null, error: null };
     },
