@@ -12,6 +12,29 @@ answers to.
 
 ---
 
+## [3.231.0] - 2026-11-02
+
+### Functions
+
+- New function `discord-interactions` (#998): the Raid Hub bot's slash
+  commands arrive here from Discord as signed requests, so no process has to
+  stay connected. `/nudge-missing` is back: officers DM raiders missing a
+  wishlist, a BiS source link, or a real BiS pick. In a server with more than
+  one team it asks which team, listing only that server's teams. `/about`
+  answers which version of the bot is running. A raider is nudged at most
+  once a day for each thing, across every team, and a DM that fails no longer
+  uses up the day.
+
+### Backend
+
+- New table `discord_nudges_sent` (#998): `/nudge-missing`'s 24-hour
+  cooldown, one row per Discord user and missing thing, service role only.
+
+### Project
+
+- `npm run discord:register` registers the bot's slash commands once for the
+  whole bot (#998), so any server that adds it has them.
+
 ## [3.230.3] - 2026-11-02
 
 ### Project

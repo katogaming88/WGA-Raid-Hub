@@ -89,6 +89,7 @@
 | [public.team_discord_signup_sheets](public.team_discord_signup_sheets.md) | 10 | A team's signup sheets in Discord (#1712): the channel, its raid days (raid_schedule's weekday, 0 = Sunday, each day on one sheet of a team at most), and either keep_raids_posted (1 to 4) or hours_before each raid. Changed only through save_team_discord_signup_sheet() and remove_team_discord_signup_sheet(). | BASE TABLE |
 | [public.discord_server_access](public.discord_server_access.md) | 3 | Discord servers a person and the bot were both found in, and when (#1712). Written with the service key by the function that reads Discord (#994); set_team_discord_server() takes only a server verified for the caller in the last hour. | BASE TABLE |
 | [public.discord_post_queue](public.discord_post_queue.md) | 12 | Every Discord notice the bot posts to a team's channels, queued by the write behind it and posted by discord-bot-webhook's drain every minute (#962). Added only through queue_discord_post(), taken only through claim_discord_posts(). Service role only. | BASE TABLE |
+| [public.discord_nudges_sent](public.discord_nudges_sent.md) | 3 | When /nudge-missing last DMed each Discord user about each thing missing from their loot setup (#998). One row per Discord id and category, overwritten on each DM, so the 24-hour cooldown holds across every team. Written by discord-interactions with the service role, after the DM was sent. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -1307,6 +1308,11 @@ erDiagram
   timestamp_with_time_zone posted_at
   text last_error
   timestamp_with_time_zone created_at
+}
+"public.discord_nudges_sent" {
+  text discord_id
+  text category
+  timestamp_with_time_zone sent_at
 }
 ```
 

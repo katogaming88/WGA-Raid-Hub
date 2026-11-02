@@ -10321,6 +10321,63 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.discord_nudges_sent",
+      "type": "BASE TABLE",
+      "comment": "When /nudge-missing last DMed each Discord user about each thing missing from their loot setup (#998). One row per Discord id and category, overwritten on each DM, so the 24-hour cooldown holds across every team. Written by discord-interactions with the service role, after the DM was sent.",
+      "columns": [
+        {
+          "name": "discord_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "discord_nudges_sent_pkey",
+          "def": "CREATE UNIQUE INDEX discord_nudges_sent_pkey ON public.discord_nudges_sent USING btree (discord_id, category)",
+          "table": "public.discord_nudges_sent",
+          "columns": [
+            "discord_id",
+            "category"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "discord_nudges_sent_category_check",
+          "type": "CHECK",
+          "def": "CHECK ((category = ANY (ARRAY['no-wishlist'::text, 'no-bis-link'::text, 'incomplete-wishlist'::text])))",
+          "table": "public.discord_nudges_sent",
+          "referenced_table": "",
+          "columns": [
+            "category"
+          ]
+        },
+        {
+          "name": "discord_nudges_sent_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (discord_id, category)",
+          "table": "public.discord_nudges_sent",
+          "referenced_table": "",
+          "columns": [
+            "discord_id",
+            "category"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
