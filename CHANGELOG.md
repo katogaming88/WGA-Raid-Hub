@@ -22,6 +22,7 @@ answers to.
   came back to the same button with no message. Now a refused connect opens
   "Switch to my Discord account", and an "Already use WGA Raid Hub with
   Discord?" link offers the switch before any trip to Discord.
+- The invite page no longer says "Opening this link is the approval".
 
 ## [3.230.1] - 2026-11-02
 

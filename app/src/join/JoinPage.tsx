@@ -41,12 +41,9 @@ function DeadLink() {
 function Join({ code, target }: { code: string; target: InviteTarget }) {
   const { user, signIn, connect } = useSession();
   const heading = (
-    <>
-      <h1>
-        Join {target.teamName} ({target.guildName})
-      </h1>
-      <p className="text-muted">Opening this link is the approval: you go straight onto the roster.</p>
-    </>
+    <h1>
+      Join {target.teamName} ({target.guildName})
+    </h1>
   );
 
   if (!user) {
