@@ -21,7 +21,7 @@ answers to.
   stay connected. `/nudge-missing` is back: officers DM raiders missing a
   wishlist, a BiS source link, or a real BiS pick. In a server with more than
   one team it asks which team, listing only that server's teams. `/about`
-  answers which version of the bot is running. A raider is nudged at most
+  says which Raid Hub release last changed the bot. A raider is nudged at most
   once a day for each thing, across every team, and a DM that fails no longer
   uses up the day.
 

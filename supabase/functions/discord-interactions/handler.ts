@@ -136,7 +136,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   }
   if (interaction.type !== COMMAND) return say(UNKNOWN_COMMAND);
 
-  if (name === 'about') return say(`Raid Hub bot, version ${VERSION}.`);
+  // One version names the whole release, site and bot alike, so this says
+  // which release last changed the bot rather than reading as its own number.
+  if (name === 'about') return say(`The bot was last updated in Raid Hub release ${VERSION}.`);
   if (name !== 'nudge-missing') return say(UNKNOWN_COMMAND);
 
   if (!interaction.guild_id) return say(NOT_IN_SERVER);

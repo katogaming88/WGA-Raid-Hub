@@ -188,7 +188,10 @@ Deno.test('PING answers PONG before any read', async () => {
 Deno.test('/about answers the version, only to the caller', async () => {
   const { deps, log } = setup();
   const res = await handle(await signed(command('about')), deps);
-  assertEquals(await res.json(), { type: 4, data: { content: `Raid Hub bot, version ${VERSION}.`, flags: 64 } });
+  assertEquals(await res.json(), {
+    type: 4,
+    data: { content: `The bot was last updated in Raid Hub release ${VERSION}.`, flags: 64 }
+  });
   assertEquals(log, []);
 });
 

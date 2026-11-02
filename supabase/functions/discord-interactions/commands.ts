@@ -27,7 +27,7 @@ export const COMMANDS = [
   },
   {
     name: 'about',
-    description: 'Which version of the Raid Hub bot is answering',
+    description: 'Which Raid Hub release last changed the bot',
     contexts: GUILD_ONLY
   }
 ];
