@@ -161,6 +161,15 @@ describe('the Join page', () => {
     expect(await screen.findByRole('radio', { name: /Katorri/ })).toBeInTheDocument();
   });
 
+  it('does not cover the join steps with the import window on the way back from Battle.net (#1753)', async () => {
+    renderApp('/join/phoenix-abc', handlers({ world: { member: true } }), {
+      authReturn: { intent: 'connect-battlenet', error: null },
+      battlenetToken: 'tok'
+    });
+    expect(await screen.findByRole('textbox', { name: 'Not listed? Your name' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Import your characters' })).not.toBeInTheDocument();
+  });
+
   it('lets them skip the Member step', async () => {
     const user = userEvent.setup();
     renderApp('/join/phoenix-abc', handlers({ world: { member: true } }), { battlenetToken: 'tok' });

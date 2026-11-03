@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.234.1] - 2026-11-03
+
+### Frontend
+
+- On an invite link's page, coming back from Battle.net no longer opens the
+  "Import your characters" window over the join steps (#1753). A raider who
+  switched to an old Discord account saved characters there, never clicked
+  Join, and was left off the roster. The join page's own steps carry on.
+
+### Project
+
+- Revamp time log: the 2026-11-03 tester investigation row added.
+
 ## [3.234.0] - 2026-11-03
 
 ### Functions

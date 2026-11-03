@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useLocation } from 'react-router';
 import { useAccess } from '../auth/access';
 import { BATTLENET, useSession } from '../auth/session';
 import { Dialog } from '../components/Dialog';
@@ -33,7 +34,12 @@ export const useOpenAltsPicker = () => useContext(AltsPickerContext);
 export function AltsPickerProvider({ children }: { children: ReactNode }) {
   const { user, openAltsOnReturn, clearOpenAltsOnReturn } = useSession();
   const touch = useTouchScreen();
-  const [open, setOpen] = useState(() => openAltsOnReturn && !!user?.hasBattlenet && !!user.hasDiscord && !touch);
+  // The join page has its own Member and character steps (#1753), so coming
+  // back from Battle.net there must not cover them with this window.
+  const onJoinPage = useLocation().pathname.startsWith('/join/');
+  const [open, setOpen] = useState(
+    () => openAltsOnReturn && !!user?.hasBattlenet && !!user.hasDiscord && !touch && !onJoinPage
+  );
 
   // Only once: a later remount (another guild's pages) does not open it again.
   useEffect(() => {
