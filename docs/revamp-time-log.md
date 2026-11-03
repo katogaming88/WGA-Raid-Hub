@@ -580,6 +580,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-11-02 | 10:13-10:14 PM | Where the work stood | 5 m |
 | 2026-10-27 | 12:23-12:26 AM | Where the work stood; #1408 closed: Monday night's progression sync ran on the new Warcraft Logs secret | 5 m |
 | 2026-11-03 | 8:56-8:58 AM | Where the work stood | 5 m |
+| 2026-11-03 | 9:20-11:45 AM | Sandbox testers: the Sentry join error read (#1748), Cloudflare Access sign-in help, the live database checked for what testers saved, #1749 and #1753 filed, #1753 fixed (the Import characters window no longer covers the join page); review and merge not yet counted | 2 h 25 m |
 
 ## Remaining in Revamp 1
 
