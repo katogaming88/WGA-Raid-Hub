@@ -10,10 +10,10 @@
 //   after, under waitUntil, then edits that answer. Discord gives 3 seconds
 //   for the first answer and 15 minutes for the edit.
 //
-// Commands: /nudge-missing and /about; #961 moves the other nine here. The
-// signup sheet's Refresh button (#960) lands here too: Discord sends a button
-// press to the application that posted the message, and discord-bot-webhook
-// posts the sheet as this bot.
+// Commands (#961): /help, /raider me, /raider schedule, /officer
+// nudge-missing and /officer invite. The signup sheet's Refresh button (#960)
+// lands here too: Discord sends a button press to the application that
+// posted the message, and discord-bot-webhook posts the sheet as this bot.
 //
 // handle() takes its reads, its fetch, its environment and its waitUntil as
 // an argument (#1006); deps.ts supplies the real ones and index.ts serves it.
@@ -24,10 +24,21 @@ import {
   nudgeEmbed,
   summaryEmbed
 } from './nudge.ts';
-import { REFRESH_PREFIX, type SheetDb, refreshSheet } from '../_shared/signup-sheet.ts';
+import { REFRESH_PREFIX, type SheetDb, refreshSheet, startsAt } from '../_shared/signup-sheet.ts';
+import { isoDate } from '../_shared/time.ts';
+import { type Award, type HelpTeam, type Signup, counted, helpMessage, meMessage, scheduleMessage } from './raider.ts';
 import { VERSION } from './version.ts';
 
 export type Team = { id: number; name: string };
+// The Raid Hub person behind a Discord account, as seen from one team.
+export type Member = {
+  personId: number;
+  authUserId: string | null;
+  // On the team's roster: an unarchived team member, any rank.
+  onTeam: boolean;
+  // Their characters on the team, archived ones too (items received counts all).
+  players: { id: number; nameRealm: string; archived: boolean }[];
+};
 
 export interface InteractionsDb {
   // The teams whose Discord server is this one, by name.
@@ -39,6 +50,16 @@ export interface InteractionsDb {
   // Whether the Raid Hub person with this Discord account holds this team
   // permission on the team, by their rank there (owners hold every one).
   hasTeamPermission(discordId: string, teamId: number, permission: string): Promise<boolean>;
+  // The person with this Discord account; null when no profile has it.
+  member(discordId: string, teamId: number): Promise<Member | null>;
+  // Their signup for the team's season open for signups; null when none is.
+  signup(member: Member, teamId: number): Promise<Signup>;
+  // These characters' awards this season, and the team's saved response list.
+  awards(teamId: number, playerIds: number[]): Promise<{ awards: Award[]; list: unknown }>;
+  // The team's invite code, when it has one that hasn't run out.
+  inviteCode(teamId: number): Promise<string | null>;
+  // The kinds of post the team has a channel for.
+  posts(teamId: number): Promise<{ kind: string; channelId: string }[]>;
 }
 
 export type Env = { get(name: string): string | undefined };
@@ -82,6 +103,21 @@ export const NUDGE_PERMISSIONS = ['manage_loot', 'view_loot'];
 export const NOT_ALLOWED = (team: string) =>
   `Only people who manage loot for ${team} on Raid Hub can nudge its raiders. If that's you, make sure this Discord account is the one on your Raid Hub profile.`;
 export const FAILED = "Couldn't finish the check. Nobody past the ones listed was nudged; try again in a minute.";
+export const BROKE = 'Something went wrong reading Raid Hub. Try again in a minute.';
+export const NO_PROFILE = (siteUrl?: string) =>
+  `This Discord account isn't on a Raid Hub profile yet. Sign in${siteUrl ? ` at ${siteUrl}` : ''} with Discord to claim yours.`;
+export const NOT_ON_TEAM = (team: string) =>
+  `You're not on ${team}'s roster on Raid Hub. If you should be, ask one of its officers.`;
+// Who may post the invite link: whoever can see it on the site, by the
+// team's Edit roster permission (team_invite_links' read rule).
+export const INVITE_PERMISSION = 'edit_roster';
+export const INVITE_NOT_ALLOWED = (team: string) =>
+  `Only people who can edit ${team}'s roster on Raid Hub can post its invite link.`;
+export const NO_INVITE = (team: string) =>
+  `${team} has no invite link right now. An officer can make one on Settings › Invite link.`;
+export const INVITE_POSTED = (team: string) => `Posted ${team}'s invite link in this channel.`;
+// How far ahead /raider schedule looks.
+export const SCHEDULE_DAYS = 14;
 
 const CORS_HEADERS = {
   'Access-Control-Expose-Headers': 'X-WGA-Version',
@@ -122,10 +158,21 @@ type Interaction = {
   token: string;
   guild_id?: string;
   member?: { user?: { id: string } };
-  data?: { name: string; custom_id?: string; options?: { name: string; value: string; focused?: boolean }[] };
+  data?: { name: string; custom_id?: string; options?: Opt[] };
 };
+type Opt = { name: string; type?: number; value?: string; focused?: boolean; options?: Opt[] };
 
-const option = (i: Interaction, name: string) => i.data?.options?.find((o) => o.name === name);
+// The command as typed, "raider me", and the options under its subcommand.
+function leaf(i: Interaction): { path: string; options: Opt[] } {
+  const top = i.data?.options ?? [];
+  const sub = top.find((o) => o.type === 1);
+  return sub
+    ? { path: `${i.data?.name} ${sub.name}`, options: sub.options ?? [] }
+    : { path: i.data?.name ?? '', options: top };
+}
+const teamPicked = (options: Opt[]) => options.find((o) => o.name === 'team')?.value;
+
+type Run = (deps: Deps, i: Interaction, serverId: string, options: Opt[]) => Promise<void>;
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method !== 'POST') return new Response(null, { status: 405, headers: CORS_HEADERS });
@@ -141,9 +188,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const interaction = JSON.parse(body) as Interaction;
   if (interaction.type === PING) return json({ type: PONG });
 
-  const name = interaction.data?.name;
-  if (interaction.type === AUTOCOMPLETE && name === 'nudge-missing') {
-    const typed = String(option(interaction, 'team')?.value ?? '').toLowerCase();
+  const { path, options } = leaf(interaction);
+  if (interaction.type === AUTOCOMPLETE && options.some((o) => o.name === 'team' && o.focused)) {
+    const typed = String(teamPicked(options) ?? '').toLowerCase();
     const teams = interaction.guild_id ? await deps.db.teamsInServer(interaction.guild_id) : [];
     const choices = teams
       .filter((t) => t.name.toLowerCase().includes(typed))
@@ -175,18 +222,22 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   }
   if (interaction.type !== COMMAND) return say(UNKNOWN_COMMAND);
 
-  // One version names the whole release, site and bot alike, so this says
-  // which release last changed the bot rather than reading as its own number.
-  if (name === 'about') return say(`The bot was last updated in Raid Hub release ${VERSION}.`);
-  if (name !== 'nudge-missing') return say(UNKNOWN_COMMAND);
-
+  const run = RUNS[path];
+  if (!run) return say(UNKNOWN_COMMAND);
   const serverId = interaction.guild_id;
   if (!serverId) return say(NOT_IN_SERVER);
 
   // Started from a timer, so the answer below is out before any read, the
   // server's teams included; a cold supabase-js client could otherwise eat
   // Discord's 3 seconds.
-  deps.waitUntil(new Promise((r) => setTimeout(r, 0)).then(() => nudge(deps, interaction, serverId)));
+  deps.waitUntil(
+    new Promise((r) => setTimeout(r, 0))
+      .then(() => run(deps, interaction, serverId, options))
+      .catch(async (err) => {
+        console.error(`discord-interactions: /${path} failed:`, err);
+        await finish(deps, interaction, { content: BROKE }).catch(() => null);
+      })
+  );
   return json({ type: DEFERRED_MESSAGE, data: { flags: EPHEMERAL } });
 }
 
@@ -228,12 +279,176 @@ function pickTeam(teams: Team[], picked: string | undefined): Team | string {
   return teams.find((t) => String(t.id) === picked) ?? UNKNOWN_TEAM;
 }
 
-async function nudge(deps: Deps, interaction: Interaction, serverId: string): Promise<void> {
+// The team picked, or null once the refusal is sent.
+async function teamFor(deps: Deps, i: Interaction, serverId: string, options: Opt[]): Promise<Team | null> {
+  const team = pickTeam(await deps.db.teamsInServer(serverId), teamPicked(options));
+  if (typeof team !== 'string') return team;
+  await finish(deps, i, { content: team });
+  return null;
+}
+
+// A raider command's team and caller: on the team's roster, by their Raid Hub
+// profile. Null once the refusal is sent.
+async function raiderOn(
+  deps: Deps,
+  i: Interaction,
+  serverId: string,
+  options: Opt[]
+): Promise<{ team: Team; member: Member } | null> {
+  const team = await teamFor(deps, i, serverId, options);
+  if (!team) return null;
+  const caller = i.member?.user?.id;
+  const member = caller ? await deps.db.member(caller, team.id) : null;
+  if (!member) {
+    await finish(deps, i, { content: NO_PROFILE(deps.env.get('SITE_URL')) });
+    return null;
+  }
+  if (!member.onTeam) {
+    await finish(deps, i, { content: NOT_ON_TEAM(team.name) });
+    return null;
+  }
+  return { team, member };
+}
+
+const firstName = (nameRealm: string) => nameRealm.split('-')[0].trim();
+
+const me: Run = async (deps, i, serverId, options) => {
+  const on = await raiderOn(deps, i, serverId, options);
+  if (!on) return;
+  const { team, member } = on;
+  const ids = new Set(member.players.map((p) => p.id));
+  const [status, signup, loot] = await Promise.all([
+    deps.db.setupStatus(team.id),
+    deps.db.signup(member, team.id),
+    deps.db.awards(team.id, [...ids])
+  ]);
+  const main = member.players.find((p) => !p.archived);
+  await finish(
+    deps,
+    i,
+    meMessage({
+      teamName: team.name,
+      firstName: main ? firstName(main.nameRealm) : null,
+      wishlist: status.filter((r) => ids.has(r.player_id)),
+      signup,
+      received: counted(loot.awards, loot.list),
+      siteUrl: deps.env.get('SITE_URL')
+    })
+  );
+};
+
+const schedule: Run = async (deps, i, serverId, options) => {
+  const on = await raiderOn(deps, i, serverId, options);
+  if (!on) return;
+  const { team, member } = on;
+  const now = (deps.now ?? (() => new Date()))();
+  // From yesterday by UTC date: an evening raid in the Americas is already
+  // the next day in UTC. Nights that have started are dropped below.
+  const dates = Array.from({ length: SCHEDULE_DAYS + 1 }, (_, n) => {
+    const d = new Date(now);
+    d.setUTCDate(d.getUTCDate() + n - 1);
+    return isoDate(d);
+  });
+  const nights = (
+    await Promise.all(dates.map(async (raidDate) => ({ raidDate, night: await deps.sheets.night(team.id, raidDate) })))
+  ).filter(({ raidDate, night }) => {
+    if (!night.exists) return false;
+    const at = startsAt(raidDate, night);
+    return at ? at > now : raidDate >= isoDate(now);
+  });
+  const mine = new Set(member.players.filter((p) => !p.archived).map((p) => p.id));
+  const answered = await Promise.all(
+    nights.map(async (n) => {
+      const rsvps = await deps.sheets.rsvps(team.id, n.raidDate);
+      return { ...n, status: rsvps.find((r) => mine.has(r.playerId))?.status ?? null };
+    })
+  );
+  await finish(deps, i, scheduleMessage(team.name, answered));
+};
+
+const invite: Run = async (deps, i, serverId, options) => {
+  const team = await teamFor(deps, i, serverId, options);
+  if (!team) return;
+  const caller = i.member?.user?.id;
+  if (!caller || !(await deps.db.hasTeamPermission(caller, team.id, INVITE_PERMISSION))) {
+    await finish(deps, i, { content: INVITE_NOT_ALLOWED(team.name) });
+    return;
+  }
+  const code = await deps.db.inviteCode(team.id);
+  const site = deps.env.get('SITE_URL')?.replace(/\/$/, '');
+  if (!code || !site) {
+    await finish(deps, i, { content: NO_INVITE(team.name) });
+    return;
+  }
+  // A follow-up without the "only you" flag, so the channel sees it while the
+  // "thinking" answer stays the caller's own.
+  const posted = await discord(deps, 'POST', `/webhooks/${i.application_id}/${i.token}`, {
+    content: `Join **${team.name}** on Raid Hub: ${site}/join/${code}`,
+    allowed_mentions: { parse: [] }
+  });
+  await finish(deps, i, { content: posted.ok ? INVITE_POSTED(team.name) : BROKE });
+};
+
+// What /help lists, and who may use each: anyone on the team for /raider,
+// the matching permissions for /officer.
+const HELP_COMMANDS: {
+  line: string;
+  may: (perm: (p: string) => Promise<boolean>, onTeam: boolean) => Promise<boolean>;
+}[] = [
+  { line: '`/raider me` -- your wishlist, season signup and items received', may: (_p, on) => Promise.resolve(on) },
+  { line: '`/raider schedule` -- your next raid nights and your RSVP for each', may: (_p, on) => Promise.resolve(on) },
+  {
+    line: '`/officer nudge-missing` -- DM raiders whose loot setup is missing something',
+    may: async (perm) => (await Promise.all(NUDGE_PERMISSIONS.map(perm))).every(Boolean)
+  },
+  { line: "`/officer invite` -- post the team's invite link", may: (perm) => perm(INVITE_PERMISSION) }
+];
+
+const POST_LABELS: Record<string, string> = {
+  officer_requests: 'Officer requests',
+  mplus_requests: 'M+ requests',
+  rsvp_changes: 'RSVP changes'
+};
+
+const help: Run = async (deps, i, serverId) => {
+  const caller = i.member?.user?.id;
+  const teams = await deps.db.teamsInServer(serverId);
+  const allowed = new Set<string>();
+  const shown: HelpTeam[] = [];
+  for (const team of teams) {
+    const [sheets, posts, member] = await Promise.all([
+      deps.sheets.teamSheets(team.id),
+      deps.db.posts(team.id),
+      caller ? deps.db.member(caller, team.id) : Promise.resolve(null)
+    ]);
+    shown.push({
+      name: team.name,
+      posts: [
+        ...[...new Set((sheets?.sheets ?? []).map((s) => s.channelId))].map((channelId) => ({
+          label: 'Signup sheets',
+          channelId
+        })),
+        ...posts.map((p) => ({ label: POST_LABELS[p.kind] ?? p.kind, channelId: p.channelId }))
+      ]
+    });
+    if (!caller || !member) continue;
+    const perm = (p: string) => deps.db.hasTeamPermission(caller, team.id, p);
+    for (const c of HELP_COMMANDS) if (!allowed.has(c.line) && (await c.may(perm, member.onTeam))) allowed.add(c.line);
+  }
+  const commands = HELP_COMMANDS.filter((c) => allowed.has(c.line)).map((c) => c.line);
+  await finish(
+    deps,
+    i,
+    helpMessage({ teams: shown, commands: ['`/help` -- this message', ...commands], version: VERSION })
+  );
+};
+
+const nudge: Run = async (deps, interaction, serverId, options) => {
   const nudged: string[] = [];
   const skipped: string[] = [];
   const failed: string[] = [];
   try {
-    const team = pickTeam(await deps.db.teamsInServer(serverId), option(interaction, 'team')?.value);
+    const team = pickTeam(await deps.db.teamsInServer(serverId), teamPicked(options));
     if (typeof team === 'string') {
       await finish(deps, interaction, { content: team });
       return;
@@ -278,9 +493,18 @@ async function nudge(deps: Deps, interaction: Interaction, serverId: string): Pr
     }
     await finish(deps, interaction, { embeds: [summaryEmbed(nudged, skipped, failed)] });
   } catch (err) {
-    console.error('discord-interactions: /nudge-missing failed:', err);
+    console.error('discord-interactions: /officer nudge-missing failed:', err);
     await finish(deps, interaction, { content: FAILED, embeds: [summaryEmbed(nudged, skipped, failed)] }).catch(
       () => null
     );
   }
-}
+};
+
+// Each command as Discord sends it: the group, then the subcommand.
+const RUNS: Record<string, Run> = {
+  help,
+  'raider me': me,
+  'raider schedule': schedule,
+  'officer nudge-missing': nudge,
+  'officer invite': invite
+};
