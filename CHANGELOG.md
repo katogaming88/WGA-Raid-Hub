@@ -12,6 +12,26 @@ answers to.
 
 ---
 
+## [3.232.0] - 2026-11-02
+
+### Functions
+
+- `discord-bot-webhook` posts a main swap request to the team's officer
+  channel (#1211): the raider's character, the one they asked to swap to with
+  its spec, and their note. It pings the team's officer-requests role when one
+  is set, like the other requests.
+
+### Backend
+
+- `request_main_swap()` queues that notice once the request is saved (#1211),
+  and `discord_post_queue.action` takes `mainswap`. A request still saves when
+  Discord is down or the team has no officer channel.
+
+### Project
+
+- Revamp time log: the 2026-11-01 #962 row split into its three pieces, and
+  the 2026-11-02 #998 and bot command list rows added.
+
 ## [3.231.0] - 2026-11-02
 
 ### Functions

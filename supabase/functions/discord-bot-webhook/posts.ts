@@ -23,7 +23,7 @@ export type Kind = 'officer_requests' | 'mplus_requests' | 'rsvp_changes';
 
 // The channel posts the queue carries (#962): discord_post_queue.action's
 // list, each with a builder below.
-export const QUEUED_ACTIONS = ['signup', 'addCharacter', 'selfreceived', 'bis', 'mplus', 'rsvp'];
+export const QUEUED_ACTIONS = ['signup', 'addCharacter', 'selfreceived', 'bis', 'mplus', 'rsvp', 'mainswap'];
 
 // Who may ask for each action (#959):
 //   cron     a scheduled job, by the optional-rsvp-reminders secret: its DM
@@ -182,6 +182,22 @@ export function buildPost(action: string, p: Payload, roleId: string | null, sub
           field('Notes', p.notes, '*(none)*')
         ],
         footer: { text: 'M+ Exclusion Request System' }
+      });
+    }
+    case 'mainswap': {
+      const from = text(p.fromNameRealm);
+      const to = text(p.toNameRealm);
+      need(from, to);
+      return withPing(roleId, 'New main swap request received!', {
+        color: 0x5865f2,
+        title: 'New Main Swap Request',
+        fields: [
+          field('Raider', from, ''),
+          field('Swapping To', text(p.spec) ? `${to}, ${text(p.spec)}` : to, ''),
+          { name: 'Submitted At', value: when(submittedAt) },
+          field('Notes', p.notes, '*(none)*')
+        ],
+        footer: { text: 'Approve or decline it on the Roster page' }
       });
     }
     case 'rsvp': {

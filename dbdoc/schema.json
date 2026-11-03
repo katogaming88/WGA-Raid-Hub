@@ -10270,7 +10270,7 @@
         {
           "name": "discord_post_queue_action_check",
           "type": "CHECK",
-          "def": "CHECK ((action = ANY (ARRAY['signup'::text, 'addCharacter'::text, 'selfreceived'::text, 'bis'::text, 'mplus'::text, 'rsvp'::text])))",
+          "def": "CHECK ((action = ANY (ARRAY['signup'::text, 'addCharacter'::text, 'selfreceived'::text, 'bis'::text, 'mplus'::text, 'rsvp'::text, 'mainswap'::text])))",
           "table": "public.discord_post_queue",
           "referenced_table": "",
           "columns": [

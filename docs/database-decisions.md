@@ -3217,3 +3217,19 @@ Shipped: `20261102093745_discord_nudges_sent.sql`. `discord-interactions`.
 **Left for later, on purpose.** The other nine commands move here in #961. The signup sheet's Refresh button comes with the sheet in #960: a button routes to the application that posted its message, and this bot has posted no sheet yet. `bot/` stays until #999.
 
 [Full discussion -> #998](https://github.com/katogaming88/WGA-Raid-Hub/issues/998).
+
+---
+
+## #1211 -- a main swap request tells the officers in Discord
+
+Shipped: `20261102223728_main_swap_officer_notice.sql`. `discord-bot-webhook`.
+
+**The request queues its own notice.** `request_main_swap()` adds an `officer_requests` row to `discord_post_queue` (#962) after the request is saved, the way `submit_self_received()` and `submit_mplus_exclusion()` do. The issue was written for the VM bot's `/mainswap` route and a call from the page; since #959 and #962 the write queues the notice and `discord-bot-webhook`'s drain posts it, so neither exists. The page changes nothing, and the request saves whatever Discord does.
+
+**Built from what was saved.** The payload holds the roster character the swap is from (the one the request's `from_player_id` names), the character asked for, the spec picked as "Spec Class", and the trimmed note. The post pings the ping role the team set for officer requests, like the other requests, and uses the same `allowed_mentions` guard, so an "@everyone" in a note stays text.
+
+**`mainswap` joins `discord_post_queue.action`'s check.** The constraint is dropped and added again with the new value.
+
+**Left for later, on purpose.** Approving or declining stays on the Roster page; a Discord button for it would be its own issue.
+
+[Full discussion -> #1211](https://github.com/katogaming88/WGA-Raid-Hub/issues/1211).
