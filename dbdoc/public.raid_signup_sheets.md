@@ -2,7 +2,7 @@
 
 ## Description
 
-Bookkeeping for the bot-owned aggregated signup-sheet Discord message (#900, part of #640): tracks which channel/message holds the one edited-in-place embed per team/raid_date. Written and read only by the bot's service-role client via claim_raid_signup_sheet(); no read use case for an officer or end user. Mirrors raid_rsvp_reminders_sent's locked-down shape (#895).
+Which Discord message holds each team's signup sheet for a raid night (#900): one edited-in-place embed per team and raid_date. Written and read only by the service role, through claim_raid_signup_sheet(), by discord-bot-webhook and discord-interactions since #960 (the bot process before). No read use case for an officer or end user. Mirrors raid_rsvp_reminders_sent's locked-down shape (#895).
 
 ## Columns
 

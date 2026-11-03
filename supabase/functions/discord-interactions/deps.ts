@@ -2,19 +2,22 @@
 // service role, the platform fetch, Deno.env and the edge runtime's
 // waitUntil. The only module here that reaches a network or an environment.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+import { sheetDb } from '../_shared/signup-sheet-db.ts';
 import type { Deps, InteractionsDb } from './handler.ts';
 import type { WishlistSetupStatusRow } from './nudge.ts';
 
 declare const EdgeRuntime: { waitUntil(work: Promise<unknown>): void };
 
+// Nobody signs in to Discord's request: every read is the service role, and
+// the signature check is what stands in front of it.
+let service: SupabaseClient<any> | undefined;
+const serviceClient = () => {
+  if (!service) service = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  return service;
+};
+
 function supabaseDb(): InteractionsDb {
-  // Nobody signs in to Discord's request: every read is the service role,
-  // and the signature check is what stands in front of it.
-  let service: SupabaseClient<any> | undefined;
-  const db = () => {
-    if (!service) service = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-    return service;
-  };
+  const db = serviceClient;
 
   return {
     async teamsInServer(serverId) {
@@ -86,6 +89,7 @@ export function productionDeps(): Deps {
     fetch: globalThis.fetch,
     env: Deno.env,
     db: supabaseDb(),
+    sheets: sheetDb(serviceClient),
     waitUntil: (work) => EdgeRuntime.waitUntil(work)
   };
 }

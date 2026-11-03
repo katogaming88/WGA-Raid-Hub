@@ -21,6 +21,7 @@ import {
 import type { NudgeCategory, WishlistSetupStatusRow } from '../../../supabase/functions/discord-interactions/nudge.ts';
 import { VERSION } from '../../../supabase/functions/discord-interactions/version.ts';
 import { recordingFetch } from '../_support/fetch.ts';
+import { CHANNEL, RAID, type SheetState, fakeSheets } from '../_support/sheets.ts';
 
 const URL = 'http://edge.test/functions/v1/discord-interactions';
 const SERVER = '100000000000000001';
@@ -87,7 +88,7 @@ type State = {
 
 // One log for the database and Discord both, so the order between them is
 // an assertion.
-function setup(state: State = {}, discord: Response[] = []) {
+function setup(state: State = {}, discord: Response[] = [], sheetState: SheetState = {}) {
   const log: string[] = [];
   const recorded: { discordId: string; categories: NudgeCategory[] }[] = [];
   const pending: Promise<unknown>[] = [];
@@ -129,6 +130,7 @@ function setup(state: State = {}, discord: Response[] = []) {
     fetch,
     env: { get: (k) => env.get(k) },
     db,
+    sheets: fakeSheets(sheetState).db,
     now: () => NOW,
     sleep: () => Promise.resolve(),
     waitUntil: (work) => {
@@ -211,13 +213,11 @@ Deno.test('an unknown command is refused, only to the caller', async () => {
   assertEquals(await res.json(), { type: 4, data: { content: UNKNOWN_COMMAND, flags: 64 } });
 });
 
-Deno.test('a button this bot does not know yet is refused, only to the caller', async () => {
-  const { deps } = setup();
-  const res = await handle(
-    await signed({ ...command('x'), type: 3, data: { custom_id: 'signup-sheet-refresh:1:2026-11-03' } }),
-    deps
-  );
+Deno.test('a button this bot does not know is refused, only to the caller, with nothing read', async () => {
+  const { deps, log } = setup();
+  const res = await handle(await signed({ ...command('x'), type: 3, data: { custom_id: 'something-else' } }), deps);
   assertEquals(await res.json(), { type: 4, data: { content: UNKNOWN_COMMAND, flags: 64 } });
+  assertEquals(log, []);
 });
 
 Deno.test("the team box lists this server's teams, filtered by what's typed", async () => {
@@ -394,4 +394,39 @@ Deno.test('/nudge-missing waits out one 429 and tries again', async () => {
   await handle(await signed(command('nudge-missing')), deps);
   await settle();
   assertEquals(recorded.length, 1);
+});
+
+// -- The signup sheet's Refresh button (#960) ----------------------------------
+
+const press = (customId: string) => ({
+  type: 3,
+  application_id: APP,
+  token: 'interaction-token',
+  guild_id: SERVER,
+  member: { user: { id: OFFICER } },
+  data: { custom_id: customId }
+});
+
+Deno.test('Refresh answers "the message will change" at once, then edits the sheet for that night', async () => {
+  const { deps, log, calls, settle } = setup({}, [ok({ id: 'm9' })], {
+    nights: { '2026-11-05': RAID },
+    rows: { '2026-11-05': { channelId: CHANNEL, messageId: 'm9' } }
+  });
+  const res = await handle(await signed(press('signup-sheet-refresh:1:2026-11-05')), deps);
+  assertEquals(await res.json(), { type: 6 });
+  assertEquals(log, ['waitUntil']);
+  await settle();
+  assertEquals(
+    calls.map((c) => `${c.method} ${c.url.replace(API, '')}`),
+    [`PATCH /channels/${CHANNEL}/messages/m9`]
+  );
+  assertEquals(JSON.parse(calls[0].body!).embeds[0].title, 'Phoenix — Signup Sheet');
+});
+
+Deno.test('Refresh on a night no sheet is posted for changes nothing', async () => {
+  const { deps, calls, settle } = setup({}, [], { nights: { '2026-11-05': RAID } });
+  const res = await handle(await signed(press('signup-sheet-refresh:1:2026-11-05')), deps);
+  assertEquals(await res.json(), { type: 6 });
+  await settle();
+  assertEquals(calls.length, 0);
 });

@@ -2,7 +2,7 @@
 // and the queue's drain: that each queued notice goes to the channel and role
 // the team picked and only inside its own server, and what a try leaves on
 // its row when Discord or the settings say no.
-import { assertEquals } from 'jsr:@std/assert@1';
+import { assert, assertEquals } from 'jsr:@std/assert@1';
 import {
   API,
   CANT_SEE,
@@ -19,6 +19,7 @@ import { PRODUCTION_HOST } from '../../../supabase/functions/_shared/discord-des
 import { VERSION } from '../../../supabase/functions/discord-bot-webhook/version.ts';
 import type { Kind } from '../../../supabase/functions/discord-bot-webhook/posts.ts';
 import { PAYLOADS } from './posts.test.ts';
+import { RAID, type SheetState, fakeSheets } from '../_support/sheets.ts';
 
 const URL = 'http://edge.test/functions/v1/discord-bot-webhook';
 const SERVER = '100000000000000001';
@@ -124,6 +125,7 @@ const DISCORD: Record<string, Route> = {
 
 type Options = {
   state?: State;
+  sheets?: SheetState;
   routes?: Record<string, Route>;
   env?: Record<string, string>;
   headers?: Record<string, string>;
@@ -131,9 +133,16 @@ type Options = {
 
 async function run(
   body: unknown,
-  { state = {}, routes = DISCORD, env = PROD_ENV, headers = { Authorization: 'Bearer user-jwt' } }: Options = {}
+  {
+    state = {},
+    sheets: sheetState = {},
+    routes = DISCORD,
+    env = PROD_ENV,
+    headers = { Authorization: 'Bearer user-jwt' }
+  }: Options = {}
 ) {
   const { db, log, finished } = fakeDb(state);
+  const sheets = fakeSheets(sheetState);
   const calls: Array<{ key: string; body: any }> = [];
   const fetch = async (input: string | URL | Request, init?: RequestInit) => {
     const req = new Request(input, init);
@@ -148,6 +157,7 @@ async function run(
     fetch: fetch as typeof globalThis.fetch,
     env: { get: (name) => env[name] },
     db,
+    sheets: sheets.db,
     now: () => new Date(NOW),
     sleep: (ms) => {
       slept.push(ms);
@@ -162,7 +172,7 @@ async function run(
     }),
     deps
   );
-  return { status: res.status, body: await res.json(), calls, log, slept, finished };
+  return { status: res.status, body: await res.json(), calls, log, slept, finished, sheets };
 }
 
 const notice = (action: string, payload: unknown = {}) => ({ action, team: 'phoenix', payload });
@@ -381,16 +391,74 @@ Deno.test(
   }
 );
 
-Deno.test('signupSheetSync answers OK and posts nothing until #960', async () => {
-  const { status: code, body, calls } = await run(notice('signupSheetSync', { raidDate: '2026-11-04' }));
-  assertEquals([code, body.posted, calls.length], [200, false, 0]);
+// -- The signup sheets (#960); _shared/signup-sheet.test.ts has the rest ----
+
+Deno.test('signupSheetSync edits the posted sheet for that night', async () => {
+  const {
+    status: code,
+    body,
+    calls
+  } = await run(notice('signupSheetSync', { raidDate: '2026-11-05' }), {
+    sheets: { nights: { '2026-11-05': RAID }, rows: { '2026-11-05': { channelId: CHANNEL, messageId: 'm9' } } },
+    routes: { ...DISCORD, [`PATCH /channels/${CHANNEL}/messages/m9`]: ok({ id: 'm9' }) }
+  });
+  assertEquals([code, body.result], [200, 'edited']);
+  assertEquals(
+    calls.map((c) => c.key),
+    [`PATCH /channels/${CHANNEL}/messages/m9`]
+  );
+});
+
+Deno.test('signupSheetSync posts nothing for a night with no sheet up yet, and leaves no row', async () => {
+  const { body, calls, sheets } = await run(notice('signupSheetSync', { raidDate: '2026-11-05' }), {
+    sheets: { nights: { '2026-11-05': RAID } }
+  });
+  assertEquals([body.result, calls.length, sheets.rows.size], ['not posted', 0, 0]);
+});
+
+Deno.test('signupSheetSync refuses a missing or malformed date', async () => {
+  for (const payload of [{}, { raidDate: 'tomorrow' }]) {
+    const { status: code } = await run(notice('signupSheetSync', payload));
+    assertEquals(code, 400, JSON.stringify(payload));
+  }
+});
+
+Deno.test('the sheets run takes only the job secret', async () => {
+  for (const headers of [{}, { 'x-cron-secret': 'wrong' }, { Authorization: 'Bearer user-jwt' }]) {
+    const { status: code, calls } = await run({ action: 'signupSheets' }, { headers });
+    assertEquals([code, calls.length], [401, 0], JSON.stringify(headers));
+  }
+});
+
+Deno.test('the sheets run posts the due sheets as the bot', async () => {
+  // Sunday 2026-11-01 14:00Z; Tuesday and Thursday raids, two kept posted.
+  const {
+    status: code,
+    body,
+    calls
+  } = await run(
+    { action: 'signupSheets' },
+    { headers: CRON, sheets: { nights: { '2026-11-03': RAID, '2026-11-05': RAID, '2026-11-10': RAID } } }
+  );
+  assertEquals([code, body.posted, body.edited, body.failed], [200, 2, 0, 0]);
+  assertEquals(posted(calls).length, 2);
+  assert(calls.every((c) => !c.key.startsWith('POST https://')));
+});
+
+Deno.test('a local stack posts no sheet, since only the bot can answer its button', async () => {
+  const sheets = { nights: { '2026-11-03': RAID } };
+  const run1 = await run({ action: 'signupSheets' }, { headers: CRON, env: LOCAL_ENV, sheets });
+  assertEquals([run1.status, run1.body.posted, run1.calls.length], [200, 0, 0]);
+  const run2 = await run(notice('signupSheetSync', { raidDate: '2026-11-03' }), { env: LOCAL_ENV, sheets });
+  assertEquals([run2.status, run2.calls.length], [200, 0]);
 });
 
 Deno.test('answers its preflight with the stamped version', async () => {
   const res = await handle(new Request(URL, { method: 'OPTIONS' }), {
     fetch: globalThis.fetch,
     env: { get: () => undefined },
-    db: fakeDb().db
+    db: fakeDb().db,
+    sheets: fakeSheets().db
   });
   assertEquals(res.headers.get('X-WGA-Version'), VERSION);
 });

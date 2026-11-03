@@ -2,6 +2,7 @@
 // fetch, Deno.env. The only module here that reaches a network or an
 // environment.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+import { sheetDb } from '../_shared/signup-sheet-db.ts';
 import type { Deps, QueuedPost, RelayDb } from './handler.ts';
 
 type QueuedRow = {
@@ -14,6 +15,12 @@ type QueuedRow = {
   attempts: number;
 };
 
+let service: SupabaseClient<any> | undefined;
+const serviceClient = () => {
+  if (!service) service = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  return service;
+};
+
 function supabaseDb(): RelayDb {
   // Who the caller is, and whether they may change the team's Discord
   // settings, are read as the caller. The rest is the service role: the
@@ -22,11 +29,7 @@ function supabaseDb(): RelayDb {
     createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: authHeader } }
     });
-  let service: SupabaseClient<any> | undefined;
-  const db = () => {
-    if (!service) service = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-    return service;
-  };
+  const db = serviceClient;
 
   return {
     async getUser(authHeader) {
@@ -115,5 +118,5 @@ function supabaseDb(): RelayDb {
 }
 
 export function productionDeps(): Deps {
-  return { fetch: globalThis.fetch, env: Deno.env, db: supabaseDb() };
+  return { fetch: globalThis.fetch, env: Deno.env, db: supabaseDb(), sheets: sheetDb(serviceClient) };
 }

@@ -3233,3 +3233,17 @@ Shipped: `20261102223728_main_swap_officer_notice.sql`. `discord-bot-webhook`.
 **Left for later, on purpose.** Approving or declining stays on the Roster page; a Discord button for it would be its own issue.
 
 [Full discussion -> #1211](https://github.com/katogaming88/WGA-Raid-Hub/issues/1211).
+
+## #960 -- the signup sheets are posted by discord-bot-webhook, on a 15-minute schedule
+
+Shipped: `20261103090746_signup_sheets_schedule.sql`. `discord-bot-webhook`, `discord-interactions`.
+
+**A schedule, no table change.** The bot process posted each raid night's sheet from a timer of its own. A pg_cron job, `discord-signup-sheets`, now calls `discord-bot-webhook`'s `signupSheets` action every 15 minutes with the same job secret as the post queue's drain. `raid_signup_sheets` and `claim_raid_signup_sheet()` keep the message ids as they did for the bot, and the table's comment names the functions now. A second race test pins what the claim function's comment says: two first-ever claims for one night leave one row.
+
+**What a sheet posts comes from Settings › Discord (#1712)**, not the old 48-hour setting. Each sheet covers its raid days and either keeps the next 1 to 4 raids posted or posts each raid a set number of hours before it starts. A raid counts as passed four hours after it starts; its sheet stays in the channel and stops being updated (Kat, 2026-11-03), and on a "keep raids posted" sheet the next raid goes up. Each run also edits every posted sheet of a raid not yet passed, so answers changed anywhere show within 15 minutes, not only those that send `signupSheetSync`.
+
+**A sheet the bot cannot edit is replaced.** Discord answers 403 to an edit of a message another application posted, which is every sheet the old bots left. The function forgets that message id, deletes the message where it may, and posts a fresh sheet, the path it takes for a night it never posted. No data fix. Teams set their sheets on the new Settings › Discord by hand; nothing is copied from the old settings (Kat, 2026-11-03).
+
+**Quiet hours hold a new sheet, not an edit.** A new sheet pings its role; an edit pings nobody.
+
+[Full discussion -> #960](https://github.com/katogaming88/WGA-Raid-Hub/issues/960).
