@@ -586,6 +586,13 @@ One function's output has a reader outside this repo. What
 katogaming88/RCLootCouncil_PriorityLoot, so a change to it lands with a
 matching check in the addon repo (#1450).
 
+The desktop app that carries data between the game and the site, WGA Raid Hub
+Sync, lives in its own repo,
+[katogaming88/WGA-Raid-Hub-Sync](https://github.com/katogaming88/WGA-Raid-Hub-Sync),
+with its own build, CI and release rules (#1654). Its issues are linked from
+#1487 as `sync #N`. The site-side pieces it calls (the link page and device
+keys, the export, the uploads) are filed and built here.
+
 ### Security advisors
 
 Supabase's own security linter runs on every migration PR (#1011), in the schema

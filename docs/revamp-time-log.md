@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |     11 h 25 m |
+| Phase 1: For the guild test        |     11 h 35 m |
 | Phase 2: Before the new site goes live |       0 m |
-| Phase 3: After the new site goes live  |       0 m |
+| Phase 3: After the new site goes live  |   1 h 15 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **143 h 36 m** |
+| **All revamp work**                | **145 h 1 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -546,6 +546,10 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:20-9:45 AM | PR #1750 (#960): preflight, the PR and its screenshot; the sheet's design with Kat: the banner and edge redone in the new site's look, five versions posted to the test channel (Kat picked spec icons, no checks, bold answers in one list), the 40 spec icons uploaded as the bot's emojis, bigger names tried (Discord has no way in columns; a drawn picture later, Kat) | Phase 1: For the guild test (#960) | 25 m | ~15 m build, ~10 m Kat | 378,800 | CodeRabbit, the fresh-agent review and merge not yet counted |
 | 10:41-10:55 AM | #961: the bot's commands grouped as `/raider` and `/officer` with `/help` (replacing `/about`); `/raider me`, `/raider schedule` and `/officer invite` built, `/nudge-missing` moved under `/officer`; Kat's two answers (post the invite link now, keep the old bot's two columns); edge tests, stamp, changelog, this row; PR #1751 | Phase 1: For the guild test (#961) | 15 m | ~13 m build, ~2 m Kat | 218,300 | |
 | 11:03-11:06 AM | PR #1751 (#961): CodeRabbit's two notes (the invite link was going out "only you", since Discord takes the first follow-up after "thinking" as an edit of it; `/help` lists a team's channels only to people on it) | Phase 1: For the guild test (#961) | 5 m | ~5 m build | 30,000 | Merge not yet counted |
+| 11:06-11:16 AM | PR #1751 (#961): merged, cleanup, #1487 row out; Kat registered the commands by hand (step-by-step help); #1752 filed and placed | Phase 1: For the guild test (#961) | 10 m | ~6 m build, ~4 m Kat | 273,900 | |
+| 11:18-11:39 AM | Sync started out of #1487's order (Kat's pick): #1654 plus an app shell, .NET WinForms (on .NET 10, since .NET 8's support ends 2026-11-10); the public WGA-Raid-Hub-Sync repo with labels, templates and CodeRabbit (PR sync #6); #1445 to #1449 moved there as sync #1 to #5, their bodies and blocked-by links repaired by hand, and #1487's body restored after the move rewrote every issue number in it; the tray app that finds the game folder and lists game accounts (PR sync #7) | Phase 3: After the new site goes live (#1654) | 20 m | ~17 m build, ~3 m Kat | 132,900 | |
+| 11:39 AM-12:28 PM | PRs sync #6 and #7: five CodeRabbit rounds (docs notes declined; the null account list, a malformed saved path, links inside WTF, unreadable folders, a missing game drive keeping its ticks, failed saves, letter case fixed; one declined); the branch rules for Kat; the tray-menu screenshot; both merged, the ruleset and squash-only merges set by API | Phase 3: After the new site goes live (#1654) | 50 m | ~35 m build, ~15 m Kat | 72,200 | |
+| 12:30-12:35 PM | #1654's last chore: the CONTRIBUTING pointer to the Sync repo, these rows, stamp, changelog | Phase 3: After the new site goes live (#1654) | 5 m | ~5 m build | 14,900 | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
