@@ -1,0 +1,114 @@
+-- #1211: a main swap request tells the team's officers in Discord, the way a
+-- Mark Received report or an M+ exclusion request already does.
+--
+-- request_main_swap() queues an officer_requests notice (#962) once the
+-- request is saved, built from what it saved: the character the raider plays
+-- now, the one they asked to swap to with the spec they picked, and their
+-- note. discord-bot-webhook's drain posts it to the team's officer channel,
+-- pinging the team's ping role for it when one is set. A team with no officer
+-- channel queues nothing, and the request saves whatever Discord does.
+--
+-- The body is the one before this migration, except that the character the
+-- swap is from reads its name with its id, and the spec reads its name with
+-- its class.
+
+alter table public.discord_post_queue drop constraint discord_post_queue_action_check;
+alter table public.discord_post_queue add constraint discord_post_queue_action_check
+  check (action in ('signup', 'addCharacter', 'selfreceived', 'bis', 'mplus', 'rsvp', 'mainswap'));
+
+CREATE OR REPLACE FUNCTION public.request_main_swap(p_team_id integer, p_character_id integer, p_class_spec_id integer, p_note text DEFAULT NULL::text)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_person_id integer := public.my_person_id();
+  v_character public.characters%rowtype;
+  v_from_player_id integer;
+  v_from_name_realm text;
+  v_spec_class text;
+  v_spec_name text;
+  v_request_id integer;
+  v_open text;
+begin
+  if v_person_id is null then
+    raise exception 'Not signed in';
+  end if;
+
+  select * into v_character from public.characters
+   where id = p_character_id and person_id = v_person_id;
+  if not found then
+    raise exception 'That character is not on your account';
+  end if;
+
+  select p.id, p.name_realm into v_from_player_id, v_from_name_realm
+    from public.players p
+    join public.team_members tm on tm.id = p.team_member_id
+   where p.team_id = p_team_id
+     and p.archived_at is null
+     and tm.archived_at is null
+     and tm.person_id = v_person_id
+   order by p.id
+   limit 1
+  -- Held until the request is saved, so a removal cannot take the character
+  -- off the roster between this check and the insert and leave a swap
+  -- waiting from it (#1428). Only the character: locking the membership here
+  -- too would take it after the character, the opposite of Archive Member.
+     for share of p;
+  if v_from_player_id is null then
+    raise exception 'You have no character on this team''s roster';
+  end if;
+
+  if exists (
+    select 1 from public.players p
+     where p.team_id = p_team_id
+       and p.archived_at is null
+       and p.name_realm_key = v_character.name_realm_key
+  ) then
+    raise exception '% is already on this roster', v_character.name_realm;
+  end if;
+
+  -- A decline stands for the same alt, by name (#1430). One read for this
+  -- and the waiting check below, so a decline landing mid-ask cannot pass both.
+  select r.status into v_open
+    from public.main_swap_requests r
+   where r.team_id = p_team_id
+     and r.person_id = v_person_id
+     and (r.status = 'pending'
+          or (r.status = 'declined' and lower(replace(r.name_realm, ' ', '')) = v_character.name_realm_key))
+   order by r.status = 'declined' desc
+   limit 1;
+  if v_open = 'declined' then
+    raise exception 'An officer declined your main swap to %. Ask one of this team''s officers if that should change.',
+      v_character.name_realm;
+  end if;
+
+  select cs.class, cs.spec into v_spec_class, v_spec_name from public.classes_specs cs where cs.id = p_class_spec_id;
+  if v_spec_class is null then
+    raise exception 'Unknown spec';
+  end if;
+  if v_character.class_name is not null and v_spec_class is distinct from v_character.class_name then
+    raise exception '% is a %, not a %', v_character.name, v_character.class_name, v_spec_class;
+  end if;
+
+  if v_open = 'pending' then
+    raise exception 'You already have a main swap waiting for an officer';
+  end if;
+
+  insert into public.main_swap_requests (
+    team_id, person_id, from_player_id, character_id, name_realm, class_spec_id, note
+  )
+  values (
+    p_team_id, v_person_id, v_from_player_id, p_character_id,
+    v_character.name_realm, p_class_spec_id, nullif(btrim(p_note), '')
+  )
+  returning id into v_request_id;
+
+  perform queue_discord_post(p_team_id, 'officer_requests', 'mainswap', jsonb_build_object(
+    'fromNameRealm', v_from_name_realm, 'toNameRealm', v_character.name_realm,
+    'spec', v_spec_name || ' ' || v_spec_class, 'notes', nullif(btrim(p_note), '')));
+
+  return v_request_id;
+end;
+$function$;

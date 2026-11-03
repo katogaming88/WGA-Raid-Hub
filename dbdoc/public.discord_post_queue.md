@@ -25,7 +25,7 @@ Every Discord notice the bot posts to a team's channels, queued by the write beh
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| discord_post_queue_action_check | CHECK | CHECK ((action = ANY (ARRAY['signup'::text, 'addCharacter'::text, 'selfreceived'::text, 'bis'::text, 'mplus'::text, 'rsvp'::text]))) |
+| discord_post_queue_action_check | CHECK | CHECK ((action = ANY (ARRAY['signup'::text, 'addCharacter'::text, 'selfreceived'::text, 'bis'::text, 'mplus'::text, 'rsvp'::text, 'mainswap'::text]))) |
 | discord_post_queue_kind_check | CHECK | CHECK ((kind = ANY (ARRAY['officer_requests'::text, 'mplus_requests'::text, 'rsvp_changes'::text]))) |
 | discord_post_queue_status_check | CHECK | CHECK ((status = ANY (ARRAY['queued'::text, 'posted'::text, 'skipped'::text, 'failed'::text]))) |
 | discord_post_queue_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |

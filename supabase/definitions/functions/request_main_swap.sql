@@ -12,7 +12,9 @@ declare
   v_person_id integer := public.my_person_id();
   v_character public.characters%rowtype;
   v_from_player_id integer;
+  v_from_name_realm text;
   v_spec_class text;
+  v_spec_name text;
   v_request_id integer;
   v_open text;
 begin
@@ -26,7 +28,7 @@ begin
     raise exception 'That character is not on your account';
   end if;
 
-  select p.id into v_from_player_id
+  select p.id, p.name_realm into v_from_player_id, v_from_name_realm
     from public.players p
     join public.team_members tm on tm.id = p.team_member_id
    where p.team_id = p_team_id
@@ -68,7 +70,7 @@ begin
       v_character.name_realm;
   end if;
 
-  select cs.class into v_spec_class from public.classes_specs cs where cs.id = p_class_spec_id;
+  select cs.class, cs.spec into v_spec_class, v_spec_name from public.classes_specs cs where cs.id = p_class_spec_id;
   if v_spec_class is null then
     raise exception 'Unknown spec';
   end if;
@@ -88,6 +90,10 @@ begin
     v_character.name_realm, p_class_spec_id, nullif(btrim(p_note), '')
   )
   returning id into v_request_id;
+
+  perform queue_discord_post(p_team_id, 'officer_requests', 'mainswap', jsonb_build_object(
+    'fromNameRealm', v_from_name_realm, 'toNameRealm', v_character.name_realm,
+    'spec', v_spec_name || ' ' || v_spec_class, 'notes', nullif(btrim(p_note), '')));
 
   return v_request_id;
 end;

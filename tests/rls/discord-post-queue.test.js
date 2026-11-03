@@ -177,6 +177,36 @@ describe('discord_post_queue', () => {
     });
   });
 
+  it('a main swap request queues an officer notice from what request_main_swap() saved (#1211)', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const team = await teamWithChannels(q);
+      await ownCharacter(q, team);
+      const person = await q('select person_id from public.team_members where id = $1', [team.raider.memberId]);
+      const character = await q(
+        `insert into public.characters (person_id, blizzard_id, name, realm, realm_slug, class_name, level)
+         values ($1, $2, 'Swapalt', 'Illidan', 'illidan', 'Mage', 90) returning id`,
+        [person.rows[0].person_id, Math.floor(Math.random() * 1e9)]
+      );
+      await asUser(team.raider.uid, "select public.request_main_swap($1, $2, 1, ' @everyone geared it ')", [
+        team.teamId,
+        character.rows[0].id
+      ]);
+      expect(await queue(q, team.teamId)).toEqual([
+        {
+          kind: 'officer_requests',
+          action: 'mainswap',
+          payload: {
+            fromNameRealm: 'Katorri-Stormrage',
+            toNameRealm: 'Swapalt-Illidan',
+            spec: 'Frost Mage',
+            notes: '@everyone geared it'
+          },
+          status: 'queued'
+        }
+      ]);
+    });
+  });
+
   it('a signup with a blank character is refused, so nothing unpostable is queued', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await teamWithChannels(q);

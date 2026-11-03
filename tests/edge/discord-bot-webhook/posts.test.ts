@@ -28,7 +28,8 @@ export const PAYLOADS: Record<string, Record<string, unknown>> = {
   selfreceived: { player: 'Katorrí-Stormrage', item: '@everyone', slot: 'Trinket', source: 'Vault', notes: '@here' },
   bis: { nameRealm: 'Katorrí-Stormrage', bisLink: 'https://example.com/bis', notes: '@everyone' },
   mplus: { nameRealm: 'Katorrí-Stormrage', raiderioUrl: 'https://raider.io/x', notes: '@everyone' },
-  rsvp: { charName: '@everyone', raidDate: '2026-11-04', status: 'Late', note: '@here' }
+  rsvp: { charName: '@everyone', raidDate: '2026-11-04', status: 'Late', note: '@here' },
+  mainswap: { fromNameRealm: '@everyone', toNameRealm: 'Katalt-Stormrage', spec: 'Demonology Warlock', notes: '@here' }
 };
 
 const CHANNEL_POSTS = [...QUEUED_ACTIONS];
@@ -102,8 +103,28 @@ Deno.test('an M+ request with no Raider.io link still posts, saying so', () => {
   assertEquals(embed.fields[2], { name: 'Raider.io / Profile', value: '*(none)*' });
 });
 
+Deno.test('a main swap request names both characters, the spec and the note', () => {
+  const message = buildPost(
+    'mainswap',
+    { fromNameRealm: 'Katorrí-Stormrage', toNameRealm: 'Katalt-Stormrage', spec: 'Demonology Warlock', notes: null },
+    ROLE,
+    AT
+  );
+  assertEquals(message.content, `<@&${ROLE}> New main swap request received!`);
+  assertEquals(
+    message.embeds[0].fields?.map((f) => [f.name, f.value]),
+    [
+      ['Raider', 'Katorrí-Stormrage'],
+      ['Swapping To', 'Katalt-Stormrage, Demonology Warlock'],
+      ['Submitted At', '<t:1793541600:f>'],
+      ['Notes', '*(none)*']
+    ]
+  );
+});
+
 Deno.test('a post missing what it needs is refused', () => {
   assertThrows(() => buildPost('rsvp', { charName: 'Katorrí-Stormrage' }, null, AT), MissingFields);
   assertThrows(() => buildPost('mplus', { raiderioUrl: 'https://raider.io/x' }, null, AT), MissingFields);
+  assertThrows(() => buildPost('mainswap', { fromNameRealm: 'Katorrí-Stormrage' }, null, AT), MissingFields);
   assertThrows(() => buildReminder({ checkpoint: '2h' }), MissingFields);
 });
