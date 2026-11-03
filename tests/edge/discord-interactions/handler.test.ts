@@ -11,6 +11,13 @@ import {
   NO_TEAMS,
   NOT_IN_SERVER,
   PICK_TEAM,
+  BROKE,
+  type Member,
+  NO_INVITE,
+  NO_PROFILE,
+  NOT_ON_TEAM,
+  INVITE_NOT_ALLOWED,
+  INVITE_POSTED,
   type Team,
   UNKNOWN_COMMAND,
   NOT_ALLOWED,
@@ -19,6 +26,7 @@ import {
   verifySignature
 } from '../../../supabase/functions/discord-interactions/handler.ts';
 import type { NudgeCategory, WishlistSetupStatusRow } from '../../../supabase/functions/discord-interactions/nudge.ts';
+import type { Award, Signup } from '../../../supabase/functions/discord-interactions/raider.ts';
 import { VERSION } from '../../../supabase/functions/discord-interactions/version.ts';
 import { recordingFetch } from '../_support/fetch.ts';
 import { CHANNEL, RAID, type SheetState, fakeSheets } from '../_support/sheets.ts';
@@ -65,6 +73,11 @@ const command = (name: string, over: Record<string, unknown> = {}, options?: unk
   ...over
 });
 
+// A subcommand, as Discord sends one: the group's name, the subcommand under
+// it with its own options.
+const sub = (group: string, name: string, over: Record<string, unknown> = {}, options: unknown[] = []) =>
+  command(group, over, [{ type: 1, name, options }]);
+
 const row = (over: Partial<WishlistSetupStatusRow> = {}): WishlistSetupStatusRow => ({
   player_id: 1,
   name_realm: 'Katorrí-Stormrage',
@@ -84,6 +97,20 @@ type State = {
   statusFails?: boolean;
   // The team permissions the caller holds; both nudge ones unless set.
   held?: string[];
+  // The caller's profile; on Phoenix with one character unless set.
+  member?: Member | null;
+  signup?: Signup;
+  awards?: Award[];
+  list?: unknown;
+  invite?: string | null;
+  posts?: { kind: string; channelId: string }[];
+};
+
+const KAT: Member = {
+  personId: 3,
+  authUserId: 'auth-kat',
+  onTeam: true,
+  players: [{ id: 1, nameRealm: 'Katorrí-Stormrage', archived: false }]
 };
 
 // One log for the database and Discord both, so the order between them is
@@ -114,6 +141,26 @@ function setup(state: State = {}, discord: Response[] = [], sheetState: SheetSta
       log.push('db:recordNudge:' + discordId);
       recorded.push({ discordId, categories });
       return Promise.resolve();
+    },
+    member(discordId, teamId) {
+      log.push(`db:member:${discordId}:${teamId}`);
+      return Promise.resolve(state.member === undefined ? KAT : state.member);
+    },
+    signup(_member, teamId) {
+      log.push('db:signup:' + teamId);
+      return Promise.resolve(state.signup === undefined ? null : state.signup);
+    },
+    awards(teamId, playerIds) {
+      log.push(`db:awards:${teamId}:${playerIds.join(',')}`);
+      return Promise.resolve({ awards: state.awards ?? [], list: state.list ?? null });
+    },
+    inviteCode(teamId) {
+      log.push('db:inviteCode:' + teamId);
+      return Promise.resolve(state.invite === undefined ? 'phoenix-abc123' : state.invite);
+    },
+    posts(teamId) {
+      log.push('db:posts:' + teamId);
+      return Promise.resolve(state.posts ?? []);
     }
   };
   const rec = recordingFetch(discord);
@@ -170,8 +217,8 @@ const BAD: [
 for (const [what, headers, tampered] of BAD) {
   Deno.test(`signature: ${what} is a 401 with no body and no read`, async () => {
     const { deps, log } = setup();
-    const body = JSON.stringify(command('nudge-missing'));
-    const req = await signed(command('nudge-missing'), await headers(body));
+    const body = JSON.stringify(sub('officer', 'nudge-missing'));
+    const req = await signed(sub('officer', 'nudge-missing'), await headers(body));
     const sent = tampered ? new Request(req, { body: tampered }) : req;
     const res = await handle(sent, deps);
     assertEquals(res.status, 401);
@@ -197,21 +244,19 @@ Deno.test('PING answers PONG before any read', async () => {
   assertEquals(log, []);
 });
 
-Deno.test('/about answers the version, only to the caller', async () => {
-  const { deps, log } = setup();
-  const res = await handle(await signed(command('about')), deps);
-  assertEquals(await res.json(), {
-    type: 4,
-    data: { content: `The bot was last updated in Raid Hub release ${VERSION}.`, flags: 64 }
+for (const [what, interaction] of [
+  ['an old command', command('fairness')],
+  ['the retired /about', command('about')],
+  ['the old top-level /nudge-missing', command('nudge-missing')],
+  ['an unknown subcommand', sub('officer', 'fairness')]
+] as const) {
+  Deno.test(`${what} is refused, only to the caller, with nothing read`, async () => {
+    const { deps, log } = setup();
+    const res = await handle(await signed(interaction), deps);
+    assertEquals(await res.json(), { type: 4, data: { content: UNKNOWN_COMMAND, flags: 64 } });
+    assertEquals(log, []);
   });
-  assertEquals(log, []);
-});
-
-Deno.test('an unknown command is refused, only to the caller', async () => {
-  const { deps } = setup();
-  const res = await handle(await signed(command('fairness')), deps);
-  assertEquals(await res.json(), { type: 4, data: { content: UNKNOWN_COMMAND, flags: 64 } });
-});
+}
 
 Deno.test('a button this bot does not know is refused, only to the caller, with nothing read', async () => {
   const { deps, log } = setup();
@@ -224,9 +269,8 @@ Deno.test("the team box lists this server's teams, filtered by what's typed", as
   const { deps, log } = setup({ teams: [HELLFIRE, PHOENIX] });
   const res = await handle(
     await signed({
-      ...command('nudge-missing'),
-      type: 4,
-      data: { name: 'nudge-missing', options: [{ name: 'team', value: 'pho', focused: true }] }
+      ...sub('officer', 'nudge-missing', {}, [{ name: 'team', value: 'pho', focused: true }]),
+      type: 4
     }),
     deps
   );
@@ -236,7 +280,7 @@ Deno.test("the team box lists this server's teams, filtered by what's typed", as
 
 Deno.test('/nudge-missing in a DM is refused at once and reads nothing', async () => {
   const { deps, log } = setup();
-  const res = await handle(await signed(command('nudge-missing', { guild_id: undefined })), deps);
+  const res = await handle(await signed(sub('officer', 'nudge-missing', { guild_id: undefined })), deps);
   assertEquals(await res.json(), { type: 4, data: { content: NOT_IN_SERVER, flags: 64 } });
   assertEquals(log, []);
 });
@@ -252,7 +296,7 @@ const refusals: [string, Team[], unknown[] | undefined, string][] = [
 for (const [what, teams, options, message] of refusals) {
   Deno.test(`/nudge-missing ${what} is refused and nudges nobody`, async () => {
     const { deps, log, calls, settle } = setup({ teams }, [ok()]);
-    const res = await handle(await signed(command('nudge-missing', {}, options)), deps);
+    const res = await handle(await signed(sub('officer', 'nudge-missing', {}, options)), deps);
     assertEquals(await res.json(), { type: 5, data: { flags: 64 } });
     await settle();
     assert(!log.some((l) => l.startsWith('db:hasTeamPermission') || l.startsWith('db:setupStatus')));
@@ -266,7 +310,7 @@ for (const [what, teams, options, message] of refusals) {
 
 Deno.test('/nudge-missing answers "thinking" before any setup read or Discord call', async () => {
   const { deps, log, settle } = setup({}, [dmChannel(), ok(), ok()]);
-  const res = await handle(await signed(command('nudge-missing')), deps);
+  const res = await handle(await signed(sub('officer', 'nudge-missing')), deps);
   // Nothing was read before the answer came back, not even the server's teams.
   assertEquals([...log], ['waitUntil']);
   assertEquals(await res.json(), { type: 5, data: { flags: 64 } });
@@ -282,14 +326,14 @@ Deno.test('/nudge-missing answers "thinking" before any setup read or Discord ca
 
 Deno.test('/nudge-missing uses the team picked in a server with two', async () => {
   const { deps, log, settle } = setup({ teams: [PHOENIX, HELLFIRE] }, [dmChannel(), ok(), ok()]);
-  await handle(await signed(command('nudge-missing', {}, [{ name: 'team', value: '2' }])), deps);
+  await handle(await signed(sub('officer', 'nudge-missing', {}, [{ name: 'team', value: '2' }])), deps);
   await settle();
   assert(log.includes('db:setupStatus:2'));
 });
 
 Deno.test('/nudge-missing DMs the raider, then records the cooldown, then edits the answer', async () => {
   const { deps, log, calls, recorded, settle } = setup({}, [dmChannel(), ok(), ok()]);
-  await handle(await signed(command('nudge-missing')), deps);
+  await handle(await signed(sub('officer', 'nudge-missing')), deps);
   await settle();
   assertEquals(log.slice(6), [
     'fetch:POST /users/@me/channels',
@@ -316,7 +360,7 @@ Deno.test('/nudge-missing skips a raider nudged for the same thing in the last d
     { recent: [{ discordId: '500000000000000005', category: 'no-wishlist' }] },
     [ok()]
   );
-  await handle(await signed(command('nudge-missing')), deps);
+  await handle(await signed(sub('officer', 'nudge-missing')), deps);
   await settle();
   assert(!log.includes('fetch:POST /users/@me/channels'));
   assertEquals(recorded, []);
@@ -331,7 +375,7 @@ Deno.test('/nudge-missing still nudges for a category the last DM did not cover'
     { rows: [row({ bis_link: null })], recent: [{ discordId: '500000000000000005', category: 'no-wishlist' }] },
     [dmChannel(), ok(), ok()]
   );
-  await handle(await signed(command('nudge-missing')), deps);
+  await handle(await signed(sub('officer', 'nudge-missing')), deps);
   await settle();
   assertEquals(recorded, [{ discordId: '500000000000000005', categories: ['no-bis-link'] }]);
 });
@@ -342,7 +386,7 @@ Deno.test('/nudge-missing: a DM that fails records no cooldown and is listed', a
     new Response('{"code":50007}', { status: 403 }),
     ok()
   ]);
-  await handle(await signed(command('nudge-missing')), deps);
+  await handle(await signed(sub('officer', 'nudge-missing')), deps);
   await settle();
   assertEquals(recorded, []);
   const fields = JSON.parse(calls[2].body!).embeds[0].fields;
@@ -352,7 +396,7 @@ Deno.test('/nudge-missing: a DM that fails records no cooldown and is listed', a
 for (const held of [[], ['view_loot'], ['manage_loot']]) {
   Deno.test(`/nudge-missing from someone holding only [${held}] reads and DMs nothing`, async () => {
     const { deps, log, calls, settle } = setup({ held }, [ok()]);
-    await handle(await signed(command('nudge-missing')), deps);
+    await handle(await signed(sub('officer', 'nudge-missing')), deps);
     await settle();
     assert(!log.includes('db:setupStatus:1'));
     assertEquals(calls.length, 1);
@@ -362,14 +406,14 @@ for (const held of [[], ['view_loot'], ['manage_loot']]) {
 
 Deno.test("/nudge-missing refused: the answer is an edit of the caller's own reply", async () => {
   const { deps, calls, settle } = setup({ held: [] }, [ok()]);
-  await handle(await signed(command('nudge-missing')), deps);
+  await handle(await signed(sub('officer', 'nudge-missing')), deps);
   await settle();
   assert(calls[0].url.endsWith(`/webhooks/${APP}/interaction-token/messages/@original`));
 });
 
 Deno.test('/nudge-missing with no member on the interaction is refused the same way', async () => {
   const { deps, log, calls, settle } = setup({}, [ok()]);
-  await handle(await signed(command('nudge-missing', { member: undefined })), deps);
+  await handle(await signed(sub('officer', 'nudge-missing', { member: undefined })), deps);
   await settle();
   assert(!log.some((l) => l.startsWith('db:hasTeamPermission') || l.startsWith('db:setupStatus')));
   assertEquals(JSON.parse(calls[0].body!).content, NOT_ALLOWED('Phoenix'));
@@ -377,7 +421,7 @@ Deno.test('/nudge-missing with no member on the interaction is refused the same 
 
 Deno.test('/nudge-missing: a failed read still answers the officer', async () => {
   const { deps, calls, settle } = setup({ statusFails: true }, [ok()]);
-  await handle(await signed(command('nudge-missing')), deps);
+  await handle(await signed(sub('officer', 'nudge-missing')), deps);
   await settle();
   assertEquals(calls.length, 1);
   assert(calls[0].url.endsWith('/messages/@original'));
@@ -391,7 +435,7 @@ Deno.test('/nudge-missing waits out one 429 and tries again', async () => {
     ok(),
     ok()
   ]);
-  await handle(await signed(command('nudge-missing')), deps);
+  await handle(await signed(sub('officer', 'nudge-missing')), deps);
   await settle();
   assertEquals(recorded.length, 1);
 });
@@ -430,4 +474,295 @@ Deno.test('Refresh on a night no sheet is posted for changes nothing', async () 
   assertEquals(await res.json(), { type: 6 });
   await settle();
   assertEquals(calls.length, 0);
+});
+
+// -- The team box on every command (#961) ---------------------------------------
+
+Deno.test('the team box works the same under /raider', async () => {
+  const { deps } = setup({ teams: [HELLFIRE, PHOENIX] });
+  const res = await handle(
+    await signed({ ...sub('raider', 'me', {}, [{ name: 'team', value: 'hell', focused: true }]), type: 4 }),
+    deps
+  );
+  assertEquals(await res.json(), { type: 8, data: { choices: [{ name: 'Hellfire Rollers', value: '2' }] } });
+});
+
+// -- Refusals, for each new command ------------------------------------------------
+
+// What one command answered, once its work has run: the last call is the
+// edit of the caller's own "thinking" answer.
+async function answer(interaction: unknown, state: State = {}, discord: Response[] = [ok()], sheetState?: SheetState) {
+  const s = setup(state, discord, sheetState);
+  const res = await handle(await signed(interaction), s.deps);
+  assertEquals(await res.json(), { type: 5, data: { flags: 64 } });
+  assertEquals(s.log[0], 'waitUntil');
+  await s.settle();
+  const last = s.calls[s.calls.length - 1];
+  assert(last.url.endsWith(`/webhooks/${APP}/interaction-token/messages/@original`));
+  return { ...s, body: JSON.parse(last.body!) };
+}
+
+const NEW_COMMANDS: [string, string, string][] = [
+  ['/raider me', 'raider', 'me'],
+  ['/raider schedule', 'raider', 'schedule'],
+  ['/officer invite', 'officer', 'invite']
+];
+
+for (const [name, group, subName] of NEW_COMMANDS) {
+  Deno.test(`${name} with another server's team is refused before reading who's asking`, async () => {
+    const { body, log } = await answer(sub(group, subName, {}, [{ name: 'team', value: '9' }]));
+    assertEquals(body.content, UNKNOWN_TEAM);
+    assert(!log.some((l) => l.startsWith('db:member') || l.startsWith('db:hasTeamPermission')));
+  });
+
+  Deno.test(`${name} with no team picked in a server with two is refused`, async () => {
+    const { body } = await answer(sub(group, subName), { teams: [PHOENIX, HELLFIRE] });
+    assertEquals(body.content, PICK_TEAM);
+  });
+
+  Deno.test(`${name} in a server no team has set is refused`, async () => {
+    const { body } = await answer(sub(group, subName), { teams: [] });
+    assertEquals(body.content, NO_TEAMS);
+  });
+
+  Deno.test(`${name} in a DM is refused at once and reads nothing`, async () => {
+    const { deps, log } = setup();
+    const res = await handle(await signed(sub(group, subName, { guild_id: undefined })), deps);
+    assertEquals(await res.json(), { type: 4, data: { content: NOT_IN_SERVER, flags: 64 } });
+    assertEquals(log, []);
+  });
+}
+
+for (const [name, group, subName] of NEW_COMMANDS.slice(0, 2)) {
+  Deno.test(`${name} from a Discord account on no profile points them to claim one`, async () => {
+    const { body, log } = await answer(sub(group, subName), { member: null });
+    assertEquals(body.content, NO_PROFILE('https://site.test'));
+    assert(!log.some((l) => l.startsWith('db:setupStatus') || l.startsWith('db:awards')));
+  });
+
+  Deno.test(`${name} from someone not on the team is refused`, async () => {
+    const { body, log } = await answer(sub(group, subName), { member: { ...KAT, onTeam: false } });
+    assertEquals(body.content, NOT_ON_TEAM('Phoenix'));
+    assert(!log.some((l) => l.startsWith('db:setupStatus') || l.startsWith('db:awards')));
+  });
+
+  Deno.test(`${name} with no member on the interaction is treated as no profile`, async () => {
+    const { body, log } = await answer(sub(group, subName, { member: undefined }));
+    assertEquals(body.content, NO_PROFILE('https://site.test'));
+    assert(!log.some((l) => l.startsWith('db:member')));
+  });
+}
+
+// -- /raider me ----------------------------------------------------------------------
+
+Deno.test('/raider me shows only their own wishlist, their signup and what they received', async () => {
+  const { body, log } = await answer(sub('raider', 'me'), {
+    rows: [
+      row({ missing_bis_rows: ['Neck', 'Back'], wishlist_count: 14 }),
+      row({ player_id: 2, name_realm: 'Someone-Else', wishlist_count: 0 })
+    ],
+    signup: { seasonName: 'Midnight Season 2', status: 'pending' },
+    awards: [
+      { itemName: 'Old Ring', awardedAt: '2026-10-20T02:00:00Z', response: 'BiS' },
+      { itemName: 'Pretty Hat', awardedAt: '2026-10-28T02:00:00Z', response: 'Xmog' },
+      { itemName: 'Shiny Trinket', awardedAt: '2026-10-27T02:00:00Z', response: 'Upgrade' }
+    ]
+  });
+  assert(log.includes(`db:member:${OFFICER}:1`));
+  assert(log.includes('db:awards:1:1'));
+  const [embed] = body.embeds;
+  assertEquals(embed.title, 'Phoenix -- Your loot setup');
+  assertEquals(embed.fields, [
+    { name: 'Wishlist', value: '**Midnight Season 1**: missing a BiS pick for Neck, Back.' },
+    { name: 'Season signup', value: 'Midnight Season 2: signed up, waiting for an officer.' },
+    {
+      name: 'Items received',
+      value: `2 this season. Last: Shiny Trinket, <t:${Date.parse('2026-10-27T02:00:00Z') / 1000}:R>.`
+    }
+  ]);
+  assertEquals(
+    body.components[0].components.map((b: { label: string; url: string }) => [b.label, b.url]),
+    [
+      ['Fix my wishlist', 'https://site.test/#profile/Katorr%C3%AD/wishlist'],
+      ['Open my profile', 'https://site.test/#profile/Katorr%C3%AD']
+    ]
+  );
+  // No priority score anywhere.
+  assert(!JSON.stringify(body).toLowerCase().includes('priority'));
+  assertEquals(body.allowed_mentions, { parse: [] });
+});
+
+Deno.test('/raider me with nothing set up yet says so for each part', async () => {
+  const { body } = await answer(sub('raider', 'me'), { rows: [], signup: null, awards: [] });
+  assertEquals(
+    body.embeds[0].fields.map((f: { value: string }) => f.value),
+    ['No wishlist is open for you right now.', "Signups for the next season aren't open.", 'None yet this season.']
+  );
+});
+
+Deno.test('/raider me: a season open but no signup, and a wishlist complete', async () => {
+  const { body } = await answer(sub('raider', 'me'), {
+    rows: [row({ wishlist_count: 16 })],
+    signup: { seasonName: 'Midnight Season 2', status: null }
+  });
+  assertEquals(body.embeds[0].fields[0].value, '**Midnight Season 1**: every slot has a BiS pick.');
+  assertEquals(body.embeds[0].fields[1].value, 'Not signed up for Midnight Season 2 yet.');
+});
+
+Deno.test("/raider me counts by the team's saved response list once there is one", async () => {
+  const { body } = await answer(sub('raider', 'me'), {
+    awards: [
+      { itemName: 'A', awardedAt: '2026-10-20T02:00:00Z', response: 'BiS' },
+      { itemName: 'B', awardedAt: '2026-10-21T02:00:00Z', response: 'OS' },
+      { itemName: 'C', awardedAt: '2026-10-22T02:00:00Z', response: 'Something unlisted' }
+    ],
+    list: {
+      buttons: [
+        { text: 'bis', countsAs: 'main' },
+        { text: 'OS', countsAs: 'off' }
+      ],
+      groups: []
+    }
+  });
+  // Off spec counts only while no list is saved; an unlisted response is Hidden.
+  assert(body.embeds[0].fields[2].value.startsWith('1 this season. Last: A,'));
+});
+
+Deno.test('/raider me: a failed read answers "try again", not silence', async () => {
+  const { body } = await answer(sub('raider', 'me'), { statusFails: true });
+  assertEquals(body.content, BROKE);
+});
+
+// -- /raider schedule --------------------------------------------------------------------
+
+Deno.test('/raider schedule lists the coming nights with their own answer, dropping one that started', async () => {
+  const optional = { ...RAID, isOptional: true };
+  // Sunday's night (yesterday, 9 PM ET) has started; Tuesday's and
+  // Thursday's are ahead.
+  const { body } = await answer(sub('raider', 'schedule'), {}, [ok()], {
+    nights: { '2026-11-01': RAID, '2026-11-03': RAID, '2026-11-05': optional }
+  });
+  const tue = Date.parse('2026-11-04T02:00:00Z') / 1000;
+  const thu = Date.parse('2026-11-06T02:00:00Z') / 1000;
+  assertEquals(body.embeds[0].title, 'Phoenix -- Your next raid nights');
+  assertEquals(body.embeds[0].description, `<t:${tue}:F>: **Present**\n<t:${thu}:F> (optional): **No response**`);
+});
+
+Deno.test("/raider schedule shows their RSVP, not someone else's", async () => {
+  const { body } = await answer(sub('raider', 'schedule'), {}, [ok()], {
+    nights: { '2026-11-03': RAID },
+    rsvps: [
+      { playerId: 2, status: 'Absent' },
+      { playerId: 1, status: 'Late' }
+    ]
+  });
+  assert(body.embeds[0].description.endsWith('**Late**'));
+});
+
+Deno.test('/raider schedule with no nights ahead says so', async () => {
+  const { body } = await answer(sub('raider', 'schedule'), {}, [ok()], { nights: {} });
+  assertEquals(body.embeds[0].description, 'No raid nights in the next two weeks.');
+});
+
+// -- /officer invite ---------------------------------------------------------------------
+
+Deno.test('/officer invite settles the "thinking" answer, then posts the link for the channel', async () => {
+  const { deps, calls, log, settle } = setup({ held: ['edit_roster'] }, [ok(), ok()]);
+  await handle(await signed(sub('officer', 'invite')), deps);
+  await settle();
+  assert(log.includes(`db:hasTeamPermission:${OFFICER}:1:edit_roster`));
+  // Discord takes the first follow-up after "thinking" as an edit of it, still
+  // only the caller's, so the edit has to come first.
+  assertEquals(
+    calls.map((c) => `${c.method} ${c.url.replace(API, '')}`),
+    [`PATCH /webhooks/${APP}/interaction-token/messages/@original`, `POST /webhooks/${APP}/interaction-token`]
+  );
+  assertEquals(JSON.parse(calls[0].body!).content, INVITE_POSTED('Phoenix'));
+  const post = JSON.parse(calls[1].body!);
+  assertEquals(post.content, 'Join **Phoenix** on Raid Hub: https://site.test/join/phoenix-abc123');
+  // Not "only you": the channel sees it.
+  assertEquals(post.flags, undefined);
+  assertEquals(post.allowed_mentions, { parse: [] });
+});
+
+Deno.test('/officer invite from someone who cannot edit the roster posts nothing', async () => {
+  const { body, calls, log } = await answer(sub('officer', 'invite'), { held: ['manage_loot', 'view_loot'] });
+  assertEquals(calls.length, 1);
+  assertEquals(body.content, INVITE_NOT_ALLOWED('Phoenix'));
+  assert(!log.includes('db:inviteCode:1'));
+});
+
+Deno.test('/officer invite with no member on the interaction posts nothing', async () => {
+  const { body, calls } = await answer(sub('officer', 'invite', { member: undefined }), { held: ['edit_roster'] });
+  assertEquals(calls.length, 1);
+  assertEquals(body.content, INVITE_NOT_ALLOWED('Phoenix'));
+});
+
+Deno.test('/officer invite with no live link says where to make one', async () => {
+  const { body, calls } = await answer(sub('officer', 'invite'), { held: ['edit_roster'], invite: null });
+  assertEquals(calls.length, 1);
+  assertEquals(body.content, NO_INVITE('Phoenix'));
+});
+
+Deno.test('/officer invite: a post Discord refuses is not reported as posted', async () => {
+  const { body, calls } = await answer(sub('officer', 'invite'), { held: ['edit_roster'] }, [
+    ok(),
+    new Response('{}', { status: 403 }),
+    ok()
+  ]);
+  assertEquals(calls.length, 3);
+  assertEquals(body.content, BROKE);
+});
+
+// -- /help -------------------------------------------------------------------------------
+
+Deno.test("/help lists the server's teams, where their posts go, and only the caller's commands", async () => {
+  const { body } = await answer(command('help'), {
+    held: ['edit_roster'],
+    posts: [{ kind: 'officer_requests', channelId: '800000000000000008' }]
+  });
+  const [embed] = body.embeds;
+  assertEquals(
+    embed.fields[0].value,
+    `**Phoenix**\n- Signup sheets: <#${CHANNEL}>\n- Officer requests: <#800000000000000008>`
+  );
+  assertEquals(
+    embed.fields[1].value,
+    [
+      '`/help` -- this message',
+      '`/raider me` -- your wishlist, season signup and items received',
+      '`/raider schedule` -- your next raid nights and your RSVP for each',
+      "`/officer invite` -- post the team's invite link"
+    ].join('\n')
+  );
+  assertEquals(embed.footer.text, `The bot was last updated in Raid Hub release ${VERSION}.`);
+});
+
+Deno.test("/help shows a team's channels only to people on it, its name to anyone", async () => {
+  const { body, log } = await answer(command('help'), {
+    teams: [HELLFIRE, PHOENIX],
+    member: { ...KAT, onTeam: false },
+    posts: [{ kind: 'officer_requests', channelId: '800000000000000008' }]
+  });
+  assertEquals(body.embeds[0].fields[0].value, '**Hellfire Rollers**\n\n**Phoenix**');
+  assert(!log.some((l) => l.startsWith('db:posts')));
+});
+
+Deno.test('/help shows /officer nudge-missing only with both loot permissions', async () => {
+  const { body } = await answer(command('help'), { member: { ...KAT, onTeam: false } });
+  assertEquals(
+    body.embeds[0].fields[1].value,
+    '`/help` -- this message\n`/officer nudge-missing` -- DM raiders whose loot setup is missing something'
+  );
+});
+
+Deno.test('/help for a Discord account on no profile lists only /help', async () => {
+  const { body, log } = await answer(command('help'), { member: null });
+  assertEquals(body.embeds[0].fields[1].value, '`/help` -- this message');
+  assert(!log.some((l) => l.startsWith('db:hasTeamPermission')));
+});
+
+Deno.test('/help in a server no team has set says so', async () => {
+  const { body } = await answer(command('help'), { teams: [] });
+  assertEquals(body.embeds[0].fields[0].value, 'No team has set this Discord server on Settings › Discord yet.');
 });

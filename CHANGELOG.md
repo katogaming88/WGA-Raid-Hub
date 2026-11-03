@@ -12,6 +12,32 @@ answers to.
 
 ---
 
+## [3.234.0] - 2026-11-03
+
+### Functions
+
+- The Raid Hub bot's commands are grouped by who uses them (#961). Typing `/`
+  in Discord shows `/raider` commands anyone on a team can use, and `/officer`
+  commands raiders don't see unless a server admin opens them up; the
+  function still checks each person's Raid Hub permissions either way.
+  - `/raider me` shows your own loot setup, only to you: which wishlist slots
+    still need a BiS pick, your signup for the coming season, and how many
+    items you've received this season and the last one, with buttons to fix
+    your wishlist or open your profile.
+  - `/raider schedule` lists your team's raid nights in the next two weeks
+    with your RSVP for each.
+  - `/officer invite` posts the team's invite link in the channel, for
+    whoever can see the link on the site (the team's Edit roster permission).
+  - `/officer nudge-missing` is the old `/nudge-missing`, unchanged in what it
+    does.
+  - `/help` says which teams use the bot in this server, which channel gets
+    each kind of post (only for the teams you're on), and the commands you
+    can use. It replaces `/about`, whose release line moves to its footer.
+
+### Project
+
+- `docs/revamp-time-log.md`: the #961 row.
+
 ## [3.233.0] - 2026-11-03
 
 ### Functions

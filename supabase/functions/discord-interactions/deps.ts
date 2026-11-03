@@ -80,6 +80,105 @@ function supabaseDb(): InteractionsDb {
         .in('rank', ranks);
       if (granted.error) throw new Error(granted.error.message);
       return ((granted.data as unknown[] | null) ?? []).length > 0;
+    },
+    async member(discordId, teamId) {
+      const person = await db().from('people').select('id, auth_user_id').eq('discord_id', discordId).maybeSingle();
+      if (person.error) throw new Error(person.error.message);
+      const p = person.data as { id: number; auth_user_id: string | null } | null;
+      if (!p) return null;
+      const [members, players] = await Promise.all([
+        db().from('team_members').select('id').eq('team_id', teamId).eq('person_id', p.id).is('archived_at', null),
+        db()
+          .from('players')
+          .select('id, name_realm, archived_at, team_members!inner(person_id)')
+          .eq('team_id', teamId)
+          .eq('team_members.person_id', p.id)
+          .order('id')
+      ]);
+      if (members.error) throw new Error(members.error.message);
+      if (players.error) throw new Error(players.error.message);
+      return {
+        personId: p.id,
+        authUserId: p.auth_user_id,
+        onTeam: ((members.data as unknown[] | null) ?? []).length > 0,
+        players: ((players.data as any[] | null) ?? []).map((r) => ({
+          id: r.id as number,
+          nameRealm: r.name_realm as string,
+          archived: r.archived_at !== null
+        }))
+      };
+    },
+    async signup(member, teamId) {
+      const open = await db()
+        .from('team_seasons')
+        .select('season_code, seasons(display_name, starts_at)')
+        .eq('team_id', teamId)
+        .eq('signups_open', true);
+      if (open.error) throw new Error(open.error.message);
+      // The soonest season open for signups, as get_own_signup() reads one.
+      const season = ((open.data as any[] | null) ?? []).sort((a, b) =>
+        String(a.seasons?.starts_at ?? '9999').localeCompare(String(b.seasons?.starts_at ?? '9999'))
+      )[0];
+      if (!season) return null;
+      // Older signups carry only the sign-in account, newer ones the person.
+      const who = member.authUserId
+        ? `person_id.eq.${member.personId},auth_user_id.eq.${member.authUserId}`
+        : `person_id.eq.${member.personId}`;
+      const own = await db()
+        .from('season_signups')
+        .select('status')
+        .eq('team_id', teamId)
+        .eq('season', season.season_code)
+        .or(who)
+        .order('submitted_at', { ascending: false })
+        .limit(1);
+      if (own.error) throw new Error(own.error.message);
+      const row = ((own.data as { status: string }[] | null) ?? [])[0];
+      return { seasonName: season.seasons?.display_name ?? season.season_code, status: row?.status ?? null };
+    },
+    async awards(teamId, playerIds) {
+      if (playerIds.length === 0) return { awards: [], list: null };
+      const season = await db().rpc('current_season');
+      if (season.error) throw new Error(season.error.message);
+      const [loot, settings] = await Promise.all([
+        db()
+          .from('rclc_loot')
+          .select('awarded_at, response, items(name)')
+          .eq('team_id', teamId)
+          .eq('season', season.data as string)
+          .in('player_id', playerIds),
+        db().from('team_settings').select('lootResponses:config->lootResponses').eq('team_id', teamId).maybeSingle()
+      ]);
+      if (loot.error) throw new Error(loot.error.message);
+      if (settings.error) throw new Error(settings.error.message);
+      return {
+        awards: ((loot.data as any[] | null) ?? []).map((r) => ({
+          itemName: r.items?.name ?? null,
+          awardedAt: r.awarded_at as string,
+          response: r.response as string | null
+        })),
+        list: (settings.data as { lootResponses?: unknown } | null)?.lootResponses ?? null
+      };
+    },
+    async inviteCode(teamId) {
+      const { data, error } = await db()
+        .from('team_invite_links')
+        .select('code, expires_at')
+        .eq('team_id', teamId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      const row = data as { code: string; expires_at: string | null } | null;
+      if (!row || (row.expires_at && new Date(row.expires_at) <= new Date())) return null;
+      return row.code;
+    },
+    async posts(teamId) {
+      const { data, error } = await db()
+        .from('team_discord_posts')
+        .select('kind, channel_id')
+        .eq('team_id', teamId)
+        .not('channel_id', 'is', null);
+      if (error) throw new Error(error.message);
+      return ((data as any[] | null) ?? []).map((r) => ({ kind: r.kind as string, channelId: r.channel_id as string }));
     }
   };
 }
