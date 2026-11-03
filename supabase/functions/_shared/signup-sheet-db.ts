@@ -119,15 +119,17 @@ export function sheetDb(client: () => SupabaseClient<any>): SheetDb {
       return rows?.[0]?.message_id ?? null;
     },
     async saveMessage(teamId, raidDate, messageId) {
-      must(
+      const rows = must(
         await client()
           .from('raid_signup_sheets')
           .update({ message_id: messageId, updated_at: new Date().toISOString() })
           .eq('team_id', teamId)
           .eq('raid_date', raidDate)
-          .is('message_id', null),
+          .is('message_id', null)
+          .select('id'),
         'raid_signup_sheets'
-      );
+      ) as unknown[] | null;
+      return (rows ?? []).length > 0;
     },
     async forgetMessage(teamId, raidDate, messageId) {
       must(

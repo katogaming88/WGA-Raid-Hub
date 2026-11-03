@@ -12,8 +12,9 @@
 //
 // POST { action, team?, teamId?, payload? }:
 //   - drain, signupSheets and optionalReminder: a scheduled job's x-cron-secret.
-//   - signupSheetSync, verifyChannel: a signed-in caller; verifyChannel is for
-//     whoever may change the team's Discord settings. `team` is the team's
+//   - signupSheetSync, verifyChannel: a signed-in caller; signupSheetSync for
+//     someone on the team, verifyChannel for whoever may change the team's
+//     Discord settings. `team` is the team's
 //     address key; `teamId` settles it where two guilds use the same key.
 //
 // Before a post goes out, its channel and ping role must be in the team's own
@@ -81,6 +82,8 @@ export interface RelayDb {
   markPosted(teamId: number, kind: Kind): Promise<void>;
   // Whether the caller may change this team's Discord settings.
   canManageDiscord(authHeader: string, teamId: number): Promise<boolean>;
+  // Whether the caller is on this team (my_team_role(), read as them).
+  onTeam(authHeader: string, teamId: number): Promise<boolean>;
 }
 
 export type Env = { get(name: string): string | undefined };
@@ -243,6 +246,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (action === 'signupSheetSync') {
     const raidDate = String(payload.raidDate ?? '');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(raidDate)) return refuse('Missing required fields', 400);
+    // Only the team's own people: a refresh can post a deleted sheet again,
+    // with its ping (CodeRabbit on #1750).
+    if (!(await deps.db.onTeam(authHeader!, team.id))) return refuse('Not authorized', 403);
     if (dest.kind !== 'bot') return jsonResponse({ success: true, result: 'not posted' });
     const result = await refreshSheet(sheetContext(deps, token!, now), team.id, raidDate);
     return jsonResponse({ success: true, result });

@@ -51,8 +51,9 @@ export interface SheetDb {
   // claim_raid_signup_sheet(): the message to edit, or null to post one. A
   // first call leaves a row with no message, which two racing calls share.
   claim(teamId: number, raidDate: string, channelId: string): Promise<string | null>;
-  // Records a posted message, only where the row still has none.
-  saveMessage(teamId: number, raidDate: string, messageId: string): Promise<void>;
+  // Records a posted message, only where the row still has none; false when
+  // another run's message is already there.
+  saveMessage(teamId: number, raidDate: string, messageId: string): Promise<boolean>;
   // Forgets this message id, only where the row still holds it.
   forgetMessage(teamId: number, raidDate: string, messageId: string): Promise<void>;
   markPosted(sheetId: number): Promise<void>;
@@ -320,7 +321,21 @@ export async function syncSheet(
     allowed_mentions: { parse: [], roles: role ? [role] : [] }
   });
   if (sent.status !== 200 || !sent.body?.id) throw new Error(`Discord answered ${sent.status} to the post`);
-  await db.saveMessage(team.id, raidDate, sent.body.id);
+  // A post that can't be recorded, or that lost to another run's, is taken
+  // back down, or the next run would post (and ping) a second sheet
+  // (CodeRabbit on #1750).
+  const takeDown = () => discord('DELETE', `/channels/${sheet.channelId}/messages/${sent.body.id}`).catch(() => null);
+  let saved: boolean;
+  try {
+    saved = await db.saveMessage(team.id, raidDate, sent.body.id);
+  } catch (err) {
+    await takeDown();
+    throw err;
+  }
+  if (!saved) {
+    await takeDown();
+    return 'edited';
+  }
   await db.markPosted(sheet.id);
   return 'posted';
 }

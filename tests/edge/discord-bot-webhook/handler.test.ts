@@ -66,6 +66,7 @@ type State = {
   setting?: PostSetting | null;
   team?: { id: number } | 'ambiguous' | null;
   officer?: boolean;
+  member?: boolean;
   rows?: QueuedPost[];
   // postSetting throws on these calls (1 = the first).
   failOn?: number[];
@@ -98,6 +99,7 @@ function fakeDb(state: State = {}) {
       return Promise.resolve();
     },
     canManageDiscord: () => Promise.resolve(state.officer ?? true),
+    onTeam: () => Promise.resolve(state.member ?? true),
     markPosted: (_team, kind) => {
       log.push('markPosted ' + kind);
       return Promise.resolve();
@@ -415,6 +417,14 @@ Deno.test('signupSheetSync posts nothing for a night with no sheet up yet, and l
     sheets: { nights: { '2026-11-05': RAID } }
   });
   assertEquals([body.result, calls.length, sheets.rows.size], ['not posted', 0, 0]);
+});
+
+Deno.test('signupSheetSync refuses someone not on the team, and touches nothing', async () => {
+  const { status: code, calls } = await run(notice('signupSheetSync', { raidDate: '2026-11-05' }), {
+    state: { member: false },
+    sheets: { nights: { '2026-11-05': RAID }, rows: { '2026-11-05': { channelId: CHANNEL, messageId: 'm9' } } }
+  });
+  assertEquals([code, calls.length], [403, 0]);
 });
 
 Deno.test('signupSheetSync refuses a missing or malformed date', async () => {

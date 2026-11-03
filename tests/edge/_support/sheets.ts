@@ -38,6 +38,7 @@ export type SheetState = {
   roster?: RosterRow[];
   rsvps?: Rsvp[];
   rows?: Record<string, { channelId: string; messageId: string | null }>;
+  saveFails?: boolean;
 };
 
 export function fakeSheets(state: SheetState = {}) {
@@ -66,9 +67,11 @@ export function fakeSheets(state: SheetState = {}) {
     },
     saveMessage(_team, date, messageId) {
       log.push(`save ${date} ${messageId}`);
+      if (state.saveFails) return Promise.reject(new Error('database hiccup'));
       const row = rows.get(date);
-      if (row && row.messageId === null) row.messageId = messageId;
-      return Promise.resolve();
+      if (!row || row.messageId !== null) return Promise.resolve(false);
+      row.messageId = messageId;
+      return Promise.resolve(true);
     },
     forgetMessage(_team, date, messageId) {
       log.push(`forget ${date} ${messageId}`);

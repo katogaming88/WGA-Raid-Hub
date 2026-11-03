@@ -105,6 +105,10 @@ function supabaseDb(): RelayDb {
       const { error } = await caller(authHeader).rpc('team_discord_settings', { p_team_id: teamId });
       return !error;
     },
+    async onTeam(authHeader, teamId) {
+      const { data, error } = await caller(authHeader).rpc('my_team_role', { p_team_id: teamId });
+      return !error && data !== null;
+    },
     async markPosted(teamId, kind) {
       const { error } = await db()
         .from('team_discord_posts')

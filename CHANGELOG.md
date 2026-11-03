@@ -23,8 +23,10 @@ answers to.
   of hours before each raid), pings the sheet's role when a new one goes up,
   holds a new one in quiet hours, and keeps every posted sheet current until
   four hours after its raid starts. An RSVP on the site edits that night's
-  sheet at once, and the Refresh button works again through
-  `discord-interactions`. A sheet an old bot posted is replaced by a fresh one
+  sheet at once (only for someone on that team), and the Refresh button
+  works again through `discord-interactions`. A post the function can't
+  record, or one that lost to an overlapping run, is taken back down, so no
+  night gets two sheets. A sheet an old bot posted is replaced by a fresh one
   rather than failing every time. Each team without its own banner gets a
   Raid Hub one in the new site's look, so every sheet shows wide, and the
   sheet's edge is the new site's blue instead of the old gold. Each raider's

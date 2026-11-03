@@ -239,6 +239,28 @@ Deno.test("a first post pings the sheet's role, and only it, then records the me
   assertEquals(rows.get('2026-11-03')?.messageId, 'm1');
 });
 
+Deno.test('a post whose id cannot be saved is taken back down, so the next run does not post a second', async () => {
+  const { ctx, calls, log } = context({ saveFails: true });
+  await assertRejects(() => syncSheet(ctx, TEAM, SHEET, '2026-11-03', { create: true }));
+  assertEquals(keys(calls).slice(-2), [`POST ${MSG}`, `DELETE ${MSG}/m1`]);
+  assert(!log.includes('markPosted 9'));
+});
+
+Deno.test("a post that lost to another run's is taken back down, leaving the one on record", async () => {
+  const { ctx, calls, rows, log } = context();
+  // Another run records its message between this run's claim and its save.
+  const claim = ctx.db.claim;
+  ctx.db.claim = async (...args) => {
+    const id = await claim(...args);
+    rows.set('2026-11-03', { channelId: CHANNEL, messageId: 'theirs' });
+    return id;
+  };
+  assertEquals(await syncSheet(ctx, TEAM, SHEET, '2026-11-03', { create: true }), 'edited');
+  assertEquals(keys(calls).slice(-2), [`POST ${MSG}`, `DELETE ${MSG}/m1`]);
+  assertEquals(rows.get('2026-11-03')?.messageId, 'theirs');
+  assert(!log.includes('markPosted 9'));
+});
+
 Deno.test('a sheet with no ping role posts with no content and no mentions', async () => {
   const { ctx, calls } = context();
   await syncSheet(ctx, TEAM, { ...SHEET, pingRoleId: null }, '2026-11-03', { create: true });
