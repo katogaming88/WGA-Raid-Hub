@@ -433,6 +433,14 @@ Deno.test("the run reads the bot's emojis once, and a failed read just means no 
     '<:mage_frost:9> Icy'
   );
 
+  const thrown = context({ rows, roster });
+  delete thrown.ctx.emojis;
+  const call = thrown.ctx.discord;
+  thrown.ctx.discord = (method, path, body) =>
+    path.startsWith('/applications') ? Promise.reject(new Error('timed out')) : call(method, path, body);
+  assertEquals(await syncSheet(thrown.ctx, TEAM, SHEET, '2026-11-03', { create: false }), 'edited');
+  assertEquals(thrown.calls.at(-1)!.body.embeds[0].fields[0].value, 'Icy');
+
   const failed = context({ rows, roster });
   delete failed.ctx.emojis;
   assertEquals(await syncSheet(failed.ctx, TEAM, SHEET, '2026-11-03', { create: false }), 'edited');

@@ -291,8 +291,10 @@ export async function syncSheet(
   // the sweep still posts it on time.
   if (!opts.create && !(await db.postedMessage(team.id, raidDate))) return 'not posted';
 
-  // Read once and kept on the context for the rest of the run.
-  ctx.emojis ??= await loadEmojis(discord);
+  // Read once and kept on the context for the rest of the run. A read that
+  // throws (Discord down, a timeout) only costs the icons, never the sheet
+  // (CodeRabbit on #1750).
+  ctx.emojis ??= await loadEmojis(discord).catch(() => new Map<string, string>());
   const [roster, rsvps] = await Promise.all([db.roster(team.id), db.rsvps(team.id, raidDate)]);
   const message = buildSheet({ team, raidDate, night, roster, rsvps, siteUrl: ctx.siteUrl, emojis: ctx.emojis });
   const existing = await db.claim(team.id, raidDate, sheet.channelId);
