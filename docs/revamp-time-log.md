@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |      9 h 55 m |
+| Phase 1: For the guild test        |      11 h 5 m |
 | Phase 2: Before the new site goes live |       0 m |
 | Phase 3: After the new site goes live  |       0 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **142 h 6 m** |
+| **All revamp work**                | **143 h 16 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -532,7 +532,18 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:00-10:36 AM | PR #1743 (#998): live setup (Kat reset the bot token, the hand deploy, the Interactions Endpoint URL, commands registered); `/about`'s wording; three CodeRabbit rounds (the permission check, `view_loot`, answering before the team lookup); the fresh-agent review and the backup notes; merge and cleanup | Phase 1: For the guild test (#998) | 35 m | ~25 m build, ~10 m Kat | 111,900 | |
 | 10:36-11:10 AM | The bot command list workshop: a mockup of every command, Baldio's list as the comparison, Kat's picks; #961 and #990 rewritten, #1744 and #1745 filed, notes on six feature issues | Phase 1: For the guild test (#961) | 35 m | ~20 m build, ~15 m Kat | 154,600 | |
 | 10:31-10:36 PM | What else `/raider me` shows: seven extras mocked up on Katorrí-Stormrage (current main, roster spot, waiting requests, tier set count, wishlist last changed, attendance, next raid night); Kat turned them all down; #961's open question and `needs-input` cleared, #1487 updated | Phase 1: For the guild test (#961) | 5 m | ~2 m build, ~3 m Kat | 17,100 | |
-| 10:36-10:55 PM | #1211: a main swap request queues an officer notice (`request_main_swap()` and a `mainswap` post in `discord-bot-webhook`) instead of the issue's bot route, since #962 moved notices into the queue; database and function tests, generated docs, decision log, stamp, changelog, the owed time-log rows | Phase 1: For the guild test (#1211) | 20 m | ~20 m build | 74,700 | CodeRabbit, the fresh-agent review and merge not yet counted |
+| 10:36-10:48 PM | #1211: a main swap request queues an officer notice (`request_main_swap()` and a `mainswap` post in `discord-bot-webhook`) instead of the issue's bot route, since #962 moved notices into the queue; database and function tests, generated docs, decision log, stamp, changelog, the owed time-log rows | Phase 1: For the guild test (#1211) | 10 m | ~10 m build | 89,900 | |
+| 10:48-10:55 PM | PR #1746 (#1211): the screenshot (a test post as the bot to the test channel), the PR body | Phase 1: For the guild test (#1211) | 5 m | ~2 m build, ~3 m Kat | 134,300 | |
+| 10:55-11:15 PM | PR #1746 (#1211): CodeRabbit's note (tests for no officer channel and a refused second request); the fresh-agent review (RLS.md names `request_main_swap()`) | Phase 1: For the guild test (#1211) | 20 m | ~18 m build, ~2 m Kat | 22,900 | |
+| 11:15-11:21 PM | PR #1746 (#1211): `rls` red from the boss lineup tests that fail on Monday evenings; #1747 filed | Phase 1: For the guild test (#1211) | 5 m | ~4 m build, ~1 m Kat | 5,800 | |
+
+### 2026-11-03
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 12:11-12:14 AM | PR #1746 (#1211): rerun, Kat merged, branches cleaned up, #1211's #1487 row out | Phase 1: For the guild test (#1211) | 5 m | ~3 m build, ~2 m Kat | 9,300 | |
+| 8:58-9:20 AM | #960: the signup sheet into `discord-bot-webhook` (a 15-minute pg_cron run that posts by each team's Settings › Discord sheets and keeps posted ones current, the RSVP refresh) and its Refresh button into `discord-interactions`; Kat's four answers (sheets set up by hand, old sheets stay, a shared Raid Hub banner, `/officer post signups` with #961); an old bot's sheet replaced; the shared time helper; edge and database tests, the banner, generated docs, decision log, RLS.md, stamp, changelog, this row | Phase 1: For the guild test (#960) | 20 m | ~17 m build, ~3 m Kat | 249,300 | |
+| 9:20-9:45 AM | PR #1750 (#960): preflight, the PR and its screenshot; the sheet's design with Kat: the banner and edge redone in the new site's look, five versions posted to the test channel (Kat picked spec icons, no checks, bold answers in one list), the 40 spec icons uploaded as the bot's emojis, bigger names tried (Discord has no way in columns; a drawn picture later, Kat) | Phase 1: For the guild test (#960) | 25 m | ~15 m build, ~10 m Kat | 378,800 | CodeRabbit, the fresh-agent review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
@@ -566,6 +577,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-10-25 | 10:32-10:44 AM | #1628: the gear sync removes a character's slots Blizzard no longer returns, only after a save that worked; Edge Function test red first; the removal filter checked against the local database; PR #1660, merged 10:44 AM | 10 m |
 | 2026-11-02 | 10:13-10:14 PM | Where the work stood | 5 m |
 | 2026-10-27 | 12:23-12:26 AM | Where the work stood; #1408 closed: Monday night's progression sync ran on the new Warcraft Logs secret | 5 m |
+| 2026-11-03 | 8:56-8:58 AM | Where the work stood | 5 m |
 
 ## Remaining in Revamp 1
 

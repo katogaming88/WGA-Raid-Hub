@@ -977,13 +977,11 @@ function _toggleRotatorWeek(playerId, dateStr, isIn) {
     });
 }
 
-// Fire-and-forget trigger for the bot-owned aggregated signup sheet (#900,
-// part of #640). The per-status-change post is set_own_rsvp()'s own: it
-// queues it for Discord (#962). All the actual
-// grouping/embed/message-bookkeeping logic lives bot-side
-// (wga-raid-bot's src/signupSheet.ts); this just tells it "the RSVP picture
-// for this date changed, go re-sync." No player/status data needed in the
-// payload -- the bot re-queries the full roster/RSVP state itself.
+// Fire-and-forget nudge to the Discord signup sheet (#900): "the RSVP picture
+// for this date changed", so discord-bot-webhook edits that night's posted
+// sheet (#960, supabase/functions/_shared/signup-sheet.ts). The per-status-
+// change post is set_own_rsvp()'s own: it queues it for Discord (#962). No
+// player/status data in the payload -- the function reads the roster itself.
 function _syncSignupSheet(raidDate) {
   if (!supabaseClient) return;
   supabaseClient.functions

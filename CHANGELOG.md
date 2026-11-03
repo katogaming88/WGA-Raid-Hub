@@ -12,6 +12,51 @@ answers to.
 
 ---
 
+## [3.233.0] - 2026-11-03
+
+### Functions
+
+- The Discord signup sheets are back, posted by the Raid Hub bot (#960). The
+  old VM bots posted them until they left WGA's server on 2026-11-01.
+  `discord-bot-webhook` posts each raid night's sheet when the team's settings
+  on Settings › Discord say so (the next 1 to 4 raids kept posted, or a number
+  of hours before each raid), pings the sheet's role when a new one goes up,
+  holds a new one in quiet hours, and keeps every posted sheet current until
+  four hours after its raid starts. An RSVP on the site edits that night's
+  sheet at once (only for someone on that team), and the Refresh button
+  works again through `discord-interactions`. A post the function can't
+  record, or one that lost to an overlapping run, is taken back down, so no
+  night gets two sheets. A sheet an old bot posted is replaced by a fresh one
+  rather than failing every time. Each team without its own banner gets a
+  Raid Hub one in the new site's look, so every sheet shows wide, and the
+  sheet's edge is the new site's blue instead of the old gold. Each raider's
+  name carries their spec icon, and the other answers (Late, Tentative,
+  Absent, Bench and the rest) sit in one compact list with each answer in
+  bold, instead of a field each under an empty row.
+- `optional-rsvp-reminders` takes its time-zone helper from a shared copy the
+  sheet uses too (no change in what it sends).
+
+### Backend
+
+- A pg_cron job, `discord-signup-sheets`, runs the sheets every 15 minutes
+  (#960). `raid_signup_sheets`' comment names the functions that use it now.
+
+### Frontend
+
+- The calendar's note to the signup sheet after an RSVP describes the
+  function that handles it now (#960); nothing on the page changes.
+
+### Project
+
+- `npm run discord:emojis` uploads the 40 spec icons as the Raid Hub bot's
+  own emojis, which the signup sheet shows; run again when a spec is added.
+- New app: Settings › Discord no longer says signup sheets start working in
+  an upcoming update (#960).
+- Tests: the sheet's embed field by field, when each raid is posted, posting,
+  editing and replacing a sheet, the Refresh button, daylight saving in the
+  shared time helper, and two first-ever claims for one night racing.
+- Revamp time log: the 2026-11-02 #1211 rows owed, and the 2026-11-03 rows.
+
 ## [3.232.0] - 2026-11-02
 
 ### Functions

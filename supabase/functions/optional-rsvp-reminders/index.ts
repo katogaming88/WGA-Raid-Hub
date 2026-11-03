@@ -26,11 +26,13 @@
 // raid_schedule_exceptions has no timezone column at all, so an 'added'
 // exception night is assumed to use that same default -- matching every
 // other place in this schema/frontend that treats America/New_York as the
-// implicit single timezone. zonedTimeToUtc() below is the standard
+// implicit single timezone. zonedTimeToUtc() is the standard
 // "format the guess, diff against the wall-clock target, correct once"
 // technique for turning a wall-clock date+time in a named zone into a UTC
-// instant without a datetime library.
+// instant without a datetime library (_shared/time.ts, shared with the
+// signup sheet since #960).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { isoDate, zonedTimeToUtc } from '../_shared/time.ts';
 import { VERSION } from './version.ts';
 
 const CORS_HEADERS = {
@@ -56,41 +58,6 @@ const CHECKPOINTS: { key: '24h' | '2h'; hoursBefore: number }[] = [
 // Matches the cron cadence: a window this wide means a slightly-late tick
 // still catches a checkpoint, and a tick can't double-fire the same one.
 const TOLERANCE_MINUTES = 15;
-
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-function zonedTimeToUtc(raidDate: string, time: string, timeZone: string): Date {
-  const [year, month, day] = raidDate.split('-').map(Number);
-  const [hour, minute, second] = time.split(':').map(Number);
-  const guessUtcMs = Date.UTC(year, month - 1, day, hour, minute, second || 0);
-
-  const dtf = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hour12: false,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
-  const parts: Record<string, string> = {};
-  for (const part of dtf.formatToParts(new Date(guessUtcMs))) {
-    if (part.type !== 'literal') parts[part.type] = part.value;
-  }
-  const asIfUtcMs = Date.UTC(
-    Number(parts.year),
-    Number(parts.month) - 1,
-    Number(parts.day),
-    Number(parts.hour) === 24 ? 0 : Number(parts.hour),
-    Number(parts.minute),
-    Number(parts.second)
-  );
-  const offsetMs = asIfUtcMs - guessUtcMs;
-  return new Date(guessUtcMs - offsetMs);
-}
 
 interface ScheduleRow {
   team_id: number;

@@ -26,8 +26,8 @@ export type Kind = 'officer_requests' | 'mplus_requests' | 'rsvp_changes';
 export const QUEUED_ACTIONS = ['signup', 'addCharacter', 'selfreceived', 'bis', 'mplus', 'rsvp', 'mainswap'];
 
 // Who may ask for each action (#959):
-//   cron     a scheduled job, by the optional-rsvp-reminders secret: its DM
-//            and the post queue's drain (#962);
+//   cron     a scheduled job, by the optional-rsvp-reminders secret: its DM,
+//            the post queue's drain (#962) and the signup sheets' run (#960);
 //   signedIn a signed-in caller (the pages behind it need a sign-in).
 // The channel check is for the team's own Discord admins (`officer`).
 //
@@ -44,8 +44,8 @@ export type Action = {
 export const ACTIONS: Record<string, Action> = {
   optionalReminder: { gate: 'cron' },
   drain: { gate: 'cron' },
-  // The sheet moves into a function with #960; until then this answers OK and
-  // posts nothing (Kat, 2026-11-01: the old bots are out of the server).
+  signupSheets: { gate: 'cron' },
+  // An RSVP changed on the site: bring that night's posted sheet up to date.
   signupSheetSync: { gate: 'signedIn' },
   verifyChannel: { gate: 'signedIn', officer: true }
 };

@@ -139,4 +139,40 @@ describe('raid_night_info()', () => {
   });
 });
 
+// Two overlapping runs of the sheet (#960) both claiming a night nobody has
+// claimed yet: the second insert waits on the first, then hits the unique key,
+// and the function's re-select is what keeps it to one row. Two connections
+// have to commit for that to happen, so the row is on a date no other test
+// uses and is deleted at the end.
+describe('claim_raid_signup_sheet under a race', () => {
+  it('two first-ever claims for one night leave one row, and both are told to post', async () => {
+    const a = await pool.connect();
+    const b = await pool.connect();
+    const claim = "select * from claim_raid_signup_sheet(1, '2099-01-06', 'chan-race')";
+    try {
+      await a.query('begin');
+      await b.query('begin');
+      const first = await a.query(claim);
+      // Blocks on a's uncommitted row until a commits.
+      const second = b.query(claim);
+      await new Promise((r) => setTimeout(r, 200));
+      await a.query('commit');
+      const secondRows = (await second).rows;
+      await b.query('commit');
+      expect(first.rows).toEqual([{ message_id: null }]);
+      expect(secondRows).toEqual([{ message_id: null }]);
+      const { rows } = await a.query(
+        "select count(*)::int as n from raid_signup_sheets where team_id = 1 and raid_date = '2099-01-06'"
+      );
+      expect(rows[0].n).toBe(1);
+    } finally {
+      await a.query('rollback').catch(() => null);
+      await b.query('rollback').catch(() => null);
+      await a.query("delete from raid_signup_sheets where team_id = 1 and raid_date = '2099-01-06'");
+      a.release();
+      b.release();
+    }
+  });
+});
+
 afterAll(() => pool.end());

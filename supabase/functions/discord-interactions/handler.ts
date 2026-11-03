@@ -10,9 +10,10 @@
 //   after, under waitUntil, then edits that answer. Discord gives 3 seconds
 //   for the first answer and 15 minutes for the edit.
 //
-// Commands: /nudge-missing and /about. #961 moves the other nine here, and
-// #960 the signup sheet's Refresh button, which has no sheet to refresh until
-// that sheet is posted by this bot.
+// Commands: /nudge-missing and /about; #961 moves the other nine here. The
+// signup sheet's Refresh button (#960) lands here too: Discord sends a button
+// press to the application that posted the message, and discord-bot-webhook
+// posts the sheet as this bot.
 //
 // handle() takes its reads, its fetch, its environment and its waitUntil as
 // an argument (#1006); deps.ts supplies the real ones and index.ts serves it.
@@ -23,6 +24,7 @@ import {
   nudgeEmbed,
   summaryEmbed
 } from './nudge.ts';
+import { REFRESH_PREFIX, type SheetDb, refreshSheet } from '../_shared/signup-sheet.ts';
 import { VERSION } from './version.ts';
 
 export type Team = { id: number; name: string };
@@ -45,6 +47,7 @@ export type Deps = {
   fetch: typeof fetch;
   env: Env;
   db: InteractionsDb;
+  sheets: SheetDb;
   waitUntil(work: Promise<unknown>): void;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
@@ -56,10 +59,12 @@ export const COOLDOWN_MS = 24 * 60 * 60 * 1000;
 // Discord's numbers.
 const PING = 1;
 const COMMAND = 2;
+const BUTTON = 3;
 const AUTOCOMPLETE = 4;
 const PONG = 1;
 const MESSAGE = 4;
 const DEFERRED_MESSAGE = 5;
+const DEFERRED_UPDATE = 6;
 const CHOICES = 8;
 const EPHEMERAL = 1 << 6;
 
@@ -117,7 +122,7 @@ type Interaction = {
   token: string;
   guild_id?: string;
   member?: { user?: { id: string } };
-  data?: { name: string; options?: { name: string; value: string; focused?: boolean }[] };
+  data?: { name: string; custom_id?: string; options?: { name: string; value: string; focused?: boolean }[] };
 };
 
 const option = (i: Interaction, name: string) => i.data?.options?.find((o) => o.name === name);
@@ -146,6 +151,28 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       .map((t) => ({ name: t.name, value: String(t.id) }));
     return json({ type: CHOICES, data: { choices } });
   }
+  if (interaction.type === BUTTON && interaction.data?.custom_id?.startsWith(REFRESH_PREFIX)) {
+    // signup-sheet-refresh:<team id>:<raid date>. The press is answered at
+    // once with "the message will change"; the edit follows.
+    const [teamId, raidDate] = interaction.data.custom_id.slice(REFRESH_PREFIX.length).split(':');
+    deps.waitUntil(
+      new Promise((r) => setTimeout(r, 0))
+        .then(() =>
+          refreshSheet(
+            {
+              db: deps.sheets,
+              discord: (method, path, body) => discord(deps, method, path, body),
+              siteUrl: deps.env.get('SITE_URL'),
+              now: (deps.now ?? (() => new Date()))()
+            },
+            Number(teamId),
+            raidDate
+          )
+        )
+        .catch((err) => console.error('discord-interactions: signup sheet refresh failed:', err))
+    );
+    return json({ type: DEFERRED_UPDATE });
+  }
   if (interaction.type !== COMMAND) return say(UNKNOWN_COMMAND);
 
   // One version names the whole release, site and bot alike, so this says
@@ -166,7 +193,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 type Answer = { ok: boolean; status: number; body: any };
 
 // One Discord REST call as the bot, waiting out one 429.
-async function discord(deps: Deps, method: string, path: string, body: unknown): Promise<Answer> {
+async function discord(deps: Deps, method: string, path: string, body?: unknown): Promise<Answer> {
   const call = () =>
     deps.fetch(API + path, {
       method,
@@ -174,7 +201,7 @@ async function discord(deps: Deps, method: string, path: string, body: unknown):
         Authorization: 'Bot ' + (deps.env.get('DISCORD_BOT_TOKEN') ?? ''),
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(body)
+      body: body === undefined ? undefined : JSON.stringify(body)
     });
   let res = await call();
   if (res.status === 429) {
