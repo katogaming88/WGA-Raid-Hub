@@ -403,9 +403,10 @@ Deno.test('signupSheetSync edits the posted sheet for that night', async () => {
     routes: { ...DISCORD, [`PATCH /channels/${CHANNEL}/messages/m9`]: ok({ id: 'm9' }) }
   });
   assertEquals([code, body.result], [200, 'edited']);
+  // The bot's emojis are read first (unscripted here, so the sheet has no icons).
   assertEquals(
     calls.map((c) => c.key),
-    [`PATCH /channels/${CHANNEL}/messages/m9`]
+    ['GET /applications/@me', `PATCH /channels/${CHANNEL}/messages/m9`]
   );
 });
 

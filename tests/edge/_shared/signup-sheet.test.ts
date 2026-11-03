@@ -28,6 +28,8 @@ const player = (id: number, name: string, role: string | null, over: Partial<Ros
   nickname: null,
   isBench: false,
   role,
+  className: null,
+  spec: null,
   ...over
 });
 
@@ -48,17 +50,16 @@ Deno.test('everyone is in by default on a normal night, grouped by role, Heal un
   assertEquals(fieldsOf(msg), [
     ['Tank (1)', 'Tanky\n\n**Heal (1)**\nHealy'],
     ['Melee (1)', 'Stabby'],
-    ['Ranged (1)', 'Kat'],
-    ['​', '​']
+    ['Ranged (1)', 'Kat']
   ]);
-  assert(msg.embeds[0].fields.slice(0, 3).every((f) => f.inline));
-  assertEquals(msg.embeds[0].footer.text, '4/4 available -- Use Refresh to update');
+  assert(msg.embeds[0].fields.every((f) => f.inline));
+  assertEquals(msg.embeds[0].footer.text, '4 of 4 available · Refresh to update');
 });
 
 Deno.test('Bench comes first: a benched raider is on Bench whatever they answered', () => {
   const msg = sheet([player(1, 'Benchy', 'Tank', { isBench: true })], [{ playerId: 1, status: 'Present' }]);
-  assertEquals(fieldsOf(msg), [['Bench (1)', 'Benchy']]);
-  assertEquals(msg.embeds[0].footer.text, '0/1 available -- Use Refresh to update');
+  assertEquals(fieldsOf(msg), [['Other answers', '**Bench:** Benchy']]);
+  assertEquals(msg.embeds[0].footer.text, '0 of 1 available · Refresh to update');
 });
 
 Deno.test('answers sort into their lists; Attending counts as in; unknown roles and answers are Unassigned', () => {
@@ -83,19 +84,19 @@ Deno.test('answers sort into their lists; Attending counts as in; unknown roles 
   );
   assertEquals(fieldsOf(msg), [
     ['Melee (1)', 'Yes'],
-    ['​', '​'],
-    ['Unassigned (2)', 'Nospec\nOdd'],
-    ['Late (1)', 'Late'],
-    ['Leaving Early (1)', 'Early'],
-    ['Tentative (1)', 'Maybe'],
-    ['Absent (1)', 'Gone']
+    [
+      'Other answers',
+      '**Unassigned:** Nospec, Odd\n**Late:** Late\n**Leaving Early:** Early\n**Tentative:** Maybe\n**Absent:** Gone'
+    ]
   ]);
-  assertEquals(msg.embeds[0].footer.text, '2/7 available -- Use Refresh to update');
+  assertEquals(msg.embeds[0].footer.text, '2 of 7 available · Refresh to update');
 });
 
 Deno.test('an optional night has no default: the unanswered are No Response, which a normal night never shows', () => {
   const optional = { ...RAID, isOptional: true };
-  assertEquals(fieldsOf(sheet([player(1, 'Quiet', 'Tank')], [], optional)), [['No Response (1)', 'Quiet']]);
+  assertEquals(fieldsOf(sheet([player(1, 'Quiet', 'Tank')], [], optional)), [
+    ['Other answers', '**No Response:** Quiet']
+  ]);
   // As the bot did: a No Response answer on a normal night lists nobody.
   assertEquals(fieldsOf(sheet([player(1, 'Quiet', 'Tank')], [{ playerId: 1, status: 'No Response' }])), []);
 });
@@ -209,7 +210,14 @@ Deno.test('quiet hours, inside and out, and across midnight', () => {
 function context(state: Parameters<typeof fakeSheets>[0] = {}, routes: Parameters<typeof fakeDiscord>[0] = {}) {
   const sheets = fakeSheets({ nights: NIGHTS, ...state });
   const discord = fakeDiscord(routes);
-  const ctx: SheetContext = { db: sheets.db, discord: discord.call, siteUrl: 'https://site.test', now: NOW };
+  // The bot's emojis are given, so the call lists below are the sheet's own.
+  const ctx: SheetContext = {
+    db: sheets.db,
+    discord: discord.call,
+    siteUrl: 'https://site.test',
+    now: NOW,
+    emojis: new Map()
+  };
   return { ctx, ...sheets, calls: discord.calls };
 }
 const keys = (calls: Array<{ key: string }>) => calls.map((c) => c.key);
@@ -337,3 +345,56 @@ Deno.test(
     assertEquals([calls, log], [[], []]);
   }
 );
+
+// -- Spec icons -------------------------------------------------------------
+
+Deno.test("each name carries its spec icon from the bot's emojis, and goes without one it lacks", () => {
+  const msg = buildSheet({
+    team: TEAM,
+    raidDate: '2026-11-03',
+    night: RAID,
+    roster: [
+      player(1, 'Katorrí', 'Ranged', { nickname: 'Kat', className: 'Warlock', spec: 'Demonology' }),
+      player(2, 'Beasty', 'Ranged', { className: 'Hunter', spec: 'Beast Mastery' }),
+      player(3, 'Newspec', 'Ranged', { className: 'Shaman', spec: 'Something New' }),
+      player(4, 'Late', 'Melee', { className: 'Death Knight', spec: 'Frost' })
+    ],
+    rsvps: [{ playerId: 4, status: 'Late' }],
+    emojis: new Map([
+      ['warlock_demonology', '11'],
+      ['hunter_beast_mastery', '22'],
+      ['death_knight_frost', '33']
+    ])
+  });
+  assertEquals(fieldsOf(msg), [
+    ['Ranged (3)', '<:warlock_demonology:11> Kat\n<:hunter_beast_mastery:22> Beasty\nNewspec'],
+    ['Other answers', '**Late:** <:death_knight_frost:33> Late']
+  ]);
+});
+
+Deno.test("the run reads the bot's emojis once, and a failed read just means no icons", async () => {
+  const roster = [player(1, 'Icy', 'Ranged', { className: 'Mage', spec: 'Frost' })];
+  const rows = {
+    '2026-11-03': { channelId: CHANNEL, messageId: 'a' },
+    '2026-11-05': { channelId: CHANNEL, messageId: 'b' }
+  };
+  const read = context(
+    { rows, roster },
+    {
+      'GET /applications/@me': { status: 200, body: { id: 'app' } },
+      'GET /applications/app/emojis': { status: 200, body: { items: [{ name: 'mage_frost', id: '9' }] } }
+    }
+  );
+  delete read.ctx.emojis;
+  assertEquals(await sweepSheets(read.ctx), { posted: 0, edited: 2, failed: 0 });
+  assertEquals(keys(read.calls).filter((k) => k.startsWith('GET /applications')).length, 2);
+  assertEquals(
+    read.calls.find((c) => c.key === `PATCH ${MSG}/a`)!.body.embeds[0].fields[0].value,
+    '<:mage_frost:9> Icy'
+  );
+
+  const failed = context({ rows, roster });
+  delete failed.ctx.emojis;
+  assertEquals(await syncSheet(failed.ctx, TEAM, SHEET, '2026-11-03', { create: false }), 'edited');
+  assertEquals(failed.calls.at(-1)!.body.embeds[0].fields[0].value, 'Icy');
+});

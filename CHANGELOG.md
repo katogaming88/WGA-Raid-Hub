@@ -27,7 +27,10 @@ answers to.
   `discord-interactions`. A sheet an old bot posted is replaced by a fresh one
   rather than failing every time. Each team without its own banner gets a
   Raid Hub one in the new site's look, so every sheet shows wide, and the
-  sheet's edge is the new site's blue instead of the old gold.
+  sheet's edge is the new site's blue instead of the old gold. Each raider's
+  name carries their spec icon, and the other answers (Late, Tentative,
+  Absent, Bench and the rest) sit in one compact list with each answer in
+  bold, instead of a field each under an empty row.
 - `optional-rsvp-reminders` takes its time-zone helper from a shared copy the
   sheet uses too (no change in what it sends).
 
@@ -43,6 +46,8 @@ answers to.
 
 ### Project
 
+- `npm run discord:emojis` uploads the 40 spec icons as the Raid Hub bot's
+  own emojis, which the signup sheet shows; run again when a spec is added.
 - New app: Settings › Discord no longer says signup sheets start working in
   an upcoming update (#960).
 - Tests: the sheet's embed field by field, when each raid is posted, posting,

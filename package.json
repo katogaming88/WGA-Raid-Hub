@@ -10,6 +10,7 @@
     "preflight": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev/preflight.js",
     "migration:new": "node scripts/ci/migration-new.js",
     "discord:register": "npx -y deno@2.9.6 run --allow-net=discord.com --allow-env=DISCORD_BOT_TOKEN,DISCORD_APPLICATION_ID scripts/discord/register-commands.ts",
+    "discord:emojis": "npx -y deno@2.9.6 run --allow-net=discord.com --allow-env=DISCORD_BOT_TOKEN --allow-read=app/public/spec-icons scripts/discord/upload-emojis.ts",
     "serve": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev/serve.js",
     "dev:login": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev/local-login.js",
     "dev:battlenet": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev/battlenet-provider.js",

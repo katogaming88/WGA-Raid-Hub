@@ -73,7 +73,7 @@ export function sheetDb(client: () => SupabaseClient<any>): SheetDb {
       const rows = must(
         await client()
           .from('players')
-          .select('id, name_realm, nickname, is_bench, classes_specs(role)')
+          .select('id, name_realm, nickname, is_bench, classes_specs(class, spec, role)')
           .eq('team_id', teamId)
           .is('archived_at', null),
         'players'
@@ -83,7 +83,9 @@ export function sheetDb(client: () => SupabaseClient<any>): SheetDb {
         nameRealm: p.name_realm,
         nickname: p.nickname,
         isBench: !!p.is_bench,
-        role: p.classes_specs?.role ?? null
+        role: p.classes_specs?.role ?? null,
+        className: p.classes_specs?.class ?? null,
+        spec: p.classes_specs?.spec ?? null
       }));
     },
     async rsvps(teamId, raidDate) {

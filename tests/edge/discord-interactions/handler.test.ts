@@ -408,7 +408,8 @@ const press = (customId: string) => ({
 });
 
 Deno.test('Refresh answers "the message will change" at once, then edits the sheet for that night', async () => {
-  const { deps, log, calls, settle } = setup({}, [ok({ id: 'm9' })], {
+  // The bot's emojis first (no application id, so no icons), then the edit.
+  const { deps, log, calls, settle } = setup({}, [ok({}), ok({ id: 'm9' })], {
     nights: { '2026-11-05': RAID },
     rows: { '2026-11-05': { channelId: CHANNEL, messageId: 'm9' } }
   });
@@ -418,9 +419,9 @@ Deno.test('Refresh answers "the message will change" at once, then edits the she
   await settle();
   assertEquals(
     calls.map((c) => `${c.method} ${c.url.replace(API, '')}`),
-    [`PATCH /channels/${CHANNEL}/messages/m9`]
+    ['GET /applications/@me', `PATCH /channels/${CHANNEL}/messages/m9`]
   );
-  assertEquals(JSON.parse(calls[0].body!).embeds[0].title, 'Phoenix — Signup Sheet');
+  assertEquals(JSON.parse(calls[1].body!).embeds[0].title, 'Phoenix — Signup Sheet');
 });
 
 Deno.test('Refresh on a night no sheet is posted for changes nothing', async () => {

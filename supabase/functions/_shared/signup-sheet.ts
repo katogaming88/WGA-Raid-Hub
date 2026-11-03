@@ -21,6 +21,9 @@ export type RosterRow = {
   nickname: string | null;
   isBench: boolean;
   role: string | null;
+  // classes_specs' class and spec, for the spec icon.
+  className: string | null;
+  spec: string | null;
 };
 export type Rsvp = { playerId: number; status: string };
 export type QuietHours = { start: string; end: string; timezone: string };
@@ -62,6 +65,8 @@ export type SheetContext = {
   discord: DiscordCall;
   siteUrl?: string;
   now: Date;
+  // The bot's own emojis by name; loaded once per run when left out.
+  emojis?: Map<string, string>;
 };
 
 export const REFRESH_PREFIX = 'signup-sheet-refresh:';
@@ -81,6 +86,8 @@ const TEAM_BANNERS: Record<number, string> = { 1: 'phoenix-header.png', 2: 'hell
 export const bannerUrl = (teamId: number) => BANNER_BASE + (TEAM_BANNERS[teamId] ?? 'raid-hub-header.png');
 
 const ROLES = ['Tank', 'Melee', 'Ranged', 'Heal'];
+// The answers listed under the role columns, a line each, in this order.
+// Unassigned is anyone in without a role, or with an answer this doesn't know.
 const STATUSES = ['Unassigned', 'Late', 'Leaving Early', 'Tentative', 'Absent', 'No Response', 'Bench'];
 
 type Field = { name: string; value: string; inline?: boolean };
@@ -88,8 +95,33 @@ type Field = { name: string; value: string; inline?: boolean };
 // The nickname, else the character's name without its realm.
 const displayName = (p: RosterRow) => p.nickname || p.nameRealm.split('-')[0].trim();
 
-const field = (name: string, names: string[]): Field | null =>
-  names.length ? { name: `${name} (${names.length})`, value: truncate(names.join('\n'), EMBED_FIELD_VALUE_MAX) } : null;
+// The bot's emoji for a spec (Kat, 2026-11-03): uploaded by
+// scripts/discord/upload-emojis.ts from app/public/spec-icons and named after
+// the icon file, e.g. Demonology Warlock -> warlock_demonology.
+export const specEmojiName = (className: string | null, spec: string | null) =>
+  className && spec
+    ? `${className}_${spec}`
+        .trim()
+        .toLowerCase()
+        .replace(/[\s-]+/g, '_')
+    : null;
+
+// The name with its spec icon in front, or the name alone without one.
+function label(p: RosterRow, emojis: Map<string, string>): string {
+  const key = specEmojiName(p.className, p.spec);
+  const id = key ? emojis.get(key) : undefined;
+  return id ? `<:${key}:${id}> ${displayName(p)}` : displayName(p);
+}
+
+// The bot's emojis by name, from Discord. A failed read only means names
+// without icons.
+export async function loadEmojis(discord: DiscordCall): Promise<Map<string, string>> {
+  const app = await discord('GET', '/applications/@me');
+  if (app.status !== 200 || !app.body?.id) return new Map();
+  const list = await discord('GET', `/applications/${app.body.id}/emojis`);
+  const items: { name: string; id: string }[] = list.status === 200 ? (list.body?.items ?? []) : [];
+  return new Map(items.map((e) => [e.name, e.id]));
+}
 
 // Several sections in one field, so Heal sits under Tank whatever height the
 // other columns are: Discord lays fields out three to a row, and only one
@@ -121,15 +153,17 @@ export function buildSheet(input: {
   roster: RosterRow[];
   rsvps: Rsvp[];
   siteUrl?: string;
+  emojis?: Map<string, string>;
 }) {
   const { team, raidDate, night } = input;
+  const emojis = input.emojis ?? new Map<string, string>();
   const answers = new Map(input.rsvps.map((r) => [r.playerId, r.status]));
   const byRole: Record<string, string[]> = { Tank: [], Melee: [], Ranged: [], Heal: [] };
   const byStatus: Record<string, string[]> = Object.fromEntries(STATUSES.map((s) => [s, []]));
   let inCount = 0;
 
   for (const player of input.roster) {
-    const name = displayName(player);
+    const name = label(player, emojis);
     // Present unless answered, except on an optional night, which has no default.
     const status = answers.get(player.id) ?? (night.isOptional ? 'No Response' : 'Present');
     if (player.isBench) {
@@ -157,13 +191,11 @@ export function buildSheet(input: {
     column([{ label: 'Ranged', names: byRole.Ranged }])
   ].filter((c): c is Field => c !== null);
   fields.push(...columns);
-  // A blank full-width row between the role columns and the lists below.
-  if (columns.length) fields.push({ name: '​', value: '​', inline: false });
-  for (const status of STATUSES) {
-    if (status === 'No Response' && !night.isOptional) continue;
-    const f = field(status, byStatus[status]);
-    if (f) fields.push(f);
-  }
+  // Every other answer in one field, a line each: "**Late:** Name, Name".
+  const others = STATUSES.filter((s) => byStatus[s].length && (s !== 'No Response' || night.isOptional)).map(
+    (s) => `**${s}:** ${byStatus[s].join(', ')}`
+  );
+  if (others.length) fields.push({ name: 'Other answers', value: truncate(others.join('\n'), EMBED_FIELD_VALUE_MAX) });
 
   const buttons: Record<string, unknown>[] = [];
   if (input.siteUrl) {
@@ -186,7 +218,7 @@ export function buildSheet(input: {
         title: `${team.name} — Signup Sheet`,
         description,
         fields,
-        footer: { text: `${inCount}/${input.roster.length} available -- Use Refresh to update` },
+        footer: { text: `${inCount} of ${input.roster.length} available · Refresh to update` },
         image: { url: bannerUrl(team.id) }
       }
     ],
@@ -258,8 +290,10 @@ export async function syncSheet(
   // the sweep still posts it on time.
   if (!opts.create && !(await db.postedMessage(team.id, raidDate))) return 'not posted';
 
+  // Read once and kept on the context for the rest of the run.
+  ctx.emojis ??= await loadEmojis(discord);
   const [roster, rsvps] = await Promise.all([db.roster(team.id), db.rsvps(team.id, raidDate)]);
-  const message = buildSheet({ team, raidDate, night, roster, rsvps, siteUrl: ctx.siteUrl });
+  const message = buildSheet({ team, raidDate, night, roster, rsvps, siteUrl: ctx.siteUrl, emojis: ctx.emojis });
   const existing = await db.claim(team.id, raidDate, sheet.channelId);
 
   if (existing) {
