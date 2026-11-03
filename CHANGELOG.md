@@ -26,7 +26,8 @@ answers to.
   sheet at once, and the Refresh button works again through
   `discord-interactions`. A sheet an old bot posted is replaced by a fresh one
   rather than failing every time. Each team without its own banner gets a
-  Raid Hub one, so every sheet shows wide.
+  Raid Hub one in the new site's look, so every sheet shows wide, and the
+  sheet's edge is the new site's blue instead of the old gold.
 - `optional-rsvp-reminders` takes its time-zone helper from a shared copy the
   sheet uses too (no change in what it sends).
 

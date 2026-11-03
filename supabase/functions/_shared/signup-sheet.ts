@@ -65,7 +65,8 @@ export type SheetContext = {
 };
 
 export const REFRESH_PREFIX = 'signup-sheet-refresh:';
-const COLOR = 0xe0c23d;
+// The new site's brand blue (the old bot used the old site's gold).
+const COLOR = 0x5b9cf5;
 const DEFAULT_TIMEZONE = 'America/New_York';
 // A raid counts as passed this long after it starts: its sheet stops being
 // updated and, on a sheet that keeps raids posted, the next one goes up.
