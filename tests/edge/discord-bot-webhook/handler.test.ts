@@ -428,7 +428,7 @@ Deno.test('signupSheetSync refuses someone not on the team, and touches nothing'
 });
 
 Deno.test('signupSheetSync refuses a missing or malformed date', async () => {
-  for (const payload of [{}, { raidDate: 'tomorrow' }]) {
+  for (const payload of [{}, { raidDate: 'tomorrow' }, { raidDate: '2026-02-31' }, { raidDate: '2026-13-01' }]) {
     const { status: code } = await run(notice('signupSheetSync', payload));
     assertEquals(code, 400, JSON.stringify(payload));
   }
