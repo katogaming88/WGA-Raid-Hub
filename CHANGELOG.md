@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.234.2] - 2026-11-03
+
+### Project
+
+- The desktop app, WGA Raid Hub Sync, has its own repo now
+  (katogaming88/WGA-Raid-Hub-Sync), and CONTRIBUTING points to it (#1654).
+  Its issues moved there as sync #1 to #5.
+- Revamp time log: the rest of the 2026-11-03 #961 rows and the Sync repo
+  rows added.
+
 ## [3.234.1] - 2026-11-03
 
 ### Frontend
