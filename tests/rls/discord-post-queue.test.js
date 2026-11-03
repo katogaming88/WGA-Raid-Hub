@@ -207,6 +207,40 @@ describe('discord_post_queue', () => {
     });
   });
 
+  it('a main swap request queues nothing without an officer channel, and a refused second one adds no row', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const quiet = await teamWithChannels(q, ['mplus_requests', 'rsvp_changes']);
+      const posting = await teamWithChannels(q);
+      const person = async (team) =>
+        (await q('select person_id from public.team_members where id = $1', [team.raider.memberId])).rows[0].person_id;
+      const alt = async (team, name) =>
+        (
+          await q(
+            `insert into public.characters (person_id, blizzard_id, name, realm, realm_slug, class_name, level)
+             values ($1, $2, $3, 'Illidan', 'illidan', 'Mage', 90) returning id`,
+            [await person(team), Math.floor(Math.random() * 1e9), name]
+          )
+        ).rows[0].id;
+      for (const team of [quiet, posting]) await ownCharacter(q, team);
+
+      await asUser(quiet.raider.uid, 'select public.request_main_swap($1, $2, 1)', [
+        quiet.teamId,
+        await alt(quiet, 'Quietalt')
+      ]);
+      expect(await queue(q, quiet.teamId)).toEqual([]);
+
+      await asUser(posting.raider.uid, 'select public.request_main_swap($1, $2, 1)', [
+        posting.teamId,
+        await alt(posting, 'Firstalt')
+      ]);
+      const second = await alt(posting, 'Secondalt');
+      await expect(
+        asUser(posting.raider.uid, 'select public.request_main_swap($1, $2, 1)', [posting.teamId, second])
+      ).rejects.toThrow('You already have a main swap waiting for an officer');
+      expect((await queue(q, posting.teamId)).length).toBe(1);
+    });
+  });
+
   it('a signup with a blank character is refused, so nothing unpostable is queued', async () => {
     await withTxn(async ({ q, asUser }) => {
       const team = await teamWithChannels(q);
