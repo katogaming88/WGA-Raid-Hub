@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |     11 h 20 m |
+| Phase 1: For the guild test        |     11 h 25 m |
 | Phase 2: Before the new site goes live |       0 m |
 | Phase 3: After the new site goes live  |       0 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **143 h 31 m** |
+| **All revamp work**                | **143 h 36 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -544,7 +544,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:11-12:14 AM | PR #1746 (#1211): rerun, Kat merged, branches cleaned up, #1211's #1487 row out | Phase 1: For the guild test (#1211) | 5 m | ~3 m build, ~2 m Kat | 9,300 | |
 | 8:58-9:20 AM | #960: the signup sheet into `discord-bot-webhook` (a 15-minute pg_cron run that posts by each team's Settings › Discord sheets and keeps posted ones current, the RSVP refresh) and its Refresh button into `discord-interactions`; Kat's four answers (sheets set up by hand, old sheets stay, a shared Raid Hub banner, `/officer post signups` with #961); an old bot's sheet replaced; the shared time helper; edge and database tests, the banner, generated docs, decision log, RLS.md, stamp, changelog, this row | Phase 1: For the guild test (#960) | 20 m | ~17 m build, ~3 m Kat | 249,300 | |
 | 9:20-9:45 AM | PR #1750 (#960): preflight, the PR and its screenshot; the sheet's design with Kat: the banner and edge redone in the new site's look, five versions posted to the test channel (Kat picked spec icons, no checks, bold answers in one list), the 40 spec icons uploaded as the bot's emojis, bigger names tried (Discord has no way in columns; a drawn picture later, Kat) | Phase 1: For the guild test (#960) | 25 m | ~15 m build, ~10 m Kat | 378,800 | CodeRabbit, the fresh-agent review and merge not yet counted |
-| 10:41-10:55 AM | #961: the bot's commands grouped as `/raider` and `/officer` with `/help` (replacing `/about`); `/raider me`, `/raider schedule` and `/officer invite` built, `/nudge-missing` moved under `/officer`; Kat's two answers (post the invite link now, keep the old bot's two columns); edge tests, stamp, changelog, this row | Phase 1: For the guild test (#961) | 15 m | ~13 m build, ~2 m Kat | 230,000 | PR, CodeRabbit and merge not yet counted |
+| 10:41-10:55 AM | #961: the bot's commands grouped as `/raider` and `/officer` with `/help` (replacing `/about`); `/raider me`, `/raider schedule` and `/officer invite` built, `/nudge-missing` moved under `/officer`; Kat's two answers (post the invite link now, keep the old bot's two columns); edge tests, stamp, changelog, this row; PR #1751 | Phase 1: For the guild test (#961) | 15 m | ~13 m build, ~2 m Kat | 218,300 | |
+| 11:03-11:06 AM | PR #1751 (#961): CodeRabbit's two notes (the invite link was going out "only you", since Discord takes the first follow-up after "thinking" as an edit of it; `/help` lists a team's channels only to people on it) | Phase 1: For the guild test (#961) | 5 m | ~5 m build | 30,000 | Merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

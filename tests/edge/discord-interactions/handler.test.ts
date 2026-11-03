@@ -666,16 +666,23 @@ Deno.test('/raider schedule with no nights ahead says so', async () => {
 
 // -- /officer invite ---------------------------------------------------------------------
 
-Deno.test('/officer invite posts the link for the channel to see, then tells the officer', async () => {
-  const { body, calls, log } = await answer(sub('officer', 'invite'), { held: ['edit_roster'] }, [ok(), ok()]);
+Deno.test('/officer invite settles the "thinking" answer, then posts the link for the channel', async () => {
+  const { deps, calls, log, settle } = setup({ held: ['edit_roster'] }, [ok(), ok()]);
+  await handle(await signed(sub('officer', 'invite')), deps);
+  await settle();
   assert(log.includes(`db:hasTeamPermission:${OFFICER}:1:edit_roster`));
-  assertEquals(calls[0].method, 'POST');
-  assert(calls[0].url.endsWith(`/webhooks/${APP}/interaction-token`));
-  const post = JSON.parse(calls[0].body!);
+  // Discord takes the first follow-up after "thinking" as an edit of it, still
+  // only the caller's, so the edit has to come first.
+  assertEquals(
+    calls.map((c) => `${c.method} ${c.url.replace(API, '')}`),
+    [`PATCH /webhooks/${APP}/interaction-token/messages/@original`, `POST /webhooks/${APP}/interaction-token`]
+  );
+  assertEquals(JSON.parse(calls[0].body!).content, INVITE_POSTED('Phoenix'));
+  const post = JSON.parse(calls[1].body!);
   assertEquals(post.content, 'Join **Phoenix** on Raid Hub: https://site.test/join/phoenix-abc123');
   // Not "only you": the channel sees it.
   assertEquals(post.flags, undefined);
-  assertEquals(body.content, INVITE_POSTED('Phoenix'));
+  assertEquals(post.allowed_mentions, { parse: [] });
 });
 
 Deno.test('/officer invite from someone who cannot edit the roster posts nothing', async () => {
@@ -698,10 +705,12 @@ Deno.test('/officer invite with no live link says where to make one', async () =
 });
 
 Deno.test('/officer invite: a post Discord refuses is not reported as posted', async () => {
-  const { body } = await answer(sub('officer', 'invite'), { held: ['edit_roster'] }, [
+  const { body, calls } = await answer(sub('officer', 'invite'), { held: ['edit_roster'] }, [
+    ok(),
     new Response('{}', { status: 403 }),
     ok()
   ]);
+  assertEquals(calls.length, 3);
   assertEquals(body.content, BROKE);
 });
 
@@ -727,6 +736,16 @@ Deno.test("/help lists the server's teams, where their posts go, and only the ca
     ].join('\n')
   );
   assertEquals(embed.footer.text, `The bot was last updated in Raid Hub release ${VERSION}.`);
+});
+
+Deno.test("/help shows a team's channels only to people on it, its name to anyone", async () => {
+  const { body, log } = await answer(command('help'), {
+    teams: [HELLFIRE, PHOENIX],
+    member: { ...KAT, onTeam: false },
+    posts: [{ kind: 'officer_requests', channelId: '800000000000000008' }]
+  });
+  assertEquals(body.embeds[0].fields[0].value, '**Hellfire Rollers**\n\n**Phoenix**');
+  assert(!log.some((l) => l.startsWith('db:posts')));
 });
 
 Deno.test('/help shows /officer nudge-missing only with both loot permissions', async () => {

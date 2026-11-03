@@ -9,7 +9,7 @@ export type Signup = { seasonName: string; status: string | null } | null;
 export type Award = { itemName: string | null; awardedAt: string; response: string | null };
 export type RaidNight = { raidDate: string; night: Night; status: string | null };
 export type ChannelPost = { label: string; channelId: string };
-export type HelpTeam = { name: string; posts: ChannelPost[] };
+export type HelpTeam = { name: string; posts: ChannelPost[] | null };
 
 // -- What counts as received ---------------------------------------------------
 // A copy of app/src/settings/lootResponses.ts awardCountsAs() and the
@@ -142,6 +142,8 @@ export function helpMessage(input: { teams: HelpTeam[]; commands: string[]; vers
   const teams = input.teams.length
     ? input.teams
         .map((t) => {
+          // null: the caller isn't on the team, so only its name.
+          if (!t.posts) return `**${t.name}**`;
           const posts = t.posts.map((p) => `- ${p.label}: <#${p.channelId}>`).join('\n');
           return `**${t.name}**\n${posts || '- No posts set up yet'}`;
         })

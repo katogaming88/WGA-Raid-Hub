@@ -31,8 +31,8 @@ answers to.
   - `/officer nudge-missing` is the old `/nudge-missing`, unchanged in what it
     does.
   - `/help` says which teams use the bot in this server, which channel gets
-    each kind of post, and the commands you can use. It replaces `/about`,
-    whose release line moves to its footer.
+    each kind of post (only for the teams you're on), and the commands you
+    can use. It replaces `/about`, whose release line moves to its footer.
 
 ### Project
 

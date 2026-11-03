@@ -380,13 +380,15 @@ const invite: Run = async (deps, i, serverId, options) => {
     await finish(deps, i, { content: NO_INVITE(team.name) });
     return;
   }
-  // A follow-up without the "only you" flag, so the channel sees it while the
-  // "thinking" answer stays the caller's own.
+  // The "thinking" answer is settled first: Discord takes the first follow-up
+  // after it as an edit of it, still "only you" (CodeRabbit on #1751). The
+  // next follow-up is a message of its own, which the channel sees.
+  await finish(deps, i, { content: INVITE_POSTED(team.name) });
   const posted = await discord(deps, 'POST', `/webhooks/${i.application_id}/${i.token}`, {
     content: `Join **${team.name}** on Raid Hub: ${site}/join/${code}`,
     allowed_mentions: { parse: [] }
   });
-  await finish(deps, i, { content: posted.ok ? INVITE_POSTED(team.name) : BROKE });
+  if (!posted.ok) await finish(deps, i, { content: BROKE });
 };
 
 // What /help lists, and who may use each: anyone on the team for /raider,
@@ -416,21 +418,24 @@ const help: Run = async (deps, i, serverId) => {
   const allowed = new Set<string>();
   const shown: HelpTeam[] = [];
   for (const team of teams) {
-    const [sheets, posts, member] = await Promise.all([
-      deps.sheets.teamSheets(team.id),
-      deps.db.posts(team.id),
-      caller ? deps.db.member(caller, team.id) : Promise.resolve(null)
-    ]);
-    shown.push({
-      name: team.name,
-      posts: [
-        ...[...new Set((sheets?.sheets ?? []).map((s) => s.channelId))].map((channelId) => ({
-          label: 'Signup sheets',
-          channelId
-        })),
-        ...posts.map((p) => ({ label: POST_LABELS[p.kind] ?? p.kind, channelId: p.channelId }))
-      ]
-    });
+    const member = caller ? await deps.db.member(caller, team.id) : null;
+    // A team's channels only to the people on it (CodeRabbit on #1751); its
+    // name to everyone in the server.
+    if (!member?.onTeam) {
+      shown.push({ name: team.name, posts: null });
+    } else {
+      const [sheets, posts] = await Promise.all([deps.sheets.teamSheets(team.id), deps.db.posts(team.id)]);
+      shown.push({
+        name: team.name,
+        posts: [
+          ...[...new Set((sheets?.sheets ?? []).map((s) => s.channelId))].map((channelId) => ({
+            label: 'Signup sheets',
+            channelId
+          })),
+          ...posts.map((p) => ({ label: POST_LABELS[p.kind] ?? p.kind, channelId: p.channelId }))
+        ]
+      });
+    }
     if (!caller || !member) continue;
     const perm = (p: string) => deps.db.hasTeamPermission(caller, team.id, p);
     for (const c of HELP_COMMANDS) if (!allowed.has(c.line) && (await c.may(perm, member.onTeam))) allowed.add(c.line);
