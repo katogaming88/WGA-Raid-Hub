@@ -351,6 +351,24 @@ Deno.test('one night failing does not stop the rest', async () => {
   assertEquals(await sweepSheets(ctx), { posted: 1, edited: 0, failed: 1 });
 });
 
+Deno.test('a refresh leaves a passed raid alone: no edit, and no new sheet for a deleted one', async () => {
+  // Thursday 11-05's raid started 02:00Z on 11-06; four hours later it has passed.
+  const later = new Date(Date.parse('2026-11-06T02:00:00Z') + PASSED_AFTER_MS);
+  for (const messageId of ['old', 'gone']) {
+    const { ctx, calls, log } = context(
+      { rows: { '2026-11-05': { channelId: CHANNEL, messageId } } },
+      { [`PATCH ${MSG}/gone`]: { status: 404 } }
+    );
+    ctx.now = later;
+    assertEquals(await refreshSheet(ctx, 1, '2026-11-05'), 'not posted');
+    assertEquals([calls, log], [[], []], messageId);
+  }
+  // A moment before, it is still edited.
+  const { ctx } = context({ rows: { '2026-11-05': { channelId: CHANNEL, messageId: 'old' } } });
+  ctx.now = new Date(later.getTime() - 1);
+  assertEquals(await refreshSheet(ctx, 1, '2026-11-05'), 'edited');
+});
+
 Deno.test('a refresh edits the posted sheet of the sheet whose days hold that date', async () => {
   const { ctx, calls } = context({ rows: { '2026-11-05': { channelId: CHANNEL, messageId: 'old' } } });
   assertEquals(await refreshSheet(ctx, 1, '2026-11-05'), 'edited');

@@ -247,7 +247,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const raidDate = String(payload.raidDate ?? '');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(raidDate)) return refuse('Missing required fields', 400);
     // Only the team's own people: a refresh can post a deleted sheet again,
-    // with its ping (CodeRabbit on #1750).
+    // with its ping (CodeRabbit on #1750). A site admin off the team, whom
+    // officer_set_rsvp() also lets through, is refused here; the 15-minute
+    // run brings that sheet up to date anyway.
     if (!(await deps.db.onTeam(authHeader!, team.id))) return refuse('Not authorized', 403);
     if (dest.kind !== 'bot') return jsonResponse({ success: true, result: 'not posted' });
     const result = await refreshSheet(sheetContext(deps, token!, now), team.id, raidDate);

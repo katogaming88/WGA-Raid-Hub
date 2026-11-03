@@ -341,12 +341,18 @@ export async function syncSheet(
 }
 
 // One raid night's sheet for a team, from an RSVP change or the Refresh
-// button: edits only, unless the posted message has to be replaced.
+// button: edits only, unless the posted message has to be replaced. A raid
+// that has passed is left alone, so an officer fixing last week's answers
+// neither edits its sheet nor posts (and pings) a new one (fresh review on
+// #1750).
 export async function refreshSheet(ctx: SheetContext, teamId: number, raidDate: string): Promise<SyncResult> {
   const found = await ctx.db.teamSheets(teamId);
   const sheet = found && sheetFor(found.sheets, raidDate);
   if (!found || !sheet) return 'not posted';
-  return syncSheet(ctx, found.team, sheet, raidDate, { create: false });
+  const night = await ctx.db.night(teamId, raidDate);
+  const at = night.exists ? startsAt(raidDate, night) : null;
+  if (!at || ctx.now.getTime() >= at.getTime() + PASSED_AFTER_MS) return 'not posted';
+  return syncSheet(ctx, found.team, sheet, raidDate, { create: false, night });
 }
 
 // The scheduled run: every team's sheets, each raid night posted when due and
