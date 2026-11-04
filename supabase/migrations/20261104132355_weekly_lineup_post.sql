@@ -40,14 +40,20 @@ comment on column public.team_discord_posts.post_timezone is
 create table public.team_lineup_posts (
   team_id integer not null references public.teams (id) on delete cascade,
   week_of date not null,
-  channel_id text not null,
-  message_id text not null,
+  channel_id text,
+  message_id text,
+  -- What the posted message shows, so a run tells an unchanged lineup apart
+  -- without reading Discord, for a picture or a text post alike.
+  content_key text not null,
   posted_at timestamp with time zone not null default now(),
-  primary key (team_id, week_of)
+  primary key (team_id, week_of),
+  -- A week whose lineup was emptied after it posted keeps its row with no
+  -- message, so it isn't posted (and pinged) again as new.
+  check ((channel_id is null) = (message_id is null))
 );
 
 comment on table public.team_lineup_posts is
-  'The weekly boss lineup message posted for each team and week (#1709). week_of is the date the post was due, in the team''s lineup time zone. Written by discord-bot-webhook with the service role; later runs edit this message when the lineup changes.';
+  'The weekly boss lineup message posted for each team and week (#1709). week_of is the date the post was due, in the team''s lineup time zone; content_key is what the message shows. No message: the week posted, then its lineup was emptied and the message taken down. Written by discord-bot-webhook with the service role; later runs edit this message when the lineup changes.';
 
 alter table public.team_lineup_posts owner to postgres;
 alter table public.team_lineup_posts enable row level security;

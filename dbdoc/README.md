@@ -90,7 +90,7 @@
 | [public.discord_server_access](public.discord_server_access.md) | 3 | Discord servers a person and the bot were both found in, and when (#1712). Written with the service key by the function that reads Discord (#994); set_team_discord_server() takes only a server verified for the caller in the last hour. | BASE TABLE |
 | [public.discord_post_queue](public.discord_post_queue.md) | 12 | Every Discord notice the bot posts to a team's channels, queued by the write behind it and posted by discord-bot-webhook's drain every minute (#962). Added only through queue_discord_post(), taken only through claim_discord_posts(). Service role only. | BASE TABLE |
 | [public.discord_nudges_sent](public.discord_nudges_sent.md) | 3 | When /nudge-missing last DMed each Discord user about each thing missing from their loot setup (#998). One row per Discord id and category, overwritten on each DM, so the 24-hour cooldown holds across every team. Written by discord-interactions with the service role, after the DM was sent. | BASE TABLE |
-| [public.team_lineup_posts](public.team_lineup_posts.md) | 5 | The weekly boss lineup message posted for each team and week (#1709). week_of is the date the post was due, in the team's lineup time zone. Written by discord-bot-webhook with the service role; later runs edit this message when the lineup changes. | BASE TABLE |
+| [public.team_lineup_posts](public.team_lineup_posts.md) | 6 | The weekly boss lineup message posted for each team and week (#1709). week_of is the date the post was due, in the team's lineup time zone; content_key is what the message shows. No message: the week posted, then its lineup was emptied and the message taken down. Written by discord-bot-webhook with the service role; later runs edit this message when the lineup changes. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -1327,6 +1327,7 @@ erDiagram
   date week_of
   text channel_id
   text message_id
+  text content_key
   timestamp_with_time_zone posted_at
 }
 ```

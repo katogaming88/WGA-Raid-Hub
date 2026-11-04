@@ -111,7 +111,7 @@ describe('set_team_weekly_lineup_post()', () => {
     await txn(async ({ asRole }) => {
       const service = asRole('service_role', null);
       const insert =
-        "insert into public.team_lineup_posts (team_id, week_of, channel_id, message_id) values (1, '2026-11-04', $1, $2)";
+        "insert into public.team_lineup_posts (team_id, week_of, channel_id, message_id, content_key) values (1, '2026-11-04', $1, $2, 'k')";
       await service(insert, [CHANNEL, '1']);
       await expect(service(insert, [CHANNEL, '2'])).rejects.toThrow(/duplicate key/);
       await expect(asRole('authenticated', OFFICER_T1)('select * from public.team_lineup_posts')).rejects.toThrow(

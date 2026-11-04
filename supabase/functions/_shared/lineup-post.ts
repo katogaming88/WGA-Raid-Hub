@@ -21,7 +21,7 @@ import {
   startsAt
 } from './signup-sheet.ts';
 import { CLASS_COLORS, pictureKey } from './sheet-picture.ts';
-import { clockTime, isoDate, zonedTimeToUtc } from './time.ts';
+import { isoDate, zonedTimeToUtc } from './time.ts';
 
 export type LineupSetting = {
   channelId: string;
@@ -34,6 +34,9 @@ export type LineupTeam = { id: number; name: string; slug: string; serverId: str
 export type TeamLineup = { team: LineupTeam; setting: LineupSetting };
 // One boss on a night's list, in pull order, with who is in for it.
 export type LineupBoss = { name: string; position: number; playerIds: number[] };
+export type WeekPost = { messageId: string | null; channelId: string | null; key: string };
+// The key of a week whose lineup was emptied after it posted.
+export const EMPTY_KEY = 'empty';
 
 export interface LineupDb {
   // Every team with a weekly lineup post set, or one team's.
@@ -44,11 +47,13 @@ export interface LineupDb {
   // The bosses being pulled that night (skipped ones left out), in order.
   bosses(teamId: number, raidDate: string): Promise<LineupBoss[]>;
   // The message posted for a week, or null.
-  // The message posted for a week and the channel it went to, or null.
-  postedLineup(teamId: number, weekOf: string): Promise<{ messageId: string; channelId: string } | null>;
-  // Records the week's message; false when another run's is already there.
-  saveLineup(teamId: number, weekOf: string, channelId: string, messageId: string): Promise<boolean>;
-  forgetLineup(teamId: number, weekOf: string, messageId: string): Promise<void>;
+  // The week's row: its message and channel (null once taken down) and what
+  // it shows. Null when the week hasn't posted.
+  postedLineup(teamId: number, weekOf: string): Promise<WeekPost | null>;
+  // Records the week's first message; false when another run's is already there.
+  saveLineup(teamId: number, weekOf: string, post: WeekPost & { messageId: string }): Promise<boolean>;
+  // Changes the week's row after an edit, a take-down or a repost.
+  updateLineup(teamId: number, weekOf: string, post: WeekPost): Promise<void>;
   markPosted(teamId: number): Promise<void>;
 }
 
@@ -92,7 +97,7 @@ export async function weekNights(
   db: LineupDb,
   teamId: number,
   week: { weekOf: string; due: Date },
-  setting: Pick<LineupSetting, 'timezone'>
+  setting: Pick<LineupSetting, 'time' | 'timezone'>
 ): Promise<Array<{ raidDate: string; night: Night }>> {
   const dates = Array.from({ length: 9 }, (_, n) => addDays(week.weekOf, n - 1));
   const nights = await Promise.all(
@@ -100,11 +105,9 @@ export async function weekNights(
   );
   // Seven days on at the same clock time, so a week the clocks change in
   // neither drops nor repeats the hour before the next post (fresh review on #1761).
-  const end = zonedTimeToUtc(
-    addDays(week.weekOf, 7),
-    clockTime(week.due, setting.timezone),
-    setting.timezone
-  ).getTime();
+  // The next post's own clock time, not this one's after a clock change
+  // moved it (CodeRabbit on #1761).
+  const end = zonedTimeToUtc(addDays(week.weekOf, 7), setting.time, setting.timezone).getTime();
   return nights.filter(({ raidDate, night }) => {
     if (!night.exists) return false;
     const at = startsAt(raidDate, night);
@@ -344,11 +347,15 @@ export function lineupMessage(
 
 // The grids for some nights, drawn where they can be; the message, its files
 // and its key (what it shows, so an unchanged post is told apart).
-async function render(ctx: LineupContext, team: LineupTeam, nights: NightGrid[]) {
-  const key = await pictureKey(
+// What a post for these nights shows: every boss and who is in for it.
+const keyOf = (nights: NightGrid[]) =>
+  pictureKey(
     { groups: [] },
     nights.map((n) => ({ d: n.raidDate, g: n.grid }))
   );
+
+async function render(ctx: LineupContext, team: LineupTeam, nights: NightGrid[]) {
+  const key = await keyOf(nights);
   const names = nights.map((_, i) => `lineup-${key}-${i}.png`);
   const files: DiscordFile[] = [];
   const shown: Array<string | null> = [];
@@ -393,41 +400,33 @@ async function gridsFor(ctx: LineupContext, teamId: number, nights: Array<{ raid
 export type LineupResult = 'posted' | 'edited' | 'unchanged' | 'no lineup' | 'passed' | 'quiet hours' | 'not in server';
 
 // Brings one team's weekly post up to date: posts it once it is due and has a
-// lineup, and afterwards edits it when the lineup changes, pinging nobody.
+// lineup, pinging the role; afterwards edits it when the lineup changes,
+// pinging nobody. A lineup emptied after it posted takes the post down and
+// keeps the week's row, so the lineup coming back posts it again unpinged.
+// The stored key says whether anything changed, so most runs ask Discord
+// nothing (CodeRabbit on #1761).
 export async function syncLineup(ctx: LineupContext, { team, setting }: TeamLineup): Promise<LineupResult> {
   const week = currentWeek(setting, ctx.now);
-  const posted = await ctx.db.postedLineup(team.id, week.weekOf);
-  const existing = posted?.messageId ?? null;
+  const row = await ctx.db.postedLineup(team.id, week.weekOf);
   const nights = await gridsFor(ctx, team.id, await weekNights(ctx.db, team.id, week, setting));
-  // No lineup saved for the week: nothing posts, and a posted one stays.
-  if (nights.length === 0) return existing ? 'unchanged' : 'no lineup';
+  const key = nights.length ? await keyOf(nights) : EMPTY_KEY;
+  if (!row && nights.length === 0) return 'no lineup';
+  if (row?.key === key) return 'unchanged';
 
-  if (existing) {
+  if (row) {
     // Where it went, even if the channel was changed since (fresh review on #1761).
-    const path = `/channels/${posted!.channelId}/messages/${existing}`;
-    const key = await pictureKey(
-      { groups: [] },
-      nights.map((n) => ({ d: n.raidDate, g: n.grid }))
-    );
-    const current = await ctx.discord('GET', path);
-    // Unchanged: a picture named after this lineup, or, for a post that went
-    // out as text, the same text (CodeRabbit on #1761). A text post stays text
-    // until the lineup changes, even once drawing works again.
-    const shownEmbeds: Array<{ description?: string; image?: { url?: string } }> = current.body?.embeds ?? [];
-    if (current.status === 200) {
-      const pictured = String(shownEmbeds[0]?.image?.url ?? '');
-      if (pictured.includes(`lineup-${key}-`)) return 'unchanged';
-      const asText = lineupMessage(
-        team,
-        nights,
-        nights.map(() => null),
-        ctx.siteUrl
-      ).embeds.map((e) => e.description);
-      if (!pictured && JSON.stringify(shownEmbeds.map((e) => e.description)) === JSON.stringify(asText)) {
-        return 'unchanged';
+    const path = row.messageId ? `/channels/${row.channelId}/messages/${row.messageId}` : null;
+    if (nights.length === 0) {
+      if (path) {
+        const removed = await ctx.discord('DELETE', path);
+        if (removed.status !== 204 && removed.status !== 200 && removed.status !== 404) {
+          throw new Error(`Discord answered ${removed.status} to the take-down`);
+        }
       }
+      await ctx.db.updateLineup(team.id, week.weekOf, { messageId: null, channelId: null, key });
+      return 'edited';
     }
-    if (current.status === 200) {
+    if (path) {
       const { message, files, attachments } = await render(ctx, team, nights);
       const edited = await ctx.discord(
         'PATCH',
@@ -435,14 +434,14 @@ export async function syncLineup(ctx: LineupContext, { team, setting }: TeamLine
         { ...message, attachments, allowed_mentions: { parse: [] } },
         files
       );
-      if (edited.status === 200) return 'edited';
+      if (edited.status === 200) {
+        await ctx.db.updateLineup(team.id, week.weekOf, { messageId: row.messageId, channelId: row.channelId, key });
+        return 'edited';
+      }
       if (edited.status !== 403 && edited.status !== 404)
         throw new Error(`Discord answered ${edited.status} to the edit`);
-    } else if (current.status !== 404 && current.status !== 403) {
-      throw new Error(`Discord answered ${current.status} to the read`);
     }
-    // Deleted, or out of the bot's reach: forgotten, and posted again below.
-    await ctx.db.forgetLineup(team.id, week.weekOf, existing);
+    // Taken down, deleted, or out of the bot's reach: posted again below.
   }
 
   // A week whose nights have all started is not posted late, say when the
@@ -452,7 +451,8 @@ export async function syncLineup(ctx: LineupContext, { team, setting }: TeamLine
   const channel = await ctx.discord('GET', `/channels/${setting.channelId}`);
   if (channel.status !== 200 || channel.body?.guild_id !== team.serverId) return 'not in server';
   const { message, files, attachments } = await render(ctx, team, nights);
-  const role = setting.pingRoleId;
+  // Only the week's first post pings.
+  const role = row ? null : setting.pingRoleId;
   const sent = await ctx.discord(
     'POST',
     `/channels/${setting.channelId}/messages`,
@@ -465,11 +465,16 @@ export async function syncLineup(ctx: LineupContext, { team, setting }: TeamLine
     files
   );
   if (sent.status !== 200 || !sent.body?.id) throw new Error(`Discord answered ${sent.status} to the post`);
+  const post = { messageId: sent.body.id as string, channelId: setting.channelId, key };
+  if (row) {
+    await ctx.db.updateLineup(team.id, week.weekOf, post);
+    return 'posted';
+  }
   const takeDown = () =>
     ctx.discord('DELETE', `/channels/${setting.channelId}/messages/${sent.body.id}`).catch(() => null);
   let saved: boolean;
   try {
-    saved = await ctx.db.saveLineup(team.id, week.weekOf, setting.channelId, sent.body.id);
+    saved = await ctx.db.saveLineup(team.id, week.weekOf, post);
   } catch (err) {
     await takeDown();
     throw err;

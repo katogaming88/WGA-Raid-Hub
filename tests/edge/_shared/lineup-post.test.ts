@@ -7,6 +7,7 @@ import {
   type LineupContext,
   type LineupDb,
   type TeamLineup,
+  type WeekPost,
   currentWeek,
   lineupGrid,
   lineupSvg,
@@ -96,8 +97,7 @@ Deno.test(
 // -- Posting -------------------------------------------------------------------
 
 function fakeLineups(over: Partial<{ bosses: Record<string, LineupBoss[]>; nights: Record<string, Night> }> = {}) {
-  const posts = new Map<string, string>();
-  const channels = new Map<string, string>();
+  const rows = new Map<string, WeekPost>();
   const log: string[] = [];
   const db: LineupDb = {
     allLineups: () => Promise.resolve([LINEUP]),
@@ -105,18 +105,16 @@ function fakeLineups(over: Partial<{ bosses: Record<string, LineupBoss[]>; night
     night: (_t, date) => Promise.resolve((over.nights ?? { '2026-11-05': RAID })[date] ?? { ...RAID, exists: false }),
     roster: () => Promise.resolve(ROSTER),
     bosses: (_t, date) => Promise.resolve((over.bosses ?? { '2026-11-05': BOSSES })[date] ?? []),
-    postedLineup: (_t, week) =>
-      Promise.resolve(
-        posts.has(week) ? { messageId: posts.get(week)!, channelId: channels.get(week) ?? CHANNEL } : null
-      ),
-    saveLineup(_t, week, _c, id) {
-      log.push(`save ${week} ${id}`);
-      if (posts.has(week)) return Promise.resolve(false);
-      posts.set(week, id);
+    postedLineup: (_t, week) => Promise.resolve(rows.get(week) ?? null),
+    saveLineup(_t, week, post) {
+      log.push(`save ${week} ${post.messageId}`);
+      if (rows.has(week)) return Promise.resolve(false);
+      rows.set(week, post);
       return Promise.resolve(true);
     },
-    forgetLineup(_t, week) {
-      posts.delete(week);
+    updateLineup(_t, week, post) {
+      log.push(`update ${week} ${post.messageId}`);
+      rows.set(week, post);
       return Promise.resolve();
     },
     markPosted() {
@@ -124,13 +122,14 @@ function fakeLineups(over: Partial<{ bosses: Record<string, LineupBoss[]>; night
       return Promise.resolve();
     }
   };
-  return { db, posts, channels, log };
+  return { db, rows, log };
 }
 
 const PNG = new Uint8Array([137, 80, 78, 71]);
 // Thursday 2026-11-05 noon Eastern; that night's raid is at 9 PM.
 const NOW = new Date('2026-11-05T17:00:00Z');
 const MSG = `/channels/${CHANNEL}/messages`;
+const WEEK = '2026-11-04';
 
 function context(over: Parameters<typeof fakeLineups>[0] = {}, routes = {}) {
   const lineups = fakeLineups(over);
@@ -139,8 +138,16 @@ function context(over: Parameters<typeof fakeLineups>[0] = {}, routes = {}) {
   return { ctx, calls: discord.calls, ...lineups };
 }
 
+// The key a first post records, for the runs after it.
+async function postedKey(draw = true): Promise<string> {
+  const first = context();
+  if (!draw) first.ctx.draw = undefined;
+  await syncLineup(first.ctx, LINEUP);
+  return first.rows.get(WEEK)!.key;
+}
+
 Deno.test('the week’s post goes up with a grid per night, pinging the role, and is recorded', async () => {
-  const { ctx, calls, posts, log } = context();
+  const { ctx, calls, rows, log } = context();
   assertEquals(await syncLineup(ctx, LINEUP), 'posted');
   const post = calls.find((c) => c.key === `POST ${MSG}`)!;
   assertEquals(post.body.content, `<@&${ROLE}>`);
@@ -148,7 +155,7 @@ Deno.test('the week’s post goes up with a grid per night, pinging the role, an
   assertEquals(post.files!.length, 1);
   assertEquals(post.body.embeds[0].image.url, `attachment://${post.files![0].name}`);
   assert(post.body.attachments[0].description.includes('Sentinels: Noc in; Kat out'));
-  assertEquals(posts.get('2026-11-04'), 'm1');
+  assertEquals(rows.get(WEEK)?.messageId, 'm1');
   assert(log.includes('markPosted'));
 });
 
@@ -168,65 +175,69 @@ Deno.test('a week whose nights have all started is not posted late', async () =>
   assertEquals(calls.length, 0);
 });
 
-Deno.test(
-  'a posted week already showing this lineup is left alone; a changed one is edited, pinging nobody',
-  async () => {
-    const first = context();
-    await syncLineup(first.ctx, LINEUP);
-    const file = first.calls.find((c) => c.key === `POST ${MSG}`)!.files![0].name;
-    const same = context(
-      {},
-      { [`GET ${MSG}/m1`]: { status: 200, body: { embeds: [{ image: { url: `https://cdn.test/${file}?x=1` } }] } } }
-    );
-    same.posts.set('2026-11-04', 'm1');
+Deno.test('a posted week showing this lineup is left alone without asking Discord, picture or text', async () => {
+  for (const draw of [true, false]) {
+    const key = await postedKey(draw);
+    const same = context();
+    if (!draw) same.ctx.draw = undefined;
+    same.rows.set(WEEK, { messageId: 'm1', channelId: CHANNEL, key });
     assertEquals(await syncLineup(same.ctx, LINEUP), 'unchanged');
-    assertEquals(
-      same.calls.map((c) => c.key),
-      [`GET ${MSG}/m1`]
-    );
-
-    const changed = context(
-      {},
-      { [`GET ${MSG}/m1`]: { status: 200, body: { embeds: [{ image: { url: 'https://cdn.test/lineup-0-0.png' } }] } } }
-    );
-    changed.posts.set('2026-11-04', 'm1');
-    assertEquals(await syncLineup(changed.ctx, LINEUP), 'edited');
-    const edit = changed.calls.find((c) => c.key === `PATCH ${MSG}/m1`)!;
-    assertEquals(edit.body.allowed_mentions, { parse: [] });
-    assertEquals(edit.body.content, undefined);
+    assertEquals(same.calls.length, 0);
   }
-);
+});
 
-Deno.test('a post that went out as text is left alone while its lineup is the same', async () => {
-  const first = context();
-  first.ctx.draw = undefined;
-  await syncLineup(first.ctx, LINEUP);
-  const sent = first.calls.find((c) => c.key === `POST ${MSG}`)!.body.embeds;
-  const again = context({}, { [`GET ${MSG}/m1`]: { status: 200, body: { embeds: sent } } });
-  again.ctx.draw = undefined;
-  again.posts.set('2026-11-04', 'm1');
-  assertEquals(await syncLineup(again.ctx, LINEUP), 'unchanged');
-  assertEquals(
-    again.calls.map((c) => c.key),
-    [`GET ${MSG}/m1`]
-  );
+Deno.test('a changed lineup edits the post, pinging nobody, even one sent as text (CodeRabbit on #1761)', async () => {
+  // Who's in for a boss changes; the boss list doesn't.
+  const key = await postedKey(false);
+  const moved = [BOSSES[0], { ...BOSSES[1], playerIds: [1, 2, 4] }, BOSSES[2]];
+  const changed = context({ bosses: { '2026-11-05': moved } });
+  changed.ctx.draw = undefined;
+  changed.rows.set(WEEK, { messageId: 'm1', channelId: CHANNEL, key });
+  assertEquals(await syncLineup(changed.ctx, LINEUP), 'edited');
+  const edit = changed.calls.find((c) => c.key === `PATCH ${MSG}/m1`)!;
+  assertEquals(edit.body.allowed_mentions, { parse: [] });
+  assertEquals(edit.body.content, undefined);
+  assert(changed.rows.get(WEEK)!.key !== key);
 });
 
 Deno.test('the week’s message is edited in the channel it went to, after the channel changes', async () => {
   const OLD = '200000000000000009';
-  const { ctx, calls, posts, channels } = context(
-    {},
-    {
-      [`GET /channels/${OLD}/messages/m1`]: {
-        status: 200,
-        body: { embeds: [{ image: { url: 'https://cdn.test/lineup-0-0.png' } }] }
-      }
-    }
-  );
-  posts.set('2026-11-04', 'm1');
-  channels.set('2026-11-04', OLD);
+  const { ctx, calls, rows } = context();
+  rows.set(WEEK, { messageId: 'm1', channelId: OLD, key: 'older' });
   assertEquals(await syncLineup(ctx, LINEUP), 'edited');
   assert(calls.some((c) => c.key === `PATCH /channels/${OLD}/messages/m1`));
+});
+
+Deno.test(
+  'a lineup emptied after it posted takes the post down and keeps the week; back, it posts unpinged',
+  async () => {
+    const key = await postedKey();
+    const emptied = context({ bosses: {} }, { [`DELETE ${MSG}/m1`]: { status: 204 } });
+    emptied.rows.set(WEEK, { messageId: 'm1', channelId: CHANNEL, key });
+    assertEquals(await syncLineup(emptied.ctx, LINEUP), 'edited');
+    assertEquals(
+      emptied.calls.map((c) => c.key),
+      [`DELETE ${MSG}/m1`]
+    );
+    assertEquals(emptied.rows.get(WEEK), { messageId: null, channelId: null, key: 'empty' });
+
+    const back = context();
+    back.rows.set(WEEK, { messageId: null, channelId: null, key: 'empty' });
+    assertEquals(await syncLineup(back.ctx, LINEUP), 'posted');
+    const post = back.calls.find((c) => c.key === `POST ${MSG}`)!;
+    assertEquals(post.body.content, undefined);
+    assertEquals(post.body.allowed_mentions, { parse: [], roles: [] });
+    assertEquals(back.rows.get(WEEK)?.messageId, 'm1');
+  }
+);
+
+Deno.test('a take-down Discord doesn’t confirm is tried again on the next run', async () => {
+  const emptied = context({ bosses: {} }, { [`DELETE ${MSG}/m1`]: { status: 500 } });
+  emptied.rows.set(WEEK, { messageId: 'm1', channelId: CHANNEL, key: 'older' });
+  let failed = false;
+  await syncLineup(emptied.ctx, LINEUP).catch(() => (failed = true));
+  assert(failed);
+  assertEquals(emptied.rows.get(WEEK)?.messageId, 'm1');
 });
 
 Deno.test('the week ends at the same clock time seven days on, across a clock change', async () => {
@@ -244,6 +255,19 @@ Deno.test('the week ends at the same clock time seven days on, across a clock ch
   );
 });
 
+Deno.test(
+  'a post time the clocks skip still ends the week at the next post’s own time (CodeRabbit on #1761)',
+  async () => {
+    // Sundays at 2:30 AM Eastern; 2027-03-14 has no 2:30 (the clocks jump to 3:00).
+    const setting = { ...SETTING, weekday: 0, time: '02:30:00' };
+    const week = currentWeek(setting, new Date('2027-03-15T12:00:00Z'));
+    assertEquals(week.weekOf, '2027-03-14');
+    // A raid at 3 AM the next Sunday starts after the next post (2:30): not this week's.
+    const db = fakeLineups({ nights: { '2027-03-21': { ...RAID, startTime: '03:00:00' } } }).db;
+    assertEquals(await weekNights(db, 1, week, setting), []);
+  }
+);
+
 Deno.test('a picture that can’t be drawn sends the night as text: its bosses and swaps', async () => {
   const { ctx, calls } = context();
   ctx.draw = () => Promise.reject(new Error('no fonts'));
@@ -254,10 +278,10 @@ Deno.test('a picture that can’t be drawn sends the night as text: its bosses a
 });
 
 Deno.test('/officer post lineup posts one night now, pinging nobody, and is not recorded as the week’s', async () => {
-  const { ctx, calls, posts } = context();
+  const { ctx, calls, rows } = context();
   assertEquals(await postLineupNow(ctx, 1, '2026-11-05'), 'posted');
   const post = calls.find((c) => c.key === `POST ${MSG}`)!;
   assertEquals(post.body.allowed_mentions, { parse: [] });
-  assertEquals(posts.size, 0);
+  assertEquals(rows.size, 0);
   assertEquals(await postLineupNow(context({ bosses: {} }).ctx, 1, '2026-11-05'), 'no lineup');
 });

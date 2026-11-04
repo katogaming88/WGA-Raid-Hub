@@ -840,7 +840,7 @@ const lineupDb = (): LineupDb => ({
   bosses: () => Promise.resolve([{ name: "Nek'zali", position: 1, playerIds: [] }]),
   postedLineup: () => Promise.resolve(null),
   saveLineup: () => Promise.resolve(true),
-  forgetLineup: () => Promise.resolve(),
+  updateLineup: () => Promise.resolve(),
   markPosted: () => Promise.resolve()
 });
 

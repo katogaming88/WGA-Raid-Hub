@@ -94,31 +94,34 @@ export function lineupDb(client: () => SupabaseClient<any>): LineupDb {
       const row = must(
         await client()
           .from('team_lineup_posts')
-          .select('message_id, channel_id')
+          .select('message_id, channel_id, content_key')
           .eq('team_id', teamId)
           .eq('week_of', weekOf)
           .maybeSingle(),
         'team_lineup_posts'
-      ) as { message_id: string; channel_id: string } | null;
-      return row ? { messageId: row.message_id, channelId: row.channel_id } : null;
+      ) as { message_id: string | null; channel_id: string | null; content_key: string } | null;
+      return row ? { messageId: row.message_id, channelId: row.channel_id, key: row.content_key } : null;
     },
-    async saveLineup(teamId, weekOf, channelId, messageId) {
-      const { error } = await client()
-        .from('team_lineup_posts')
-        .insert({ team_id: teamId, week_of: weekOf, channel_id: channelId, message_id: messageId });
+    async saveLineup(teamId, weekOf, post) {
+      const { error } = await client().from('team_lineup_posts').insert({
+        team_id: teamId,
+        week_of: weekOf,
+        channel_id: post.channelId,
+        message_id: post.messageId,
+        content_key: post.key
+      });
       // Another run's post is already on record.
       if (error?.code === '23505') return false;
       if (error) throw new Error('team_lineup_posts: ' + error.message);
       return true;
     },
-    async forgetLineup(teamId, weekOf, messageId) {
+    async updateLineup(teamId, weekOf, post) {
       must(
         await client()
           .from('team_lineup_posts')
-          .delete()
+          .update({ channel_id: post.channelId, message_id: post.messageId, content_key: post.key })
           .eq('team_id', teamId)
-          .eq('week_of', weekOf)
-          .eq('message_id', messageId),
+          .eq('week_of', weekOf),
         'team_lineup_posts'
       );
     },

@@ -10424,7 +10424,7 @@
     {
       "name": "public.team_lineup_posts",
       "type": "BASE TABLE",
-      "comment": "The weekly boss lineup message posted for each team and week (#1709). week_of is the date the post was due, in the team's lineup time zone. Written by discord-bot-webhook with the service role; later runs edit this message when the lineup changes.",
+      "comment": "The weekly boss lineup message posted for each team and week (#1709). week_of is the date the post was due, in the team's lineup time zone; content_key is what the message shows. No message: the week posted, then its lineup was emptied and the message taken down. Written by discord-bot-webhook with the service role; later runs edit this message when the lineup changes.",
       "columns": [
         {
           "name": "team_id",
@@ -10439,10 +10439,15 @@
         {
           "name": "channel_id",
           "type": "text",
-          "nullable": false
+          "nullable": true
         },
         {
           "name": "message_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "content_key",
           "type": "text",
           "nullable": false
         },
@@ -10465,6 +10470,17 @@
         }
       ],
       "constraints": [
+        {
+          "name": "team_lineup_posts_check",
+          "type": "CHECK",
+          "def": "CHECK (((channel_id IS NULL) = (message_id IS NULL)))",
+          "table": "public.team_lineup_posts",
+          "referenced_table": "",
+          "columns": [
+            "channel_id",
+            "message_id"
+          ]
+        },
         {
           "name": "team_lineup_posts_team_id_fkey",
           "type": "FOREIGN KEY",

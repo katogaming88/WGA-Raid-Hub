@@ -617,6 +617,7 @@ erDiagram
   date week_of
   text channel_id
   text message_id
+  text content_key
   timestamp_with_time_zone posted_at
 }
 "public.guilds" {

@@ -2,7 +2,7 @@
 
 ## Description
 
-The weekly boss lineup message posted for each team and week (#1709). week_of is the date the post was due, in the team's lineup time zone. Written by discord-bot-webhook with the service role; later runs edit this message when the lineup changes.
+The weekly boss lineup message posted for each team and week (#1709). week_of is the date the post was due, in the team's lineup time zone; content_key is what the message shows. No message: the week posted, then its lineup was emptied and the message taken down. Written by discord-bot-webhook with the service role; later runs edit this message when the lineup changes.
 
 ## Columns
 
@@ -10,14 +10,16 @@ The weekly boss lineup message posted for each team and week (#1709). week_of is
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | week_of | date |  | false |  |  |  |
-| channel_id | text |  | false |  |  |  |
-| message_id | text |  | false |  |  |  |
+| channel_id | text |  | true |  |  |  |
+| message_id | text |  | true |  |  |  |
+| content_key | text |  | false |  |  |  |
 | posted_at | timestamp with time zone | now() | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| team_lineup_posts_check | CHECK | CHECK (((channel_id IS NULL) = (message_id IS NULL))) |
 | team_lineup_posts_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | team_lineup_posts_pkey | PRIMARY KEY | PRIMARY KEY (team_id, week_of) |
 
@@ -39,6 +41,7 @@ erDiagram
   date week_of
   text channel_id
   text message_id
+  text content_key
   timestamp_with_time_zone posted_at
 }
 "public.teams" {
