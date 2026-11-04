@@ -5,6 +5,7 @@ import { assert, assertEquals } from 'jsr:@std/assert@1';
 import {
   type Picture,
   countsLine,
+  pictureAltText,
   pictureKey,
   pictureOf,
   pictureSvg,
@@ -34,6 +35,7 @@ const ROSTER = [
 ];
 
 Deno.test('the picture shows who is in, by role, Late marked, the bench and anyone out left to the text', () => {
+  // Nospec has a role but no class or spec: drawn, with no icon.
   const picture = pictureOf(
     ROSTER,
     [
@@ -45,6 +47,7 @@ Deno.test('the picture shows who is in, by role, Late marked, the bench and anyo
   assertEquals(picture, {
     groups: [
       { label: 'Tanks', raiders: [{ name: 'Fluffy', className: 'Warrior', spec: 'Protection', late: false }] },
+      { label: 'Melee', raiders: [{ name: 'Nospec', className: '', spec: '', late: false }] },
       {
         label: 'Ranged',
         raiders: [
@@ -54,7 +57,8 @@ Deno.test('the picture shows who is in, by role, Late marked, the bench and anyo
       }
     ]
   });
-  assertEquals(countsLine(picture), 'Tanks 1 · Ranged 2');
+  assertEquals(countsLine(picture), 'Tanks 1 · Melee 1 · Ranged 2');
+  assertEquals(pictureAltText(picture), 'Tanks: Fluffy. Melee: Nospec. Ranged: Kat, Noc (Late).');
 });
 
 Deno.test('an optional night shows only who said Attending or Late', () => {
@@ -114,10 +118,12 @@ Deno.test('a new sheet is posted with its picture, which takes the role columns�
   const file = post.files![0].name;
   assert(/^sheet-[0-9a-f]{12}\.png$/.test(file));
   assertEquals(post.files![0].data, PNG);
-  assertEquals(post.body.attachments, [{ id: 0, filename: file }]);
+  assertEquals(post.body.attachments, [
+    { id: 0, filename: file, description: 'Tanks: Fluffy. Healers: Brooke. Melee: Nospec. Ranged: Kat, Noc.' }
+  ]);
   assertEquals(post.body.embeds[0].image.url, `attachment://${file}`);
   // The counts stay in the text; the role columns don't.
-  assert(post.body.embeds[0].description.endsWith('Tanks 1 · Healers 1 · Ranged 2'));
+  assert(post.body.embeds[0].description.endsWith('Tanks 1 · Healers 1 · Melee 1 · Ranged 2'));
   assertEquals(
     post.body.embeds[0].fields.map((f: { name: string }) => f.name),
     ['Other answers']
@@ -160,7 +166,8 @@ Deno.test('a changed sheet is drawn again and sent with its new picture', async 
   );
   assertEquals(await syncSheet(ctx, TEAM, SHEET, '2026-11-03', { create: false }), 'edited');
   const edit = calls.find((c) => c.key === `PATCH ${MSG}/m1`)!;
-  assertEquals(edit.body.attachments, [{ id: 0, filename: edit.files![0].name }]);
+  assertEquals(edit.body.attachments[0].filename, edit.files![0].name);
+  assert(edit.body.attachments[0].description.startsWith('Tanks: Fluffy.'));
 });
 
 Deno.test('a drawing that fails sends the text sheet, and takes an old picture off', async () => {

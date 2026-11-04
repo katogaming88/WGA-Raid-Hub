@@ -17,7 +17,7 @@
 // No reads or Discord calls of its own: the caller hands over a SheetDb and a
 // Discord call, so tests/edge runs all of it against plain objects.
 import { EMBED_FIELD_VALUE_MAX, truncate } from './discord-text.ts';
-import { type Picture, countsLine, pictureCount, pictureKey, pictureOf } from './sheet-picture.ts';
+import { type Picture, countsLine, pictureAltText, pictureCount, pictureKey, pictureOf } from './sheet-picture.ts';
 import { clockTime, isoDate, weekdayOf, zonedTimeToUtc } from './time.ts';
 
 export type Night = { exists: boolean; startTime: string | null; timezone: string | null; isOptional: boolean };
@@ -363,6 +363,13 @@ export async function syncSheet(
       return { message: text };
     }
   };
+  // The upload, with every name it shows as its alt text, so a screen reader
+  // reads the roster the picture draws (CodeRabbit on #1760).
+  const upload = (filename: string) => ({
+    id: 0,
+    filename,
+    ...(picture ? { description: pictureAltText(picture) } : {})
+  });
   const existing = await db.claim(team.id, raidDate, sheet.channelId);
 
   if (existing) {
@@ -376,7 +383,7 @@ export async function syncSheet(
     const { message, files } = await withPicture();
     // A sheet that can carry a picture lists its files every time, so a text
     // fallback takes an old picture off rather than leaving it under the embed.
-    const attachments = ctx.draw ? { attachments: files ? [{ id: 0, filename: files[0].name }] : [] } : {};
+    const attachments = ctx.draw ? { attachments: files ? [upload(files[0].name)] : [] } : {};
     const edited = await discord('PATCH', path, { ...message, ...attachments, allowed_mentions: { parse: [] } }, files);
     if (edited.status === 200) return 'edited';
     if (edited.status !== 403 && edited.status !== 404)
@@ -399,7 +406,7 @@ export async function syncSheet(
     `/channels/${sheet.channelId}/messages`,
     {
       ...message,
-      ...(files ? { attachments: [{ id: 0, filename: files[0].name }] } : {}),
+      ...(files ? { attachments: [upload(files[0].name)] } : {}),
       ...(role ? { content: `<@&${role}>` } : {}),
       allowed_mentions: { parse: [], roles: role ? [role] : [] }
     },

@@ -44,17 +44,25 @@ const displayName = (p: RosterRow) => p.nickname || p.nameRealm.split('-')[0].tr
 
 // Who the picture shows, by the sheet's own rules: in unless answered (none on
 // an optional night), Attending counts as in, Late stays in and is marked,
-// the bench and anyone without a known role and spec are left to the text.
+// the bench and anyone with no role are left to the text (Unassigned there).
+// Anyone with a role is drawn, a missing class or spec only costing the icon
+// and colour, so the picture never drops someone the columns would list
+// (CodeRabbit on #1760).
 export function pictureOf(roster: RosterRow[], rsvps: Rsvp[], night: Night): Picture {
   const answers = new Map(rsvps.map((r) => [r.playerId, r.status]));
   const groups = GROUPS.map(([role, label]) => ({ role, label, raiders: [] as PictureRaider[] }));
   for (const p of roster) {
-    if (p.isBench || !p.className || !p.spec) continue;
+    if (p.isBench) continue;
     const status = answers.get(p.id) ?? (night.isOptional ? 'No Response' : 'Present');
     if (status !== 'Present' && status !== 'Attending' && status !== 'Late') continue;
     const group = groups.find((g) => g.role === p.role);
     if (!group) continue;
-    group.raiders.push({ name: displayName(p), className: p.className, spec: p.spec, late: status === 'Late' });
+    group.raiders.push({
+      name: displayName(p),
+      className: p.className ?? '',
+      spec: p.spec ?? '',
+      late: status === 'Late'
+    });
   }
   return {
     groups: groups
@@ -67,6 +75,15 @@ export const pictureCount = (picture: Picture) => picture.groups.reduce((n, g) =
 
 // "Tanks 2 · Healers 4 · Melee 8 · Ranged 9", for the picture and the text.
 export const countsLine = (picture: Picture) => picture.groups.map((g) => `${g.label} ${g.raiders.length}`).join(' · ');
+
+// The picture's alt text: every name it shows, by role, a Late one marked.
+// Discord takes up to 1024 characters.
+export function pictureAltText(picture: Picture): string {
+  const text = picture.groups
+    .map((g) => `${g.label}: ${g.raiders.map((r) => (r.late ? `${r.name} (Late)` : r.name)).join(', ')}.`)
+    .join(' ');
+  return text.length > 1024 ? text.slice(0, 1023) + '…' : text;
+}
 
 const escape = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
