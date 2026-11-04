@@ -88,7 +88,7 @@ function supabaseDb(): InteractionsDb {
         page((from, to) =>
           db()
             .from('players')
-            .select('id, name_realm, class_specs(role), team_members(people(discord_id))')
+            .select('id, name_realm, classes_specs(role), team_members(people(discord_id))')
             .eq('team_id', teamId)
             .is('archived_at', null)
             .order('id')
@@ -116,7 +116,7 @@ function supabaseDb(): InteractionsDb {
         seasonName: (season.seasons?.display_name as string) ?? (season.season_code as string),
         roster: players.map((p) => ({
           nameRealm: p.name_realm as string,
-          role: (p.class_specs?.role as string | null) ?? null,
+          role: (p.classes_specs?.role as string | null) ?? null,
           discordId: (p.team_members?.people?.discord_id as string | null) ?? null,
           signedUp: covered.has(String(p.name_realm).toLowerCase())
         }))
