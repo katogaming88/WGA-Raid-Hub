@@ -58,7 +58,10 @@ Deno.test('the picture shows who is in, by role, Late marked, the bench and anyo
     ]
   });
   assertEquals(countsLine(picture), 'Tanks 1 · Melee 1 · Ranged 2');
-  assertEquals(pictureAltText(picture), 'Tanks: Fluffy. Melee: Nospec. Ranged: Kat, Noc (Late).');
+  assertEquals(
+    pictureAltText(picture),
+    'Tanks: Fluffy, Protection Warrior. Melee: Nospec. Ranged: Kat, Demonology Warlock; Noc, Elemental Shaman (Late).'
+  );
 });
 
 Deno.test('an optional night shows only who said Attending or Late', () => {
@@ -119,7 +122,12 @@ Deno.test('a new sheet is posted with its picture, which takes the role columns�
   assert(/^sheet-[0-9a-f]{12}\.png$/.test(file));
   assertEquals(post.files![0].data, PNG);
   assertEquals(post.body.attachments, [
-    { id: 0, filename: file, description: 'Tanks: Fluffy. Healers: Brooke. Melee: Nospec. Ranged: Kat, Noc.' }
+    {
+      id: 0,
+      filename: file,
+      description:
+        'Tanks: Fluffy, Protection Warrior. Healers: Brooke, Holy Priest. Melee: Nospec. Ranged: Kat, Demonology Warlock; Noc, Elemental Shaman.'
+    }
   ]);
   assertEquals(post.body.embeds[0].image.url, `attachment://${file}`);
   // The counts stay in the text; the role columns don't.
@@ -167,7 +175,7 @@ Deno.test('a changed sheet is drawn again and sent with its new picture', async 
   assertEquals(await syncSheet(ctx, TEAM, SHEET, '2026-11-03', { create: false }), 'edited');
   const edit = calls.find((c) => c.key === `PATCH ${MSG}/m1`)!;
   assertEquals(edit.body.attachments[0].filename, edit.files![0].name);
-  assert(edit.body.attachments[0].description.startsWith('Tanks: Fluffy.'));
+  assert(edit.body.attachments[0].description.startsWith('Tanks: Fluffy, Protection Warrior.'));
 });
 
 Deno.test('a drawing that fails sends the text sheet, and takes an old picture off', async () => {

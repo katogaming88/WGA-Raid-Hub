@@ -76,12 +76,14 @@ export const pictureCount = (picture: Picture) => picture.groups.reduce((n, g) =
 // "Tanks 2 · Healers 4 · Melee 8 · Ranged 9", for the picture and the text.
 export const countsLine = (picture: Picture) => picture.groups.map((g) => `${g.label} ${g.raiders.length}`).join(' · ');
 
-// The picture's alt text: every name it shows, by role, a Late one marked.
-// Discord takes up to 1024 characters.
+// The picture's alt text: everyone it shows, by role, with the spec and class
+// it draws and a Late one marked (CodeRabbit on #1760). Discord takes up to
+// 1024 characters, about 25 raiders' worth.
+const altOf = (r: PictureRaider) =>
+  [r.name, [r.spec, r.className].filter(Boolean).join(' ')].filter(Boolean).join(', ') + (r.late ? ' (Late)' : '');
+
 export function pictureAltText(picture: Picture): string {
-  const text = picture.groups
-    .map((g) => `${g.label}: ${g.raiders.map((r) => (r.late ? `${r.name} (Late)` : r.name)).join(', ')}.`)
-    .join(' ');
+  const text = picture.groups.map((g) => `${g.label}: ${g.raiders.map(altOf).join('; ')}.`).join(' ');
   return text.length > 1024 ? text.slice(0, 1023) + '…' : text;
 }
 
