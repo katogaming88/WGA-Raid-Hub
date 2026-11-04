@@ -185,8 +185,37 @@ export function nameOnlyRows(names: NameRow[], players: PlayerRow[], current: Re
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-// A player with no role is not a roster entry yet, the same rule the current
-// site's mapSupabaseRoster() applies.
+// A character on the roster with no spec yet (#1724): Blizzard had none for
+// it, or it joined before the join read a below-max-level character's spec.
+// It has no role group to sit in, so it gets its own row below them, with its
+// claimed Member's label, instead of hiding it and its Member both.
+export type NoSpecRow = {
+  playerId: number;
+  name: string;
+  character: string;
+  teamMemberId: number | null;
+  nameId: number | null;
+};
+
+export function noSpecRows(players: PlayerRow[], names: NameRow[] = []): NoSpecRow[] {
+  const claimed = claimedNameByMember(names);
+  return players
+    .filter((p) => p.name_realm.trim() && !isRole(p.classes_specs?.role))
+    .map((p) => {
+      const character = firstName(p.name_realm);
+      const claim = p.team_member_id != null ? claimed.get(p.team_member_id) : undefined;
+      return {
+        playerId: p.id,
+        name: claim?.label ?? (p.nickname?.trim() || character),
+        character,
+        teamMemberId: p.team_member_id ?? null,
+        nameId: claim?.id ?? null
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// A player with no role is not in a role group: noSpecRows() lists them.
 export function toRoster(players: PlayerRow[], gear: GearRow[], names: NameRow[] = []): RoleGroup[] {
   const gearByPlayer = new Map<number, GearRow[]>();
   for (const row of gear) {

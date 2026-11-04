@@ -12,6 +12,31 @@ answers to.
 
 ---
 
+## [3.236.0] - 2026-11-04
+
+### Frontend
+
+- The Roster no longer hides a character with no spec, or the Member who
+  holds it: it shows in a "No spec yet" row below the role groups. The raider
+  picks the spec there, once; after that only an officer changes it, in
+  Player settings (#1724, #1755).
+
+### Backend
+
+- `set_own_missing_spec()`: a raider sets the spec of their own roster
+  character while it has none, and only a spec of its class when their saved
+  Battle.net character names one (#1724).
+
+### Functions
+
+- Joining with a character below max level saves its spec: the one
+  character picked is read from Blizzard in full before it's saved, so a
+  level 84 Death Knight joins as Blood rather than with no spec (#1724).
+
+### Project
+
+- Revamp time log: the rest of today's #983 rows and the #1724 row.
+
 ## [3.235.0] - 2026-11-04
 
 ### Backend

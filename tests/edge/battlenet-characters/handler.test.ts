@@ -304,6 +304,32 @@ Deno.test('allLevels widens the pool to every character, but only fetches detail
   assertEquals(r.fetches.length, 4);
 });
 
+Deno.test(
+  'a picked character below max level is read in full before it is saved, so it keeps its spec (#1724)',
+  async () => {
+    const r = await run({ token: TOKEN, allLevels: true, save: [102] }, {}, [
+      ...happyQueue(),
+      jsonOk({ active_spec: { name: 'Blood' }, equipped_item_level: 300 })
+    ]);
+    assertEquals(r.status, 200);
+    // One more call than the list alone: the picked level-12 character's summary.
+    assertEquals(r.fetches.length, 5);
+    const saveCall = r.db.calls.find((c) => c.method === 'saveCharacters')!;
+    assertEquals(
+      (saveCall.args[1] as Array<{ blizzard_id: number; spec_name: string | null }>).map((c) => [
+        c.blizzard_id,
+        c.spec_name
+      ]),
+      [[102, 'Blood']]
+    );
+  }
+);
+
+Deno.test('a character listed but not picked is never read in full', async () => {
+  const r = await run({ token: TOKEN, allLevels: true, save: [101] });
+  assertEquals(r.fetches.length, 4);
+});
+
 Deno.test('without allLevels the pool stays at max level only, same as before #1162', async () => {
   const r = await run({ token: TOKEN });
   assertEquals(

@@ -289,6 +289,7 @@
 | public.queue_discord_post | void | p_team_id integer, p_kind text, p_action text, p_payload jsonb | FUNCTION |
 | public.claim_discord_posts | record | p_limit integer DEFAULT 25 | FUNCTION |
 | public.discord_set_rsvp | void | p_discord_id text, p_team_id integer, p_raid_date date, p_status text, p_note text DEFAULT NULL::text | FUNCTION |
+| public.set_own_missing_spec | void | p_player_id integer, p_class_spec_id integer | FUNCTION |
 
 ## Enums
 

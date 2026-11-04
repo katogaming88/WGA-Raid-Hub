@@ -3263,3 +3263,15 @@ Shipped: `20261104100028_discord_set_rsvp.sql`. `discord-interactions`, `discord
 **Left for later, on purpose.** The sheet as a drawn picture is #983's second PR. Officers still change other raiders' answers on the site only.
 
 [Full discussion -> #983](https://github.com/katogaming88/WGA-Raid-Hub/issues/983).
+
+## #1724 -- a below-max-level character joins with its spec, and a raider sets a missing one once
+
+Shipped: `20261104105758_set_own_missing_spec.sql`. `battlenet-characters`.
+
+**The join reads the picked character in full.** `battlenet-characters` asked Blizzard for a character's spec only at max level, to keep the calls down for accounts with dozens of alts, so a level 84 Death Knight was saved with no spec and `team_invite_link_join()` put it on the roster with none. A save now reads each picked character below max level too: one call per character picked, never one per character listed. No change to `team_invite_link_join()`: it already takes the spec from the saved record.
+
+**`set_own_missing_spec()`: the raider sets the spec of their own character while it has none.** For a character still saved with no spec (Blizzard had none, or it joined before this fix). `SECURITY DEFINER`, identity from `auth.uid()` through `is_own_player()`, EXECUTE for `authenticated` only. The update itself is `where class_spec_id is null`, so once a spec is set it is locked like any other (Kat, 2026-11-01): only an officer changes it, in Player settings, except while signups are open, when the raider changes it through their signup as before. When the raider's own saved Battle.net character names the class, the spec has to be that class's; without one any spec is taken, and an officer fixes a wrong pick. It writes a "Spec Set by Raider" audit row.
+
+**The Roster lists a character with no spec** in a "No spec yet" row below the role groups, under its claimed Member's label, instead of hiding it and its Member both. A frontend change only; no read changes.
+
+[Full discussion -> #1724](https://github.com/katogaming88/WGA-Raid-Hub/issues/1724).

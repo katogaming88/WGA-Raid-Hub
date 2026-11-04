@@ -141,6 +141,21 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     everyone.map((c) => ({ name: c.name, realm: c.realm }))
   );
 
+  // A picked character below max level is read in full now, spec included
+  // (#1724): the join saves the character's spec from this record, and a
+  // level 84 Death Knight saved with none disappeared from the Roster. One
+  // call per picked character, never one per character on the account.
+  if (Array.isArray(body.save)) {
+    const ids = new Set(body.save);
+    await Promise.all(
+      shown.map(async (c, i) => {
+        if (!ids.has(c.blizzard_id) || detailById.has(c.blizzard_id)) return;
+        const res = await deps.fetch(API_BASE + summaryPath(c) + PROFILE_QUERY, bearer);
+        if (res.ok) shown[i] = { ...c, ...detailOf(await res.json()) };
+      })
+    );
+  }
+
   const picked = pickedFrom(shown, body.save);
   // Saving replaces the person's whole set, so a save that names characters
   // and matches none of them would delete every one they have. Blizzard

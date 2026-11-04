@@ -9,6 +9,7 @@ import {
   equippedItemLevel,
   nameOnlyRows,
   newestSignupSeasons,
+  noSpecRows,
   officerStats,
   summarize,
   summaryLine,
@@ -148,6 +149,20 @@ describe('nameOnlyRows', () => {
   });
 });
 
+describe('noSpecRows', () => {
+  it('lists a character with no spec under its claimed Member, instead of hiding both (#1724)', () => {
+    const players = [
+      player(8, 'Katorri-Stormrage', '', '', null, { team_member_id: 21 }),
+      player(9, 'Brannoc-Illidan', 'Paladin', 'Holy', 'Heal', { team_member_id: 24 }),
+      player(7, 'Aeglos-Argent Dawn', '', '', null)
+    ];
+    expect(noSpecRows(players, [{ id: 1, label: 'Katorri', team_member_id: 21, role: null }])).toEqual([
+      { playerId: 7, name: 'Aeglos', character: 'Aeglos', teamMemberId: null, nameId: null },
+      { playerId: 8, name: 'Katorri', character: 'Katorri', teamMemberId: 21, nameId: 1 }
+    ]);
+  });
+});
+
 describe('summarize', () => {
   it('counts statuses, roles and armor types, and finds the lowest item level', () => {
     const groups = toRoster(
@@ -234,6 +249,38 @@ describe('Roster page', () => {
     expect(dodgey).toHaveTextContent('Not synced');
     expect(screen.getByText('2 raiders, 1 on trial')).toBeInTheDocument();
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+  });
+
+  it('shows a character with no spec as "No spec yet", and lets its raider pick the spec once (#1724)', async () => {
+    const calls: [string, Record<string, unknown>][] = [];
+    const handlers = rosterHandlers({
+      players: [
+        player(900, 'Member-Illidan', '', '', null, { team_member_id: 900 }),
+        player(2, 'Dodgey-Illidan', 'Monk', 'Windwalker', 'Melee')
+      ],
+      player_equipped_gear: [],
+      incoming_roster: [],
+      classes_specs: [
+        { id: 11, class: 'Death Knight', spec: 'Blood', role: 'Tank' },
+        { id: 12, class: 'Death Knight', spec: 'Frost', role: 'Melee' }
+      ]
+    });
+    const rpc = handlers.rpc!;
+    handlers.rpc = (name, args) => {
+      calls.push([name, args]);
+      return name === 'set_own_missing_spec' ? { data: null } : rpc(name, args);
+    };
+    renderApp('/g/wga/t/phoenix/roster', handlers);
+    const table = await screen.findByRole('table', { name: 'Current roster' });
+    const row = within(table).getByRole('rowheader', { name: 'Member' }).closest('tr')!;
+    expect(row).toHaveTextContent('No spec yet');
+    const picker = await within(row).findByRole('combobox', { name: 'Pick Member’s spec' });
+    await within(picker).findByRole('option', { name: 'Blood Death Knight' });
+    await userEvent.selectOptions(picker, '11');
+    expect(calls.find(([name]) => name === 'set_own_missing_spec')?.[1]).toEqual({
+      p_player_id: 900,
+      p_class_spec_id: 11
+    });
   });
 
   it('filters to one role', async () => {

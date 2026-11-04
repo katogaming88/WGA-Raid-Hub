@@ -355,7 +355,7 @@ function SettingsForm({ teamId, target }: { teamId: number; target: SettingsTarg
 // Classes alphabetically, each with its specs, for the one Spec list: picking
 // a spec picks its class too, so there is never a class with a spec from
 // another one.
-function groupByClass<T extends { class: string; spec: string }>(specs: T[]): [string, T[]][] {
+export function groupByClass<T extends { class: string; spec: string }>(specs: T[]): [string, T[]][] {
   const out = new Map<string, T[]>();
   for (const s of [...specs].sort((a, b) => a.class.localeCompare(b.class) || a.spec.localeCompare(b.spec))) {
     out.set(s.class, [...(out.get(s.class) ?? []), s]);
