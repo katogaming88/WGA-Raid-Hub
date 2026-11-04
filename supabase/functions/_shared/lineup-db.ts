@@ -125,12 +125,13 @@ export function lineupDb(client: () => SupabaseClient<any>): LineupDb {
         'team_lineup_posts'
       );
     },
-    async latestWeek(teamId) {
+    async previousWeek(teamId, before) {
       const row = must(
         await client()
           .from('team_lineup_posts')
           .select('week_of')
           .eq('team_id', teamId)
+          .lt('week_of', before)
           .order('week_of', { ascending: false })
           .limit(1)
           .maybeSingle(),

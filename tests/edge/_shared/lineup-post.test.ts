@@ -117,7 +117,13 @@ function fakeLineups(over: Partial<{ bosses: Record<string, LineupBoss[]>; night
       rows.set(week, post);
       return Promise.resolve();
     },
-    latestWeek: () => Promise.resolve([...rows.keys()].sort().at(-1) ?? null),
+    previousWeek: (_t, before) =>
+      Promise.resolve(
+        [...rows.keys()]
+          .filter((w) => w < before)
+          .sort()
+          .at(-1) ?? null
+      ),
     markPosted() {
       log.push('markPosted');
       return Promise.resolve();
@@ -208,16 +214,41 @@ Deno.test('a night moved to another time edits the post, with the same bosses an
   assertEquals(await syncLineup(moved.ctx, LINEUP), 'edited');
 });
 
-Deno.test('a schedule moved mid-week waits for the next week instead of posting the nights again', async () => {
-  // Posted Monday 2026-11-02 under the old day; the post is now Wednesdays.
-  const moved = context();
-  moved.rows.set('2026-11-02', { messageId: 'm0', channelId: CHANNEL, key: 'old' });
-  assertEquals(await syncLineup(moved.ctx, LINEUP), 'moved');
-  assertEquals(moved.calls.length, 0);
-  // A week after last week's post is the usual cadence: it posts.
-  const usual = context();
+Deno.test('a schedule moved mid-week posts only the nights the last post didn’t cover', async () => {
+  const two = { '2026-11-05': RAID, '2026-11-07': RAID };
+  const both = { bosses: { '2026-11-05': BOSSES, '2026-11-07': BOSSES }, nights: two };
+  const shown = (calls: { key: string; body: any }[]) =>
+    calls.find((c) => c.key === `POST ${MSG}`)?.body.embeds.length ?? 0;
+
+  // Moved earlier: Fridays to Wednesdays. The Friday 10-30 post covered up
+  // to 11-06, so this week's shows only Saturday 11-07.
+  const earlier = context(both);
+  earlier.rows.set('2026-10-30', { messageId: 'm0', channelId: CHANNEL, key: 'old' });
+  assertEquals(await syncLineup(earlier.ctx, LINEUP), 'posted');
+  assertEquals(shown(earlier.calls), 1);
+
+  // Moved later: Mondays to Wednesdays. The Monday 11-02 post covered up to
+  // 11-09: nothing left this week.
+  const later = context(both);
+  later.rows.set('2026-11-02', { messageId: 'm0', channelId: CHANNEL, key: 'old' });
+  assertEquals(await syncLineup(later.ctx, LINEUP), 'no lineup');
+  assertEquals(later.calls.length, 0);
+
+  // The usual week, seven days after the last: both nights.
+  const usual = context(both);
   usual.rows.set('2026-10-28', { messageId: 'm0', channelId: CHANNEL, key: 'old' });
   assertEquals(await syncLineup(usual.ctx, LINEUP), 'posted');
+  assertEquals(shown(usual.calls), 2);
+});
+
+Deno.test('a repost that can’t be recorded is taken back down', async () => {
+  const { ctx, calls, rows } = context();
+  rows.set(WEEK, { messageId: null, channelId: null, key: 'empty' });
+  ctx.db.updateLineup = () => Promise.reject(new Error('database hiccup'));
+  let failed = false;
+  await syncLineup(ctx, LINEUP).catch(() => (failed = true));
+  assert(failed);
+  assert(calls.some((c) => c.key === `DELETE ${MSG}/m1`));
 });
 
 Deno.test('the week’s message is edited in the channel it went to, after the channel changes', async () => {
