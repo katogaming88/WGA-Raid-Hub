@@ -25,6 +25,7 @@ declare
   v_uid uuid := auth.uid();
   v_team_id integer;
   v_name_realm text;
+  v_name_realm_key text;
   v_spec_class text;
   v_spec_label text;
   v_known_class text;
@@ -44,15 +45,18 @@ begin
     raise exception 'Unknown spec.';
   end if;
 
-  select p.team_id, p.name_realm into v_team_id, v_name_realm
+  select p.team_id, p.name_realm, p.name_realm_key into v_team_id, v_name_realm, v_name_realm_key
     from public.players p
    where p.id = p_player_id;
 
+  -- The newest saved record, should a character have been remade as another
+  -- class under the same name (fresh review on #1759).
   select c.class_name into v_known_class
     from public.characters c
    where c.person_id = public.my_person_id()
-     and c.name_realm_key = lower(replace(v_name_realm, ' ', ''))
+     and c.name_realm_key = v_name_realm_key
      and c.class_name is not null
+   order by c.saved_at desc
    limit 1;
   if v_known_class is not null and v_known_class <> v_spec_class then
     raise exception 'That spec is not one of %''s. Pick a % spec.', v_known_class, v_known_class;
