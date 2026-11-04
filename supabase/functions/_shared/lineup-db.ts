@@ -94,13 +94,13 @@ export function lineupDb(client: () => SupabaseClient<any>): LineupDb {
       const row = must(
         await client()
           .from('team_lineup_posts')
-          .select('message_id')
+          .select('message_id, channel_id')
           .eq('team_id', teamId)
           .eq('week_of', weekOf)
           .maybeSingle(),
         'team_lineup_posts'
-      ) as { message_id: string } | null;
-      return row?.message_id ?? null;
+      ) as { message_id: string; channel_id: string } | null;
+      return row ? { messageId: row.message_id, channelId: row.channel_id } : null;
     },
     async saveLineup(teamId, weekOf, channelId, messageId) {
       const { error } = await client()

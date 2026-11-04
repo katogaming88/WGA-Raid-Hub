@@ -21,7 +21,7 @@ import {
   startsAt
 } from './signup-sheet.ts';
 import { CLASS_COLORS, pictureKey } from './sheet-picture.ts';
-import { isoDate, zonedTimeToUtc } from './time.ts';
+import { clockTime, isoDate, zonedTimeToUtc } from './time.ts';
 
 export type LineupSetting = {
   channelId: string;
@@ -44,7 +44,8 @@ export interface LineupDb {
   // The bosses being pulled that night (skipped ones left out), in order.
   bosses(teamId: number, raidDate: string): Promise<LineupBoss[]>;
   // The message posted for a week, or null.
-  postedLineup(teamId: number, weekOf: string): Promise<string | null>;
+  // The message posted for a week and the channel it went to, or null.
+  postedLineup(teamId: number, weekOf: string): Promise<{ messageId: string; channelId: string } | null>;
   // Records the week's message; false when another run's is already there.
   saveLineup(teamId: number, weekOf: string, channelId: string, messageId: string): Promise<boolean>;
   forgetLineup(teamId: number, weekOf: string, messageId: string): Promise<void>;
@@ -90,13 +91,20 @@ export function currentWeek(setting: LineupSetting, now: Date): { weekOf: string
 export async function weekNights(
   db: LineupDb,
   teamId: number,
-  week: { weekOf: string; due: Date }
+  week: { weekOf: string; due: Date },
+  setting: Pick<LineupSetting, 'timezone'>
 ): Promise<Array<{ raidDate: string; night: Night }>> {
   const dates = Array.from({ length: 9 }, (_, n) => addDays(week.weekOf, n - 1));
   const nights = await Promise.all(
     dates.map(async (raidDate) => ({ raidDate, night: await db.night(teamId, raidDate) }))
   );
-  const end = week.due.getTime() + 7 * DAY_MS;
+  // Seven days on at the same clock time, so a week the clocks change in
+  // neither drops nor repeats the hour before the next post (fresh review on #1761).
+  const end = zonedTimeToUtc(
+    addDays(week.weekOf, 7),
+    clockTime(week.due, setting.timezone),
+    setting.timezone
+  ).getTime();
   return nights.filter(({ raidDate, night }) => {
     if (!night.exists) return false;
     const at = startsAt(raidDate, night);
@@ -388,13 +396,15 @@ export type LineupResult = 'posted' | 'edited' | 'unchanged' | 'no lineup' | 'pa
 // lineup, and afterwards edits it when the lineup changes, pinging nobody.
 export async function syncLineup(ctx: LineupContext, { team, setting }: TeamLineup): Promise<LineupResult> {
   const week = currentWeek(setting, ctx.now);
-  const existing = await ctx.db.postedLineup(team.id, week.weekOf);
-  const nights = await gridsFor(ctx, team.id, await weekNights(ctx.db, team.id, week));
+  const posted = await ctx.db.postedLineup(team.id, week.weekOf);
+  const existing = posted?.messageId ?? null;
+  const nights = await gridsFor(ctx, team.id, await weekNights(ctx.db, team.id, week, setting));
   // No lineup saved for the week: nothing posts, and a posted one stays.
   if (nights.length === 0) return existing ? 'unchanged' : 'no lineup';
 
   if (existing) {
-    const path = `/channels/${setting.channelId}/messages/${existing}`;
+    // Where it went, even if the channel was changed since (fresh review on #1761).
+    const path = `/channels/${posted!.channelId}/messages/${existing}`;
     const key = await pictureKey(
       { groups: [] },
       nights.map((n) => ({ d: n.raidDate, g: n.grid }))

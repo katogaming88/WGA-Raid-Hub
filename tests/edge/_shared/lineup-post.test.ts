@@ -11,6 +11,7 @@ import {
   lineupGrid,
   lineupSvg,
   postLineupNow,
+  weekNights,
   swapLines,
   syncLineup
 } from '../../../supabase/functions/_shared/lineup-post.ts';
@@ -96,6 +97,7 @@ Deno.test(
 
 function fakeLineups(over: Partial<{ bosses: Record<string, LineupBoss[]>; nights: Record<string, Night> }> = {}) {
   const posts = new Map<string, string>();
+  const channels = new Map<string, string>();
   const log: string[] = [];
   const db: LineupDb = {
     allLineups: () => Promise.resolve([LINEUP]),
@@ -103,7 +105,10 @@ function fakeLineups(over: Partial<{ bosses: Record<string, LineupBoss[]>; night
     night: (_t, date) => Promise.resolve((over.nights ?? { '2026-11-05': RAID })[date] ?? { ...RAID, exists: false }),
     roster: () => Promise.resolve(ROSTER),
     bosses: (_t, date) => Promise.resolve((over.bosses ?? { '2026-11-05': BOSSES })[date] ?? []),
-    postedLineup: (_t, week) => Promise.resolve(posts.get(week) ?? null),
+    postedLineup: (_t, week) =>
+      Promise.resolve(
+        posts.has(week) ? { messageId: posts.get(week)!, channelId: channels.get(week) ?? CHANNEL } : null
+      ),
     saveLineup(_t, week, _c, id) {
       log.push(`save ${week} ${id}`);
       if (posts.has(week)) return Promise.resolve(false);
@@ -119,7 +124,7 @@ function fakeLineups(over: Partial<{ bosses: Record<string, LineupBoss[]>; night
       return Promise.resolve();
     }
   };
-  return { db, posts, log };
+  return { db, posts, channels, log };
 }
 
 const PNG = new Uint8Array([137, 80, 78, 71]);
@@ -204,6 +209,38 @@ Deno.test('a post that went out as text is left alone while its lineup is the sa
   assertEquals(
     again.calls.map((c) => c.key),
     [`GET ${MSG}/m1`]
+  );
+});
+
+Deno.test('the week’s message is edited in the channel it went to, after the channel changes', async () => {
+  const OLD = '200000000000000009';
+  const { ctx, calls, posts, channels } = context(
+    {},
+    {
+      [`GET /channels/${OLD}/messages/m1`]: {
+        status: 200,
+        body: { embeds: [{ image: { url: 'https://cdn.test/lineup-0-0.png' } }] }
+      }
+    }
+  );
+  posts.set('2026-11-04', 'm1');
+  channels.set('2026-11-04', OLD);
+  assertEquals(await syncLineup(ctx, LINEUP), 'edited');
+  assert(calls.some((c) => c.key === `PATCH /channels/${OLD}/messages/m1`));
+});
+
+Deno.test('the week ends at the same clock time seven days on, across a clock change', async () => {
+  // Saturdays at 6 PM Eastern; the clocks went back overnight (2026-11-01).
+  const setting = { ...SETTING, weekday: 6 };
+  const week = currentWeek(setting, new Date('2026-11-01T12:00:00Z'));
+  assertEquals(week.weekOf, '2026-10-31');
+  // A raid at 5:30 PM Eastern on the next Saturday, half an hour before the
+  // next post: in this week's.
+  const nights = { '2026-11-07': { ...RAID, startTime: '17:30:00' } };
+  const db = fakeLineups({ nights }).db;
+  assertEquals(
+    (await weekNights(db, 1, week, setting)).map((n) => n.raidDate),
+    ['2026-11-07']
   );
 });
 

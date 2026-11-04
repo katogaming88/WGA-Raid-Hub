@@ -81,6 +81,9 @@ describe('set_team_weekly_lineup_post()', () => {
       await expect(set(asUser, OFFICER_T1, [CHANNEL, null, 7, '18:00', 'America/New_York'])).rejects.toThrow(/day/);
       await expect(set(asUser, OFFICER_T1, [CHANNEL, null, 3, null, 'America/New_York'])).rejects.toThrow(/time/);
       await expect(set(asUser, OFFICER_T1, [CHANNEL, null, 3, '18:00', 'Mars/Olympus'])).rejects.toThrow(/time zone/);
+      await expect(set(asUser, OFFICER_T1, [CHANNEL, null, 3, '18:00', 'posix/America/New_York'])).rejects.toThrow(
+        /time zone/
+      );
       await expect(set(asUser, OFFICER_T1, [null, ROLE, 3, '18:00', 'America/New_York'])).rejects.toThrow(/channel/);
     });
   });

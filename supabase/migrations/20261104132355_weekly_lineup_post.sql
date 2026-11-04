@@ -98,7 +98,9 @@ begin
     if p_time is null then
       raise exception 'Pick the time it posts';
     end if;
-    if p_timezone is null or not exists (select 1 from pg_timezone_names z where z.name = p_timezone) then
+    -- Not the posix/ and right/ copies, which Deno's clock can't read (fresh review on #1761).
+    if p_timezone is null or p_timezone ~ '^(posix|right)/'
+       or not exists (select 1 from pg_timezone_names z where z.name = p_timezone) then
       raise exception 'Pick a time zone';
     end if;
   end if;
@@ -136,7 +138,9 @@ begin
                                                         'weekday', v_old.post_weekday, 'time', v_old.post_time,
                                                         'timezone', v_old.post_timezone),
                              'to', jsonb_build_object('channel_id', p_channel_id, 'ping_role_id', p_ping_role_id,
-                                                      'weekday', p_weekday, 'time', p_time, 'timezone', p_timezone)));
+                                                      'weekday', case when p_channel_id is null then null else p_weekday end,
+                                                      'time', case when p_channel_id is null then null else p_time end,
+                                                      'timezone', case when p_channel_id is null then null else p_timezone end)));
 end;
 $$;
 
