@@ -1,6 +1,8 @@
 // Registers the Raid Hub bot's slash commands with Discord (#998), once for
-// the whole application, so every server that adds the bot has them. Run by
-// hand whenever supabase/functions/discord-interactions/commands.ts changes:
+// the whole application, so every server that adds the bot has them. The
+// Deploy workflow runs it after a merge deploys discord-interactions (#1752),
+// so there is nothing to do by hand. To register from your own machine, for a
+// fix by hand:
 //
 //   DISCORD_BOT_TOKEN=... DISCORD_APPLICATION_ID=... npm run discord:register
 //

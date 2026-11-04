@@ -287,6 +287,24 @@ jobs:
             echo "::error::Deployed, but not answering the stamped version:$problems"
             exit 1
           fi
+      # Register the bot's slash commands (#1752) once the new
+      # discord-interactions is confirmed live, so Discord never offers a
+      # command the function does not know yet. Registering replaces the whole
+      # list, so a merge where the commands did not change does no harm. With
+      # either secret missing the step skips and says so in the summary.
+      - name: Register the Discord commands
+        id: register
+        if: ${{ steps.select.outputs.functions != '' && !inputs.dry_run && contains(format(' {0} ', steps.select.outputs.functions), ' discord-interactions ') }}
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
+        run: |
+          if [ -z "$DISCORD_BOT_TOKEN" ] || [ -z "$DISCORD_APPLICATION_ID" ]; then
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            echo "DISCORD_BOT_TOKEN or DISCORD_APPLICATION_ID is not set, so the commands were not registered."
+            exit 0
+          fi
+          npm run discord:register
       - name: Write the summary
         if: ${{ always() && steps.select.outcome == 'success' }}
         env:
@@ -296,6 +314,8 @@ jobs:
           DEPLOYED: ${{ steps.deploy.outcome }}
           VERIFIED: ${{ steps.verify.outcome }}
           PROBLEMS: ${{ steps.verify.outputs.problems }}
+          REGISTERED: ${{ steps.register.outcome }}
+          REGISTER_SKIPPED: ${{ steps.register.outputs.skipped }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
           {
@@ -309,6 +329,11 @@ jobs:
               echo "Version read-back: $VERIFIED."
               if [ -n "$PROBLEMS" ]; then
                 echo "Did not answer their stamped version: $PROBLEMS"
+              fi
+              if [ "$REGISTERED" = "success" ] && [ "$REGISTER_SKIPPED" = "true" ]; then
+                echo "Discord commands: NOT registered, DISCORD_BOT_TOKEN or DISCORD_APPLICATION_ID is not set."
+              elif [ "$REGISTERED" != "skipped" ]; then
+                echo "Discord commands: $REGISTERED."
               fi
             fi
             if [ -n "$HELD" ]; then
@@ -330,6 +355,7 @@ jobs:
           S_SECRET: ${{ steps.check_secret.outcome }}
           S_DEPLOY: ${{ steps.deploy.outcome }}
           S_VERIFY: ${{ steps.verify.outcome }}
+          S_REGISTER: ${{ steps.register.outcome }}
         run: |
           if [ -z "$DISCORD_WEBHOOK_URL" ]; then
             echo "DISCORD_WEBHOOK_URL is not set -- cannot post, but the run above already failed loudly on its own."
@@ -340,6 +366,7 @@ jobs:
           [ "$S_SECRET" = "failure" ] && FAILED_STEP="Check the deploy token is set"
           [ "$S_DEPLOY" = "failure" ] && FAILED_STEP="Deploy them, one at a time"
           [ "$S_VERIFY" = "failure" ] && FAILED_STEP="Check each function answers its stamped X-WGA-Version"
+          [ "$S_REGISTER" = "failure" ] && FAILED_STEP="Register the Discord commands"
           PAYLOAD=$(cat <<PAYLOAD_JSON
           {
             "embeds": [{
