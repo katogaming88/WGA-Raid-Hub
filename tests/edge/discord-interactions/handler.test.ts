@@ -25,6 +25,7 @@ import {
   LINEUP_NOT_ALLOWED,
   LINEUP_POSTED,
   INVITE_POSTED,
+  MISSING_NOT_ALLOWED,
   type Team,
   UNKNOWN_COMMAND,
   NOT_ALLOWED,
@@ -33,6 +34,7 @@ import {
   verifySignature
 } from '../../../supabase/functions/discord-interactions/handler.ts';
 import type { NudgeCategory, WishlistSetupStatusRow } from '../../../supabase/functions/discord-interactions/nudge.ts';
+import type { MissingSignups } from '../../../supabase/functions/discord-interactions/missing.ts';
 import type { Award, Signup } from '../../../supabase/functions/discord-interactions/raider.ts';
 import { VERSION } from '../../../supabase/functions/discord-interactions/version.ts';
 import type { LineupDb } from '../../../supabase/functions/_shared/lineup-post.ts';
@@ -101,7 +103,7 @@ const row = (over: Partial<WishlistSetupStatusRow> = {}): WishlistSetupStatusRow
 type State = {
   teams?: Team[];
   rows?: WishlistSetupStatusRow[];
-  recent?: { discordId: string; category: NudgeCategory }[];
+  recent?: { discordId: string; category: NudgeCategory | 'signup-reminder' }[];
   statusFails?: boolean;
   // The team permissions the caller holds; both nudge ones unless set.
   held?: string[];
@@ -114,6 +116,8 @@ type State = {
   posts?: { kind: string; channelId: string }[];
   // What discord_set_rsvp() answers: null when it saved.
   rsvpRefusal?: string | null;
+  // The coming season's roster and who signed up (#990); none open unless set.
+  missing?: MissingSignups;
 };
 
 const KAT: Member = {
@@ -127,7 +131,7 @@ const KAT: Member = {
 // an assertion.
 function setup(state: State = {}, discord: Response[] = [], sheetState: SheetState = {}) {
   const log: string[] = [];
-  const recorded: { discordId: string; categories: NudgeCategory[] }[] = [];
+  const recorded: { discordId: string; categories: (NudgeCategory | 'signup-reminder')[] }[] = [];
   const saved: unknown[][] = [];
   const pending: Promise<unknown>[] = [];
   const db: InteractionsDb = {
@@ -164,6 +168,10 @@ function setup(state: State = {}, discord: Response[] = [], sheetState: SheetSta
     awards(teamId, playerIds) {
       log.push(`db:awards:${teamId}:${playerIds.join(',')}`);
       return Promise.resolve({ awards: state.awards ?? [], list: state.list ?? null });
+    },
+    missingSignups(teamId) {
+      log.push('db:missingSignups:' + teamId);
+      return Promise.resolve(state.missing ?? null);
     },
     inviteCode(teamId) {
       log.push('db:inviteCode:' + teamId);
@@ -924,4 +932,208 @@ Deno.test('/help for a Discord account on no profile lists only /help', async ()
 Deno.test('/help in a server no team has set says so', async () => {
   const { body } = await answer(command('help'), { teams: [] });
   assertEquals(body.embeds[0].fields[0].value, 'No team has set this Discord server on Settings › Discord yet.');
+});
+
+// -- /officer missing-signups (#990) ------------------------------------------------------
+
+const person = (nameRealm: string, role: string | null, discordId: string | null, signedUp = false) => ({
+  nameRealm,
+  role,
+  discordId,
+  signedUp
+});
+// 3 of 5 missing: a tank, a healer and a DPS; the two who signed up are left out.
+const MID3 = {
+  seasonName: 'Midnight Season 3',
+  roster: [
+    person('Tanky-Stormrage', 'Tank', '510000000000000001'),
+    person('Healy-Stormrage', 'Heal', '510000000000000002'),
+    person('Stabby-Stormrage', 'Melee', '510000000000000003'),
+    person('Done-Stormrage', 'Ranged', '510000000000000004', true),
+    person('Also-Stormrage', 'Tank', '510000000000000005', true)
+  ]
+};
+const MANAGE = { held: ['manage_signups'], missing: MID3 };
+const missingCmd = (options: unknown[] = []) => sub('officer', 'missing-signups', {}, options);
+const remindButton = (teamId = 1) => ({
+  ...command('officer'),
+  type: 3,
+  data: { custom_id: 'missing-signups-remind:' + teamId }
+});
+
+Deno.test('/officer missing-signups lists who is missing by role, with the counts and the Signups link', async () => {
+  const { body, log } = await answer(missingCmd(), MANAGE);
+  assert(log.includes(`db:hasTeamPermission:${OFFICER}:1:manage_signups`));
+  const [embed] = body.embeds;
+  assertEquals(embed.title, 'Phoenix: 3 not signed up for Midnight Season 3');
+  assert(embed.description.startsWith('2 of 5 signed up'));
+  assert(embed.description.includes('https://site.test/officer.html?tab=signups'));
+  assertEquals(
+    embed.fields.map((f: { name: string; value: string }) => [f.name, f.value]),
+    [
+      ['Tanks (1)', 'Tanky-Stormrage'],
+      ['Healers (1)', 'Healy-Stormrage'],
+      ['DPS (1)', 'Stabby-Stormrage']
+    ]
+  );
+  assertEquals(body.components[0].components[0].custom_id, 'missing-signups-remind:1');
+});
+
+Deno.test('/officer missing-signups with everyone signed up has no reminder button', async () => {
+  const roster = MID3.roster.map((r) => ({ ...r, signedUp: true }));
+  const { body } = await answer(missingCmd(), { held: ['manage_signups'], missing: { ...MID3, roster } });
+  assertEquals(body.embeds[0].title, 'Phoenix: everyone has signed up for Midnight Season 3');
+  assertEquals(body.components, []);
+});
+
+Deno.test('/officer missing-signups when signups are not open says so and lists nobody', async () => {
+  const { body } = await answer(missingCmd(), { held: ['manage_signups'], missing: null });
+  assert(body.content.includes("aren't open"));
+  assertEquals(body.embeds, undefined);
+});
+
+Deno.test('/officer missing-signups without Manage signups is refused before reading the roster', async () => {
+  const { body, log } = await answer(missingCmd(), { held: ['manage_loot', 'view_loot'], missing: MID3 });
+  assertEquals(body.content, MISSING_NOT_ALLOWED('Phoenix'));
+  assert(!log.includes('db:missingSignups:1'));
+});
+
+Deno.test("/officer missing-signups for another server's team is refused", async () => {
+  const { body, log } = await answer(missingCmd([{ name: 'team', value: '9' }]), MANAGE);
+  assertEquals(body.content, UNKNOWN_TEAM);
+  assert(!log.some((l) => l.startsWith('db:hasTeamPermission') || l.startsWith('db:missingSignups')));
+});
+
+Deno.test('/help lists /officer missing-signups only for Manage signups', async () => {
+  const yes = await answer(command('help'), { member: { ...KAT, onTeam: false }, held: ['manage_signups'] });
+  assert(yes.body.embeds[0].fields[1].value.includes('/officer missing-signups'));
+  const no = await answer(command('help'), { member: { ...KAT, onTeam: false }, held: [] });
+  assert(!no.body.embeds[0].fields[1].value.includes('/officer missing-signups'));
+});
+
+// The button.
+
+async function pressRemind(state: State, discord: Response[], interaction: unknown = remindButton()) {
+  const s = setup(state, discord);
+  const res = await handle(await signed(interaction), s.deps);
+  assertEquals(await res.json(), { type: 5, data: { flags: 64 } });
+  await s.settle();
+  const last = s.calls[s.calls.length - 1];
+  return { ...s, body: JSON.parse(last.body!) };
+}
+
+const dmsTo = (calls: { url: string }[]) => calls.filter((c) => c.url.endsWith('/users/@me/channels')).length;
+
+Deno.test('the reminder button DMs each missing raider, records after each DM, and reports who', async () => {
+  const { calls, recorded, log, body } = await pressRemind(MANAGE, [
+    dmChannel(),
+    ok(),
+    dmChannel(),
+    ok(),
+    dmChannel(),
+    ok(),
+    ok()
+  ]);
+  const dms = calls.filter((c) => c.url.endsWith('/messages') && !c.url.includes('webhooks'));
+  assertEquals(dms.length, 3);
+  const embed = JSON.parse(dms[0].body!).embeds[0];
+  assertEquals(embed.title, 'Phoenix -- Signup Reminder');
+  assert(embed.description.includes('Midnight Season 3'));
+  assertEquals(embed.fields[0].value, 'https://site.test/#signup');
+  assertEquals(
+    recorded.map((r) => [r.discordId, r.categories]),
+    [
+      ['510000000000000001', ['signup-reminder']],
+      ['510000000000000002', ['signup-reminder']],
+      ['510000000000000003', ['signup-reminder']]
+    ]
+  );
+  // The record follows its DM, not the other way round.
+  assert(
+    log.indexOf('db:recordNudge:510000000000000001') > log.indexOf('fetch:POST /channels/600000000000000006/messages')
+  );
+  assertEquals(body.embeds[0].fields[0].name, 'Reminded (3)');
+});
+
+Deno.test('the reminder button skips a raider reminded in the last day', async () => {
+  const { calls, recorded, body } = await pressRemind(
+    { ...MANAGE, recent: [{ discordId: '510000000000000001', category: 'signup-reminder' }] },
+    [dmChannel(), ok(), dmChannel(), ok(), ok()]
+  );
+  assertEquals(
+    recorded.map((r) => r.discordId),
+    ['510000000000000002', '510000000000000003']
+  );
+  assertEquals(dmsTo(calls), 2);
+  assertEquals(body.embeds[0].fields[1], { name: 'Skipped -- reminded in last 24h (1)', value: 'Tanky-Stormrage' });
+});
+
+Deno.test('a wishlist nudge does not count as a signup reminder', async () => {
+  const { recorded } = await pressRemind(
+    { ...MANAGE, recent: [{ discordId: '510000000000000001', category: 'no-wishlist' }] },
+    [dmChannel(), ok(), dmChannel(), ok(), dmChannel(), ok(), ok()]
+  );
+  assertEquals(recorded.length, 3);
+});
+
+Deno.test('a DM that fails is reported as closed and does not use up the day', async () => {
+  const { recorded, body } = await pressRemind(MANAGE, [
+    new Response('{}', { status: 403 }),
+    dmChannel(),
+    ok(),
+    dmChannel(),
+    ok(),
+    ok()
+  ]);
+  assertEquals(
+    recorded.map((r) => r.discordId),
+    ['510000000000000002', '510000000000000003']
+  );
+  assertEquals(body.embeds[0].fields[2], { name: "Couldn't DM -- DMs closed? (1)", value: 'Tanky-Stormrage' });
+});
+
+Deno.test('a missing raider with no Discord account is listed, not DMed', async () => {
+  const roster = [person('Ghost-Stormrage', 'Tank', null), person('Real-Stormrage', 'Heal', '510000000000000009')];
+  const { calls, body } = await pressRemind({ held: ['manage_signups'], missing: { ...MID3, roster } }, [
+    dmChannel(),
+    ok(),
+    ok()
+  ]);
+  assertEquals(dmsTo(calls), 1);
+  assertEquals(body.embeds[0].fields.at(-1), { name: 'No Discord account on Raid Hub (1)', value: 'Ghost-Stormrage' });
+});
+
+Deno.test('one person with two missing characters gets one DM', async () => {
+  const roster = [
+    person('Main-Stormrage', 'Tank', '510000000000000009'),
+    person('Alt-Stormrage', 'Heal', '510000000000000009')
+  ];
+  const { calls, recorded } = await pressRemind({ held: ['manage_signups'], missing: { ...MID3, roster } }, [
+    dmChannel(),
+    ok(),
+    ok()
+  ]);
+  assertEquals(dmsTo(calls), 1);
+  assertEquals(recorded.length, 1);
+});
+
+Deno.test('the reminder button checks Manage signups again, so someone without it DMs nobody', async () => {
+  const { calls, recorded, body } = await pressRemind({ held: [], missing: MID3 }, [ok()]);
+  assertEquals(calls.length, 1);
+  assertEquals(recorded, []);
+  assertEquals(body.content, MISSING_NOT_ALLOWED('Phoenix'));
+});
+
+Deno.test("the reminder button for another server's team DMs nobody", async () => {
+  const { calls, recorded, body } = await pressRemind(MANAGE, [ok()], remindButton(9));
+  assertEquals(calls.length, 1);
+  assertEquals(recorded, []);
+  assertEquals(body.content, UNKNOWN_TEAM);
+});
+
+Deno.test('the reminder button after signups closed DMs nobody', async () => {
+  const { calls, recorded, body } = await pressRemind({ held: ['manage_signups'], missing: null }, [ok()]);
+  assertEquals(calls.length, 1);
+  assertEquals(recorded, []);
+  assert(body.content.includes("aren't open"));
 });

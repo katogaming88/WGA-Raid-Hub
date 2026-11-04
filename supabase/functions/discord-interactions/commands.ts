@@ -48,6 +48,7 @@ export const COMMANDS = [
     contexts: GUILD_ONLY,
     options: [
       sub('nudge-missing', 'DM raiders missing a wishlist, BiS source link, or a real BiS pick on their wishlist'),
+      sub('missing-signups', "Who hasn't signed up for the coming season, with a button to DM them a reminder"),
       sub('invite', "Post the team's invite link in this channel"),
       // /officer post lineup (#1709): a group, so later posts sit beside it.
       {
