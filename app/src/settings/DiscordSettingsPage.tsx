@@ -17,6 +17,7 @@ import {
   channelName,
   channelProblem,
   daysLabel,
+  lineupWhen,
   postSummary,
   roleProblem,
   sheetTiming,
@@ -35,6 +36,7 @@ import {
   useSaveSignupSheet,
   useSendTestMessage,
   useSetDiscordPost,
+  useSetWeeklyLineup,
   useSetDiscordServer,
   useSetQuietHours
 } from './useDiscordSettings';
@@ -327,6 +329,7 @@ function PostsCard({ teamId, posts, server }: { teamId: number; posts: DiscordPo
             channel_id: post?.channel_id ?? null,
             ping_role_id: post?.ping_role_id ?? null
           });
+          const when = post?.channel_id && k.kind === 'weekly_lineup' ? lineupWhen(post) : null;
           return (
             <li key={k.kind}>
               <button type="button" className="discord-row" onClick={() => setOpen(k.kind)}>
@@ -336,6 +339,7 @@ function PostsCard({ teamId, posts, server }: { teamId: number; posts: DiscordPo
                 </span>
                 <span className="discord-row-side">
                   <span className={summary.problem ? 'discord-problem' : undefined}>{summary.text}</span>
+                  {when && <span className="text-muted">{when}</span>}
                   {post?.last_posted_at && (
                     <span className="text-muted">Last posted {timeAgoLabel(post.last_posted_at)}</span>
                   )}
@@ -374,25 +378,82 @@ function PostDialog({
   const { announce } = useStatus();
   const [channelId, setChannelId] = useState(post?.channel_id ?? '');
   const [roleId, setRoleId] = useState(post?.ping_role_id ?? '');
-  const save = useSetDiscordPost(teamId);
+  const savePost = useSetDiscordPost(teamId);
+  const saveLineup = useSetWeeklyLineup(teamId);
+  const lineup = kind.kind === 'weekly_lineup';
+  const save = lineup ? saveLineup : savePost;
   const isOn = Boolean(post?.channel_id);
+  // The weekly lineup's day, time and zone (#1709); Wednesday at 6 PM Eastern
+  // to start, as the issue's example.
+  const [weekday, setWeekday] = useState(post?.post_weekday ?? 3);
+  const [time, setTime] = useState((post?.post_time ?? '18:00').slice(0, 5));
+  const [zone, setZone] = useState(post?.post_timezone ?? QUIET_ZONES[0]!.id);
+  const fieldId = useId();
 
-  const write = (channel: string | null, role: string | null, done: string) =>
-    save.mutate(
-      { kind: kind.kind, channelId: channel, roleId: role },
-      {
-        onSuccess: () => {
-          announce('success', done);
-          onClose();
-        },
-        onError: (error) => announce('error', errorMessage(error))
-      }
-    );
+  const write = (channel: string | null, role: string | null, done: string) => {
+    const handlers = {
+      onSuccess: () => {
+        announce('success', done);
+        onClose();
+      },
+      onError: (error: Error) => announce('error', errorMessage(error))
+    };
+    if (lineup) {
+      saveLineup.mutate({ channelId: channel, roleId: role, weekday, time, timezone: zone }, handlers);
+    } else {
+      savePost.mutate({ kind: kind.kind, channelId: channel, roleId: role }, handlers);
+    }
+  };
 
   return (
     <Dialog title={kind.label} onClose={onClose} busy={save.isPending}>
       <p className="text-muted">{kind.dialog}</p>
       <ChannelField server={server} value={channelId} onChange={setChannelId} saved={post?.channel_id ?? null} />
+      {lineup && (
+        <div className="discord-when">
+          <div className="field">
+            <label className="field-label" htmlFor={`${fieldId}-day`}>
+              Day
+            </label>
+            <select
+              id={`${fieldId}-day`}
+              className="select"
+              value={weekday}
+              onChange={(e) => setWeekday(Number(e.target.value))}
+            >
+              {DAY_ORDER.map((d) => (
+                <option key={d} value={d}>
+                  {daysLabel([d], false)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label className="field-label" htmlFor={`${fieldId}-time`}>
+              Time
+            </label>
+            <input
+              id={`${fieldId}-time`}
+              className="input"
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label className="field-label" htmlFor={`${fieldId}-zone`}>
+              Time zone
+            </label>
+            <select id={`${fieldId}-zone`} className="select" value={zone} onChange={(e) => setZone(e.target.value)}>
+              {QUIET_ZONES.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
       <RoleField
         server={server}
         value={roleId}
@@ -419,7 +480,7 @@ function PostDialog({
           type="button"
           className="button button-primary"
           onClick={() => write(channelId, roleId || null, isOn ? 'Saved.' : 'Turned on.')}
-          disabled={!channelId || save.isPending}
+          disabled={!channelId || (lineup && !time) || save.isPending}
         >
           {save.isPending ? 'Saving…' : isOn ? 'Save' : 'Turn on'}
         </button>

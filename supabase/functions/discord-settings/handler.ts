@@ -54,6 +54,7 @@ export const TEST_FOR: Record<string, string> = {
   officer_requests: 'officer requests',
   mplus_requests: 'M+ requests',
   rsvp_changes: 'RSVP changes',
+  weekly_lineup: 'weekly boss lineup',
   signup_sheet: 'a signup sheet'
 };
 

@@ -28,7 +28,8 @@
 // every posted one current; signupSheetSync, after an RSVP on the site, edits
 // that night's sheet if one is posted. Only the bot can post a sheet, since
 // its Refresh button is answered by discord-interactions: a local stack posts
-// none.
+// none. The same run posts each team's weekly boss lineup when it's due and
+// keeps the week's post current (#1709, _shared/lineup-post.ts).
 //
 // handle() takes its reads, its fetch and its environment as an argument
 // (#1006), so tests/edge/ runs it against plain objects; deps.ts supplies the
@@ -36,6 +37,7 @@
 import { resolveBot } from '../_shared/discord-destination.ts';
 import { discordRequestBody } from '../_shared/discord-text.ts';
 import type { Picture } from '../_shared/sheet-picture.ts';
+import { type LineupDb, sweepLineups } from '../_shared/lineup-post.ts';
 import { type DiscordFile, type SheetDb, refreshSheet, sweepSheets } from '../_shared/signup-sheet.ts';
 import {
   ACTIONS,
@@ -97,6 +99,9 @@ export type Deps = {
   sheets: SheetDb;
   // The signup sheet's picture (#983); left out, sheets are text.
   drawPicture?: (picture: Picture) => Promise<Uint8Array>;
+  // The weekly lineup post (#1709): its reads, and how its grid is drawn.
+  lineups?: LineupDb;
+  drawSvg?: (svg: string) => Promise<Uint8Array>;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
 };
@@ -223,7 +228,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (action === 'signupSheets') {
     if (dest.kind !== 'bot') return jsonResponse({ success: true, posted: 0, edited: 0, failed: 0 });
     const counts = await sweepSheets(sheetContext(deps, token!, now));
-    return jsonResponse({ success: true, ...counts });
+    const lineups = deps.lineups
+      ? await sweepLineups({ ...sheetContext(deps, token!, now), db: deps.lineups, draw: deps.drawSvg })
+      : null;
+    return jsonResponse({ success: true, ...counts, ...(lineups ? { lineups } : {}) });
   }
 
   if (action === 'drain') {

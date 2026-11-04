@@ -3275,3 +3275,15 @@ Shipped: `20261104105758_set_own_missing_spec.sql`. `battlenet-characters`.
 **The Roster lists a character with no spec** in a "No spec yet" row below the role groups, under its claimed Member's label, instead of hiding it and its Member both. A frontend change only; no read changes.
 
 [Full discussion -> #1724](https://github.com/katogaming88/WGA-Raid-Hub/issues/1724).
+
+## #1709 -- the weekly boss lineup post
+
+Shipped: `20261104132355_weekly_lineup_post.sql`. `discord-bot-webhook`, `discord-interactions`, `discord-settings`.
+
+**A fourth kind of post, with a schedule of its own.** `team_discord_posts` takes `weekly_lineup`, and only that kind carries `post_weekday` (0 is Sunday), `post_time` and `post_timezone`, all three or none, by a check. The team picks the time zone on the dialog, the way quiet hours do, since a team has no time zone of its own. `set_team_weekly_lineup_post()` sets it with `set_team_discord_post()`'s checks plus the day, time and a real zone; no channel turns it off and clears the three. The same values again change nothing and log nothing. `team_discord_settings()` lists it fourth.
+
+**`team_lineup_posts` keeps each week's message,** one row per team and week, keyed on the date the post was due in the team's zone, so later runs edit the message rather than post again. `content_key` is what the message shows (every boss and who is in for it), so a run tells an unchanged lineup apart without asking Discord, for a picture or a text post alike. A lineup emptied after the week posted takes the message down and keeps the row with no message, so the lineup coming back posts again without a ping (CodeRabbit on #1761). Service role and `claude_readers` only, with its own grants. The primary key settles two runs posting at once: the loser takes its message back down.
+
+**Posted by the signup sheets' 15-minute run,** not a schedule of its own: once the week's time has passed, the run posts the lineup for every raid night starting in the seven days after it, a drawn grid per night (Kat picked the look, 2026-11-04), pinging the role. Each later run edits the posted message, pinging nobody, only when the lineup it shows has changed, which the week's stored key tells without reading Discord. A week with no lineup saved posts nothing; a week whose nights have all started is not posted late; quiet hours hold the post. When the day or time moves after a week posted, the first post under the new schedule leaves out the nights the last one covered (the seven days from that post's date), so no night is posted and pinged twice and none is missed (Kat, 2026-11-04). A message an officer deletes by hand comes back only when the lineup next changes, since an unchanged week asks Discord nothing. `/officer post lineup` posts one night's now, for whoever holds Edit schedule, and is not recorded as the week's.
+
+[Full discussion -> #1709](https://github.com/katogaming88/WGA-Raid-Hub/issues/1709).

@@ -82,6 +82,9 @@ erDiagram
   text ping_role_id
   timestamp_with_time_zone last_posted_at
   timestamp_with_time_zone updated_at
+  smallint post_weekday
+  time_without_time_zone post_time
+  text post_timezone
 }
 "public.team_discord_signup_sheets" {
   integer id

@@ -76,7 +76,12 @@ describe('team Discord settings', () => {
       const s = await settings(asUser, OFFICER_T1);
       expect(s.server_id).toBe(SERVER);
       expect(s.quiet_hours).toEqual({ start: '00:00:00', end: '08:00:00', timezone: 'America/New_York' });
-      expect(s.posts.map((p) => p.kind)).toEqual(['officer_requests', 'mplus_requests', 'rsvp_changes']);
+      expect(s.posts.map((p) => p.kind)).toEqual([
+        'officer_requests',
+        'mplus_requests',
+        'rsvp_changes',
+        'weekly_lineup'
+      ]);
       expect(s.posts[0]).toMatchObject({ channel_id: CH_OFFICERS, ping_role_id: ROLE_OFFICER });
       expect(s.posts[2]).toMatchObject({ channel_id: null, ping_role_id: null });
       expect(s.sheets).toEqual([
@@ -352,7 +357,12 @@ describe('team Discord settings', () => {
 
   it('nobody reads or writes the new tables directly', async () => {
     await txn(async ({ asUser, asAnon }) => {
-      for (const table of ['team_discord_posts', 'team_discord_signup_sheets', 'discord_server_access']) {
+      for (const table of [
+        'team_discord_posts',
+        'team_discord_signup_sheets',
+        'discord_server_access',
+        'team_lineup_posts'
+      ]) {
         await expect(asUser(OFFICER_T1, `select * from public.${table}`)).rejects.toThrow(/permission denied/);
         await expect(asAnon(`select * from public.${table}`)).rejects.toThrow(/permission denied/);
       }

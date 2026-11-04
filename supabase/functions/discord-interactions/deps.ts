@@ -3,7 +3,8 @@
 // waitUntil. The only module here that reaches a network or an environment.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { sheetDb } from '../_shared/signup-sheet-db.ts';
-import { drawPicture } from '../_shared/sheet-picture-draw.ts';
+import { drawPicture, drawSvg } from '../_shared/sheet-picture-draw.ts';
+import { lineupDb } from '../_shared/lineup-db.ts';
 import type { Deps, InteractionsDb } from './handler.ts';
 import type { WishlistSetupStatusRow } from './nudge.ts';
 
@@ -201,6 +202,8 @@ export function productionDeps(): Deps {
     db: supabaseDb(),
     sheets: sheetDb(serviceClient),
     drawPicture: (picture) => drawPicture(picture),
+    lineups: lineupDb(serviceClient),
+    drawSvg: (svg) => drawSvg(svg),
     waitUntil: (work) => EdgeRuntime.waitUntil(work)
   };
 }

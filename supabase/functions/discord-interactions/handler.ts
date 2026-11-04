@@ -38,6 +38,7 @@ import {
   startsAt
 } from '../_shared/signup-sheet.ts';
 import { discordRequestBody } from '../_shared/discord-text.ts';
+import { type LineupDb, postLineupNow } from '../_shared/lineup-post.ts';
 import type { Picture } from '../_shared/sheet-picture.ts';
 import { isoDate } from '../_shared/time.ts';
 import { type Award, type HelpTeam, type Signup, counted, helpMessage, meMessage, scheduleMessage } from './raider.ts';
@@ -94,6 +95,9 @@ export type Deps = {
   sheets: SheetDb;
   // The signup sheet's picture (#983); left out, sheets are text.
   drawPicture?: (picture: Picture) => Promise<Uint8Array>;
+  // /officer post lineup (#1709): the lineup reads, and how its grid is drawn.
+  lineups?: LineupDb;
+  drawSvg?: (svg: string) => Promise<Uint8Array>;
   waitUntil(work: Promise<unknown>): void;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
@@ -155,6 +159,18 @@ export const NOTE_REQUIRED = 'A note is required so officers know why. Pick the 
 export const SAVED = (status: string, day: string) => `Saved: **${status}** for ${day}.`;
 export const CLEARED = (day: string, optional: boolean) =>
   `Cleared: you're back to ${optional ? 'no answer' : 'Present'} for ${day}.`;
+// /officer post lineup (#1709): whoever manages the team's raid schedule.
+export const LINEUP_PERMISSION = 'edit_schedule';
+export const LINEUP_NOT_ALLOWED = (team: string) =>
+  `Only people who can edit ${team}'s raid schedule on Raid Hub can post its lineup.`;
+export const LINEUP_NOT_SET = (team: string) =>
+  `${team} has no lineup channel yet. An officer can pick one on Settings › Discord, under Weekly lineup.`;
+export const LINEUP_BAD_DATE = 'Give the date as YYYY-MM-DD, for example 2026-11-05.';
+export const LINEUP_NO_NIGHT = (team: string) => `${team} has no raid night coming up in the next two weeks.`;
+export const LINEUP_NONE = (team: string, day: string) => `${team} has no boss lineup saved for ${day} yet.`;
+export const LINEUP_NOT_IN_SERVER =
+  "The lineup channel isn't in this team's Discord server any more. Pick it again on Settings › Discord.";
+export const LINEUP_POSTED = (team: string, day: string) => `Posted ${team}'s lineup for ${day}.`;
 // How far ahead /raider schedule looks.
 export const SCHEDULE_DAYS = 14;
 
@@ -208,9 +224,15 @@ type Interaction = {
 };
 type Opt = { name: string; type?: number; value?: string; focused?: boolean; options?: Opt[] };
 
-// The command as typed, "raider me", and the options under its subcommand.
+// The command as typed, "raider me" or "officer post lineup", and the options
+// under its subcommand.
 function leaf(i: Interaction): { path: string; options: Opt[] } {
   const top = i.data?.options ?? [];
+  const group = top.find((o) => o.type === 2);
+  const groupSub = group?.options?.find((o) => o.type === 1);
+  if (group && groupSub) {
+    return { path: `${i.data?.name} ${group.name} ${groupSub.name}`, options: groupSub.options ?? [] };
+  }
   const sub = top.find((o) => o.type === 1);
   return sub
     ? { path: `${i.data?.name} ${sub.name}`, options: sub.options ?? [] }
@@ -569,13 +591,15 @@ const HELP_COMMANDS: {
     line: '`/officer nudge-missing` -- DM raiders whose loot setup is missing something',
     may: async (perm) => (await Promise.all(NUDGE_PERMISSIONS.map(perm))).every(Boolean)
   },
-  { line: "`/officer invite` -- post the team's invite link", may: (perm) => perm(INVITE_PERMISSION) }
+  { line: "`/officer invite` -- post the team's invite link", may: (perm) => perm(INVITE_PERMISSION) },
+  { line: "`/officer post lineup` -- post a raid night's boss lineup now", may: (perm) => perm(LINEUP_PERMISSION) }
 ];
 
 const POST_LABELS: Record<string, string> = {
   officer_requests: 'Officer requests',
   mplus_requests: 'M+ requests',
-  rsvp_changes: 'RSVP changes'
+  rsvp_changes: 'RSVP changes',
+  weekly_lineup: 'Weekly lineup'
 };
 
 const help: Run = async (deps, i, serverId) => {
@@ -671,11 +695,70 @@ const nudge: Run = async (deps, interaction, serverId, options) => {
   }
 };
 
+const postLineup: Run = async (deps, i, serverId, options) => {
+  const team = await teamFor(deps, i, serverId, options);
+  if (!team) return;
+  const caller = i.member?.user?.id;
+  if (!caller || !(await deps.db.hasTeamPermission(caller, team.id, LINEUP_PERMISSION))) {
+    await finish(deps, i, { content: LINEUP_NOT_ALLOWED(team.name) });
+    return;
+  }
+  const now = (deps.now ?? (() => new Date()))();
+  const given = options.find((o) => o.name === 'date')?.value;
+  let raidDate: string | null = null;
+  if (given !== undefined) {
+    const ms = /^\d{4}-\d{2}-\d{2}$/.test(given) ? Date.parse(given + 'T00:00:00Z') : NaN;
+    if (Number.isNaN(ms) || new Date(ms).toISOString().slice(0, 10) !== given) {
+      await finish(deps, i, { content: LINEUP_BAD_DATE });
+      return;
+    }
+    raidDate = given;
+  } else {
+    // The next raid night not yet started, looking as far as /raider schedule.
+    for (let n = -1; n <= SCHEDULE_DAYS && !raidDate; n++) {
+      const d = new Date(now);
+      d.setUTCDate(d.getUTCDate() + n);
+      const date = isoDate(d);
+      const night = await deps.sheets.night(team.id, date);
+      const at = night.exists ? startsAt(date, night) : null;
+      if (night.exists && (at ? at > now : date >= isoDate(now))) raidDate = date;
+    }
+    if (!raidDate) {
+      await finish(deps, i, { content: LINEUP_NO_NIGHT(team.name) });
+      return;
+    }
+  }
+  if (!deps.lineups) {
+    await finish(deps, i, { content: LINEUP_NOT_SET(team.name) });
+    return;
+  }
+  const day = dayName(raidDate);
+  const result = await postLineupNow(
+    {
+      db: deps.lineups,
+      discord: (method, path, body, files) => discord(deps, method, path, body, files),
+      siteUrl: deps.env.get('SITE_URL'),
+      now,
+      draw: deps.drawSvg
+    },
+    team.id,
+    raidDate
+  );
+  const said: Record<typeof result, string> = {
+    posted: LINEUP_POSTED(team.name, day),
+    'no lineup': LINEUP_NONE(team.name, day),
+    'not set': LINEUP_NOT_SET(team.name),
+    'not in server': LINEUP_NOT_IN_SERVER
+  };
+  await finish(deps, i, { content: said[result] });
+};
+
 // Each command as Discord sends it: the group, then the subcommand.
 const RUNS: Record<string, Run> = {
   help,
   'raider me': me,
   'raider schedule': schedule,
   'officer nudge-missing': nudge,
-  'officer invite': invite
+  'officer invite': invite,
+  'officer post lineup': postLineup
 };
