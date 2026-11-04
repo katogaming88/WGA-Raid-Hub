@@ -56,7 +56,16 @@ describe('set_team_weekly_lineup_post()', () => {
     });
   });
 
-  it('refuses a raider and another team’s officer', async () => {
+  it('refuses a raider, another team’s officer and a signed-out caller', async () => {
+    await txn(async ({ asAnon }) => {
+      await expect(
+        asAnon('select public.set_team_weekly_lineup_post(1, $1, null, 3, $2, $3)', [
+          CHANNEL,
+          '18:00',
+          'America/New_York'
+        ])
+      ).rejects.toThrow(/permission denied/);
+    });
     await txn(async ({ asUser }) => {
       for (const uid of [RAIDER_T1, OFFICER_T2]) {
         await expect(set(asUser, uid, [CHANNEL, null, 3, '18:00', 'America/New_York'])).rejects.toThrow(
@@ -105,6 +114,14 @@ describe('set_team_weekly_lineup_post()', () => {
       await expect(asRole('authenticated', OFFICER_T1)('select * from public.team_lineup_posts')).rejects.toThrow(
         /permission denied/
       );
+      // Nobody but the bot writes it either.
+      for (const [role, uid] of [
+        ['authenticated', OFFICER_T1],
+        ['authenticated', RAIDER_T1],
+        ['anon', null]
+      ]) {
+        await expect(asRole(role, uid)(insert, [CHANNEL, '3'])).rejects.toThrow(/permission denied/);
+      }
     });
   });
 });

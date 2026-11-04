@@ -400,8 +400,22 @@ export async function syncLineup(ctx: LineupContext, { team, setting }: TeamLine
       nights.map((n) => ({ d: n.raidDate, g: n.grid }))
     );
     const current = await ctx.discord('GET', path);
-    if (current.status === 200 && String(current.body?.embeds?.[0]?.image?.url ?? '').includes(`lineup-${key}-`)) {
-      return 'unchanged';
+    // Unchanged: a picture named after this lineup, or, for a post that went
+    // out as text, the same text (CodeRabbit on #1761). A text post stays text
+    // until the lineup changes, even once drawing works again.
+    const shownEmbeds: Array<{ description?: string; image?: { url?: string } }> = current.body?.embeds ?? [];
+    if (current.status === 200) {
+      const pictured = String(shownEmbeds[0]?.image?.url ?? '');
+      if (pictured.includes(`lineup-${key}-`)) return 'unchanged';
+      const asText = lineupMessage(
+        team,
+        nights,
+        nights.map(() => null),
+        ctx.siteUrl
+      ).embeds.map((e) => e.description);
+      if (!pictured && JSON.stringify(shownEmbeds.map((e) => e.description)) === JSON.stringify(asText)) {
+        return 'unchanged';
+      }
     }
     if (current.status === 200) {
       const { message, files, attachments } = await render(ctx, team, nights);

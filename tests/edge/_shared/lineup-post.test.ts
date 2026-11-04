@@ -192,6 +192,21 @@ Deno.test(
   }
 );
 
+Deno.test('a post that went out as text is left alone while its lineup is the same', async () => {
+  const first = context();
+  first.ctx.draw = undefined;
+  await syncLineup(first.ctx, LINEUP);
+  const sent = first.calls.find((c) => c.key === `POST ${MSG}`)!.body.embeds;
+  const again = context({}, { [`GET ${MSG}/m1`]: { status: 200, body: { embeds: sent } } });
+  again.ctx.draw = undefined;
+  again.posts.set('2026-11-04', 'm1');
+  assertEquals(await syncLineup(again.ctx, LINEUP), 'unchanged');
+  assertEquals(
+    again.calls.map((c) => c.key),
+    [`GET ${MSG}/m1`]
+  );
+});
+
 Deno.test('a picture that can’t be drawn sends the night as text: its bosses and swaps', async () => {
   const { ctx, calls } = context();
   ctx.draw = () => Promise.reject(new Error('no fonts'));
