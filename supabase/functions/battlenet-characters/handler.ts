@@ -162,8 +162,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       shown.map(async (c, i) => {
         const kept = ids.has(c.blizzard_id) || ownKeys.has(key(c.name, c.realm));
         if (!kept || detailById.has(c.blizzard_id)) return;
-        const res = await deps.fetch(API_BASE + summaryPath(c) + PROFILE_QUERY, bearer);
-        if (res.ok) shown[i] = { ...c, ...detailOf(await res.json()) };
+        // Optional: a read that fails or times out keeps the character as
+        // listed, and the save goes ahead (CodeRabbit on #1759).
+        try {
+          const res = await deps.fetch(API_BASE + summaryPath(c) + PROFILE_QUERY, bearer);
+          if (res.ok) shown[i] = { ...c, ...detailOf(await res.json()) };
+        } catch {
+          // keep the listed record
+        }
       })
     );
   }

@@ -32,9 +32,15 @@ begin
     raise exception 'Unknown spec.';
   end if;
 
+  -- Locked, and ownership checked again under the lock, so an officer's
+  -- archive or reassignment that lands first is seen (CodeRabbit on #1759).
   select p.team_id, p.name_realm, p.name_realm_key into v_team_id, v_name_realm, v_name_realm_key
     from public.players p
-   where p.id = p_player_id;
+   where p.id = p_player_id
+     for update;
+  if not coalesce(public.is_own_player(p_player_id), false) then
+    raise exception 'That is not your character.';
+  end if;
 
   -- The newest saved record, should a character have been remade as another
   -- class under the same name (fresh review on #1759).

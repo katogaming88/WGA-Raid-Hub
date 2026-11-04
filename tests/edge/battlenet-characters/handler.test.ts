@@ -342,6 +342,27 @@ Deno.test(
   }
 );
 
+Deno.test('a picked character whose full read fails is still saved, as listed', async () => {
+  const db = fakeDb();
+  let n = 0;
+  const queue = happyQueue();
+  const fetch = ((_input: string | URL | Request) => {
+    n++;
+    if (n === 5) return Promise.reject(new Error('timed out'));
+    return Promise.resolve(queue.shift()!);
+  }) as typeof globalThis.fetch;
+  const res = await handle(post({ token: TOKEN, allLevels: true, save: [102] }), { fetch, db });
+  assertEquals(res.status, 200);
+  const saveCall = db.calls.find((c) => c.method === 'saveCharacters')!;
+  assertEquals(
+    (saveCall.args[1] as Array<{ blizzard_id: number; spec_name: string | null }>).map((c) => [
+      c.blizzard_id,
+      c.spec_name
+    ]),
+    [[102, null]]
+  );
+});
+
 Deno.test('a character listed but not picked is never read in full', async () => {
   const r = await run({ token: TOKEN, allLevels: true, save: [101] });
   assertEquals(r.fetches.length, 4);
