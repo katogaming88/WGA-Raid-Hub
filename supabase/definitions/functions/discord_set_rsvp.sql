@@ -54,6 +54,12 @@ begin
     raise exception 'Attending is only valid on an optional raid night.';
   end if;
 
+  -- The site asks for a note on every answer but Attending; here the pop-up
+  -- does, and a note of only spaces is no note (CodeRabbit on #1758).
+  if p_status <> 'Attending' and nullif(btrim(p_note), '') is null then
+    raise exception 'A note is required so officers know why.';
+  end if;
+
   insert into raid_rsvps (team_id, player_id, raid_date, status, note)
   values (p_team_id, v_player_id, p_raid_date, p_status, p_note)
   on conflict (team_id, player_id, raid_date)

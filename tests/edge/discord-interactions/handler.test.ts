@@ -558,6 +558,15 @@ Deno.test("the database's refusal is told in plain words, and the sheet is left 
   assertEquals(calls.length, 1);
 });
 
+Deno.test('a sheet that fails to refresh still tells the raider their answer saved', async () => {
+  const { deps, calls, settle } = setup({}, [ok()], POSTED);
+  deps.sheets.teamSheets = () => Promise.reject(new Error('read failed'));
+  await handle(await signed(pick('clear')), deps);
+  await settle();
+  assertEquals(reply(calls), CLEARED('Thursday, November 5', false));
+  assertEquals(calls.length, 1);
+});
+
 Deno.test('a raid that has passed is refused before anything is saved', async () => {
   const { deps, saved, calls, settle } = setup({}, [ok()], { nights: { '2026-10-27': RAID } });
   await handle(await signed(submitNote('Absent', 'sick', '2026-10-27')), deps);

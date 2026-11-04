@@ -99,4 +99,30 @@ describe('discord_set_rsvp()', () => {
       );
     });
   });
+
+  it('on an optional night, Attending saves, and so does the bench', async () => {
+    await withTxn(async ({ q, asRole }) => {
+      await q(
+        "insert into public.raid_schedule_exceptions (team_id, raid_date, exception_type, start_time, is_optional) values (1, $1, 'added', '20:00', true)",
+        [DATE]
+      );
+      const service = asRole('service_role', null);
+      const other = await raider(q);
+      await service(call, [other.discordId, 1, DATE, 'Attending', null]);
+      expect(await rsvp(q, other.pid)).toEqual([{ status: 'Attending', note: null }]);
+      const bench = await raider(q, { bench: true });
+      await service(call, [bench.discordId, 1, DATE, 'Late', 'traffic']);
+      expect(await rsvp(q, bench.pid)).toEqual([{ status: 'Late', note: 'traffic' }]);
+    });
+  });
+
+  it('refuses an answer with no note, or only spaces, but Attending needs none', async () => {
+    await withTxn(async ({ q, asRole }) => {
+      const service = asRole('service_role', null);
+      const { discordId, pid } = await raider(q);
+      await expect(service(call, [discordId, 1, DATE, 'Absent', null])).rejects.toThrow(/A note is required/);
+      await expect(service(call, [discordId, 1, DATE, 'Absent', '   '])).rejects.toThrow(/A note is required/);
+      expect(await rsvp(q, pid)).toEqual([]);
+    });
+  });
 });

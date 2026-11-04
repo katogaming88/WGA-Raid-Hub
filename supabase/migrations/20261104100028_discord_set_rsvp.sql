@@ -17,6 +17,9 @@
 -- writes and runs as the service role, so the service role gets it. That
 -- adds nothing the service role could not already do: it may insert into
 -- discord_post_queue directly.
+--
+-- One check set_own_rsvp() leaves to the page: every answer but Attending
+-- needs a note.
 
 create or replace function public.discord_set_rsvp(
   p_discord_id text,
@@ -75,6 +78,12 @@ begin
 
   if p_status = 'Attending' and not v_is_optional then
     raise exception 'Attending is only valid on an optional raid night.';
+  end if;
+
+  -- The site asks for a note on every answer but Attending; here the pop-up
+  -- does, and a note of only spaces is no note (CodeRabbit on #1758).
+  if p_status <> 'Attending' and nullif(btrim(p_note), '') is null then
+    raise exception 'A note is required so officers know why.';
   end if;
 
   insert into raid_rsvps (team_id, player_id, raid_date, status, note)

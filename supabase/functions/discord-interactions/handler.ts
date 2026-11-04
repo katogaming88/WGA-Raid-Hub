@@ -146,6 +146,7 @@ export const NO_CHARACTER =
   "You don't have a character on this team's roster on Raid Hub. If you should, ask one of its officers.";
 export const BENCH = "You're on the bench, so there's nothing to answer for a normal raid night.";
 export const ATTENDING_OPTIONAL = 'Attending is only for optional raid nights.';
+export const NOTE_REQUIRED = 'A note is required so officers know why. Pick the answer again and add one.';
 export const SAVED = (status: string, day: string) => `Saved: **${status}** for ${day}.`;
 export const CLEARED = (day: string, optional: boolean) =>
   `Cleared: you're back to ${optional ? 'no answer' : 'Present'} for ${day}.`;
@@ -338,6 +339,7 @@ function refusal(message: string, siteUrl?: string): string | null {
   if (message.includes('No active roster character')) return NO_CHARACTER;
   if (message.includes('Bench players')) return BENCH;
   if (message.includes('Attending is only valid')) return ATTENDING_OPTIONAL;
+  if (message.includes('A note is required')) return NOTE_REQUIRED;
   return null;
 }
 
@@ -371,6 +373,9 @@ function setOwn(
         }
         const day = dayName(raidDate);
         await finish(deps, i, { content: status ? SAVED(status, day) : CLEARED(day, night.isOptional) });
+        // The answer is saved and the raider told so: a failed refresh is
+        // only logged, or "try again" would send a second notice to the RSVP
+        // channel (CodeRabbit on #1758). The 15-minute run catches the sheet up.
         await refreshSheet(
           {
             db: deps.sheets,
@@ -380,7 +385,7 @@ function setOwn(
           },
           teamId,
           raidDate
-        );
+        ).catch((err) => console.error('discord-interactions: signup sheet refresh failed:', err));
       })
       .catch(async (err) => {
         console.error('discord-interactions: signup sheet answer failed:', err);

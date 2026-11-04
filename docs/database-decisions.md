@@ -3258,7 +3258,7 @@ Shipped: `20261104100028_discord_set_rsvp.sql`. `discord-interactions`, `discord
 
 **The service role may call `queue_discord_post()` and `is_optional_raid_night()`.** `queue_discord_post()` was revoked from every role so only the writes that post could call it; this write runs as the service role, so the service role gets it. That adds nothing: the service role may insert into `discord_post_queue` directly.
 
-**A note is required for Late, Leaving Early, Tentative and Absent**, as on the site, so the pop-up's text box is required. Attending and Clear save at once. A raid that has passed is refused before anything is saved: its sheet stays up but no longer changes.
+**A note is required for Late, Leaving Early, Tentative and Absent**, as on the site: the pop-up's text box is required, and `discord_set_rsvp()` refuses a missing or blank note itself (CodeRabbit on #1758), a check `set_own_rsvp()` leaves to the page. Attending and Clear save at once. A raid that has passed is refused before anything is saved: its sheet stays up but no longer changes.
 
 **Left for later, on purpose.** The sheet as a drawn picture is #983's second PR. Officers still change other raiders' answers on the site only.
 
