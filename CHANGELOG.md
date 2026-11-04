@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.234.3] - 2026-11-04
+
+### Project
+
+- The Deploy workflow now registers the bot's Discord commands itself after a
+  merge deploys `discord-interactions` and its version check passes, so new
+  commands no longer wait on someone running `npm run discord:register` by
+  hand. With the two Discord secrets missing it skips and says so in the run
+  summary (#1752).
+
 ## [3.234.2] - 2026-11-03
 
 ### Project
