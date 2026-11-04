@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |     11 h 35 m |
+| Phase 1: For the guild test        |      12 h 0 m |
 | Phase 2: Before the new site goes live |       0 m |
-| Phase 3: After the new site goes live  |   1 h 15 m |
+| Phase 3: After the new site goes live  |   1 h 20 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **145 h 1 m** |
+| **All revamp work**                | **145 h 31 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -550,6 +550,14 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:18-11:39 AM | Sync started out of #1487's order (Kat's pick): #1654 plus an app shell, .NET WinForms (on .NET 10, since .NET 8's support ends 2026-11-10); the public WGA-Raid-Hub-Sync repo with labels, templates and CodeRabbit (PR sync #6); #1445 to #1449 moved there as sync #1 to #5, their bodies and blocked-by links repaired by hand, and #1487's body restored after the move rewrote every issue number in it; the tray app that finds the game folder and lists game accounts (PR sync #7) | Phase 3: After the new site goes live (#1654) | 20 m | ~17 m build, ~3 m Kat | 132,900 | |
 | 11:39 AM-12:28 PM | PRs sync #6 and #7: five CodeRabbit rounds (docs notes declined; the null account list, a malformed saved path, links inside WTF, unreadable folders, a missing game drive keeping its ticks, failed saves, letter case fixed; one declined); the branch rules for Kat; the tray-menu screenshot; both merged, the ruleset and squash-only merges set by API | Phase 3: After the new site goes live (#1654) | 50 m | ~35 m build, ~15 m Kat | 72,200 | |
 | 12:30-12:35 PM | #1654's last chore: the CONTRIBUTING pointer to the Sync repo, these rows, stamp, changelog | Phase 3: After the new site goes live (#1654) | 5 m | ~5 m build | 14,900 | Review and merge not yet counted |
+| 12:34-12:41 PM | PR #1756 (#1654): sync links fixed in the PR body and CHANGELOG (bare #N pointed at this repo), merged, cleanup, #1654's #1487 row out; sync #8 filed (a Sync window, Kat) and placed | Phase 3: After the new site goes live (#1654) | 5 m | ~4 m build, ~1 m Kat | 34,600 | |
+
+### 2026-11-04
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 9:48-9:57 AM | #1752: Kat added the two Discord secrets on GitHub (steps for the website); the Deploy step that registers the commands after `discord-interactions` deploys, docs, stamp, changelog; PR #1757, merged, cleanup | Phase 1: For the guild test (#1752) | 10 m | ~7 m build, ~3 m Kat | 120,200 | |
+| 9:57-10:10 AM | #983 part 1: the signup sheet's "Set your status" dropdown and note pop-up in `discord-interactions`, `discord_set_rsvp()` (service role, SECURITY INVOKER), edge and database tests, generated docs, decision log, RLS.md, stamp, changelog, these rows | Phase 1: For the guild test (#983) | 15 m | ~15 m build | 385,000 | PR, CodeRabbit, the fresh-agent review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
@@ -585,6 +593,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-10-27 | 12:23-12:26 AM | Where the work stood; #1408 closed: Monday night's progression sync ran on the new Warcraft Logs secret | 5 m |
 | 2026-11-03 | 8:56-8:58 AM | Where the work stood | 5 m |
 | 2026-11-03 | 9:20-11:45 AM | Sandbox testers: the Sentry join error read (#1748), Cloudflare Access sign-in help, the live database checked for what testers saved, #1749 and #1753 filed, #1753 fixed (the Import characters window no longer covers the join page); review and merge not yet counted | 2 h 25 m |
+| 2026-11-04 | 9:47-9:48 AM | Where the work stood | 5 m |
 
 ## Remaining in Revamp 1
 

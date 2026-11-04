@@ -160,6 +160,16 @@ function supabaseDb(): InteractionsDb {
         list: (settings.data as { lootResponses?: unknown } | null)?.lootResponses ?? null
       };
     },
+    async setRsvp(discordId, teamId, raidDate, status, note) {
+      const { error } = await db().rpc('discord_set_rsvp', {
+        p_discord_id: discordId,
+        p_team_id: teamId,
+        p_raid_date: raidDate,
+        p_status: status,
+        p_note: note
+      });
+      return error ? error.message : null;
+    },
     async inviteCode(teamId) {
       const { data, error } = await db()
         .from('team_invite_links')

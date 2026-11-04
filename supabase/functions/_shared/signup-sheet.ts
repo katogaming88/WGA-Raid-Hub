@@ -71,6 +71,16 @@ export type SheetContext = {
 };
 
 export const REFRESH_PREFIX = 'signup-sheet-refresh:';
+// The "Set your status" dropdown (#983), and the note pop-up some answers open.
+export const STATUS_PREFIX = 'signup-sheet-status:';
+export const NOTE_PREFIX = 'signup-sheet-note:';
+// The dropdown's value for "back to the default", which saves no answer.
+export const CLEAR = 'clear';
+// The answers a raider may pick for themselves, as set_own_rsvp() takes them.
+// Attending is offered on optional nights only, where there is no default.
+const OWN_STATUSES = ['Late', 'Leaving Early', 'Tentative', 'Absent'];
+// The ones that open the note pop-up first.
+export const WANTS_NOTE = new Set(OWN_STATUSES);
 // The new site's brand blue (the old bot used the old site's gold).
 const COLOR = 0x5b9cf5;
 const DEFAULT_TIMEZONE = 'America/New_York';
@@ -212,6 +222,19 @@ export function buildSheet(input: {
   // The team id rides on the button: one server can hold several teams.
   buttons.push({ type: 2, style: 2, label: 'Refresh', custom_id: `${REFRESH_PREFIX}${team.id}:${raidDate}` });
 
+  // A select menu has to sit alone in its row (#983).
+  const options = [
+    ...(night.isOptional ? [{ label: 'Attending', value: 'Attending' }] : []),
+    ...OWN_STATUSES.map((st) => ({ label: st, value: st })),
+    { label: 'Clear', value: CLEAR, description: night.isOptional ? 'Back to no answer' : 'Back to Present' }
+  ];
+  const statusMenu: Record<string, unknown> = {
+    type: 3,
+    custom_id: `${STATUS_PREFIX}${team.id}:${raidDate}`,
+    placeholder: 'Set your status',
+    options
+  };
+
   return {
     embeds: [
       {
@@ -223,7 +246,10 @@ export function buildSheet(input: {
         image: { url: bannerUrl(team.id) }
       }
     ],
-    components: [{ type: 1, components: buttons }]
+    components: [
+      { type: 1, components: buttons },
+      { type: 1, components: [statusMenu] }
+    ]
   };
 }
 

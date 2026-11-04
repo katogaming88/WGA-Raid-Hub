@@ -131,6 +131,24 @@ Deno.test('View on Site leaves ?team= off for the default team; Refresh carries 
   );
 });
 
+Deno.test('the "Set your status" dropdown sits in a row of its own; Attending only on optional nights', () => {
+  const menuOf = (night: Night) => {
+    const row = sheet([], [], night).components[1].components;
+    assertEquals(row.length, 1);
+    return row[0] as { custom_id: string; options: { label: string; value: string }[] };
+  };
+  const normal = menuOf(RAID);
+  assertEquals(normal.custom_id, 'signup-sheet-status:1:2026-11-03');
+  assertEquals(
+    normal.options.map((o) => o.value),
+    ['Late', 'Leaving Early', 'Tentative', 'Absent', 'clear']
+  );
+  assertEquals(
+    menuOf({ ...RAID, isOptional: true }).options.map((o) => o.value),
+    ['Attending', 'Late', 'Leaving Early', 'Tentative', 'Absent', 'clear']
+  );
+});
+
 Deno.test('every team gets a wide banner: its own, or the Raid Hub one', () => {
   assert(bannerUrl(1).endsWith('/phoenix-header.png'));
   assert(bannerUrl(2).endsWith('/hellfire-header.png'));

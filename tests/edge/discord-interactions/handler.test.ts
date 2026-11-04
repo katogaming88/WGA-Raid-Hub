@@ -5,7 +5,11 @@
 import { assert, assertEquals } from 'jsr:@std/assert@1';
 import {
   API,
+  BENCH,
+  CLEARED,
   COOLDOWN_MS,
+  RAID_OVER,
+  SAVED,
   type Deps,
   type InteractionsDb,
   NO_TEAMS,
@@ -104,6 +108,8 @@ type State = {
   list?: unknown;
   invite?: string | null;
   posts?: { kind: string; channelId: string }[];
+  // What discord_set_rsvp() answers: null when it saved.
+  rsvpRefusal?: string | null;
 };
 
 const KAT: Member = {
@@ -118,6 +124,7 @@ const KAT: Member = {
 function setup(state: State = {}, discord: Response[] = [], sheetState: SheetState = {}) {
   const log: string[] = [];
   const recorded: { discordId: string; categories: NudgeCategory[] }[] = [];
+  const saved: unknown[][] = [];
   const pending: Promise<unknown>[] = [];
   const db: InteractionsDb = {
     teamsInServer(serverId) {
@@ -161,6 +168,11 @@ function setup(state: State = {}, discord: Response[] = [], sheetState: SheetSta
     posts(teamId) {
       log.push('db:posts:' + teamId);
       return Promise.resolve(state.posts ?? []);
+    },
+    setRsvp(...args) {
+      log.push('db:setRsvp');
+      saved.push(args);
+      return Promise.resolve(state.rsvpRefusal ?? null);
     }
   };
   const rec = recordingFetch(discord);
@@ -185,7 +197,7 @@ function setup(state: State = {}, discord: Response[] = [], sheetState: SheetSta
       pending.push(work);
     }
   };
-  return { deps, log, calls: rec.calls, recorded, settle: () => Promise.all(pending) };
+  return { deps, log, calls: rec.calls, recorded, saved, settle: () => Promise.all(pending) };
 }
 
 const ok = (body: unknown = {}) => new Response(JSON.stringify(body), { status: 200 });
@@ -474,6 +486,91 @@ Deno.test('Refresh on a night no sheet is posted for changes nothing', async () 
   assertEquals(await res.json(), { type: 6 });
   await settle();
   assertEquals(calls.length, 0);
+});
+
+// -- The signup sheet's "Set your status" dropdown (#983) --------------------------
+
+const pick = (value: string, date = '2026-11-05') => ({
+  ...press(`signup-sheet-status:1:${date}`),
+  data: { custom_id: `signup-sheet-status:1:${date}`, values: [value] }
+});
+const submitNote = (status: string, note: string, date = '2026-11-05') => ({
+  ...press(''),
+  type: 5,
+  data: {
+    custom_id: `signup-sheet-note:1:${date}:${status}`,
+    components: [{ type: 1, components: [{ type: 4, custom_id: 'note', value: note }] }]
+  }
+});
+const POSTED = { nights: { '2026-11-05': RAID }, rows: { '2026-11-05': { channelId: CHANNEL, messageId: 'm9' } } };
+// The reply only the raider sees: the edit of their "thinking" answer.
+const reply = (calls: { url: string; body?: string | null }[]) =>
+  JSON.parse(calls.find((c) => c.url.endsWith('/messages/@original'))!.body!).content;
+
+Deno.test('picking an answer that wants a reason opens the note pop-up at once, reading nothing', async () => {
+  const { deps, log, calls } = setup();
+  const res = await handle(await signed(pick('Late')), deps);
+  const body = await res.json();
+  assertEquals(body.type, 9);
+  assertEquals(body.data.custom_id, 'signup-sheet-note:1:2026-11-05:Late');
+  assertEquals(body.data.components[0].components[0].required, true);
+  assertEquals(log, []);
+  assertEquals(calls.length, 0);
+});
+
+Deno.test(
+  'the note saves the answer for the account that pressed it, then the sheet is brought up to date',
+  async () => {
+    const { deps, saved, calls, settle } = setup({}, [ok(), ok({}), ok({ id: 'm9' })], POSTED);
+    const res = await handle(await signed(submitNote('Late', '  traffic  ')), deps);
+    assertEquals(await res.json(), { type: 5, data: { flags: 64 } });
+    await settle();
+    assertEquals(saved, [[OFFICER, 1, '2026-11-05', 'Late', 'traffic']]);
+    assertEquals(reply(calls), SAVED('Late', 'Thursday, November 5'));
+    assertEquals(calls[calls.length - 1].method, 'PATCH');
+    assert(calls[calls.length - 1].url.endsWith(`/channels/${CHANNEL}/messages/m9`));
+  }
+);
+
+Deno.test('Clear saves no answer: back to Present on a normal night', async () => {
+  const { deps, saved, calls, settle } = setup({}, [ok(), ok({}), ok({ id: 'm9' })], POSTED);
+  const res = await handle(await signed(pick('clear')), deps);
+  assertEquals(await res.json(), { type: 5, data: { flags: 64 } });
+  await settle();
+  assertEquals(saved, [[OFFICER, 1, '2026-11-05', null, null]]);
+  assertEquals(reply(calls), CLEARED('Thursday, November 5', false));
+});
+
+Deno.test('Attending saves at once, with no pop-up', async () => {
+  const optional = { nights: { '2026-11-05': { ...RAID, isOptional: true } } };
+  const { deps, saved, settle } = setup({}, [ok()], optional);
+  const res = await handle(await signed(pick('Attending')), deps);
+  assertEquals(await res.json(), { type: 5, data: { flags: 64 } });
+  await settle();
+  assertEquals(saved, [[OFFICER, 1, '2026-11-05', 'Attending', null]]);
+});
+
+Deno.test("the database's refusal is told in plain words, and the sheet is left alone", async () => {
+  const { deps, calls, settle } = setup({ rsvpRefusal: 'Bench players cannot set an RSVP status.' }, [ok()], POSTED);
+  await handle(await signed(pick('clear')), deps);
+  await settle();
+  assertEquals(reply(calls), BENCH);
+  assertEquals(calls.length, 1);
+});
+
+Deno.test('a raid that has passed is refused before anything is saved', async () => {
+  const { deps, saved, calls, settle } = setup({}, [ok()], { nights: { '2026-10-27': RAID } });
+  await handle(await signed(submitNote('Absent', 'sick', '2026-10-27')), deps);
+  await settle();
+  assertEquals(saved, []);
+  assertEquals(reply(calls), RAID_OVER);
+});
+
+Deno.test('a pick the dropdown never offers is refused', async () => {
+  const { deps, saved } = setup();
+  const res = await handle(await signed(pick('Present')), deps);
+  assertEquals((await res.json()).data.content, UNKNOWN_COMMAND);
+  assertEquals(saved, []);
 });
 
 // -- The team box on every command (#961) ---------------------------------------

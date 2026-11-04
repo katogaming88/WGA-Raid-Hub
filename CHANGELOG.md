@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.235.0] - 2026-11-04
+
+### Backend
+
+- `discord_set_rsvp()`: a raider's own RSVP for a raid night, saved for the
+  Discord account that pressed the signup sheet's dropdown, with
+  `set_own_rsvp()`'s checks and RSVP-change notice. Service role only (#983).
+
+### Functions
+
+- The Discord signup sheet has a "Set your status" dropdown: Late, Leaving
+  Early, Tentative, Absent, Attending (optional nights only) and Clear. The
+  first four ask for a note, as the site does. The raider's answer saves, the
+  sheet updates and the change posts to the team's RSVP channel; a raid that
+  has passed can't be changed from Discord (#983).
+
+### Project
+
+- Revamp time log: the #1654 merge row from 2026-11-03 and today's #1752
+  and #983 rows.
+
 ## [3.234.3] - 2026-11-04
 
 ### Project

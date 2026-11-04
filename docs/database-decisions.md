@@ -3247,3 +3247,19 @@ Shipped: `20261103090746_signup_sheets_schedule.sql`. `discord-bot-webhook`, `di
 **Quiet hours hold a new sheet, not an edit.** A new sheet pings its role; an edit pings nobody.
 
 [Full discussion -> #960](https://github.com/katogaming88/WGA-Raid-Hub/issues/960).
+
+## #983 -- a raider sets their own RSVP from the Discord signup sheet
+
+Shipped: `20261104100028_discord_set_rsvp.sql`. `discord-interactions`, `discord-bot-webhook` (the sheet's dropdown).
+
+**A fourth way into `raid_rsvps`: `discord_set_rsvp()`.** The sheet's "Set your status" dropdown saves through it. It is `set_own_rsvp()` for the Discord account that pressed it: the same checks (an active roster character on the team, the bench only on optional nights, Attending only on optional nights), the same upsert, a null status that clears the answer, and the same `rsvp_changes` notice through `queue_discord_post()`. It finds the raider by `people.discord_id`, as `discord-interactions`' permission check does, since nobody signs in to a button press.
+
+**Service role only, and SECURITY INVOKER.** It takes the Discord id as an argument, so a signed-in raider holding it could change anyone's answer: it is revoked from `public`, `anon` and `authenticated`. SECURITY DEFINER functions take identity from `auth.uid()`, never a parameter, so this one runs with the caller's rights, which only the service role has. Discord's request signature, checked before anything else, is what stands in front of the service role, as for the other buttons.
+
+**The service role may call `queue_discord_post()` and `is_optional_raid_night()`.** `queue_discord_post()` was revoked from every role so only the writes that post could call it; this write runs as the service role, so the service role gets it. That adds nothing: the service role may insert into `discord_post_queue` directly.
+
+**A note is required for Late, Leaving Early, Tentative and Absent**, as on the site, so the pop-up's text box is required. Attending and Clear save at once. A raid that has passed is refused before anything is saved: its sheet stays up but no longer changes.
+
+**Left for later, on purpose.** The sheet as a drawn picture is #983's second PR. Officers still change other raiders' answers on the site only.
+
+[Full discussion -> #983](https://github.com/katogaming88/WGA-Raid-Hub/issues/983).
