@@ -63,11 +63,16 @@ async function iconsFor(fetcher: typeof fetch, picture: Picture): Promise<Map<st
   return icons;
 }
 
-export async function drawPicture(picture: Picture, fetcher: typeof fetch = fetch): Promise<Uint8Array> {
+// Any of the bot's pictures as a PNG: the sheet's roster and the weekly
+// lineup's grid (#1709) both draw through here.
+export async function drawSvg(svg: string, fetcher: typeof fetch = fetch): Promise<Uint8Array> {
   const fonts = await start(fetcher);
-  const svg = pictureSvg(picture, await iconsFor(fetcher, picture));
   const resvg = new Resvg(svg, {
     font: { fontBuffers: fonts, defaultFontFamily: 'Onest', loadSystemFonts: false }
   });
   return resvg.render().asPng();
+}
+
+export async function drawPicture(picture: Picture, fetcher: typeof fetch = fetch): Promise<Uint8Array> {
+  return drawSvg(pictureSvg(picture, await iconsFor(fetcher, picture)), fetcher);
 }

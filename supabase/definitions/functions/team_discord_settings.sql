@@ -31,8 +31,11 @@ begin
                'kind', k.kind,
                'channel_id', p.channel_id,
                'ping_role_id', p.ping_role_id,
-               'last_posted_at', p.last_posted_at) order by k.n)
-        from unnest(array['officer_requests', 'mplus_requests', 'rsvp_changes']) with ordinality as k(kind, n)
+               'last_posted_at', p.last_posted_at,
+               'post_weekday', p.post_weekday,
+               'post_time', p.post_time,
+               'post_timezone', p.post_timezone) order by k.n)
+        from unnest(array['officer_requests', 'mplus_requests', 'rsvp_changes', 'weekly_lineup']) with ordinality as k(kind, n)
         left join team_discord_posts p on p.team_id = p_team_id and p.kind = k.kind),
     'sheets', coalesce((
       select jsonb_agg(jsonb_build_object(

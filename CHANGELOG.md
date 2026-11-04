@@ -12,6 +12,32 @@ answers to.
 
 ---
 
+## [3.238.0] - 2026-11-04
+
+### Frontend
+
+- Settings › Discord has a Weekly lineup post: a channel, an optional ping,
+  and the day, time and time zone it posts at (#1709).
+
+### Backend
+
+- The weekly lineup's settings (`set_team_weekly_lineup_post()`, a fourth
+  kind in `team_discord_posts` with its day, time and zone) and
+  `team_lineup_posts`, the message posted for each week (#1709).
+
+### Functions
+
+- The weekly boss lineup post: once a week, at the team's day and time, the
+  bot posts the lineup for the coming raid nights, a grid per night with who
+  comes in and who goes out at each boss and the swaps under each. It updates
+  when an officer changes the lineup, pinging nobody, and a week with no
+  lineup posts nothing. `/officer post lineup` posts a night's lineup now
+  (#1709).
+
+### Project
+
+- Revamp time log: the #983 PR row and the #1709 row.
+
 ## [3.237.0] - 2026-11-04
 
 ### Functions

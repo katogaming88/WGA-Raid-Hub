@@ -9898,6 +9898,24 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "post_weekday",
+          "type": "smallint",
+          "nullable": true,
+          "comment": "For the weekly lineup only (#1709): the day it posts, 0 is Sunday, in post_timezone."
+        },
+        {
+          "name": "post_time",
+          "type": "time without time zone",
+          "nullable": true,
+          "comment": "For the weekly lineup only (#1709): the time it posts, in post_timezone."
+        },
+        {
+          "name": "post_timezone",
+          "type": "text",
+          "nullable": true,
+          "comment": "For the weekly lineup only (#1709): the time zone its day and time are in."
         }
       ],
       "indexes": [
@@ -9926,11 +9944,35 @@
         {
           "name": "team_discord_posts_kind_check",
           "type": "CHECK",
-          "def": "CHECK ((kind = ANY (ARRAY['officer_requests'::text, 'mplus_requests'::text, 'rsvp_changes'::text])))",
+          "def": "CHECK ((kind = ANY (ARRAY['officer_requests'::text, 'mplus_requests'::text, 'rsvp_changes'::text, 'weekly_lineup'::text])))",
           "table": "public.team_discord_posts",
           "referenced_table": "",
           "columns": [
             "kind"
+          ]
+        },
+        {
+          "name": "team_discord_posts_post_weekday_check",
+          "type": "CHECK",
+          "def": "CHECK (((post_weekday \u003e= 0) AND (post_weekday \u003c= 6)))",
+          "table": "public.team_discord_posts",
+          "referenced_table": "",
+          "columns": [
+            "post_weekday"
+          ]
+        },
+        {
+          "name": "team_discord_posts_schedule_check",
+          "type": "CHECK",
+          "def": "CHECK (\nCASE\n    WHEN ((kind = 'weekly_lineup'::text) AND (channel_id IS NOT NULL)) THEN (num_nonnulls(post_weekday, post_time, post_timezone) = 3)\n    ELSE (num_nonnulls(post_weekday, post_time, post_timezone) = 0)\nEND)",
+          "table": "public.team_discord_posts",
+          "referenced_table": "",
+          "columns": [
+            "kind",
+            "channel_id",
+            "post_weekday",
+            "post_time",
+            "post_timezone"
           ]
         },
         {
@@ -10375,6 +10417,76 @@
           "columns": [
             "discord_id",
             "category"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.team_lineup_posts",
+      "type": "BASE TABLE",
+      "comment": "The weekly boss lineup message posted for each team and week (#1709). week_of is the date the post was due, in the team's lineup time zone. Written by discord-bot-webhook with the service role; later runs edit this message when the lineup changes.",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "week_of",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "channel_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "message_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "posted_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_lineup_posts_pkey",
+          "def": "CREATE UNIQUE INDEX team_lineup_posts_pkey ON public.team_lineup_posts USING btree (team_id, week_of)",
+          "table": "public.team_lineup_posts",
+          "columns": [
+            "team_id",
+            "week_of"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_lineup_posts_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_lineup_posts",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_lineup_posts_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id, week_of)",
+          "table": "public.team_lineup_posts",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "week_of"
           ]
         }
       ]
@@ -12212,6 +12324,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_lineup_posts",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -13383,6 +13508,12 @@
       "name": "public.set_own_missing_spec",
       "return_type": "void",
       "arguments": "p_player_id integer, p_class_spec_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_weekly_lineup_post",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_channel_id text, p_ping_role_id text, p_weekday integer, p_time time without time zone, p_timezone text",
       "type": "FUNCTION"
     }
   ],

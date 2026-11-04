@@ -86,7 +86,11 @@ function handlers({
       if (name === 'current_discord_id') return { data: 'd' };
       if (name === 'resolve_person') return { data: person(role) };
       if (name === 'team_discord_settings') return { data: saved };
-      if (name.startsWith('set_team_discord') || name.includes('signup_sheet')) {
+      if (
+        name.startsWith('set_team_discord') ||
+        name.includes('signup_sheet') ||
+        name === 'set_team_weekly_lineup_post'
+      ) {
         rpcs.push([name, args]);
         return { data: null };
       }
@@ -135,6 +139,58 @@ describe('Settings › Discord (#994)', () => {
       'set_team_discord_post',
       { p_team_id: 1, p_kind: 'mplus_requests', p_channel_id: '201', p_ping_role_id: '302' }
     ]);
+  });
+
+  it('turns the weekly lineup on with its channel, day, time and time zone (#1709)', async () => {
+    const rpcs: [string, Record<string, unknown>][] = [];
+    renderApp(PATH, handlers({ rpcs }));
+    await userEvent.click(await screen.findByRole('button', { name: /Weekly lineup.*Off/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Weekly lineup' });
+    await userEvent.selectOptions(within(dialog).getByLabelText('Channel'), '#tuesday-raids');
+    await userEvent.selectOptions(within(dialog).getByLabelText('Day'), 'Thursday');
+    const time = within(dialog).getByLabelText('Time');
+    await userEvent.clear(time);
+    await userEvent.type(time, '19:30');
+    await userEvent.selectOptions(within(dialog).getByLabelText('Time zone'), 'Central time');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Turn on' }));
+    await expect.poll(() => rpcs.length).toBe(1);
+    expect(rpcs[0]).toEqual([
+      'set_team_weekly_lineup_post',
+      {
+        p_team_id: 1,
+        p_channel_id: '204',
+        p_ping_role_id: null,
+        p_weekday: 4,
+        p_time: '19:30',
+        p_timezone: 'America/Chicago'
+      }
+    ]);
+  });
+
+  it('shows when the weekly lineup posts on its row', async () => {
+    renderApp(
+      PATH,
+      handlers({
+        saved: {
+          ...SAVED,
+          posts: [
+            ...SAVED.posts,
+            {
+              kind: 'weekly_lineup',
+              channel_id: '204',
+              ping_role_id: null,
+              last_posted_at: null,
+              post_weekday: 3,
+              post_time: '18:00:00',
+              post_timezone: 'America/New_York'
+            }
+          ]
+        }
+      })
+    );
+    expect(
+      await screen.findByRole('button', { name: /Weekly lineup.*#tuesday-raids.*Wednesdays at 6:00 PM Eastern time/ })
+    ).toBeInTheDocument();
   });
 
   it("says what to fix in Discord for a channel the bot can't post in, and sends no test there", async () => {

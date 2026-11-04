@@ -58,6 +58,32 @@ export function useSetDiscordPost(teamId: number) {
   );
 }
 
+// The weekly lineup post (#1709): no channel turns it off.
+export type LineupDraft = {
+  channelId: string | null;
+  roleId: string | null;
+  weekday: number;
+  time: string;
+  timezone: string;
+};
+
+export function useSetWeeklyLineup(teamId: number) {
+  return useSupabaseMutation<null, LineupDraft>(
+    async (client, draft) => {
+      const result = await client.rpc('set_team_weekly_lineup_post', {
+        p_team_id: teamId,
+        p_channel_id: orNull(draft.channelId),
+        p_ping_role_id: orNull(draft.roleId),
+        p_weekday: draft.weekday,
+        p_time: draft.time,
+        p_timezone: draft.timezone
+      });
+      return { data: null, error: result.error };
+    },
+    { key: ['set-weekly-lineup', teamId], refreshes: [settingsKey(teamId)] }
+  );
+}
+
 export type SheetDraft = {
   id: number | null;
   channelId: string;

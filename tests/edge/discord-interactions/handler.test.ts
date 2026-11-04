@@ -21,6 +21,9 @@ import {
   NO_PROFILE,
   NOT_ON_TEAM,
   INVITE_NOT_ALLOWED,
+  LINEUP_BAD_DATE,
+  LINEUP_NOT_ALLOWED,
+  LINEUP_POSTED,
   INVITE_POSTED,
   type Team,
   UNKNOWN_COMMAND,
@@ -32,6 +35,7 @@ import {
 import type { NudgeCategory, WishlistSetupStatusRow } from '../../../supabase/functions/discord-interactions/nudge.ts';
 import type { Award, Signup } from '../../../supabase/functions/discord-interactions/raider.ts';
 import { VERSION } from '../../../supabase/functions/discord-interactions/version.ts';
+import type { LineupDb } from '../../../supabase/functions/_shared/lineup-post.ts';
 import { recordingFetch } from '../_support/fetch.ts';
 import { CHANNEL, RAID, type SheetState, fakeSheets } from '../_support/sheets.ts';
 
@@ -818,6 +822,54 @@ Deno.test('/officer invite: a post Discord refuses is not reported as posted', a
   ]);
   assertEquals(calls.length, 3);
   assertEquals(body.content, BROKE);
+});
+
+// -- /officer post lineup (#1709) ------------------------------------------------------------
+
+const postLineup = (options: unknown[] = []) =>
+  command('officer', {}, [{ type: 2, name: 'post', options: [{ type: 1, name: 'lineup', options }] }]);
+const lineupDb = (): LineupDb => ({
+  allLineups: () => Promise.resolve([]),
+  teamLineup: () =>
+    Promise.resolve({
+      team: { id: 1, name: 'Phoenix', slug: 'phoenix', serverId: SERVER, quietHours: null },
+      setting: { channelId: CHANNEL, pingRoleId: null, weekday: 3, time: '18:00:00', timezone: 'America/New_York' }
+    }),
+  night: () => Promise.resolve(RAID),
+  roster: () => Promise.resolve([]),
+  bosses: () => Promise.resolve([{ name: "Nek'zali", position: 1, playerIds: [] }]),
+  postedLineup: () => Promise.resolve(null),
+  saveLineup: () => Promise.resolve(true),
+  forgetLineup: () => Promise.resolve(),
+  markPosted: () => Promise.resolve()
+});
+
+Deno.test('/officer post lineup from someone who cannot edit the schedule posts nothing', async () => {
+  const { body, calls, log } = await answer(postLineup(), { held: ['edit_roster'] });
+  assert(log.includes(`db:hasTeamPermission:${OFFICER}:1:edit_schedule`));
+  assertEquals(calls.length, 1);
+  assertEquals(body.content, LINEUP_NOT_ALLOWED('Phoenix'));
+});
+
+Deno.test('/officer post lineup refuses a date it cannot read', async () => {
+  const { body } = await answer(postLineup([{ name: 'date', value: '2026-02-31' }]), { held: ['edit_schedule'] });
+  assertEquals(body.content, LINEUP_BAD_DATE);
+});
+
+Deno.test('/officer post lineup posts the night given to the lineup channel, then says so', async () => {
+  const s = setup({ held: ['edit_schedule'] }, [ok({ id: CHANNEL, guild_id: SERVER }), ok({ id: 'm1' }), ok()]);
+  s.deps.lineups = lineupDb();
+  await handle(await signed(postLineup([{ name: 'date', value: '2026-11-05' }])), s.deps);
+  await s.settle();
+  assertEquals(
+    s.calls.map((c) => `${c.method} ${c.url.replace(API, '')}`),
+    [
+      `GET /channels/${CHANNEL}`,
+      `POST /channels/${CHANNEL}/messages`,
+      `PATCH /webhooks/${APP}/interaction-token/messages/@original`
+    ]
+  );
+  assertEquals(JSON.parse(s.calls[2].body!).content, LINEUP_POSTED('Phoenix', 'Thursday, November 5'));
 });
 
 // -- /help -------------------------------------------------------------------------------

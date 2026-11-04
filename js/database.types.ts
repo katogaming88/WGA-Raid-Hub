@@ -3169,6 +3169,9 @@ export type Database = {
           kind: string
           last_posted_at: string | null
           ping_role_id: string | null
+          post_time: string | null
+          post_timezone: string | null
+          post_weekday: number | null
           team_id: number
           updated_at: string
         }
@@ -3177,6 +3180,9 @@ export type Database = {
           kind: string
           last_posted_at?: string | null
           ping_role_id?: string | null
+          post_time?: string | null
+          post_timezone?: string | null
+          post_weekday?: number | null
           team_id: number
           updated_at?: string
         }
@@ -3185,6 +3191,9 @@ export type Database = {
           kind?: string
           last_posted_at?: string | null
           ping_role_id?: string | null
+          post_time?: string | null
+          post_timezone?: string | null
+          post_weekday?: number | null
           team_id?: number
           updated_at?: string
         }
@@ -3272,6 +3281,38 @@ export type Database = {
             foreignKeyName: "team_invite_links_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: true
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_lineup_posts: {
+        Row: {
+          channel_id: string
+          message_id: string
+          posted_at: string
+          team_id: number
+          week_of: string
+        }
+        Insert: {
+          channel_id: string
+          message_id: string
+          posted_at?: string
+          team_id: number
+          week_of: string
+        }
+        Update: {
+          channel_id?: string
+          message_id?: string
+          posted_at?: string
+          team_id?: number
+          week_of?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_lineup_posts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
@@ -5123,6 +5164,17 @@ export type Database = {
       }
       set_team_unlisted: {
         Args: { p_team_id: number; p_unlisted: boolean }
+        Returns: undefined
+      }
+      set_team_weekly_lineup_post: {
+        Args: {
+          p_channel_id: string
+          p_ping_role_id: string
+          p_team_id: number
+          p_time: string
+          p_timezone: string
+          p_weekday: number
+        }
         Returns: undefined
       }
       signup_promotion_plan: {

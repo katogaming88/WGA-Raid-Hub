@@ -14,13 +14,18 @@ One row per kind of post the bot makes for a team (#1712, #921): its channel, an
 | ping_role_id | text |  | true |  |  |  |
 | last_posted_at | timestamp with time zone |  | true |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
+| post_weekday | smallint |  | true |  |  | For the weekly lineup only (#1709): the day it posts, 0 is Sunday, in post_timezone. |
+| post_time | time without time zone |  | true |  |  | For the weekly lineup only (#1709): the time it posts, in post_timezone. |
+| post_timezone | text |  | true |  |  | For the weekly lineup only (#1709): the time zone its day and time are in. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | team_discord_posts_check | CHECK | CHECK (((channel_id IS NOT NULL) OR (ping_role_id IS NULL))) |
-| team_discord_posts_kind_check | CHECK | CHECK ((kind = ANY (ARRAY['officer_requests'::text, 'mplus_requests'::text, 'rsvp_changes'::text]))) |
+| team_discord_posts_kind_check | CHECK | CHECK ((kind = ANY (ARRAY['officer_requests'::text, 'mplus_requests'::text, 'rsvp_changes'::text, 'weekly_lineup'::text]))) |
+| team_discord_posts_post_weekday_check | CHECK | CHECK (((post_weekday >= 0) AND (post_weekday <= 6))) |
+| team_discord_posts_schedule_check | CHECK | CHECK (<br />CASE<br />    WHEN ((kind = 'weekly_lineup'::text) AND (channel_id IS NOT NULL)) THEN (num_nonnulls(post_weekday, post_time, post_timezone) = 3)<br />    ELSE (num_nonnulls(post_weekday, post_time, post_timezone) = 0)<br />END) |
 | team_discord_posts_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES team_discord_config(team_id) ON DELETE CASCADE |
 | team_discord_posts_pkey | PRIMARY KEY | PRIMARY KEY (team_id, kind) |
 
@@ -44,6 +49,9 @@ erDiagram
   text ping_role_id
   timestamp_with_time_zone last_posted_at
   timestamp_with_time_zone updated_at
+  smallint post_weekday
+  time_without_time_zone post_time
+  text post_timezone
 }
 "public.team_discord_config" {
   integer team_id FK

@@ -12,6 +12,7 @@ const MANAGE_GUILD = String(1 << 5);
 // Server channels only: a DM has no server to read teams from.
 const GUILD_ONLY = [0];
 const SUB_COMMAND = 1;
+const SUB_COMMAND_GROUP = 2;
 
 // Optional: a server with one team needs no answer. The choices are the
 // teams whose Discord server is this one, read as it is typed.
@@ -47,7 +48,29 @@ export const COMMANDS = [
     contexts: GUILD_ONLY,
     options: [
       sub('nudge-missing', 'DM raiders missing a wishlist, BiS source link, or a real BiS pick on their wishlist'),
-      sub('invite', "Post the team's invite link in this channel")
+      sub('invite', "Post the team's invite link in this channel"),
+      // /officer post lineup (#1709): a group, so later posts sit beside it.
+      {
+        type: SUB_COMMAND_GROUP,
+        name: 'post',
+        description: 'Post something to its channel now',
+        options: [
+          {
+            type: SUB_COMMAND,
+            name: 'lineup',
+            description: "Post a raid night's boss lineup to the lineup channel now",
+            options: [
+              {
+                type: 3,
+                name: 'date',
+                description: 'The raid night, as YYYY-MM-DD; the next one when left out',
+                required: false
+              },
+              TEAM
+            ]
+          }
+        ]
+      }
     ]
   }
 ];

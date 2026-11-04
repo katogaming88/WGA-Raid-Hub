@@ -3,7 +3,8 @@
 // environment.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { sheetDb } from '../_shared/signup-sheet-db.ts';
-import { drawPicture } from '../_shared/sheet-picture-draw.ts';
+import { drawPicture, drawSvg } from '../_shared/sheet-picture-draw.ts';
+import { lineupDb } from '../_shared/lineup-db.ts';
 import type { Deps, QueuedPost, RelayDb } from './handler.ts';
 
 type QueuedRow = {
@@ -128,6 +129,8 @@ export function productionDeps(): Deps {
     env: Deno.env,
     db: supabaseDb(),
     sheets: sheetDb(serviceClient),
-    drawPicture: (picture) => drawPicture(picture)
+    drawPicture: (picture) => drawPicture(picture),
+    lineups: lineupDb(serviceClient),
+    drawSvg: (svg) => drawSvg(svg)
   };
 }

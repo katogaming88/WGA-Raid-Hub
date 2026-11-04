@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |     14 h 25 m |
+| Phase 1: For the guild test        |     15 h 35 m |
 | Phase 2: Before the new site goes live |       0 m |
 | Phase 3: After the new site goes live  |   1 h 20 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **147 h 56 m** |
+| **All revamp work**                | **149 h 6 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -563,7 +563,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:47-10:55 AM | #983: a test sheet for the dropdown: no team has a sheet on production and the Sandbox has no raid nights; steps for Kat | Phase 1: For the guild test (#983) | 10 m | ~8 m build, ~2 m Kat | 18,100 | |
 | 10:55-11:20 AM | #1724 (and #1755): the join reads a picked below-max-level character's spec, the Roster's "No spec yet" row with the raider's one-time spec picker, `set_own_missing_spec()`; edge, database and app tests, generated docs, decision log, RLS.md, stamp, changelog, these rows | Phase 1: For the guild test (#1724) | 25 m | ~23 m build, ~2 m Kat | 210,800 | |
 | 11:20 AM-12:08 PM | PR #1759 (#1724, #1755): the four screenshots (the raider's view through the Sandbox test raider); #1755 closed with it (Kat); GitHub's Actions outage checked; four CodeRabbit rounds (a wrong-team test, own roster characters read too, a failed read keeps the save, the row locked, a deadline on the read; one declined); the Roster browser tests skip the new rows; the fresh-agent review (approve, two notes fixed); the body refreshed; merged, cleanup, #1487 rows out | Phase 1: For the guild test (#1724) | 50 m | ~40 m build, ~10 m Kat | 363,600 | Includes the review agent's 91,400 |
-| 12:08-12:30 PM | #983 part 2: three mockups posted to the Sandbox test channel (Kat picked C, coloured names), then the picture in the functions: laid out as SVG, drawn with resvg and the Onest fonts, an unchanged sheet sends nothing, text when drawing fails; a real one posted from the new code; tests, docs, stamp, changelog, these rows | Phase 1: For the guild test (#983) | 20 m | ~18 m build, ~2 m Kat | 262,300 | PR, CodeRabbit and merge not yet counted |
+| 12:08-12:30 PM | #983 part 2: three mockups posted to the Sandbox test channel (Kat picked C, coloured names), then the picture in the functions: laid out as SVG, drawn with resvg and the Onest fonts, an unchanged sheet sends nothing, text when drawing fails; a real one posted from the new code; tests, docs, stamp, changelog, these rows | Phase 1: For the guild test (#983) | 20 m | ~18 m build, ~2 m Kat | 262,300 | |
+| 12:31-1:06 PM | PR #1760 (#983): the picture saved for the PR; three CodeRabbit rounds (alt text with every name, spec and class; anyone with a role drawn; the test path given); merged; #983 closed by hand (GitHub's incident); #1487 row out; the #1759 Pages deploy timed out on GitHub's side | Phase 1: For the guild test (#983) | 35 m | ~30 m build, ~5 m Kat | 77,200 | |
+| 1:06-1:40 PM | #1709: three rounds of mockups in the Sandbox test channel (Kat: round 1 wasn't a real Mythic week; picked the grid, then green-in / red-out arrows with the swaps under each boss); the migration, the lineup run in the sheets' 15-minute job, the grid drawn with the sheet's renderer, `/officer post lineup`, the Settings › Discord dialog; edge, database and app tests, generated docs, decision log, RLS.md, stamp, changelog, these rows | Phase 1: For the guild test (#1709) | 35 m | ~28 m build, ~7 m Kat | 517,900 | PR, CodeRabbit, the fresh-agent review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

@@ -2,13 +2,17 @@
 // team's saved settings (team_discord_settings()) and what the discord-settings
 // function read from Discord. No I/O here.
 
-export type PostKind = 'officer_requests' | 'mplus_requests' | 'rsvp_changes';
+export type PostKind = 'officer_requests' | 'mplus_requests' | 'rsvp_changes' | 'weekly_lineup';
 
 export type DiscordPost = {
   kind: PostKind;
   channel_id: string | null;
   ping_role_id: string | null;
   last_posted_at: string | null;
+  // The weekly lineup's day (0 is Sunday), time and zone (#1709).
+  post_weekday?: number | null;
+  post_time?: string | null;
+  post_timezone?: string | null;
 };
 
 export type SignupSheet = {
@@ -63,8 +67,24 @@ export const POST_KINDS: { kind: PostKind; label: string; description: string; d
     label: 'RSVP changes',
     description: 'Someone marks themselves late, tentative or out',
     dialog: 'A post each time someone marks themselves late, tentative or out.'
+  },
+  {
+    kind: 'weekly_lineup',
+    label: 'Weekly lineup',
+    description: 'The boss lineup for the coming raid week, once a week',
+    dialog:
+      'Once a week, at the day and time below, the boss lineup for the raid nights of the coming week. It updates when an officer changes the lineup, pinging nobody. A week with no lineup posts nothing.'
   }
 ];
+
+// "Wednesdays at 6:00 PM Eastern time", for the weekly lineup's row.
+export function lineupWhen(post: Pick<DiscordPost, 'post_weekday' | 'post_time' | 'post_timezone'>): string | null {
+  if (post.post_weekday == null || !post.post_time) return null;
+  const [h = 0, m = 0] = post.post_time.split(':').map(Number);
+  const clock = `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+  const zone = QUIET_ZONES.find((z) => z.id === post.post_timezone)?.label ?? post.post_timezone ?? '';
+  return `${DAY_NAMES[post.post_weekday]}s at ${clock} ${zone}`.trim();
+}
 
 // Days as the database keeps them (0 is Sunday), listed Monday first.
 export const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
