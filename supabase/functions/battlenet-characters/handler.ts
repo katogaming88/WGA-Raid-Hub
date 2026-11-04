@@ -71,6 +71,8 @@ const refuse = (error: string, status: number) => jsonResponse({ success: false,
 export const EXPIRED = 'Your Battle.net sign-in has expired. Sign in with Battle.net again.';
 export const NOT_CONNECTED = 'Connect Battle.net to your account first.';
 export const NOT_YOURS = 'That Battle.net login is not the one connected to your account.';
+// How long the optional full read of a kept character may take (#1724).
+export const DETAIL_DEADLINE_MS = 5_000;
 export const BLIZZARD_DOWN = 'Battle.net did not answer. Try again in a minute.';
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -162,10 +164,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       shown.map(async (c, i) => {
         const kept = ids.has(c.blizzard_id) || ownKeys.has(key(c.name, c.realm));
         if (!kept || detailById.has(c.blizzard_id)) return;
-        // Optional: a read that fails or times out keeps the character as
-        // listed, and the save goes ahead (CodeRabbit on #1759).
+        // Optional: a read that fails, or takes past the deadline (the
+        // request and its body both), keeps the character as listed, and the
+        // save goes ahead (CodeRabbit on #1759).
         try {
-          const res = await deps.fetch(API_BASE + summaryPath(c) + PROFILE_QUERY, bearer);
+          const res = await deps.fetch(API_BASE + summaryPath(c) + PROFILE_QUERY, {
+            ...bearer,
+            signal: AbortSignal.timeout(DETAIL_DEADLINE_MS)
+          });
           if (res.ok) shown[i] = { ...c, ...detailOf(await res.json()) };
         } catch {
           // keep the listed record

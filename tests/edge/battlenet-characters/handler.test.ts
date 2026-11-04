@@ -363,6 +363,27 @@ Deno.test('a picked character whose full read fails is still saved, as listed', 
   );
 });
 
+Deno.test(
+  'the full read of a kept character has a deadline, so a stalled Blizzard cannot hold up the save',
+  async () => {
+    const db = fakeDb();
+    const queue = happyQueue();
+    let n = 0;
+    let signal: AbortSignal | null | undefined;
+    const fetch = ((_input: string | URL | Request, init?: RequestInit) => {
+      n++;
+      if (n === 5) {
+        signal = init?.signal;
+        return Promise.reject(new DOMException('timed out', 'TimeoutError'));
+      }
+      return Promise.resolve(queue.shift()!);
+    }) as typeof globalThis.fetch;
+    const res = await handle(post({ token: TOKEN, allLevels: true, save: [102] }), { fetch, db });
+    assertEquals(res.status, 200);
+    assertEquals(signal instanceof AbortSignal, true);
+  }
+);
+
 Deno.test('a character listed but not picked is never read in full', async () => {
   const r = await run({ token: TOKEN, allLevels: true, save: [101] });
   assertEquals(r.fetches.length, 4);
