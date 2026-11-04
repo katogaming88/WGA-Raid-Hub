@@ -39,6 +39,15 @@ import {
 } from '../_shared/signup-sheet.ts';
 import { discordRequestBody } from '../_shared/discord-text.ts';
 import { type LineupDb, postLineupNow } from '../_shared/lineup-post.ts';
+import {
+  MISSING_COOLDOWN,
+  REMIND_PREFIX,
+  NOT_OPEN,
+  type MissingSignups,
+  missingEmbed,
+  reminderEmbed,
+  reminderSummary
+} from './missing.ts';
 import type { Picture } from '../_shared/sheet-picture.ts';
 import { isoDate } from '../_shared/time.ts';
 import { type Award, type HelpTeam, type Signup, counted, helpMessage, meMessage, scheduleMessage } from './raider.ts';
@@ -60,8 +69,14 @@ export interface InteractionsDb {
   teamsInServer(serverId: string): Promise<Team[]>;
   setupStatus(teamId: number): Promise<WishlistSetupStatusRow[]>;
   // The categories each of these users was nudged about since this time.
-  nudgedSince(discordIds: string[], since: Date): Promise<{ discordId: string; category: NudgeCategory }[]>;
-  recordNudge(discordId: string, categories: NudgeCategory[]): Promise<void>;
+  nudgedSince(
+    discordIds: string[],
+    since: Date
+  ): Promise<{ discordId: string; category: NudgeCategory | typeof MISSING_COOLDOWN }[]>;
+  recordNudge(discordId: string, categories: (NudgeCategory | typeof MISSING_COOLDOWN)[]): Promise<void>;
+  // The team's active roster and who has a live signup for the season open
+  // for signups; null when none is open.
+  missingSignups(teamId: number): Promise<MissingSignups>;
   // Whether the Raid Hub person with this Discord account holds this team
   // permission on the team, by their rank there (owners hold every one).
   hasTeamPermission(discordId: string, teamId: number, permission: string): Promise<boolean>;
@@ -139,6 +154,10 @@ export const NO_PROFILE = (siteUrl?: string) =>
   `This Discord account isn't on a Raid Hub profile yet. Sign in${siteUrl ? ` at ${siteUrl}` : ''} with Discord to claim yours.`;
 export const NOT_ON_TEAM = (team: string) =>
   `You're not on ${team}'s roster on Raid Hub. If you should be, ask one of its officers.`;
+// /officer missing-signups (#990): whoever manages the team's signups.
+export const MISSING_PERMISSION = 'manage_signups';
+export const MISSING_NOT_ALLOWED = (team: string) =>
+  `Only people who can manage ${team}'s signups on Raid Hub can see who hasn't signed up.`;
 // Who may post the invite link: whoever can see it on the site, by the
 // team's Edit roster permission (team_invite_links' read rule).
 export const INVITE_PERMISSION = 'edit_roster';
@@ -290,6 +309,20 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return json({ type: DEFERRED_UPDATE });
   }
   const customId = interaction.data?.custom_id ?? '';
+  if (interaction.type === BUTTON && customId.startsWith(REMIND_PREFIX)) {
+    // missing-signups-remind:<team id>. Answered with "thinking", only the
+    // officer's; the DMs follow, after the permission is checked again.
+    const teamId = Number(customId.slice(REMIND_PREFIX.length));
+    deps.waitUntil(
+      new Promise((r) => setTimeout(r, 0))
+        .then(() => remind(deps, interaction, teamId))
+        .catch(async (err) => {
+          console.error('discord-interactions: signup reminders failed:', err);
+          await finish(deps, interaction, { content: BROKE }).catch(() => null);
+        })
+    );
+    return json({ type: DEFERRED_MESSAGE, data: { flags: EPHEMERAL } });
+  }
   if (interaction.type === BUTTON && customId.startsWith(STATUS_PREFIX)) {
     // signup-sheet-status:<team id>:<raid date>. An answer that wants a note
     // opens the pop-up, which has to be the first answer: no read before it.
@@ -591,6 +624,10 @@ const HELP_COMMANDS: {
     line: '`/officer nudge-missing` -- DM raiders whose loot setup is missing something',
     may: async (perm) => (await Promise.all(NUDGE_PERMISSIONS.map(perm))).every(Boolean)
   },
+  {
+    line: "`/officer missing-signups` -- who hasn't signed up for the coming season",
+    may: (perm) => perm(MISSING_PERMISSION)
+  },
   { line: "`/officer invite` -- post the team's invite link", may: (perm) => perm(INVITE_PERMISSION) },
   { line: "`/officer post lineup` -- post a raid night's boss lineup now", may: (perm) => perm(LINEUP_PERMISSION) }
 ];
@@ -695,6 +732,93 @@ const nudge: Run = async (deps, interaction, serverId, options) => {
   }
 };
 
+// The officer's check, run again on the button: the team's Manage signups.
+async function mayManageSignups(deps: Deps, i: Interaction, team: Team): Promise<boolean> {
+  const caller = i.member?.user?.id;
+  if (caller && (await deps.db.hasTeamPermission(caller, team.id, MISSING_PERMISSION))) return true;
+  await finish(deps, i, { content: MISSING_NOT_ALLOWED(team.name) });
+  return false;
+}
+
+const missingSignups: Run = async (deps, i, serverId, options) => {
+  const team = await teamFor(deps, i, serverId, options);
+  if (!team || !(await mayManageSignups(deps, i, team))) return;
+  const open = await deps.db.missingSignups(team.id);
+  if (!open) {
+    await finish(deps, i, { content: NOT_OPEN(team.name) });
+    return;
+  }
+  const button = { type: 2, style: 1, label: 'DM them a reminder', custom_id: REMIND_PREFIX + team.id };
+  await finish(deps, i, {
+    embeds: [missingEmbed(team.name, open, deps.env.get('SITE_URL'))],
+    components: open.roster.some((r) => !r.signedUp) ? [{ type: 1, components: [button] }] : []
+  });
+};
+
+// The button: DMs each raider still missing a signup, at most once a day.
+async function remind(deps: Deps, i: Interaction, teamId: number): Promise<void> {
+  // The team has to be one of this server's, whatever the button says.
+  const team = i.guild_id ? (await deps.db.teamsInServer(i.guild_id)).find((t) => t.id === teamId) : undefined;
+  if (!team) {
+    await finish(deps, i, { content: UNKNOWN_TEAM });
+    return;
+  }
+  if (!(await mayManageSignups(deps, i, team))) return;
+  const open = await deps.db.missingSignups(team.id);
+  if (!open) {
+    await finish(deps, i, { content: NOT_OPEN(team.name) });
+    return;
+  }
+  const reminded: string[] = [];
+  const skipped: string[] = [];
+  const closed: string[] = [];
+  const noDiscord: string[] = [];
+  try {
+    // One DM per Discord account, however many of its characters are missing.
+    const byPerson = new Map<string, string[]>();
+    for (const r of open.roster) {
+      if (r.signedUp) continue;
+      if (!r.discordId) noDiscord.push(r.nameRealm);
+      else byPerson.set(r.discordId, [...(byPerson.get(r.discordId) ?? []), r.nameRealm]);
+    }
+    const since = new Date((deps.now ?? (() => new Date()))().getTime() - COOLDOWN_MS);
+    const recent = new Set(
+      (await deps.db.nudgedSince([...byPerson.keys()], since))
+        .filter((r) => r.category === MISSING_COOLDOWN)
+        .map((r) => r.discordId)
+    );
+    for (const [discordId, names] of byPerson) {
+      const label = names.join(', ');
+      if (recent.has(discordId)) {
+        skipped.push(label);
+        continue;
+      }
+      const dm = await discord(deps, 'POST', '/users/@me/channels', { recipient_id: discordId });
+      const sent =
+        dm.ok &&
+        (
+          await discord(deps, 'POST', `/channels/${dm.body?.id}/messages`, {
+            embeds: [reminderEmbed(team.name, open.seasonName, names[0], deps.env.get('SITE_URL'))],
+            allowed_mentions: { parse: [] }
+          })
+        ).ok;
+      if (!sent) {
+        closed.push(label);
+        continue;
+      }
+      // Only after the DM went out, so a failed one doesn't use up the day.
+      await deps.db.recordNudge(discordId, [MISSING_COOLDOWN]);
+      reminded.push(label);
+    }
+    await finish(deps, i, { embeds: [reminderSummary(reminded, skipped, closed, noDiscord)] });
+  } catch (err) {
+    console.error('discord-interactions: signup reminders failed:', err);
+    await finish(deps, i, { content: FAILED, embeds: [reminderSummary(reminded, skipped, closed, noDiscord)] }).catch(
+      () => null
+    );
+  }
+}
+
 const postLineup: Run = async (deps, i, serverId, options) => {
   const team = await teamFor(deps, i, serverId, options);
   if (!team) return;
@@ -759,6 +883,7 @@ const RUNS: Record<string, Run> = {
   'raider me': me,
   'raider schedule': schedule,
   'officer nudge-missing': nudge,
+  'officer missing-signups': missingSignups,
   'officer invite': invite,
   'officer post lineup': postLineup
 };

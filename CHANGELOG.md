@@ -12,6 +12,25 @@ answers to.
 
 ---
 
+## [3.239.0] - 2026-11-04
+
+### Backend
+
+- `discord_nudges_sent` takes a fourth cooldown category, `signup-reminder`,
+  for the signup reminder DMs (#990).
+
+### Functions
+
+- `/officer missing-signups` lists everyone on the team's active roster with no
+  signup for the coming season, grouped Tanks, Healers and DPS with the
+  counts and a link to Roster › Signups. Only people with Manage signups on
+  that team can use it, checked against Raid Hub; it says so when signups
+  aren't open. A **DM them a reminder** button DMs each of them the signup
+  link, at most once a day each, and tells the officer who was reminded, who
+  was skipped as already reminded today, whose DMs are closed and who has no
+  Discord account on Raid Hub. Run `npm run discord:register` after deploy
+  (#990).
+
 ## [3.238.0] - 2026-11-04
 
 ### Frontend

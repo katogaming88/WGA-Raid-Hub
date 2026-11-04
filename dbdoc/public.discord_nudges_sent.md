@@ -2,7 +2,7 @@
 
 ## Description
 
-When /nudge-missing last DMed each Discord user about each thing missing from their loot setup (#998). One row per Discord id and category, overwritten on each DM, so the 24-hour cooldown holds across every team. Written by discord-interactions with the service role, after the DM was sent.
+When the bot last DMed each Discord user about each thing it chases: a missing wishlist, BiS link or BiS pick (/officer nudge-missing, #998) or a season signup (/officer missing-signups, #990). One row per Discord id and category, overwritten on each DM, so the 24-hour cooldown holds across every team. Written by discord-interactions with the service role, after the DM was sent.
 
 ## Columns
 
@@ -16,7 +16,7 @@ When /nudge-missing last DMed each Discord user about each thing missing from th
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| discord_nudges_sent_category_check | CHECK | CHECK ((category = ANY (ARRAY['no-wishlist'::text, 'no-bis-link'::text, 'incomplete-wishlist'::text]))) |
+| discord_nudges_sent_category_check | CHECK | CHECK ((category = ANY (ARRAY['no-wishlist'::text, 'no-bis-link'::text, 'incomplete-wishlist'::text, 'signup-reminder'::text]))) |
 | discord_nudges_sent_pkey | PRIMARY KEY | PRIMARY KEY (discord_id, category) |
 
 ## Indexes

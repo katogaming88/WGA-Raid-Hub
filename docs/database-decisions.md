@@ -3287,3 +3287,13 @@ Shipped: `20261104132355_weekly_lineup_post.sql`. `discord-bot-webhook`, `discor
 **Posted by the signup sheets' 15-minute run,** not a schedule of its own: once the week's time has passed, the run posts the lineup for every raid night starting in the seven days after it, a drawn grid per night (Kat picked the look, 2026-11-04), pinging the role. Each later run edits the posted message, pinging nobody, only when the lineup it shows has changed, which the week's stored key tells without reading Discord. A week with no lineup saved posts nothing; a week whose nights have all started is not posted late; quiet hours hold the post. When the day or time moves after a week posted, the first post under the new schedule leaves out the nights the last one covered (the seven days from that post's date), so no night is posted and pinged twice and none is missed (Kat, 2026-11-04). A message an officer deletes by hand comes back only when the lineup next changes, since an unchanged week asks Discord nothing. `/officer post lineup` posts one night's now, for whoever holds Edit schedule, and is not recorded as the week's.
 
 [Full discussion -> #1709](https://github.com/katogaming88/WGA-Raid-Hub/issues/1709).
+
+## #990 -- /officer missing-signups and its reminder cooldown
+
+Shipped: `20261104170614_nudges_signup_reminder.sql`. `discord-interactions`.
+
+**The reminder shares `discord_nudges_sent`, with a fourth category, `signup-reminder`.** The button DMs each raider at most once a day, the same one-row-per-Discord-id-and-category cooldown `/officer nudge-missing` keeps, so no second table. The category check is widened and nothing else changes: same columns, same service-role-only grants. As with the wishlist nudges the window is guild-wide, so a raider on two teams is reminded once a day, and a row is written only after the DM went out. A signup reminder does not use up a wishlist nudge, or the other way round, since the category is part of the key.
+
+**"Signed up" is read as the site's missing list reads it,** with no new view: a live (not rejected) `season_signups` row for the soonest season open for signups covers the character it names and, for a main swap, the one it replaces. The list is the team's unarchived `players`.
+
+[Full discussion -> #990](https://github.com/katogaming88/WGA-Raid-Hub/issues/990).

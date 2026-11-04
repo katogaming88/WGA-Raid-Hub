@@ -61,6 +61,67 @@ function supabaseDb(): InteractionsDb {
         if (attempt === 2) console.error('discord-interactions: nudge not recorded: ' + error.message);
       }
     },
+    async missingSignups(teamId) {
+      const open = await db()
+        .from('team_seasons')
+        .select('season_code, seasons(display_name, starts_at)')
+        .eq('team_id', teamId)
+        .eq('signups_open', true);
+      if (open.error) throw new Error(open.error.message);
+      // The soonest season open for signups, as signup() reads one.
+      const season = ((open.data as any[] | null) ?? []).sort((a, b) =>
+        String(a.seasons?.starts_at ?? '9999').localeCompare(String(b.seasons?.starts_at ?? '9999'))
+      )[0];
+      if (!season) return null;
+      // PostgREST cuts a read at 1000 rows without an error, so both page.
+      const page = async (read: (from: number, to: number) => PromiseLike<{ data: unknown; error: any }>) => {
+        const rows: any[] = [];
+        for (let from = 0; ; from += 1000) {
+          const { data, error } = await read(from, from + 999);
+          if (error) throw new Error(error.message);
+          const got = (data as any[] | null) ?? [];
+          rows.push(...got);
+          if (got.length < 1000) return rows;
+        }
+      };
+      const [players, signups] = await Promise.all([
+        page((from, to) =>
+          db()
+            .from('players')
+            .select('id, name_realm, classes_specs(role), team_members(people(discord_id))')
+            .eq('team_id', teamId)
+            .is('archived_at', null)
+            .order('id')
+            .range(from, to)
+        ),
+        page((from, to) =>
+          db()
+            .from('season_signups')
+            .select('id, signup_name_realm, swap_from_name_realm')
+            .eq('team_id', teamId)
+            .eq('season', season.season_code)
+            .neq('status', 'rejected')
+            .order('id')
+            .range(from, to)
+        )
+      ]);
+      // As the site's list reads it: a live signup covers the character it
+      // names and, for a main swap, the one it replaces.
+      const covered = new Set<string>();
+      for (const s of signups) {
+        if (s.signup_name_realm) covered.add(String(s.signup_name_realm).toLowerCase());
+        if (s.swap_from_name_realm) covered.add(String(s.swap_from_name_realm).toLowerCase());
+      }
+      return {
+        seasonName: (season.seasons?.display_name as string) ?? (season.season_code as string),
+        roster: players.map((p) => ({
+          nameRealm: p.name_realm as string,
+          role: (p.classes_specs?.role as string | null) ?? null,
+          discordId: (p.team_members?.people?.discord_id as string | null) ?? null,
+          signedUp: covered.has(String(p.name_realm).toLowerCase())
+        }))
+      };
+    },
     async hasTeamPermission(discordId, teamId, permission) {
       // my_permission_team_ids()'s rule, for a Discord account rather than
       // the signed-in user: the person's rank on the team, owners holding all.
