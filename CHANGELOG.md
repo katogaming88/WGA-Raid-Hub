@@ -12,6 +12,23 @@ answers to.
 
 ---
 
+## [3.237.0] - 2026-11-04
+
+### Functions
+
+- The Discord signup sheet shows its roster as a picture: each raider who's
+  in, their name in its class colour with the spec under it and the spec
+  icon before it, grouped Tanks, Healers, Melee and Ranged, four to a row. A
+  raider who's Late stays in, marked Late; anyone out stays in the text list
+  under it, with the counts. An unchanged sheet isn't drawn or sent again,
+  and if the picture can't be drawn the sheet goes out as text, as before
+  (#983).
+
+### Project
+
+- The Onest fonts the picture uses, in `assets/fonts/` with their licence.
+- Revamp time log: the #1724 PR row and the #983 picture row.
+
 ## [3.236.0] - 2026-11-04
 
 ### Frontend

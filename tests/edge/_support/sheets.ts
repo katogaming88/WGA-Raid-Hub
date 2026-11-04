@@ -90,11 +90,11 @@ export function fakeSheets(state: SheetState = {}) {
 // Discord, answered by "METHOD path"; anything unscripted is a 404. Posts
 // get ids m1, m2, ... in order.
 export function fakeDiscord(routes: Record<string, { status: number; body?: unknown }> = {}) {
-  const calls: Array<{ key: string; body: any }> = [];
+  const calls: Array<{ key: string; body: any; files?: { name: string; data: Uint8Array }[] }> = [];
   let n = 0;
-  const call = (method: string, path: string, body?: unknown) => {
+  const call = (method: string, path: string, body?: unknown, files?: { name: string; data: Uint8Array }[]) => {
     const key = `${method} ${path}`;
-    calls.push({ key, body: body ?? null });
+    calls.push({ key, body: body ?? null, ...(files ? { files } : {}) });
     if (routes[key]) return Promise.resolve({ status: routes[key].status, body: routes[key].body ?? null });
     if (key === `GET /channels/${CHANNEL}`)
       return Promise.resolve({ status: 200, body: { id: CHANNEL, guild_id: SERVER } });

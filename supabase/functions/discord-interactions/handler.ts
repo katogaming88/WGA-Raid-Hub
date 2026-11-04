@@ -31,11 +31,14 @@ import {
   PASSED_AFTER_MS,
   REFRESH_PREFIX,
   STATUS_PREFIX,
+  type DiscordFile,
   type SheetDb,
   WANTS_NOTE,
   refreshSheet,
   startsAt
 } from '../_shared/signup-sheet.ts';
+import { discordRequestBody } from '../_shared/discord-text.ts';
+import type { Picture } from '../_shared/sheet-picture.ts';
 import { isoDate } from '../_shared/time.ts';
 import { type Award, type HelpTeam, type Signup, counted, helpMessage, meMessage, scheduleMessage } from './raider.ts';
 import { VERSION } from './version.ts';
@@ -89,6 +92,8 @@ export type Deps = {
   env: Env;
   db: InteractionsDb;
   sheets: SheetDb;
+  // The signup sheet's picture (#983); left out, sheets are text.
+  drawPicture?: (picture: Picture) => Promise<Uint8Array>;
   waitUntil(work: Promise<unknown>): void;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
@@ -249,7 +254,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           refreshSheet(
             {
               db: deps.sheets,
-              discord: (method, path, body) => discord(deps, method, path, body),
+              discord: (method, path, body, files) => discord(deps, method, path, body, files),
+              draw: deps.drawPicture,
               siteUrl: deps.env.get('SITE_URL'),
               now: (deps.now ?? (() => new Date()))()
             },
@@ -379,7 +385,8 @@ function setOwn(
         await refreshSheet(
           {
             db: deps.sheets,
-            discord: (method, path, body) => discord(deps, method, path, body),
+            discord: (method, path, body, files) => discord(deps, method, path, body, files),
+            draw: deps.drawPicture,
             siteUrl: deps.env.get('SITE_URL'),
             now
           },
@@ -398,16 +405,21 @@ function setOwn(
 type Answer = { ok: boolean; status: number; body: any };
 
 // One Discord REST call as the bot, waiting out one 429.
-async function discord(deps: Deps, method: string, path: string, body?: unknown): Promise<Answer> {
-  const call = () =>
-    deps.fetch(API + path, {
+async function discord(
+  deps: Deps,
+  method: string,
+  path: string,
+  body?: unknown,
+  files?: DiscordFile[]
+): Promise<Answer> {
+  const call = () => {
+    const request = discordRequestBody(body, files);
+    return deps.fetch(API + path, {
       method,
-      headers: {
-        Authorization: 'Bot ' + (deps.env.get('DISCORD_BOT_TOKEN') ?? ''),
-        'Content-Type': 'application/json'
-      },
-      body: body === undefined ? undefined : JSON.stringify(body)
+      headers: { Authorization: 'Bot ' + (deps.env.get('DISCORD_BOT_TOKEN') ?? ''), ...request.headers },
+      body: request.body
     });
+  };
   let res = await call();
   if (res.status === 429) {
     const wait = Number((await res.json().catch(() => ({})))?.retry_after ?? 1) * 1000;
