@@ -13378,6 +13378,12 @@
       "return_type": "void",
       "arguments": "p_discord_id text, p_team_id integer, p_raid_date date, p_status text, p_note text DEFAULT NULL::text",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_own_missing_spec",
+      "return_type": "void",
+      "arguments": "p_player_id integer, p_class_spec_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

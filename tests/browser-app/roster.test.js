@@ -29,6 +29,9 @@ function readTable(table) {
     const groups = [];
     for (const body of root.querySelectorAll('tbody')) {
       const heading = body.querySelector('.role-row th');
+      // The rows below the role groups: Members with no character, and
+      // characters with no spec yet (#1724), which the current site hides.
+      if (!heading) continue;
       const group = {
         label: heading.querySelector('.role-name').textContent.trim(),
         count: Number(heading.querySelector('.role-count').textContent),
@@ -138,7 +141,8 @@ describe('Roster page (new app), spec icons', () => {
     try {
       const table = opened.page.getByRole('table', { name: 'Current roster' });
       await table.locator('img.spec-icon').first().waitFor();
-      const icons = await table.locator('tbody tr:not(.role-row)').evaluateAll((rows) =>
+      // A character with no spec yet (#1724) has no icon to show.
+      const icons = await table.locator('tbody tr:not(.role-row):not(.name-only-row)').evaluateAll((rows) =>
         rows.map((tr) => {
           const img = tr.querySelector('img.spec-icon');
           return img && img.complete && img.naturalWidth > 0 && img.getAttribute('alt') === '';

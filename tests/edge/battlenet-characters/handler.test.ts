@@ -304,6 +304,91 @@ Deno.test('allLevels widens the pool to every character, but only fetches detail
   assertEquals(r.fetches.length, 4);
 });
 
+Deno.test(
+  'a picked character below max level is read in full before it is saved, so it keeps its spec (#1724)',
+  async () => {
+    const r = await run({ token: TOKEN, allLevels: true, save: [102] }, {}, [
+      ...happyQueue(),
+      jsonOk({ active_spec: { name: 'Blood' }, equipped_item_level: 300 })
+    ]);
+    assertEquals(r.status, 200);
+    // One more call than the list alone: the picked level-12 character's summary.
+    assertEquals(r.fetches.length, 5);
+    const saveCall = r.db.calls.find((c) => c.method === 'saveCharacters')!;
+    assertEquals(
+      (saveCall.args[1] as Array<{ blizzard_id: number; spec_name: string | null }>).map((c) => [
+        c.blizzard_id,
+        c.spec_name
+      ]),
+      [[102, 'Blood']]
+    );
+  }
+);
+
+Deno.test(
+  'the raider’s own roster character below max level, kept by a save, is read in full too (CodeRabbit on #1759)',
+  async () => {
+    const roster: RosterLink[] = [{ player_id: 6, team_id: 1, name_realm: 'Lowbie-Area 52', outcome: 'linked' }];
+    const r = await run({ token: TOKEN, allLevels: true, save: [101] }, { roster }, [
+      ...happyQueue(),
+      jsonOk({ active_spec: { name: 'Frost' }, equipped_item_level: 300 })
+    ]);
+    assertEquals(r.fetches.length, 5);
+    const saveCall = r.db.calls.find((c) => c.method === 'saveCharacters')!;
+    const lowbie = (saveCall.args[1] as Array<{ blizzard_id: number; spec_name: string | null }>).find(
+      (c) => c.blizzard_id === 102
+    );
+    assertEquals(lowbie?.spec_name, 'Frost');
+  }
+);
+
+Deno.test('a picked character whose full read fails is still saved, as listed', async () => {
+  const db = fakeDb();
+  let n = 0;
+  const queue = happyQueue();
+  const fetch = ((_input: string | URL | Request) => {
+    n++;
+    if (n === 5) return Promise.reject(new Error('timed out'));
+    return Promise.resolve(queue.shift()!);
+  }) as typeof globalThis.fetch;
+  const res = await handle(post({ token: TOKEN, allLevels: true, save: [102] }), { fetch, db });
+  assertEquals(res.status, 200);
+  const saveCall = db.calls.find((c) => c.method === 'saveCharacters')!;
+  assertEquals(
+    (saveCall.args[1] as Array<{ blizzard_id: number; spec_name: string | null }>).map((c) => [
+      c.blizzard_id,
+      c.spec_name
+    ]),
+    [[102, null]]
+  );
+});
+
+Deno.test(
+  'the full read of a kept character has a deadline, so a stalled Blizzard cannot hold up the save',
+  async () => {
+    const db = fakeDb();
+    const queue = happyQueue();
+    let n = 0;
+    let signal: AbortSignal | null | undefined;
+    const fetch = ((_input: string | URL | Request, init?: RequestInit) => {
+      n++;
+      if (n === 5) {
+        signal = init?.signal;
+        return Promise.reject(new DOMException('timed out', 'TimeoutError'));
+      }
+      return Promise.resolve(queue.shift()!);
+    }) as typeof globalThis.fetch;
+    const res = await handle(post({ token: TOKEN, allLevels: true, save: [102] }), { fetch, db });
+    assertEquals(res.status, 200);
+    assertEquals(signal instanceof AbortSignal, true);
+  }
+);
+
+Deno.test('a character listed but not picked is never read in full', async () => {
+  const r = await run({ token: TOKEN, allLevels: true, save: [101] });
+  assertEquals(r.fetches.length, 4);
+});
+
 Deno.test('without allLevels the pool stays at max level only, same as before #1162', async () => {
   const r = await run({ token: TOKEN });
   assertEquals(

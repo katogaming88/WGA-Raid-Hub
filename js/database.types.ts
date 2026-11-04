@@ -5033,6 +5033,10 @@ export type Database = {
         Args: { p_responses: Json; p_team_id: number }
         Returns: Json
       }
+      set_own_missing_spec: {
+        Args: { p_class_spec_id: number; p_player_id: number }
+        Returns: undefined
+      }
       set_own_rsvp: {
         Args: {
           p_note?: string

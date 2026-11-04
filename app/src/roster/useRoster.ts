@@ -249,6 +249,21 @@ export function useRestorePlayer(teamId: number) {
   );
 }
 
+// The raider's own character with no spec yet (#1724): set_own_missing_spec()
+// takes it once; after that only an officer changes it.
+export function useSetOwnSpec(teamId: number) {
+  return useSupabaseMutation<null, { playerId: number; classSpecId: number }>(
+    async (client, { playerId, classSpecId }) => {
+      const result = await client.rpc('set_own_missing_spec', {
+        p_player_id: playerId,
+        p_class_spec_id: classSpecId
+      });
+      return { data: null, error: result.error };
+    },
+    { key: ['set-own-spec', teamId], refreshes: [['roster', teamId]] }
+  );
+}
+
 export type AccountLinks = { battlenet: boolean; discord: boolean };
 
 // Officers: whether each current member has connected Battle.net and Discord

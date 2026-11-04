@@ -13,12 +13,14 @@ import {
   bareNames,
   classColor,
   nameOnlyRows,
+  noSpecRows,
   officerStats,
   summarize,
   summaryLine,
   toProjected,
   toRoster,
   type GearRow,
+  type NoSpecRow,
   type OfficerStats,
   type Raider,
   type Role,
@@ -36,7 +38,8 @@ import { ArchivedRoster } from './ArchivedRoster';
 import { NameRowActions } from './NameRowActions';
 import { NeedsALook } from './NeedsALook';
 import { ProjectedRoster } from './ProjectedRoster';
-import { PlayerSettingsProvider, SettingsRowButton } from './PlayerSettings';
+import { PlayerSettingsProvider, SettingsRowButton, groupByClass } from './PlayerSettings';
+import { useClassSpecs } from '../characters/useMainSwaps';
 import { useCreateName, useNames } from './useNames';
 import { OwnNameForm } from './OwnNameForm';
 import type { NameRow } from './names';
@@ -47,6 +50,7 @@ import {
   useRosterGear,
   useRosterOfficerData,
   useRosterPlayers,
+  useSetOwnSpec,
   useSignupSeasons,
   useWishlistsStarted,
   type AccountLinks
@@ -331,17 +335,23 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
   const nameRows = [...unclaimed, ...nameOnlyRows(names, players, current)].sort((a, b) =>
     a.label.localeCompare(b.label)
   );
+  // Characters with no spec yet (#1724), with the Name-only rows below the groups.
+  const noSpec = noSpecRows(players, names);
   const [filter, setFilter] = useState<Filter>('All');
   const summary = summarize(groups);
   const shown = filter === 'All' ? groups : groups.filter((g) => g.role === filter);
   // Name-only rows have no role, so a role tab (Tanks/Healers/...) has nothing
   // to show them under; they only fold into the unfiltered Everyone view.
   const shownNameRows = filter === 'All' ? nameRows : [];
+  const shownNoSpec = filter === 'All' ? noSpec : [];
 
   // Player settings (#1360) steps through the rows in the order they show.
-  const settingsOrder = shown.flatMap((g) =>
-    g.raiders.flatMap((r) => (r.playerId !== null ? [{ playerId: r.playerId, name: r.name }] : []))
-  );
+  const settingsOrder = [
+    ...shown.flatMap((g) =>
+      g.raiders.flatMap((r) => (r.playerId !== null ? [{ playerId: r.playerId, name: r.name }] : []))
+    ),
+    ...shownNoSpec.map((r) => ({ playerId: r.playerId, name: r.name }))
+  ];
 
   // The filter sits above both columns, so the summary panel starts level with
   // the table rather than with the filter (Kat, 2026-09-14).
@@ -360,7 +370,7 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
       {/* On the team with no Member of their own (#1355): claim theirs from the
           list, or make one rather than wait for an officer. */}
       {ownMember !== undefined && namesQuery.isSuccess && !holdsName && <OwnNameForm teamId={team.id} />}
-      {groups.length === 0 && nameRows.length === 0 ? (
+      {groups.length === 0 && nameRows.length === 0 && noSpec.length === 0 ? (
         <div className="card placeholder">
           <p>No one is on this team’s roster yet.</p>
         </div>
@@ -430,6 +440,7 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
                 teamId={team.id}
                 officer={officer}
                 nameRows={shownNameRows}
+                noSpecRows={shownNoSpec}
                 accounts={accountLinks.data ?? null}
                 quickClaim={!holdsName}
                 ownMember={ownMember}
@@ -531,6 +542,7 @@ function RosterTable({
   teamId,
   officer = false,
   nameRows = [],
+  noSpecRows = [],
   accounts = null,
   quickClaim = false,
   ownMember
@@ -549,6 +561,8 @@ function RosterTable({
   teamId?: number | undefined;
   officer?: boolean;
   nameRows?: NameRow[];
+  // Characters with no spec yet (#1724), listed with the Name-only rows.
+  noSpecRows?: NoSpecRow[];
   // Officers: each member's connected accounts (#1360 part 4).
   accounts?: Map<number, AccountLinks> | null;
   // Whether unclaimed rows offer Claim under the name.
@@ -622,8 +636,20 @@ function RosterTable({
             })}
           </tbody>
         ))}
-        {nameRows.length > 0 && teamId !== undefined && (
+        {(nameRows.length > 0 || noSpecRows.length > 0) && teamId !== undefined && (
           <tbody>
+            {noSpecRows.map((r) => (
+              <NoSpecRowView
+                key={`nospec-${r.playerId}`}
+                teamId={teamId}
+                officer={officer}
+                row={r}
+                details={details}
+                withStats={stats !== null}
+                links={r.teamMemberId !== null ? (accounts?.get(r.teamMemberId) ?? null) : null}
+                own={r.teamMemberId !== null && r.teamMemberId === ownMember}
+              />
+            ))}
             {nameRows.map((n) => (
               <NameOnlyRow
                 key={`name-${n.id}`}
@@ -817,6 +843,125 @@ function NameOnlyRow({
         </>
       )}
     </tr>
+  );
+}
+
+// A character on the roster with no spec yet (#1724), so no role group and
+// nothing synced: named, tagged "No spec yet" with the character, so the
+// raider sees they're on. Officers set the spec in Player settings; the
+// raider picks it on their own row, once.
+function NoSpecRowView({
+  teamId,
+  officer,
+  row,
+  details,
+  withStats,
+  links,
+  own
+}: {
+  teamId: number;
+  officer: boolean;
+  row: NoSpecRow;
+  details: boolean;
+  withStats: boolean;
+  links: AccountLinks | null;
+  own: boolean;
+}) {
+  const none = (
+    <>
+      <span aria-hidden="true">–</span>
+      <span className="visually-hidden">None</span>
+    </>
+  );
+  return (
+    <tr className="name-only-row">
+      <th scope="row" className="raider-cell" aria-label={row.name}>
+        <span className="raider-name">{row.name}</span>
+        {row.character !== row.name && <span className="raider-character">{row.character}</span>}
+        {links && <AccountsLine links={links} />}
+        {own && !officer && <OwnSpecPicker teamId={teamId} playerId={row.playerId} name={row.character} />}
+      </th>
+      {details && (
+        <>
+          <td className="col-num text-dim">{none}</td>
+          <td className="text-dim">{none}</td>
+          {withStats && (
+            <>
+              <td className="col-num text-dim">{none}</td>
+              <td className="col-num text-dim">{none}</td>
+            </>
+          )}
+          <td className="status-cell">
+            <div className="status-line">
+              <span className="status-tag">No spec yet</span>
+              {officer && <SettingsRowButton playerId={row.playerId} name={row.name} />}
+            </div>
+            {(row.nameId != null || (officer && row.teamMemberId != null)) && (
+              <NameRowActions
+                teamId={teamId}
+                officer={officer}
+                nameId={row.nameId}
+                label={row.name}
+                role={NO_ROLE_GUESS}
+                teamMemberId={row.teamMemberId}
+              />
+            )}
+          </td>
+        </>
+      )}
+    </tr>
+  );
+}
+
+// A claimed Member's role guess no longer counts (#1355), so a no-spec row has none.
+const NO_ROLE_GUESS: string | null = null;
+
+// The raider's own spec, picked once (#1724). After it saves the character
+// moves into its role group and this is gone.
+function OwnSpecPicker({ teamId, playerId, name }: { teamId: number; playerId: number; name: string }) {
+  const id = useId();
+  const specs = useClassSpecs();
+  const save = useSetOwnSpec(teamId);
+  const { announce } = useStatus();
+  const classes = specs.isSuccess ? groupByClass(specs.data) : [];
+  return (
+    <div className="field own-spec-picker">
+      <label className="field-label" htmlFor={`${id}-spec`}>
+        Pick {name}’s spec
+      </label>
+      <select
+        id={`${id}-spec`}
+        className="input"
+        value=""
+        disabled={!specs.isSuccess || save.isPending}
+        onChange={(e) => {
+          const to = Number(e.target.value);
+          const picked = specs.data?.find((s) => s.id === to);
+          if (!picked) return;
+          save.mutate(
+            { playerId, classSpecId: to },
+            { onSuccess: () => announce('success', `${name} is now ${picked.spec} ${picked.class}.`) }
+          );
+        }}
+      >
+        <option value="">Choose a spec</option>
+        {classes.map(([cls, list]) => (
+          <optgroup key={cls} label={cls}>
+            {list.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.spec} {s.class}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+      <p className="field-hint">You can set this once. After that, an officer changes it.</p>
+      {save.isError && (
+        <p className="form-error" role="alert">
+          That did not save: {save.error.message}
+        </p>
+      )}
+    </div>
   );
 }
 

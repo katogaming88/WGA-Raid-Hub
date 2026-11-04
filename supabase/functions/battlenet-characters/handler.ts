@@ -71,6 +71,8 @@ const refuse = (error: string, status: number) => jsonResponse({ success: false,
 export const EXPIRED = 'Your Battle.net sign-in has expired. Sign in with Battle.net again.';
 export const NOT_CONNECTED = 'Connect Battle.net to your account first.';
 export const NOT_YOURS = 'That Battle.net login is not the one connected to your account.';
+// How long the optional full read of a kept character may take (#1724).
+export const DETAIL_DEADLINE_MS = 5_000;
 export const BLIZZARD_DOWN = 'Battle.net did not answer. Try again in a minute.';
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -141,6 +143,43 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     everyone.map((c) => ({ name: c.name, realm: c.realm }))
   );
 
+  const key = (name: string, realm: string) => (name + '-' + realm).replace(/ /g, '').toLowerCase();
+  const rosterByKey = new Map(roster.map((r) => [r.name_realm.replace(/ /g, '').toLowerCase(), r]));
+  // The person's own roster characters, which a save keeps too (below).
+  const ownKeys = new Set(
+    roster
+      .filter((r) => r.outcome === 'linked' || r.outcome === 'already_yours')
+      .map((r) => r.name_realm.replace(/ /g, '').toLowerCase())
+  );
+
+  // A character a save keeps below max level is read in full now, spec
+  // included (#1724): the join saves the character's spec from this record,
+  // and a level 84 Death Knight saved with none disappeared from the Roster.
+  // The same goes for the person's own roster characters the save keeps
+  // (CodeRabbit on #1759). One call per character saved, never one per
+  // character on the account.
+  if (Array.isArray(body.save)) {
+    const ids = new Set(body.save);
+    await Promise.all(
+      shown.map(async (c, i) => {
+        const kept = ids.has(c.blizzard_id) || ownKeys.has(key(c.name, c.realm));
+        if (!kept || detailById.has(c.blizzard_id)) return;
+        // Optional: a read that fails, or takes past the deadline (the
+        // request and its body both), keeps the character as listed, and the
+        // save goes ahead (CodeRabbit on #1759).
+        try {
+          const res = await deps.fetch(API_BASE + summaryPath(c) + PROFILE_QUERY, {
+            ...bearer,
+            signal: AbortSignal.timeout(DETAIL_DEADLINE_MS)
+          });
+          if (res.ok) shown[i] = { ...c, ...detailOf(await res.json()) };
+        } catch {
+          // keep the listed record
+        }
+      })
+    );
+  }
+
   const picked = pickedFrom(shown, body.save);
   // Saving replaces the person's whole set, so a save that names characters
   // and matches none of them would delete every one they have. Blizzard
@@ -151,20 +190,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return refuse(BLIZZARD_DOWN, 502);
   }
 
-  const key = (name: string, realm: string) => (name + '-' + realm).replace(/ /g, '').toLowerCase();
-  const rosterByKey = new Map(roster.map((r) => [r.name_realm.replace(/ /g, '').toLowerCase(), r]));
-
   // A save also keeps the person's own roster characters (#1620): the signup
   // picks from saved characters, and the picker never offers a roster
   // character as an alt, so without this a raider's main is never saved.
   // Any of the person's matches counts: one character can be on two teams'
   // rosters, and rosterByKey keeps only the last.
   if (picked) {
-    const ownKeys = new Set(
-      roster
-        .filter((r) => r.outcome === 'linked' || r.outcome === 'already_yours')
-        .map((r) => r.name_realm.replace(/ /g, '').toLowerCase())
-    );
     const own = shown.filter((c) => ownKeys.has(key(c.name, c.realm)) && !picked.includes(c));
     await deps.db.saveCharacters(personId, [...picked, ...own]);
   }
