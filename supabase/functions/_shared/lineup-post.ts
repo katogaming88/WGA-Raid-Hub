@@ -54,6 +54,8 @@ export interface LineupDb {
   saveLineup(teamId: number, weekOf: string, post: WeekPost & { messageId: string }): Promise<boolean>;
   // Changes the week's row after an edit, a take-down or a repost.
   updateLineup(teamId: number, weekOf: string, post: WeekPost): Promise<void>;
+  // The latest week the team posted for, or null.
+  latestWeek(teamId: number): Promise<string | null>;
   markPosted(teamId: number): Promise<void>;
 }
 
@@ -399,7 +401,8 @@ async function gridsFor(ctx: LineupContext, teamId: number, nights: Array<{ raid
   return out;
 }
 
-export type LineupResult = 'posted' | 'edited' | 'unchanged' | 'no lineup' | 'passed' | 'quiet hours' | 'not in server';
+export type LineupResult =
+  'posted' | 'edited' | 'unchanged' | 'no lineup' | 'passed' | 'moved' | 'quiet hours' | 'not in server';
 
 // Brings one team's weekly post up to date: posts it once it is due and has a
 // lineup, pinging the role; afterwards edits it when the lineup changes,
@@ -446,6 +449,13 @@ export async function syncLineup(ctx: LineupContext, { team, setting }: TeamLine
     // Taken down, deleted, or out of the bot's reach: posted again below.
   }
 
+  // The day or time moved since the last post: that post covered this week's
+  // nights, so the first under the new schedule waits for the next week
+  // rather than posting (and pinging) them again (Kat, 2026-11-04).
+  if (!row) {
+    const latest = await ctx.db.latestWeek(team.id);
+    if (latest && latest > addDays(week.weekOf, -7)) return 'moved';
+  }
   // A week whose nights have all started is not posted late, say when the
   // post was first turned on after them.
   if (!nights.some((n) => (startsAt(n.raidDate, n.night)?.getTime() ?? Infinity) > ctx.now.getTime())) return 'passed';

@@ -125,6 +125,19 @@ export function lineupDb(client: () => SupabaseClient<any>): LineupDb {
         'team_lineup_posts'
       );
     },
+    async latestWeek(teamId) {
+      const row = must(
+        await client()
+          .from('team_lineup_posts')
+          .select('week_of')
+          .eq('team_id', teamId)
+          .order('week_of', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        'team_lineup_posts'
+      ) as { week_of: string } | null;
+      return row?.week_of ?? null;
+    },
     async markPosted(teamId) {
       const { error } = await client()
         .from('team_discord_posts')

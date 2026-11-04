@@ -117,6 +117,7 @@ function fakeLineups(over: Partial<{ bosses: Record<string, LineupBoss[]>; night
       rows.set(week, post);
       return Promise.resolve();
     },
+    latestWeek: () => Promise.resolve([...rows.keys()].sort().at(-1) ?? null),
     markPosted() {
       log.push('markPosted');
       return Promise.resolve();
@@ -205,6 +206,18 @@ Deno.test('a night moved to another time edits the post, with the same bosses an
   const moved = context({ nights: { '2026-11-05': { ...RAID, startTime: '20:00:00' } } });
   moved.rows.set(WEEK, { messageId: 'm1', channelId: CHANNEL, key });
   assertEquals(await syncLineup(moved.ctx, LINEUP), 'edited');
+});
+
+Deno.test('a schedule moved mid-week waits for the next week instead of posting the nights again', async () => {
+  // Posted Monday 2026-11-02 under the old day; the post is now Wednesdays.
+  const moved = context();
+  moved.rows.set('2026-11-02', { messageId: 'm0', channelId: CHANNEL, key: 'old' });
+  assertEquals(await syncLineup(moved.ctx, LINEUP), 'moved');
+  assertEquals(moved.calls.length, 0);
+  // A week after last week's post is the usual cadence: it posts.
+  const usual = context();
+  usual.rows.set('2026-10-28', { messageId: 'm0', channelId: CHANNEL, key: 'old' });
+  assertEquals(await syncLineup(usual.ctx, LINEUP), 'posted');
 });
 
 Deno.test('the week’s message is edited in the channel it went to, after the channel changes', async () => {

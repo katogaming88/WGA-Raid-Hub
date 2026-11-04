@@ -841,6 +841,7 @@ const lineupDb = (): LineupDb => ({
   postedLineup: () => Promise.resolve(null),
   saveLineup: () => Promise.resolve(true),
   updateLineup: () => Promise.resolve(),
+  latestWeek: () => Promise.resolve(null),
   markPosted: () => Promise.resolve()
 });
 
