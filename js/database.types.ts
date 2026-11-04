@@ -4653,6 +4653,16 @@ export type Database = {
         }
         Returns: number
       }
+      discord_set_rsvp: {
+        Args: {
+          p_discord_id: string
+          p_note?: string
+          p_raid_date: string
+          p_status: string
+          p_team_id: number
+        }
+        Returns: undefined
+      }
       earlier_characters: {
         Args: { p_team_id: number }
         Returns: {

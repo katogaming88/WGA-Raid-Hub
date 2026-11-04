@@ -13372,6 +13372,12 @@
       "return_type": "record",
       "arguments": "p_limit integer DEFAULT 25",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.discord_set_rsvp",
+      "return_type": "void",
+      "arguments": "p_discord_id text, p_team_id integer, p_raid_date date, p_status text, p_note text DEFAULT NULL::text",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

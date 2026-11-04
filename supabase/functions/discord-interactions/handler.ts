@@ -12,8 +12,9 @@
 //
 // Commands (#961): /help, /raider me, /raider schedule, /officer
 // nudge-missing and /officer invite. The signup sheet's Refresh button (#960)
-// lands here too: Discord sends a button press to the application that
-// posted the message, and discord-bot-webhook posts the sheet as this bot.
+// and its "Set your status" dropdown and note pop-up (#983) land here too:
+// Discord sends a press to the application that posted the message, and
+// discord-bot-webhook posts the sheet as this bot.
 //
 // handle() takes its reads, its fetch, its environment and its waitUntil as
 // an argument (#1006); deps.ts supplies the real ones and index.ts serves it.
@@ -24,7 +25,17 @@ import {
   nudgeEmbed,
   summaryEmbed
 } from './nudge.ts';
-import { REFRESH_PREFIX, type SheetDb, refreshSheet, startsAt } from '../_shared/signup-sheet.ts';
+import {
+  CLEAR,
+  NOTE_PREFIX,
+  PASSED_AFTER_MS,
+  REFRESH_PREFIX,
+  STATUS_PREFIX,
+  type SheetDb,
+  WANTS_NOTE,
+  refreshSheet,
+  startsAt
+} from '../_shared/signup-sheet.ts';
 import { isoDate } from '../_shared/time.ts';
 import { type Award, type HelpTeam, type Signup, counted, helpMessage, meMessage, scheduleMessage } from './raider.ts';
 import { VERSION } from './version.ts';
@@ -56,6 +67,15 @@ export interface InteractionsDb {
   signup(member: Member, teamId: number): Promise<Signup>;
   // These characters' awards this season, and the team's saved response list.
   awards(teamId: number, playerIds: number[]): Promise<{ awards: Award[]; list: unknown }>;
+  // discord_set_rsvp(): the raider's own answer for one raid night, null to
+  // clear it. Answers null when saved, else the database's refusal.
+  setRsvp(
+    discordId: string,
+    teamId: number,
+    raidDate: string,
+    status: string | null,
+    note: string | null
+  ): Promise<string | null>;
   // The team's invite code, when it has one that hasn't run out.
   inviteCode(teamId: number): Promise<string | null>;
   // The kinds of post the team has a channel for.
@@ -82,11 +102,13 @@ const PING = 1;
 const COMMAND = 2;
 const BUTTON = 3;
 const AUTOCOMPLETE = 4;
+const MODAL_SUBMIT = 5;
 const PONG = 1;
 const MESSAGE = 4;
 const DEFERRED_MESSAGE = 5;
 const DEFERRED_UPDATE = 6;
 const CHOICES = 8;
+const MODAL = 9;
 const EPHEMERAL = 1 << 6;
 
 export const NOT_IN_SERVER = 'This command works in a server channel only.';
@@ -116,6 +138,18 @@ export const INVITE_NOT_ALLOWED = (team: string) =>
 export const NO_INVITE = (team: string) =>
   `${team} has no invite link right now. An officer can make one on Settings › Invite link.`;
 export const INVITE_POSTED = (team: string) => `Posted ${team}'s invite link in this channel.`;
+// The signup sheet's dropdown (#983): what the raider is told.
+export const NOTE_MAX = 200;
+export const RAID_OVER = "This raid is over, so its answers can't be changed from Discord any more.";
+export const NO_RAID = 'There is no raid that night any more.';
+export const NO_CHARACTER =
+  "You don't have a character on this team's roster on Raid Hub. If you should, ask one of its officers.";
+export const BENCH = "You're on the bench, so there's nothing to answer for a normal raid night.";
+export const ATTENDING_OPTIONAL = 'Attending is only for optional raid nights.';
+export const NOTE_REQUIRED = 'A note is required so officers know why. Pick the answer again and add one.';
+export const SAVED = (status: string, day: string) => `Saved: **${status}** for ${day}.`;
+export const CLEARED = (day: string, optional: boolean) =>
+  `Cleared: you're back to ${optional ? 'no answer' : 'Present'} for ${day}.`;
 // How far ahead /raider schedule looks.
 export const SCHEDULE_DAYS = 14;
 
@@ -158,7 +192,14 @@ type Interaction = {
   token: string;
   guild_id?: string;
   member?: { user?: { id: string } };
-  data?: { name: string; custom_id?: string; options?: Opt[] };
+  data?: {
+    name: string;
+    custom_id?: string;
+    options?: Opt[];
+    // A select menu's pick, and a pop-up's text boxes.
+    values?: string[];
+    components?: { components?: { custom_id?: string; value?: string }[] }[];
+  };
 };
 type Opt = { name: string; type?: number; value?: string; focused?: boolean; options?: Opt[] };
 
@@ -220,6 +261,23 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     );
     return json({ type: DEFERRED_UPDATE });
   }
+  const customId = interaction.data?.custom_id ?? '';
+  if (interaction.type === BUTTON && customId.startsWith(STATUS_PREFIX)) {
+    // signup-sheet-status:<team id>:<raid date>. An answer that wants a note
+    // opens the pop-up, which has to be the first answer: no read before it.
+    const [teamId, raidDate] = customId.slice(STATUS_PREFIX.length).split(':');
+    const picked = interaction.data?.values?.[0] ?? '';
+    if (WANTS_NOTE.has(picked)) return json(noteModal(teamId, raidDate, picked));
+    if (picked !== CLEAR && picked !== 'Attending') return say(UNKNOWN_COMMAND);
+    return setOwn(deps, interaction, Number(teamId), raidDate, picked === CLEAR ? null : picked, null);
+  }
+  if (interaction.type === MODAL_SUBMIT && customId.startsWith(NOTE_PREFIX)) {
+    // signup-sheet-note:<team id>:<raid date>:<status>
+    const [teamId, raidDate, status] = customId.slice(NOTE_PREFIX.length).split(':');
+    if (!WANTS_NOTE.has(status)) return say(UNKNOWN_COMMAND);
+    const note = String(interaction.data?.components?.[0]?.components?.[0]?.value ?? '').trim();
+    return setOwn(deps, interaction, Number(teamId), raidDate, status, note || null);
+  }
   if (interaction.type !== COMMAND) return say(UNKNOWN_COMMAND);
 
   const run = RUNS[path];
@@ -236,6 +294,102 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       .catch(async (err) => {
         console.error(`discord-interactions: /${path} failed:`, err);
         await finish(deps, interaction, { content: BROKE }).catch(() => null);
+      })
+  );
+  return json({ type: DEFERRED_MESSAGE, data: { flags: EPHEMERAL } });
+}
+
+// The note pop-up for an answer that wants a reason. The site asks for one
+// too, so officers know why.
+const noteModal = (teamId: string, raidDate: string, status: string) => ({
+  type: MODAL,
+  data: {
+    custom_id: `${NOTE_PREFIX}${teamId}:${raidDate}:${status}`,
+    title: `${status}: add a note`,
+    components: [
+      {
+        type: 1,
+        components: [
+          {
+            type: 4,
+            custom_id: 'note',
+            style: 2,
+            label: 'Why? Officers see this',
+            required: true,
+            max_length: NOTE_MAX
+          }
+        ]
+      }
+    ]
+  }
+});
+
+const dayName = (raidDate: string) =>
+  new Date(raidDate + 'T00:00:00Z').toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC'
+  });
+
+// What the raider is told when the database refuses; null for an error that
+// isn't a refusal.
+function refusal(message: string, siteUrl?: string): string | null {
+  if (message.includes('No Raid Hub profile')) return NO_PROFILE(siteUrl);
+  if (message.includes('No active roster character')) return NO_CHARACTER;
+  if (message.includes('Bench players')) return BENCH;
+  if (message.includes('Attending is only valid')) return ATTENDING_OPTIONAL;
+  if (message.includes('A note is required')) return NOTE_REQUIRED;
+  return null;
+}
+
+// The raider's own answer from the sheet (#983): "thinking" at once, which
+// only they see; then saved for the Discord account that pressed it, told how
+// it went, and the sheet brought up to date. A raid that has passed is
+// refused: its sheet stays up but no longer changes.
+function setOwn(
+  deps: Deps,
+  i: Interaction,
+  teamId: number,
+  raidDate: string,
+  status: string | null,
+  note: string | null
+): Response {
+  const caller = i.member?.user?.id;
+  if (!caller) return say(NOT_IN_SERVER);
+  deps.waitUntil(
+    new Promise((r) => setTimeout(r, 0))
+      .then(async () => {
+        const now = (deps.now ?? (() => new Date()))();
+        const night = await deps.sheets.night(teamId, raidDate);
+        if (!night.exists) return finish(deps, i, { content: NO_RAID });
+        const at = startsAt(raidDate, night);
+        if (at && now.getTime() >= at.getTime() + PASSED_AFTER_MS) return finish(deps, i, { content: RAID_OVER });
+        const refused = await deps.db.setRsvp(caller, teamId, raidDate, status, note);
+        if (refused !== null) {
+          const told = refusal(refused, deps.env.get('SITE_URL'));
+          if (!told) console.error('discord-interactions: discord_set_rsvp failed:', refused);
+          return finish(deps, i, { content: told ?? BROKE });
+        }
+        const day = dayName(raidDate);
+        await finish(deps, i, { content: status ? SAVED(status, day) : CLEARED(day, night.isOptional) });
+        // The answer is saved and the raider told so: a failed refresh is
+        // only logged, or "try again" would send a second notice to the RSVP
+        // channel (CodeRabbit on #1758). The 15-minute run catches the sheet up.
+        await refreshSheet(
+          {
+            db: deps.sheets,
+            discord: (method, path, body) => discord(deps, method, path, body),
+            siteUrl: deps.env.get('SITE_URL'),
+            now
+          },
+          teamId,
+          raidDate
+        ).catch((err) => console.error('discord-interactions: signup sheet refresh failed:', err));
+      })
+      .catch(async (err) => {
+        console.error('discord-interactions: signup sheet answer failed:', err);
+        await finish(deps, i, { content: BROKE }).catch(() => null);
       })
   );
   return json({ type: DEFERRED_MESSAGE, data: { flags: EPHEMERAL } });
