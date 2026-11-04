@@ -6,9 +6,6 @@ import { pool, withTxn, seedTeam, seedPlayer } from './helpers.js';
 
 afterAll(() => pool.end());
 
-// classes_specs 1 is Mage Frost.
-const FROST_MAGE = 1;
-
 const setSpec = (asUser, uid, playerId, specId) =>
   asUser(uid, 'select public.set_own_missing_spec($1, $2)', [playerId, specId]);
 const specOf = async (q, id) =>
@@ -47,6 +44,7 @@ async function saved(q, memberId, name, characterClass) {
 describe('set_own_missing_spec()', () => {
   it('sets the spec on the raider’s own character that has none, and logs it', async () => {
     await withTxn(async ({ q, asUser }) => {
+      const FROST_MAGE = await specId(q, 'Mage', 'Frost', 'Ranged');
       const { team, playerId } = await noSpecRaider(q);
       await setSpec(asUser, team.raider.uid, playerId, FROST_MAGE);
       expect(await specOf(q, playerId)).toBe(FROST_MAGE);
@@ -61,6 +59,7 @@ describe('set_own_missing_spec()', () => {
 
   it('refuses once a spec is set: only an officer changes it after that', async () => {
     await withTxn(async ({ q, asUser }) => {
+      const FROST_MAGE = await specId(q, 'Mage', 'Frost', 'Ranged');
       const { team, playerId } = await noSpecRaider(q);
       await setSpec(asUser, team.raider.uid, playerId, FROST_MAGE);
       const fire = await specId(q, 'Mage', 'Fire', 'Ranged');
@@ -71,14 +70,26 @@ describe('set_own_missing_spec()', () => {
 
   it('refuses someone else’s character, an officer’s included', async () => {
     await withTxn(async ({ q, asUser }) => {
+      const FROST_MAGE = await specId(q, 'Mage', 'Frost', 'Ranged');
       const { team, playerId } = await noSpecRaider(q);
       await expect(setSpec(asUser, team.officer.uid, playerId, FROST_MAGE)).rejects.toThrow(/not your character/);
       expect(await specOf(q, playerId)).toBeNull();
     });
   });
 
+  it('refuses a raider from another team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const FROST_MAGE = await specId(q, 'Mage', 'Frost', 'Ranged');
+      const { playerId } = await noSpecRaider(q);
+      const other = await seedTeam(q);
+      await expect(setSpec(asUser, other.raider.uid, playerId, FROST_MAGE)).rejects.toThrow(/not your character/);
+      expect(await specOf(q, playerId)).toBeNull();
+    });
+  });
+
   it('refuses a spec of another class than the saved Battle.net character’s', async () => {
     await withTxn(async ({ q, asUser }) => {
+      const FROST_MAGE = await specId(q, 'Mage', 'Frost', 'Ranged');
       const { team, playerId } = await noSpecRaider(q, 'Deathy');
       await saved(q, team.raider.memberId, 'Deathy', 'Death Knight');
       await expect(setSpec(asUser, team.raider.uid, playerId, FROST_MAGE)).rejects.toThrow(/not one of Death Knight/);
@@ -90,6 +101,7 @@ describe('set_own_missing_spec()', () => {
 
   it('refuses an unknown spec, and a signed-out caller', async () => {
     await withTxn(async ({ q, asUser, asAnon }) => {
+      const FROST_MAGE = await specId(q, 'Mage', 'Frost', 'Ranged');
       const { team, playerId } = await noSpecRaider(q);
       await expect(setSpec(asUser, team.raider.uid, playerId, 999999)).rejects.toThrow(/Unknown spec/);
       await expect(asAnon('select public.set_own_missing_spec($1, $2)', [playerId, FROST_MAGE])).rejects.toThrow(

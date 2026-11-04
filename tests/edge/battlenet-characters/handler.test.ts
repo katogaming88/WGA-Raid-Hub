@@ -325,6 +325,23 @@ Deno.test(
   }
 );
 
+Deno.test(
+  'the raider’s own roster character below max level, kept by a save, is read in full too (CodeRabbit on #1759)',
+  async () => {
+    const roster: RosterLink[] = [{ player_id: 6, team_id: 1, name_realm: 'Lowbie-Area 52', outcome: 'linked' }];
+    const r = await run({ token: TOKEN, allLevels: true, save: [101] }, { roster }, [
+      ...happyQueue(),
+      jsonOk({ active_spec: { name: 'Frost' }, equipped_item_level: 300 })
+    ]);
+    assertEquals(r.fetches.length, 5);
+    const saveCall = r.db.calls.find((c) => c.method === 'saveCharacters')!;
+    const lowbie = (saveCall.args[1] as Array<{ blizzard_id: number; spec_name: string | null }>).find(
+      (c) => c.blizzard_id === 102
+    );
+    assertEquals(lowbie?.spec_name, 'Frost');
+  }
+);
+
 Deno.test('a character listed but not picked is never read in full', async () => {
   const r = await run({ token: TOKEN, allLevels: true, save: [101] });
   assertEquals(r.fetches.length, 4);
