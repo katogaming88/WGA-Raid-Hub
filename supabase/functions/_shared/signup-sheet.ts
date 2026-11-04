@@ -9,9 +9,15 @@
 // posts each raid a number of hours before it starts. A sheet that is posted
 // stays up after its raid and stops being updated (Kat, 2026-11-03).
 //
+// The roster is drawn as a picture (#983, sheet-picture.ts) when the caller
+// hands over a way to draw one; the posted file is named after what it shows,
+// so a run that finds the same picture already posted sends nothing. Without
+// one, or when drawing fails, the sheet is text, as before.
+//
 // No reads or Discord calls of its own: the caller hands over a SheetDb and a
 // Discord call, so tests/edge runs all of it against plain objects.
 import { EMBED_FIELD_VALUE_MAX, truncate } from './discord-text.ts';
+import { type Picture, countsLine, pictureAltText, pictureCount, pictureKey, pictureOf } from './sheet-picture.ts';
 import { clockTime, isoDate, weekdayOf, zonedTimeToUtc } from './time.ts';
 
 export type Night = { exists: boolean; startTime: string | null; timezone: string | null; isOptional: boolean };
@@ -59,7 +65,15 @@ export interface SheetDb {
   markPosted(sheetId: number): Promise<void>;
 }
 
-export type DiscordCall = (method: string, path: string, body?: unknown) => Promise<{ status: number; body: any }>;
+// A file sent with the message (#983's picture): Discord takes it as a
+// multipart upload, the JSON as its payload_json.
+export type DiscordFile = { name: string; data: Uint8Array };
+export type DiscordCall = (
+  method: string,
+  path: string,
+  body?: unknown,
+  files?: DiscordFile[]
+) => Promise<{ status: number; body: any }>;
 
 export type SheetContext = {
   db: SheetDb;
@@ -68,6 +82,9 @@ export type SheetContext = {
   now: Date;
   // The bot's own emojis by name; loaded once per run when left out.
   emojis?: Map<string, string>;
+  // Draws the roster as a picture (#983). Left out, or failing, the sheet is
+  // the text one.
+  draw?: (picture: Picture) => Promise<Uint8Array>;
 };
 
 export const REFRESH_PREFIX = 'signup-sheet-refresh:';
@@ -165,6 +182,10 @@ export function buildSheet(input: {
   rsvps: Rsvp[];
   siteUrl?: string;
   emojis?: Map<string, string>;
+  // The drawn roster (#983): its file name and its counts line. With it the
+  // picture takes the role columns' place, and the text keeps the counts and
+  // every other answer.
+  picture?: { file: string; counts: string };
 }) {
   const { team, raidDate, night } = input;
   const emojis = input.emojis ?? new Map<string, string>();
@@ -190,7 +211,8 @@ export function buildSheet(input: {
   // <t:unix:F> shows the weekday, date and time in each reader's own zone.
   const at = startsAt(raidDate, night);
   const optional = night.isOptional ? 'Optional Night' : '';
-  const description = at ? `<t:${Math.round(at.getTime() / 1000)}:F>${optional ? ' — ' + optional : ''}` : optional;
+  const when = at ? `<t:${Math.round(at.getTime() / 1000)}:F>${optional ? ' — ' + optional : ''}` : optional;
+  const description = input.picture ? [when, input.picture.counts].filter(Boolean).join('\n') : when;
 
   const fields: Field[] = [];
   const columns = [
@@ -201,7 +223,7 @@ export function buildSheet(input: {
     column([{ label: 'Melee', names: byRole.Melee }]),
     column([{ label: 'Ranged', names: byRole.Ranged }])
   ].filter((c): c is Field => c !== null);
-  fields.push(...columns);
+  if (!input.picture) fields.push(...columns);
   // Every other answer in one field, a line each: "**Late:** Name, Name".
   const others = STATUSES.filter((s) => byStatus[s].length && (s !== 'No Response' || night.isOptional)).map(
     (s) => `**${s}:** ${byStatus[s].join(', ')}`
@@ -243,7 +265,7 @@ export function buildSheet(input: {
         description,
         fields,
         footer: { text: `${inCount} of ${input.roster.length} available · Refresh to update` },
-        image: { url: bannerUrl(team.id) }
+        image: { url: input.picture ? `attachment://${input.picture.file}` : bannerUrl(team.id) }
       }
     ],
     components: [
@@ -297,7 +319,7 @@ export function lookaheadDates(now: Date): string[] {
   return dates;
 }
 
-export type SyncResult = 'posted' | 'edited' | 'not posted' | 'no raid' | 'quiet hours' | 'not in server';
+export type SyncResult = 'posted' | 'edited' | 'unchanged' | 'not posted' | 'no raid' | 'quiet hours' | 'not in server';
 
 // Brings one raid night's sheet up to date: edits the posted message, or,
 // when `create` allows, posts one. A message Discord will not let this bot
@@ -322,12 +344,47 @@ export async function syncSheet(
   // (CodeRabbit on #1750).
   ctx.emojis ??= await loadEmojis(discord).catch(() => new Map<string, string>());
   const [roster, rsvps] = await Promise.all([db.roster(team.id), db.rsvps(team.id, raidDate)]);
-  const message = buildSheet({ team, raidDate, night, roster, rsvps, siteUrl: ctx.siteUrl, emojis: ctx.emojis });
+  const sheetInput = { team, raidDate, night, roster, rsvps, siteUrl: ctx.siteUrl, emojis: ctx.emojis };
+  const text = buildSheet(sheetInput);
+  // The drawn roster (#983): named after what it shows, so an unchanged sheet
+  // is told apart without drawing, and drawn only when it's sent.
+  const picture = ctx.draw ? pictureOf(roster, rsvps, night) : null;
+  const file = picture && pictureCount(picture) > 0 ? `sheet-${await pictureKey(picture, text)}.png` : null;
+  const withPicture = async (): Promise<{ message: ReturnType<typeof buildSheet>; files?: DiscordFile[] }> => {
+    if (!file || !picture || !ctx.draw) return { message: text };
+    try {
+      const data = await ctx.draw(picture);
+      return {
+        message: buildSheet({ ...sheetInput, picture: { file, counts: countsLine(picture) } }),
+        files: [{ name: file, data }]
+      };
+    } catch (err) {
+      console.error('signup sheet: picture not drawn:', err instanceof Error ? err.message : err);
+      return { message: text };
+    }
+  };
+  // The upload, with every name it shows as its alt text, so a screen reader
+  // reads the roster the picture draws (CodeRabbit on #1760).
+  const upload = (filename: string) => ({
+    id: 0,
+    filename,
+    ...(picture ? { description: pictureAltText(picture) } : {})
+  });
   const existing = await db.claim(team.id, raidDate, sheet.channelId);
 
   if (existing) {
     const path = `/channels/${sheet.channelId}/messages/${existing}`;
-    const edited = await discord('PATCH', path, { ...message, allowed_mentions: { parse: [] } });
+    // The posted sheet already shows this picture: nothing to draw or send.
+    if (file) {
+      const current = await discord('GET', path);
+      const shown = String(current.body?.embeds?.[0]?.image?.url ?? '');
+      if (current.status === 200 && shown.includes(file)) return 'unchanged';
+    }
+    const { message, files } = await withPicture();
+    // A sheet that can carry a picture lists its files every time, so a text
+    // fallback takes an old picture off rather than leaving it under the embed.
+    const attachments = ctx.draw ? { attachments: files ? [upload(files[0].name)] : [] } : {};
+    const edited = await discord('PATCH', path, { ...message, ...attachments, allowed_mentions: { parse: [] } }, files);
     if (edited.status === 200) return 'edited';
     if (edited.status !== 403 && edited.status !== 404)
       throw new Error(`Discord answered ${edited.status} to the edit`);
@@ -343,11 +400,18 @@ export async function syncSheet(
   if (channel.status !== 200 || channel.body?.guild_id !== team.serverId) return 'not in server';
 
   const role = sheet.pingRoleId;
-  const sent = await discord('POST', `/channels/${sheet.channelId}/messages`, {
-    ...message,
-    ...(role ? { content: `<@&${role}>` } : {}),
-    allowed_mentions: { parse: [], roles: role ? [role] : [] }
-  });
+  const { message, files } = await withPicture();
+  const sent = await discord(
+    'POST',
+    `/channels/${sheet.channelId}/messages`,
+    {
+      ...message,
+      ...(files ? { attachments: [upload(files[0].name)] } : {}),
+      ...(role ? { content: `<@&${role}>` } : {}),
+      allowed_mentions: { parse: [], roles: role ? [role] : [] }
+    },
+    files
+  );
   if (sent.status !== 200 || !sent.body?.id) throw new Error(`Discord answered ${sent.status} to the post`);
   // A post that can't be recorded, or that lost to another run's, is taken
   // back down, or the next run would post (and ping) a second sheet

@@ -34,7 +34,9 @@
 // (#1006), so tests/edge/ runs it against plain objects; deps.ts supplies the
 // real ones and index.ts serves it.
 import { resolveBot } from '../_shared/discord-destination.ts';
-import { type SheetDb, refreshSheet, sweepSheets } from '../_shared/signup-sheet.ts';
+import { discordRequestBody } from '../_shared/discord-text.ts';
+import type { Picture } from '../_shared/sheet-picture.ts';
+import { type DiscordFile, type SheetDb, refreshSheet, sweepSheets } from '../_shared/signup-sheet.ts';
 import {
   ACTIONS,
   type Kind,
@@ -93,6 +95,8 @@ export type Deps = {
   env: Env;
   db: RelayDb;
   sheets: SheetDb;
+  // The signup sheet's picture (#983); left out, sheets are text.
+  drawPicture?: (picture: Picture) => Promise<Uint8Array>;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
 };
@@ -134,16 +138,25 @@ type Answer = { status: number; body: any };
 
 // One Discord REST call as the bot, waiting out one 429. GET without a body,
 // POST with one, unless a method is named.
-async function discord(deps: Deps, token: string, path: string, body?: unknown, method?: string): Promise<Answer> {
-  const call = () =>
-    deps.fetch(API + path, {
+async function discord(
+  deps: Deps,
+  token: string,
+  path: string,
+  body?: unknown,
+  method?: string,
+  files?: DiscordFile[]
+): Promise<Answer> {
+  const call = () => {
+    const request = discordRequestBody(body, files);
+    return deps.fetch(API + path, {
       method: method ?? (body === undefined ? 'GET' : 'POST'),
-      headers: { Authorization: 'Bot ' + token, 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: { Authorization: 'Bot ' + token, ...request.headers },
+      body: request.body,
       // A hung call fails its try instead of running the drain out of time,
       // which would leave its row claimed and never counted as failed.
       signal: AbortSignal.timeout(CALL_TIMEOUT_MS)
     });
+  };
   let res = await call();
   if (res.status === 429) {
     const wait = Number((await res.json().catch(() => ({})))?.retry_after ?? 1) * 1000;
@@ -337,9 +350,11 @@ async function postQueued(
 function sheetContext(deps: Deps, token: string, now: Date) {
   return {
     db: deps.sheets,
-    discord: (method: string, path: string, body?: unknown) => discord(deps, token, path, body, method),
+    discord: (method: string, path: string, body?: unknown, files?: DiscordFile[]) =>
+      discord(deps, token, path, body, method, files),
     siteUrl: deps.env.get('SITE_URL'),
-    now
+    now,
+    draw: deps.drawPicture
   };
 }
 

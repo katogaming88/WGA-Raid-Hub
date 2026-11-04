@@ -20,3 +20,21 @@ export function truncate(s: string, max: number, suffix = '...'): string {
   if (before >= 0xd800 && before <= 0xdbff) cut -= 1;
   return s.slice(0, cut) + suffix;
 }
+
+// A Discord REST body: JSON, or with files a multipart form whose JSON rides
+// as payload_json (#983's picture). fetch sets the multipart boundary itself.
+export function discordRequestBody(
+  body: unknown,
+  files?: { name: string; data: Uint8Array }[]
+): { headers: Record<string, string>; body: BodyInit | undefined } {
+  if (!files?.length) {
+    return {
+      headers: { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body)
+    };
+  }
+  const form = new FormData();
+  form.append('payload_json', JSON.stringify(body ?? {}));
+  files.forEach((f, i) => form.append(`files[${i}]`, new Blob([f.data as BlobPart], { type: 'image/png' }), f.name));
+  return { headers: {}, body: form };
+}
