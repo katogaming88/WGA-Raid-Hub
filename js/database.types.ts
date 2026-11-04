@@ -3288,22 +3288,25 @@ export type Database = {
       }
       team_lineup_posts: {
         Row: {
-          channel_id: string
-          message_id: string
+          channel_id: string | null
+          content_key: string
+          message_id: string | null
           posted_at: string
           team_id: number
           week_of: string
         }
         Insert: {
-          channel_id: string
-          message_id: string
+          channel_id?: string | null
+          content_key: string
+          message_id?: string | null
           posted_at?: string
           team_id: number
           week_of: string
         }
         Update: {
-          channel_id?: string
-          message_id?: string
+          channel_id?: string | null
+          content_key?: string
+          message_id?: string | null
           posted_at?: string
           team_id?: number
           week_of?: string

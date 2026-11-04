@@ -200,6 +200,13 @@ Deno.test('a changed lineup edits the post, pinging nobody, even one sent as tex
   assert(changed.rows.get(WEEK)!.key !== key);
 });
 
+Deno.test('a night moved to another time edits the post, with the same bosses and players', async () => {
+  const key = await postedKey();
+  const moved = context({ nights: { '2026-11-05': { ...RAID, startTime: '20:00:00' } } });
+  moved.rows.set(WEEK, { messageId: 'm1', channelId: CHANNEL, key });
+  assertEquals(await syncLineup(moved.ctx, LINEUP), 'edited');
+});
+
 Deno.test('the week’s message is edited in the channel it went to, after the channel changes', async () => {
   const OLD = '200000000000000009';
   const { ctx, calls, rows } = context();

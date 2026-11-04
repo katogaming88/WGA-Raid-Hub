@@ -347,11 +347,13 @@ export function lineupMessage(
 
 // The grids for some nights, drawn where they can be; the message, its files
 // and its key (what it shows, so an unchanged post is told apart).
-// What a post for these nights shows: every boss and who is in for it.
+// What a post for these nights shows: each night's date and start, every
+// boss and who is in for it. The start counts, so a night moved to another
+// time edits the post too (CodeRabbit on #1761).
 const keyOf = (nights: NightGrid[]) =>
   pictureKey(
     { groups: [] },
-    nights.map((n) => ({ d: n.raidDate, g: n.grid }))
+    nights.map((n) => ({ d: n.raidDate, t: n.night.startTime, z: n.night.timezone, g: n.grid }))
   );
 
 async function render(ctx: LineupContext, team: LineupTeam, nights: NightGrid[]) {
