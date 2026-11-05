@@ -51,7 +51,7 @@ begin
            post_weekday = null, post_time = null, post_timezone = null,
            rsvp_when = null, rsvp_time = null, rsvp_timezone = null, rsvp_hours = null,
            updated_at = now()
-     where team_id = p_team_id and channel_id is not null;
+     where team_id = p_team_id and (channel_id is not null or rsvp_when is not null);
     update discord_post_queue
        set status = 'skipped', last_error = 'The team changed its Discord server'
      where team_id = p_team_id and kind = 'rsvp_changes' and status = 'queued' and next_try_at > now();

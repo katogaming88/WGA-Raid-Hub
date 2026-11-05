@@ -86,3 +86,15 @@ Deno.test('a typed @everyone in a note pings nobody', () => {
   const message = buildRsvpDigest([{ charName: 'Mira', raidDate: DATE, status: 'Late', note: '@everyone' }], null);
   assertEquals(message.allowed_mentions, { parse: [], roles: [], users: [] });
 });
+
+Deno.test('two long names sharing their start are two raiders', () => {
+  const long = 'z'.repeat(70);
+  const message = buildRsvpDigest(
+    [
+      { charName: long + 'a', raidDate: DATE, status: 'Late' },
+      { charName: long + 'b', raidDate: DATE, status: 'Absent' }
+    ],
+    null
+  );
+  assertEquals(message.embeds[0].fields![0].value.split('\n').length, 2);
+});

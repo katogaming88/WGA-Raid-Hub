@@ -279,6 +279,21 @@ describe('team Discord settings', () => {
     });
   });
 
+  it('changing the server clears the RSVP timing of a post already turned off', async () => {
+    await txn(async ({ asUser }) => {
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
+      await asUser(OFFICER_T1, 'select public.set_team_rsvp_post(1, $1, null, $2, null, null, 3)', [
+        CH_RSVPS,
+        'before_raid'
+      ]);
+      await asUser(OFFICER_T1, "select public.set_team_discord_post(1, 'rsvp_changes', null, null)");
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [OTHER_SERVER]);
+
+      const rsvp = (await settings(asUser, OFFICER_T1)).posts.find((p) => p.kind === 'rsvp_changes');
+      expect(rsvp).toMatchObject({ channel_id: null, rsvp_when: null, rsvp_hours: null });
+    });
+  });
+
   it('takes only a server the caller was found sharing with the bot in the last hour', async () => {
     await withTxn(async ({ q, asUser }) => {
       await expect(asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER])).rejects.toThrow(

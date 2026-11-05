@@ -64,13 +64,13 @@ export function buildRsvpDigest(rows: Payload[], roleId: string | null): Message
   const nights = new Map<string, Map<string, string>>();
   for (const p of rows) {
     const raidDate = text(p.raidDate);
-    const who = truncate(text(p.charName), NAME_MAX);
-    if (!raidDate || !who) continue;
+    const name = text(p.charName);
+    if (!raidDate || !name) continue;
     const note = truncate(text(p.note), NOTE_MAX);
-    const line = `${who}: ${text(p.status)}${note ? ` (${note})` : ''}`;
+    const line = `${truncate(name, NAME_MAX)}: ${text(p.status)}${note ? ` (${note})` : ''}`;
     const night = nights.get(raidDate) ?? new Map<string, string>();
-    night.delete(who); // a later answer goes last
-    night.set(who, line);
+    night.delete(name); // a later answer goes last
+    night.set(name, line);
     nights.set(raidDate, night);
   }
   const fields: Field[] = [];
