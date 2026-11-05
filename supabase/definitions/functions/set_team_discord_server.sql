@@ -49,8 +49,12 @@ begin
     update team_discord_posts
        set channel_id = null, ping_role_id = null,
            post_weekday = null, post_time = null, post_timezone = null,
+           rsvp_when = null, rsvp_time = null, rsvp_timezone = null, rsvp_hours = null,
            updated_at = now()
      where team_id = p_team_id and channel_id is not null;
+    update discord_post_queue
+       set next_try_at = now()
+     where team_id = p_team_id and kind = 'rsvp_changes' and status = 'queued' and next_try_at > now();
     delete from team_discord_signup_sheets where team_id = p_team_id;
     get diagnostics v_sheets = row_count;
   end if;

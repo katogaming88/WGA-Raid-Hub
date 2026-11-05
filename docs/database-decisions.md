@@ -3302,7 +3302,7 @@ Shipped: `20261105075606_rsvp_post_timing.sql`. `discord-bot-webhook`.
 
 **`zonedTimeToUtc()` reads the offset again after correcting.** On a day the clocks change, its first guess could sit on the other side of the change from the answer, so a morning time came out an hour off (9 AM Pacific on the spring change day, 3 AM anywhere). Evening raid times were never affected. Fixed in the shared helper, so raid times and reminders get it too (CodeRabbit and the fresh review on #1763).
 
-**`set_team_discord_server()` clears the weekly lineup's day, time and zone.** Since #1709 it failed for any team with that post on, because it cleared the channel and the check refuses a lineup with no channel that still holds the three. RSVP timing is left in place when the server changes: its check ignores the channel, and the bot ignores the timing while the post is off (Kat's OK to fix here, 2026-11-05).
+**`set_team_discord_server()` clears the weekly lineup's day, time and zone.** Since #1709 it failed for any team with that post on, because it cleared the channel and the check refuses a lineup with no channel that still holds the three. It clears the RSVP timing too, and brings the team's waiting RSVP changes forward, so the next run skips them instead of posting them later in the new server (Kat's OK to fix here, 2026-11-05; CodeRabbit on #1763).
 
 **The rest of the queue's decision.** A failed batched post keeps every change for a later try. An added night can have no start time: before each raid has nothing to count back from, so it posts at once, and a daily post counts from the first moment of the raid's date, so earlier days wait for the batch and a sign-off on the day is never held back (CodeRabbit on #1763, narrowed).
 

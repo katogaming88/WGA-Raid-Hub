@@ -21,7 +21,9 @@
 -- Also, on Kat's OK: set_team_discord_server() failed for any team with a weekly
 -- lineup post on. It clears each post's channel, and #1709's check refuses a
 -- lineup with no channel that still holds a day, time and zone. It now clears
--- those three as well. Found by the fresh review on #1763.
+-- those three as well, and the RSVP timing, and brings waiting RSVP changes
+-- forward so the next run skips them rather than posting them in the new
+-- server. Found by the fresh review on #1763.
 
 alter table public.team_discord_posts
   add column rsvp_when text check (rsvp_when in ('daily', 'before_raid')),
@@ -31,7 +33,7 @@ alter table public.team_discord_posts
 
 -- No timing means as it happens. Daily needs a time and a zone, before each
 -- raid needs the hours, and only the RSVP changes kind holds any of it. The
--- channel is not part of it: changing the server clears every channel and
+-- channel is not part of it: set_team_discord_post() can turn the post off and
 -- leaves the timing, which the bot ignores while the post is off.
 alter table public.team_discord_posts add constraint team_discord_posts_rsvp_timing_check
   check (
@@ -243,8 +245,12 @@ begin
     update team_discord_posts
        set channel_id = null, ping_role_id = null,
            post_weekday = null, post_time = null, post_timezone = null,
+           rsvp_when = null, rsvp_time = null, rsvp_timezone = null, rsvp_hours = null,
            updated_at = now()
      where team_id = p_team_id and channel_id is not null;
+    update discord_post_queue
+       set next_try_at = now()
+     where team_id = p_team_id and kind = 'rsvp_changes' and status = 'queued' and next_try_at > now();
     delete from team_discord_signup_sheets where team_id = p_team_id;
     get diagnostics v_sheets = row_count;
   end if;

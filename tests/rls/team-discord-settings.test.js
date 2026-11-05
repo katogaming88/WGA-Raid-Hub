@@ -259,6 +259,28 @@ describe('team Discord settings', () => {
     });
   });
 
+  it('changing the server clears the RSVP timing and brings waiting RSVP changes forward', async () => {
+    await txn(async ({ q, asUser }) => {
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
+      await asUser(OFFICER_T1, 'select public.set_team_rsvp_post(1, $1, null, $2, null, null, 3)', [
+        CH_RSVPS,
+        'before_raid'
+      ]);
+      const row = await q(
+        `insert into public.discord_post_queue (team_id, kind, action, payload, next_try_at)
+         values (1, 'rsvp_changes', 'rsvp', '{}', now() + interval '3 days') returning id`
+      );
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [OTHER_SERVER]);
+
+      const rsvp = (await settings(asUser, OFFICER_T1)).posts.find((p) => p.kind === 'rsvp_changes');
+      expect(rsvp).toMatchObject({ channel_id: null, rsvp_when: null, rsvp_hours: null });
+      const waiting = await q('select next_try_at > now() as waiting from public.discord_post_queue where id = $1', [
+        row.rows[0].id
+      ]);
+      expect(waiting.rows[0].waiting).toBe(false);
+    });
+  });
+
   it('takes only a server the caller was found sharing with the bot in the last hour', async () => {
     await withTxn(async ({ q, asUser }) => {
       await expect(asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER])).rejects.toThrow(
