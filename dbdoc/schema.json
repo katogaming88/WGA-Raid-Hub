@@ -13595,6 +13595,12 @@
       "return_type": "void",
       "arguments": "p_team_id integer, p_channel_id text, p_ping_role_id text, p_when text, p_time time without time zone, p_timezone text, p_hours integer",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_discord_activity",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer, p_limit integer DEFAULT 50",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

@@ -548,3 +548,14 @@
 .discord-quiet-save {
   margin-left: auto;
 }
+
+.discord-activity {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.discord-activity li {
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--border);
+}

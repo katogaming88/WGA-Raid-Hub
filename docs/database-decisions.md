@@ -3317,3 +3317,13 @@ Shipped: `20261104170614_nudges_signup_reminder.sql`. `discord-interactions`.
 **"Signed up" is read as the site's missing list reads it,** with no new view: a live (not rejected) `season_signups` row for the soonest season open for signups covers the character it names and, for a main swap, the one it replaces. The list is the team's unarchived `players`.
 
 [Full discussion -> #990](https://github.com/katogaming88/WGA-Raid-Hub/issues/990).
+
+## #1711 -- Discord activity: what the bot posted for the team
+
+Shipped: `20261105102909_discord_activity.sql`.
+
+**The log is `discord_post_queue`, read through one function.** `team_discord_activity()` gives a team's officers (Change Discord settings, or a site admin) the count, the last posted time and the newest rows, so the table stays service role only. It lists the queued notices only: signup sheets and the weekly lineup keep just a "last posted" time and are not in it (Kat, 2026-11-05).
+
+**No "bot last checked" line.** Nothing records when the bot last verified it can post everywhere, so the issue's third summary item waits for a check job to exist. The channel shown on a row is the one its kind posts to now, since a row does not keep the channel it used.
+
+[Full discussion -> #1711](https://github.com/katogaming88/WGA-Raid-Hub/issues/1711).

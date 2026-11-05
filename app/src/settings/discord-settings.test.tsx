@@ -3,7 +3,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers } from '../test/fakeSupabase';
-import type { DiscordRead, DiscordSettings } from './discord';
+import type { Activity, DiscordRead, DiscordSettings } from './discord';
 
 // Settings › Discord (#994): an officer picks the server, each kind of post's
 // channel and ping, and the signup sheets from lists read from Discord.
@@ -70,12 +70,14 @@ function handlers({
   role = 'officer',
   saved = SAVED,
   read = READ,
+  activity = { total: 0, last_posted_at: null, rows: [] },
   rpcs = [],
   invokes = []
 }: {
   role?: 'officer' | 'raider';
   saved?: DiscordSettings;
   read?: DiscordRead;
+  activity?: Activity;
   rpcs?: [string, Record<string, unknown>][];
   invokes?: unknown[];
 } = {}): FakeHandlers {
@@ -86,6 +88,7 @@ function handlers({
       if (name === 'current_discord_id') return { data: 'd' };
       if (name === 'resolve_person') return { data: person(role) };
       if (name === 'team_discord_settings') return { data: saved };
+      if (name === 'team_discord_activity') return { data: activity };
       if (
         name.startsWith('set_team_discord') ||
         name.includes('signup_sheet') ||
@@ -364,5 +367,42 @@ describe('Settings › Discord (#994)', () => {
   it('is in the Settings menu', async () => {
     renderApp(PATH, handlers());
     expect(await screen.findByRole('link', { name: 'Discord' })).toHaveAttribute('href', PATH);
+  });
+
+  it('lists what the bot posted, newest first, with a failed post in red and why (#1711)', async () => {
+    const activity: Activity = {
+      total: 2,
+      last_posted_at: new Date(Date.now() - 2 * 3600_000).toISOString(),
+      rows: [
+        {
+          id: 2,
+          kind: 'rsvp_changes',
+          action: 'rsvp',
+          status: 'failed',
+          attempts: 5,
+          at: new Date().toISOString(),
+          error: "Channel not found, or the bot can't see it",
+          channel_id: '202'
+        },
+        {
+          id: 1,
+          kind: 'officer_requests',
+          action: 'signup',
+          status: 'posted',
+          attempts: 1,
+          at: new Date(Date.now() - 2 * 3600_000).toISOString(),
+          error: null,
+          channel_id: '201'
+        }
+      ]
+    };
+    renderApp(PATH, handlers({ activity }));
+    const card = (await screen.findByRole('heading', { name: 'Activity' })).closest('section')!;
+    expect(await within(card).findByText(/2 posts in the log/)).toBeInTheDocument();
+    expect(within(card).getByText(/Last post: 2h ago/)).toBeInTheDocument();
+    const [first, second] = within(card).getAllByRole('listitem');
+    expect(first).toHaveTextContent('RSVP change, #phoenix-attendance');
+    expect(within(first!).getByText(/failed: Channel not found/)).toHaveClass('discord-problem');
+    expect(second).toHaveTextContent('Season signup, #phoenix-officers');
   });
 });

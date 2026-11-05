@@ -293,6 +293,7 @@
 | public.set_own_missing_spec | void | p_player_id integer, p_class_spec_id integer | FUNCTION |
 | public.set_team_weekly_lineup_post | void | p_team_id integer, p_channel_id text, p_ping_role_id text, p_weekday integer, p_time time without time zone, p_timezone text | FUNCTION |
 | public.set_team_rsvp_post | void | p_team_id integer, p_channel_id text, p_ping_role_id text, p_when text, p_time time without time zone, p_timezone text, p_hours integer | FUNCTION |
+| public.team_discord_activity | jsonb | p_team_id integer, p_limit integer DEFAULT 50 | FUNCTION |
 
 ## Enums
 
