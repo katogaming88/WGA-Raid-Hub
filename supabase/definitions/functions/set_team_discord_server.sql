@@ -47,7 +47,9 @@ begin
            updated_at = now()
      where team_id = p_team_id;
     update team_discord_posts
-       set channel_id = null, ping_role_id = null, updated_at = now()
+       set channel_id = null, ping_role_id = null,
+           post_weekday = null, post_time = null, post_timezone = null,
+           updated_at = now()
      where team_id = p_team_id and channel_id is not null;
     delete from team_discord_signup_sheets where team_id = p_team_id;
     get diagnostics v_sheets = row_count;

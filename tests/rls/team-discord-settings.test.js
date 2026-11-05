@@ -244,6 +244,21 @@ describe('team Discord settings', () => {
     });
   });
 
+  it('changing the server works with a weekly lineup post on, and clears its day, time and zone', async () => {
+    await txn(async ({ asUser }) => {
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
+      await asUser(OFFICER_T1, 'select public.set_team_weekly_lineup_post(1, $1, null, 3, $2, $3)', [
+        CH_TUESDAY,
+        '18:00',
+        'America/New_York'
+      ]);
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [OTHER_SERVER]);
+
+      const lineup = (await settings(asUser, OFFICER_T1)).posts.find((p) => p.kind === 'weekly_lineup');
+      expect(lineup).toMatchObject({ channel_id: null, post_weekday: null, post_time: null, post_timezone: null });
+    });
+  });
+
   it('takes only a server the caller was found sharing with the bot in the last hour', async () => {
     await withTxn(async ({ q, asUser }) => {
       await expect(asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER])).rejects.toThrow(

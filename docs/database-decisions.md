@@ -3300,6 +3300,10 @@ Shipped: `20261105075606_rsvp_post_timing.sql`. `discord-bot-webhook`.
 
 **A batched post cannot be too long for Discord.** Discord refuses a whole message over 6000 characters, on every try, which would lose every change in it. A claim is at most 25 rows, so at most 25 lines; a note shows its first 100 characters and a name its first 64, which keeps the fullest claim under the limit. A night too long for one field carries on in another, "(continued)", so no raider is cut. The full note stays on the site.
 
+**`zonedTimeToUtc()` reads the offset again after correcting.** On a day the clocks change, its first guess could sit on the other side of the change from the answer, so a morning time came out an hour off (9 AM Pacific on the spring change day, 3 AM anywhere). Evening raid times were never affected. Fixed in the shared helper, so raid times and reminders get it too (CodeRabbit and the fresh review on #1763).
+
+**`set_team_discord_server()` clears the weekly lineup's day, time and zone.** Since #1709 it failed for any team with that post on, because it cleared the channel and the check refuses a lineup with no channel that still holds the three. RSVP timing is left in place when the server changes: its check ignores the channel, and the bot ignores the timing while the post is off (Kat's OK to fix here, 2026-11-05).
+
 **The rest of the queue's decision.** A failed batched post keeps every change for a later try. An added night can have no start time: before each raid has nothing to count back from, so it posts at once, and a daily post counts from the first moment of the raid's date, so earlier days wait for the batch and a sign-off on the day is never held back (CodeRabbit on #1763, narrowed).
 
 [Full discussion -> #1710](https://github.com/katogaming88/WGA-Raid-Hub/issues/1710).

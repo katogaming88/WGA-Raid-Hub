@@ -24,6 +24,8 @@ answers to.
 
 - `team_discord_posts` holds the RSVP changes timing, and
   `set_team_rsvp_post()` saves it with the channel and ping role (#1710).
+- Changing a team's Discord server no longer fails when its Weekly lineup post
+  is on (#1710).
 
 ### Functions
 
@@ -32,6 +34,8 @@ answers to.
   starts before the next batched post still goes out at once, and quiet hours
   still hold every post. A long note shows its first 100 characters in the
   batched post; the full note stays on the site (#1710).
+- Times in a named zone land on the asked time on the days the clocks change.
+  A morning time could be an hour off on those two days (#1710).
 
 ## [3.239.0] - 2026-11-04
 
