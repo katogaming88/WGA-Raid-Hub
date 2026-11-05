@@ -483,16 +483,19 @@ const BATCHED = (rsvpTiming: PostSetting['rsvpTiming']): State => ({
 });
 const RAID_NIGHTS = { nights: { '2026-11-04': RAID } };
 
-Deno.test('a change waits for the post a set number of hours before its raid, and waiting is not a failure', async () => {
-  const { calls, finished } = await drain([queued('rsvp')], {
-    state: BATCHED({ when: 'before_raid', hours: 3 }),
-    sheets: RAID_NIGHTS
-  });
-  assertEquals(posted(calls).length, 0);
-  assertEquals(finished, [
-    { id: 7, status: 'queued', lastError: null, nextTryAt: '2026-11-04T23:00:00.000Z', hold: true }
-  ]);
-});
+Deno.test(
+  'a change waits for the post a set number of hours before its raid, and waiting is not a failure',
+  async () => {
+    const { calls, finished } = await drain([queued('rsvp')], {
+      state: BATCHED({ when: 'before_raid', hours: 3 }),
+      sheets: RAID_NIGHTS
+    });
+    assertEquals(posted(calls).length, 0);
+    assertEquals(finished, [
+      { id: 7, status: 'queued', lastError: null, nextTryAt: '2026-11-04T23:00:00.000Z', hold: true }
+    ]);
+  }
+);
 
 Deno.test("changes whose post time has come go out as one post, listing each raider's last answer", async () => {
   const rows = [
