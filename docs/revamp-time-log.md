@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |     17 h 45 m |
+| Phase 1: For the guild test        |     18 h 5 m |
 | Phase 2: Before the new site goes live |       0 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **152 h 16 m** |
+| **All revamp work**                | **152 h 36 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -573,7 +573,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
-| 7:54-8:45 AM | #1710: when RSVP changes post (as they happen, once a day, before each raid): the migration, the drain holding and batching changes, the dialog; edge, database and app tests, generated docs, decision log, RLS.md, stamp, changelog, these rows; preflight; PR | Phase 1: For the guild test (#1710) | 50 m | ~47 m build, ~3 m Kat | 462,600 | Screenshots, CodeRabbit, the fresh-agent review and merge not yet counted |
+| 7:54-8:45 AM | #1710: when RSVP changes post (as they happen, once a day, before each raid): the migration, the drain holding and batching changes, the dialog; edge, database and app tests, generated docs, decision log, RLS.md, stamp, changelog, these rows; preflight; PR | Phase 1: For the guild test (#1710) | 50 m | ~47 m build, ~3 m Kat | 462,600 | |
+| 8:45-9:05 AM | PR #1763 (#1710): the five screenshots; CodeRabbit (a raider's last answer by time, a night with no start time, narrowed); the fresh-agent review (changes needed): changing the timing brings waiting changes forward, long notes capped and long nights continued so a post can't be refused, a wait gives its try back, batches post before singles | Phase 1: For the guild test (#1710) | 20 m | ~18 m build, ~2 m Kat | 264,400 | Includes the review agent's 165,400; merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

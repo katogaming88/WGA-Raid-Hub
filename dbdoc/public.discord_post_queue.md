@@ -15,7 +15,7 @@ Every Discord notice the bot posts to a team's channels, queued by the write beh
 | payload | jsonb |  | false |  |  | The fields the message is built from, written by the function that made the change from what it saved. |
 | status | text | 'queued'::text | false |  |  | queued until it posts (posted), its kind of post is off or its team's server is gone when it comes up (skipped), or it fails five times (failed). |
 | attempts | integer | 0 | false |  |  |  |
-| next_try_at | timestamp with time zone | now() | false |  |  | When it may post: now when queued, later after a failed try. |
+| next_try_at | timestamp with time zone | now() | false |  |  | When it may post: now when queued, later after a failed try, or, for a batched RSVP change, when its batched post is due (#1710). Changing a team's RSVP timing brings its waiting changes forward, so the next run decides them again. |
 | claimed_at | timestamp with time zone |  | true |  |  | When a posting run took it. A run that dies holding it frees it after ten minutes. |
 | posted_at | timestamp with time zone |  | true |  |  |  |
 | last_error | text |  | true |  |  | Why the last try did not post. |

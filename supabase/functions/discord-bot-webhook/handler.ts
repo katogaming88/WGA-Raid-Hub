@@ -8,7 +8,8 @@
 // discord_post_queue row built from what they saved. The drain, called every
 // minute by pg_cron, takes the due rows of teams not in quiet hours and posts
 // each once. A post that fails waits and tries again, five tries in all, then
-// stays as failed.
+// stays as failed. A team can batch its RSVP changes (#1710, rsvp-batch.ts): a
+// change waits for its batched post, and waiting uses up no try.
 //
 // POST { action, team?, teamId?, payload? }:
 //   - drain, signupSheets and optionalReminder: a scheduled job's x-cron-secret.
@@ -69,8 +70,10 @@ export type Finish = {
   lastError: string | null;
   // When a row left queued may try again.
   nextTryAt?: string;
-  // Not a failed try: the change waits for its batched post (#1710).
+  // Not a failed try: the change waits for its batched post (#1710), and
+  // `attempts` gives back the try its claim counted.
   hold?: boolean;
+  attempts?: number;
 };
 
 export type PostSetting = {
@@ -247,6 +250,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const rows = await deps.db.claimPosts();
     const settings = new Map<string, PostSetting | null>();
     const batches = new Map<number, QueuedPost[]>();
+    const singles: QueuedPost[] = [];
     const settle = async (row: QueuedPost, finish: Finish) => {
       if (finish.status === 'queued' && !finish.hold) {
         console.error(`discord-bot-webhook: queued post ${row.id} (try ${row.attempts}): ${finish.lastError}`);
@@ -268,7 +272,6 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     };
 
     for (const row of rows) {
-      let finish: Finish | undefined;
       try {
         // A team that batches its RSVP changes (#1710): the change waits for
         // the batched post, joins it once it is due, or, due the moment it
@@ -278,19 +281,28 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           const madeAt = new Date(row.createdAt);
           const due = dueAt(timing, madeAt, await raidStart(deps, row), String(row.payload.raidDate ?? ''));
           if (due.getTime() > now.getTime()) {
-            finish = { status: 'queued', lastError: null, nextTryAt: due.toISOString(), hold: true };
-          } else if (due.getTime() > madeAt.getTime()) {
+            await settle(row, {
+              status: 'queued',
+              lastError: null,
+              nextTryAt: due.toISOString(),
+              hold: true,
+              attempts: row.attempts - 1
+            });
+            continue;
+          }
+          if (due.getTime() > madeAt.getTime()) {
             batches.set(row.teamId, [...(batches.get(row.teamId) ?? []), row]);
             continue;
           }
         }
-        finish ??= await postQueued(deps, dest, token, row);
+        singles.push(row);
       } catch (e) {
-        finish = errorFinish(e);
+        await settle(row, errorFinish(e));
       }
-      await settle(row, finish);
     }
 
+    // Batches first: for one raid night, a change posted on its own was made
+    // after any change waiting for the batch, so the newest answer posts last.
     for (const [teamId, batch] of batches) {
       // The claim names no order, and a raider's last answer is the one shown.
       batch.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt) || a.id - b.id);
@@ -307,6 +319,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         finish = errorFinish(e);
       }
       for (const row of batch) await settle(row, finish);
+    }
+
+    for (const row of singles) {
+      let finish: Finish;
+      try {
+        finish = await postQueued(deps, dest, token, row);
+      } catch (e) {
+        finish = errorFinish(e);
+      }
+      await settle(row, finish);
     }
     return jsonResponse({ success: true, claimed: rows.length });
   }

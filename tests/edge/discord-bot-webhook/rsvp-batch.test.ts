@@ -1,7 +1,7 @@
 // When a batched RSVP change posts (#1710): the pure half of the drain's
 // decision. Raid: 2026-11-04 at 9 PM Eastern.
 import { assertEquals } from 'jsr:@std/assert@1';
-import { dueAt } from '../../../supabase/functions/discord-bot-webhook/rsvp-batch.ts';
+import { buildRsvpDigest, dueAt } from '../../../supabase/functions/discord-bot-webhook/rsvp-batch.ts';
 
 const RAID = new Date('2026-11-05T02:00:00Z');
 const DATE = '2026-11-04';
@@ -46,4 +46,43 @@ Deno.test('a night with no start time: the batch on earlier days, at once on the
   // Before each raid has nothing to count back from.
   const made = at('2026-11-01T05:00:00Z');
   assertEquals(dueAt({ when: 'before_raid', hours: 3 }, made, null, DATE), made);
+});
+
+// Discord refuses a whole message over these, on every try.
+const size = (embed: { title: string; fields?: { name: string; value: string }[]; footer?: { text: string } }) =>
+  embed.title.length +
+  (embed.footer?.text.length ?? 0) +
+  (embed.fields ?? []).reduce((n, f) => n + f.name.length + f.value.length, 0);
+
+Deno.test("the fullest claim, 25 long notes on different nights, stays inside Discord's limits", () => {
+  const rows = Array.from({ length: 25 }, (_, i) => ({
+    charName: 'Katorri-Stormrage' + i,
+    raidDate: `2026-12-${String(i + 1).padStart(2, '0')}`,
+    status: 'Leaving Early',
+    note: 'x'.repeat(2000)
+  }));
+  const embed = buildRsvpDigest(rows, null).embeds[0];
+  assertEquals(embed.fields!.length, 25);
+  assertEquals(size(embed) <= 6000, true);
+});
+
+Deno.test('a night too long for one field carries on in another, and nobody is cut', () => {
+  const rows = Array.from({ length: 25 }, (_, i) => ({
+    charName: 'Raider' + i,
+    raidDate: DATE,
+    status: 'Late',
+    note: 'y'.repeat(100)
+  }));
+  const fields = buildRsvpDigest(rows, null).embeds[0].fields!;
+  assertEquals(fields.length > 1, true);
+  assertEquals(fields[0].name, DATE);
+  assertEquals(fields[1].name, DATE + ' (continued)');
+  for (const f of fields) assertEquals(f.value.length <= 1024, true);
+  const all = fields.map((f) => f.value).join('\n');
+  for (let i = 0; i < 25; i++) assertEquals(all.includes(`Raider${i}: Late`), true);
+});
+
+Deno.test('a typed @everyone in a note pings nobody', () => {
+  const message = buildRsvpDigest([{ charName: 'Mira', raidDate: DATE, status: 'Late', note: '@everyone' }], null);
+  assertEquals(message.allowed_mentions, { parse: [], roles: [], users: [] });
 });

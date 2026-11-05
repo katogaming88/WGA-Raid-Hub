@@ -492,7 +492,7 @@ Deno.test(
     });
     assertEquals(posted(calls).length, 0);
     assertEquals(finished, [
-      { id: 7, status: 'queued', lastError: null, nextTryAt: '2026-11-04T23:00:00.000Z', hold: true }
+      { id: 7, status: 'queued', lastError: null, nextTryAt: '2026-11-04T23:00:00.000Z', hold: true, attempts: 0 }
     ]);
   }
 );
@@ -533,6 +533,20 @@ Deno.test("a raider's last answer wins whatever order the claim hands the rows o
     { state: BATCHED({ when: 'before_raid', hours: 88 }), sheets: RAID_NIGHTS }
   );
   assertEquals(posted(calls)[0].body.embeds[0].fields, [{ name: '2026-11-04', value: 'Mira: Tentative' }]);
+});
+
+Deno.test('a batch posts before a change on its own, so the newest answer for a night is last', async () => {
+  const today = { nights: { '2026-11-01': { ...RAID, startTime: '23:00:00' } } };
+  const row = (id: number, createdAt: string, status: string) =>
+    queued('rsvp', { id, createdAt, payload: { charName: 'Mira', raidDate: '2026-11-01', status } });
+  const { calls } = await drain(
+    [row(9, '2026-11-01T13:30:00.000Z', 'Attending'), row(7, '2026-11-01T05:00:00.000Z', 'Absent')],
+    { state: BATCHED({ when: 'before_raid', hours: 16 }), sheets: today }
+  );
+  assertEquals(
+    posted(calls).map((c) => c.body.embeds[0].title),
+    ['Raid RSVP Updates', 'Raid RSVP Update']
+  );
 });
 
 Deno.test('a daily post holds a change until its time, then sends it', async () => {

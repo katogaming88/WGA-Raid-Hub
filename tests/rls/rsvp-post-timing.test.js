@@ -59,6 +59,26 @@ describe('set_team_rsvp_post()', () => {
     });
   });
 
+  it('changing the timing brings waiting changes forward, and an unchanged save leaves them', async () => {
+    await txn(async ({ q, asUser }) => {
+      await set(asUser, OFFICER_T1, [CHANNEL, null, 'before_raid', null, null, 3]);
+      const row = await q(
+        `insert into public.discord_post_queue (team_id, kind, action, payload, next_try_at)
+         values (1, 'rsvp_changes', 'rsvp', '{}', now() + interval '3 days') returning id`
+      );
+      const waiting = async () =>
+        (
+          await q('select next_try_at > now() as waiting from public.discord_post_queue where id = $1', [
+            row.rows[0].id
+          ])
+        ).rows[0].waiting;
+      await set(asUser, OFFICER_T1, [CHANNEL, null, 'before_raid', null, null, 3]);
+      expect(await waiting()).toBe(true);
+      await set(asUser, OFFICER_T1, [CHANNEL, null, null, null, null, null]);
+      expect(await waiting()).toBe(false);
+    });
+  });
+
   it('still sets the channel and ping role the way set_team_discord_post() does', async () => {
     await txn(async ({ q, asUser }) => {
       await set(asUser, OFFICER_T1, [CHANNEL, ROLE, null, '09:00', 'America/New_York', 3]);

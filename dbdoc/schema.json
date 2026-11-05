@@ -10313,7 +10313,7 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()",
-          "comment": "When it may post: now when queued, later after a failed try."
+          "comment": "When it may post: now when queued, later after a failed try, or, for a batched RSVP change, when its batched post is due (#1710). Changing a team's RSVP timing brings its waiting changes forward, so the next run decides them again."
         },
         {
           "name": "claimed_at",

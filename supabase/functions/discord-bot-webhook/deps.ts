@@ -110,6 +110,7 @@ function supabaseDb(): RelayDb {
           last_error: finish.lastError,
           claimed_at: null,
           ...(finish.nextTryAt ? { next_try_at: finish.nextTryAt } : {}),
+          ...(finish.attempts !== undefined ? { attempts: finish.attempts } : {}),
           ...(finish.status === 'posted' ? { posted_at: new Date().toISOString() } : {})
         })
         .eq('id', id);

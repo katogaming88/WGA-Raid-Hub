@@ -30,7 +30,8 @@ answers to.
 - The Discord bot posts RSVP changes in a batch when the team asks for it: one
   post listing every change, grouped by raid night. A change for a raid that
   starts before the next batched post still goes out at once, and quiet hours
-  still hold every post (#1710).
+  still hold every post. A long note shows its first 100 characters in the
+  batched post; the full note stays on the site (#1710).
 
 ## [3.239.0] - 2026-11-04
 

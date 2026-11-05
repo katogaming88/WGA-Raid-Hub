@@ -8,7 +8,7 @@
 // held comes up due once its time arrives.
 import { EMBED_FIELD_VALUE_MAX, truncate } from '../_shared/discord-text.ts';
 import { isoDate, zonedTimeToUtc } from '../_shared/time.ts';
-import { type Message, type Payload, mentions } from './posts.ts';
+import { type Field, type Message, type Payload, mentions } from './posts.ts';
 
 export type RsvpTiming = { when: 'daily'; time: string; timezone: string } | { when: 'before_raid'; hours: number };
 
@@ -49,29 +49,51 @@ export function dueAt(timing: RsvpTiming | null, madeAt: Date, raidStart: Date |
 
 const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 
+// The longest note and name a line shows; the full note is on the site.
+const NOTE_MAX = 100;
+const NAME_MAX = 64;
+
 // One post for a team's due changes: a field per raid night, a line per
-// raider. A raider who changed twice shows their last answer.
+// raider. A raider who changed twice shows their last answer. A night too long
+// for one field carries on in another, so nobody is cut.
+//
+// A claim is at most 25 rows, so at most 25 lines and 25 fields. With the caps
+// above the whole post stays under Discord's 6000 characters, which it would
+// otherwise refuse on every try, losing the changes.
 export function buildRsvpDigest(rows: Payload[], roleId: string | null): Message {
   const nights = new Map<string, Map<string, string>>();
   for (const p of rows) {
     const raidDate = text(p.raidDate);
-    const who = text(p.charName);
+    const who = truncate(text(p.charName), NAME_MAX);
     if (!raidDate || !who) continue;
-    const note = text(p.note);
+    const note = truncate(text(p.note), NOTE_MAX);
     const line = `${who}: ${text(p.status)}${note ? ` (${note})` : ''}`;
     const night = nights.get(raidDate) ?? new Map<string, string>();
     night.delete(who); // a later answer goes last
     night.set(who, line);
     nights.set(raidDate, night);
   }
-  const dates = [...nights.keys()].sort();
+  const fields: Field[] = [];
+  for (const date of [...nights.keys()].sort()) {
+    let value = '';
+    let first = true;
+    const flush = () => {
+      fields.push({ name: first ? date : `${date} (continued)`, value });
+      first = false;
+    };
+    for (const line of nights.get(date)!.values()) {
+      if (value && value.length + 1 + line.length > EMBED_FIELD_VALUE_MAX) {
+        flush();
+        value = '';
+      }
+      value += (value ? '\n' : '') + line;
+    }
+    flush();
+  }
   const embed = {
     color: 0xe0c23d,
     title: 'Raid RSVP Updates',
-    fields: dates.map((d) => ({
-      name: d,
-      value: truncate([...nights.get(d)!.values()].join('\n'), EMBED_FIELD_VALUE_MAX)
-    })),
+    fields,
     footer: { text: 'Raid Calendar' }
   };
   return {

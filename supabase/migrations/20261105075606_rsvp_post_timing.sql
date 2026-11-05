@@ -47,6 +47,8 @@ comment on column public.team_discord_posts.rsvp_timezone is
   'For rsvp_when = daily: the time zone rsvp_time is in.';
 comment on column public.team_discord_posts.rsvp_hours is
   'For rsvp_when = before_raid: how many hours before each raid night the post goes out.';
+comment on column public.discord_post_queue.next_try_at is
+  'When it may post: now when queued, later after a failed try, or, for a batched RSVP change, when its batched post is due (#1710). Changing a team''s RSVP timing brings its waiting changes forward, so the next run decides them again.';
 
 create function public.set_team_rsvp_post(
   p_team_id integer,
@@ -113,6 +115,13 @@ begin
          updated_at = now()
    where team_id = p_team_id and kind = 'rsvp_changes';
 
+  -- Changes waiting under the old timing come up on the next run, which decides
+  -- them again under the new one. Left alone, a team that moved to "as it
+  -- happens" would hear of them only when the old post was due.
+  update discord_post_queue
+     set next_try_at = now()
+   where team_id = p_team_id and kind = 'rsvp_changes' and status = 'queued' and next_try_at > now();
+
   insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (p_team_id, v_uid, 'Discord RSVP Timing Set', 'teams', p_team_id,
           jsonb_build_object(
@@ -123,7 +132,7 @@ end;
 $$;
 
 comment on function public.set_team_rsvp_post(integer, text, text, text, time without time zone, text, integer) is
-  'Sets the RSVP changes post (#1710): channel and ping role as set_team_discord_post() does, and when it posts: as it happens (no when), once a day at a time, or a number of hours before each raid. No channel turns it off and clears the timing. For whoever holds Change Discord settings on the team, or a site admin.';
+  'Sets the RSVP changes post (#1710): channel and ping role as set_team_discord_post() does, and when it posts: as it happens (no when), once a day at a time, or a number of hours before each raid. No channel turns it off and clears the timing. Changing the timing brings changes waiting in the queue forward, so the next run decides them again. For whoever holds Change Discord settings on the team, or a site admin.';
 
 revoke all on function public.set_team_rsvp_post(integer, text, text, text, time without time zone, text, integer) from public, anon;
 grant execute on function public.set_team_rsvp_post(integer, text, text, text, time without time zone, text, integer) to authenticated;
