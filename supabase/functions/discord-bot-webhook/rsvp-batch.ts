@@ -27,17 +27,24 @@ function nextDaily(after: Date, time: string, timezone: string): Date {
   return zonedTimeToUtc(isoDate(new Date(Date.parse(today + 'T00:00:00Z') + DAY_MS)), time, timezone);
 }
 
-// When a change made at `madeAt` for a raid starting at `raidStart` (null when
-// the night has no start time) posts. At or before madeAt means at once: the
-// team posts as it happens, or the raid starts before the next batched post.
-export function dueAt(timing: RsvpTiming | null, madeAt: Date, raidStart: Date | null): Date {
-  if (!timing || !raidStart) return madeAt;
+// When a change made at `madeAt` for the raid on `raidDate`, starting at
+// `raidStart` (null when the night has no start time), posts. At or before
+// madeAt means at once: the team posts as it happens, or the raid starts before
+// the next batched post.
+//
+// A night with no start time has nothing to count hours back from, so it posts
+// at once. A daily post counts from the first moment of the raid's date: earlier
+// days wait for the batch, and a sign-off on the day itself is never held back.
+export function dueAt(timing: RsvpTiming | null, madeAt: Date, raidStart: Date | null, raidDate: string): Date {
+  if (!timing) return madeAt;
   if (timing.when === 'before_raid') {
+    if (!raidStart) return madeAt;
     const due = new Date(raidStart.getTime() - timing.hours * 3_600_000);
     return due.getTime() <= madeAt.getTime() ? madeAt : due;
   }
   const due = nextDaily(madeAt, timing.time, timing.timezone);
-  return raidStart.getTime() <= due.getTime() ? madeAt : due;
+  const starts = raidStart ?? zonedTimeToUtc(raidDate, '00:00:00', timing.timezone);
+  return starts.getTime() <= due.getTime() ? madeAt : due;
 }
 
 const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '');

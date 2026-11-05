@@ -276,7 +276,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         const timing = row.action === 'rsvp' ? ((await settingOf(row.teamId, row.kind))?.rsvpTiming ?? null) : null;
         if (timing) {
           const madeAt = new Date(row.createdAt);
-          const due = dueAt(timing, madeAt, await raidStart(deps, row));
+          const due = dueAt(timing, madeAt, await raidStart(deps, row), String(row.payload.raidDate ?? ''));
           if (due.getTime() > now.getTime()) {
             finish = { status: 'queued', lastError: null, nextTryAt: due.toISOString(), hold: true };
           } else if (due.getTime() > madeAt.getTime()) {
@@ -292,6 +292,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
 
     for (const [teamId, batch] of batches) {
+      // The claim names no order, and a raider's last answer is the one shown.
+      batch.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt) || a.id - b.id);
       let finish: Finish;
       try {
         const setting = await settingOf(teamId, 'rsvp_changes');

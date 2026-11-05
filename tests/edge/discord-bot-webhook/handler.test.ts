@@ -525,6 +525,16 @@ Deno.test("changes whose post time has come go out as one post, listing each rai
   assertEquals(log.filter((l) => l === 'markPosted rsvp_changes').length, 1);
 });
 
+Deno.test("a raider's last answer wins whatever order the claim hands the rows over", async () => {
+  const row = (id: number, createdAt: string, status: string) =>
+    queued('rsvp', { id, createdAt, payload: { charName: 'Mira', raidDate: '2026-11-04', status } });
+  const { calls } = await drain(
+    [row(9, '2026-11-01T06:00:00.000Z', 'Tentative'), row(7, '2026-11-01T05:00:00.000Z', 'Absent')],
+    { state: BATCHED({ when: 'before_raid', hours: 88 }), sheets: RAID_NIGHTS }
+  );
+  assertEquals(posted(calls)[0].body.embeds[0].fields, [{ name: '2026-11-04', value: 'Mira: Tentative' }]);
+});
+
 Deno.test('a daily post holds a change until its time, then sends it', async () => {
   const early = await drain([queued('rsvp')], {
     state: BATCHED({ when: 'daily', time: '10:00', timezone: 'America/New_York' }),
