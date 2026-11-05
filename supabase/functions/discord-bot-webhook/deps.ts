@@ -6,6 +6,7 @@ import { sheetDb } from '../_shared/signup-sheet-db.ts';
 import { drawPicture, drawSvg } from '../_shared/sheet-picture-draw.ts';
 import { lineupDb } from '../_shared/lineup-db.ts';
 import type { Deps, QueuedPost, RelayDb } from './handler.ts';
+import type { RsvpTiming } from './rsvp-batch.ts';
 
 type QueuedRow = {
   id: number;
@@ -54,7 +55,7 @@ function supabaseDb(): RelayDb {
         db().from('team_discord_config').select('guild_id').eq('team_id', teamId).maybeSingle(),
         db()
           .from('team_discord_posts')
-          .select('channel_id, ping_role_id')
+          .select('channel_id, ping_role_id, rsvp_when, rsvp_time, rsvp_timezone, rsvp_hours')
           .eq('team_id', teamId)
           .eq('kind', kind)
           .maybeSingle()
@@ -63,8 +64,21 @@ function supabaseDb(): RelayDb {
       if (post.error) throw new Error(post.error.message);
       const server = (config.data as { guild_id: string } | null)?.guild_id;
       if (!server) return null;
-      const row = post.data as { channel_id: string | null; ping_role_id: string | null } | null;
-      return { serverId: server, channelId: row?.channel_id ?? null, roleId: row?.ping_role_id ?? null };
+      const row = post.data as {
+        channel_id: string | null;
+        ping_role_id: string | null;
+        rsvp_when: 'daily' | 'before_raid' | null;
+        rsvp_time: string | null;
+        rsvp_timezone: string | null;
+        rsvp_hours: number | null;
+      } | null;
+      const rsvpTiming: RsvpTiming | null =
+        row?.rsvp_when === 'daily' && row.rsvp_time && row.rsvp_timezone
+          ? { when: 'daily', time: row.rsvp_time, timezone: row.rsvp_timezone }
+          : row?.rsvp_when === 'before_raid' && row.rsvp_hours
+            ? { when: 'before_raid', hours: row.rsvp_hours }
+            : null;
+      return { serverId: server, channelId: row?.channel_id ?? null, roleId: row?.ping_role_id ?? null, rsvpTiming };
     },
     async serverOf(teamId) {
       const { data, error } = await db()
@@ -96,6 +110,7 @@ function supabaseDb(): RelayDb {
           last_error: finish.lastError,
           claimed_at: null,
           ...(finish.nextTryAt ? { next_try_at: finish.nextTryAt } : {}),
+          ...(finish.attempts !== undefined ? { attempts: finish.attempts } : {}),
           ...(finish.status === 'posted' ? { posted_at: new Date().toISOString() } : {})
         })
         .eq('id', id);

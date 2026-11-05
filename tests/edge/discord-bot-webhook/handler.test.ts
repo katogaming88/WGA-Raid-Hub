@@ -473,3 +473,139 @@ Deno.test('answers its preflight with the stamped version', async () => {
   });
   assertEquals(res.headers.get('X-WGA-Version'), VERSION);
 });
+
+// -- RSVP changes in a batch (#1710) ----------------------------------------
+// The raid is 2026-11-04 at 9 PM Eastern, 2026-11-05T02:00Z. NOW is 2026-11-01
+// 14:00Z, and the rows were made at 05:00Z.
+
+const BATCHED = (rsvpTiming: PostSetting['rsvpTiming']): State => ({
+  setting: { serverId: SERVER, channelId: CHANNEL, roleId: ROLE, rsvpTiming }
+});
+const RAID_NIGHTS = { nights: { '2026-11-04': RAID } };
+
+Deno.test(
+  'a change waits for the post a set number of hours before its raid, and waiting is not a failure',
+  async () => {
+    const { calls, finished } = await drain([queued('rsvp')], {
+      state: BATCHED({ when: 'before_raid', hours: 3 }),
+      sheets: RAID_NIGHTS
+    });
+    assertEquals(posted(calls).length, 0);
+    assertEquals(finished, [
+      { id: 7, status: 'queued', lastError: null, nextTryAt: minutesAfterNow(60), hold: true, attempts: 0 }
+    ]);
+  }
+);
+
+Deno.test("changes whose post time has come go out as one post, listing each raider's last answer", async () => {
+  const rows = [
+    queued('rsvp', {
+      id: 7,
+      payload: { charName: 'Katorrí', raidDate: '2026-11-04', status: 'Late', note: 'traffic' }
+    }),
+    queued('rsvp', { id: 8, payload: { charName: 'Mira', raidDate: '2026-11-04', status: 'Absent' } }),
+    queued('rsvp', { id: 9, payload: { charName: 'Katorrí', raidDate: '2026-11-04', status: 'Tentative' } })
+  ];
+  const { calls, finished, log } = await drain(rows, {
+    state: BATCHED({ when: 'before_raid', hours: 88 }),
+    sheets: RAID_NIGHTS
+  });
+  assertEquals(posted(calls).length, 1);
+  const message = posted(calls)[0].body;
+  assertEquals(message.content, `<@&${ROLE}> RSVP changes`);
+  assertEquals(message.embeds[0].fields, [{ name: '2026-11-04', value: 'Mira: Absent\nKatorrí: Tentative' }]);
+  assertEquals(
+    finished.map((f) => [f.id, f.status]),
+    [
+      [7, 'posted'],
+      [8, 'posted'],
+      [9, 'posted']
+    ]
+  );
+  assertEquals(log.filter((l) => l === 'markPosted rsvp_changes').length, 1);
+});
+
+Deno.test('a change due sooner than the hour waits only until it is due', async () => {
+  const { finished } = await drain([queued('rsvp')], {
+    state: BATCHED({ when: 'daily', time: '09:30', timezone: 'America/New_York' }),
+    sheets: RAID_NIGHTS
+  });
+  assertEquals(finished[0].nextTryAt, minutesAfterNow(30));
+});
+
+Deno.test('a raid moved earlier is noticed when a held change comes up again', async () => {
+  const { calls, finished } = await drain([queued('rsvp')], {
+    state: BATCHED({ when: 'before_raid', hours: 3 }),
+    sheets: { nights: { '2026-11-04': RAID } }
+  });
+  assertEquals(posted(calls).length, 0);
+  assertEquals(finished[0].hold, true);
+  const moved = await drain([queued('rsvp', { payload: { ...PAYLOADS.rsvp, raidDate: '2026-11-01' } })], {
+    state: BATCHED({ when: 'before_raid', hours: 3 }),
+    sheets: { nights: { '2026-11-01': { ...RAID, startTime: '10:00:00' } } }
+  });
+  assertEquals(posted(moved.calls).length, 1);
+});
+
+Deno.test("a raider's last answer wins whatever order the claim hands the rows over", async () => {
+  const row = (id: number, createdAt: string, status: string) =>
+    queued('rsvp', { id, createdAt, payload: { charName: 'Mira', raidDate: '2026-11-04', status } });
+  const { calls } = await drain(
+    [row(9, '2026-11-01T06:00:00.000Z', 'Tentative'), row(7, '2026-11-01T05:00:00.000Z', 'Absent')],
+    { state: BATCHED({ when: 'before_raid', hours: 88 }), sheets: RAID_NIGHTS }
+  );
+  assertEquals(posted(calls)[0].body.embeds[0].fields, [{ name: '2026-11-04', value: 'Mira: Tentative' }]);
+});
+
+Deno.test('a batch posts before a change on its own, so the newest answer for a night is last', async () => {
+  const today = { nights: { '2026-11-01': { ...RAID, startTime: '23:00:00' } } };
+  const row = (id: number, createdAt: string, status: string) =>
+    queued('rsvp', { id, createdAt, payload: { charName: 'Mira', raidDate: '2026-11-01', status } });
+  const { calls } = await drain(
+    [row(9, '2026-11-01T13:30:00.000Z', 'Attending'), row(7, '2026-11-01T05:00:00.000Z', 'Absent')],
+    { state: BATCHED({ when: 'before_raid', hours: 16 }), sheets: today }
+  );
+  assertEquals(
+    posted(calls).map((c) => c.body.embeds[0].title),
+    ['Raid RSVP Updates', 'Raid RSVP Update']
+  );
+});
+
+Deno.test('a daily post holds a change until its time, then sends it', async () => {
+  const early = await drain([queued('rsvp')], {
+    state: BATCHED({ when: 'daily', time: '10:00', timezone: 'America/New_York' }),
+    sheets: RAID_NIGHTS
+  });
+  assertEquals(posted(early.calls).length, 0);
+  assertEquals(early.finished[0].nextTryAt, '2026-11-01T15:00:00.000Z');
+  const due = await drain([queued('rsvp')], {
+    state: BATCHED({ when: 'daily', time: '09:00', timezone: 'America/New_York' }),
+    sheets: RAID_NIGHTS
+  });
+  assertEquals(posted(due.calls)[0].body.embeds[0].title, 'Raid RSVP Updates');
+});
+
+Deno.test('a change for a raid that starts before the next batched post goes out at once, on its own', async () => {
+  const today = { nights: { '2026-11-01': { ...RAID, startTime: '08:00:00' } } };
+  const { calls, finished } = await drain(
+    [queued('rsvp', { payload: { charName: 'Mira', raidDate: '2026-11-01', status: 'Absent' } })],
+    { state: BATCHED({ when: 'daily', time: '10:00', timezone: 'America/New_York' }), sheets: today }
+  );
+  assertEquals(posted(calls)[0].body.embeds[0].title, 'Raid RSVP Update');
+  assertEquals(finished, [{ id: 7, status: 'posted', lastError: null }]);
+});
+
+Deno.test('a failed batched post keeps every change for a later try', async () => {
+  const { finished } = await drain([queued('rsvp', { id: 7 }), queued('rsvp', { id: 8 })], {
+    state: BATCHED({ when: 'before_raid', hours: 88 }),
+    sheets: RAID_NIGHTS,
+    routes: { ...DISCORD, [`POST /channels/${CHANNEL}/messages`]: status(403) }
+  });
+  assertEquals(
+    finished.map((f) => [f.id, f.status]),
+    [
+      [7, 'queued'],
+      [8, 'queued']
+    ]
+  );
+});

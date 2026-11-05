@@ -8,7 +8,8 @@
 // discord_post_queue row built from what they saved. The drain, called every
 // minute by pg_cron, takes the due rows of teams not in quiet hours and posts
 // each once. A post that fails waits and tries again, five tries in all, then
-// stays as failed.
+// stays as failed. A team can batch its RSVP changes (#1710, rsvp-batch.ts): a
+// change waits for its batched post, and waiting uses up no try.
 //
 // POST { action, team?, teamId?, payload? }:
 //   - drain, signupSheets and optionalReminder: a scheduled job's x-cron-secret.
@@ -38,7 +39,7 @@ import { resolveBot } from '../_shared/discord-destination.ts';
 import { discordRequestBody } from '../_shared/discord-text.ts';
 import type { Picture } from '../_shared/sheet-picture.ts';
 import { type LineupDb, sweepLineups } from '../_shared/lineup-post.ts';
-import { type DiscordFile, type SheetDb, refreshSheet, sweepSheets } from '../_shared/signup-sheet.ts';
+import { type DiscordFile, type SheetDb, refreshSheet, startsAt, sweepSheets } from '../_shared/signup-sheet.ts';
 import {
   ACTIONS,
   type Kind,
@@ -49,6 +50,7 @@ import {
   buildReminder,
   mentions
 } from './posts.ts';
+import { type RsvpTiming, buildRsvpDigest, dueAt } from './rsvp-batch.ts';
 import { VERSION } from './version.ts';
 
 // A row claim_discord_posts() took: counted as a try already.
@@ -68,9 +70,19 @@ export type Finish = {
   lastError: string | null;
   // When a row left queued may try again.
   nextTryAt?: string;
+  // Not a failed try: the change waits for its batched post (#1710), and
+  // `attempts` gives back the try its claim counted.
+  hold?: boolean;
+  attempts?: number;
 };
 
-export type PostSetting = { serverId: string; channelId: string | null; roleId: string | null };
+export type PostSetting = {
+  serverId: string;
+  channelId: string | null;
+  roleId: string | null;
+  // RSVP changes only: null posts each change as it happens.
+  rsvpTiming?: RsvpTiming | null;
+};
 
 export interface RelayDb {
   getUser(authHeader: string): Promise<{ id: string } | null>;
@@ -113,6 +125,8 @@ export const BOT_TOKEN = 'DISCORD_BOT_TOKEN';
 // (1, 2, 4 then 8 minutes).
 export const MAX_TRIES = 5;
 const retryWaitMs = (attempts: number) => 60_000 * 2 ** (attempts - 1);
+// The longest a change waits for its batched post before it is looked at again.
+const HOLD_MS = 3_600_000;
 // The longest one Discord call may take.
 const CALL_TIMEOUT_MS = 10_000;
 // The longest a 429 is waited out before giving up on the post.
@@ -236,14 +250,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   if (action === 'drain') {
     const rows = await deps.db.claimPosts();
-    for (const row of rows) {
-      let finish: Finish;
-      try {
-        finish = await postQueued(deps, dest, token, row);
-      } catch (e) {
-        finish = { status: 'queued', lastError: e instanceof Error ? e.message : String(e) };
-      }
-      if (finish.status === 'queued') {
+    const settings = new Map<string, PostSetting | null>();
+    const batches = new Map<number, QueuedPost[]>();
+    const singles: QueuedPost[] = [];
+    const settle = async (row: QueuedPost, finish: Finish) => {
+      if (finish.status === 'queued' && !finish.hold) {
         console.error(`discord-bot-webhook: queued post ${row.id} (try ${row.attempts}): ${finish.lastError}`);
         finish =
           row.attempts >= MAX_TRIES
@@ -251,6 +262,77 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
             : { ...finish, nextTryAt: new Date(now.getTime() + retryWaitMs(row.attempts)).toISOString() };
       }
       await deps.db.finishPost(row.id, finish);
+    };
+    const errorFinish = (e: unknown): Finish => ({
+      status: 'queued',
+      lastError: e instanceof Error ? e.message : String(e)
+    });
+    const settingOf = async (teamId: number, kind: Kind) => {
+      const key = `${teamId}:${kind}`;
+      if (!settings.has(key)) settings.set(key, await deps.db.postSetting(teamId, kind));
+      return settings.get(key) ?? null;
+    };
+
+    for (const row of rows) {
+      try {
+        // A team that batches its RSVP changes (#1710): the change waits for
+        // the batched post, joins it once it is due, or, due the moment it
+        // was made, posts now on its own.
+        const timing = row.action === 'rsvp' ? ((await settingOf(row.teamId, row.kind))?.rsvpTiming ?? null) : null;
+        if (timing) {
+          const madeAt = new Date(row.createdAt);
+          const due = dueAt(timing, madeAt, await raidStart(deps, row), String(row.payload.raidDate ?? ''));
+          if (due.getTime() > now.getTime()) {
+            await settle(row, {
+              status: 'queued',
+              lastError: null,
+              // Looked at again within the hour, so a raid moved earlier is noticed.
+              nextTryAt: new Date(Math.min(due.getTime(), now.getTime() + HOLD_MS)).toISOString(),
+              hold: true,
+              attempts: row.attempts - 1
+            });
+            continue;
+          }
+          if (due.getTime() > madeAt.getTime()) {
+            batches.set(row.teamId, [...(batches.get(row.teamId) ?? []), row]);
+            continue;
+          }
+        }
+        singles.push(row);
+      } catch (e) {
+        await settle(row, errorFinish(e));
+      }
+    }
+
+    // Batches first: within one run, a change posted on its own for a raid
+    // night was made after any change waiting for the batch, so the newest answer
+    // posts last. A batch that failed and tries again can still post after it.
+    for (const [teamId, batch] of batches) {
+      // The claim names no order, and a raider's last answer is the one shown.
+      batch.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt) || a.id - b.id);
+      let finish: Finish;
+      try {
+        const setting = await settingOf(teamId, 'rsvp_changes');
+        finish = await sendPost(deps, dest, token, teamId, 'rsvp_changes', setting, (roleId) =>
+          buildRsvpDigest(
+            batch.map((r) => r.payload),
+            roleId
+          )
+        );
+      } catch (e) {
+        finish = errorFinish(e);
+      }
+      for (const row of batch) await settle(row, finish);
+    }
+
+    for (const row of singles) {
+      let finish: Finish;
+      try {
+        finish = await postQueued(deps, dest, token, row);
+      } catch (e) {
+        finish = errorFinish(e);
+      }
+      await settle(row, finish);
     }
     return jsonResponse({ success: true, claimed: rows.length });
   }
@@ -304,6 +386,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   return refuse('Unknown action: ' + action, 400);
 }
 
+// The raid night's start for a queued RSVP change, or null when it has none.
+async function raidStart(deps: Deps, row: QueuedPost): Promise<Date | null> {
+  const raidDate = String(row.payload.raidDate ?? '');
+  const night = await deps.sheets.night(row.teamId, raidDate);
+  return night.exists ? startsAt(raidDate, night) : null;
+}
+
 // One queued notice: built from its row, to the team's channel for its kind
 // as they are now. Answers what the try leaves on the row; 'queued' means it
 // failed and may try again.
@@ -314,9 +403,24 @@ async function postQueued(
   row: QueuedPost
 ): Promise<Finish> {
   const setting = await deps.db.postSetting(row.teamId, row.kind);
+  return sendPost(deps, dest, token, row.teamId, row.kind, setting, (roleId) =>
+    buildPost(row.action, row.payload, roleId, row.createdAt)
+  );
+}
+
+// One message to the team's channel for a kind of post, pinging the role it
+// picked. `build` throws MissingFields for a row too short to post.
+async function sendPost(
+  deps: Deps,
+  dest: ReturnType<typeof resolveBot>,
+  token: string | undefined,
+  teamId: number,
+  kind: Kind,
+  setting: PostSetting | null,
+  build: (roleId: string | null) => Message
+): Promise<Finish> {
   if (!setting?.channelId) return { status: 'skipped', lastError: 'That kind of post is off' };
 
-  const build = (roleId: string | null) => buildPost(row.action, row.payload, roleId, row.createdAt);
   let message: Message;
   try {
     message = build(dest.kind === 'bot' ? setting.roleId : null);
@@ -342,16 +446,14 @@ async function postQueued(
     const inServer = Array.isArray(roles.body) && roles.body.some((r: { id?: string }) => r.id === setting.roleId);
     if (!inServer) {
       // Post without the ping rather than drop the notice.
-      console.error(
-        `discord-bot-webhook: team ${row.teamId}'s ${row.kind} role ${setting.roleId} is not in its server`
-      );
+      console.error(`discord-bot-webhook: team ${teamId}'s ${kind} role ${setting.roleId} is not in its server`);
       message = build(null);
     }
   }
 
   const sent = await discord(deps, token!, `/channels/${setting.channelId}/messages`, message);
   if (sent.status !== 200) return { status: 'queued', lastError: 'Discord answered ' + sent.status };
-  await deps.db.markPosted(row.teamId, row.kind);
+  await deps.db.markPosted(teamId, kind);
   return { status: 'posted', lastError: null };
 }
 

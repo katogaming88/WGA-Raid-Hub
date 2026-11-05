@@ -244,6 +244,56 @@ describe('team Discord settings', () => {
     });
   });
 
+  it('changing the server works with a weekly lineup post on, and clears its day, time and zone', async () => {
+    await txn(async ({ asUser }) => {
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
+      await asUser(OFFICER_T1, 'select public.set_team_weekly_lineup_post(1, $1, null, 3, $2, $3)', [
+        CH_TUESDAY,
+        '18:00',
+        'America/New_York'
+      ]);
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [OTHER_SERVER]);
+
+      const lineup = (await settings(asUser, OFFICER_T1)).posts.find((p) => p.kind === 'weekly_lineup');
+      expect(lineup).toMatchObject({ channel_id: null, post_weekday: null, post_time: null, post_timezone: null });
+    });
+  });
+
+  it('changing the server clears the RSVP timing and skips waiting RSVP changes', async () => {
+    await txn(async ({ q, asUser }) => {
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
+      await asUser(OFFICER_T1, 'select public.set_team_rsvp_post(1, $1, null, $2, null, null, 3)', [
+        CH_RSVPS,
+        'before_raid'
+      ]);
+      const row = await q(
+        `insert into public.discord_post_queue (team_id, kind, action, payload, next_try_at)
+         values (1, 'rsvp_changes', 'rsvp', '{}', now() + interval '3 days') returning id`
+      );
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [OTHER_SERVER]);
+
+      const rsvp = (await settings(asUser, OFFICER_T1)).posts.find((p) => p.kind === 'rsvp_changes');
+      expect(rsvp).toMatchObject({ channel_id: null, rsvp_when: null, rsvp_hours: null });
+      const waiting = await q('select status from public.discord_post_queue where id = $1', [row.rows[0].id]);
+      expect(waiting.rows[0].status).toBe('skipped');
+    });
+  });
+
+  it('changing the server clears the RSVP timing of a post already turned off', async () => {
+    await txn(async ({ asUser }) => {
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
+      await asUser(OFFICER_T1, 'select public.set_team_rsvp_post(1, $1, null, $2, null, null, 3)', [
+        CH_RSVPS,
+        'before_raid'
+      ]);
+      await asUser(OFFICER_T1, "select public.set_team_discord_post(1, 'rsvp_changes', null, null)");
+      await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [OTHER_SERVER]);
+
+      const rsvp = (await settings(asUser, OFFICER_T1)).posts.find((p) => p.kind === 'rsvp_changes');
+      expect(rsvp).toMatchObject({ channel_id: null, rsvp_when: null, rsvp_hours: null });
+    });
+  });
+
   it('takes only a server the caller was found sharing with the bot in the last hour', async () => {
     await withTxn(async ({ q, asUser }) => {
       await expect(asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER])).rejects.toThrow(

@@ -32,3 +32,20 @@ Deno.test('weekdayOf counts from Sunday, as raid_schedule does', () => {
   assertEquals(weekdayOf('2026-11-03'), 2);
   assertEquals(weekdayOf('2026-11-07'), 6);
 });
+
+Deno.test('zonedTimeToUtc lands on the asked time on the days the clocks change', () => {
+  const zones = ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Australia/Sydney'];
+  const days = ['2026-11-01', '2027-03-14', '2026-04-05', '2026-10-04'];
+  const times = ['00:00:00', '03:00:00', '06:00:00', '09:00:00', '12:00:00', '21:00:00'];
+  for (const zone of zones) {
+    for (const day of days) {
+      for (const time of times) {
+        assertEquals(clockTime(zonedTimeToUtc(day, time, zone), zone), time, `${zone} ${day} ${time}`);
+      }
+    }
+  }
+});
+
+Deno.test('zonedTimeToUtc puts a time the clocks skip an hour on', () => {
+  assertEquals(clockTime(zonedTimeToUtc('2027-03-14', '02:30:00', 'America/New_York'), 'America/New_York'), '03:30:00');
+});

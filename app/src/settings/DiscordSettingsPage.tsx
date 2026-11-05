@@ -20,6 +20,7 @@ import {
   lineupWhen,
   postSummary,
   roleProblem,
+  rsvpWhen,
   sheetTiming,
   takenDays,
   type DiscordPost,
@@ -36,6 +37,7 @@ import {
   useSaveSignupSheet,
   useSendTestMessage,
   useSetDiscordPost,
+  useSetRsvpPost,
   useSetWeeklyLineup,
   useSetDiscordServer,
   useSetQuietHours
@@ -329,7 +331,13 @@ function PostsCard({ teamId, posts, server }: { teamId: number; posts: DiscordPo
             channel_id: post?.channel_id ?? null,
             ping_role_id: post?.ping_role_id ?? null
           });
-          const when = post?.channel_id && k.kind === 'weekly_lineup' ? lineupWhen(post) : null;
+          const when = !post?.channel_id
+            ? null
+            : k.kind === 'weekly_lineup'
+              ? lineupWhen(post)
+              : k.kind === 'rsvp_changes'
+                ? rsvpWhen(post)
+                : null;
           return (
             <li key={k.kind}>
               <button type="button" className="discord-row" onClick={() => setOpen(k.kind)}>
@@ -380,14 +388,27 @@ function PostDialog({
   const [roleId, setRoleId] = useState(post?.ping_role_id ?? '');
   const savePost = useSetDiscordPost(teamId);
   const saveLineup = useSetWeeklyLineup(teamId);
+  const saveRsvp = useSetRsvpPost(teamId);
   const lineup = kind.kind === 'weekly_lineup';
-  const save = lineup ? saveLineup : savePost;
+  const rsvp = kind.kind === 'rsvp_changes';
+  const save = lineup ? saveLineup : rsvp ? saveRsvp : savePost;
   const isOn = Boolean(post?.channel_id);
   // The weekly lineup's day, time and zone (#1709); Wednesday at 6 PM Eastern
   // to start, as the issue's example.
   const [weekday, setWeekday] = useState(post?.post_weekday ?? 3);
   const [time, setTime] = useState((post?.post_time ?? '18:00').slice(0, 5));
   const [zone, setZone] = useState(post?.post_timezone ?? QUIET_ZONES[0]!.id);
+  // The RSVP changes' timing (#1710): as it happens, once a day, or hours
+  // before each raid.
+  const [rsvpMode, setRsvpMode] = useState<'now' | 'daily' | 'before_raid'>(post?.rsvp_when ?? 'now');
+  const [rsvpTime, setRsvpTime] = useState((post?.rsvp_time ?? '09:00').slice(0, 5));
+  const [rsvpZone, setRsvpZone] = useState(post?.rsvp_timezone ?? QUIET_ZONES[0]!.id);
+  const [rsvpHours, setRsvpHours] = useState(String(post?.rsvp_hours ?? 3));
+  const rsvpHoursNumber = Math.round(Number(rsvpHours));
+  const rsvpOk =
+    !rsvp ||
+    rsvpMode === 'now' ||
+    (rsvpMode === 'daily' ? Boolean(rsvpTime) : rsvpHoursNumber >= 1 && rsvpHoursNumber <= 168);
   const fieldId = useId();
 
   const write = (channel: string | null, role: string | null, done: string) => {
@@ -400,6 +421,18 @@ function PostDialog({
     };
     if (lineup) {
       saveLineup.mutate({ channelId: channel, roleId: role, weekday, time, timezone: zone }, handlers);
+    } else if (rsvp) {
+      saveRsvp.mutate(
+        {
+          channelId: channel,
+          roleId: role,
+          when: rsvpMode === 'now' ? null : rsvpMode,
+          time: rsvpTime,
+          timezone: rsvpZone,
+          hours: rsvpHoursNumber
+        },
+        handlers
+      );
     } else {
       savePost.mutate({ kind: kind.kind, channelId: channel, roleId: role }, handlers);
     }
@@ -454,6 +487,86 @@ function PostDialog({
           </div>
         </div>
       )}
+      {rsvp && (
+        <fieldset className="field discord-fieldset">
+          <legend className="field-label">When to post</legend>
+          <div className="picker-choice">
+            {(
+              [
+                ['now', 'As it happens'],
+                ['daily', 'Once a day'],
+                ['before_raid', 'Before each raid']
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className="picker-choice-option"
+                aria-pressed={rsvpMode === value}
+                onClick={() => setRsvpMode(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {rsvpMode === 'daily' && (
+            <div className="discord-when">
+              <div className="field">
+                <label className="field-label" htmlFor={`${fieldId}-rsvp-time`}>
+                  Time
+                </label>
+                <input
+                  id={`${fieldId}-rsvp-time`}
+                  className="input"
+                  type="time"
+                  value={rsvpTime}
+                  onChange={(e) => setRsvpTime(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label className="field-label" htmlFor={`${fieldId}-rsvp-zone`}>
+                  Time zone
+                </label>
+                <select
+                  id={`${fieldId}-rsvp-zone`}
+                  className="select"
+                  value={rsvpZone}
+                  onChange={(e) => setRsvpZone(e.target.value)}
+                >
+                  {QUIET_ZONES.map((z) => (
+                    <option key={z.id} value={z.id}>
+                      {z.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+          {rsvpMode === 'before_raid' && (
+            <div className="settings-row">
+              <input
+                id={`${fieldId}-rsvp-hours`}
+                type="number"
+                className="input settings-number"
+                min={1}
+                max={168}
+                value={rsvpHours}
+                aria-invalid={rsvpOk ? undefined : true}
+                onChange={(e) => setRsvpHours(e.target.value)}
+              />
+              <label htmlFor={`${fieldId}-rsvp-hours`}>hours before each raid</label>
+            </div>
+          )}
+          <p className="field-hint">
+            {rsvpMode === 'now'
+              ? 'One post for every change.'
+              : (rsvpMode === 'daily'
+                  ? 'One post a day listing every change since the last one.'
+                  : 'One post before each raid night listing that night’s changes.') +
+                ' A change for a raid that starts sooner than the next post goes out right away. Quiet hours still hold every post.'}
+          </p>
+        </fieldset>
+      )}
       <RoleField
         server={server}
         value={roleId}
@@ -480,7 +593,7 @@ function PostDialog({
           type="button"
           className="button button-primary"
           onClick={() => write(channelId, roleId || null, isOn ? 'Saved.' : 'Turned on.')}
-          disabled={!channelId || (lineup && !time) || save.isPending}
+          disabled={!channelId || (lineup && !time) || !rsvpOk || save.isPending}
         >
           {save.isPending ? 'Saving…' : isOn ? 'Save' : 'Turn on'}
         </button>

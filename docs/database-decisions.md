@@ -3288,6 +3288,26 @@ Shipped: `20261104132355_weekly_lineup_post.sql`. `discord-bot-webhook`, `discor
 
 [Full discussion -> #1709](https://github.com/katogaming88/WGA-Raid-Hub/issues/1709).
 
+## #1710 -- when RSVP changes post
+
+Shipped: `20261105075606_rsvp_post_timing.sql`. `discord-bot-webhook`.
+
+**The timing lives on the RSVP changes row of `team_discord_posts`,** in four columns of their own (`rsvp_when`, `rsvp_time`, `rsvp_timezone`, `rsvp_hours`), not in the weekly lineup's `post_*` columns: those stay the lineup's alone and keep their check. No `rsvp_when` means as it happens, as before. `daily` needs a time and a zone, `before_raid` needs 1 to 168 hours, and only the `rsvp_changes` kind may hold any of it. The check ignores the channel, since changing the server clears every channel and the timing is simply ignored while the post is off. `set_team_rsvp_post()` saves the channel, ping role and timing together; it calls `set_team_discord_post()` for the first two, so the checks, the old bot's columns and that audit row are unchanged, and writes its own audit row only when the timing changed. Off clears the timing.
+
+**The queue does not change.** `set_own_rsvp()` and `discord_set_rsvp()` still queue a row at once. The drain decides, from the row's `created_at`, the team's timing and the raid's start (`raid_night_info()`), when it is due: the next daily time after the change, or the raid start minus the hours. A change for a raid that starts before that time is due when it was made and posts on its own. A change not yet due is put back with its due time as `next_try_at`, and gives back the try its claim counted; one that is due joins the team's batch, one message with a field per raid night and a line per raider (a raider's last answer wins). A waiting change is looked at again at least hourly, so a raid moved earlier is noticed within the hour. Batches post before changes on their own, since within one run a change on its own for a night was made after any change waiting for the batch, so the newest answer posts last. A batch that failed and tries again can still post after a newer answer; we accept that, since Discord keeps both and the signup sheet shows the current one.
+
+**Changing the timing brings waiting changes forward.** `set_team_rsvp_post()` sets `next_try_at` to now on the team's waiting rows when the timing changes, so the next run decides them again. A row waiting after a failed try keeps its wait. Left alone, a team that moved to "as it happens" would see an old answer weeks later, with a ping (fresh review on #1763).
+
+**A batched post cannot be too long for Discord.** Discord refuses a whole message over 6000 characters, on every try, which would lose every change in it. A claim is at most 25 rows, so at most 25 lines; a note shows its first 100 characters and a name its first 64, which keeps the fullest claim under the limit. A night too long for one field carries on in another, "(continued)", so no raider is cut. The full note stays on the site.
+
+**`zonedTimeToUtc()` reads the offset again after correcting.** On a day the clocks change, its first guess could sit on the other side of the change from the answer, so a morning time came out an hour off (9 AM Pacific on the spring change day, 3 AM anywhere in the US). Evening raid times in US zones were not affected; a zone like Sydney's was. Fixed in the shared helper, so raid times and reminders get it too (CodeRabbit and the fresh review on #1763).
+
+**`set_team_discord_server()` clears the weekly lineup's day, time and zone.** Since #1709 it failed for any team with that post on, because it cleared the channel and the check refuses a lineup with no channel that still holds the three. It clears the RSVP timing too, and marks the team's waiting RSVP changes skipped, so they are never posted in the new server (Kat's OK to fix here, 2026-11-05; CodeRabbit and the second fresh review on #1763).
+
+**The rest of the queue's decision.** A failed batched post keeps every change for a later try. An added night can have no start time: before each raid has nothing to count back from, so it posts at once, and a daily post counts from the first moment of the raid's date, so earlier days wait for the batch and a sign-off on the day is never held back (CodeRabbit on #1763, narrowed).
+
+[Full discussion -> #1710](https://github.com/katogaming88/WGA-Raid-Hub/issues/1710).
+
 ## #990 -- /officer missing-signups and its reminder cooldown
 
 Shipped: `20261104170614_nudges_signup_reminder.sql`. `discord-interactions`.

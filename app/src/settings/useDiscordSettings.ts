@@ -84,6 +84,36 @@ export function useSetWeeklyLineup(teamId: number) {
   );
 }
 
+// The RSVP changes post (#1710): no channel turns it off, no `when` posts each
+// change as it happens.
+export type RsvpDraft = {
+  channelId: string | null;
+  roleId: string | null;
+  when: 'daily' | 'before_raid' | null;
+  time: string;
+  timezone: string;
+  hours: number;
+};
+
+export function useSetRsvpPost(teamId: number) {
+  return useSupabaseMutation<null, RsvpDraft>(
+    async (client, draft) => {
+      const result = await client.rpc('set_team_rsvp_post', {
+        p_team_id: teamId,
+        p_channel_id: orNull(draft.channelId),
+        p_ping_role_id: orNull(draft.roleId),
+        p_when: orNull(draft.when),
+        // A cleared time box is '', which the database's time type refuses.
+        p_time: orNull(draft.time || null),
+        p_timezone: draft.timezone,
+        p_hours: draft.hours
+      });
+      return { data: null, error: result.error };
+    },
+    { key: ['set-rsvp-post', teamId], refreshes: [settingsKey(teamId)] }
+  );
+}
+
 export type SheetDraft = {
   id: number | null;
   channelId: string;

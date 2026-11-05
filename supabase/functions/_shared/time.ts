@@ -2,15 +2,22 @@
 // sheet and the optional-night reminders both turn a raid's date, start time
 // and time zone into an instant; this was two verbatim copies before.
 
-// "Format the guess, diff against the wall-clock target, correct once": the
-// instant at which `time` on `raidDate` reads on a clock in `timeZone`.
+// "Format the guess, diff against the wall-clock target, correct": the instant
+// at which `time` on `raidDate` reads on a clock in `timeZone`. On a day the
+// clocks change, the guess can sit on the other side of the change from the
+// answer, so the offset is read again at the corrected instant (#1710). A time
+// the clocks skip has no answer and lands where the first correction puts it.
 export function zonedTimeToUtc(raidDate: string, time: string, timeZone: string): Date {
   const [year, month, day] = raidDate.split('-').map(Number);
   const [hour, minute, second] = time.split(':').map(Number);
   const guessUtcMs = Date.UTC(year, month - 1, day, hour, minute, second || 0);
-  const parts = clockParts(new Date(guessUtcMs), timeZone);
-  const asIfUtcMs = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
-  return new Date(guessUtcMs - (asIfUtcMs - guessUtcMs));
+  const offsetAt = (ms: number) => {
+    const parts = clockParts(new Date(ms), timeZone);
+    return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second) - ms;
+  };
+  const once = guessUtcMs - offsetAt(guessUtcMs);
+  const twice = guessUtcMs - offsetAt(once);
+  return new Date(twice + offsetAt(twice) === guessUtcMs ? twice : once);
 }
 
 // What a clock in `timeZone` reads at `at`, as 'HH:MM:SS' (Postgres's time).

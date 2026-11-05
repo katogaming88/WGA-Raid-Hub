@@ -3172,6 +3172,10 @@ export type Database = {
           post_time: string | null
           post_timezone: string | null
           post_weekday: number | null
+          rsvp_hours: number | null
+          rsvp_time: string | null
+          rsvp_timezone: string | null
+          rsvp_when: string | null
           team_id: number
           updated_at: string
         }
@@ -3183,6 +3187,10 @@ export type Database = {
           post_time?: string | null
           post_timezone?: string | null
           post_weekday?: number | null
+          rsvp_hours?: number | null
+          rsvp_time?: string | null
+          rsvp_timezone?: string | null
+          rsvp_when?: string | null
           team_id: number
           updated_at?: string
         }
@@ -3194,6 +3202,10 @@ export type Database = {
           post_time?: string | null
           post_timezone?: string | null
           post_weekday?: number | null
+          rsvp_hours?: number | null
+          rsvp_time?: string | null
+          rsvp_timezone?: string | null
+          rsvp_when?: string | null
           team_id?: number
           updated_at?: string
         }
@@ -5138,6 +5150,18 @@ export type Database = {
       set_team_officer_bios: {
         Args: { p_bios: Json; p_team_id: number }
         Returns: Json
+      }
+      set_team_rsvp_post: {
+        Args: {
+          p_channel_id: string
+          p_hours: number
+          p_ping_role_id: string
+          p_team_id: number
+          p_time: string
+          p_timezone: string
+          p_when: string
+        }
+        Returns: undefined
       }
       set_team_season: {
         Args: {

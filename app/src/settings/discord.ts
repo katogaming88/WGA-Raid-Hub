@@ -13,6 +13,11 @@ export type DiscordPost = {
   post_weekday?: number | null;
   post_time?: string | null;
   post_timezone?: string | null;
+  // RSVP changes only (#1710): null posts each change as it happens.
+  rsvp_when?: 'daily' | 'before_raid' | null;
+  rsvp_time?: string | null;
+  rsvp_timezone?: string | null;
+  rsvp_hours?: number | null;
 };
 
 export type SignupSheet = {
@@ -66,7 +71,8 @@ export const POST_KINDS: { kind: PostKind; label: string; description: string; d
     kind: 'rsvp_changes',
     label: 'RSVP changes',
     description: 'Someone marks themselves late, tentative or out',
-    dialog: 'A post each time someone marks themselves late, tentative or out.'
+    dialog:
+      'A post when someone marks themselves late, tentative or out. Choose below whether each change posts as it happens or in a batch.'
   },
   {
     kind: 'weekly_lineup',
@@ -84,6 +90,23 @@ export function lineupWhen(post: Pick<DiscordPost, 'post_weekday' | 'post_time' 
   const clock = `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
   const zone = QUIET_ZONES.find((z) => z.id === post.post_timezone)?.label ?? post.post_timezone ?? '';
   return `${DAY_NAMES[post.post_weekday]}s at ${clock} ${zone}`.trim();
+}
+
+// "Once a day at 9:00 AM Eastern time", "3 hours before each raid", or null
+// when each change posts as it happens, for the RSVP changes row.
+export function rsvpWhen(
+  post: Pick<DiscordPost, 'rsvp_when' | 'rsvp_time' | 'rsvp_timezone' | 'rsvp_hours'>
+): string | null {
+  if (post.rsvp_when === 'before_raid' && post.rsvp_hours) {
+    return `${post.rsvp_hours === 1 ? '1 hour' : `${post.rsvp_hours} hours`} before each raid`;
+  }
+  if (post.rsvp_when === 'daily' && post.rsvp_time) {
+    const [h = 0, m = 0] = post.rsvp_time.split(':').map(Number);
+    const clock = `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+    const zone = QUIET_ZONES.find((z) => z.id === post.rsvp_timezone)?.label ?? post.rsvp_timezone ?? '';
+    return `Once a day at ${clock} ${zone}`.trim();
+  }
+  return null;
 }
 
 // Days as the database keeps them (0 is Sunday), listed Monday first.

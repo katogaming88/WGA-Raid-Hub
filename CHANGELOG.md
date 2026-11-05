@@ -12,6 +12,31 @@ answers to.
 
 ---
 
+## [3.240.0] - 2026-11-05
+
+### Frontend
+
+- Settings > Discord: the RSVP changes dialog asks when to post: as it
+  happens, once a day at a time you pick, or a number of hours before each
+  raid (#1710).
+
+### Backend
+
+- `team_discord_posts` holds the RSVP changes timing, and
+  `set_team_rsvp_post()` saves it with the channel and ping role (#1710).
+- Changing a team's Discord server no longer fails when its Weekly lineup post
+  is on (#1710).
+
+### Functions
+
+- The Discord bot posts RSVP changes in a batch when the team asks for it: one
+  post listing every change, grouped by raid night. A change for a raid that
+  starts before the next batched post still goes out at once, and quiet hours
+  still hold every post. A long note shows its first 100 characters in the
+  batched post; the full note stays on the site (#1710).
+- Times in a named zone land on the asked time on the days the clocks change.
+  A morning time could be an hour off on those two days (#1710).
+
 ## [3.239.0] - 2026-11-04
 
 ### Backend
@@ -28,8 +53,7 @@ answers to.
   aren't open. A **DM them a reminder** button DMs each of them the signup
   link, at most once a day each, and tells the officer who was reminded, who
   was skipped as already reminded today, whose DMs are closed and who has no
-  Discord account on Raid Hub. Run `npm run discord:register` after deploy
-  (#990).
+  Discord account on Raid Hub (#990).
 
 ## [3.238.0] - 2026-11-04
 
