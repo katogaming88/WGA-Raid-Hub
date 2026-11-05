@@ -13,6 +13,7 @@ import {
   DAY_ORDER,
   DAY_SHORT,
   POST_KINDS,
+  activityLine,
   QUIET_ZONES,
   channelName,
   channelProblem,
@@ -31,6 +32,7 @@ import {
   type SignupSheet
 } from './discord';
 import {
+  useDiscordActivity,
   useDiscordServer,
   useDiscordSettings,
   useRemoveSignupSheet,
@@ -112,6 +114,7 @@ function DiscordBody({
           <PostsCard teamId={teamId} posts={saved.posts} server={server} />
           <SheetsCard teamId={teamId} sheets={saved.sheets} server={server} />
           <QuietHoursCard teamId={teamId} saved={saved.quiet_hours} />
+          <ActivityCard teamId={teamId} server={server} />
         </>
       )}
     </div>
@@ -969,6 +972,46 @@ function SheetDialog({
 
 // "HH:MM:SS" from the database, "HH:MM" for a time input.
 const hhmm = (time: string | undefined, fallback: string) => (time ? time.slice(0, 5) : fallback);
+
+// What the bot posted for the team, newest first (#1711). A failed post is
+// in red with why.
+function ActivityCard({ teamId, server }: { teamId: number; server: DiscordServer }) {
+  const activity = useDiscordActivity(teamId);
+  return (
+    <section className="card settings-card discord-card">
+      <h2>Activity</h2>
+      <DataState query={activity} label="the bot's activity">
+        {(data) => (
+          <>
+            <p className="text-muted">
+              {data.total === 0
+                ? 'The bot has not posted anything for this team yet.'
+                : `${data.total} ${data.total === 1 ? 'post' : 'posts'} in the log. ${
+                    data.last_posted_at ? `Last post: ${timeAgoLabel(data.last_posted_at)}.` : 'None has gone out yet.'
+                  }`}
+            </p>
+            {data.rows.length > 0 && (
+              <ul className="discord-activity">
+                {data.rows.map((row) => {
+                  const line = activityLine(row, server);
+                  return (
+                    <li key={row.id}>
+                      <span>{line.text}</span>{' '}
+                      {line.detail && (
+                        <span className={line.failed ? 'discord-problem' : 'text-muted'}>{line.detail}</span>
+                      )}{' '}
+                      <span className="text-muted">{timeAgoLabel(row.at)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
+        )}
+      </DataState>
+    </section>
+  );
+}
 
 function QuietHoursCard({ teamId, saved }: { teamId: number; saved: DiscordSettings['quiet_hours'] }) {
   const { announce } = useStatus();

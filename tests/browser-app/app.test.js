@@ -1026,6 +1026,32 @@ const SETTINGS_DISCORD = {
           last_posted_at: null
         }
       ]
+    },
+    team_discord_activity: {
+      total: 2,
+      last_posted_at: '2026-11-05T12:00:00Z',
+      rows: [
+        {
+          id: 2,
+          kind: 'rsvp_changes',
+          action: 'rsvp',
+          status: 'failed',
+          attempts: 5,
+          at: '2026-11-05T14:00:00Z',
+          error: "Channel not found, or the bot can't see it",
+          channel_id: '202'
+        },
+        {
+          id: 1,
+          kind: 'officer_requests',
+          action: 'signup',
+          status: 'posted',
+          attempts: 1,
+          at: '2026-11-05T12:00:00Z',
+          error: null,
+          channel_id: '201'
+        }
+      ]
     }
   },
   functionAnswers: {

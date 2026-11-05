@@ -5274,6 +5274,10 @@ export type Database = {
           team_member_id: number
         }[]
       }
+      team_discord_activity: {
+        Args: { p_limit?: number; p_team_id: number }
+        Returns: Json
+      }
       team_discord_settings: { Args: { p_team_id: number }; Returns: Json }
       team_invite_link_join: {
         Args: { p_blizzard_id: number; p_code: string }

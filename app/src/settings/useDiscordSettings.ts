@@ -1,7 +1,7 @@
 import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import { refusalOf } from '../characters/useCharacters';
-import type { DiscordRead, DiscordSettings, PostKind } from './discord';
+import type { Activity, DiscordRead, DiscordSettings, PostKind } from './discord';
 
 // The generated types mark every function argument as non-null; these
 // functions take null on purpose (no channel is off, no role is no ping).
@@ -15,6 +15,14 @@ export function useDiscordSettings(teamId: number) {
   return useSupabaseQuery<DiscordSettings>(settingsKey(teamId), async (client) => {
     const result = await client.rpc('team_discord_settings', { p_team_id: teamId });
     return { data: (result.data as DiscordSettings | null) ?? null, error: result.error };
+  });
+}
+
+// What the bot posted for the team (#1711), newest first.
+export function useDiscordActivity(teamId: number) {
+  return useSupabaseQuery<Activity>(['discord-activity', teamId], async (client) => {
+    const result = await client.rpc('team_discord_activity', { p_team_id: teamId });
+    return { data: (result.data as Activity | null) ?? null, error: result.error };
   });
 }
 

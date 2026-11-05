@@ -199,3 +199,45 @@ export const QUIET_ZONES: { id: string; label: string }[] = [
 // and what recruiting and later features use (Kat, 2026-10-29, on #963).
 export const BOT_INSTALL_URL =
   'https://discord.com/oauth2/authorize?client_id=1546653048972251309&scope=bot%20applications.commands&permissions=581085184912465';
+
+// Activity (#1711): what the bot posted for the team, from team_discord_activity().
+export type ActivityRow = {
+  id: number;
+  kind: Exclude<PostKind, 'weekly_lineup'>;
+  action: 'signup' | 'addCharacter' | 'selfreceived' | 'bis' | 'mplus' | 'rsvp';
+  status: 'queued' | 'posted' | 'skipped' | 'failed';
+  attempts: number;
+  at: string;
+  error: string | null;
+  channel_id: string | null;
+};
+
+export type Activity = { total: number; last_posted_at: string | null; rows: ActivityRow[] };
+
+const ACTION_LABELS: Record<ActivityRow['action'], string> = {
+  signup: 'Season signup',
+  addCharacter: 'Character added',
+  selfreceived: 'Received-item report',
+  bis: 'BiS link',
+  mplus: 'M+ request',
+  rsvp: 'RSVP change'
+};
+
+// "RSVP change, #phoenix-attendance", and what went wrong in words an officer
+// can act on: a failed row says why, one still trying says so.
+export function activityLine(
+  row: ActivityRow,
+  server: DiscordServer
+): { text: string; detail: string | null; failed: boolean } {
+  const channel = row.channel_id ? channelName(server, row.channel_id) : null;
+  const text = channel ? `${ACTION_LABELS[row.action]}, ${channel}` : ACTION_LABELS[row.action];
+  if (row.status === 'failed') {
+    return { text, detail: `failed: ${row.error ?? 'unknown reason'}`, failed: true };
+  }
+  if (row.status === 'queued' && row.error) {
+    return { text, detail: `trying again: ${row.error}`, failed: false };
+  }
+  if (row.status === 'queued') return { text, detail: 'waiting to post', failed: false };
+  if (row.status === 'skipped') return { text, detail: `not posted: ${row.error ?? 'skipped'}`, failed: false };
+  return { text, detail: null, failed: false };
+}

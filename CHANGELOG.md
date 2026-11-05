@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.241.0] - 2026-11-05
+
+### Frontend
+
+- Settings > Discord: an Activity section lists what the bot posted for the
+  team, newest first, with how many posts are in the log and when the last
+  one went out. A failed post shows in red with why (#1711).
+
+### Backend
+
+- `team_discord_activity()` lets a team's officers read the bot's post log
+  (#1711).
+
 ## [3.240.0] - 2026-11-05
 
 ### Frontend
