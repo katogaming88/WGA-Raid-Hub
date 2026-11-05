@@ -209,6 +209,18 @@ describe('Settings › Discord (#994)', () => {
     ]);
   });
 
+  it('turning RSVP changes off with the time box cleared sends no time (#1710)', async () => {
+    const rpcs: [string, Record<string, unknown>][] = [];
+    renderApp(PATH, handlers({ rpcs }));
+    await userEvent.click(await screen.findByRole('button', { name: /RSVP changes/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'RSVP changes' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Once a day' }));
+    await userEvent.clear(within(dialog).getByLabelText('Time'));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Turn off' }));
+    await expect.poll(() => rpcs.length).toBe(1);
+    expect(rpcs[0]).toEqual(['set_team_rsvp_post', expect.objectContaining({ p_channel_id: null, p_time: null })]);
+  });
+
   it('saves as it happens with no timing, and shows a saved timing on the row (#1710)', async () => {
     const rpcs: [string, Record<string, unknown>][] = [];
     renderApp(

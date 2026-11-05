@@ -259,7 +259,7 @@ describe('team Discord settings', () => {
     });
   });
 
-  it('changing the server clears the RSVP timing and brings waiting RSVP changes forward', async () => {
+  it('changing the server clears the RSVP timing and skips waiting RSVP changes', async () => {
     await txn(async ({ q, asUser }) => {
       await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
       await asUser(OFFICER_T1, 'select public.set_team_rsvp_post(1, $1, null, $2, null, null, 3)', [
@@ -274,10 +274,8 @@ describe('team Discord settings', () => {
 
       const rsvp = (await settings(asUser, OFFICER_T1)).posts.find((p) => p.kind === 'rsvp_changes');
       expect(rsvp).toMatchObject({ channel_id: null, rsvp_when: null, rsvp_hours: null });
-      const waiting = await q('select next_try_at > now() as waiting from public.discord_post_queue where id = $1', [
-        row.rows[0].id
-      ]);
-      expect(waiting.rows[0].waiting).toBe(false);
+      const waiting = await q('select status from public.discord_post_queue where id = $1', [row.rows[0].id]);
+      expect(waiting.rows[0].status).toBe('skipped');
     });
   });
 

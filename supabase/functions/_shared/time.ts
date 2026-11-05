@@ -6,7 +6,7 @@
 // at which `time` on `raidDate` reads on a clock in `timeZone`. On a day the
 // clocks change, the guess can sit on the other side of the change from the
 // answer, so the offset is read again at the corrected instant (#1710). A time
-// the clocks skip has no answer and lands an hour on, as the first correction did.
+// the clocks skip has no answer and lands where the first correction puts it.
 export function zonedTimeToUtc(raidDate: string, time: string, timeZone: string): Date {
   const [year, month, day] = raidDate.split('-').map(Number);
   const [hour, minute, second] = time.split(':').map(Number);

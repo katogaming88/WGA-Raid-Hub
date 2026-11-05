@@ -103,7 +103,8 @@ export function useSetRsvpPost(teamId: number) {
         p_channel_id: orNull(draft.channelId),
         p_ping_role_id: orNull(draft.roleId),
         p_when: orNull(draft.when),
-        p_time: draft.time,
+        // A cleared time box is '', which the database's time type refuses.
+        p_time: orNull(draft.time || null),
         p_timezone: draft.timezone,
         p_hours: draft.hours
       });

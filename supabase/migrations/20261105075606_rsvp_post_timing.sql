@@ -21,9 +21,9 @@
 -- Also, on Kat's OK: set_team_discord_server() failed for any team with a weekly
 -- lineup post on. It clears each post's channel, and #1709's check refuses a
 -- lineup with no channel that still holds a day, time and zone. It now clears
--- those three as well, and the RSVP timing, and brings waiting RSVP changes
--- forward so the next run skips them rather than posting them in the new
--- server. Found by the fresh review on #1763.
+-- those three as well, and the RSVP timing, and marks waiting RSVP changes
+-- skipped so they are never posted in the new server. Found by the fresh review
+-- on #1763.
 
 alter table public.team_discord_posts
   add column rsvp_when text check (rsvp_when in ('daily', 'before_raid')),
@@ -127,7 +127,8 @@ begin
   -- happens" would hear of them only when the old post was due.
   update discord_post_queue
      set next_try_at = now()
-   where team_id = p_team_id and kind = 'rsvp_changes' and status = 'queued' and next_try_at > now();
+   where team_id = p_team_id and kind = 'rsvp_changes' and status = 'queued' and next_try_at > now()
+     and last_error is null;
 
   insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (p_team_id, v_uid, 'Discord RSVP Timing Set', 'teams', p_team_id,
@@ -249,7 +250,7 @@ begin
            updated_at = now()
      where team_id = p_team_id and channel_id is not null;
     update discord_post_queue
-       set next_try_at = now()
+       set status = 'skipped', last_error = 'The team changed its Discord server'
      where team_id = p_team_id and kind = 'rsvp_changes' and status = 'queued' and next_try_at > now();
     delete from team_discord_signup_sheets where team_id = p_team_id;
     get diagnostics v_sheets = row_count;

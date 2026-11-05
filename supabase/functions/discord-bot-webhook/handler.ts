@@ -125,6 +125,8 @@ export const BOT_TOKEN = 'DISCORD_BOT_TOKEN';
 // (1, 2, 4 then 8 minutes).
 export const MAX_TRIES = 5;
 const retryWaitMs = (attempts: number) => 60_000 * 2 ** (attempts - 1);
+// The longest a change waits for its batched post before it is looked at again.
+const HOLD_MS = 3_600_000;
 // The longest one Discord call may take.
 const CALL_TIMEOUT_MS = 10_000;
 // The longest a 429 is waited out before giving up on the post.
@@ -284,7 +286,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
             await settle(row, {
               status: 'queued',
               lastError: null,
-              nextTryAt: due.toISOString(),
+              // Looked at again within the hour, so a raid moved earlier is noticed.
+              nextTryAt: new Date(Math.min(due.getTime(), now.getTime() + HOLD_MS)).toISOString(),
               hold: true,
               attempts: row.attempts - 1
             });
@@ -301,8 +304,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
     }
 
-    // Batches first: for one raid night, a change posted on its own was made
-    // after any change waiting for the batch, so the newest answer posts last.
+    // Batches first: within one run, a change posted on its own for a raid
+    // night was made after any change waiting for the batch, so the newest answer
+    // posts last. A batch that failed and tries again can still post after it.
     for (const [teamId, batch] of batches) {
       // The claim names no order, and a raider's last answer is the one shown.
       batch.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt) || a.id - b.id);

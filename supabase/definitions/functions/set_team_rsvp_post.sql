@@ -64,7 +64,8 @@ begin
   -- happens" would hear of them only when the old post was due.
   update discord_post_queue
      set next_try_at = now()
-   where team_id = p_team_id and kind = 'rsvp_changes' and status = 'queued' and next_try_at > now();
+   where team_id = p_team_id and kind = 'rsvp_changes' and status = 'queued' and next_try_at > now()
+     and last_error is null;
 
   insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (p_team_id, v_uid, 'Discord RSVP Timing Set', 'teams', p_team_id,

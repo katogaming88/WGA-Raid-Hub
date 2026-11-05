@@ -492,7 +492,7 @@ Deno.test(
     });
     assertEquals(posted(calls).length, 0);
     assertEquals(finished, [
-      { id: 7, status: 'queued', lastError: null, nextTryAt: '2026-11-04T23:00:00.000Z', hold: true, attempts: 0 }
+      { id: 7, status: 'queued', lastError: null, nextTryAt: minutesAfterNow(60), hold: true, attempts: 0 }
     ]);
   }
 );
@@ -523,6 +523,28 @@ Deno.test("changes whose post time has come go out as one post, listing each rai
     ]
   );
   assertEquals(log.filter((l) => l === 'markPosted rsvp_changes').length, 1);
+});
+
+Deno.test('a change due sooner than the hour waits only until it is due', async () => {
+  const { finished } = await drain([queued('rsvp')], {
+    state: BATCHED({ when: 'daily', time: '09:30', timezone: 'America/New_York' }),
+    sheets: RAID_NIGHTS
+  });
+  assertEquals(finished[0].nextTryAt, minutesAfterNow(30));
+});
+
+Deno.test('a raid moved earlier is noticed when a held change comes up again', async () => {
+  const { calls, finished } = await drain([queued('rsvp')], {
+    state: BATCHED({ when: 'before_raid', hours: 3 }),
+    sheets: { nights: { '2026-11-04': RAID } }
+  });
+  assertEquals(posted(calls).length, 0);
+  assertEquals(finished[0].hold, true);
+  const moved = await drain([queued('rsvp', { payload: { ...PAYLOADS.rsvp, raidDate: '2026-11-01' } })], {
+    state: BATCHED({ when: 'before_raid', hours: 3 }),
+    sheets: { nights: { '2026-11-01': { ...RAID, startTime: '10:00:00' } } }
+  });
+  assertEquals(posted(moved.calls).length, 1);
 });
 
 Deno.test("a raider's last answer wins whatever order the claim hands the rows over", async () => {

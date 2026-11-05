@@ -53,7 +53,7 @@ begin
            updated_at = now()
      where team_id = p_team_id and channel_id is not null;
     update discord_post_queue
-       set next_try_at = now()
+       set status = 'skipped', last_error = 'The team changed its Discord server'
      where team_id = p_team_id and kind = 'rsvp_changes' and status = 'queued' and next_try_at > now();
     delete from team_discord_signup_sheets where team_id = p_team_id;
     get diagnostics v_sheets = row_count;

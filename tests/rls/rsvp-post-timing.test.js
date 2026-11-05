@@ -79,6 +79,21 @@ describe('set_team_rsvp_post()', () => {
     });
   });
 
+  it('leaves a change waiting after a failed try alone when the timing changes', async () => {
+    await txn(async ({ q, asUser }) => {
+      await set(asUser, OFFICER_T1, [CHANNEL, null, 'before_raid', null, null, 3]);
+      const row = await q(
+        `insert into public.discord_post_queue (team_id, kind, action, payload, next_try_at, last_error)
+         values (1, 'rsvp_changes', 'rsvp', '{}', now() + interval '4 minutes', 'Discord answered 500') returning id`
+      );
+      await set(asUser, OFFICER_T1, [CHANNEL, null, null, null, null, null]);
+      const after = await q('select next_try_at > now() as waiting from public.discord_post_queue where id = $1', [
+        row.rows[0].id
+      ]);
+      expect(after.rows[0].waiting).toBe(true);
+    });
+  });
+
   it('still sets the channel and ping role the way set_team_discord_post() does', async () => {
     await txn(async ({ q, asUser }) => {
       await set(asUser, OFFICER_T1, [CHANNEL, ROLE, null, '09:00', 'America/New_York', 3]);
