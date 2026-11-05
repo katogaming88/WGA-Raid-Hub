@@ -20,9 +20,9 @@ begin
     'total', (select count(*) from discord_post_queue q where q.team_id = p_team_id),
     'last_posted_at', (select max(q.posted_at) from discord_post_queue q where q.team_id = p_team_id),
     'rows', coalesce((
-      select jsonb_agg(r.row order by r.created_at desc, r.id desc)
+      select jsonb_agg(r.row order by r.at desc, r.id desc)
         from (
-          select q.id, q.created_at,
+          select q.id, coalesce(q.posted_at, q.created_at) as at,
                  jsonb_build_object(
                    'id', q.id,
                    'kind', q.kind,
@@ -35,7 +35,7 @@ begin
             from discord_post_queue q
             left join team_discord_posts p on p.team_id = q.team_id and p.kind = q.kind
            where q.team_id = p_team_id
-           order by q.created_at desc, q.id desc
+           order by coalesce(q.posted_at, q.created_at) desc, q.id desc
            limit least(greatest(coalesce(p_limit, 50), 1), 200)) r), '[]'::jsonb)
   );
 end;

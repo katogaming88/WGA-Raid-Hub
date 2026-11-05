@@ -26,8 +26,22 @@ describe('team_discord_activity()', () => {
     });
   });
 
-  it('refuses a raider and another team officer', async () => {
-    await withTxn(async ({ asUser }) => {
+  it('puts a notice that posted late above one that posted earlier but was queued later', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await q('delete from public.discord_post_queue');
+      await q(
+        `insert into public.discord_post_queue (team_id, kind, action, payload, status, posted_at, created_at)
+         values (1, 'rsvp_changes', 'rsvp', '{}', 'posted', now() - interval '1 hour', now() - interval '1 hour'),
+                (1, 'officer_requests', 'signup', '{}', 'posted', now(), now() - interval '3 hours')`
+      );
+      const rows = (await activity(asUser, OFFICER_T1)).rows[0].a.rows;
+      expect(rows.map((r) => r.action)).toEqual(['signup', 'rsvp']);
+    });
+  });
+
+  it('refuses a raider, another team officer and a signed-out caller', async () => {
+    await withTxn(async ({ asUser, asAnon }) => {
+      await expect(asAnon('select public.team_discord_activity(1, 50)')).rejects.toThrow();
       await expect(activity(asUser, RAIDER_T1)).rejects.toThrow(/Not authorized/);
       await expect(activity(asUser, OFFICER_T2)).rejects.toThrow(/Not authorized/);
     });
