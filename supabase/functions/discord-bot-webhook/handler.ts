@@ -38,7 +38,7 @@ import { resolveBot } from '../_shared/discord-destination.ts';
 import { discordRequestBody } from '../_shared/discord-text.ts';
 import type { Picture } from '../_shared/sheet-picture.ts';
 import { type LineupDb, sweepLineups } from '../_shared/lineup-post.ts';
-import { type DiscordFile, type SheetDb, refreshSheet, sweepSheets } from '../_shared/signup-sheet.ts';
+import { type DiscordFile, type SheetDb, refreshSheet, startsAt, sweepSheets } from '../_shared/signup-sheet.ts';
 import {
   ACTIONS,
   type Kind,
@@ -49,6 +49,7 @@ import {
   buildReminder,
   mentions
 } from './posts.ts';
+import { type RsvpTiming, buildRsvpDigest, dueAt } from './rsvp-batch.ts';
 import { VERSION } from './version.ts';
 
 // A row claim_discord_posts() took: counted as a try already.
@@ -68,9 +69,17 @@ export type Finish = {
   lastError: string | null;
   // When a row left queued may try again.
   nextTryAt?: string;
+  // Not a failed try: the change waits for its batched post (#1710).
+  hold?: boolean;
 };
 
-export type PostSetting = { serverId: string; channelId: string | null; roleId: string | null };
+export type PostSetting = {
+  serverId: string;
+  channelId: string | null;
+  roleId: string | null;
+  // RSVP changes only: null posts each change as it happens.
+  rsvpTiming?: RsvpTiming | null;
+};
 
 export interface RelayDb {
   getUser(authHeader: string): Promise<{ id: string } | null>;
@@ -236,14 +245,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   if (action === 'drain') {
     const rows = await deps.db.claimPosts();
-    for (const row of rows) {
-      let finish: Finish;
-      try {
-        finish = await postQueued(deps, dest, token, row);
-      } catch (e) {
-        finish = { status: 'queued', lastError: e instanceof Error ? e.message : String(e) };
-      }
-      if (finish.status === 'queued') {
+    const settings = new Map<string, PostSetting | null>();
+    const batches = new Map<number, QueuedPost[]>();
+    const settle = async (row: QueuedPost, finish: Finish) => {
+      if (finish.status === 'queued' && !finish.hold) {
         console.error(`discord-bot-webhook: queued post ${row.id} (try ${row.attempts}): ${finish.lastError}`);
         finish =
           row.attempts >= MAX_TRIES
@@ -251,6 +256,55 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
             : { ...finish, nextTryAt: new Date(now.getTime() + retryWaitMs(row.attempts)).toISOString() };
       }
       await deps.db.finishPost(row.id, finish);
+    };
+    const errorFinish = (e: unknown): Finish => ({
+      status: 'queued',
+      lastError: e instanceof Error ? e.message : String(e)
+    });
+    const settingOf = async (teamId: number, kind: Kind) => {
+      const key = `${teamId}:${kind}`;
+      if (!settings.has(key)) settings.set(key, await deps.db.postSetting(teamId, kind));
+      return settings.get(key) ?? null;
+    };
+
+    for (const row of rows) {
+      let finish: Finish | undefined;
+      try {
+        // A team that batches its RSVP changes (#1710): the change waits for
+        // the batched post, joins it once it is due, or, due the moment it
+        // was made, posts now on its own.
+        const timing = row.action === 'rsvp' ? ((await settingOf(row.teamId, row.kind))?.rsvpTiming ?? null) : null;
+        if (timing) {
+          const madeAt = new Date(row.createdAt);
+          const due = dueAt(timing, madeAt, await raidStart(deps, row));
+          if (due.getTime() > now.getTime()) {
+            finish = { status: 'queued', lastError: null, nextTryAt: due.toISOString(), hold: true };
+          } else if (due.getTime() > madeAt.getTime()) {
+            batches.set(row.teamId, [...(batches.get(row.teamId) ?? []), row]);
+            continue;
+          }
+        }
+        finish ??= await postQueued(deps, dest, token, row);
+      } catch (e) {
+        finish = errorFinish(e);
+      }
+      await settle(row, finish);
+    }
+
+    for (const [teamId, batch] of batches) {
+      let finish: Finish;
+      try {
+        const setting = await settingOf(teamId, 'rsvp_changes');
+        finish = await sendPost(deps, dest, token, teamId, 'rsvp_changes', setting, (roleId) =>
+          buildRsvpDigest(
+            batch.map((r) => r.payload),
+            roleId
+          )
+        );
+      } catch (e) {
+        finish = errorFinish(e);
+      }
+      for (const row of batch) await settle(row, finish);
     }
     return jsonResponse({ success: true, claimed: rows.length });
   }
@@ -304,6 +358,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   return refuse('Unknown action: ' + action, 400);
 }
 
+// The raid night's start for a queued RSVP change, or null when it has none.
+async function raidStart(deps: Deps, row: QueuedPost): Promise<Date | null> {
+  const raidDate = String(row.payload.raidDate ?? '');
+  const night = await deps.sheets.night(row.teamId, raidDate);
+  return night.exists ? startsAt(raidDate, night) : null;
+}
+
 // One queued notice: built from its row, to the team's channel for its kind
 // as they are now. Answers what the try leaves on the row; 'queued' means it
 // failed and may try again.
@@ -314,9 +375,24 @@ async function postQueued(
   row: QueuedPost
 ): Promise<Finish> {
   const setting = await deps.db.postSetting(row.teamId, row.kind);
+  return sendPost(deps, dest, token, row.teamId, row.kind, setting, (roleId) =>
+    buildPost(row.action, row.payload, roleId, row.createdAt)
+  );
+}
+
+// One message to the team's channel for a kind of post, pinging the role it
+// picked. `build` throws MissingFields for a row too short to post.
+async function sendPost(
+  deps: Deps,
+  dest: ReturnType<typeof resolveBot>,
+  token: string | undefined,
+  teamId: number,
+  kind: Kind,
+  setting: PostSetting | null,
+  build: (roleId: string | null) => Message
+): Promise<Finish> {
   if (!setting?.channelId) return { status: 'skipped', lastError: 'That kind of post is off' };
 
-  const build = (roleId: string | null) => buildPost(row.action, row.payload, roleId, row.createdAt);
   let message: Message;
   try {
     message = build(dest.kind === 'bot' ? setting.roleId : null);
@@ -342,16 +418,14 @@ async function postQueued(
     const inServer = Array.isArray(roles.body) && roles.body.some((r: { id?: string }) => r.id === setting.roleId);
     if (!inServer) {
       // Post without the ping rather than drop the notice.
-      console.error(
-        `discord-bot-webhook: team ${row.teamId}'s ${row.kind} role ${setting.roleId} is not in its server`
-      );
+      console.error(`discord-bot-webhook: team ${teamId}'s ${kind} role ${setting.roleId} is not in its server`);
       message = build(null);
     }
   }
 
   const sent = await discord(deps, token!, `/channels/${setting.channelId}/messages`, message);
   if (sent.status !== 200) return { status: 'queued', lastError: 'Discord answered ' + sent.status };
-  await deps.db.markPosted(row.teamId, row.kind);
+  await deps.db.markPosted(teamId, kind);
   return { status: 'posted', lastError: null };
 }
 

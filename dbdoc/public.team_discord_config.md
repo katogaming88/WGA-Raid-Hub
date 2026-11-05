@@ -85,6 +85,10 @@ erDiagram
   smallint post_weekday
   time_without_time_zone post_time
   text post_timezone
+  text rsvp_when
+  time_without_time_zone rsvp_time
+  text rsvp_timezone
+  integer rsvp_hours
 }
 "public.team_discord_signup_sheets" {
   integer id

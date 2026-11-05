@@ -85,7 +85,7 @@
 | [public.guild_rank_permissions](public.guild_rank_permissions.md) | 4 | Each guild's grid: a row means that guild rank has that permission there (#1645). Filled from rank_permissions.default_ranks when the guild is made; the Owner changes it later. | BASE TABLE |
 | [public.team_rank_permissions](public.team_rank_permissions.md) | 4 | Each team's grid: a row means that team rank has that permission there (#1645). Filled from rank_permissions.default_ranks when the team is made; the Team Owner changes it later. | BASE TABLE |
 | [public.guild_ranks](public.guild_ranks.md) | 4 | A person's rank in a guild (#1645): owner (one per guild), admin, team_lead or member. Member is automatic for anyone on a team in the guild, so a row is only needed for the other three. Owner and admin are kept in step with a guild_officer grant until cutover, both ways. | BASE TABLE |
-| [public.team_discord_posts](public.team_discord_posts.md) | 9 | One row per kind of post the bot makes for a team (#1712, #921): its channel, an optional ping role and when it last posted. No channel (or no row) means that kind is off. Changed only through set_team_discord_post(); the posting function reads it with the service key. | BASE TABLE |
+| [public.team_discord_posts](public.team_discord_posts.md) | 13 | One row per kind of post the bot makes for a team (#1712, #921): its channel, an optional ping role and when it last posted. No channel (or no row) means that kind is off. Changed only through set_team_discord_post(); the posting function reads it with the service key. | BASE TABLE |
 | [public.team_discord_signup_sheets](public.team_discord_signup_sheets.md) | 10 | A team's signup sheets in Discord (#1712): the channel, its raid days (raid_schedule's weekday, 0 = Sunday, each day on one sheet of a team at most), and either keep_raids_posted (1 to 4) or hours_before each raid. Changed only through save_team_discord_signup_sheet() and remove_team_discord_signup_sheet(). | BASE TABLE |
 | [public.discord_server_access](public.discord_server_access.md) | 3 | Discord servers a person and the bot were both found in, and when (#1712). Written with the service key by the function that reads Discord (#994); set_team_discord_server() takes only a server verified for the caller in the last hour. | BASE TABLE |
 | [public.discord_post_queue](public.discord_post_queue.md) | 12 | Every Discord notice the bot posts to a team's channels, queued by the write behind it and posted by discord-bot-webhook's drain every minute (#962). Added only through queue_discord_post(), taken only through claim_discord_posts(). Service role only. | BASE TABLE |
@@ -292,6 +292,7 @@
 | public.discord_set_rsvp | void | p_discord_id text, p_team_id integer, p_raid_date date, p_status text, p_note text DEFAULT NULL::text | FUNCTION |
 | public.set_own_missing_spec | void | p_player_id integer, p_class_spec_id integer | FUNCTION |
 | public.set_team_weekly_lineup_post | void | p_team_id integer, p_channel_id text, p_ping_role_id text, p_weekday integer, p_time time without time zone, p_timezone text | FUNCTION |
+| public.set_team_rsvp_post | void | p_team_id integer, p_channel_id text, p_ping_role_id text, p_when text, p_time time without time zone, p_timezone text, p_hours integer | FUNCTION |
 
 ## Enums
 
@@ -1285,6 +1286,10 @@ erDiagram
   smallint post_weekday
   time_without_time_zone post_time
   text post_timezone
+  text rsvp_when
+  time_without_time_zone rsvp_time
+  text rsvp_timezone
+  integer rsvp_hours
 }
 "public.team_discord_signup_sheets" {
   integer id

@@ -9916,6 +9916,30 @@
           "type": "text",
           "nullable": true,
           "comment": "For the weekly lineup only (#1709): the time zone its day and time are in."
+        },
+        {
+          "name": "rsvp_when",
+          "type": "text",
+          "nullable": true,
+          "comment": "For RSVP changes only (#1710): daily or before_raid for a batched post, empty for one post per change."
+        },
+        {
+          "name": "rsvp_time",
+          "type": "time without time zone",
+          "nullable": true,
+          "comment": "For rsvp_when = daily: the time of day the post goes out, in rsvp_timezone."
+        },
+        {
+          "name": "rsvp_timezone",
+          "type": "text",
+          "nullable": true,
+          "comment": "For rsvp_when = daily: the time zone rsvp_time is in."
+        },
+        {
+          "name": "rsvp_hours",
+          "type": "integer",
+          "nullable": true,
+          "comment": "For rsvp_when = before_raid: how many hours before each raid night the post goes out."
         }
       ],
       "indexes": [
@@ -9959,6 +9983,40 @@
           "referenced_table": "",
           "columns": [
             "post_weekday"
+          ]
+        },
+        {
+          "name": "team_discord_posts_rsvp_hours_check",
+          "type": "CHECK",
+          "def": "CHECK (((rsvp_hours \u003e= 1) AND (rsvp_hours \u003c= 168)))",
+          "table": "public.team_discord_posts",
+          "referenced_table": "",
+          "columns": [
+            "rsvp_hours"
+          ]
+        },
+        {
+          "name": "team_discord_posts_rsvp_timing_check",
+          "type": "CHECK",
+          "def": "CHECK (\nCASE\n    WHEN ((kind \u003c\u003e 'rsvp_changes'::text) OR (rsvp_when IS NULL)) THEN (num_nonnulls(rsvp_when, rsvp_time, rsvp_timezone, rsvp_hours) = 0)\n    WHEN (rsvp_when = 'daily'::text) THEN ((rsvp_time IS NOT NULL) AND (rsvp_timezone IS NOT NULL) AND (rsvp_hours IS NULL))\n    ELSE ((rsvp_hours IS NOT NULL) AND (rsvp_time IS NULL) AND (rsvp_timezone IS NULL))\nEND)",
+          "table": "public.team_discord_posts",
+          "referenced_table": "",
+          "columns": [
+            "kind",
+            "rsvp_when",
+            "rsvp_time",
+            "rsvp_timezone",
+            "rsvp_hours"
+          ]
+        },
+        {
+          "name": "team_discord_posts_rsvp_when_check",
+          "type": "CHECK",
+          "def": "CHECK ((rsvp_when = ANY (ARRAY['daily'::text, 'before_raid'::text])))",
+          "table": "public.team_discord_posts",
+          "referenced_table": "",
+          "columns": [
+            "rsvp_when"
           ]
         },
         {
@@ -13530,6 +13588,12 @@
       "name": "public.set_team_weekly_lineup_post",
       "return_type": "void",
       "arguments": "p_team_id integer, p_channel_id text, p_ping_role_id text, p_weekday integer, p_time time without time zone, p_timezone text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_rsvp_post",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_channel_id text, p_ping_role_id text, p_when text, p_time time without time zone, p_timezone text, p_hours integer",
       "type": "FUNCTION"
     }
   ],

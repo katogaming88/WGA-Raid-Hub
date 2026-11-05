@@ -17,6 +17,10 @@ One row per kind of post the bot makes for a team (#1712, #921): its channel, an
 | post_weekday | smallint |  | true |  |  | For the weekly lineup only (#1709): the day it posts, 0 is Sunday, in post_timezone. |
 | post_time | time without time zone |  | true |  |  | For the weekly lineup only (#1709): the time it posts, in post_timezone. |
 | post_timezone | text |  | true |  |  | For the weekly lineup only (#1709): the time zone its day and time are in. |
+| rsvp_when | text |  | true |  |  | For RSVP changes only (#1710): daily or before_raid for a batched post, empty for one post per change. |
+| rsvp_time | time without time zone |  | true |  |  | For rsvp_when = daily: the time of day the post goes out, in rsvp_timezone. |
+| rsvp_timezone | text |  | true |  |  | For rsvp_when = daily: the time zone rsvp_time is in. |
+| rsvp_hours | integer |  | true |  |  | For rsvp_when = before_raid: how many hours before each raid night the post goes out. |
 
 ## Constraints
 
@@ -25,6 +29,9 @@ One row per kind of post the bot makes for a team (#1712, #921): its channel, an
 | team_discord_posts_check | CHECK | CHECK (((channel_id IS NOT NULL) OR (ping_role_id IS NULL))) |
 | team_discord_posts_kind_check | CHECK | CHECK ((kind = ANY (ARRAY['officer_requests'::text, 'mplus_requests'::text, 'rsvp_changes'::text, 'weekly_lineup'::text]))) |
 | team_discord_posts_post_weekday_check | CHECK | CHECK (((post_weekday >= 0) AND (post_weekday <= 6))) |
+| team_discord_posts_rsvp_hours_check | CHECK | CHECK (((rsvp_hours >= 1) AND (rsvp_hours <= 168))) |
+| team_discord_posts_rsvp_timing_check | CHECK | CHECK (<br />CASE<br />    WHEN ((kind <> 'rsvp_changes'::text) OR (rsvp_when IS NULL)) THEN (num_nonnulls(rsvp_when, rsvp_time, rsvp_timezone, rsvp_hours) = 0)<br />    WHEN (rsvp_when = 'daily'::text) THEN ((rsvp_time IS NOT NULL) AND (rsvp_timezone IS NOT NULL) AND (rsvp_hours IS NULL))<br />    ELSE ((rsvp_hours IS NOT NULL) AND (rsvp_time IS NULL) AND (rsvp_timezone IS NULL))<br />END) |
+| team_discord_posts_rsvp_when_check | CHECK | CHECK ((rsvp_when = ANY (ARRAY['daily'::text, 'before_raid'::text]))) |
 | team_discord_posts_schedule_check | CHECK | CHECK (<br />CASE<br />    WHEN ((kind = 'weekly_lineup'::text) AND (channel_id IS NOT NULL)) THEN (num_nonnulls(post_weekday, post_time, post_timezone) = 3)<br />    ELSE (num_nonnulls(post_weekday, post_time, post_timezone) = 0)<br />END) |
 | team_discord_posts_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES team_discord_config(team_id) ON DELETE CASCADE |
 | team_discord_posts_pkey | PRIMARY KEY | PRIMARY KEY (team_id, kind) |
@@ -52,6 +59,10 @@ erDiagram
   smallint post_weekday
   time_without_time_zone post_time
   text post_timezone
+  text rsvp_when
+  time_without_time_zone rsvp_time
+  text rsvp_timezone
+  integer rsvp_hours
 }
 "public.team_discord_config" {
   integer team_id FK

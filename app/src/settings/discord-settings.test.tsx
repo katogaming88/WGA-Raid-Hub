@@ -89,7 +89,8 @@ function handlers({
       if (
         name.startsWith('set_team_discord') ||
         name.includes('signup_sheet') ||
-        name === 'set_team_weekly_lineup_post'
+        name === 'set_team_weekly_lineup_post' ||
+        name === 'set_team_rsvp_post'
       ) {
         rpcs.push([name, args]);
         return { data: null };
@@ -191,6 +192,44 @@ describe('Settings › Discord (#994)', () => {
     expect(
       await screen.findByRole('button', { name: /Weekly lineup.*#tuesday-raids.*Wednesdays at 6:00 PM Eastern time/ })
     ).toBeInTheDocument();
+  });
+
+  it('saves when RSVP changes post: once a day, or hours before each raid (#1710)', async () => {
+    const rpcs: [string, Record<string, unknown>][] = [];
+    renderApp(PATH, handlers({ rpcs }));
+    await userEvent.click(await screen.findByRole('button', { name: /RSVP changes/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'RSVP changes' });
+    await userEvent.selectOptions(within(dialog).getByLabelText('Channel'), '#phoenix-officers');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Before each raid' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await expect.poll(() => rpcs.length).toBe(1);
+    expect(rpcs[0]).toEqual([
+      'set_team_rsvp_post',
+      expect.objectContaining({ p_channel_id: '201', p_when: 'before_raid', p_hours: 3 })
+    ]);
+  });
+
+  it('saves as it happens with no timing, and shows a saved timing on the row (#1710)', async () => {
+    const rpcs: [string, Record<string, unknown>][] = [];
+    renderApp(
+      PATH,
+      handlers({
+        rpcs,
+        saved: {
+          ...SAVED,
+          posts: SAVED.posts.map((p) =>
+            p.kind === 'rsvp_changes' ? { ...p, rsvp_when: 'before_raid', rsvp_hours: 3 } : p
+          )
+        }
+      })
+    );
+    const row = await screen.findByRole('button', { name: /RSVP changes.*3 hours before each raid/ });
+    await userEvent.click(row);
+    const dialog = await screen.findByRole('dialog', { name: 'RSVP changes' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'As it happens' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await expect.poll(() => rpcs.length).toBe(1);
+    expect(rpcs[0]).toEqual(['set_team_rsvp_post', expect.objectContaining({ p_when: null })]);
   });
 
   it("says what to fix in Discord for a channel the bot can't post in, and sends no test there", async () => {
