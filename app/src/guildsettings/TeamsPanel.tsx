@@ -1,13 +1,20 @@
 import { useId, useRef, useState } from 'react';
+import { usePageCan } from '../auth/access';
 import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
 import { useAddress, useGuildTeams, type GuildTeamRow } from '../data/address';
 import { errorMessage } from '../lib/errors';
 import { NewTeamDialog } from './NewTeamDialog';
-import { useSetTeamArchived, useSetTeamUnlisted, useUpdateTeam } from './useGuildSettings';
+import {
+  useChangeTeamOwner,
+  useSetTeamArchived,
+  useSetTeamUnlisted,
+  useTeamOwnerOptions,
+  useUpdateTeam
+} from './useGuildSettings';
 
-type Editing = { kind: 'rename' | 'address' | 'archive'; team: GuildTeamRow };
+type Editing = { kind: 'rename' | 'address' | 'archive' | 'owner'; team: GuildTeamRow };
 
 // The Teams tab of Guild settings (#1644): every team of the guild, archived
 // and unlisted ones included, each with its address and what a guild officer
@@ -18,6 +25,7 @@ export function TeamsPanel() {
   const { announce } = useStatus();
   const setArchived = useSetTeamArchived();
   const setUnlisted = useSetTeamUnlisted();
+  const canChangeOwner = usePageCan().can('changeTeamOwner');
   const [editing, setEditing] = useState<Editing | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -72,6 +80,11 @@ export function TeamsPanel() {
                   <button type="button" className="button" onClick={() => setEditing({ kind: 'address', team })}>
                     Change address <span className="visually-hidden">of {team.name}</span>
                   </button>
+                  {canChangeOwner && !archived && (
+                    <button type="button" className="button" onClick={() => setEditing({ kind: 'owner', team })}>
+                      Change Team Owner <span className="visually-hidden">of {team.name}</span>
+                    </button>
+                  )}
                   {archived ? (
                     <button
                       type="button"
@@ -103,6 +116,8 @@ export function TeamsPanel() {
       {adding && <NewTeamDialog guildId={guild.id} guildKey={guild.key} onClose={() => setAdding(false)} />}
       {editing?.kind === 'archive' ? (
         <ArchiveDialog team={editing.team} onClose={() => setEditing(null)} />
+      ) : editing?.kind === 'owner' ? (
+        <OwnerDialog team={editing.team} onClose={() => setEditing(null)} />
       ) : editing ? (
         <EditDialog editing={editing} onClose={() => setEditing(null)} />
       ) : null}
@@ -180,6 +195,87 @@ function EditDialog({ editing, onClose }: { editing: Editing; onClose: () => voi
           </button>
         </div>
       </form>
+    </Dialog>
+  );
+}
+
+// The new Team Owner must already be on the team and have signed in (#1651).
+function OwnerDialog({ team, onClose }: { team: GuildTeamRow; onClose: () => void }) {
+  const id = useId();
+  const { announce } = useStatus();
+  const options = useTeamOwnerOptions(team.id);
+  const change = useChangeTeamOwner(team.id);
+  const [picked, setPicked] = useState('');
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const person = options.data?.find((m) => m.team_member_id === Number(picked));
+    if (!person) return;
+    change.mutate(
+      { teamMemberId: person.team_member_id },
+      {
+        onSuccess: () => {
+          announce('success', `${person.display_name} is now ${team.name}'s Team Owner.`);
+          onClose();
+        }
+      }
+    );
+  };
+
+  return (
+    <Dialog title={`Change Team Owner of ${team.name}`} onClose={onClose} busy={change.isPending}>
+      <DataState query={options} label="the team's members">
+        {(rows) => {
+          const owner = rows.find((m) => m.rank === 'owner');
+          const others = rows.filter((m) => m.rank !== 'owner');
+          return (
+            <form onSubmit={onSubmit} noValidate>
+              <p>
+                {owner
+                  ? `${owner.display_name} is the Team Owner now, and becomes an Officer.`
+                  : 'This team has no Team Owner.'}
+              </p>
+              {others.length === 0 ? (
+                <p className="text-muted">Nobody else is on this team yet.</p>
+              ) : (
+                <div className="field">
+                  <label className="field-label" htmlFor={`${id}-owner`}>
+                    New Team Owner
+                  </label>
+                  <select
+                    id={`${id}-owner`}
+                    className="select"
+                    value={picked}
+                    onChange={(e) => setPicked(e.target.value)}
+                  >
+                    <option value="">Pick someone</option>
+                    {others.map((m) => (
+                      <option key={m.team_member_id} value={m.team_member_id} disabled={!m.signed_in}>
+                        {m.display_name}
+                        {m.signed_in ? '' : ' (hasn’t signed in yet)'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {change.isError && (
+                <p className="form-error" role="alert">
+                  {change.error.message}
+                </p>
+              )}
+              <div className="dialog-actions">
+                <span className="grow" />
+                <button type="button" className="button" onClick={onClose} disabled={change.isPending}>
+                  Cancel
+                </button>
+                <button type="submit" className="button button-primary" disabled={picked === '' || change.isPending}>
+                  {change.isPending ? 'Saving…' : 'Change Team Owner'}
+                </button>
+              </div>
+            </form>
+          );
+        }}
+      </DataState>
     </Dialog>
   );
 }

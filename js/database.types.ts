@@ -4587,6 +4587,10 @@ export type Database = {
         Args: { p_request_id: number }
         Returns: undefined
       }
+      change_team_owner: {
+        Args: { p_team_id: number; p_team_member_id: number }
+        Returns: undefined
+      }
       check_lineup_players: {
         Args: { p_player_ids: number[]; p_team_id: number }
         Returns: undefined
@@ -5154,6 +5158,10 @@ export type Database = {
         Args: { p_bios: Json; p_team_id: number }
         Returns: Json
       }
+      set_team_rank: {
+        Args: { p_rank: string; p_team_id: number; p_team_member_id: number }
+        Returns: undefined
+      }
       set_team_rsvp_post: {
         Args: {
           p_channel_id: string
@@ -5315,6 +5323,15 @@ export type Database = {
       team_invite_link_revoke: {
         Args: { p_team_id: number }
         Returns: undefined
+      }
+      team_owner_options: {
+        Args: { p_team_id: number }
+        Returns: {
+          display_name: string
+          rank: string
+          signed_in: boolean
+          team_member_id: number
+        }[]
       }
       team_rsvp_answers: {
         Args: { p_from: string; p_team_id: number; p_to: string }

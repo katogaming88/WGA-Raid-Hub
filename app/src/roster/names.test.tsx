@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
+import { rankChoices } from './TeamRank';
 import { fakeSession, seededHandlers, type FakeHandlers, type Read } from '../test/fakeSupabase';
 import { toNames, type NameRow } from './names';
 
@@ -48,7 +49,13 @@ function namesHandlers(
     names?: NameRow[];
     players?: (typeof TORBJORN)[];
     // The memberships an officer's roster reads, with whether each ended.
-    members?: { id: number; person_id: number; archived_at: string | null; discord_id?: string | null }[];
+    members?: {
+      id: number;
+      person_id: number;
+      archived_at: string | null;
+      discord_id?: string | null;
+      rank?: string | null;
+    }[];
     // The signed-in person's own membership on the team.
     teamMemberId?: number;
     write?: FakeHandlers['write'];
@@ -1110,5 +1117,76 @@ describe('Make my Member on the Roster (#1355)', () => {
     renderApp('/g/wga/t/phoenix/roster', namesHandlers({ teamMemberId: 9 }));
     await rosterTable();
     expect(screen.queryByRole('heading', { name: 'You don’t have a Member yet' })).not.toBeInTheDocument();
+  });
+});
+
+// Team ranks on the Roster (#1651): Raz is member 9; the viewer is member 1.
+describe('team ranks on the Roster', () => {
+  const members = (mine: string, raz: string) => [
+    { id: 1, person_id: 1, archived_at: null, rank: mine },
+    { id: 9, person_id: 70, archived_at: null, rank: raz }
+  ];
+  const optionsOf = (box: HTMLElement) =>
+    within(box)
+      .getAllByRole('option')
+      .map((o) => o.textContent);
+
+  it('gives the Team Owner every rank but Team Owner, and saves a change', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(
+      '/g/wga/t/phoenix/roster',
+      namesHandlers({
+        role: 'officer',
+        members: members('owner', 'raider'),
+        rpc(name, args) {
+          if (name === 'set_team_rank') return { data: null };
+          return seededHandlers().rpc!(name, args);
+        }
+      })
+    );
+    await rosterTable();
+    const box = await screen.findByRole('combobox', { name: 'Team rank for Raz' });
+    expect(optionsOf(box)).toEqual(['Officer', 'Assistant', 'Raider']);
+    await user.selectOptions(box, 'Officer');
+    expect(await screen.findByText('Raz is now Officer.')).toBeInTheDocument();
+    expect(client.rpcs).toContainEqual(['set_team_rank', { p_team_id: 1, p_team_member_id: 9, p_rank: 'officer' }]);
+  });
+
+  it('gives an Officer Raider and Assistant only, and says when it is refused', async () => {
+    const user = userEvent.setup();
+    renderApp(
+      '/g/wga/t/phoenix/roster',
+      namesHandlers({
+        role: 'officer',
+        members: members('officer', 'raider'),
+        rpc(name, args) {
+          if (name === 'set_team_rank') return { error: { message: 'Not authorized' } };
+          return seededHandlers().rpc!(name, args);
+        }
+      })
+    );
+    await rosterTable();
+    const box = await screen.findByRole('combobox', { name: 'Team rank for Raz' });
+    expect(optionsOf(box)).toEqual(['Assistant', 'Raider']);
+    await user.selectOptions(box, 'Assistant');
+    expect((await screen.findAllByText(/Could not change Raz/)).length).toBeGreaterThan(0);
+  });
+
+  it('shows an Officer another Officer and the Team Owner as plain text', async () => {
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ role: 'officer', members: members('officer', 'officer') }));
+    const table = await rosterTable();
+    const row = within(table).getByRole('rowheader', { name: /Raz/ }).closest('tr')!;
+    expect(await within(row).findByText('Officer')).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Team rank for Raz' })).not.toBeInTheDocument();
+
+    expect(rankChoices('owner', true, true)).toEqual([]);
+    expect(rankChoices('raider', false, false)).toEqual([]);
+  });
+
+  it('shows a raider no ranks', async () => {
+    renderApp('/g/wga/t/phoenix/roster', namesHandlers({ members: members('raider', 'raider') }));
+    const table = await rosterTable();
+    expect(table.querySelector('.team-rank')).toBeNull();
+    expect(screen.queryByRole('combobox', { name: /Team rank/ })).not.toBeInTheDocument();
   });
 });

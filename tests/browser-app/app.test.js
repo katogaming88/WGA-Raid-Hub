@@ -1522,6 +1522,35 @@ const JOIN_MEMBER_STEP = {
   }
 };
 // The Roster for that person: Make my Member above the table.
+const TEAM_OWNER_DIALOG = {
+  ...GUILD_SETTINGS,
+  rpc: {
+    team_owner_options: [
+      { team_member_id: 1, display_name: 'Olive', rank: 'owner', signed_in: true },
+      { team_member_id: 2, display_name: 'Raz', rank: 'officer', signed_in: true },
+      { team_member_id: 3, display_name: 'Listed', rank: 'raider', signed_in: false }
+    ]
+  },
+  click: 'role=button[name="Change Team Owner of Phoenix"]',
+  afterClick: '[role="dialog"] select'
+};
+// The viewer owns the team (member 1), so every other row gets a rank box.
+const ROSTER_RANKS = {
+  path: '/g/wga/t/phoenix/roster',
+  sentinel: 'main .team-rank-select',
+  session: OFFICER,
+  who: 'officer',
+  tables: {
+    ...ROSTER,
+    players: ROSTER.players.map((p) => ({ ...p, team_member_id: p.id })),
+    team_members: [
+      { id: 1, discord_id: 'discord-officer-1', rank: 'owner', archived_at: null },
+      ...ROSTER.players
+        .filter((p) => p.id !== 1)
+        .map((p, i) => ({ id: p.id, discord_id: null, rank: i % 2 ? 'assistant' : 'raider', archived_at: null }))
+    ]
+  }
+};
 const ROSTER_OWN_NAME = {
   path: '/g/wga/t/phoenix/roster',
   sentinel: '.own-name-card',
@@ -1601,6 +1630,12 @@ const STATES = [
   { label: 'guild settings, teams', ...GUILD_SETTINGS },
   { label: 'guild settings, teams, light', ...GUILD_SETTINGS, colorScheme: 'light' },
   { label: 'guild settings, teams, on a phone', ...GUILD_SETTINGS, viewport: NARROW },
+  { label: 'guild settings, change team owner', ...TEAM_OWNER_DIALOG },
+  { label: 'guild settings, change team owner, light', ...TEAM_OWNER_DIALOG, colorScheme: 'light' },
+  { label: 'guild settings, change team owner, on a phone', ...TEAM_OWNER_DIALOG, viewport: NARROW },
+  { label: 'roster, team ranks', ...ROSTER_RANKS },
+  { label: 'roster, team ranks, light', ...ROSTER_RANKS, colorScheme: 'light' },
+  { label: 'roster, team ranks, on a phone', ...ROSTER_RANKS, viewport: NARROW },
   {
     label: 'guild settings, archive dialog',
     ...GUILD_SETTINGS,

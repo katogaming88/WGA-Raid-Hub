@@ -123,6 +123,7 @@ const OFFICER_GRID = [
 const ADMIN_GRID = [
   'create_teams',
   'rename_archive_teams',
+  'change_team_owner',
   'edit_guild_profile',
   'edit_own_bio',
   'edit_all_bios',

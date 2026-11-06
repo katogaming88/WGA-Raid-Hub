@@ -53,6 +53,39 @@ describe('New team in the team picker', () => {
   });
 });
 
+describe('Change Team Owner', () => {
+  it('opens from the keyboard and has nothing to save until someone is picked', async () => {
+    const { context, page } = await openApp(browser, server.port, {
+      ...STATE,
+      path: '/g/wga/settings/teams',
+      sentinel: 'main .guildsettings-row',
+      rpc: {
+        team_owner_options: [
+          { team_member_id: 1, display_name: 'Olive', rank: 'owner', signed_in: true },
+          { team_member_id: 2, display_name: 'Raz', rank: 'officer', signed_in: true }
+        ]
+      }
+    });
+    try {
+      const open = page.getByRole('button', { name: 'Change Team Owner of Phoenix' });
+      await open.focus();
+      await page.keyboard.press('Enter');
+      const dialog = page.getByRole('dialog', { name: 'Change Team Owner of Phoenix' });
+      await dialog.waitFor();
+      const box = dialog.getByRole('combobox', { name: 'New Team Owner' });
+      await box.waitFor();
+      const save = dialog.getByRole('button', { name: 'Change Team Owner' });
+      expect(await save.isDisabled()).toBe(true);
+      await box.selectOption({ label: 'Raz' });
+      expect(await save.isDisabled()).toBe(false);
+      await page.keyboard.press('Escape');
+      await dialog.waitFor({ state: 'hidden' });
+    } finally {
+      await context.close();
+    }
+  });
+});
+
 describe('the Teams list', () => {
   it('opens the archive dialog from the keyboard and keeps Archive off until the name is typed', async () => {
     const { context, page } = await openApp(browser, server.port, {

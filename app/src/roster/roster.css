@@ -477,3 +477,14 @@ a.raider-name:hover {
   text-align: right;
   width: 1%;
 }
+
+/* A member's team rank on their row, officers only (#1651). */
+.team-rank {
+  font-size: var(--text-xs);
+}
+
+.team-rank-select {
+  width: auto;
+  min-height: var(--target-min);
+  font-size: var(--text-xs);
+}

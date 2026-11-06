@@ -171,6 +171,10 @@ export type Ability =
   // names it, so it asks edit_guild_profile, which an Admin holds by default;
   // the database decides who may change a rank.
   | 'manageMembers'
+  // Move someone between Raider and Assistant; no site admin override, as
+  // set_team_rank() has none.
+  | 'promoteAssistants'
+  | 'changeTeamOwner'
   // Into a guild's pages without a team of one's own (#1264): the guild
   // grid's "See every team (read-only)".
   | 'viewEveryTeam';
@@ -237,6 +241,10 @@ export function can(
       return guild('create_teams', 'rename_archive_teams');
     case 'manageMembers':
       return guild('edit_guild_profile');
+    case 'promoteAssistants':
+      return team('promote_assistants');
+    case 'changeTeamOwner':
+      return guild('change_team_owner');
     case 'viewEveryTeam':
       return guild('view_every_team');
     case 'manageRaidReference':

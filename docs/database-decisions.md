@@ -10,6 +10,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-11-06 -- Changing a team rank and the Team Owner (#1651)
+
+Shipped: 20261106121137_team_ranks_and_owner.sql
+
+`team_members_guard_rank` refuses a rank written directly by a client and pointed at "the rank functions", which did not exist yet. The Roster and the guild's Teams list needed them.
+
+- **`set_team_rank(team, member, rank)`** follows #1517's grids. The Team Owner sets Officer, Assistant or Raider. Anyone whose rank has `promote_assistants` (Officers by default) moves someone between Raider and Assistant only, so an Officer cannot make or unmake an Officer. Team Owner is never a rank it sets or takes away.
+- **`change_team_owner(team, member)`** asks `change_team_owner` on the guild's grid (the guild Owner and Admins by default). The new Team Owner must be a current member who has signed in, as `transfer_guild_ownership()` requires; the old one becomes an Officer. An archived team is refused.
+- **A site admin gets no override on either.** The issue asks for a refusal for anyone the grids don't allow, and `admin_grant_team_role()` is still there for Staff.
+- **The handover is one statement.** Stepping down on its own fires `team_members_pass_ownership` at once, which hands the team to any other team leader, and the person picked would then hit `team_members_one_owner`. Row triggers that run after a statement wait for its end, so a data-modifying `with` steps the old owner down first and promotes the new one in the same statement; the trigger then finds an owner and does nothing. A test covers a second team leader being on the team. Making the trigger deferred would have done it too, but every RLS test runs in one rolled-back transaction, so a deferred trigger would never fire there.
+- **`team_owner_options(team)`** exists because a guild Admin doesn't read `team_members` on a team they aren't on, and the picker needs names. It returns only what the picker shows.
+- **The old roles follow by the existing trigger** (`team_members_keep_rank_and_role`), so the current site sees each change. An Assistant is still a `raider` there.
+- Each change writes a team-level `audit_log` row. An unchanged rank writes none.
+
+[Full discussion -> #1651](https://github.com/katogaming88/WGA-Raid-Hub/issues/1651).
+
 ## 2026-11-01 -- Every Discord notice goes through a queue (#962)
 
 Shipped: 20261101202408_discord_post_queue.sql
