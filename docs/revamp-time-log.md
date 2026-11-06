@@ -583,7 +583,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
-| 11:30-11:45 AM | #1666: Help rebuilt to Kat's pick C: the raid week first with the officer checkbox, one list of guides by their own titles, questions beside support, the loot line, the setup band and the guide index; tests and accessibility states; the emil-design-eng and impeccable passes; stamp, changelog, this row | Phase 1: For the guild test (#1666) | 15 m | ~15 m build | 245,000 | PR, screenshots, CodeRabbit, Kat's design review and merge not yet counted |
+| 11:30-11:45 AM | #1666: Help rebuilt to Kat's pick C: the raid week first with the officer checkbox, one list of guides by their own titles, questions beside support, the loot line, the setup band and the guide index; tests and accessibility states; the emil-design-eng and impeccable passes; stamp, changelog, this row | Phase 1: For the guild test (#1666) | 15 m | ~15 m build | 245,000 | PR, screenshots, Kat's design review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
