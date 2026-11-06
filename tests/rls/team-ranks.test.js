@@ -9,6 +9,7 @@ import {
   OFFICER_T1,
   OFFICER_T2,
   RAIDER_T1,
+  seedMember,
   SITE_ADMIN,
   TEAM_LEADER_T1,
   TEAM_LEADER_T2,
@@ -56,9 +57,13 @@ describe('set_team_rank', () => {
           where action = 'Team Rank Changed' and team_id = $1 and target_id = $2 order by id`,
         [T1, raider]
       );
+      // Names the person, since the Audit log's Target column is for characters.
+      const name = (await asUser(GUILD_OFFICER, 'select * from public.team_member_ranks($1)', [T1])).rows.find(
+        (r) => r.team_member_id === raider
+      ).display_name;
       expect(audit.rows.map((r) => r.detail)).toEqual([
-        { from: 'raider', to: 'officer' },
-        { from: 'officer', to: 'raider' }
+        { name, from: 'raider', to: 'officer' },
+        { name, from: 'officer', to: 'raider' }
       ]);
     });
   });
@@ -129,6 +134,14 @@ describe('set_team_rank', () => {
     expect(message).toMatch(/not on this team/);
   });
 
+  it('refuses an archived team', async () => {
+    const message = await refusal(async ({ q, asUser }) => {
+      await q('update public.teams set archived_at = now() where id = $1', [T1]);
+      await setRank(asUser, TEAM_LEADER_T1, await memberOf(q, RAIDER_T1), 'assistant');
+    });
+    expect(message).toMatch(/archived/);
+  });
+
   it('writes no audit row when the rank is unchanged', async () => {
     await withTxn(async ({ q, asUser }) => {
       const raider = await memberOf(q, RAIDER_T1);
@@ -154,7 +167,13 @@ describe('change_team_owner', () => {
           `select detail from public.audit_log where action = 'Team Owner Changed' and team_id = $1`,
           [T1]
         );
-        expect(audit.rows[0].detail).toEqual({ from_team_member_id: oldOwner, to_old_rank: 'officer' });
+        const names = (await asUser(uid, 'select * from public.team_member_ranks($1)', [T1])).rows;
+        const nameOf = (id) => names.find((r) => r.team_member_id === id).display_name;
+        expect(audit.rows[0].detail).toEqual({
+          name: nameOf(officer),
+          old_owner: nameOf(oldOwner),
+          previous_rank: 'officer'
+        });
       });
     }
   });
@@ -177,6 +196,30 @@ describe('change_team_owner', () => {
     });
   });
 
+  it('moves the powers with it: the new owner can make an Officer, the old one no longer can', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const raider = await memberOf(q, RAIDER_T1);
+      await changeOwner(asUser, GUILD_OFFICER, await memberOf(q, OFFICER_T1));
+      await setRank(asUser, OFFICER_T1, raider, 'officer');
+      expect((await row(q, raider)).rank).toBe('officer');
+    });
+    const old = await refusal(async ({ q, asUser }) => {
+      await changeOwner(asUser, GUILD_OFFICER, await memberOf(q, OFFICER_T1));
+      await setRank(asUser, TEAM_LEADER_T1, await memberOf(q, RAIDER_T1), 'officer');
+    });
+    expect(old).toMatch(/Only the Team Owner/);
+  });
+
+  it('refuses an Admin of another guild', async () => {
+    const message = await refusal(async ({ q, asUser }) => {
+      const guild = (await q("insert into public.guilds (name) values ('Other Guild') returning id")).rows[0].id;
+      const person = (await q('select id from public.people where auth_user_id = $1', [RAIDER_T1])).rows[0].id;
+      await q("insert into public.guild_ranks (guild_id, person_id, rank) values ($1, $2, 'admin')", [guild, person]);
+      await changeOwner(asUser, RAIDER_T1, await memberOf(q, OFFICER_T1));
+    });
+    expect(message).toMatch(/Not authorized/);
+  });
+
   it('gives an ownerless team an owner', async () => {
     await withTxn(async ({ q, asUser }) => {
       const oldOwner = await memberOf(q, TEAM_LEADER_T1);
@@ -184,6 +227,11 @@ describe('change_team_owner', () => {
       const raider = await memberOf(q, RAIDER_T1);
       await changeOwner(asUser, GUILD_OFFICER, raider);
       expect((await row(q, raider)).rank).toBe('owner');
+      const audit = await q(
+        `select detail from public.audit_log where action = 'Team Owner Changed' and team_id = $1`,
+        [T1]
+      );
+      expect(audit.rows[0].detail.old_owner).toBe('none');
     });
   });
 
@@ -299,6 +347,19 @@ describe('team_member_ranks', () => {
       await q('update public.players set archived_at = now() where team_member_id = $1', [member]);
       const later = (await asUser(GUILD_OFFICER, 'select * from public.team_member_ranks($1)', [T1])).rows;
       expect(nameOf(later)).toBe('Ranktest');
+    });
+  });
+
+  it('falls back to the Discord name for someone with no Name or character', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { memberId, uid } = await seedMember(q);
+      await q(
+        `update auth.identities set identity_data = identity_data || '{"full_name": "Discordname"}'::jsonb
+          where user_id = $1`,
+        [uid]
+      );
+      const rows = (await asUser(GUILD_OFFICER, 'select * from public.team_member_ranks($1)', [T1])).rows;
+      expect(rows.find((r) => r.team_member_id === memberId).display_name).toBe('Discordname');
     });
   });
 

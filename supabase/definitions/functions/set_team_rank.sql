@@ -31,6 +31,9 @@ begin
   if not v_is_owner and not public.has_team_permission(p_team_id, 'promote_assistants') then
     raise exception 'Not authorized';
   end if;
+  if exists (select 1 from teams t where t.id = p_team_id and t.archived_at is not null) then
+    raise exception 'That team is archived. Bring it back first.';
+  end if;
   if p_rank is null or p_rank not in ('officer', 'assistant', 'raider') then
     raise exception 'A rank is Officer, Assistant or Raider';
   end if;
@@ -56,6 +59,7 @@ begin
 
   insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (p_team_id, v_uid, 'Team Rank Changed', 'team_members', p_team_member_id,
-          jsonb_build_object('from', v_old, 'to', p_rank));
+          jsonb_build_object('name', public.team_member_name(p_team_id, p_team_member_id),
+                             'from', v_old, 'to', p_rank));
 end;
 $function$;

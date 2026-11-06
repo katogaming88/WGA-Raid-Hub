@@ -125,6 +125,33 @@ describe('Settings > Ranks', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('asks before taking Officer away, and Cancel changes nothing', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(PATH, ranksHandlers('owner', 'officer'));
+    const box = await screen.findByRole('combobox', { name: 'Team rank for Raz' });
+    await user.selectOptions(box, 'Raider');
+    let dialog = within(await screen.findByRole('dialog', { name: 'Take Officer away from Raz?' }));
+    expect(dialog.getByText(/Raz becomes a Raider/)).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: 'Cancel' }));
+    expect(client.rpcs.some(([name]) => name === 'set_team_rank')).toBe(false);
+    expect(box).toHaveValue('officer');
+
+    await user.selectOptions(box, 'Assistant');
+    dialog = within(await screen.findByRole('dialog', { name: 'Take Officer away from Raz?' }));
+    expect(dialog.getByText(/Raz becomes an Assistant/)).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: 'Take Officer away' }));
+    expect(await screen.findByText('Raz is now Assistant.')).toBeInTheDocument();
+    expect(client.rpcs).toContainEqual(['set_team_rank', { p_team_id: 1, p_team_member_id: 9, p_rank: 'assistant' }]);
+  });
+
+  it('moves between Raider and Assistant without asking', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(PATH, ranksHandlers('owner', 'assistant'));
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Team rank for Raz' }), 'Raider');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(client.rpcs).toContainEqual(['set_team_rank', { p_team_id: 1, p_team_member_id: 9, p_rank: 'raider' }]);
+  });
+
   it('keeps a refused Officer change in the dialog, with the reason', async () => {
     const user = userEvent.setup();
     renderApp(PATH, ranksHandlers('owner', 'raider', { refuse: true }));

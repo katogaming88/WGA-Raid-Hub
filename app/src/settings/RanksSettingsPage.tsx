@@ -111,7 +111,8 @@ function RanksTable({ teamId, rows }: { teamId: number; rows: TeamMemberRank[] }
   const searchId = useId();
   const listId = useId();
   const [search, setSearch] = useState('');
-  const [confirming, setConfirming] = useState<TeamMemberRank | null>(null);
+  // Making someone an Officer or taking it away asks first.
+  const [confirming, setConfirming] = useState<{ member: TeamMemberRank; to: SettableTeamRank } | null>(null);
   const sections = useRef<HTMLDivElement>(null);
   // A changed rank moves the person to another section, which would lose the
   // keyboard's place, so focus follows it there.
@@ -142,7 +143,7 @@ function RanksTable({ teamId, rows }: { teamId: number; rows: TeamMemberRank[] }
         },
         onError: (err) => {
           // In the dialog, the error shows there.
-          if (rank !== 'officer') announce('error', `Could not change ${m.display_name}: ${errorMessage(err)}`);
+          if (!confirming) announce('error', `Could not change ${m.display_name}: ${errorMessage(err)}`);
         }
       }
     );
@@ -200,7 +201,7 @@ function RanksTable({ teamId, rows }: { teamId: number; rows: TeamMemberRank[] }
                             disabled={setRank.isPending}
                             onChange={(e) => {
                               const to = e.target.value as SettableTeamRank;
-                              if (to === 'officer') setConfirming(m);
+                              if (to === 'officer' || m.rank === 'officer') setConfirming({ member: m, to });
                               else save(m, to);
                             }}
                           >
@@ -221,8 +222,23 @@ function RanksTable({ teamId, rows }: { teamId: number; rows: TeamMemberRank[] }
         </div>
       )}
       {confirming && (
-        <Dialog title={`Make ${confirming.display_name} an Officer?`} onClose={closeDialog} busy={setRank.isPending}>
-          {grid.isSuccess && <p>Officers can do this: {rankLine('officer', grid.data)}</p>}
+        <Dialog
+          title={
+            confirming.to === 'officer'
+              ? `Make ${confirming.member.display_name} an Officer?`
+              : `Take Officer away from ${confirming.member.display_name}?`
+          }
+          onClose={closeDialog}
+          busy={setRank.isPending}
+        >
+          {confirming.to === 'officer' ? (
+            grid.isSuccess && <p>Officers can do this: {rankLine('officer', grid.data)}</p>
+          ) : (
+            <p>
+              {confirming.member.display_name} becomes {confirming.to === 'assistant' ? 'an Assistant' : 'a Raider'}.
+              {grid.isSuccess && ` ${LABELS[confirming.to]}s can do this: ${rankLine(confirming.to, grid.data)}`}
+            </p>
+          )}
           {setRank.isError && (
             <p className="form-error" role="alert">
               {setRank.error.message}
@@ -237,9 +253,9 @@ function RanksTable({ teamId, rows }: { teamId: number; rows: TeamMemberRank[] }
               type="button"
               className="button button-primary"
               disabled={setRank.isPending}
-              onClick={() => save(confirming, 'officer')}
+              onClick={() => save(confirming.member, confirming.to)}
             >
-              {setRank.isPending ? 'Saving…' : 'Make Officer'}
+              {setRank.isPending ? 'Saving…' : confirming.to === 'officer' ? 'Make Officer' : 'Take Officer away'}
             </button>
           </div>
         </Dialog>

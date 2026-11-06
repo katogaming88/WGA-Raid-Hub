@@ -13,8 +13,8 @@ export type TeamMemberRank = {
 const ranksKey = (teamId: number) => ['team-member-ranks', teamId];
 
 // A team's current members and their ranks (#1651), for Settings > Ranks and
-// the Team Owner picker. A guild Admin can't read team_members on a team they
-// aren't on, so this is a function.
+// the Team Owner picker. A function, since the names include Discord names,
+// which the app can't read, and change_team_owner alone doesn't read a team.
 export function useTeamMemberRanks(teamId: number) {
   return useSupabaseQuery<TeamMemberRank[]>(ranksKey(teamId), async (client) => {
     const { data, error } = await client.rpc('team_member_ranks', { p_team_id: teamId });

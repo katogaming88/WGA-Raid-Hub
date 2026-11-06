@@ -19,7 +19,7 @@ answers to.
 - Settings > Ranks: officers see the team's members in a section per rank, with
   what each rank can do, a search box, and who hasn't signed in yet. The Team Owner
   picks Officer, Assistant or Raider, and is asked to confirm before making
-  someone an Officer; an Officer moves someone between Raider and Assistant
+  someone an Officer or taking it away; an Officer moves someone between Raider and Assistant
   (#1651).
 - Change Team Owner on Guild settings > Teams, for the guild Owner and Admins.
   The new Team Owner must be on the team and have signed in; the old one

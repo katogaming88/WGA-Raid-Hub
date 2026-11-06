@@ -55,14 +55,21 @@ begin
   -- leader, and the new owner would then hit team_members_one_owner. In one
   -- statement that trigger waits until the end, and finds an owner. The
   -- subquery makes the old owner step down first, as the unique index needs.
-  with stepped_down as (
-    update team_members set rank = 'officer' where id = v_old_owner returning id
-  )
-  update team_members set rank = 'owner'
-   where id = p_team_member_id and (select count(*) from stepped_down) >= 0;
+  begin
+    with stepped_down as (
+      update team_members set rank = 'officer' where id = v_old_owner returning id
+    )
+    update team_members set rank = 'owner'
+     where id = p_team_member_id and (select count(*) from stepped_down) >= 0;
+  exception when unique_violation then
+    -- Two people handing the same team over at the same moment.
+    raise exception 'Someone else just changed this team''s owner. Refresh and try again.';
+  end;
 
   insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (p_team_id, v_uid, 'Team Owner Changed', 'team_members', p_team_member_id,
-          jsonb_build_object('from_team_member_id', v_old_owner, 'to_old_rank', v_old_rank));
+          jsonb_build_object('name', public.team_member_name(p_team_id, p_team_member_id),
+                             'old_owner', case when v_old_owner is null then 'none' else public.team_member_name(p_team_id, v_old_owner) end,
+                             'previous_rank', v_old_rank));
 end;
 $function$;

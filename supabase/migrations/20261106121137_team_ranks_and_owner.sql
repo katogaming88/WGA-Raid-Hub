@@ -5,9 +5,9 @@
 --   rank has promote_assistants (Officers by default) moves someone between
 --   Raider and Assistant only.
 -- * team_member_ranks(team_id): a team's current members with a name to show
---   and their rank, for that page and for picking a new Team Owner. A guild
---   Admin does not read inside a team by default, so the Teams list cannot
---   read team_members itself.
+--   and their rank, for that page and for picking a new Team Owner. A function
+--   because a Discord name is not readable from the app, and because having
+--   change_team_owner does not by itself let someone read team_members.
 -- * change_team_owner(team_id, team_member_id): on the Teams list, anyone
 --   with change_team_owner on the guild's grid (the guild Owner and Admins by
 --   default) hands the team to a current member, and the old Team Owner
@@ -16,6 +16,36 @@
 -- team_members_guard_rank refuses a rank written directly by a client, so
 -- these are the only way the new app changes one. team_members_keep_rank_and_role
 -- moves the current site's role along with each change.
+
+-- The name a member goes by, for the page and the audit log: their Name on this
+-- team, else their character's (how the Roster shows them until they claim a
+-- Name; a current character ahead of an archived one), else their Discord name.
+-- Called only by the functions below, which run as their owner.
+create function public.team_member_name(p_team_id integer, p_team_member_id integer)
+returns text
+language sql
+stable
+set search_path = public
+as $$
+  select coalesce(
+    (select min(n.label) from names n where n.team_id = p_team_id and n.team_member_id = p_team_member_id),
+    (select split_part(p.name_realm, '-', 1) from players p
+      where p.team_id = p_team_id and p.team_member_id = p_team_member_id
+      order by p.archived_at is not null, p.name_realm
+      limit 1),
+    (select coalesce(nullif(i.identity_data -> 'custom_claims' ->> 'global_name', ''),
+                     nullif(i.identity_data ->> 'full_name', ''),
+                     nullif(i.identity_data ->> 'name', ''))
+       from team_members m
+       join people pe on pe.id = m.person_id
+       join auth.identities i on i.user_id = pe.auth_user_id and i.provider = 'discord'
+      where m.id = p_team_member_id
+      order by i.created_at desc
+      limit 1),
+    'Unnamed');
+$$;
+
+revoke all on function public.team_member_name(integer, integer) from public, anon, authenticated;
 
 create function public.set_team_rank(p_team_id integer, p_team_member_id integer, p_rank text)
 returns void
@@ -46,6 +76,9 @@ begin
   if not v_is_owner and not public.has_team_permission(p_team_id, 'promote_assistants') then
     raise exception 'Not authorized';
   end if;
+  if exists (select 1 from teams t where t.id = p_team_id and t.archived_at is not null) then
+    raise exception 'That team is archived. Bring it back first.';
+  end if;
   if p_rank is null or p_rank not in ('officer', 'assistant', 'raider') then
     raise exception 'A rank is Officer, Assistant or Raider';
   end if;
@@ -71,7 +104,8 @@ begin
 
   insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (p_team_id, v_uid, 'Team Rank Changed', 'team_members', p_team_member_id,
-          jsonb_build_object('from', v_old, 'to', p_rank));
+          jsonb_build_object('name', public.team_member_name(p_team_id, p_team_member_id),
+                             'from', v_old, 'to', p_rank));
 end;
 $$;
 
@@ -100,23 +134,7 @@ begin
   return query
   select
     m.id,
-    -- Their Name on this team, else their character's name (how the Roster
-    -- shows them until they claim a Name; a current character ahead of an
-    -- archived one), else their Discord name.
-    coalesce(
-      (select min(n.label) from names n where n.team_id = p_team_id and n.team_member_id = m.id),
-      (select split_part(p.name_realm, '-', 1) from players p
-        where p.team_id = p_team_id and p.team_member_id = m.id
-        order by p.archived_at is not null, p.name_realm
-        limit 1),
-      (select coalesce(nullif(i.identity_data -> 'custom_claims' ->> 'global_name', ''),
-                       nullif(i.identity_data ->> 'full_name', ''),
-                       nullif(i.identity_data ->> 'name', ''))
-         from auth.identities i
-        where i.user_id = pe.auth_user_id and i.provider = 'discord'
-        order by i.created_at desc
-        limit 1),
-      'Unnamed'),
+    public.team_member_name(p_team_id, m.id),
     m.rank,
     pe.auth_user_id is not null,
     pe.id = my_person_id()
@@ -186,15 +204,22 @@ begin
   -- leader, and the new owner would then hit team_members_one_owner. In one
   -- statement that trigger waits until the end, and finds an owner. The
   -- subquery makes the old owner step down first, as the unique index needs.
-  with stepped_down as (
-    update team_members set rank = 'officer' where id = v_old_owner returning id
-  )
-  update team_members set rank = 'owner'
-   where id = p_team_member_id and (select count(*) from stepped_down) >= 0;
+  begin
+    with stepped_down as (
+      update team_members set rank = 'officer' where id = v_old_owner returning id
+    )
+    update team_members set rank = 'owner'
+     where id = p_team_member_id and (select count(*) from stepped_down) >= 0;
+  exception when unique_violation then
+    -- Two people handing the same team over at the same moment.
+    raise exception 'Someone else just changed this team''s owner. Refresh and try again.';
+  end;
 
   insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
   values (p_team_id, v_uid, 'Team Owner Changed', 'team_members', p_team_member_id,
-          jsonb_build_object('from_team_member_id', v_old_owner, 'to_old_rank', v_old_rank));
+          jsonb_build_object('name', public.team_member_name(p_team_id, p_team_member_id),
+                             'old_owner', case when v_old_owner is null then 'none' else public.team_member_name(p_team_id, v_old_owner) end,
+                             'previous_rank', v_old_rank));
 end;
 $$;
 

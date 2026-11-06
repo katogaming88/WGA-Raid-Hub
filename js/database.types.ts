@@ -5324,6 +5324,10 @@ export type Database = {
         Args: { p_team_id: number }
         Returns: undefined
       }
+      team_member_name: {
+        Args: { p_team_id: number; p_team_member_id: number }
+        Returns: string
+      }
       team_member_ranks: {
         Args: { p_team_id: number }
         Returns: {
