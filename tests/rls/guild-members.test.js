@@ -35,7 +35,13 @@ describe('guild_members', () => {
         const me = await personOf(q, uid);
         expect(rows.filter((r) => r.is_you).map((r) => r.person_id)).toEqual([me]);
         expect(rows[0].rank).toBe('owner');
-        expect(rows.find((r) => r.person_id === raider)).toMatchObject({ rank: 'member', display_name: 'Katorri' });
+        const row = rows.find((r) => r.person_id === raider);
+        expect(row).toMatchObject({ rank: 'member', display_name: 'Katorri' });
+        // The table's extra columns: current teams with team rank, characters, last sign-in.
+        expect(row.teams.map((t) => t.team_id)).toContain(1);
+        expect(row.teams.every((t) => typeof t.name === 'string' && typeof t.rank === 'string')).toBe(true);
+        expect(Array.isArray(row.characters)).toBe(true);
+        expect('last_sign_in' in row).toBe(true);
       }
     });
   });

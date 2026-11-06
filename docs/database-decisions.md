@@ -3327,3 +3327,13 @@ Shipped: `20261105102909_discord_activity.sql`.
 **No "bot last checked" line.** Nothing records when the bot last verified it can post everywhere, so the issue's third summary item waits for a check job to exist. The channel shown on a row is the one its kind posts to now, since a row does not keep the channel it used.
 
 [Full discussion -> #1711](https://github.com/katogaming88/WGA-Raid-Hub/issues/1711).
+
+## #1650 -- the Members tab as a table: teams, last sign-in, characters
+
+Shipped: `20261106101250_guild_members_teams_and_sign_in.sql`.
+
+**`guild_members()` grew three columns instead of a second function.** Each person comes back with their current teams in the guild and their rank on each (`teams`, jsonb), when they last signed in (`last_sign_in`, from `auth.users`) and their characters' names (`characters`, for the search box). The return type changed, so the function was dropped and made again with the same checks and grants; the first migration is untouched.
+
+**Who may see sign-in times.** The same people who already read the list: the Owner and anyone whose rank has `edit_guild_profile`. Search and the rank filter run in the browser over the whole list, since a guild is about a hundred people.
+
+[Full discussion -> #1650](https://github.com/katogaming88/WGA-Raid-Hub/issues/1650).

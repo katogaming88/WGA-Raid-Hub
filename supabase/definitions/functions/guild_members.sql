@@ -3,7 +3,7 @@
 -- execute (site roles): authenticated
 
 CREATE OR REPLACE FUNCTION public.guild_members(p_guild_id integer)
- RETURNS TABLE(person_id integer, display_name text, rank text, is_you boolean)
+ RETURNS TABLE(person_id integer, display_name text, rank text, is_you boolean, teams jsonb, last_sign_in timestamp with time zone, characters text[])
  LANGUAGE plpgsql
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
@@ -44,7 +44,20 @@ begin
         limit 1),
       'Unnamed'),
     coalesce(g.rank, 'member'),
-    pe.id = my_person_id()
+    pe.id = my_person_id(),
+    coalesce(
+      (select jsonb_agg(jsonb_build_object('team_id', t.id, 'name', t.name, 'rank', m.rank)
+                        order by t.name)
+         from team_members m
+         join teams t on t.id = m.team_id
+        where m.person_id = pe.id and t.guild_id = p_guild_id and m.archived_at is null),
+      '[]'::jsonb),
+    (select u.last_sign_in_at from auth.users u where u.id = pe.auth_user_id),
+    coalesce(
+      (select array_agg(c.name_realm order by c.name_realm)
+         from characters c
+        where c.person_id = pe.id and c.name_realm is not null),
+      '{}'::text[])
     from members s
     join people pe on pe.id = s.person_id
     left join guild_ranks g on g.guild_id = p_guild_id and g.person_id = pe.id

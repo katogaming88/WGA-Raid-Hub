@@ -13507,12 +13507,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.guild_members",
-      "return_type": "record",
-      "arguments": "p_guild_id integer",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.set_guild_rank",
       "return_type": "void",
       "arguments": "p_guild_id integer, p_person_id integer, p_rank text",
@@ -13600,6 +13594,12 @@
       "name": "public.team_discord_activity",
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_limit integer DEFAULT 50",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.guild_members",
+      "return_type": "record",
+      "arguments": "p_guild_id integer",
       "type": "FUNCTION"
     }
   ],
