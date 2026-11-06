@@ -16,8 +16,8 @@ answers to.
 
 ### Frontend
 
-- Settings > Ranks: officers see the team's members grouped by rank, with what
-  each rank can do, a search box, and who hasn't signed in yet. The Team Owner
+- Settings > Ranks: officers see the team's members in a section per rank, with
+  what each rank can do, a search box, and who hasn't signed in yet. The Team Owner
   picks Officer, Assistant or Raider, and is asked to confirm before making
   someone an Officer; an Officer moves someone between Raider and Assistant
   (#1651).

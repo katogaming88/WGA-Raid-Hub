@@ -20,9 +20,15 @@ begin
   return query
   select
     m.id,
-    -- Their Name on this team, else their Discord name, as guild_members() reads it.
+    -- Their Name on this team, else their character's name (how the Roster
+    -- shows them until they claim a Name; a current character ahead of an
+    -- archived one), else their Discord name.
     coalesce(
       (select min(n.label) from names n where n.team_id = p_team_id and n.team_member_id = m.id),
+      (select split_part(p.name_realm, '-', 1) from players p
+        where p.team_id = p_team_id and p.team_member_id = m.id
+        order by p.archived_at is not null, p.name_realm
+        limit 1),
       (select coalesce(nullif(i.identity_data -> 'custom_claims' ->> 'global_name', ''),
                        nullif(i.identity_data ->> 'full_name', ''),
                        nullif(i.identity_data ->> 'name', ''))

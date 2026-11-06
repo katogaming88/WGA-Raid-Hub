@@ -60,6 +60,9 @@ function ranksHandlers(
   };
 }
 
+// The list item holding this name, as a row of the page.
+const rowOf = (name: string) => screen.getByText(name, { exact: false, selector: '.ranks-name' }).closest('li')!;
+
 const optionsOf = (box: HTMLElement) =>
   within(box)
     .getAllByRole('option')
@@ -71,8 +74,10 @@ describe('Settings > Ranks', () => {
     const { client } = renderApp(PATH, ranksHandlers('owner', 'raider'));
     const box = await screen.findByRole('combobox', { name: 'Team rank for Raz' });
     expect(optionsOf(box)).toEqual(['Officer', 'Assistant', 'Raider']);
-    // Their own row is plain text: nobody changes the Team Owner here.
-    expect(screen.getByRole('row', { name: /Katorri/ })).toHaveTextContent('Team Owner');
+    // Their own row has no box: nobody changes the Team Owner here.
+    const ownerColumn = within(screen.getByRole('region', { name: /Team Owner/ }));
+    expect(ownerColumn.getByText('Katorri', { exact: false })).toBeInTheDocument();
+    expect(ownerColumn.queryByRole('combobox')).not.toBeInTheDocument();
     await user.selectOptions(box, 'Assistant');
     expect(await screen.findByText('Raz is now Assistant.')).toBeInTheDocument();
     expect(client.rpcs).toContainEqual(['set_team_rank', { p_team_id: 1, p_team_member_id: 9, p_rank: 'assistant' }]);
@@ -87,9 +92,10 @@ describe('Settings > Ranks', () => {
     expect((await screen.findAllByText(/Could not change Raz/)).length).toBeGreaterThan(0);
   });
 
-  it('shows an Officer another Officer as plain text', async () => {
+  it('shows an Officer another Officer with no box', async () => {
     renderApp(PATH, ranksHandlers('officer', 'officer'));
-    expect(await screen.findByRole('row', { name: /Raz/ })).toHaveTextContent('Officer');
+    const officers = await screen.findByRole('region', { name: /Officers/ });
+    expect(within(officers).getByText('Raz')).toBeInTheDocument();
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 
@@ -128,21 +134,21 @@ describe('Settings > Ranks', () => {
     expect(await dialog.findByRole('alert')).toHaveTextContent('Not authorized');
   });
 
-  it('groups people by rank with counts, says what each rank can do, and who has not signed in', async () => {
+  it('puts people in a section per rank with counts, says what each rank can do, and who has not signed in', async () => {
     renderApp(
       PATH,
       ranksHandlers('owner', 'officer', {
         more: [{ team_member_id: 3, display_name: 'Dorn', rank: 'raider', signed_in: false, is_you: false }]
       })
     );
-    const officers = await screen.findByRole('rowgroup', { name: /Officers/ }).catch(() => null);
-    const group = (officers ?? screen.getByText('Officers').closest('tbody'))!;
-    expect(within(group as HTMLElement).getByRole('row', { name: /Raz/ })).toBeInTheDocument();
-    expect(group).toHaveTextContent('Officers 1');
-    expect(group).toHaveTextContent('Everything an Assistant can, and: import loot and edit priority and scoring.');
-    expect(screen.getByText('Katorri', { exact: false })).toHaveTextContent('(you)');
-    expect(screen.getByRole('row', { name: /Dorn/ })).toHaveTextContent('Hasn’t signed in yet');
-    expect(screen.getByRole('row', { name: /Raz/ })).not.toHaveTextContent('Hasn’t signed in yet');
+    const officers = await screen.findByRole('region', { name: 'Officers 1' });
+    expect(within(officers).getByText('Raz')).toBeInTheDocument();
+    expect(
+      await within(officers).findByText('Everything an Assistant can, and: import loot and edit priority and scoring.')
+    ).toBeInTheDocument();
+    expect(rowOf('Katorri')).toHaveTextContent('(you)');
+    expect(rowOf('Dorn')).toHaveTextContent('Hasn’t signed in yet');
+    expect(rowOf('Raz')).not.toHaveTextContent('Hasn’t signed in yet');
   });
 
   it('still lists everyone when the grid cannot be read, and says so', async () => {
@@ -151,21 +157,21 @@ describe('Settings > Ranks', () => {
     expect((await screen.findAllByText('Couldn’t load what this rank can do.')).length).toBe(4);
   });
 
-  it('searches by name, showing only the groups with a match', async () => {
+  it('searches by name, showing only the sections with a match', async () => {
     const user = userEvent.setup();
     renderApp(PATH, ranksHandlers('owner', 'raider'));
     await screen.findByRole('combobox', { name: 'Team rank for Raz' });
     await user.type(screen.getByRole('searchbox', { name: 'Search' }), 'RAZ');
-    expect(screen.getByRole('row', { name: /Raz/ })).toBeInTheDocument();
-    expect(screen.queryByRole('row', { name: /Katorri/ })).not.toBeInTheDocument();
-    expect(screen.queryByText('Officers')).not.toBeInTheDocument();
+    expect(screen.getByText('Raz')).toBeInTheDocument();
+    expect(screen.queryByText('Katorri', { exact: false })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /Officers/ })).not.toBeInTheDocument();
     await user.clear(screen.getByRole('searchbox', { name: 'Search' }));
     await user.type(screen.getByRole('searchbox', { name: 'Search' }), 'nobody');
     expect(screen.getByText('Nobody on the team matches that.')).toBeInTheDocument();
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /Raiders/ })).not.toBeInTheDocument();
   });
 
-  it('keeps the keyboard on the rank box after the row moves group', async () => {
+  it('keeps the keyboard on the rank box after the person moves section', async () => {
     const user = userEvent.setup();
     let raz = 'raider';
     const handlers = ranksHandlers('owner', 'raider');

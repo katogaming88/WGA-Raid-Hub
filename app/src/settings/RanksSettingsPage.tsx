@@ -82,7 +82,7 @@ export function rankChoices(rank: TeamRank, teamOwner: boolean, promotes: boolea
   return [];
 }
 
-// Settings > Ranks (#1651): who holds which rank on the team, by rank. The
+// Settings > Ranks (#1651): who holds which rank on the team: a section per rank, highest first, with its people across the width in columns. The
 // team's rank permissions grid (#1653) belongs here too.
 export function RanksSettingsPage() {
   const team = useTeam();
@@ -109,15 +109,16 @@ function RanksTable({ teamId, rows }: { teamId: number; rows: TeamMemberRank[] }
   const grid = useTeamRankGrid(teamId);
   const setRank = useSetTeamRank(teamId);
   const searchId = useId();
+  const listId = useId();
   const [search, setSearch] = useState('');
   const [confirming, setConfirming] = useState<TeamMemberRank | null>(null);
-  const table = useRef<HTMLTableElement>(null);
-  // A changed rank moves the row to another group, which would lose the
+  const sections = useRef<HTMLDivElement>(null);
+  // A changed rank moves the person to another section, which would lose the
   // keyboard's place, so focus follows it there.
   const refocus = useRef<number | null>(null);
   useEffect(() => {
     if (refocus.current === null || setRank.isPending) return;
-    table.current?.querySelector<HTMLSelectElement>(`select[data-member="${refocus.current}"]`)?.focus();
+    sections.current?.querySelector<HTMLSelectElement>(`select[data-member="${refocus.current}"]`)?.focus();
   }, [rows, setRank.isPending]);
 
   const teamOwner = rows.some((m) => m.is_you && m.rank === 'owner');
@@ -165,39 +166,32 @@ function RanksTable({ teamId, rows }: { teamId: number; rows: TeamMemberRank[] }
       {matching.length === 0 ? (
         <p className="text-muted">Nobody on the team matches that.</p>
       ) : (
-        <table className="ranks-table" ref={table}>
-          <thead>
-            <tr>
-              <th scope="col">Member</th>
-              <th scope="col">Rank</th>
-            </tr>
-          </thead>
+        <div className="ranks-sections" ref={sections}>
           {GROUPS.map(({ rank, heading }) => {
             const members = matching.filter((m) => m.rank === rank);
-            // While searching, only the groups with a match.
+            // While searching, only the sections with a match.
             if (term && members.length === 0) return null;
             return (
-              <tbody key={rank}>
-                <tr className="ranks-group">
-                  <th scope="rowgroup" colSpan={2}>
-                    <span className="ranks-group-name">{heading}</span> <span className="num">{members.length}</span>
-                    {grid.isSuccess && <span className="ranks-can text-muted">{rankLine(rank, grid.data)}</span>}
-                    {grid.isError && <span className="ranks-can text-muted">Couldn’t load what this rank can do.</span>}
-                  </th>
-                </tr>
-                {members.map((m) => {
-                  const choices = rankChoices(m.rank, teamOwner, promotes);
-                  return (
-                    <tr key={m.team_member_id}>
-                      <th scope="row">
-                        {m.display_name}
-                        {m.is_you && <span className="text-muted"> (you)</span>}
-                        {!m.signed_in && <span className="ranks-not-signed-in text-muted">Hasn’t signed in yet</span>}
-                      </th>
-                      <td>
-                        {choices.length === 0 ? (
-                          LABELS[m.rank]
-                        ) : (
+              <section key={rank} className="ranks-section" aria-labelledby={`${listId}-${rank}`}>
+                <div className="ranks-section-head">
+                  <h2 id={`${listId}-${rank}`}>
+                    {heading} {members.length}
+                  </h2>
+                  {grid.isSuccess && <p className="text-muted">{rankLine(rank, grid.data)}</p>}
+                  {grid.isError && <p className="text-muted">Couldn’t load what this rank can do.</p>}
+                </div>
+                {members.length === 0 && !term && <p className="text-muted">Nobody yet.</p>}
+                <ul>
+                  {members.map((m) => {
+                    const choices = rankChoices(m.rank, teamOwner, promotes);
+                    return (
+                      <li key={m.team_member_id}>
+                        <span className="ranks-name">
+                          {m.display_name}
+                          {m.is_you && <span className="text-muted"> (you)</span>}
+                          {!m.signed_in && <span className="ranks-not-signed-in text-muted">Hasn’t signed in yet</span>}
+                        </span>
+                        {choices.length > 0 && (
                           <select
                             className="select ranks-select"
                             data-member={m.team_member_id}
@@ -217,14 +211,14 @@ function RanksTable({ teamId, rows }: { teamId: number; rows: TeamMemberRank[] }
                             ))}
                           </select>
                         )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
             );
           })}
-        </table>
+        </div>
       )}
       {confirming && (
         <Dialog title={`Make ${confirming.display_name} an Officer?`} onClose={closeDialog} busy={setRank.isPending}>

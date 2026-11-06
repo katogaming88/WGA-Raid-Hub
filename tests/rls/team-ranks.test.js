@@ -278,6 +278,30 @@ describe('team_member_ranks', () => {
     });
   });
 
+  it('goes by the character for someone with no Name yet', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const member = (
+        await q(
+          `insert into public.team_members (team_id, discord_id, role)
+           values ($1, 'discord-with-a-character', 'raider') returning id`,
+          [T1]
+        )
+      ).rows[0].id;
+      await q(
+        `insert into public.players (team_id, name_realm, team_member_id)
+         values ($1, 'Ranktest-Stormrage', $2)`,
+        [T1, member]
+      );
+      const rows = (await asUser(GUILD_OFFICER, 'select * from public.team_member_ranks($1)', [T1])).rows;
+      const nameOf = (list) => list.find((r) => r.team_member_id === member).display_name;
+      expect(nameOf(rows)).toBe('Ranktest');
+      // An archived character still names them, once they have no current one.
+      await q('update public.players set archived_at = now() where team_member_id = $1', [member]);
+      const later = (await asUser(GUILD_OFFICER, 'select * from public.team_member_ranks($1)', [T1])).rows;
+      expect(nameOf(later)).toBe('Ranktest');
+    });
+  });
+
   it('the Team Owner and an Officer read it, is_you marking the caller', async () => {
     for (const uid of [TEAM_LEADER_T1, OFFICER_T1]) {
       await withTxn(async ({ q, asUser }) => {
