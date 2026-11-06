@@ -121,16 +121,16 @@ export const GUIDES: Guide[] = [
     title: 'Manage your guild’s ranks',
     officers: true,
     quick:
-      'The Members tab of Guild settings lists everyone in the guild with their guild rank. The Owner changes ranks and hands the guild over.',
+      'The Members tab of Guild settings lists everyone in the guild, with a search box and a rank filter. The Owner changes ranks and hands the guild over.',
     place: { label: 'Members', to: (b) => `${b.guild}/settings/members` },
     picture:
-      'The Members tab of Guild settings, with a Member’s rank, the Make Admin button and Hand over ownership marked.',
+      'The Members tab of Guild settings, with a Member’s name, the box that sets their rank and Hand over ownership marked.',
     popup: 'The Hand over ownership pop-up, with the box for the new Owner’s name marked.',
     marked: [1, 2, 3, 4],
     steps: [
       'Open Guild settings, under Guild in the sidebar, then the Members tab. The Owner and Admins can open it.',
-      'Everyone in the guild is listed with their rank: Owner, Admin, Team Lead or Member. Anyone on a team is a Member until the Owner promotes them.',
-      'The Owner chooses Make Admin, Make Team Lead or Make Member beside a person. Admins help run the guild; Team Leads can start teams of their own. Admins see the list but have no buttons.',
+      'Everyone in the guild is listed with their rank (Owner, Admin, Team Lead or Member), their teams and when they last signed in. Anyone on a team is a Member until the Owner promotes them. The first 25 show; choose Show all for the rest.',
+      'To find someone, type part of their name or a character name into Search, or pick a rank under Guild rank. The Owner changes a person’s rank with the box in their row. Admins help run the guild; Team Leads can start teams of their own. Admins see the list but cannot change ranks.',
       'To give the guild to someone else, the Owner chooses Hand over ownership beside them and types their name to confirm. They become the Owner and you become an Admin; only the new Owner can undo it.'
     ]
   },

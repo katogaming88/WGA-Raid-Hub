@@ -35,8 +35,36 @@ describe('guild_members', () => {
         const me = await personOf(q, uid);
         expect(rows.filter((r) => r.is_you).map((r) => r.person_id)).toEqual([me]);
         expect(rows[0].rank).toBe('owner');
-        expect(rows.find((r) => r.person_id === raider)).toMatchObject({ rank: 'member', display_name: 'Katorri' });
+        const row = rows.find((r) => r.person_id === raider);
+        expect(row).toMatchObject({ rank: 'member', display_name: 'Katorri' });
+        // The table's extra columns: current teams with team rank, characters, last sign-in.
+        const stored = (
+          await q(
+            `select t.id, t.name, m.rank from public.team_members m join public.teams t on t.id = m.team_id
+              where m.person_id = $1 and m.archived_at is null and t.archived_at is null and t.guild_id = ${WGA}
+              order by t.name`,
+            [raider]
+          )
+        ).rows;
+        expect(row.teams).toEqual(stored.map((t) => ({ team_id: t.id, name: t.name, rank: t.rank })));
+        expect(row.teams.length).toBeGreaterThan(0);
+        const chars = (
+          await q('select name_realm from public.characters where person_id = $1 order by name_realm', [raider])
+        ).rows.map((c) => c.name_realm);
+        expect(row.characters).toEqual(chars);
+        const signedIn = (await q('select last_sign_in_at from auth.users where id = $1', [RAIDER_T1])).rows[0]
+          .last_sign_in_at;
+        expect(row.last_sign_in ?? null).toEqual(signedIn ?? null);
       }
+    });
+  });
+
+  it('leaves an archived team out of a persons teams', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const raider = await personOf(q, RAIDER_T1);
+      await q('update public.teams set archived_at = now() where id = 1');
+      const rows = (await asUser(OWNER, `select * from public.guild_members(${WGA})`)).rows;
+      expect(rows.find((r) => r.person_id === raider).teams.map((t) => t.team_id)).not.toContain(1);
     });
   });
 

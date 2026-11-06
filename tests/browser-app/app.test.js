@@ -1338,12 +1338,36 @@ const GUILD_SETTINGS = {
 const GUILD_MEMBERS = {
   ...GUILD_SETTINGS,
   path: '/g/wga/settings/members',
-  sentinel: 'main .guildsettings-row',
+  sentinel: 'main .members-table tbody tr',
   rpc: {
     guild_members: [
-      { person_id: 1, display_name: 'Katorri', rank: 'owner', is_you: true },
-      { person_id: 2, display_name: 'Rex', rank: 'admin', is_you: false },
-      { person_id: 3, display_name: 'Mira', rank: 'member', is_you: false }
+      {
+        person_id: 1,
+        display_name: 'Katorri',
+        rank: 'owner',
+        is_you: true,
+        teams: [],
+        last_sign_in: null,
+        characters: []
+      },
+      {
+        person_id: 2,
+        display_name: 'Rex',
+        rank: 'admin',
+        is_you: false,
+        teams: [],
+        last_sign_in: null,
+        characters: []
+      },
+      {
+        person_id: 3,
+        display_name: 'Mira',
+        rank: 'member',
+        is_you: false,
+        teams: [],
+        last_sign_in: null,
+        characters: []
+      }
     ]
   }
 };
@@ -2595,8 +2619,8 @@ const HELP_SHOT_STATES = {
     state: GUILD_MEMBERS,
     markers: [
       'main .report-tabs >> role=link[name="Members"]',
-      '.guildsettings-row:has-text("Mira") .guildsettings-team',
-      'role=button[name="Make Admin Mira"]',
+      '.members-table tbody tr:has-text("Mira") td >> nth=0',
+      'role=combobox[name="Guild rank for Mira"]',
       'role=button[name="Hand over ownership to Rex"]'
     ]
   },

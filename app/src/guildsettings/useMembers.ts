@@ -5,7 +5,27 @@ import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
 // what to show.
 export type GuildRank = 'owner' | 'admin' | 'team_lead' | 'member';
 
-export type GuildMember = { person_id: number; display_name: string; rank: GuildRank; is_you: boolean };
+export type TeamRank = 'owner' | 'officer' | 'assistant' | 'raider';
+
+export const TEAM_RANK_LABELS: Record<TeamRank, string> = {
+  owner: 'Team Owner',
+  officer: 'Officer',
+  assistant: 'Assistant',
+  raider: 'Raider'
+};
+
+export type GuildMember = {
+  person_id: number;
+  display_name: string;
+  rank: GuildRank;
+  is_you: boolean;
+  // Current teams in this guild with the person's rank on each.
+  teams: { team_id: number; name: string; rank: TeamRank }[];
+  // Null until they have signed in.
+  last_sign_in: string | null;
+  // Their characters' names, for the search box.
+  characters: string[];
+};
 
 export const RANK_LABELS: Record<GuildRank, string> = {
   owner: 'Owner',

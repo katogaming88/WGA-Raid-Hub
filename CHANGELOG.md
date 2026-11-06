@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.242.0] - 2026-11-06
+
+### Frontend
+
+- Guild settings > Members is a table: search by name or character, filter by
+  guild rank, each person's teams and last sign-in, and one rank box per
+  person in place of three buttons. The first 25 show, with Show all. The
+  Help guide is updated (#1650).
+
+### Backend
+
+- `guild_members()` also returns each person's current teams with team rank,
+  last sign-in and character names (#1650).
+
 ## [3.241.0] - 2026-11-05
 
 ### Frontend

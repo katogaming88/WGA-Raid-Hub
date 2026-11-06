@@ -4780,10 +4780,13 @@ export type Database = {
       guild_members: {
         Args: { p_guild_id: number }
         Returns: {
+          characters: string[]
           display_name: string
           is_you: boolean
+          last_sign_in: string
           person_id: number
           rank: string
+          teams: Json
         }[]
       }
       has_guild_permission: {
