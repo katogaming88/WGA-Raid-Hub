@@ -3,7 +3,7 @@ import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
 import { useAddress } from '../data/address';
-import { formatInstantDate } from '../lib/dates';
+import { formatInstantDate, localTimeZoneNote } from '../lib/dates';
 import { errorMessage } from '../lib/errors';
 import {
   RANK_LABELS,
@@ -71,7 +71,9 @@ export function MembersPanel() {
           return (
             <>
               <div className="members-controls">
-                <p className="text-muted members-count">{counts(rows)}.</p>
+                <p className="text-muted members-count">
+                  {counts(rows)}. {localTimeZoneNote()}
+                </p>
                 <div className="field">
                   <label className="field-label" htmlFor={searchId}>
                     Search
