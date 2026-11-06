@@ -77,7 +77,7 @@ function RanksTable({ teamId, rows }: { teamId: number; rows: TeamMemberRank[] }
                     LABELS[m.rank]
                   ) : (
                     <select
-                      className="select members-rank"
+                      className="select members-rank ranks-select"
                       aria-label={`Team rank for ${m.display_name}`}
                       value={m.rank}
                       disabled={setRank.isPending}

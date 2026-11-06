@@ -559,3 +559,8 @@
   padding: 0.4rem 0;
   border-top: 1px solid var(--border);
 }
+
+/* Settings > Ranks (#1651): a rank box as wide as its longest rank. */
+.select.ranks-select {
+  width: 140px;
+}
