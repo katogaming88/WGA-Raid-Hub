@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |     18 h 50 m |
+| Phase 1: For the guild test        |      19 h 5 m |
 | Phase 2: Before the new site goes live |       0 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **153 h 21 m** |
+| **All revamp work**                | **153 h 36 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -578,6 +578,12 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:05-9:15 AM | PR #1763 (#1710): Kat's OK to fix `set_team_discord_server()` here (the Weekly lineup post made it fail); `zonedTimeToUtc()` corrected for clock-change days (CodeRabbit and the review both raised it); CodeRabbit's outside-diff notes answered | Phase 1: For the guild test (#1710) | 10 m | ~9 m build, ~1 m Kat | 44,500 |   |
 | 9:15-9:45 AM | PR #1763 (#1710): CodeRabbit (the RSVP timing cleared on a server change, taken; `write_audit_log()`, declined); the second fresh-agent review (changes needed, three small): a waiting change looked at again hourly, a cleared time box sends no time, the newest-answer wording; waiting changes skipped on a server change, a row in retry wait left alone; the full preflight | Phase 1: For the guild test (#1710) | 30 m | ~27 m build, ~3 m Kat | 219,000 | Includes the review agent's 185,200; merge not yet counted |
 | 9:58-10:05 AM | PR #1763 (#1710): CodeRabbit's last round: a post already off loses its timing on a server change, the digest tells raiders apart by their full name; its other notes were already covered | Phase 1: For the guild test (#1710) | 5 m | ~5 m build | 23,000 | Merge not yet counted |
+
+### 2026-11-06
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 11:30-11:45 AM | #1666: Help rebuilt to Kat's pick C: the raid week first with the officer checkbox, one list of guides by their own titles, questions beside support, the loot line, the setup band and the guide index; tests and accessibility states; the emil-design-eng and impeccable passes; stamp, changelog, this row | Phase 1: For the guild test (#1666) | 15 m | ~15 m build | 245,000 | PR, screenshots, Kat's design review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

@@ -1,5 +1,5 @@
-// The Help page's content (#1526): one page for everyone, with officer jobs
-// tagged. Steps name what the screen shows today; a guide for a page that is
+// The Help page's content (#1526, laid out by #1666): one page for everyone,
+// with officer jobs behind a checkbox. Steps name what the screen shows today; a guide for a page that is
 // still a placeholder (Import, Reviews, Reassign) waits until that page is
 // built. Pictures for each guide come from the screenshot script (#1526 part 2).
 
@@ -50,19 +50,11 @@ export const MENUS = {
 
 export type TopicId = 'start' | 'loot' | 'raid' | 'gear';
 
-export const TOPICS: { id: TopicId; title: string; blurb: string }[] = [
-  {
-    id: 'start',
-    title: 'Getting started',
-    blurb: 'Signing in, creating a guild, inviting people and claiming your spot.'
-  },
-  {
-    id: 'loot',
-    title: 'Wishlist and loot priority',
-    blurb: 'Picking your BiS and reading where you stand.'
-  },
-  { id: 'raid', title: 'Raid nights and attendance', blurb: 'Saying if you’re coming, and keeping attendance right.' },
-  { id: 'gear', title: 'Gear from outside the raid', blurb: 'Crafted, M+ and vault items: marking them received.' }
+export const TOPICS: { id: TopicId; title: string }[] = [
+  { id: 'start', title: 'Getting started' },
+  { id: 'loot', title: 'Wishlist and loot priority' },
+  { id: 'raid', title: 'Raid nights and attendance' },
+  { id: 'gear', title: 'Gear from outside the raid' }
 ];
 
 const PROFILE: Place = { label: 'My profile', to: (b) => `${b.team}/me` };
@@ -340,44 +332,58 @@ export const GUIDES: Guide[] = [
   }
 ];
 
-// The raid week (#1526, Kat's pick from the mockups): what to do, in the
-// order it comes up. A job with a guide opens it; a job without one is plain
-// text until its guide is written, never a link straight to the page.
-export type WeekJob = { label: string; officers?: boolean; guide?: string };
+export const guideById = (id: string) => GUIDES.find((g) => g.id === id)!;
+
+// The raid week (#1526, Kat's pick from the mockups; #1666): what to do, in the
+// order it comes up. A job is a guide's id, shown under the guide's own title
+// and for officers if the guide is. A job with no guide yet is an officer job,
+// plain text marked "guide coming", never a link straight to the page.
+export type WeekJob = string | { coming: string };
 
 export const WEEK: { title: string; jobs: WeekJob[] }[] = [
+  { title: 'First time here', jobs: ['sign-in', 'claim'] },
   {
     title: 'Before raid',
-    jobs: [
-      { label: 'Say if you’re coming', guide: 'rsvp' },
-      { label: 'Keep your wishlist current', guide: 'wishlist' },
-      { label: 'Check where you stand for loot', guide: 'priority' },
-      { label: 'Plan who’s in for each boss', officers: true, guide: 'boss-groups' },
-      { label: 'Clear waiting reviews', officers: true }
-    ]
+    jobs: ['rsvp', 'wishlist', 'priority', 'boss-groups', { coming: 'Clear waiting reviews' }]
   },
-  {
-    title: 'Raid night',
-    jobs: [
-      { label: 'See if you’re in or benched', guide: 'bench' },
-      { label: 'Swap people in and out by boss', officers: true, guide: 'lineup' }
-    ]
-  },
+  { title: 'Raid night', jobs: ['bench', 'lineup'] },
   {
     title: 'After raid',
     jobs: [
-      { label: 'Find what you got', guide: 'what-you-got' },
-      { label: 'Log gear from M+, crafting or the vault', guide: 'received' },
-      { label: 'Import the night’s loot', officers: true },
-      { label: 'Fix a drop given to the wrong person', officers: true },
-      { label: 'Check attendance', officers: true, guide: 'attendance' }
+      'what-you-got',
+      'received',
+      { coming: 'Import the night’s loot' },
+      { coming: 'Fix a drop given to the wrong person' },
+      'attendance'
     ]
   }
 ];
 
+export const isOfficerJob = (job: WeekJob) => typeof job !== 'string' || guideById(job).officers === true;
+
+// How Loot priority works: one line with four stops.
+export const LOOT_FLOW: { who: string; title: string; text: string }[] = [
+  { who: 'Raider', title: 'Marks BiS on their wishlist', text: 'One item per slot. Pass on what they would not take.' },
+  {
+    who: 'The Hub',
+    title: 'Works out the priority order',
+    text: 'From attendance, performance and the tier pieces still needed.'
+  },
+  {
+    who: 'Officers, raid night',
+    title: 'Award the drop',
+    text: 'The priority order shows in the in-game loot window.'
+  },
+  {
+    who: 'Officers, after raid',
+    title: 'Import, and it’s received',
+    text: 'The night’s loot is imported and that slot comes off the raider’s list.'
+  }
+];
+
 // Bringing a guild here: step 1 is for everyone, the rest for whoever runs
-// the guild.
-export const SETUP: { title: string; text: string; guide?: string }[] = [
+// the guild. Each step names the guide it opens.
+export const SETUP: { title: string; text: string; guide: string }[] = [
   { title: 'Sign in with Battle.net', text: 'Then connect your Discord.', guide: 'sign-in' },
   { title: 'Create your guild', text: 'Name, realm, and your first team.', guide: 'create-guild' },
   {
@@ -393,6 +399,9 @@ export const SETUP: { title: string; text: string; guide?: string }[] = [
   { title: 'Bring in your people', text: 'Send one invite link; raiders claim their name.', guide: 'invite' },
   { title: 'Set up loot', text: 'Wishlists and the priority rules.', guide: 'wishlist' }
 ];
+
+// Guild setup guides that aren't a step of their own.
+export const SETUP_ALSO = ['guild-members', 'discord-setup'];
 
 export const QUESTIONS: { q: string; a: string }[] = [
   {
