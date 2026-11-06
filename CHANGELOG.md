@@ -16,16 +16,16 @@ answers to.
 
 ### Frontend
 
-- Team ranks on the Roster: officers see each member's rank on their row. The
-  Team Owner picks Officer, Assistant or Raider; an Officer moves someone
-  between Raider and Assistant (#1651).
+- Settings > Ranks: officers see each member's team rank. The Team Owner picks
+  Officer, Assistant or Raider; an Officer moves someone between Raider and
+  Assistant (#1651).
 - Change Team Owner on Guild settings > Teams, for the guild Owner and Admins.
   The new Team Owner must be on the team and have signed in; the old one
   becomes an Officer (#1651).
 
 ### Backend
 
-- `set_team_rank()`, `change_team_owner()` and `team_owner_options()`, checked
+- `set_team_rank()`, `change_team_owner()` and `team_member_ranks()`, checked
   against the rank grids. A site admin has no override on them (#1651).
 
 ### Project

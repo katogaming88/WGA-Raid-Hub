@@ -295,7 +295,7 @@
 | public.team_discord_activity | jsonb | p_team_id integer, p_limit integer DEFAULT 50 | FUNCTION |
 | public.guild_members | record | p_guild_id integer | FUNCTION |
 | public.set_team_rank | void | p_team_id integer, p_team_member_id integer, p_rank text | FUNCTION |
-| public.team_owner_options | record | p_team_id integer | FUNCTION |
+| public.team_member_ranks | record | p_team_id integer | FUNCTION |
 | public.change_team_owner | void | p_team_id integer, p_team_member_id integer | FUNCTION |
 
 ## Enums

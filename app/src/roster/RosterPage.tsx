@@ -33,7 +33,6 @@ import { altCountLabel, altsOf, earlierOwners, type SavedCharacter } from '../ch
 import { useEarlierLoot, useTeamAlts } from '../characters/useCharacters';
 import { useGeneralSettings, useLootCouncil } from '../settings/useSettings';
 import { needsALook, newJoiners } from './lookLines';
-import { TeamRank } from './TeamRank';
 import { AccountsLine, QuickClaim } from './AccountsLine';
 import { ArchivedRoster } from './ArchivedRoster';
 import { NameRowActions } from './NameRowActions';
@@ -572,7 +571,6 @@ function RosterTable({
   ownMember?: number | undefined;
 }) {
   const columns = details ? (stats ? 6 : 4) : 1;
-  const teamOwner = ownMember !== undefined && accounts?.get(ownMember)?.rank === 'owner';
   return (
     // Focusable, so the table can be scrolled from the keyboard when it is wider
     // than the screen (axe: scrollable-region-focusable).
@@ -628,7 +626,6 @@ function RosterTable({
                     officer={officer}
                     links={raider.teamMemberId != null ? (accounts?.get(raider.teamMemberId) ?? null) : null}
                     quickClaim={quickClaim}
-                    teamOwner={teamOwner}
                   />
                   {showAlts &&
                     raiderAlts.map((alt) => (
@@ -651,7 +648,6 @@ function RosterTable({
                 withStats={stats !== null}
                 links={r.teamMemberId !== null ? (accounts?.get(r.teamMemberId) ?? null) : null}
                 own={r.teamMemberId !== null && r.teamMemberId === ownMember}
-                teamOwner={teamOwner}
               />
             ))}
             {nameRows.map((n) => (
@@ -665,7 +661,6 @@ function RosterTable({
                 links={n.team_member_id !== null ? (accounts?.get(n.team_member_id) ?? null) : null}
                 quickClaim={quickClaim}
                 ownMember={ownMember}
-                teamOwner={teamOwner}
               />
             ))}
           </tbody>
@@ -684,8 +679,7 @@ function RosterRow({
   teamId,
   officer = false,
   links = null,
-  quickClaim = false,
-  teamOwner = false
+  quickClaim = false
 }: {
   raider: Raider;
   details: boolean;
@@ -702,8 +696,6 @@ function RosterRow({
   // A bare Name with a role guess sits in a role group (#1355) and gets
   // Claim under it like any other unclaimed Member.
   quickClaim?: boolean;
-  // Whether the viewer owns this team, for the rank box (#1651).
-  teamOwner?: boolean;
 }) {
   const icon = specIcon(raider.className, raider.spec);
   const claimable = quickClaim && teamId !== undefined && raider.nameId != null && raider.teamMemberId == null;
@@ -757,15 +749,6 @@ function RosterRow({
           )}
           <td className="status-cell">
             <div className="status-line">
-              {teamId !== undefined && raider.teamMemberId != null && links?.rank && (
-                <TeamRank
-                  teamId={teamId}
-                  teamMemberId={raider.teamMemberId}
-                  name={raider.name}
-                  rank={links.rank}
-                  teamOwner={teamOwner}
-                />
-              )}
               {raider.statuses.map((s) => (
                 <span key={s} className={`status-tag status-${s.toLowerCase()}`}>
                   {s}
@@ -808,8 +791,7 @@ function NameOnlyRow({
   withStats,
   links,
   quickClaim,
-  ownMember,
-  teamOwner
+  ownMember
 }: {
   teamId: number;
   officer: boolean;
@@ -819,7 +801,6 @@ function NameOnlyRow({
   links: AccountLinks | null;
   quickClaim: boolean;
   ownMember?: number | undefined;
-  teamOwner: boolean;
 }) {
   const claimed = name.team_member_id !== null;
   const none = (
@@ -848,17 +829,6 @@ function NameOnlyRow({
             </>
           )}
           <td className="status-cell">
-            {name.team_member_id !== null && links?.rank && (
-              <div className="status-line">
-                <TeamRank
-                  teamId={teamId}
-                  teamMemberId={name.team_member_id}
-                  name={name.label}
-                  rank={links.rank}
-                  teamOwner={teamOwner}
-                />
-              </div>
-            )}
             {claimed && <span className="status-tag">No characters yet</span>}
             <NameRowActions
               teamId={teamId}
@@ -887,8 +857,7 @@ function NoSpecRowView({
   details,
   withStats,
   links,
-  own,
-  teamOwner
+  own
 }: {
   teamId: number;
   officer: boolean;
@@ -897,7 +866,6 @@ function NoSpecRowView({
   withStats: boolean;
   links: AccountLinks | null;
   own: boolean;
-  teamOwner: boolean;
 }) {
   const none = (
     <>
@@ -925,15 +893,6 @@ function NoSpecRowView({
           )}
           <td className="status-cell">
             <div className="status-line">
-              {row.teamMemberId !== null && links?.rank && (
-                <TeamRank
-                  teamId={teamId}
-                  teamMemberId={row.teamMemberId}
-                  name={row.name}
-                  rank={links.rank}
-                  teamOwner={teamOwner}
-                />
-              )}
               <span className="status-tag">No spec yet</span>
               {officer && <SettingsRowButton playerId={row.playerId} name={row.name} />}
             </div>

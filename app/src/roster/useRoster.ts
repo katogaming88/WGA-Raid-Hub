@@ -264,9 +264,7 @@ export function useSetOwnSpec(teamId: number) {
   );
 }
 
-export type TeamRank = 'owner' | 'officer' | 'assistant' | 'raider';
-export type SettableTeamRank = Exclude<TeamRank, 'owner'>;
-export type AccountLinks = { battlenet: boolean; discord: boolean; rank?: TeamRank | null };
+export type AccountLinks = { battlenet: boolean; discord: boolean };
 
 // Officers: whether each current member has connected Battle.net and Discord
 // (#1360 part 4). Which accounts they are waits on #1484; until then the
@@ -280,30 +278,19 @@ export function useAccountLinks(teamId: number, enabled: boolean) {
       // team-read-guard: one row per current member of the team (80 on the largest)
       const members = await client
         .from('team_members')
-        .select('id, discord_id, rank')
+        .select('id, discord_id')
         .eq('team_id', teamId)
         .is('archived_at', null);
       if (members.error) return { data: null, error: members.error };
       const withBattlenet = new Set(
         ((battlenet.data ?? []) as { team_member_id: number }[]).map((r) => r.team_member_id)
       );
-      const rows = (members.data ?? []) as { id: number; discord_id: string | null; rank: TeamRank | null }[];
+      const rows = (members.data ?? []) as { id: number; discord_id: string | null }[];
       return {
-        data: new Map(
-          rows.map((m) => [m.id, { battlenet: withBattlenet.has(m.id), discord: m.discord_id !== null, rank: m.rank }])
-        ),
+        data: new Map(rows.map((m) => [m.id, { battlenet: withBattlenet.has(m.id), discord: m.discord_id !== null }])),
         error: null
       };
     },
     { enabled }
-  );
-}
-
-// The Team Owner, or anyone with promote_assistants for Raider and Assistant
-// (#1651). The rank shows through useAccountLinks.
-export function useSetTeamRank(teamId: number) {
-  return useSupabaseMutation<void, { teamMemberId: number; rank: SettableTeamRank }>(
-    (client, v) => client.rpc('set_team_rank', { p_team_id: teamId, p_team_member_id: v.teamMemberId, p_rank: v.rank }),
-    { key: ['set-team-rank', teamId], refreshes: [['account-links', teamId], ['permissions']] }
   );
 }

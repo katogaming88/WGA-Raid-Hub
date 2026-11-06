@@ -60,7 +60,7 @@ describe('Change Team Owner', () => {
       path: '/g/wga/settings/teams',
       sentinel: 'main .guildsettings-row',
       rpc: {
-        team_owner_options: [
+        team_member_ranks: [
           { team_member_id: 1, display_name: 'Olive', rank: 'owner', signed_in: true },
           { team_member_id: 2, display_name: 'Raz', rank: 'officer', signed_in: true }
         ]

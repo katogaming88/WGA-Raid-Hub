@@ -1,0 +1,38 @@
+import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
+
+export type TeamRank = 'owner' | 'officer' | 'assistant' | 'raider';
+export type SettableTeamRank = Exclude<TeamRank, 'owner'>;
+export type TeamMemberRank = {
+  team_member_id: number;
+  display_name: string;
+  rank: TeamRank;
+  signed_in: boolean;
+  is_you: boolean;
+};
+
+const ranksKey = (teamId: number) => ['team-member-ranks', teamId];
+
+// A team's current members and their ranks (#1651), for Settings > Ranks and
+// the Team Owner picker. A guild Admin can't read team_members on a team they
+// aren't on, so this is a function.
+export function useTeamMemberRanks(teamId: number) {
+  return useSupabaseQuery<TeamMemberRank[]>(ranksKey(teamId), async (client) => {
+    const { data, error } = await client.rpc('team_member_ranks', { p_team_id: teamId });
+    // The column is text; team_members_rank_matches_role holds it to these four.
+    return { data: data as TeamMemberRank[] | null, error };
+  });
+}
+
+export function useSetTeamRank(teamId: number) {
+  return useSupabaseMutation<void, { teamMemberId: number; rank: SettableTeamRank }>(
+    (client, v) => client.rpc('set_team_rank', { p_team_id: teamId, p_team_member_id: v.teamMemberId, p_rank: v.rank }),
+    { key: ['set-team-rank', teamId], refreshes: [ranksKey(teamId), ['permissions']] }
+  );
+}
+
+export function useChangeTeamOwner(teamId: number) {
+  return useSupabaseMutation<void, { teamMemberId: number }>(
+    (client, v) => client.rpc('change_team_owner', { p_team_id: teamId, p_team_member_id: v.teamMemberId }),
+    { key: ['change-team-owner', teamId], refreshes: [ranksKey(teamId), ['permissions']] }
+  );
+}

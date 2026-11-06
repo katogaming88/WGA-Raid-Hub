@@ -6,13 +6,8 @@ import { useStatus } from '../components/Status';
 import { useAddress, useGuildTeams, type GuildTeamRow } from '../data/address';
 import { errorMessage } from '../lib/errors';
 import { NewTeamDialog } from './NewTeamDialog';
-import {
-  useChangeTeamOwner,
-  useSetTeamArchived,
-  useSetTeamUnlisted,
-  useTeamOwnerOptions,
-  useUpdateTeam
-} from './useGuildSettings';
+import { useChangeTeamOwner, useTeamMemberRanks } from '../settings/useRanks';
+import { useSetTeamArchived, useSetTeamUnlisted, useUpdateTeam } from './useGuildSettings';
 
 type Editing = { kind: 'rename' | 'address' | 'archive' | 'owner'; team: GuildTeamRow };
 
@@ -203,7 +198,7 @@ function EditDialog({ editing, onClose }: { editing: Editing; onClose: () => voi
 function OwnerDialog({ team, onClose }: { team: GuildTeamRow; onClose: () => void }) {
   const id = useId();
   const { announce } = useStatus();
-  const options = useTeamOwnerOptions(team.id);
+  const options = useTeamMemberRanks(team.id);
   const change = useChangeTeamOwner(team.id);
   const [picked, setPicked] = useState('');
 

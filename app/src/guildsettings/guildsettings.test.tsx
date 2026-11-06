@@ -30,7 +30,7 @@ function signedIn(opts: {
       if (name === 'my_permissions' && opts.guildPermissions) {
         return { data: { team: [], guild: opts.guildPermissions } };
       }
-      if (name === 'team_owner_options') {
+      if (name === 'team_member_ranks') {
         return {
           data: [
             { team_member_id: 1, display_name: 'Olive', rank: 'owner', signed_in: true },

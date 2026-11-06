@@ -241,11 +241,11 @@ describe('change_team_owner', () => {
   });
 });
 
-describe('team_owner_options', () => {
+describe('team_member_ranks', () => {
   it('lists current members, the owner first, for the guild Owner and an Admin', async () => {
     for (const uid of [TEAM_LEADER_T3, GUILD_OFFICER]) {
       await withTxn(async ({ q, asUser }) => {
-        const rows = (await asUser(uid, 'select * from public.team_owner_options($1)', [T1])).rows;
+        const rows = (await asUser(uid, 'select * from public.team_member_ranks($1)', [T1])).rows;
         expect(rows[0]).toMatchObject({ team_member_id: await memberOf(q, TEAM_LEADER_T1), rank: 'owner' });
         expect(rows.map((r) => r.team_member_id)).toContain(await memberOf(q, RAIDER_T1));
         expect(rows.every((r) => typeof r.display_name === 'string' && r.display_name !== '')).toBe(true);
@@ -253,10 +253,19 @@ describe('team_owner_options', () => {
     }
   });
 
-  it('refuses the Team Owner, an Officer and a Raider', async () => {
-    for (const uid of [TEAM_LEADER_T1, OFFICER_T1, RAIDER_T1]) {
+  it('the Team Owner and an Officer read it, is_you marking the caller', async () => {
+    for (const uid of [TEAM_LEADER_T1, OFFICER_T1]) {
+      await withTxn(async ({ q, asUser }) => {
+        const rows = (await asUser(uid, 'select * from public.team_member_ranks($1)', [T1])).rows;
+        expect(rows.filter((r) => r.is_you).map((r) => r.team_member_id)).toEqual([await memberOf(q, uid)]);
+      });
+    }
+  });
+
+  it('refuses a Raider, an officer of another team and a site admin', async () => {
+    for (const uid of [RAIDER_T1, OFFICER_T2, SITE_ADMIN]) {
       const message = await refusal(async ({ asUser }) =>
-        asUser(uid, 'select * from public.team_owner_options($1)', [T1])
+        asUser(uid, 'select * from public.team_member_ranks($1)', [T1])
       );
       expect(message, uid).toMatch(/Not authorized/);
     }

@@ -5324,10 +5324,11 @@ export type Database = {
         Args: { p_team_id: number }
         Returns: undefined
       }
-      team_owner_options: {
+      team_member_ranks: {
         Args: { p_team_id: number }
         Returns: {
           display_name: string
+          is_you: boolean
           rank: string
           signed_in: boolean
           team_member_id: number

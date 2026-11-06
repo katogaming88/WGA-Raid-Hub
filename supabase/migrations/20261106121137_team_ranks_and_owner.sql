@@ -1,12 +1,13 @@
 -- #1651: changing a team rank, and who owns a team.
 --
--- * set_team_rank(team_id, team_member_id, rank): on the Roster, the Team
---   Owner makes someone an Officer, an Assistant or a Raider. Anyone whose
+-- * set_team_rank(team_id, team_member_id, rank): on Settings > Ranks, the
+--   Team Owner makes someone an Officer, an Assistant or a Raider. Anyone whose
 --   rank has promote_assistants (Officers by default) moves someone between
 --   Raider and Assistant only.
--- * team_owner_options(team_id): who can be picked as the new Team Owner.
---   A guild Admin does not read inside a team by default, so the Teams list
---   cannot read team_members itself.
+-- * team_member_ranks(team_id): a team's current members with a name to show
+--   and their rank, for that page and for picking a new Team Owner. A guild
+--   Admin does not read inside a team by default, so the Teams list cannot
+--   read team_members itself.
 -- * change_team_owner(team_id, team_member_id): on the Teams list, anyone
 --   with change_team_owner on the guild's grid (the guild Owner and Admins by
 --   default) hands the team to a current member, and the old Team Owner
@@ -80,8 +81,8 @@ comment on function public.set_team_rank(integer, integer, text) is
 revoke all on function public.set_team_rank(integer, integer, text) from public, anon;
 grant execute on function public.set_team_rank(integer, integer, text) to authenticated;
 
-create function public.team_owner_options(p_team_id integer)
-returns table (team_member_id integer, display_name text, rank text, signed_in boolean)
+create function public.team_member_ranks(p_team_id integer)
+returns table (team_member_id integer, display_name text, rank text, signed_in boolean, is_you boolean)
 language plpgsql
 stable
 security definer
@@ -91,7 +92,8 @@ begin
   if auth.uid() is null then
     raise exception 'Not signed in';
   end if;
-  if not public.has_guild_permission((select t.guild_id from teams t where t.id = p_team_id), 'change_team_owner') then
+  if not public.has_team_permission(p_team_id, 'promote_assistants')
+     and not public.has_guild_permission((select t.guild_id from teams t where t.id = p_team_id), 'change_team_owner') then
     raise exception 'Not authorized';
   end if;
 
@@ -110,7 +112,8 @@ begin
         limit 1),
       'Unnamed'),
     m.rank,
-    pe.auth_user_id is not null
+    pe.auth_user_id is not null,
+    pe.id = my_person_id()
     from team_members m
     join people pe on pe.id = m.person_id
    where m.team_id = p_team_id and m.archived_at is null
@@ -118,11 +121,11 @@ begin
 end;
 $$;
 
-comment on function public.team_owner_options(integer) is
-  'A team''s current members, with a name to show, their rank and whether they have signed in, for picking a new Team Owner (#1651). For anyone with change_team_owner on the team''s guild.';
+comment on function public.team_member_ranks(integer) is
+  'A team''s current members, with a name to show, their rank, whether they have signed in and whether the row is the caller (#1651). For anyone who can change a rank on the team or its Team Owner: promote_assistants on the team, or change_team_owner on its guild.';
 
-revoke all on function public.team_owner_options(integer) from public, anon;
-grant execute on function public.team_owner_options(integer) to authenticated;
+revoke all on function public.team_member_ranks(integer) from public, anon;
+grant execute on function public.team_member_ranks(integer) to authenticated;
 
 create function public.change_team_owner(p_team_id integer, p_team_member_id integer)
 returns void

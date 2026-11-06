@@ -13609,7 +13609,7 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.team_owner_options",
+      "name": "public.team_member_ranks",
       "return_type": "record",
       "arguments": "p_team_id integer",
       "type": "FUNCTION"

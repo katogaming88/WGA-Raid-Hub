@@ -477,16 +477,3 @@ a.raider-name:hover {
   text-align: right;
   width: 1%;
 }
-
-/* A member's team rank on their row, officers only (#1651). */
-.team-rank {
-  font-size: var(--text-xs);
-}
-
-/* Wide enough for Assistant, and no wider, so the row's settings button stays. */
-.select.team-rank-select {
-  flex: 0 0 112px;
-  width: 112px;
-  min-height: var(--target-min);
-  font-size: var(--text-xs);
-}
