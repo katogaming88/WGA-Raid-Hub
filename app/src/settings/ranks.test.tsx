@@ -1,17 +1,37 @@
 import { describe, expect, it } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers } from '../test/fakeSupabase';
-import { rankChoices } from './RanksSettingsPage';
+import { rankChoices, rankLine } from './RanksSettingsPage';
 
 // Settings > Ranks (#1651). The viewer is the row with is_you.
 const PATH = '/g/wga/t/phoenix/officer/settings/ranks';
 
-function ranksHandlers(mine: string, raz: string, opts: { role?: string; refuse?: boolean } = {}): FakeHandlers {
+function ranksHandlers(
+  mine: string,
+  raz: string,
+  opts: { role?: string; refuse?: boolean; gridFails?: boolean; more?: object[] } = {}
+): FakeHandlers {
   const base = seededHandlers();
   return {
     ...base,
+    from(read) {
+      if (read.table === 'team_rank_permissions') {
+        if (opts.gridFails) return { error: { message: 'no' } };
+        return {
+          data: [
+            { rank: 'raider', permission: 'own_character' },
+            { rank: 'assistant', permission: 'own_character' },
+            { rank: 'assistant', permission: 'edit_roster' },
+            { rank: 'officer', permission: 'own_character' },
+            { rank: 'officer', permission: 'edit_roster' },
+            { rank: 'officer', permission: 'manage_loot' }
+          ]
+        };
+      }
+      return base.from!(read);
+    },
     session: fakeSession({ battlenet: 'X#1', discord: { id: 'discord-x', name: 'X' } }),
     rpc(name, args) {
       if (name === 'current_discord_id') return { data: 'discord-x' };
@@ -29,7 +49,8 @@ function ranksHandlers(mine: string, raz: string, opts: { role?: string; refuse?
         return {
           data: [
             { team_member_id: 1, display_name: 'Katorri', rank: mine, signed_in: true, is_you: true },
-            { team_member_id: 9, display_name: 'Raz', rank: raz, signed_in: true, is_you: false }
+            { team_member_id: 9, display_name: 'Raz', rank: raz, signed_in: true, is_you: false },
+            ...(opts.more ?? [])
           ]
         };
       }
@@ -52,9 +73,9 @@ describe('Settings > Ranks', () => {
     expect(optionsOf(box)).toEqual(['Officer', 'Assistant', 'Raider']);
     // Their own row is plain text: nobody changes the Team Owner here.
     expect(screen.getByRole('row', { name: /Katorri/ })).toHaveTextContent('Team Owner');
-    await user.selectOptions(box, 'Officer');
-    expect(await screen.findByText('Raz is now Officer.')).toBeInTheDocument();
-    expect(client.rpcs).toContainEqual(['set_team_rank', { p_team_id: 1, p_team_member_id: 9, p_rank: 'officer' }]);
+    await user.selectOptions(box, 'Assistant');
+    expect(await screen.findByText('Raz is now Assistant.')).toBeInTheDocument();
+    expect(client.rpcs).toContainEqual(['set_team_rank', { p_team_id: 1, p_team_member_id: 9, p_rank: 'assistant' }]);
   });
 
   it('gives an Officer Raider and Assistant only, and says when it is refused', async () => {
@@ -76,6 +97,110 @@ describe('Settings > Ranks', () => {
     const { client } = renderApp(PATH, ranksHandlers('raider', 'raider', { role: 'raider' }));
     expect(await screen.findByText(/This page is for officers/)).toBeInTheDocument();
     expect(client.rpcs.some(([name]) => name === 'team_member_ranks')).toBe(false);
+  });
+
+  it('asks before making someone an Officer, and Cancel changes nothing', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(PATH, ranksHandlers('owner', 'raider'));
+    const box = await screen.findByRole('combobox', { name: 'Team rank for Raz' });
+    await user.selectOptions(box, 'Officer');
+    let dialog = within(await screen.findByRole('dialog', { name: 'Make Raz an Officer?' }));
+    expect(await dialog.findByText(/import loot and edit priority and scoring/)).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(client.rpcs.some(([name]) => name === 'set_team_rank')).toBe(false);
+    expect(box).toHaveValue('raider');
+
+    await user.selectOptions(box, 'Officer');
+    dialog = within(await screen.findByRole('dialog', { name: 'Make Raz an Officer?' }));
+    await user.click(dialog.getByRole('button', { name: 'Make Officer' }));
+    expect(await screen.findByText('Raz is now Officer.')).toBeInTheDocument();
+    expect(client.rpcs).toContainEqual(['set_team_rank', { p_team_id: 1, p_team_member_id: 9, p_rank: 'officer' }]);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('keeps a refused Officer change in the dialog, with the reason', async () => {
+    const user = userEvent.setup();
+    renderApp(PATH, ranksHandlers('owner', 'raider', { refuse: true }));
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Team rank for Raz' }), 'Officer');
+    const dialog = within(await screen.findByRole('dialog'));
+    await user.click(dialog.getByRole('button', { name: 'Make Officer' }));
+    expect(await dialog.findByRole('alert')).toHaveTextContent('Not authorized');
+  });
+
+  it('groups people by rank with counts, says what each rank can do, and who has not signed in', async () => {
+    renderApp(
+      PATH,
+      ranksHandlers('owner', 'officer', {
+        more: [{ team_member_id: 3, display_name: 'Dorn', rank: 'raider', signed_in: false, is_you: false }]
+      })
+    );
+    const officers = await screen.findByRole('rowgroup', { name: /Officers/ }).catch(() => null);
+    const group = (officers ?? screen.getByText('Officers').closest('tbody'))!;
+    expect(within(group as HTMLElement).getByRole('row', { name: /Raz/ })).toBeInTheDocument();
+    expect(group).toHaveTextContent('Officers 1');
+    expect(group).toHaveTextContent('Everything an Assistant can, and: import loot and edit priority and scoring.');
+    expect(screen.getByText('Katorri', { exact: false })).toHaveTextContent('(you)');
+    expect(screen.getByRole('row', { name: /Dorn/ })).toHaveTextContent('Hasn’t signed in yet');
+    expect(screen.getByRole('row', { name: /Raz/ })).not.toHaveTextContent('Hasn’t signed in yet');
+  });
+
+  it('still lists everyone when the grid cannot be read, and says so', async () => {
+    renderApp(PATH, ranksHandlers('owner', 'raider', { gridFails: true }));
+    await screen.findByRole('combobox', { name: 'Team rank for Raz' });
+    expect((await screen.findAllByText('Couldn’t load what this rank can do.')).length).toBe(4);
+  });
+
+  it('searches by name, showing only the groups with a match', async () => {
+    const user = userEvent.setup();
+    renderApp(PATH, ranksHandlers('owner', 'raider'));
+    await screen.findByRole('combobox', { name: 'Team rank for Raz' });
+    await user.type(screen.getByRole('searchbox', { name: 'Search' }), 'RAZ');
+    expect(screen.getByRole('row', { name: /Raz/ })).toBeInTheDocument();
+    expect(screen.queryByRole('row', { name: /Katorri/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('Officers')).not.toBeInTheDocument();
+    await user.clear(screen.getByRole('searchbox', { name: 'Search' }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search' }), 'nobody');
+    expect(screen.getByText('Nobody on the team matches that.')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('keeps the keyboard on the rank box after the row moves group', async () => {
+    const user = userEvent.setup();
+    let raz = 'raider';
+    const handlers = ranksHandlers('owner', 'raider');
+    const base = handlers.rpc!;
+    handlers.rpc = (name, args) => {
+      if (name === 'set_team_rank') {
+        raz = String(args['p_rank']);
+        return { data: null };
+      }
+      if (name === 'team_member_ranks') {
+        return {
+          data: [
+            { team_member_id: 1, display_name: 'Katorri', rank: 'owner', signed_in: true, is_you: true },
+            { team_member_id: 9, display_name: 'Raz', rank: raz, signed_in: true, is_you: false }
+          ]
+        };
+      }
+      return base(name, args);
+    };
+    renderApp(PATH, handlers);
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Team rank for Raz' }), 'Assistant');
+    await screen.findByText('Raz is now Assistant.');
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Team rank for Raz' })).toHaveValue('assistant'));
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Team rank for Raz' })).toHaveFocus());
+  });
+
+  it('describes a rank that does not hold all of the rank below by its own list', () => {
+    const grid = new Map([
+      ['raider' as const, new Set(['own_character'])],
+      ['assistant' as const, new Set(['edit_roster'])]
+    ]);
+    expect(rankLine('assistant', grid)).toBe('Edit the roster.');
+    expect(rankLine('raider', grid)).toBe('Keep their own characters.');
+    expect(rankLine('officer', new Map())).toBe('Nothing on this team yet.');
+    expect(rankLine('owner', new Map())).toBe('Everything here, and makes someone an Officer.');
   });
 
   it('offers nothing for the Team Owner row, or to someone who can do neither', () => {

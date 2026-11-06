@@ -23,6 +23,20 @@ export function useTeamMemberRanks(teamId: number) {
   });
 }
 
+// What each rank can do on this team, from its own grid (#1645).
+export function useTeamRankGrid(teamId: number) {
+  return useSupabaseQuery<Map<TeamRank, Set<string>>>(['team-rank-grid', teamId], async (client) => {
+    // team-read-guard: three ranks times the grid's 14 permissions, per team
+    const { data, error } = await client.from('team_rank_permissions').select('rank, permission').eq('team_id', teamId);
+    if (error) return { data: null, error };
+    const grid = new Map<TeamRank, Set<string>>();
+    for (const row of (data ?? []) as { rank: TeamRank; permission: string }[]) {
+      grid.set(row.rank, (grid.get(row.rank) ?? new Set()).add(row.permission));
+    }
+    return { data: grid, error: null };
+  });
+}
+
 export function useSetTeamRank(teamId: number) {
   return useSupabaseMutation<void, { teamMemberId: number; rank: SettableTeamRank }>(
     (client, v) => client.rpc('set_team_rank', { p_team_id: teamId, p_team_member_id: v.teamMemberId, p_rank: v.rank }),

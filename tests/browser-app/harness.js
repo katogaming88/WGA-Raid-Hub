@@ -229,6 +229,8 @@ export async function openApp(browser, port, state) {
     // Bare/claimed roster Names (#1355): empty unless a state lists them.
     names: [],
     team_settings: [],
+    // Each team's rank grid (#1645), which Settings > Ranks describes.
+    team_rank_permissions: [],
     // The per-tier switches (#939): empty means everything closed.
     team_seasons: [],
     characters: [],

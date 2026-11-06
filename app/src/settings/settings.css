@@ -560,7 +560,62 @@
   border-top: 1px solid var(--border);
 }
 
-/* Settings > Ranks (#1651): a rank box as wide as its longest rank. */
+/* Settings > Ranks (#1651): the rank beside the name, grouped by rank, with
+   lines rather than boxes. */
+.ranks-page .page-subtitle {
+  max-width: 65ch;
+}
+
+.ranks-search {
+  max-width: 280px;
+  margin: 0;
+}
+
+.ranks-table {
+  width: 100%;
+  max-width: 560px;
+  border-collapse: collapse;
+}
+
+.ranks-table th,
+.ranks-table td {
+  padding: var(--space-2) var(--space-2) var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-weight: 400;
+}
+
+.ranks-table thead th {
+  padding-block: var(--space-1);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.ranks-table td {
+  width: 156px;
+  padding-right: 0;
+}
+
+.ranks-group th {
+  padding-top: var(--space-5);
+}
+
+.ranks-group-name {
+  font-size: var(--text-md);
+  font-weight: 650;
+}
+
+.ranks-can,
+.ranks-not-signed-in {
+  display: block;
+  font-size: var(--text-xs);
+}
+
+.ranks-can {
+  margin-top: 2px;
+  line-height: 1.5;
+}
+
 .select.ranks-select {
   width: 140px;
 }

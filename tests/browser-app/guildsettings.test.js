@@ -53,6 +53,35 @@ describe('New team in the team picker', () => {
   });
 });
 
+describe('Settings > Ranks', () => {
+  it('asks before making someone an Officer, from the keyboard, and Escape changes nothing', async () => {
+    const { context, page } = await openApp(browser, server.port, {
+      path: '/g/wga/t/phoenix/officer/settings/ranks',
+      sentinel: 'main .ranks-select',
+      session: STATE.session,
+      who: 'officer',
+      rpc: {
+        team_member_ranks: [
+          { team_member_id: 1, display_name: 'Olive', rank: 'owner', signed_in: true, is_you: true },
+          { team_member_id: 2, display_name: 'Raz', rank: 'raider', signed_in: true, is_you: false }
+        ]
+      }
+    });
+    try {
+      const box = page.getByRole('combobox', { name: 'Team rank for Raz' });
+      await box.focus();
+      await box.selectOption({ label: 'Officer' });
+      const dialog = page.getByRole('dialog', { name: 'Make Raz an Officer?' });
+      await dialog.waitFor();
+      await page.keyboard.press('Escape');
+      await dialog.waitFor({ state: 'hidden' });
+      expect(await box.inputValue()).toBe('raider');
+    } finally {
+      await context.close();
+    }
+  });
+});
+
 describe('Change Team Owner', () => {
   it('opens from the keyboard and has nothing to save until someone is picked', async () => {
     const { context, page } = await openApp(browser, server.port, {

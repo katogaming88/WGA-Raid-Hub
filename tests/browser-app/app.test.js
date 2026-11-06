@@ -1537,9 +1537,19 @@ const TEAM_OWNER_DIALOG = {
 // Settings > Ranks (#1651): the viewer owns the team, so every other row gets a box.
 const RANKS_PAGE = {
   path: '/g/wga/t/phoenix/officer/settings/ranks',
-  sentinel: 'main .members-rank',
+  sentinel: 'main .ranks-select',
   session: OFFICER,
   who: 'officer',
+  tables: {
+    team_rank_permissions: [
+      { rank: 'raider', permission: 'own_character' },
+      { rank: 'assistant', permission: 'own_character' },
+      { rank: 'assistant', permission: 'edit_roster' },
+      { rank: 'officer', permission: 'own_character' },
+      { rank: 'officer', permission: 'edit_roster' },
+      { rank: 'officer', permission: 'manage_loot' }
+    ]
+  },
   rpc: {
     team_member_ranks: [
       { team_member_id: 1, display_name: 'Olive', rank: 'owner', signed_in: true, is_you: true },
