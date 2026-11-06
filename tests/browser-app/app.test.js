@@ -1341,9 +1341,33 @@ const GUILD_MEMBERS = {
   sentinel: 'main .members-table tbody tr',
   rpc: {
     guild_members: [
-      { person_id: 1, display_name: 'Katorri', rank: 'owner', is_you: true, teams: [], last_sign_in: null, characters: [] },
-      { person_id: 2, display_name: 'Rex', rank: 'admin', is_you: false, teams: [], last_sign_in: null, characters: [] },
-      { person_id: 3, display_name: 'Mira', rank: 'member', is_you: false, teams: [], last_sign_in: null, characters: [] }
+      {
+        person_id: 1,
+        display_name: 'Katorri',
+        rank: 'owner',
+        is_you: true,
+        teams: [],
+        last_sign_in: null,
+        characters: []
+      },
+      {
+        person_id: 2,
+        display_name: 'Rex',
+        rank: 'admin',
+        is_you: false,
+        teams: [],
+        last_sign_in: null,
+        characters: []
+      },
+      {
+        person_id: 3,
+        display_name: 'Mira',
+        rank: 'member',
+        is_you: false,
+        teams: [],
+        last_sign_in: null,
+        characters: []
+      }
     ]
   }
 };

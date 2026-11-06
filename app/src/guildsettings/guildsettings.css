@@ -56,16 +56,19 @@
 }
 
 .members-count {
-  flex: 1;
-  min-width: 220px;
+  flex: 1 1 100%;
   margin: 0;
 }
 
 .members-controls .field {
   margin: 0;
+  flex: 1 1 160px;
+  min-width: 0;
 }
 
 .members-table-wrap {
+  position: relative; /* holds the visually hidden labels inside the scroll */
+  max-width: 100%;
   overflow-x: auto;
 }
 
