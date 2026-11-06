@@ -50,7 +50,8 @@ begin
                         order by t.name)
          from team_members m
          join teams t on t.id = m.team_id
-        where m.person_id = pe.id and t.guild_id = p_guild_id and m.archived_at is null),
+        where m.person_id = pe.id and t.guild_id = p_guild_id
+          and m.archived_at is null and t.archived_at is null),
       '[]'::jsonb),
     (select u.last_sign_in_at from auth.users u where u.id = pe.auth_user_id),
     coalesce(
