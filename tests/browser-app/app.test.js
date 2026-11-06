@@ -1267,7 +1267,7 @@ const STREAMS_PAGE = {
   tables: { streamers: DIRECTORY }
 };
 
-const HELP = { path: '/help', sentinel: 'main:has(.help-topic)' };
+const HELP = { path: '/help', sentinel: 'main:has(.help-week)' };
 const HELP_GUIDE = { path: '/help/wishlist', sentinel: '.dialog-side img' };
 const ABOUT = { path: '/about', sentinel: 'main:has(.about-card)' };
 
@@ -1563,6 +1563,20 @@ const STATES = [
   { label: 'roster, no Member yet, on a phone', ...ROSTER_OWN_NAME, viewport: NARROW },
   { label: 'help', ...HELP },
   { label: 'help, light', ...HELP, colorScheme: 'light' },
+  { label: 'help, on a phone', ...HELP, viewport: NARROW },
+  {
+    label: 'help, officer jobs shown',
+    ...HELP,
+    click: 'role=checkbox[name="Show officer jobs"]',
+    afterClick: '.help-week-part h4'
+  },
+  {
+    label: 'help, officer jobs shown, light',
+    ...HELP,
+    colorScheme: 'light',
+    click: 'role=checkbox[name="Show officer jobs"]',
+    afterClick: '.help-week-part h4'
+  },
   { label: 'help, a guide open', ...HELP_GUIDE },
   { label: 'help, a guide open, light', ...HELP_GUIDE, colorScheme: 'light' },
   { label: 'help, a guide open, on a phone', ...HELP_GUIDE, viewport: NARROW },

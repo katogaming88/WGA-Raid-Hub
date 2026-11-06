@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.243.0] - 2026-11-06
+
+### Frontend
+
+- Help on the new app is redesigned: no more run of identical boxes. Your raid
+  week comes first, in four columns from First time here to After raid, and
+  every guide link uses the guide's own title. Officer jobs show when a Show
+  officer jobs checkbox is ticked; jobs with no guide yet say .
+  Questions and the support Discord follow, then Loot priority as one line,
+  then guild setup as a shaded band with all 17 guides listed by topic (#1666).
+
 ## [3.242.0] - 2026-11-06
 
 ### Frontend

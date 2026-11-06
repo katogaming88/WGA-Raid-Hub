@@ -1,19 +1,31 @@
-/* Help (#1526): guild setup, the raid week, Loot priority, guides by topic,
-   common questions, and the support card. A guide opens in a side Dialog. */
+/* Help (#1666): no boxes. Sections are held by rules and thin lines, and each
+   has a shape that fits it: the raid week as columns, loot as one line with
+   four stops, guild setup as a shaded band. A guide opens in a side Dialog. */
 
 .help-page {
-  max-width: 980px;
+  max-width: 1040px;
+  font-size: var(--text-md);
 }
 
-.help-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-bottom: var(--space-5);
+.help-page h1 {
+  font-size: 30px;
+  font-weight: 700;
 }
 
-.help-section > p {
+.help-page p {
   margin: 0;
+  max-width: 65ch;
+}
+
+.help-page .page-subtitle {
+  font-size: var(--text-lg);
+}
+
+.help-heading {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
 }
 
 .help-eyebrow {
@@ -24,143 +36,172 @@
   color: var(--text-muted);
 }
 
-.help-tag {
-  margin-left: var(--space-2);
-  padding: 1px 6px;
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--button) 14%, var(--panel));
-  /* Nudged toward the text color so small text clears 4.5:1 in both themes
-     (light 5.1, dark 6.0); plain --button is only 3.8 in light. */
-  color: color-mix(in srgb, var(--button) 80%, var(--text));
-  font-size: var(--text-xs);
-  font-weight: 650;
-  white-space: nowrap;
+.help-officers {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-2);
+  min-height: var(--target-min);
+  color: var(--text-muted);
+  cursor: pointer;
 }
 
-.help-setup,
-.help-flow {
+.help-officers input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--brand);
+}
+
+/* Link lists: plain until hovered. Each link is tall enough to tap. */
+.help-links {
   margin: 0;
   padding: 0;
   list-style: none;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: var(--space-2);
 }
 
-.help-setup-step,
-.help-flow > li {
-  height: 100%;
-  box-sizing: border-box;
+/* A label that doesn't fit moves to the next line flush left, not indented. */
+.help-links li {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-3);
-  color: var(--text);
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-2);
+}
+
+.help-links a {
+  display: inline-block;
+  padding-block: var(--space-1);
   text-decoration: none;
 }
 
-a.help-setup-step:hover {
-  border-color: var(--brand);
+.help-links a:hover {
+  text-decoration: underline;
 }
 
-.help-setup-title {
-  font-weight: 650;
-}
-
+/* The raid week: the first thing on the page. */
 .help-week {
+  border-top: 2px solid var(--brand);
+  border-bottom: 1px solid var(--border);
+}
+
+.help-week-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  padding-top: var(--space-4);
+}
+
+.help-week-parts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  padding: 0;
-  overflow: hidden;
+  grid-template-columns: repeat(4, 1fr);
 }
 
 .help-week-part {
-  padding: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-5);
 }
 
 .help-week-part + .help-week-part {
   border-left: 1px solid var(--border);
 }
 
-.help-week-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-md);
+.help-week-part:first-child {
+  padding-left: 0;
 }
 
-.help-week-number {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--raised);
-  color: var(--brand);
+.help-week-part:last-child {
+  padding-right: 0;
+}
+
+.help-week-part h3 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
   font-weight: 700;
 }
 
-.help-week ul,
-.help-topic ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.help-week-part h3 span {
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
 }
 
-.help-week li,
-.help-topic li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 44px;
-  border-bottom: 1px solid var(--border);
+.help-week-part h4 {
+  margin: var(--space-3) 0 var(--space-1);
+  color: var(--brand);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.help-week li:last-child,
-.help-topic li:last-child {
-  border-bottom: 0;
+.help-week-part li.text-muted {
+  padding-block: var(--space-1);
 }
 
-.help-topics {
+.help-coming {
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+/* Common questions, with Still stuck beside them. */
+.help-ask {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-2);
-}
-
-.help-topic {
-  padding: var(--space-3);
-}
-
-.help-topic-title {
-  margin: 0;
-  font-size: var(--text-md);
-}
-
-.help-topic p {
-  margin: var(--space-1) 0 var(--space-2);
+  grid-template-columns: 1.6fr 1fr;
+  gap: var(--space-6) 48px;
+  align-items: start;
+  margin-top: var(--space-6);
 }
 
 .help-questions {
-  padding: 0;
-}
-
-.help-questions details {
-  padding: var(--space-3);
+  margin-top: var(--space-3);
   border-bottom: 1px solid var(--border);
 }
 
-.help-questions details:last-child {
-  border-bottom: 0;
+.help-questions details {
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
 }
 
 .help-questions summary {
-  font-weight: 650;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-weight: 600;
   cursor: pointer;
+  list-style: none;
+}
+
+.help-questions summary::-webkit-details-marker {
+  display: none;
+}
+
+.help-questions summary::after {
+  content: '+';
+  color: var(--text-dim);
+  font-size: var(--text-lg);
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+@media (hover: hover) {
+  .help-questions summary:hover {
+    color: var(--brand);
+  }
+}
+
+.help-questions details[open] summary::after {
+  content: '\2013';
 }
 
 .help-questions details p {
-  margin: var(--space-2) 0 0;
+  margin-top: var(--space-2);
   line-height: 1.55;
 }
 
@@ -168,16 +209,245 @@ a.help-setup-step:hover {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-3);
+  gap: var(--space-3);
+  padding: var(--space-1) 0 var(--space-1) var(--space-4);
+  border-left: 2px solid var(--brand);
+}
+
+.help-support h2 {
+  text-wrap: balance;
 }
 
 .help-support p {
-  margin: 0;
+  line-height: 1.55;
 }
 
 .help-support .button {
   text-decoration: none;
+}
+
+/* Loot priority: one line, four stops. */
+.help-loot {
+  margin-top: var(--space-6);
+}
+
+.help-loot > p {
+  margin-top: var(--space-1);
+}
+
+.help-flow {
+  display: flex;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 2px solid var(--brand);
+}
+
+.help-flow li {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-4) var(--space-4) 0 0;
+}
+
+.help-flow li::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--brand);
+}
+
+.help-flow-who {
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.help-flow .text-muted {
+  font-size: var(--text-sm);
+}
+
+/* Guild setup and the guide index: a shaded band to the page's edges. The
+   shadow carries the shade right and down past the column, without scrolling. */
+.help-band {
+  margin: var(--space-6) calc(-1 * var(--space-6)) calc(-1 * var(--space-5));
+  padding: var(--space-6);
+  background: var(--sidebar);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 0 0 100vmax var(--sidebar);
+  clip-path: inset(0 -100vmax -100vmax 0);
+}
+
+.help-band > section > p {
+  margin-top: var(--space-1);
+}
+
+.help-setup {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-4);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.help-setup li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  counter-increment: step;
+}
+
+.help-setup li::before {
+  content: counter(step, decimal-leading-zero);
+  margin-bottom: var(--space-2);
+  color: var(--text-dim);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.help-setup li:first-child::before {
+  color: var(--brand);
+}
+
+.help-setup .text-muted,
+.help-setup .help-links,
+.help-also {
+  font-size: var(--text-sm);
+}
+
+.help-setup .help-links {
+  margin-top: var(--space-1);
+}
+
+.help-band .help-also {
+  margin-top: var(--space-4);
+}
+
+.help-also a {
+  text-underline-offset: 2px;
+}
+
+.help-index {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border-strong);
+}
+
+.help-topics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-5);
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.help-topics h3 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.help-for-officers {
+  color: var(--brand);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+@media (max-width: 1200px) {
+  .help-setup {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1100px) {
+  .help-week-parts,
+  .help-topics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .help-week-part:nth-child(odd) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .help-week-part:nth-child(even) {
+    padding-right: 0;
+  }
+
+  .help-week-part:nth-child(n + 3) {
+    border-top: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 900px) {
+  .help-ask {
+    grid-template-columns: 1fr;
+  }
+
+  .help-band {
+    margin-inline: calc(-1 * var(--space-4));
+    margin-bottom: calc(-1 * var(--space-4));
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .help-links a {
+    padding-block: var(--space-2);
+  }
+}
+
+@media (max-width: 640px) {
+  .help-page h1 {
+    font-size: 26px;
+  }
+
+  .help-week-parts,
+  .help-topics {
+    grid-template-columns: 1fr;
+  }
+
+  .help-week-part,
+  .help-week-part:nth-child(even) {
+    padding-inline: 0;
+    border-left: 0;
+  }
+
+  .help-week-part + .help-week-part {
+    border-top: 1px solid var(--border);
+  }
+
+  .help-flow {
+    flex-direction: column;
+    margin-left: 5px;
+    border-top: 0;
+    border-left: 2px solid var(--brand);
+  }
+
+  .help-flow li {
+    padding: 0 0 var(--space-4) var(--space-4);
+  }
+
+  .help-flow li::before {
+    top: 2px;
+    left: -7px;
+  }
+
+  .help-setup {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 /* The guide panel. */
