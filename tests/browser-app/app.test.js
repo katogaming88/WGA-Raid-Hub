@@ -1522,6 +1522,42 @@ const JOIN_MEMBER_STEP = {
   }
 };
 // The Roster for that person: Make my Member above the table.
+const TEAM_OWNER_DIALOG = {
+  ...GUILD_SETTINGS,
+  rpc: {
+    team_member_ranks: [
+      { team_member_id: 1, display_name: 'Olive', rank: 'owner', signed_in: true },
+      { team_member_id: 2, display_name: 'Raz', rank: 'officer', signed_in: true },
+      { team_member_id: 3, display_name: 'Listed', rank: 'raider', signed_in: false }
+    ]
+  },
+  click: 'role=button[name="Change Team Owner of Phoenix"]',
+  afterClick: '[role="dialog"] select'
+};
+// Settings > Ranks (#1651): the viewer owns the team, so every other row gets a box.
+const RANKS_PAGE = {
+  path: '/g/wga/t/phoenix/officer/settings/ranks',
+  sentinel: 'main .ranks-select',
+  session: OFFICER,
+  who: 'officer',
+  tables: {
+    team_rank_permissions: [
+      { rank: 'raider', permission: 'own_character' },
+      { rank: 'assistant', permission: 'own_character' },
+      { rank: 'assistant', permission: 'edit_roster' },
+      { rank: 'officer', permission: 'own_character' },
+      { rank: 'officer', permission: 'edit_roster' },
+      { rank: 'officer', permission: 'manage_loot' }
+    ]
+  },
+  rpc: {
+    team_member_ranks: [
+      { team_member_id: 1, display_name: 'Olive', rank: 'owner', signed_in: true, is_you: true },
+      { team_member_id: 2, display_name: 'Raz', rank: 'officer', signed_in: true, is_you: false },
+      { team_member_id: 3, display_name: 'Listed', rank: 'raider', signed_in: false, is_you: false }
+    ]
+  }
+};
 const ROSTER_OWN_NAME = {
   path: '/g/wga/t/phoenix/roster',
   sentinel: '.own-name-card',
@@ -1601,6 +1637,12 @@ const STATES = [
   { label: 'guild settings, teams', ...GUILD_SETTINGS },
   { label: 'guild settings, teams, light', ...GUILD_SETTINGS, colorScheme: 'light' },
   { label: 'guild settings, teams, on a phone', ...GUILD_SETTINGS, viewport: NARROW },
+  { label: 'guild settings, change team owner', ...TEAM_OWNER_DIALOG },
+  { label: 'guild settings, change team owner, light', ...TEAM_OWNER_DIALOG, colorScheme: 'light' },
+  { label: 'guild settings, change team owner, on a phone', ...TEAM_OWNER_DIALOG, viewport: NARROW },
+  { label: 'settings, ranks', ...RANKS_PAGE },
+  { label: 'settings, ranks, light', ...RANKS_PAGE, colorScheme: 'light' },
+  { label: 'settings, ranks, on a phone', ...RANKS_PAGE, viewport: NARROW },
   {
     label: 'guild settings, archive dialog',
     ...GUILD_SETTINGS,

@@ -13,7 +13,13 @@ const TEAMS = [
 ];
 
 // `memberOf`: team ids the signed-in person is on.
-function signedIn(opts: { guildOfficer: boolean; siteAdmin?: boolean; memberOf?: number[] }): FakeHandlers {
+function signedIn(opts: {
+  guildOfficer: boolean;
+  siteAdmin?: boolean;
+  memberOf?: number[];
+  // In place of the default guild grid, for a rank without some of it.
+  guildPermissions?: string[];
+}): FakeHandlers {
   const base = seededHandlers();
   const teams = [...TEAMS];
   return {
@@ -21,6 +27,19 @@ function signedIn(opts: { guildOfficer: boolean; siteAdmin?: boolean; memberOf?:
     session: fakeSession({ discord: { id: 'discord-x', name: 'Someone' } }),
     rpc(name, args) {
       if (name === 'current_discord_id') return { data: 'discord-x' };
+      if (name === 'my_permissions' && opts.guildPermissions) {
+        return { data: { team: [], guild: opts.guildPermissions } };
+      }
+      if (name === 'team_member_ranks') {
+        return {
+          data: [
+            { team_member_id: 1, display_name: 'Olive', rank: 'owner', signed_in: true },
+            { team_member_id: 2, display_name: 'Raz', rank: 'officer', signed_in: true },
+            { team_member_id: 3, display_name: 'Listed', rank: 'raider', signed_in: false }
+          ]
+        };
+      }
+      if (name === 'change_team_owner') return { data: null };
       if (name === 'resolve_person') {
         return {
           data: {
@@ -86,6 +105,44 @@ describe('who sees Guild settings and New team', () => {
   it('/settings opens the first tab', async () => {
     renderApp('/g/wga/settings', signedIn({ guildOfficer: true }));
     expect(await screen.findByRole('heading', { name: 'Teams' })).toBeInTheDocument();
+  });
+});
+
+describe('Change Team Owner', () => {
+  it('hands the team to someone on it who has signed in', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp('/g/wga/settings/teams', signedIn({ guildOfficer: true }));
+    await user.click(await screen.findByRole('button', { name: 'Change Team Owner of Phoenix' }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'Change Team Owner of Phoenix' }));
+    expect(await dialog.findByText(/Olive is the Team Owner now, and becomes an Officer/)).toBeInTheDocument();
+    const box = dialog.getByRole('combobox', { name: 'New Team Owner' });
+    expect(within(box).queryByRole('option', { name: 'Olive' })).not.toBeInTheDocument();
+    expect(within(box).getByRole('option', { name: /Listed/ })).toBeDisabled();
+    const save = dialog.getByRole('button', { name: 'Change Team Owner' });
+    expect(save).toBeDisabled();
+    await user.selectOptions(box, 'Raz');
+    await user.click(save);
+    expect(await screen.findByText("Raz is now Phoenix's Team Owner.")).toBeInTheDocument();
+    expect(client.rpcs).toContainEqual(['change_team_owner', { p_team_id: 1, p_team_member_id: 2 }]);
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('is not offered on an archived team, or to a rank without the permission', async () => {
+    renderApp('/g/wga/settings/teams', signedIn({ guildOfficer: true }));
+    await screen.findByRole('button', { name: 'Change Team Owner of Phoenix' });
+    expect(screen.queryByRole('button', { name: 'Change Team Owner of Old Team' })).not.toBeInTheDocument();
+  });
+
+  it('is hidden from someone who can manage teams but not change owners', async () => {
+    renderApp(
+      '/g/wga/settings/teams',
+      signedIn({
+        guildOfficer: true,
+        guildPermissions: ['create_teams', 'rename_archive_teams', 'edit_guild_profile', 'view_every_team']
+      })
+    );
+    await screen.findByRole('button', { name: 'Rename Phoenix' });
+    expect(screen.queryByRole('button', { name: /Change Team Owner/ })).not.toBeInTheDocument();
   });
 });
 

@@ -559,3 +559,75 @@
   padding: 0.4rem 0;
   border-top: 1px solid var(--border);
 }
+
+/* Settings > Ranks (#1651). */
+.ranks-page .page-subtitle {
+  max-width: 65ch;
+}
+
+.ranks-search {
+  max-width: 280px;
+  margin: 0;
+}
+
+/* A section per rank, stacked, held by thin lines. Each section's people run
+   across the width in as many columns as fit. */
+.ranks-sections {
+  border-top: 2px solid var(--brand);
+}
+
+.ranks-section {
+  padding-block: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.ranks-section-head h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 650;
+}
+
+.ranks-section-head p {
+  max-width: 75ch;
+  margin: var(--space-1) 0 var(--space-3);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.ranks-section > p {
+  margin: 0;
+}
+
+.ranks-section ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0 var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ranks-section li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding-block: var(--space-1);
+  border-top: 1px solid var(--border);
+}
+
+.ranks-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ranks-not-signed-in {
+  display: block;
+  font-size: var(--text-xs);
+}
+
+.select.ranks-select {
+  flex: 0 0 112px;
+  width: 112px;
+}

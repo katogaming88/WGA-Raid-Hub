@@ -123,6 +123,7 @@ const OFFICER_GRID = [
 const ADMIN_GRID = [
   'create_teams',
   'rename_archive_teams',
+  'change_team_owner',
   'edit_guild_profile',
   'edit_own_bio',
   'edit_all_bios',
@@ -228,6 +229,8 @@ export async function openApp(browser, port, state) {
     // Bare/claimed roster Names (#1355): empty unless a state lists them.
     names: [],
     team_settings: [],
+    // Each team's rank grid (#1645), which Settings > Ranks describes.
+    team_rank_permissions: [],
     // The per-tier switches (#939): empty means everything closed.
     team_seasons: [],
     characters: [],

@@ -18,6 +18,7 @@ import { ProgressionSettingsPage } from './settings/ProgressionSettingsPage';
 import { LootSettingsPage } from './settings/LootSettingsPage';
 import { SignupSettingsPage } from './settings/SignupSettingsPage';
 import { DiscordSettingsPage } from './settings/DiscordSettingsPage';
+import { RanksSettingsPage } from './settings/RanksSettingsPage';
 import { AuditLogPage } from './settings/AuditLogPage';
 import { DangerZonePage } from './settings/DangerZonePage';
 import { GuildHomePage } from './guild/GuildHomePage';
@@ -80,6 +81,7 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   'officer/settings/loot': <LootSettingsPage />,
   'officer/settings/signups': <SignupSettingsPage />,
   'officer/settings/discord': <DiscordSettingsPage />,
+  'officer/settings/ranks': <RanksSettingsPage />,
   'officer/settings/audit-log': <AuditLogPage />,
   'officer/settings/danger': <DangerZonePage />
 };

@@ -13601,6 +13601,30 @@
       "return_type": "record",
       "arguments": "p_guild_id integer",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_member_name",
+      "return_type": "text",
+      "arguments": "p_team_id integer, p_team_member_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_rank",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_team_member_id integer, p_rank text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_member_ranks",
+      "return_type": "record",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.change_team_owner",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_team_member_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [
