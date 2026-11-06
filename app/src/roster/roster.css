@@ -484,7 +484,10 @@ a.raider-name:hover {
 }
 
 .team-rank-select {
+  /* Wide enough for Assistant whatever the browser's arrow takes up. */
   width: auto;
+  min-width: 112px;
+  flex-shrink: 0;
   min-height: var(--target-min);
   font-size: var(--text-xs);
 }
