@@ -253,6 +253,31 @@ describe('team_member_ranks', () => {
     }
   });
 
+  it('names people, says who has signed in, and leaves out the archived and other teams', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const raider = await memberOf(q, RAIDER_T1);
+      await q("insert into public.names (team_id, label, team_member_id) values ($1, 'Katorri', $2)", [T1, raider]);
+      const officer = await memberOf(q, OFFICER_T1);
+      await q('update public.team_members set archived_at = now() where id = $1', [officer]);
+      const listed = (
+        await q(
+          `insert into public.team_members (team_id, discord_id, role)
+           values ($1, 'discord-never-signed-in', 'raider') returning id`,
+          [T1]
+        )
+      ).rows[0].id;
+      const rows = (await asUser(GUILD_OFFICER, 'select * from public.team_member_ranks($1)', [T1])).rows;
+      const ids = rows.map((r) => r.team_member_id);
+      expect(rows.find((r) => r.team_member_id === raider)).toMatchObject({ display_name: 'Katorri', signed_in: true });
+      expect(rows.find((r) => r.team_member_id === listed)).toMatchObject({
+        display_name: 'Unnamed',
+        signed_in: false
+      });
+      expect(ids).not.toContain(officer);
+      expect(ids).not.toContain(await memberOf(q, OFFICER_T2, 2));
+    });
+  });
+
   it('the Team Owner and an Officer read it, is_you marking the caller', async () => {
     for (const uid of [TEAM_LEADER_T1, OFFICER_T1]) {
       await withTxn(async ({ q, asUser }) => {
@@ -268,6 +293,28 @@ describe('team_member_ranks', () => {
         asUser(uid, 'select * from public.team_member_ranks($1)', [T1])
       );
       expect(message, uid).toMatch(/Not authorized/);
+    }
+  });
+});
+
+describe('signed out', () => {
+  const CALLS = [
+    ['set_team_rank', `select public.set_team_rank(${T1}, 1, 'raider')`],
+    ['change_team_owner', `select public.change_team_owner(${T1}, 1)`],
+    ['team_member_ranks', `select * from public.team_member_ranks(${T1})`]
+  ];
+
+  it('refuses the anon role at the grant', async () => {
+    for (const [name, call] of CALLS) {
+      const message = await refusal(async ({ asAnon }) => asAnon(call));
+      expect(message, name).toMatch(/permission denied/);
+    }
+  });
+
+  it('refuses a signed-in role with no user', async () => {
+    for (const [name, call] of CALLS) {
+      const message = await refusal(async ({ asRole }) => asRole('authenticated', null)(call));
+      expect(message, name).toMatch(/Not signed in/);
     }
   });
 });
