@@ -17,9 +17,10 @@
 -- these are the only way the new app changes one. team_members_keep_rank_and_role
 -- moves the current site's role along with each change.
 
--- The name a member goes by, for the page and the audit log: their Name on this
--- team, else their character's (how the Roster shows them until they claim a
--- Name; a current character ahead of an archived one), else their Discord name.
+-- The name a member goes by, for the page and the audit log, as the Roster shows
+-- them: their Name on this team, else their character's nickname, else the
+-- character's own name (a current character ahead of an archived one), else
+-- their Discord name.
 -- Called only by the functions below, which run as their owner.
 create function public.team_member_name(p_team_id integer, p_team_member_id integer)
 returns text
@@ -29,7 +30,7 @@ set search_path = public
 as $$
   select coalesce(
     (select min(n.label) from names n where n.team_id = p_team_id and n.team_member_id = p_team_member_id),
-    (select split_part(p.name_realm, '-', 1) from players p
+    (select coalesce(nullif(btrim(p.nickname), ''), split_part(p.name_realm, '-', 1)) from players p
       where p.team_id = p_team_id and p.team_member_id = p_team_member_id
       order by p.archived_at is not null, p.name_realm
       limit 1),

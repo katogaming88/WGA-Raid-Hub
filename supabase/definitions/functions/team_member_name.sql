@@ -10,7 +10,7 @@ CREATE OR REPLACE FUNCTION public.team_member_name(p_team_id integer, p_team_mem
 AS $function$
   select coalesce(
     (select min(n.label) from names n where n.team_id = p_team_id and n.team_member_id = p_team_member_id),
-    (select split_part(p.name_realm, '-', 1) from players p
+    (select coalesce(nullif(btrim(p.nickname), ''), split_part(p.name_realm, '-', 1)) from players p
       where p.team_id = p_team_id and p.team_member_id = p_team_member_id
       order by p.archived_at is not null, p.name_realm
       limit 1),

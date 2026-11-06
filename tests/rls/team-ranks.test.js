@@ -125,6 +125,14 @@ describe('set_team_rank', () => {
     expect(elsewhere).toMatch(/not on this team/);
   });
 
+  it('refuses a Team Owner whose membership is archived', async () => {
+    const message = await refusal(async ({ q, asUser }) => {
+      await q('update public.team_members set archived_at = now() where id = $1', [await memberOf(q, TEAM_LEADER_T1)]);
+      await setRank(asUser, TEAM_LEADER_T1, await memberOf(q, RAIDER_T1), 'assistant');
+    });
+    expect(message).toMatch(/Not authorized/);
+  });
+
   it('refuses an archived member', async () => {
     const message = await refusal(async ({ q, asUser }) => {
       const raider = await memberOf(q, RAIDER_T1);
@@ -210,14 +218,20 @@ describe('change_team_owner', () => {
     expect(old).toMatch(/Only the Team Owner/);
   });
 
-  it('refuses an Admin of another guild', async () => {
-    const message = await refusal(async ({ q, asUser }) => {
-      const guild = (await q("insert into public.guilds (name) values ('Other Guild') returning id")).rows[0].id;
-      const person = (await q('select id from public.people where auth_user_id = $1', [RAIDER_T1])).rows[0].id;
-      await q("insert into public.guild_ranks (guild_id, person_id, rank) values ($1, $2, 'admin')", [guild, person]);
-      await changeOwner(asUser, RAIDER_T1, await memberOf(q, OFFICER_T1));
-    });
-    expect(message).toMatch(/Not authorized/);
+  it('refuses an Admin or the Owner of another guild', async () => {
+    for (const rank of ['admin', 'owner']) {
+      const message = await refusal(async ({ q, asUser }) => {
+        const guild = (await q("insert into public.guilds (name) values ('Other Guild') returning id")).rows[0].id;
+        const person = (await q('select id from public.people where auth_user_id = $1', [RAIDER_T1])).rows[0].id;
+        await q('insert into public.guild_ranks (guild_id, person_id, rank) values ($1, $2, $3)', [
+          guild,
+          person,
+          rank
+        ]);
+        await changeOwner(asUser, RAIDER_T1, await memberOf(q, OFFICER_T1));
+      });
+      expect(message, rank).toMatch(/Not authorized/);
+    }
   });
 
   it('gives an ownerless team an owner', async () => {
@@ -347,6 +361,19 @@ describe('team_member_ranks', () => {
       await q('update public.players set archived_at = now() where team_member_id = $1', [member]);
       const later = (await asUser(GUILD_OFFICER, 'select * from public.team_member_ranks($1)', [T1])).rows;
       expect(nameOf(later)).toBe('Ranktest');
+    });
+  });
+
+  it("goes by a character's nickname ahead of its name, as the Roster does", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { memberId } = await seedMember(q);
+      await q(
+        `insert into public.players (team_id, name_realm, nickname, team_member_id)
+         values ($1, 'Ranktest-Stormrage', 'Rank Tester', $2)`,
+        [T1, memberId]
+      );
+      const rows = (await asUser(GUILD_OFFICER, 'select * from public.team_member_ranks($1)', [T1])).rows;
+      expect(rows.find((r) => r.team_member_id === memberId).display_name).toBe('Rank Tester');
     });
   });
 
