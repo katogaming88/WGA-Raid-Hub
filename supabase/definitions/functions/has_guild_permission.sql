@@ -11,12 +11,15 @@ AS $function$
   with ranks as (
     select g.rank
       from guild_ranks g
-     where g.guild_id = p_guild_id and g.person_id = my_person_id()
+     where g.guild_id = p_guild_id and g.person_id = my_person_id() and g.rank <> 'member'
     union all
     select 'member'
       from team_members m
       join teams t on t.id = m.team_id
      where t.guild_id = p_guild_id and m.person_id = my_person_id() and m.archived_at is null
+       and not exists (select 1 from guild_ranks g
+                        where g.guild_id = p_guild_id and g.person_id = my_person_id()
+                          and g.rank <> 'member')
   )
   select exists (select 1 from rank_permissions k where k.permission = p_permission and k.scope = 'guild')
      and (exists (select 1 from ranks r

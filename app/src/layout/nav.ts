@@ -254,14 +254,16 @@ export const GUILD_PAGES: Record<string, string> = {
   streams: 'Streams',
   officers: 'Guild officers',
   'settings/teams': 'Guild settings',
-  'settings/members': 'Guild settings'
+  'settings/members': 'Guild settings',
+  'settings/rank-permissions': 'Guild settings'
 };
 
-// The tabs of Guild settings (#1644), one address each. The rank permissions
-// grid (#1652) joins them.
-export const GUILD_SETTINGS_TABS: NavPage[] = [
-  { label: 'Teams', to: 'settings/teams' },
-  { label: 'Members', to: 'settings/members' }
+// The tabs of Guild settings (#1644), one address each, shown to those who can
+// open them: the guild grid can leave a rank with some and not others (#1652).
+export const GUILD_SETTINGS_TABS: (NavPage & { ability: Ability })[] = [
+  { label: 'Teams', to: 'settings/teams', ability: 'manageTeams' },
+  { label: 'Members', to: 'settings/members', ability: 'manageMembers' },
+  { label: 'Rank permissions', to: 'settings/rank-permissions', ability: 'manageMembers' }
 ];
 
 // Pages about the site itself, at /<path> with no guild in the address (#1482).

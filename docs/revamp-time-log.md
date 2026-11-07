@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |     22 h 45 m |
+| Phase 1: For the guild test        |          32 h |
 | Phase 2: Before the new site goes live |       0 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **157 h 16 m** |
+| **All revamp work**                | **166 h 31 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -567,6 +567,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:08-12:30 PM | #983 part 2: three mockups posted to the Sandbox test channel (Kat picked C, coloured names), then the picture in the functions: laid out as SVG, drawn with resvg and the Onest fonts, an unchanged sheet sends nothing, text when drawing fails; a real one posted from the new code; tests, docs, stamp, changelog, these rows | Phase 1: For the guild test (#983) | 20 m | ~18 m build, ~2 m Kat | 262,300 | |
 | 12:31-1:06 PM | PR #1760 (#983): the picture saved for the PR; three CodeRabbit rounds (alt text with every name, spec and class; anyone with a role drawn; the test path given); merged; #983 closed by hand (GitHub's incident); #1487 row out; the #1759 Pages deploy timed out on GitHub's side | Phase 1: For the guild test (#983) | 35 m | ~30 m build, ~5 m Kat | 77,200 | |
 | 1:06-1:40 PM | #1709: three rounds of mockups in the Sandbox test channel (Kat: round 1 wasn't a real Mythic week; picked the grid, then green-in / red-out arrows with the swaps under each boss); the migration, the lineup run in the sheets' 15-minute job, the grid drawn with the sheet's renderer, `/officer post lineup`, the Settings › Discord dialog; edge, database and app tests, generated docs, decision log, RLS.md, stamp, changelog, these rows | Phase 1: For the guild test (#1709) | 35 m | ~28 m build, ~7 m Kat | 517,900 | PR, CodeRabbit, the fresh-agent review and merge not yet counted |
+| 1:40-5:05 PM | PR #1761 (#1709): the PR, CodeRabbit's rounds and the fresh-agent reviews, then Kat's merge (row owed since 2026-11-04) | Phase 1: For the guild test (#1709) | 205 m | mostly build, some waiting | 1,360,800 | |
 | 5:05-6:25 PM | #990 and PR #1762: `/officer missing-signups` with its reminder DM button, the fourth cooldown category, edge tests, generated docs, decision log, stamp, changelog; CodeRabbit, the fresh-agent review, merged; the old #1342 stash dropped (Kat) | Phase 1: For the guild test (#990) | 80 m | ~65 m build, ~15 m Kat | 195,500 | |
 
 ### 2026-11-05
@@ -578,16 +579,22 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:05-9:15 AM | PR #1763 (#1710): Kat's OK to fix `set_team_discord_server()` here (the Weekly lineup post made it fail); `zonedTimeToUtc()` corrected for clock-change days (CodeRabbit and the review both raised it); CodeRabbit's outside-diff notes answered | Phase 1: For the guild test (#1710) | 10 m | ~9 m build, ~1 m Kat | 44,500 |   |
 | 9:15-9:45 AM | PR #1763 (#1710): CodeRabbit (the RSVP timing cleared on a server change, taken; `write_audit_log()`, declined); the second fresh-agent review (changes needed, three small): a waiting change looked at again hourly, a cleared time box sends no time, the newest-answer wording; waiting changes skipped on a server change, a row in retry wait left alone; the full preflight | Phase 1: For the guild test (#1710) | 30 m | ~27 m build, ~3 m Kat | 219,000 | Includes the review agent's 185,200; merge not yet counted |
 | 9:58-10:05 AM | PR #1763 (#1710): CodeRabbit's last round: a post already off loses its timing on a server change, the digest tells raiders apart by their full name; its other notes were already covered | Phase 1: For the guild test (#1710) | 5 m | ~5 m build | 23,000 | Merge not yet counted |
+| 10:05-10:24 AM | PR #1763 (#1710): Kat's merge at 10:17, cleanup, and #1487's rows (row owed since 2026-11-05) | Phase 1: For the guild test (#1710) | 20 m | ~10 m build, ~10 m Kat | 24,900 | |
+| 10:24 AM-1:40 PM | #1711: what the bot posted and what failed, and PR #1765 through CodeRabbit (row owed since 2026-11-05; the wait for Kat's review from 1:40 is not counted) | Phase 1: For the guild test (#1711) | 195 m | mostly build | 239,900 | |
+| 3:54-4:05 PM | PR #1765 (#1711): Kat's merge at 3:54 and cleanup | Phase 1: For the guild test (#1711) | 10 m | ~5 m build, ~5 m Kat | 113,400 | |
 
 ### 2026-11-06
 
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| 10:08-11:26 AM | PR #1766 (#1650): the guild's Members tab as a searchable table (Kat: it didn't match the mockup and was hard to get around), screenshots, CodeRabbit, merge at 11:23 (row owed from that session) | Phase 1: For the guild test (#1650) | 80 m | shared | 322,400 | |
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 11:30-11:45 AM | #1666: Help rebuilt to Kat's pick C: the raid week first with the officer checkbox, one list of guides by their own titles, questions beside support, the loot line, the setup band and the guide index; tests and accessibility states; the emil-design-eng and impeccable passes; stamp, changelog, this row | Phase 1: For the guild test (#1666) | 15 m | ~15 m build | 245,000 | PR, screenshots, Kat's design review and merge not yet counted |
 | 11:46-12:01 PM | PR #1768 (#1666): Kat's design review and merge, cleanup; #1769 filed for the rest of the site (Kat: one issue; buttons stay rounded); #1487 cleaned of closed issues and its Runs brought up to date | Phase 1: For the guild test (#1666) | 15 m | ~10 m build, ~5 m Kat | 67,900 | |
 | 12:08-2:55 PM | #1651: `set_team_rank`, `change_team_owner`, `team_member_ranks` (the issue said frontend, but the functions didn't exist), Settings > Ranks (first built on the Roster rows; Kat moved it; then grouped by rank with what each rank can do from the team's grid, search, who hasn't signed in, and a confirm before making an Officer, Kat's picks); PR #1770, screenshots; stacked sections and character names (Kat); the screenshots uploaded; #1771 looked into and filed; the backup restored, Change Team Owner on the Teams list; database, app and browser tests, generated docs, decision log, RLS.md, stamp, changelog, these rows | Phase 1: For the guild test (#1651) | 165 m | ~145 m build, ~20 m Kat | 913,600 | |
 | 2:56-3:30 PM | PR #1770 (#1651): CodeRabbit clean on the last commit; the fresh-agent review (changes needed): the audit log names the person, ranks refuse an archived team and the Officer confirm goes both ways (Kat's picks), a plain message for two handovers at once, the stated reason corrected, more tests; the preflight | Phase 1: For the guild test (#1651) | 35 m | ~33 m build, ~2 m Kat | 239,600 | Includes the review agent's 187,300 |
 | 3:30-3:37 PM | PR #1770 (#1651): the second fresh-agent review (changes needed): names use a nickname ahead of the character, as the Roster does; two more refusal tests, docs; the note on #1652 | Phase 1: For the guild test (#1651) | 5 m | ~3 m build, ~2 m Kat | 196,900 | Includes the review agent's 181,900; merge not yet counted |
+| 3:37-4:07 PM | PR #1770 (#1651): Kat's merge and cleanup (row owed from that session) | Phase 1: For the guild test (#1651) | 30 m | mostly Kat | 27,100 | |
+| 10:17-10:30 PM | #1652: Kat settled the list (Export guild data hidden until a guild export exists); `set_guild_rank_permissions()`, Member stops stacking under the higher ranks (the issue said frontend, but nothing could write the grid), the Rank permissions tab, tabs and buttons that follow the grid; tests and generated docs. Review and merge not yet counted | Phase 1: For the guild test (#1652) | 15 m | ~all build | 231,800 | |
 
 ## Not counted (same sessions, not revamp)
 

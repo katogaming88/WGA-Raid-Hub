@@ -53,6 +53,65 @@ describe('New team in the team picker', () => {
   });
 });
 
+describe('Guild settings > Rank permissions', () => {
+  const GRID = {
+    path: '/g/wga/settings/rank-permissions',
+    sentinel: 'main .rank-grid input',
+    session: STATE.session,
+    person: STATE.person,
+    teams: STATE.teams,
+    rpc: {
+      guild_members: [
+        {
+          person_id: 1,
+          display_name: 'Katorri',
+          rank: 'owner',
+          is_you: true,
+          teams: [],
+          last_sign_in: null,
+          characters: []
+        }
+      ],
+      set_guild_rank_permissions: null
+    },
+    tables: {
+      guild_rank_permissions: [{ rank: 'admin', permission: 'record_boe' }],
+      rank_permissions: [{ permission: 'record_boe', default_ranks: ['admin'] }]
+    }
+  };
+
+  it('a switch ticks from the keyboard and Save is reached by Tab', async () => {
+    const { context, page } = await openApp(browser, server.port, GRID);
+    try {
+      const box = page.getByRole('checkbox', { name: 'Member: Create teams' });
+      await box.focus();
+      await page.keyboard.press('Space');
+      expect(await box.isChecked()).toBe(true);
+      await page.getByText('1 change not saved.').waitFor();
+      await page.getByRole('button', { name: 'Reset to defaults' }).focus();
+      await page.keyboard.press('Tab');
+      await page.keyboard.press('Tab');
+      expect(await page.evaluate(() => document.activeElement?.textContent?.trim())).toBe('Save');
+    } finally {
+      await context.close();
+    }
+  });
+
+  it('fits a phone without scrolling sideways', async () => {
+    const { context, page } = await openApp(browser, server.port, { ...GRID, viewport: { width: 360, height: 740 } });
+    try {
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+      );
+      expect(overflow).toBeLessThanOrEqual(0);
+      const size = await page.locator('.rank-grid-check').first().boundingBox();
+      expect(size.height).toBeGreaterThanOrEqual(44);
+    } finally {
+      await context.close();
+    }
+  });
+});
+
 describe('Settings > Ranks', () => {
   it('asks before making someone an Officer, from the keyboard, and Escape changes nothing', async () => {
     const { context, page } = await openApp(browser, server.port, {

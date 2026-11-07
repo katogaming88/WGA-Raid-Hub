@@ -108,3 +108,79 @@
 .members-foot {
   margin: var(--space-2) 0 0;
 }
+
+/* The rank permissions grid (#1652). Fits a phone without sideways scrolling:
+   the label column takes what the four rank columns leave. */
+.rank-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.rank-grid th,
+.rank-grid td {
+  border-bottom: 1px solid var(--border);
+}
+
+.rank-grid thead th {
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: var(--space-1) var(--space-1) var(--space-1) 0;
+}
+
+.rank-grid thead .rank-grid-col {
+  width: 96px;
+  padding-right: 0;
+  text-align: center;
+}
+
+.rank-grid-group {
+  padding: var(--space-3) 0 var(--space-1);
+  text-align: left;
+  font-weight: 600;
+}
+
+.rank-grid-row {
+  padding: var(--space-1) var(--space-1) var(--space-1) 0;
+  text-align: left;
+  font-weight: 400;
+}
+
+.rank-grid-hint {
+  display: block;
+}
+
+.rank-grid-cell {
+  text-align: center;
+}
+
+.rank-grid-check {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.rank-grid-check:has(input:disabled) {
+  cursor: default;
+}
+
+.rank-grid-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.rank-grid-status {
+  margin-right: auto;
+}
+
+@media (max-width: 600px) {
+  .rank-grid thead .rank-grid-col {
+    width: 52px;
+  }
+}

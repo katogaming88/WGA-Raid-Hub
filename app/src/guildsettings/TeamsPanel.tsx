@@ -20,7 +20,9 @@ export function TeamsPanel() {
   const { announce } = useStatus();
   const setArchived = useSetTeamArchived();
   const setUnlisted = useSetTeamUnlisted();
-  const canChangeOwner = usePageCan().can('changeTeamOwner');
+  const { can } = usePageCan();
+  const canChangeOwner = can('changeTeamOwner');
+  const canRename = can('renameTeams');
   const [editing, setEditing] = useState<Editing | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -36,9 +38,11 @@ export function TeamsPanel() {
             it, but still opens by its address.
           </p>
         </div>
-        <button type="button" className="button button-primary" onClick={() => setAdding(true)}>
-          New team
-        </button>
+        {can('createTeams') && (
+          <button type="button" className="button button-primary" onClick={() => setAdding(true)}>
+            New team
+          </button>
+        )}
       </div>
       <DataState query={teams} label="the guild's teams">
         {(rows) => (
@@ -55,32 +59,36 @@ export function TeamsPanel() {
                       /g/{guild.key}/t/{team.slug}
                     </div>
                   </div>
-                  <label className="guildsettings-switch">
-                    <input
-                      type="checkbox"
-                      checked={team.unlisted}
-                      disabled={archived || setUnlisted.isPending}
-                      onChange={(e) =>
-                        setUnlisted.mutate(
-                          { teamId: team.id, unlisted: e.target.checked },
-                          { onError: fail(`change ${team.name}`) }
-                        )
-                      }
-                    />
-                    Unlisted<span className="visually-hidden">: {team.name}</span>
-                  </label>
-                  <button type="button" className="button" onClick={() => setEditing({ kind: 'rename', team })}>
-                    Rename <span className="visually-hidden">{team.name}</span>
-                  </button>
-                  <button type="button" className="button" onClick={() => setEditing({ kind: 'address', team })}>
-                    Change address <span className="visually-hidden">of {team.name}</span>
-                  </button>
+                  {canRename && (
+                    <>
+                      <label className="guildsettings-switch">
+                        <input
+                          type="checkbox"
+                          checked={team.unlisted}
+                          disabled={archived || setUnlisted.isPending}
+                          onChange={(e) =>
+                            setUnlisted.mutate(
+                              { teamId: team.id, unlisted: e.target.checked },
+                              { onError: fail(`change ${team.name}`) }
+                            )
+                          }
+                        />
+                        Unlisted<span className="visually-hidden">: {team.name}</span>
+                      </label>
+                      <button type="button" className="button" onClick={() => setEditing({ kind: 'rename', team })}>
+                        Rename <span className="visually-hidden">{team.name}</span>
+                      </button>
+                      <button type="button" className="button" onClick={() => setEditing({ kind: 'address', team })}>
+                        Change address <span className="visually-hidden">of {team.name}</span>
+                      </button>
+                    </>
+                  )}
                   {canChangeOwner && !archived && (
                     <button type="button" className="button" onClick={() => setEditing({ kind: 'owner', team })}>
                       Change Team Owner <span className="visually-hidden">of {team.name}</span>
                     </button>
                   )}
-                  {archived ? (
+                  {!canRename ? null : archived ? (
                     <button
                       type="button"
                       className="button"

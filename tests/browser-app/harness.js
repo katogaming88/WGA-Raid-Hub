@@ -231,6 +231,9 @@ export async function openApp(browser, port, state) {
     team_settings: [],
     // Each team's rank grid (#1645), which Settings > Ranks describes.
     team_rank_permissions: [],
+    // The guild's grid and each permission's defaults (#1652).
+    guild_rank_permissions: [],
+    rank_permissions: [],
     // The per-tier switches (#939): empty means everything closed.
     team_seasons: [],
     characters: [],

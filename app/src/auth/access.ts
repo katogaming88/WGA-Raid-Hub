@@ -165,8 +165,12 @@ export type Ability =
   // The Guild officers page's bios (#1361): edit_all_bios, or edit_own_bio
   // for the caller's own card (#1647).
   | 'editGuildOfficers'
-  // Guild settings (#1644): adding, renaming, archiving and unlisting teams.
+  // Guild settings' Teams tab (#1644): any of what it offers, each its own
+  // row on the guild grid (#1652).
   | 'manageTeams'
+  | 'createTeams'
+  // Renaming, archiving and unlisting a team.
+  | 'renameTeams'
   // Guild settings' Members tab (#1650): the Owner and Admins. No grid row
   // names it, so it asks edit_guild_profile, which an Admin holds by default;
   // the database decides who may change a rank.
@@ -238,7 +242,11 @@ export function can(
     case 'manageBoe':
       return admin || guild('record_boe', 'pay_any_boe');
     case 'manageTeams':
-      return guild('create_teams', 'rename_archive_teams');
+      return guild('create_teams', 'rename_archive_teams', 'change_team_owner');
+    case 'createTeams':
+      return guild('create_teams');
+    case 'renameTeams':
+      return guild('rename_archive_teams');
     case 'manageMembers':
       return guild('edit_guild_profile');
     case 'promoteAssistants':
