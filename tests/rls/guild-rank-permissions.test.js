@@ -2,7 +2,8 @@
 // Again's Owner and GUILD_OFFICER an Admin; RAIDER_T1 is a Member by being on
 // Phoenix.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, GUILD_OFFICER, RAIDER_T1, TEAM_LEADER_T3 } from './helpers.js';
+import { randomUUID } from 'node:crypto';
+import { pool, withTxn, insertDiscordUser, GUILD_OFFICER, RAIDER_T1, TEAM_LEADER_T3 } from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -121,15 +122,17 @@ describe('Member no longer stacks under the higher ranks', () => {
   it('a leftover member row gives nothing to someone who has left every team', async () => {
     await withTxn(async ({ q, asUser }) => {
       await save(asUser, OWNER, [change('member', 'create_teams', true)]);
+      // Someone of their own, on no team: another file archives the seeded
+      // raider's rows at the same moment, and the two can deadlock.
+      const former = randomUUID();
+      await insertDiscordUser(q, former, `discord-1652-${former}`);
       await q(
         `insert into public.guild_ranks (guild_id, person_id, rank)
-         values (${WGA}, public.person_for_discord_id('discord-raider-1'), 'member')`
+         values (${WGA}, (select id from public.people where auth_user_id = $1), 'member')`,
+        [former]
       );
+      expect(await has(asUser, former, 'create_teams')).toBe(false);
       expect(await has(asUser, RAIDER_T1, 'create_teams')).toBe(true);
-      await q(
-        "update public.team_members set archived_at = now() where person_id = public.person_for_discord_id('discord-raider-1')"
-      );
-      expect(await has(asUser, RAIDER_T1, 'create_teams')).toBe(false);
     });
   });
 
