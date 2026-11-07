@@ -5228,6 +5228,10 @@ export type Database = {
         Returns: Json
       }
       signup_wishlist_open: { Args: { p_signup_id: number }; Returns: boolean }
+      signup_wishlist_rank_locked: {
+        Args: { p_signup_id: number }
+        Returns: boolean
+      }
       submit_bis_link: {
         Args: {
           p_bis_link: string

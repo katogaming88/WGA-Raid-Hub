@@ -9,7 +9,6 @@ CREATE OR REPLACE FUNCTION public.restrict_signup_item_preferences_to_open_wishl
 AS $function$
 declare
   v_signup_id integer;
-  v_team_id integer;
 begin
   if current_user = 'authenticated' then
     foreach v_signup_id in array case
@@ -18,11 +17,7 @@ begin
         else array[old.signup_id, new.signup_id]
       end
     loop
-      select s.team_id into v_team_id from public.season_signups s where s.id = v_signup_id;
-      if exists (select 1 from public.team_members m
-                  where m.team_id = v_team_id and m.person_id = public.my_person_id()
-                    and m.archived_at is null)
-         and not public.has_team_permission(v_team_id, 'edit_own_wishlist') then
+      if public.signup_wishlist_rank_locked(v_signup_id) then
         raise exception 'your rank cannot edit its wishlist on this team';
       end if;
       if not public.signup_wishlist_open(v_signup_id) then

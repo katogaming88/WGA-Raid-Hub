@@ -13637,6 +13637,12 @@
       "return_type": "void",
       "arguments": "p_team_id integer, p_changes jsonb",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.signup_wishlist_rank_locked",
+      "return_type": "bool",
+      "arguments": "p_signup_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

@@ -16,6 +16,8 @@ declare
   v_on boolean;
   v_rows integer;
   v_applied jsonb := '{}'::jsonb;
+  v_first jsonb := '{}'::jsonb;
+  v_key text;
 begin
   if v_uid is null then
     raise exception 'Not signed in';
@@ -61,9 +63,19 @@ begin
     end if;
     get diagnostics v_rows = row_count;
     if v_rows > 0 then
-      v_applied := v_applied || jsonb_build_object(v_rank || ' ' || v_permission, v_on);
+      v_key := v_rank || ' ' || v_permission;
+      v_applied := v_applied || jsonb_build_object(v_key, v_on);
+      if not v_first ? v_key then
+        v_first := v_first || jsonb_build_object(v_key, v_on);
+      end if;
     end if;
   end loop;
+
+  -- A switch sent off then on (or the reverse) ends where it began: keep only
+  -- the ones whose final value is the first flip, so the log shows lasting changes.
+  select coalesce(jsonb_object_agg(a.key, a.value), '{}'::jsonb) into v_applied
+    from jsonb_each(v_applied) a
+   where a.value = v_first -> a.key;
 
   -- Nothing actually changed: nothing to log.
   if v_applied = '{}'::jsonb then

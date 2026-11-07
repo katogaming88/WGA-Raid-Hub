@@ -25,6 +25,8 @@ declare
   v_on boolean;
   v_rows integer;
   v_applied jsonb := '{}'::jsonb;
+  v_first jsonb := '{}'::jsonb;
+  v_key text;
 begin
   if v_uid is null then
     raise exception 'Not signed in';
@@ -70,9 +72,19 @@ begin
     end if;
     get diagnostics v_rows = row_count;
     if v_rows > 0 then
-      v_applied := v_applied || jsonb_build_object(v_rank || ' ' || v_permission, v_on);
+      v_key := v_rank || ' ' || v_permission;
+      v_applied := v_applied || jsonb_build_object(v_key, v_on);
+      if not v_first ? v_key then
+        v_first := v_first || jsonb_build_object(v_key, v_on);
+      end if;
     end if;
   end loop;
+
+  -- A switch sent off then on (or the reverse) ends where it began: keep only
+  -- the ones whose final value is the first flip, so the log shows lasting changes.
+  select coalesce(jsonb_object_agg(a.key, a.value), '{}'::jsonb) into v_applied
+    from jsonb_each(v_applied) a
+   where a.value = v_first -> a.key;
 
   -- Nothing actually changed: nothing to log.
   if v_applied = '{}'::jsonb then
@@ -137,6 +149,23 @@ end $$;
 
 -- A signup's wishlist: the same lock, for someone already on the team. A
 -- signer with no place on the team has no rank to ask.
+-- Whether the caller is on the signup's team and their rank has Edit own
+-- wishlist off. Security definer for the same reason as signup_wishlist_open():
+-- a raider may not be able to read the signup row itself.
+create function public.signup_wishlist_rank_locked(p_signup_id integer) returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from season_signups s
+      join team_members m on m.team_id = s.team_id and m.person_id = my_person_id()
+                         and m.archived_at is null
+     where s.id = p_signup_id and not has_team_permission(s.team_id, 'edit_own_wishlist')
+  );
+$$;
+
+revoke all on function public.signup_wishlist_rank_locked(integer) from public, anon;
+grant execute on function public.signup_wishlist_rank_locked(integer) to authenticated;
+
 create or replace function public.restrict_signup_item_preferences_to_open_wishlist()
 returns trigger
 language plpgsql
@@ -144,7 +173,6 @@ set search_path = public
 as $$
 declare
   v_signup_id integer;
-  v_team_id integer;
 begin
   if current_user = 'authenticated' then
     foreach v_signup_id in array case
@@ -153,11 +181,7 @@ begin
         else array[old.signup_id, new.signup_id]
       end
     loop
-      select s.team_id into v_team_id from public.season_signups s where s.id = v_signup_id;
-      if exists (select 1 from public.team_members m
-                  where m.team_id = v_team_id and m.person_id = public.my_person_id()
-                    and m.archived_at is null)
-         and not public.has_team_permission(v_team_id, 'edit_own_wishlist') then
+      if public.signup_wishlist_rank_locked(v_signup_id) then
         raise exception 'your rank cannot edit its wishlist on this team';
       end if;
       if not public.signup_wishlist_open(v_signup_id) then
