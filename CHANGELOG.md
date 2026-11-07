@@ -27,9 +27,9 @@ answers to.
 ### Backend
 
 - `set_guild_rank_permissions()` saves the Owner's changes and logs them. A person
-  now counts as a guild Member only with no higher rank in that guild, so a tick
-  for Member can't reach an Admin whose own box is off. Nobody's access changes
-  today (#1652).
+  now counts as a guild Member only while on one of its teams and with no higher
+  rank there, so a tick for Member can't reach an Admin whose own box is off, or
+  someone who has left every team. Nobody's access changes today (#1652).
 
 ### Project
 

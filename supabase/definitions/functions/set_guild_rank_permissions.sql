@@ -15,7 +15,7 @@ declare
   v_permission text;
   v_on boolean;
   v_rows integer;
-  v_applied jsonb := '[]'::jsonb;
+  v_applied jsonb := '{}'::jsonb;
 begin
   if v_uid is null then
     raise exception 'Not signed in';
@@ -57,17 +57,18 @@ begin
     end if;
     get diagnostics v_rows = row_count;
     if v_rows > 0 then
-      v_applied := v_applied || jsonb_build_object('rank', v_rank, 'permission', v_permission, 'on', v_on);
+      -- One flat key per change: every audit view spells these out, as
+      -- "Admin record boe: Off", where a list would show only as a count.
+      v_applied := v_applied || jsonb_build_object(v_rank || ' ' || v_permission, v_on);
     end if;
   end loop;
 
   -- Nothing actually changed: nothing to log.
-  if jsonb_array_length(v_applied) = 0 then
+  if v_applied = '{}'::jsonb then
     return;
   end if;
 
   insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
-  values (null, v_uid, 'Guild Permissions Changed', 'guilds', p_guild_id,
-          jsonb_build_object('changes', v_applied));
+  values (null, v_uid, 'Guild Permissions Changed', 'guilds', p_guild_id, v_applied);
 end;
 $function$;

@@ -8,6 +8,10 @@
 -- A person holds one guild rank (#1517), so Member now answers only for someone
 -- with no higher rank in the guild. Member holds nothing by default, so nobody's
 -- access changes today.
+--
+-- Member also comes only from being on a team now, never from a guild_ranks row.
+-- The current site's Revoke Guild Officer leaves a 'member' row behind, which
+-- would keep Member's permissions for someone who has left every team.
 
 create or replace function public.has_guild_permission(p_guild_id integer, p_permission text)
 returns boolean
@@ -19,14 +23,15 @@ as $$
   with ranks as (
     select g.rank
       from guild_ranks g
-     where g.guild_id = p_guild_id and g.person_id = my_person_id()
+     where g.guild_id = p_guild_id and g.person_id = my_person_id() and g.rank <> 'member'
     union all
     select 'member'
       from team_members m
       join teams t on t.id = m.team_id
      where t.guild_id = p_guild_id and m.person_id = my_person_id() and m.archived_at is null
        and not exists (select 1 from guild_ranks g
-                        where g.guild_id = p_guild_id and g.person_id = my_person_id())
+                        where g.guild_id = p_guild_id and g.person_id = my_person_id()
+                          and g.rank <> 'member')
   )
   select exists (select 1 from rank_permissions k where k.permission = p_permission and k.scope = 'guild')
      and (exists (select 1 from ranks r
@@ -56,7 +61,7 @@ declare
   v_permission text;
   v_on boolean;
   v_rows integer;
-  v_applied jsonb := '[]'::jsonb;
+  v_applied jsonb := '{}'::jsonb;
 begin
   if v_uid is null then
     raise exception 'Not signed in';
@@ -98,18 +103,19 @@ begin
     end if;
     get diagnostics v_rows = row_count;
     if v_rows > 0 then
-      v_applied := v_applied || jsonb_build_object('rank', v_rank, 'permission', v_permission, 'on', v_on);
+      -- One flat key per change: every audit view spells these out, as
+      -- "Admin record boe: Off", where a list would show only as a count.
+      v_applied := v_applied || jsonb_build_object(v_rank || ' ' || v_permission, v_on);
     end if;
   end loop;
 
   -- Nothing actually changed: nothing to log.
-  if jsonb_array_length(v_applied) = 0 then
+  if v_applied = '{}'::jsonb then
     return;
   end if;
 
   insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
-  values (null, v_uid, 'Guild Permissions Changed', 'guilds', p_guild_id,
-          jsonb_build_object('changes', v_applied));
+  values (null, v_uid, 'Guild Permissions Changed', 'guilds', p_guild_id, v_applied);
 end;
 $$;
 

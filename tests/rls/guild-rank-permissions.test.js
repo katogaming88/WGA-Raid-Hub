@@ -28,10 +28,7 @@ describe('set_guild_rank_permissions', () => {
       expect(await has(asUser, RAIDER_T1, 'create_teams')).toBe(true);
 
       const { rows } = await audits(q);
-      expect(rows.map((r) => r.detail.changes)).toEqual([
-        [{ rank: 'admin', permission: 'record_boe', on: false }],
-        [{ rank: 'member', permission: 'create_teams', on: true }]
-      ]);
+      expect(rows.map((r) => r.detail)).toEqual([{ 'admin record_boe': false }, { 'member create_teams': true }]);
     });
   });
 
@@ -118,6 +115,21 @@ describe('Member no longer stacks under the higher ranks', () => {
       await save(asUser, OWNER, [change('member', 'record_boe', true), change('admin', 'record_boe', false)]);
       expect(await has(asUser, RAIDER_T1, 'record_boe')).toBe(true);
       expect(await has(asUser, GUILD_OFFICER, 'record_boe')).toBe(false);
+    });
+  });
+
+  it('a leftover member row gives nothing to someone who has left every team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await save(asUser, OWNER, [change('member', 'create_teams', true)]);
+      await q(
+        `insert into public.guild_ranks (guild_id, person_id, rank)
+         values (${WGA}, public.person_for_discord_id('discord-raider-1'), 'member')`
+      );
+      expect(await has(asUser, RAIDER_T1, 'create_teams')).toBe(true);
+      await q(
+        "update public.team_members set archived_at = now() where person_id = public.person_for_discord_id('discord-raider-1')"
+      );
+      expect(await has(asUser, RAIDER_T1, 'create_teams')).toBe(false);
     });
   });
 
