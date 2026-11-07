@@ -141,6 +141,57 @@ describe('Settings > Ranks', () => {
   });
 });
 
+describe('Settings > Ranks, the team grid (#1653)', () => {
+  const TEAM_GRID = {
+    path: '/g/wga/t/phoenix/officer/settings/ranks',
+    sentinel: 'main .rank-grid input',
+    session: STATE.session,
+    who: 'officer',
+    rpc: {
+      team_member_ranks: [{ team_member_id: 1, display_name: 'Olive', rank: 'owner', signed_in: true, is_you: true }],
+      set_team_rank_permissions: null
+    },
+    tables: {
+      team_rank_permissions: [{ rank: 'raider', permission: 'edit_own_wishlist' }],
+      rank_permissions: [{ permission: 'edit_own_wishlist', default_ranks: ['raider'] }]
+    }
+  };
+
+  it('a switch ticks from the keyboard and Save is reached by Tab', async () => {
+    const { context, page } = await openApp(browser, server.port, TEAM_GRID);
+    try {
+      const box = page.getByRole('checkbox', { name: 'Raider: Edit own wishlist' });
+      await box.focus();
+      await page.keyboard.press('Space');
+      expect(await box.isChecked()).toBe(false);
+      await page.getByText('1 change not saved.').waitFor();
+      await page.getByRole('button', { name: 'Reset to defaults' }).focus();
+      await page.keyboard.press('Tab');
+      await page.keyboard.press('Tab');
+      expect(await page.evaluate(() => document.activeElement?.textContent?.trim())).toBe('Save');
+    } finally {
+      await context.close();
+    }
+  });
+
+  it('fits a phone without scrolling sideways', async () => {
+    const { context, page } = await openApp(browser, server.port, {
+      ...TEAM_GRID,
+      viewport: { width: 360, height: 740 }
+    });
+    try {
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+      );
+      expect(overflow).toBeLessThanOrEqual(0);
+      const size = await page.locator('.rank-grid-check').first().boundingBox();
+      expect(size.height).toBeGreaterThanOrEqual(44);
+    } finally {
+      await context.close();
+    }
+  });
+});
+
 describe('Change Team Owner', () => {
   it('opens from the keyboard and has nothing to save until someone is picked', async () => {
     const { context, page } = await openApp(browser, server.port, {

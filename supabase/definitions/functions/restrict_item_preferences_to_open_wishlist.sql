@@ -21,17 +21,22 @@ begin
         else array[old, new]
       end
     loop
-      if public.is_own_player(v_row.player_id)
-         and not exists (
-           select 1 from public.team_seasons ts
-           where ts.team_id = v_row.team_id and ts.season_code = v_row.season and ts.wishlist_open
-         )
-         and not exists (
-           select 1 from public.players p
-           where p.id = v_row.player_id and p.wishlist_allowed
-         )
-      then
-        raise exception 'wishlist editing is not open for that season on this team';
+      if public.is_own_player(v_row.player_id) then
+        -- The Team Owner's lock, from the team's grid (#1653).
+        if not public.has_team_permission(v_row.team_id, 'edit_own_wishlist') then
+          raise exception 'your rank cannot edit its wishlist on this team';
+        end if;
+        if not exists (
+             select 1 from public.team_seasons ts
+             where ts.team_id = v_row.team_id and ts.season_code = v_row.season and ts.wishlist_open
+           )
+           and not exists (
+             select 1 from public.players p
+             where p.id = v_row.player_id and p.wishlist_allowed
+           )
+        then
+          raise exception 'wishlist editing is not open for that season on this team';
+        end if;
       end if;
     end loop;
   end if;

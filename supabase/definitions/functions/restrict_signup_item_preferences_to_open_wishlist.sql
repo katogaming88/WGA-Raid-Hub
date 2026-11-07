@@ -17,6 +17,9 @@ begin
         else array[old.signup_id, new.signup_id]
       end
     loop
+      if public.signup_wishlist_rank_locked(v_signup_id) then
+        raise exception 'your rank cannot edit its wishlist on this team';
+      end if;
       if not public.signup_wishlist_open(v_signup_id) then
         raise exception 'wishlist editing is not open for that season on this team';
       end if;
