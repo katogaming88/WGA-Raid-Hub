@@ -1372,6 +1372,30 @@ const GUILD_MEMBERS = {
   }
 };
 
+// Guild settings, Rank permissions (#1652): the Owner, then an Admin who reads it.
+const GUILD_GRID = {
+  ...GUILD_MEMBERS,
+  path: '/g/wga/settings/rank-permissions',
+  sentinel: 'main .rank-grid input',
+  tables: {
+    guild_rank_permissions: [
+      { rank: 'team_lead', permission: 'create_teams' },
+      { rank: 'admin', permission: 'create_teams' },
+      { rank: 'admin', permission: 'record_boe' }
+    ],
+    rank_permissions: [
+      { permission: 'create_teams', default_ranks: ['team_lead', 'admin'] },
+      { permission: 'record_boe', default_ranks: ['admin'] }
+    ]
+  }
+};
+const GUILD_GRID_ADMIN = {
+  ...GUILD_GRID,
+  rpc: {
+    guild_members: GUILD_MEMBERS.rpc.guild_members.map((m) => ({ ...m, is_you: m.person_id === 2 }))
+  }
+};
+
 // History (#1102): a season with a roster to show behind the toggle.
 const HISTORY_ENTRY = {
   name: 'Season One',
@@ -1664,6 +1688,10 @@ const STATES = [
     click: 'role=button[name="Hand over ownership to Rex"]',
     afterClick: '[role=dialog]'
   },
+  { label: 'guild settings, rank permissions', ...GUILD_GRID },
+  { label: 'guild settings, rank permissions, light', ...GUILD_GRID, colorScheme: 'light' },
+  { label: 'guild settings, rank permissions, on a phone', ...GUILD_GRID, viewport: NARROW },
+  { label: 'guild settings, rank permissions, an Admin reading', ...GUILD_GRID_ADMIN },
   { label: 'history', ...HISTORY },
   { label: 'history, light', ...HISTORY, colorScheme: 'light' },
   { label: 'signup', ...SIGNUP },

@@ -5088,6 +5088,10 @@ export type Database = {
         Args: { p_guild_id: number; p_person_id: number; p_rank: string }
         Returns: undefined
       }
+      set_guild_rank_permissions: {
+        Args: { p_changes: Json; p_guild_id: number }
+        Returns: undefined
+      }
       set_lineup_role_targets: {
         Args: { p_healers: number; p_tanks: number; p_team_id: number }
         Returns: undefined

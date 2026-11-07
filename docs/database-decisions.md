@@ -3355,3 +3355,15 @@ Shipped: `20261106101250_guild_members_teams_and_sign_in.sql`.
 **Who may see sign-in times.** The same people who already read the list: the Owner and anyone whose rank has `edit_guild_profile`. Search and the rank filter run in the browser over the whole list, since a guild is about a hundred people.
 
 [Full discussion -> #1650](https://github.com/katogaming88/WGA-Raid-Hub/issues/1650).
+
+## #1652 -- the guild's rank permissions grid
+
+Shipped: `20261106222127_guild_rank_permissions_grid.sql`.
+
+**The save sends changes, not the whole grid.** `set_guild_rank_permissions()` takes a list of `{rank, permission, on}`, so a permission the page doesn't show stays as it is. **Export guild data** is the first of those: its row stays in `rank_permissions`, but the page leaves it out until a guild export exists, because the switch would do nothing (Kat, 2026-11-06). One save is one transaction and one audit row, listing only what really changed.
+
+**Member stops stacking under the higher ranks.** `has_guild_permission()` counted anyone on a team as a Member as well as their own rank, so a Member tick would have reached an Admin whose own box was off, and the grid would have shown the wrong answer. A person holds one guild rank (#1517), so Member now answers only for someone with no higher rank in that guild. Member holds nothing by default, so no one's access changed when this shipped.
+
+**Owner only, with no Staff override,** as with `set_guild_rank()` and `transfer_guild_ownership()`. Admins read the grid; the tables were already public reads.
+
+[Full discussion -> #1652](https://github.com/katogaming88/WGA-Raid-Hub/issues/1652).

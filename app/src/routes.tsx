@@ -30,7 +30,7 @@ import { AboutPage } from './about/AboutPage';
 import { HistoryPage } from './history/HistoryPage';
 import { SignUpPage } from './signup/SignUpPage';
 import { GuildOfficersPage } from './officers/GuildOfficersPage';
-import { GuildSettingsPage } from './guildsettings/GuildSettingsPage';
+import { GuildSettingsIndex, GuildSettingsPage } from './guildsettings/GuildSettingsPage';
 import { TeamOfficersPage } from './officers/TeamOfficersPage';
 import { InviteLinkPage } from './invite/InviteLinkPage';
 import { SiteAdminPage } from './siteadmin/SiteAdminPage';
@@ -97,6 +97,11 @@ const BUILT_GUILD_PAGES: Record<string, ReactElement> = {
     </RequireAbility>
   ),
   'settings/members': (
+    <RequireAbility ability="manageMembers" title="Guild settings" forWhom="the guild's Owner and Admins">
+      <GuildSettingsPage />
+    </RequireAbility>
+  ),
+  'settings/rank-permissions': (
     <RequireAbility ability="manageMembers" title="Guild settings" forWhom="the guild's Owner and Admins">
       <GuildSettingsPage />
     </RequireAbility>
@@ -181,8 +186,8 @@ export const routes: RouteObject[] = [
             element: BUILT_GUILD_PAGES[path] ?? <PlaceholderPage title={title} />,
             handle: { title } satisfies RouteHandle
           })),
-          // Guild settings opens on its first tab.
-          { path: 'settings', element: <Navigate to="teams" replace /> },
+          // Guild settings opens on the first tab the person can use.
+          { path: 'settings', element: <GuildSettingsIndex /> },
           {
             path: 't/:teamKey',
             children: [

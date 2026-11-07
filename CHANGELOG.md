@@ -12,6 +12,30 @@ answers to.
 
 ---
 
+## [3.245.0] - 2026-11-06
+
+### Frontend
+
+- Guild settings has a Rank permissions tab. The Owner switches each guild
+  permission on or off for Member, Team Lead and Admin and saves it, and Admins
+  can read it. Export guild data isn't shown until a guild export exists (#1652).
+- Guild settings shows each person only the tabs and buttons their rank allows,
+  and opens on the first tab they can use. New team, Rename and Archive now
+  follow their own switches, and someone with only Change a team's Team Owner can
+  reach that button (#1652).
+
+### Backend
+
+- `set_guild_rank_permissions()` saves the Owner's changes and logs them. A person
+  now counts as a guild Member only with no higher rank in that guild, so a tick
+  for Member can't reach an Admin whose own box is off. Nobody's access changes
+  today (#1652).
+
+### Project
+
+- Database, app and browser tests for the grid, and the revamp time log's owed
+  rows (#1652).
+
 ## [3.244.0] - 2026-11-06
 
 ### Frontend

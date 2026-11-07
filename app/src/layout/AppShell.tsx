@@ -118,7 +118,7 @@ export function AppShell() {
   const { can } = permissions;
   const groups = navGroups(base, {
     can,
-    guildSettings: can('manageTeams') && !limited,
+    guildSettings: (can('manageTeams') || can('manageMembers')) && !limited,
     hideBoe: limited,
     siteAdmin: can('adminSite'),
     newsUnread: news.isSuccess && hasUnread(news.data, newsSeen),
@@ -322,7 +322,7 @@ export function AppShell() {
         <TeamSwitcher
           guildKey={guildKey}
           guildId={guildId}
-          canAddTeam={can('manageTeams') && !limited}
+          canAddTeam={can('createTeams') && !limited}
           teams={teams}
           currentKey={currentTeam?.key ?? null}
           label={currentTeam?.name ?? 'Choose a team'}
