@@ -5166,6 +5166,10 @@ export type Database = {
         Args: { p_rank: string; p_team_id: number; p_team_member_id: number }
         Returns: undefined
       }
+      set_team_rank_permissions: {
+        Args: { p_changes: Json; p_team_id: number }
+        Returns: undefined
+      }
       set_team_rsvp_post: {
         Args: {
           p_channel_id: string
@@ -5224,6 +5228,10 @@ export type Database = {
         Returns: Json
       }
       signup_wishlist_open: { Args: { p_signup_id: number }; Returns: boolean }
+      signup_wishlist_rank_locked: {
+        Args: { p_signup_id: number }
+        Returns: boolean
+      }
       submit_bis_link: {
         Args: {
           p_bis_link: string
