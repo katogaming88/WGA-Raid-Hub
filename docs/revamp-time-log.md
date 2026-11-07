@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |          32 h |
+| Phase 1: For the guild test        |     34 h 10 m |
 | Phase 2: Before the new site goes live |       0 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **166 h 31 m** |
+| **All revamp work**                | **168 h 41 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -595,6 +595,15 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 3:30-3:37 PM | PR #1770 (#1651): the second fresh-agent review (changes needed): names use a nickname ahead of the character, as the Roster does; two more refusal tests, docs; the note on #1652 | Phase 1: For the guild test (#1651) | 5 m | ~3 m build, ~2 m Kat | 196,900 | Includes the review agent's 181,900; merge not yet counted |
 | 3:37-4:07 PM | PR #1770 (#1651): Kat's merge and cleanup (row owed from that session) | Phase 1: For the guild test (#1651) | 30 m | mostly Kat | 27,100 | |
 | 10:17-10:30 PM | #1652: Kat settled the list (Export guild data hidden until a guild export exists); `set_guild_rank_permissions()`, Member stops stacking under the higher ranks (the issue said frontend, but nothing could write the grid), the Rank permissions tab, tabs and buttons that follow the grid; tests and generated docs. Review and merge not yet counted | Phase 1: For the guild test (#1652) | 15 m | ~all build | 231,800 | |
+| 10:30 PM-12:00 AM | PR #1772 (#1652): the PR, screenshots, CodeRabbit and the fresh-agent review (row owed from that session) | Phase 1: For the guild test (#1652) | 90 m | shared | 371,200 | |
+
+### 2026-11-07
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 9:17-9:20 AM | PR #1772 (#1652): Kat's merge at 9:17 and cleanup (row owed from that session) | Phase 1: For the guild test (#1652) | 5 m | ~5 m build | 50,900 | |
+| 10:10-10:35 AM | #1653: `set_team_rank_permissions()`, "Edit own wishlist" now locks the wishlist rules (nothing read it before; the issue said frontend), the team grid under the people on Settings > Ranks, Officers read it (Kat's pick); database, app and browser tests, generated docs, decision log, RLS.md, stamp, changelog; PR #1774 | Phase 1: For the guild test (#1653) | 25 m | ~25 m build | 183,400 | |
+| 10:35-10:45 AM | PR #1774 (#1653): the three screenshots, this row and the owed rows | Phase 1: For the guild test (#1653) | 10 m | ~10 m build | 38,300 | CodeRabbit, the fresh-agent review, Kat's review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

@@ -31,7 +31,8 @@ answers to.
 
 ### Project
 
-- Database, app and browser tests for the team grid (#1653).
+- Database, app and browser tests for the team grid, and the revamp time log's
+  owed rows (#1653).
 
 ## [3.245.0] - 2026-11-06
 
