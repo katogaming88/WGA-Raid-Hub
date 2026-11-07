@@ -1571,7 +1571,16 @@ const RANKS_PAGE = {
       { rank: 'assistant', permission: 'edit_roster' },
       { rank: 'officer', permission: 'own_character' },
       { rank: 'officer', permission: 'edit_roster' },
-      { rank: 'officer', permission: 'manage_loot' }
+      { rank: 'officer', permission: 'manage_loot' },
+      { rank: 'raider', permission: 'edit_own_wishlist' },
+      { rank: 'assistant', permission: 'edit_own_wishlist' },
+      { rank: 'officer', permission: 'edit_own_wishlist' }
+    ],
+    // The grid's defaults (#1653).
+    rank_permissions: [
+      { permission: 'edit_own_wishlist', default_ranks: ['raider', 'assistant', 'officer'] },
+      { permission: 'edit_roster', default_ranks: ['assistant', 'officer'] },
+      { permission: 'manage_loot', default_ranks: ['officer'] }
     ]
   },
   rpc: {

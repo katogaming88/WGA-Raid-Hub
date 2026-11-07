@@ -3367,3 +3367,13 @@ Shipped: `20261106222127_guild_rank_permissions_grid.sql`.
 **Owner only, with no Staff override,** as with `set_guild_rank()` and `transfer_guild_ownership()`. Admins read the grid; the tables were already public reads.
 
 [Full discussion -> #1652](https://github.com/katogaming88/WGA-Raid-Hub/issues/1652).
+
+## #1653 -- the team's rank permissions grid
+
+Shipped: `20261107101124_team_rank_permissions_grid.sql`.
+
+**Same shape as the guild grid.** `set_team_rank_permissions()` takes a list of `{rank, permission, on}`, applies all of it or none, leaves unnamed permissions alone, and writes one `Team Permissions Changed` audit row (flat keys, only what really changed) on the team. Team Owner only, no Staff or guild override, and an archived team is refused. **Claim and edit own character** stays off the page: nothing asks `own_character` yet, so the switch would do nothing.
+
+**"Edit own wishlist" is now enforced.** Nothing read it before. The two wishlist triggers (`item_preferences`, `signup_item_preferences`) refuse a member whose rank has it off, ahead of the open-season check, so `players.wishlist_allowed` can't reopen a locked wishlist. A signer with no place on the team has no rank to ask and is left to the season check.
+
+[Full discussion -> #1653](https://github.com/katogaming88/WGA-Raid-Hub/issues/1653).

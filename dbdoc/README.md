@@ -299,6 +299,7 @@
 | public.team_member_ranks | record | p_team_id integer | FUNCTION |
 | public.change_team_owner | void | p_team_id integer, p_team_member_id integer | FUNCTION |
 | public.set_guild_rank_permissions | void | p_guild_id integer, p_changes jsonb | FUNCTION |
+| public.set_team_rank_permissions | void | p_team_id integer, p_changes jsonb | FUNCTION |
 
 ## Enums
 

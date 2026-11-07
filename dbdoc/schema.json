@@ -13631,6 +13631,12 @@
       "return_type": "void",
       "arguments": "p_guild_id integer, p_changes jsonb",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_rank_permissions",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_changes jsonb",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

@@ -13,6 +13,7 @@ import {
   type TeamMemberRank,
   type TeamRank
 } from './useRanks';
+import { TeamGridPanel } from './TeamGridPanel';
 import './settings.css';
 
 const LABELS: Record<TeamRank, string> = {
@@ -82,8 +83,8 @@ export function rankChoices(rank: TeamRank, teamOwner: boolean, promotes: boolea
   return [];
 }
 
-// Settings > Ranks (#1651): who holds which rank on the team: a section per rank, highest first, with its people across the width in columns. The
-// team's rank permissions grid (#1653) belongs here too.
+// Settings > Ranks (#1651): who holds which rank on the team: a section per rank, highest first, with its people across the width in columns, then
+// the team's rank permissions grid (#1653).
 export function RanksSettingsPage() {
   const team = useTeam();
   const ranks = useTeamMemberRanks(team.id);
@@ -221,6 +222,7 @@ function RanksTable({ teamId, rows }: { teamId: number; rows: TeamMemberRank[] }
           })}
         </div>
       )}
+      <TeamGridPanel teamId={teamId} isOwner={teamOwner} />
       {confirming && (
         <Dialog
           title={

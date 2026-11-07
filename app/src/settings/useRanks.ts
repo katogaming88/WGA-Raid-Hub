@@ -37,6 +37,45 @@ export function useTeamRankGrid(teamId: number) {
   });
 }
 
+// The team's rank permissions grid (#1653), the Team Owner's to change.
+export type TeamGridRank = 'raider' | 'assistant' | 'officer';
+export type TeamGridCell = { rank: TeamGridRank; permission: string };
+export type TeamGrid = { on: TeamGridCell[]; defaults: TeamGridCell[] };
+
+const teamGridKey = (teamId: number) => ['team-grid', teamId] as const;
+
+// Both tables are public reads: the team's own ticks, and the ranks a new team
+// starts with, which Reset to defaults goes back to.
+export function useTeamGrid(teamId: number) {
+  return useSupabaseQuery<TeamGrid>(teamGridKey(teamId), async (client) => {
+    const [on, defaults] = await Promise.all([
+      // team-read-guard: three ranks times the grid's 14 permissions, per team
+      client.from('team_rank_permissions').select('rank, permission').eq('team_id', teamId),
+      client.from('rank_permissions').select('permission, default_ranks').eq('scope', 'team')
+    ]);
+    if (on.error) return { data: null, error: on.error };
+    if (defaults.error) return { data: null, error: defaults.error };
+    return {
+      data: {
+        // The database's rank check holds these to the three TeamGridRank values.
+        on: on.data as TeamGridCell[],
+        defaults: defaults.data.flatMap((d) =>
+          (d.default_ranks as TeamGridRank[]).map((rank) => ({ rank, permission: d.permission }))
+        )
+      },
+      error: null
+    };
+  });
+}
+
+// A saved switch changes what the Owner's own screens read too.
+export function useSetTeamGrid(teamId: number) {
+  return useSupabaseMutation<void, { changes: (TeamGridCell & { on: boolean })[] }>(
+    (client, v) => client.rpc('set_team_rank_permissions', { p_team_id: teamId, p_changes: v.changes }),
+    { key: ['set-team-grid', teamId], refreshes: [teamGridKey(teamId), ['team-rank-grid', teamId], ['permissions']] }
+  );
+}
+
 export function useSetTeamRank(teamId: number) {
   return useSupabaseMutation<void, { teamMemberId: number; rank: SettableTeamRank }>(
     (client, v) => client.rpc('set_team_rank', { p_team_id: teamId, p_team_member_id: v.teamMemberId, p_rank: v.rank }),

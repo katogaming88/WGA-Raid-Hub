@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.246.0] - 2026-11-07
+
+### Frontend
+
+- Settings > Ranks has a Rank permissions grid under the people. The Team Owner
+  switches each team permission on or off for Raider, Assistant and Officer and
+  saves it, and anyone who can open the page can read it. "Edit own wishlist" can be
+  switched off to lock picks before a raid. "Claim and edit own character" isn't
+  shown until something asks for it (#1653).
+
+### Backend
+
+- `set_team_rank_permissions()` saves the Team Owner's changes and logs them.
+  A rank with "Edit own wishlist" off can no longer add, change or remove its own
+  wishlist picks on that team, signups included, even where a character has been
+  allowed to edit a closed season (#1653).
+
+### Project
+
+- Database, app and browser tests for the team grid (#1653).
+
 ## [3.245.0] - 2026-11-06
 
 ### Frontend
