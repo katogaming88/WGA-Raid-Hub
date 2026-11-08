@@ -223,7 +223,11 @@ function MemberStep({ target, onSkip }: { target: InviteTarget; onSkip: () => vo
           )}
         </>
       )}
-      <OwnNameForm teamId={target.teamId} card={false} />
+      <OwnNameForm
+        teamId={target.teamId}
+        card={false}
+        label={bare.length > 0 ? 'Not on the list? Add yourself to the roster' : 'Add yourself to the roster'}
+      />
       <button type="button" className="button join-skip" onClick={onSkip}>
         Skip for now
       </button>

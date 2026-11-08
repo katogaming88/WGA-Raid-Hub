@@ -1545,7 +1545,7 @@ const JOIN_MEMBER_STEP = {
     ]
   }
 };
-// The Roster for that person: Save my name above the table.
+// The Roster for that person: Add me to the roster above the table.
 const TEAM_OWNER_DIALOG = {
   ...GUILD_SETTINGS,
   rpc: {
@@ -2496,7 +2496,7 @@ describe('roster row menu', () => {
     try {
       const trigger = page.getByRole('button', { name: 'More actions for Bryn' });
       // From the keyboard, as the Assign test does: the officer has no Member
-      // here, so Save my name sits above the table and a mouse click's
+      // here, so Add me to the roster sits above the table and a mouse click's
       // scroll would close the menu.
       await trigger.scrollIntoViewIfNeeded();
       await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
