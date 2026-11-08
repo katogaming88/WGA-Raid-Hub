@@ -14560,6 +14560,12 @@
       "type": "FUNCTION"
     },
     {
+      "name": "public.in_guild",
+      "return_type": "bool",
+      "arguments": "p_guild_id integer, p_person_id integer",
+      "type": "FUNCTION"
+    },
+    {
       "name": "public.set_guild_recruiter",
       "return_type": "text",
       "arguments": "p_guild_id integer, p_person_id integer, p_on boolean",

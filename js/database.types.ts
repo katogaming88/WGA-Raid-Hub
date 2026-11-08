@@ -5016,6 +5016,7 @@ export type Database = {
           active: boolean
           code: string
           display_name: string
+          in_guild: boolean
           person_id: number
         }[]
       }
@@ -5034,6 +5035,10 @@ export type Database = {
       import_rclc_loot: {
         Args: { p_rows: Json; p_season: string; p_team_id: number }
         Returns: Json
+      }
+      in_guild: {
+        Args: { p_guild_id: number; p_person_id: number }
+        Returns: boolean
       }
       is_any_team_officer: { Args: never; Returns: boolean }
       is_boe_manager: { Args: never; Returns: boolean }

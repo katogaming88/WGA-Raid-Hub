@@ -46,7 +46,7 @@ describe('guild recruiters', () => {
 
       // The Members tab's read.
       const { rows } = await asUser(OWNER, `select * from public.guild_recruiter_list(${WGA})`);
-      expect(rows).toEqual([{ person_id: raider, display_name: 'Katorri', code, active: true }]);
+      expect(rows).toEqual([{ person_id: raider, display_name: 'Katorri', code, active: true, in_guild: true }]);
       expect((await audits(q)).map((r) => r.action)).toEqual(['Recruiter Switched On']);
     });
   });
@@ -69,6 +69,24 @@ describe('guild recruiters', () => {
       // Switching off someone who never was a recruiter does nothing.
       expect(await setRecruiter(asUser, OWNER, await personOf(q, OFFICER_T1), false)).toBeNull();
       expect(await audits(q)).toHaveLength(3);
+    });
+  });
+
+  it('a recruiter who leaves the guild stops crediting, keeps their code, and cannot be switched back on until back', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      const raider = await personOf(q, RAIDER_T1);
+      const code = await setRecruiter(asUser, OWNER, raider, true);
+      await q('update public.team_members set archived_at = now() where person_id = $1 and archived_at is null', [
+        raider
+      ]);
+
+      expect(await lookup(asAnon, code)).toMatchObject({ active: false });
+      expect(await activeList(asAnon)).toEqual([]);
+      const { rows } = await asUser(OWNER, `select code, active, in_guild from public.guild_recruiter_list(${WGA})`);
+      expect(rows).toEqual([{ code, active: true, in_guild: false }]);
+      await expect(setRecruiter(asUser, OWNER, raider, true)).rejects.toThrow(/not in this guild/);
+      // Switching them off still works.
+      expect(await setRecruiter(asUser, OWNER, raider, false)).toBe(code);
     });
   });
 
@@ -100,6 +118,19 @@ describe('guild recruiters', () => {
       const outsider = (await q("insert into public.people (discord_id) values ('discord-1537-outsider') returning id"))
         .rows[0].id;
       await expect(setRecruiter(asUser, OWNER, outsider, true)).rejects.toThrow(/not in this guild/);
+
+      // Another guild's recruiters are that guild's business, not WGA's Owner's or Admins'.
+      const other = (await q("insert into public.guilds (name, url_key) values ('Other', 'other-guild') returning id"))
+        .rows[0].id;
+      await q("insert into public.guild_ranks (guild_id, person_id, rank) values ($1, $2, 'admin')", [other, raider]);
+      for (const uid of [OWNER, GUILD_OFFICER]) {
+        await expect(asUser(uid, 'select public.set_guild_recruiter($1, $2, true)', [other, raider])).rejects.toThrow(
+          /Not authorized/
+        );
+        await expect(asUser(uid, 'select * from public.guild_recruiter_list($1)', [other])).rejects.toThrow(
+          /Not authorized/
+        );
+      }
 
       // Taking the grid row off Admins locks them out; the Owner keeps it.
       await q(`delete from public.guild_rank_permissions where guild_id = ${WGA} and permission = 'manage_recruiters'`);

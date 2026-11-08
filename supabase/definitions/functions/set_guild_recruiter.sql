@@ -27,17 +27,13 @@ begin
    where r.guild_id = p_guild_id and r.person_id = p_person_id
      for update;
 
-  if not found then
+  if p_on and not in_guild(p_guild_id, p_person_id) then
+    raise exception 'That person is not in this guild';
+  end if;
+
+  if v_old.person_id is null then
     if not p_on then
       return null;
-    end if;
-    -- The same test as set_guild_rank(): a guild rank, or a current team there.
-    if not exists (select 1 from guild_ranks g
-                    where g.guild_id = p_guild_id and g.person_id = p_person_id and g.rank <> 'member')
-       and not exists (select 1 from team_members m join teams t on t.id = m.team_id
-                        where t.guild_id = p_guild_id and m.person_id = p_person_id
-                          and m.archived_at is null) then
-      raise exception 'That person is not in this guild';
     end if;
     -- A new code that happens to be taken: try again (36^8 codes, so rarely).
     loop

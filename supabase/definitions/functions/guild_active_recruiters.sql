@@ -11,6 +11,6 @@ AS $function$
   select guild_person_name(r.guild_id, r.person_id), r.code
     from guild_recruiters r
     join guilds g on g.id = r.guild_id
-   where g.url_key = p_guild_key and r.active
+   where g.url_key = p_guild_key and r.active and in_guild(r.guild_id, r.person_id)
    order by 1, 2;
 $function$;
