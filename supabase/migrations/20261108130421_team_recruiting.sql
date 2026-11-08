@@ -33,14 +33,16 @@
 -- applications and trials (#1539) carry on.
 
 -- Whether every item of a list matches a pattern, for the two list columns'
--- checks (a check can't hold a subquery). No item may be null.
+-- checks (a check can't hold a subquery). A list of lists, or a null item,
+-- never matches (fresh-agent review).
 create function public.text_items_match(p_items text[], p_pattern text)
 returns boolean
 language sql
 immutable
 set search_path = public
 as $$
-  select not exists (select 1 from unnest(p_items) as i where i is null or i !~ p_pattern);
+  select coalesce(array_ndims(p_items), 1) = 1
+     and not exists (select 1 from unnest(p_items) as i where i is null or i !~ p_pattern);
 $$;
 
 create table public.team_recruiting (
@@ -65,7 +67,7 @@ create table public.team_recruiting (
     constraint team_recruiting_extra_night check (extra_night in ('none', 'first_two_weeks', 'sometimes')),
   raid_languages text[] not null default '{}'
     constraint team_recruiting_raid_languages check (
-      cardinality(raid_languages) <= 5 and public.text_items_match(raid_languages, '^[^\r\n]{1,30}$')
+      cardinality(raid_languages) <= 5 and public.text_items_match(raid_languages, '^(?=.*\S)[^\r\n|,;/]{1,30}$')
     ),
   split_runs text not null default 'none'
     constraint team_recruiting_split_runs check (split_runs in ('none', 'early_season', 'weekly')),
@@ -88,7 +90,7 @@ create table public.team_recruiting (
   -- The exceptional players line, shown with the open spots, never instead
   exceptional_line_on boolean not null default false,
   exceptional_line text not null default 'Exceptional players of any class or spec are welcome to apply.'
-    constraint team_recruiting_exceptional_line check (char_length(exceptional_line) between 1 and 200 and exceptional_line !~ '[\r\n]'),
+    constraint team_recruiting_exceptional_line check (char_length(exceptional_line) <= 200 and exceptional_line ~ '\S' and exceptional_line !~ '[\r\n]'),
 
   -- Discord: what happens when someone applies
   discord_mode text not null default 'none'
@@ -453,6 +455,14 @@ begin
     v_n := v_n + 1;
     if jsonb_typeof(v_spot) is distinct from 'object' then
       raise exception 'Each spot must be an object';
+    end if;
+    -- A mistyped key would otherwise save an Any spot (fresh-agent review).
+    if exists (select 1 from jsonb_object_keys(v_spot) as k
+                where k not in ('role', 'class_spec_id', 'priority')) then
+      raise exception 'A spot has only role, class_spec_id and priority';
+    end if;
+    if v_spot ->> 'priority' is null or v_spot ->> 'priority' not in ('high', 'medium', 'low') then
+      raise exception 'A spot''s priority is high, medium or low';
     end if;
     v_spec := (v_spot ->> 'class_spec_id')::integer;
     v_role := v_spot ->> 'role';

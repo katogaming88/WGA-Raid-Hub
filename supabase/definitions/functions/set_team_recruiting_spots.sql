@@ -46,6 +46,14 @@ begin
     if jsonb_typeof(v_spot) is distinct from 'object' then
       raise exception 'Each spot must be an object';
     end if;
+    -- A mistyped key would otherwise save an Any spot (fresh-agent review).
+    if exists (select 1 from jsonb_object_keys(v_spot) as k
+                where k not in ('role', 'class_spec_id', 'priority')) then
+      raise exception 'A spot has only role, class_spec_id and priority';
+    end if;
+    if v_spot ->> 'priority' is null or v_spot ->> 'priority' not in ('high', 'medium', 'low') then
+      raise exception 'A spot''s priority is high, medium or low';
+    end if;
     v_spec := (v_spot ->> 'class_spec_id')::integer;
     v_role := v_spot ->> 'role';
     if v_spec is not null then

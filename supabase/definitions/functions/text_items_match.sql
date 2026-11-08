@@ -8,5 +8,6 @@ CREATE OR REPLACE FUNCTION public.text_items_match(p_items text[], p_pattern tex
  IMMUTABLE
  SET search_path TO 'public'
 AS $function$
-  select not exists (select 1 from unnest(p_items) as i where i is null or i !~ p_pattern);
+  select coalesce(array_ndims(p_items), 1) = 1
+     and not exists (select 1 from unnest(p_items) as i where i is null or i !~ p_pattern);
 $function$;

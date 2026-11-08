@@ -1,7 +1,17 @@
 // #1535: a team's recruiting settings and open spots, changed by its officers
 // through functions and read by the public apply pages through one more.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedTeam, OFFICER_T1, OFFICER_T2, RAIDER_T1, TEAM_LEADER_T1, SITE_ADMIN } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  seedTeam,
+  OFFICER_T1,
+  OFFICER_T2,
+  RAIDER_T1,
+  TEAM_LEADER_T1,
+  SITE_ADMIN,
+  GUILD_OFFICER
+} from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -92,6 +102,18 @@ describe('team recruiting', () => {
         [{ visible_to_role_ids: ['300000000000000001,300000000000000002'] }, /team_recruiting_visible_to_role_ids/],
         [{ raid_languages: ['English', ''] }, /team_recruiting_raid_languages/],
         [{ raid_languages: ['English', null] }, /team_recruiting_raid_languages/],
+        [{ raid_languages: ['English|German'] }, /team_recruiting_raid_languages/],
+        [{ raid_languages: ['   '] }, /team_recruiting_raid_languages/],
+        [
+          {
+            raid_languages: [
+              ['English', 'German'],
+              ['French', 'Dutch']
+            ]
+          },
+          /team_recruiting_raid_languages/
+        ],
+        [{ exceptional_line: ' ' }, /team_recruiting_exceptional_line/],
         [{ ticket_link: 'http://example.com' }, /team_recruiting_ticket_link/],
         [{ discord_mode: 'ticket' }, /team_recruiting_ticket_adds_to_server/],
         [{ remind_after_hours: 200 }, /team_recruiting_remind_before_close/],
@@ -147,7 +169,9 @@ describe('team recruiting', () => {
         ],
         [[{ class_spec_id: resto, role: 'tank', priority: 'high' }], /healer spec/],
         [[{ role: 'dps', priority: 'high' }], /needs tank, healer, melee or ranged/],
-        [[{ role: 'tank', priority: 'urgent' }], /check/],
+        [[{ role: 'tank', priority: 'urgent' }], /priority is high, medium or low/],
+        [[{ role: 'tank' }], /priority is high, medium or low/],
+        [[{ spec_id: resto, priority: 'high' }], /only role, class_spec_id and priority/],
         [Array.from({ length: 41 }, () => ({ role: 'tank', priority: 'low' })), /at most 40/]
       ];
       for (const [spots, error] of bad) {
@@ -158,7 +182,7 @@ describe('team recruiting', () => {
     });
   });
 
-  it("refuses raiders, assistants, another team's officers and signed-out visitors", async () => {
+  it("refuses raiders, assistants, another team's officers, the guild's officers and signed-out visitors", async () => {
     await withTxn(async ({ q, asUser, asAnon }) => {
       const team = await seedTeam(q);
       await q("update public.team_members set rank = 'assistant' where id = $1", [team.raider.memberId]);
@@ -171,6 +195,7 @@ describe('team recruiting', () => {
         await expect(asUser(team.raider.uid, sql, params)).rejects.toThrow(/Not authorized/);
         await expect(asUser(RAIDER_T1, sql, params)).rejects.toThrow(/Not authorized/);
         await expect(asUser(OFFICER_T2, sql, params)).rejects.toThrow(/Not authorized/);
+        await expect(asUser(GUILD_OFFICER, sql, params)).rejects.toThrow(/Not authorized/);
         await expect(asAnon(sql, params)).rejects.toThrow(/permission denied/);
       }
       // Nobody reads the tables directly.

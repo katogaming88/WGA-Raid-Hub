@@ -55,7 +55,7 @@ A team's recruiting settings, one row per team, made with the team (#1535): whet
 | team_recruiting_delete_closed_after_hours | CHECK | CHECK (((delete_closed_after_hours >= 1) AND (delete_closed_after_hours <= 720))) |
 | team_recruiting_discord_mode | CHECK | CHECK ((discord_mode = ANY (ARRAY['ticket'::text, 'officer_thread'::text, 'officer_post'::text, 'none'::text]))) |
 | team_recruiting_dm_reply_after_minutes | CHECK | CHECK (((dm_reply_after_minutes >= 1) AND (dm_reply_after_minutes <= 10080))) |
-| team_recruiting_exceptional_line | CHECK | CHECK ((((char_length(exceptional_line) >= 1) AND (char_length(exceptional_line) <= 200)) AND (exceptional_line !~ '[\r\n]'::text))) |
+| team_recruiting_exceptional_line | CHECK | CHECK (((char_length(exceptional_line) <= 200) AND (exceptional_line ~ '\S'::text) AND (exceptional_line !~ '[\r\n]'::text))) |
 | team_recruiting_extra_night | CHECK | CHECK ((extra_night = ANY (ARRAY['none'::text, 'first_two_weeks'::text, 'sometimes'::text]))) |
 | team_recruiting_join_method | CHECK | CHECK ((join_method = ANY (ARRAY['application'::text, 'discord_ticket'::text]))) |
 | team_recruiting_min_item_level | CHECK | CHECK (((min_item_level >= 1) AND (min_item_level <= 1000))) |
@@ -64,7 +64,7 @@ A team's recruiting settings, one row per team, made with the team (#1535): whet
 | team_recruiting_ping_officers_after_hours | CHECK | CHECK (((ping_officers_after_hours >= 1) AND (ping_officers_after_hours <= 720))) |
 | team_recruiting_ping_owner_after_hours | CHECK | CHECK (((ping_owner_after_hours >= 1) AND (ping_owner_after_hours <= 720))) |
 | team_recruiting_ptr_testing | CHECK | CHECK ((ptr_testing = ANY (ARRAY['none'::text, 'optional'::text, 'expected'::text]))) |
-| team_recruiting_raid_languages | CHECK | CHECK (((cardinality(raid_languages) <= 5) AND text_items_match(raid_languages, '^[^\r\n]{1,30}$'::text))) |
+| team_recruiting_raid_languages | CHECK | CHECK (((cardinality(raid_languages) <= 5) AND text_items_match(raid_languages, '^(?=.*\S)[^\r\n|,;/]{1,30}$'::text))) |
 | team_recruiting_remind_after_hours | CHECK | CHECK (((remind_after_hours >= 1) AND (remind_after_hours <= 720))) |
 | team_recruiting_remind_before_close | CHECK | CHECK (((remind_after_hours IS NULL) OR (close_no_reply_after_hours IS NULL) OR (remind_after_hours < close_no_reply_after_hours))) |
 | team_recruiting_schedule_note | CHECK | CHECK (((char_length(schedule_note) <= 100) AND (schedule_note !~ '[\r\n]'::text))) |
