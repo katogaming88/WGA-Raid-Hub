@@ -45,11 +45,19 @@ function Join({ code, target }: { code: string; target: InviteTarget }) {
       Join {target.teamName} ({target.guildName})
     </h1>
   );
+  const invited = (
+    <p>
+      You’ve been invited to join {target.teamName}, a raid team in {target.guildName}. No officer needs to approve you:
+      you’re on the team as soon as you finish.
+    </p>
+  );
 
   if (!user) {
     return (
       <section className="card signup-card">
         {heading}
+        {invited}
+        <p className="text-muted">Start by signing in with Battle.net.</p>
         <button type="button" className="button button-primary" onClick={() => void signIn(BATTLENET)}>
           Sign in with Battle.net
         </button>
@@ -60,6 +68,7 @@ function Join({ code, target }: { code: string; target: InviteTarget }) {
     return (
       <section className="card signup-card">
         {heading}
+        {invited}
         <p className="text-muted">Connect Battle.net so you can pick your character.</p>
         <button type="button" className="button" onClick={() => void connect(BATTLENET, 'signup-character')}>
           Connect Battle.net
@@ -72,6 +81,7 @@ function Join({ code, target }: { code: string; target: InviteTarget }) {
     return (
       <section className="card signup-card">
         {heading}
+        {invited}
         <p className="text-muted">Connect your Discord too: your team roles and raid notifications come from it.</p>
         <DiscordStep onConnect={() => void connect(DISCORD)} />
       </section>
@@ -80,6 +90,7 @@ function Join({ code, target }: { code: string; target: InviteTarget }) {
   return (
     <section className="card signup-card">
       {heading}
+      {invited}
       <Steps code={code} target={target} />
     </section>
   );
@@ -184,11 +195,11 @@ function MemberStep({ target, onSkip }: { target: InviteTarget; onSkip: () => vo
   const bare = (names.data ?? []).filter((n) => n.team_member_id === null);
   return (
     <>
-      <h2>Which Member is you?</h2>
+      <h2>What should the team call you?</h2>
       {bare.length > 0 && (
         <>
-          <p className="text-muted">If an officer already added you, pick your name.</p>
-          <ul className="join-members">
+          <p className="text-muted">An officer may have already added you; find your Member row below and claim it.</p>
+          <ul className="join-members" aria-label="Members an officer already added">
             {bare.map((n) => (
               <li key={n.id}>
                 <span>{n.label}</span>
@@ -205,6 +216,11 @@ function MemberStep({ target, onSkip }: { target: InviteTarget; onSkip: () => vo
               </li>
             ))}
           </ul>
+          {bare.length > 5 && (
+            <p className="text-muted join-members-count">
+              {bare.length} Members to look through. Scroll the list to see them all before adding yourself.
+            </p>
+          )}
           {claim.isError && (
             <p className="form-error" role="alert">
               That did not save: {claim.error.message}
@@ -212,7 +228,11 @@ function MemberStep({ target, onSkip }: { target: InviteTarget; onSkip: () => vo
           )}
         </>
       )}
-      <OwnNameForm teamId={target.teamId} card={false} />
+      <OwnNameForm
+        teamId={target.teamId}
+        card={false}
+        label={bare.length > 0 ? 'Not on the list? Add yourself to the roster' : 'Add yourself to the roster'}
+      />
       <button type="button" className="button join-skip" onClick={onSkip}>
         Skip for now
       </button>
@@ -302,6 +322,7 @@ function Picker({ code, target }: { code: string; target: InviteTarget }) {
   const rows = pickerRows(answer, new Map());
   return (
     <>
+      <p className="text-muted">Last step: pick the character you’ll raid on.</p>
       {rows.length === 0 ? (
         <p className="text-muted">No characters found on this Battle.net account.</p>
       ) : (

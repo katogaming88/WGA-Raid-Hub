@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.249.1] - 2026-11-08
+
+### Project
+
+- In the new app, the invite link page now says where you are: "You've been invited to join <team>, a raid team in <guild>. No officer needs to approve you." Each step also says what it asks for: sign in, join, which Member is you, pick your character (#1722).
+
 ## [3.249.0] - 2026-11-07
 
 ### Frontend

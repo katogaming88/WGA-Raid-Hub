@@ -1087,7 +1087,7 @@ describe('Assign (#1355)', () => {
   });
 });
 
-describe('Make my Member on the Roster (#1355)', () => {
+describe('Add me to the roster on the Roster (#1355)', () => {
   it('shows a member with no Member the form, and makes one through create_own_name', async () => {
     const user = userEvent.setup();
     const { client } = renderApp(
@@ -1101,7 +1101,7 @@ describe('Make my Member on the Roster (#1355)', () => {
     expect(field).toHaveValue('X');
     await user.clear(field);
     await user.type(field, 'Katorri');
-    await user.click(screen.getByRole('button', { name: 'Make my Member' }));
+    await user.click(screen.getByRole('button', { name: 'Add me to the roster' }));
     await screen.findByText('Katorri is your Member now.');
     expect(client.rpcs).toContainEqual(['create_own_name', { p_team_id: 1, p_label: 'Katorri' }]);
   });

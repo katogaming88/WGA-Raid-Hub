@@ -6,7 +6,15 @@ import { useCreateOwnName } from './useNames';
 // Someone on the team who holds no Member makes their own, claimed by them
 // (#1355): on the Roster page as its own card, and inside the invite link's
 // "Which Member is you?" step as a bare form.
-export function OwnNameForm({ teamId, card = true }: { teamId: number; card?: boolean }) {
+export function OwnNameForm({
+  teamId,
+  card = true,
+  label: heading = 'Add yourself to the roster'
+}: {
+  teamId: number;
+  card?: boolean;
+  label?: string;
+}) {
   const id = useId();
   const { user } = useSession();
   // Starts from what the guild knows them by; the placeholder name is not one.
@@ -26,7 +34,7 @@ export function OwnNameForm({ teamId, card = true }: { teamId: number; card?: bo
       <form onSubmit={onSubmit} noValidate className="create-name-form">
         <div className="field">
           <label className="field-label" htmlFor={`${id}-label`}>
-            {card ? 'Your name' : 'Not listed? Your name'}
+            {card ? 'Your name' : heading}
           </label>
           <input
             id={`${id}-label`}
@@ -39,7 +47,7 @@ export function OwnNameForm({ teamId, card = true }: { teamId: number; card?: bo
           />
         </div>
         <button type="submit" className="button" disabled={create.isPending || !label.trim()}>
-          {create.isPending ? 'Saving…' : 'Make my Member'}
+          {create.isPending ? 'Saving…' : 'Add me to the roster'}
         </button>
       </form>
       {create.isError && (
