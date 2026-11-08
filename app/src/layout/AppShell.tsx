@@ -115,7 +115,7 @@ export function AppShell() {
   const base = { team: `/g/${guildKey}/t/${navTeamKey}`, guild: `/g/${guildKey}` };
   const council = useLootCouncil(navTeam?.id ?? 0);
   const permissions = useCan(navTeam?.id, guildId);
-  const { can } = permissions;
+  const { can, hasGuildRank } = permissions;
   const groups = navGroups(base, {
     can,
     guildSettings: (can('manageTeams') || can('manageMembers')) && !limited,
@@ -259,11 +259,12 @@ export function AppShell() {
         {() => null}
       </DataState>
     );
-  } else if (!sitePage && !can('viewEveryTeam') && !teamsQuery.data.some((t) => onTeamIds.has(t.id))) {
+  } else if (!sitePage && !hasGuildRank && !teamsQuery.data.some((t) => onTeamIds.has(t.id))) {
     // A guild's pages are for its members (#1264): anyone without a current
     // membership on one of its teams, signed out included, gets the front
-    // page, and so does Staff. Someone whose rank in this guild sees every
-    // team (an Owner or Admin by default, #1649) gets in without a team.
+    // page, and so does Staff. Someone whose rank in this guild holds any
+    // guild permission (Owner, Admin, Team Lead by default, #1649) gets in
+    // without a team, as the database counts them in the guild (#1771).
     // The database still lets them read until cutover (#1699).
     content = <Navigate to="/" replace />;
   } else if (

@@ -108,6 +108,24 @@ describe('who sees Guild settings and New team', () => {
   });
 });
 
+describe('a guild rank on no team (#1771)', () => {
+  it('opens the guild pages, so a Team Lead can create the team their rank is for', async () => {
+    renderApp(
+      '/g/wga/settings/teams',
+      signedIn({ guildOfficer: false, guildPermissions: ['create_teams', 'edit_own_bio'] })
+    );
+    expect(await screen.findByRole('heading', { name: 'Teams' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'New team' })).toBeInTheDocument();
+  });
+
+  it('still sends someone with no rank and no team to the front page', async () => {
+    renderApp('/g/wga/settings/teams', signedIn({ guildOfficer: false, guildPermissions: [] }));
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Teams' })).not.toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'New team' })).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/This page is for guild officers/);
+  });
+});
+
 describe('Change Team Owner', () => {
   it('hands the team to someone on it who has signed in', async () => {
     const user = userEvent.setup();

@@ -282,6 +282,8 @@ export function useCan(teamId: number | null | undefined, guildId: number | null
     error: access.isError || perms.isError,
     // The read to show while loading or failed: access first, then permissions.
     query: (access.isSuccess ? perms : access) as UseQueryResult<unknown>,
+    // Any guild permission at all: a rank above Member (#1771).
+    hasGuildRank: (perms.data?.guild.size ?? 0) > 0,
     can: (ability: Ability) => can(access.data, ability, perms.data, teamId)
   };
 }
