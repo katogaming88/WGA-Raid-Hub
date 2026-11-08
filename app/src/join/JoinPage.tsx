@@ -297,9 +297,12 @@ function Picker({ code, target }: { code: string; target: InviteTarget }) {
   if (!battlenetToken) {
     return (
       <>
-        <p className="text-muted">Battle.net needs to confirm it’s you before your characters can be read.</p>
+        <p className="text-muted">
+          Battle.net needs to confirm it’s you before your characters can be read. You’ll pick the one you’ll raid on;
+          you can add the rest from your profile later.
+        </p>
         <button type="button" className="button" onClick={() => void refreshBattlenet('signup-character')}>
-          Load your characters from Battle.net
+          Choose your character from Battle.net
         </button>
       </>
     );
@@ -326,7 +329,7 @@ function Picker({ code, target }: { code: string; target: InviteTarget }) {
       {rows.length === 0 ? (
         <p className="text-muted">No characters found on this Battle.net account.</p>
       ) : (
-        <div className="signup-bnet-list" role="radiogroup" aria-label="Your characters">
+        <div className="signup-bnet-list join-characters" role="radiogroup" aria-label="Your characters">
           {rows.map(({ character, kind }) => {
             const isPicked = picked?.blizzard_id === character.blizzard_id;
             return (
