@@ -22,6 +22,10 @@ answers to.
   rank is for. Someone with no rank and no team still gets the front page
   (#1771).
 
+### Project
+
+- Tests for a guild rank on no team opening the guild's pages (#1771).
+
 ## [3.247.0] - 2026-11-07
 
 ### Frontend
