@@ -296,9 +296,10 @@
   padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  /* About five rows, then it scrolls, so the form below stays in view. */
-  max-height: 15.5rem;
-  overflow-y: auto;
+  /* About five rows and a half, so a cut-off row and an always-showing
+     scrollbar tell you there are more. The form below stays in view. */
+  max-height: 17rem;
+  overflow-y: scroll;
 }
 
 .join-members li {

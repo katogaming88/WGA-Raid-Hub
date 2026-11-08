@@ -199,7 +199,7 @@ function MemberStep({ target, onSkip }: { target: InviteTarget; onSkip: () => vo
       {bare.length > 0 && (
         <>
           <p className="text-muted">An officer may have already added you; find your Member row below and claim it.</p>
-          <ul className="join-members">
+          <ul className="join-members" tabIndex={0} aria-label="Members an officer already added">
             {bare.map((n) => (
               <li key={n.id}>
                 <span>{n.label}</span>
@@ -216,6 +216,11 @@ function MemberStep({ target, onSkip }: { target: InviteTarget; onSkip: () => vo
               </li>
             ))}
           </ul>
+          {bare.length > 5 && (
+            <p className="text-muted join-members-count">
+              {bare.length} Members to look through. Scroll the list to see them all before adding yourself.
+            </p>
+          )}
           {claim.isError && (
             <p className="form-error" role="alert">
               That did not save: {claim.error.message}
