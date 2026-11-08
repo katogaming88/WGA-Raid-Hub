@@ -421,12 +421,52 @@ describe('Sign up button on team Home and the Roster', () => {
 
   it('says so once they have signed up', async () => {
     renderApp('/g/wga/t/phoenix/roster', handlers(person(null), { ownSignup: [ownFields] }));
-    expect(await screen.findByRole('link', { name: 'Your signup for Midnight Season 3' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getAllByRole('link', { name: 'Your signup for Midnight Season 3' })).toHaveLength(2)
+    );
   });
 
   it('is not there when signups are closed', async () => {
     renderApp('/g/wga/t/phoenix', handlers(person(null), { tables: { team_seasons: () => ({ data: [] }) } }));
     await screen.findByRole('heading', { level: 1, name: 'Phoenix' });
     expect(screen.queryByRole('link', { name: /Sign up for|Your signup for/ })).not.toBeInTheDocument();
+  });
+});
+
+// The strip across every team page (#1630).
+describe('Signups-open banner', () => {
+  it('shows on any team page while signups are open, linking to Sign up', async () => {
+    renderApp('/g/wga/t/phoenix/calendar', handlers(person(null)));
+    expect(await screen.findByText(/Signups are open for Midnight Season 3/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sign up' })).toHaveAttribute('href', '/g/wga/t/phoenix/signup');
+  });
+
+  it('says Your signup once they have signed up', async () => {
+    renderApp('/g/wga/t/phoenix/calendar', handlers(person(null), { ownSignup: [ownFields] }));
+    const link = await screen.findByRole('link', { name: 'Your signup for Midnight Season 3' });
+    expect(link).toHaveAttribute('href', '/g/wga/t/phoenix/signup');
+    expect(screen.queryByText(/Signups are open for/)).not.toBeInTheDocument();
+  });
+
+  it('is not there when signups are closed or the read fails', async () => {
+    const closed = renderApp(
+      '/g/wga/t/phoenix/calendar',
+      handlers(person(null), { tables: { team_seasons: () => ({ data: [] }) } })
+    );
+    await screen.findByRole('heading', { level: 1, name: 'Calendar' });
+    expect(screen.queryByText(/Signups are open for/)).not.toBeInTheDocument();
+    closed.view.unmount();
+    renderApp(
+      '/g/wga/t/phoenix/calendar',
+      handlers(person(null), { tables: { team_seasons: () => ({ error: { message: 'down' } }) } })
+    );
+    await screen.findByRole('heading', { level: 1, name: 'Calendar' });
+    expect(screen.queryByText(/Signups are open for/)).not.toBeInTheDocument();
+  });
+
+  it('is not on the signup form itself', async () => {
+    renderApp('/g/wga/t/phoenix/signup', handlers(person(null)));
+    await screen.findByRole('heading', { level: 2, name: 'Sign up for Midnight Season 3' });
+    expect(screen.queryByText(/Signups are open for/)).not.toBeInTheDocument();
   });
 });

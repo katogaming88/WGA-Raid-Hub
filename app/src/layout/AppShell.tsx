@@ -18,6 +18,7 @@ import { NotFoundPage, NotInTestPage, wayOn } from '../pages/NotFoundPage';
 import { AccountPanel } from '../auth/AccountPanel';
 import { ConnectPrompt } from '../auth/ConnectPrompt';
 import { AltsPickerProvider } from '../characters/AltsPicker';
+import { SignupBanner } from '../signup/SignupButton';
 import { useAccess, useCan, usePreviewTeams } from '../auth/access';
 import { useSession } from '../auth/session';
 import { navGroups, pageHolds, type NavGroup, type NavItem } from './nav';
@@ -289,6 +290,7 @@ export function AppShell() {
           {/* The join steps ask for both logins themselves, so there it only
               finishes round trips and offers the switch. */}
           <ConnectPrompt cards={!location.pathname.startsWith('/join/')} />
+          {currentTeam && !/\/(signup|join)(\/|$)/.test(location.pathname) && <SignupBanner />}
           <Outlet context={base} />
           {currentTeam && <StreamWidget teamId={currentTeam.id} teamIds={teamIds} />}
         </AltsPickerProvider>
