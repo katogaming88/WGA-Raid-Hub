@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageCan } from '../auth/access';
 import { useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
 import { DataState } from '../components/DataState';
@@ -23,6 +24,8 @@ import './attendance.css';
 // tab-attendance.js's Manage sub-tab.
 export function AttendanceManagePage() {
   const team = useTeam();
+  // A guild Admin on another team reads the grid; only 'attendance' changes it (#1703).
+  const readOnly = !usePageCan().can('manageAttendance');
   const page = bothQueries(useAttendanceRows(team.id), useRosterPlayers(team.id));
 
   return (
@@ -36,13 +39,23 @@ export function AttendanceManagePage() {
         </p>
       </div>
       <DataState query={page} label="attendance">
-        {([rows, roster]) => <Manage teamId={team.id} rows={rows} roster={roster} />}
+        {([rows, roster]) => <Manage teamId={team.id} rows={rows} roster={roster} readOnly={readOnly} />}
       </DataState>
     </section>
   );
 }
 
-function Manage({ teamId, rows, roster }: { teamId: number; rows: FullAttendanceRow[]; roster: PlayerRow[] }) {
+function Manage({
+  teamId,
+  rows,
+  roster,
+  readOnly
+}: {
+  teamId: number;
+  rows: FullAttendanceRow[];
+  roster: PlayerRow[];
+  readOnly: boolean;
+}) {
   const { announce } = useStatus();
   const season = useCurrentSeason(teamId);
   const nights = buildGrid(rows, roster);
@@ -78,21 +91,23 @@ function Manage({ teamId, rows, roster }: { teamId: number; rows: FullAttendance
 
   return (
     <div className="attend-manage-panel card">
-      <div className="attend-manage-header">
-        <div className="attend-manage-actions">
-          <button type="button" className="button" onClick={onRefresh} disabled={refresh.isPending}>
-            {refresh.isPending ? 'Refreshing…' : 'Refresh from WCL'}
-          </button>
-          <button
-            type="button"
-            className="button button-primary"
-            onClick={() => setConfirmingCommit(true)}
-            disabled={commit.isPending || !season.isSuccess || !season.data.code}
-          >
-            Commit Attendance Scores
-          </button>
+      {!readOnly && (
+        <div className="attend-manage-header">
+          <div className="attend-manage-actions">
+            <button type="button" className="button" onClick={onRefresh} disabled={refresh.isPending}>
+              {refresh.isPending ? 'Refreshing…' : 'Refresh from WCL'}
+            </button>
+            <button
+              type="button"
+              className="button button-primary"
+              onClick={() => setConfirmingCommit(true)}
+              disabled={commit.isPending || !season.isSuccess || !season.data.code}
+            >
+              Commit Attendance Scores
+            </button>
+          </div>
         </div>
-      </div>
+      )}
       {confirmingCommit && (
         <Dialog title="Commit attendance scores" onClose={() => setConfirmingCommit(false)}>
           <p>Calculate and write attendance scores for all players to Scoring?</p>
@@ -111,7 +126,7 @@ function Manage({ teamId, rows, roster }: { teamId: number; rows: FullAttendance
       {nights.length === 0 ? (
         <p className="text-muted">No raid nights recorded yet. Run "Refresh from WCL" first.</p>
       ) : (
-        <NightGrid teamId={teamId} nights={nights} shown={shown} onShow={setShown} />
+        <NightGrid teamId={teamId} nights={nights} shown={shown} onShow={setShown} readOnly={readOnly} />
       )}
     </div>
   );
@@ -121,12 +136,14 @@ function NightGrid({
   teamId,
   nights,
   shown,
-  onShow
+  onShow,
+  readOnly
 }: {
   teamId: number;
   nights: Night[];
   shown: number;
   onShow: (index: number) => void;
+  readOnly: boolean;
 }) {
   const { announce } = useStatus();
   const night = nights[Math.min(shown, nights.length - 1)]!;
@@ -158,19 +175,21 @@ function NightGrid({
           {night.players.length} player{night.players.length !== 1 ? 's' : ''}
         </span>
         {night.excluded && <span className="attend-excluded-tag">Excluded from scoring</span>}
-        <button
-          type="button"
-          className="button button-quiet attend-exclude-btn"
-          disabled={toggleExcluded.isPending}
-          onClick={() =>
-            toggleExcluded.mutate(
-              { raidDate: night.date, excluded: !night.excluded },
-              { onError: (error) => announce('error', errorMessage(error)) }
-            )
-          }
-        >
-          {night.excluded ? 'Remove Exclusion' : 'Exclude Report'}
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            className="button button-quiet attend-exclude-btn"
+            disabled={toggleExcluded.isPending}
+            onClick={() =>
+              toggleExcluded.mutate(
+                { raidDate: night.date, excluded: !night.excluded },
+                { onError: (error) => announce('error', errorMessage(error)) }
+              )
+            }
+          >
+            {night.excluded ? 'Remove Exclusion' : 'Exclude Report'}
+          </button>
+        )}
       </div>
       <div className="attend-grid-rows">
         {night.players.map((p) => {
@@ -186,7 +205,7 @@ function NightGrid({
                 id={`attend-status-${night.date}-${p.playerId}`}
                 className="input attend-status-select"
                 value={p.status ?? ''}
-                disabled={setStatus.isPending}
+                disabled={readOnly || setStatus.isPending}
                 onChange={(e) =>
                   setStatus.mutate(
                     { playerId: p.playerId, raidDate: night.date, status: e.target.value, oldStatus: p.status },

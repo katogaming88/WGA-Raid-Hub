@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.247.0] - 2026-11-07
+
+### Frontend
+
+- In the new app, a guild Admin who opens a team they aren't on now sees
+  Attendance (Manage and Scores) and Boss groups in the Officer menu, read-only:
+  no refresh, commit, exclude, save or edit controls, and the status and group
+  cells can't be changed. Assistants and Officers see what they saw before
+  (#1703).
+
+### Project
+
+- Browser and app tests for a guild Admin on another team (#1703).
+
 ## [3.246.0] - 2026-11-07
 
 ### Frontend

@@ -99,6 +99,20 @@ describe('signed in', () => {
     expect(screen.getByRole('button', { name: 'Loot' })).toHaveAttribute('aria-expanded', 'false');
   });
 
+  it('gives a guild Admin on another team Attendance and Boss groups, read-only (#1703)', async () => {
+    const base = signedIn(OFFICER, person('raider'));
+    const admin: FakeHandlers = {
+      ...base,
+      rpc: (name, args) =>
+        name === 'my_permissions' ? { data: { team: [], guild: ['view_every_team'] } } : base.rpc!(name, args)
+    };
+    renderApp('/g/wga/t/phoenix/officer/attendance', admin);
+    await screen.findByRole('heading', { level: 1, name: 'Manage attendance' });
+    expect(screen.getByRole('link', { name: 'Boss groups' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Refresh from WCL' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Commit Attendance Scores' })).not.toBeInTheDocument();
+  });
+
   it('keeps officer pages closed to a raider, naming the team', async () => {
     renderApp('/g/wga/t/phoenix/officer/priority', signedIn(OFFICER, person('raider')));
     expect(await screen.findByText('This page is for officers of Phoenix.')).toBeInTheDocument();
