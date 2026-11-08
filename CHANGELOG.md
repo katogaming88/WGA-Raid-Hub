@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.248.0] - 2026-11-07
+
+### Frontend
+
+- In the new app, someone whose guild rank holds any guild permission but who
+  is on no team in the guild (a Team Lead, say) now opens the guild's pages
+  instead of landing on the front page, so a Team Lead can create the team their
+  rank is for. Someone with no rank and no team still gets the front page
+  (#1771).
+
 ## [3.247.0] - 2026-11-07
 
 ### Frontend
