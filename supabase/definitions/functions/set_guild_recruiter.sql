@@ -12,7 +12,6 @@ declare
   v_uid uuid := auth.uid();
   v_old guild_recruiters;
   v_code text;
-  v_try integer;
   v_constraint text;
 begin
   if v_uid is null then
