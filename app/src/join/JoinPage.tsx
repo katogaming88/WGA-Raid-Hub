@@ -47,7 +47,8 @@ function Join({ code, target }: { code: string; target: InviteTarget }) {
   );
   const invited = (
     <p>
-      You’ve been invited to join {target.teamName}, a raid team in {target.guildName}.
+      You’ve been invited to join {target.teamName}, a raid team in {target.guildName}. No officer needs to approve you:
+      you’re on the team as soon as you finish.
     </p>
   );
 
@@ -56,7 +57,7 @@ function Join({ code, target }: { code: string; target: InviteTarget }) {
       <section className="card signup-card">
         {heading}
         {invited}
-        <p className="text-muted">Step 1: sign in with Battle.net.</p>
+        <p className="text-muted">Start by signing in with Battle.net.</p>
         <button type="button" className="button button-primary" onClick={() => void signIn(BATTLENET)}>
           Sign in with Battle.net
         </button>
