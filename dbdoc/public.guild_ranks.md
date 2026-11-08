@@ -35,6 +35,7 @@ A person's rank in a guild (#1645): owner (one per guild), admin, team_lead or m
 | Name | Definition |
 | ---- | ---------- |
 | guild_ranks_keep_grant | CREATE TRIGGER guild_ranks_keep_grant AFTER INSERT OR DELETE OR UPDATE OF rank ON public.guild_ranks FOR EACH ROW EXECUTE FUNCTION guild_ranks_keep_grant() |
+| guild_ranks_recruiters_off_on_leaving | CREATE TRIGGER guild_ranks_recruiters_off_on_leaving AFTER DELETE OR UPDATE OF rank, person_id, guild_id ON public.guild_ranks FOR EACH ROW EXECUTE FUNCTION recruiters_off_on_leaving() |
 
 ## Relations
 

@@ -87,10 +87,37 @@ $$;
 
 revoke all on function public.guild_person_name(integer, integer) from public, anon, authenticated;
 
+-- The name signed-out visitors see: the Name on a current team, else the
+-- Discord display name, else null. Never the Discord username, the handle
+-- people search for to message someone (Kat, 2026-11-08).
+create function public.guild_person_public_name(p_guild_id integer, p_person_id integer)
+returns text
+language sql
+stable
+set search_path = public
+as $$
+  select coalesce(
+    (select min(n.label)
+       from names n
+       join team_members m on m.id = n.team_member_id
+       join teams t on t.id = m.team_id
+      where m.person_id = p_person_id and t.guild_id = p_guild_id and m.archived_at is null),
+    (select nullif(i.identity_data -> 'custom_claims' ->> 'global_name', '')
+       from people pe
+       join auth.identities i on i.user_id = pe.auth_user_id and i.provider = 'discord'
+      where pe.id = p_person_id
+      order by i.created_at desc
+      limit 1));
+$$;
+
+revoke all on function public.guild_person_public_name(integer, integer) from public, anon, authenticated;
+
 -- Whether a person is in the guild: a guild rank, or a current team there
 -- (set_guild_rank()'s test). A recruiter who leaves the guild stops crediting
 -- new applications without their row changing, so their code and past credit
 -- stay, and they can't be switched back on until they are back (CodeRabbit).
+-- Leaving also switches them off (the trigger below), so coming back needs
+-- an Admin to switch them on again.
 create function public.in_guild(p_guild_id integer, p_person_id integer)
 returns boolean
 language sql
@@ -118,6 +145,8 @@ declare
   v_uid uuid := auth.uid();
   v_old guild_recruiters;
   v_code text;
+  v_try integer;
+  v_constraint text;
 begin
   if v_uid is null then
     raise exception 'Not signed in';
@@ -141,20 +170,25 @@ begin
     if not p_on then
       return null;
     end if;
-    -- A new code that happens to be taken: try again (36^8 codes, so rarely).
-    loop
+    -- A new code that happens to be taken: try again (36^8 codes, so rarely,
+    -- and at most 5 times). The same person switched on a moment ago by
+    -- someone else trips the primary key instead (fresh-agent review).
+    for v_try in 1..5 loop
       begin
         insert into guild_recruiters (guild_id, person_id)
         values (p_guild_id, p_person_id)
         returning code into v_code;
         exit;
       exception when unique_violation then
-        if exists (select 1 from guild_recruiters r
-                    where r.guild_id = p_guild_id and r.person_id = p_person_id) then
+        get stacked diagnostics v_constraint = constraint_name;
+        if v_constraint <> 'guild_recruiters_code_key' then
           raise exception 'Someone else just changed this. Reload and try again.';
         end if;
       end;
     end loop;
+    if v_code is null then
+      raise exception 'Could not make a new link code. Try again.';
+    end if;
   else
     v_code := v_old.code;
     if v_old.active = p_on then
@@ -222,7 +256,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select jsonb_build_object('name', guild_person_name(r.guild_id, r.person_id),
+  select jsonb_build_object('name', guild_person_public_name(r.guild_id, r.person_id),
                             'active', r.active and in_guild(r.guild_id, r.person_id))
     from guild_recruiters r
     join guilds g on g.id = r.guild_id
@@ -230,7 +264,7 @@ as $$
 $$;
 
 comment on function public.recruiter_for_code(text, text) is
-  'The recruiter behind an apply link''s ?from= code (#1537): their name and whether they are crediting (switched on and still in the guild), or null when the code is not this guild''s. For anyone, signed out included. Names only.';
+  'The recruiter behind an apply link''s ?from= code (#1537): their public name (Name or Discord display name, else null; never the Discord username) and whether they are crediting (switched on and still in the guild), or null when the code is not this guild''s. For anyone, signed out included. Names only.';
 
 revoke all on function public.recruiter_for_code(text, text) from public;
 grant execute on function public.recruiter_for_code(text, text) to anon, authenticated;
@@ -244,15 +278,64 @@ stable
 security definer
 set search_path = public
 as $$
-  select guild_person_name(r.guild_id, r.person_id), r.code
+  select n.name, r.code
     from guild_recruiters r
     join guilds g on g.id = r.guild_id
+    cross join lateral (select guild_person_public_name(r.guild_id, r.person_id) as name) n
    where g.url_key = p_guild_key and r.active and in_guild(r.guild_id, r.person_id)
+     and n.name is not null
    order by 1, 2;
 $$;
 
 comment on function public.guild_active_recruiters(text) is
-  'The guild''s switched-on recruiters for the apply form''s "Who sent you?" list (#1537): each name with its link code, the key the form sends back. For anyone, signed out included. Names only.';
+  'The guild''s switched-on recruiters for the apply form''s "Who sent you?" list (#1537): each public name with its link code, the key the form sends back; a recruiter with no Name or Discord display name is left off. For anyone, signed out included. Names only.';
 
 revoke all on function public.guild_active_recruiters(text) from public;
 grant execute on function public.guild_active_recruiters(text) to anon, authenticated;
+
+-- Leaving the guild switches a recruiter off (Kat, 2026-11-08): their last
+-- current team in it is archived, removed or moved off them, or their guild
+-- rank goes, and nothing else keeps them in. The row and code stay; an Admin
+-- switches them back on after they return. Logged like any switch, with no
+-- actor when nobody signed in did it.
+create function public.recruiters_off_on_leaving()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_guild integer;
+begin
+  if old.person_id is null then
+    return null;
+  end if;
+  if tg_table_name = 'guild_ranks' then
+    v_guild := old.guild_id;
+  else
+    select t.guild_id into v_guild from teams t where t.id = old.team_id;
+  end if;
+
+  with off as (
+    update guild_recruiters r
+       set active = false, updated_at = now()
+     where r.guild_id = v_guild and r.person_id = old.person_id and r.active
+       and not in_guild(r.guild_id, r.person_id)
+    returning r.guild_id, r.person_id, r.code
+  )
+  insert into audit_log (team_id, actor_id, action, target_type, target_id, detail)
+  select null, auth.uid(), 'Recruiter Switched Off', 'guilds', off.guild_id,
+         jsonb_build_object('person_id', off.person_id, 'code', off.code, 'reason', 'left the guild')
+    from off;
+  return null;
+end;
+$$;
+
+revoke all on function public.recruiters_off_on_leaving() from public, anon, authenticated;
+
+create trigger team_members_recruiters_off_on_leaving
+  after update of archived_at, person_id, team_id or delete on public.team_members
+  for each row execute function public.recruiters_off_on_leaving();
+create trigger guild_ranks_recruiters_off_on_leaving
+  after update of rank, person_id, guild_id or delete on public.guild_ranks
+  for each row execute function public.recruiters_off_on_leaving();

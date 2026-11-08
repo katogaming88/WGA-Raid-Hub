@@ -12,6 +12,8 @@ declare
   v_uid uuid := auth.uid();
   v_old guild_recruiters;
   v_code text;
+  v_try integer;
+  v_constraint text;
 begin
   if v_uid is null then
     raise exception 'Not signed in';
@@ -35,20 +37,25 @@ begin
     if not p_on then
       return null;
     end if;
-    -- A new code that happens to be taken: try again (36^8 codes, so rarely).
-    loop
+    -- A new code that happens to be taken: try again (36^8 codes, so rarely,
+    -- and at most 5 times). The same person switched on a moment ago by
+    -- someone else trips the primary key instead (fresh-agent review).
+    for v_try in 1..5 loop
       begin
         insert into guild_recruiters (guild_id, person_id)
         values (p_guild_id, p_person_id)
         returning code into v_code;
         exit;
       exception when unique_violation then
-        if exists (select 1 from guild_recruiters r
-                    where r.guild_id = p_guild_id and r.person_id = p_person_id) then
+        get stacked diagnostics v_constraint = constraint_name;
+        if v_constraint <> 'guild_recruiters_code_key' then
           raise exception 'Someone else just changed this. Reload and try again.';
         end if;
       end;
     end loop;
+    if v_code is null then
+      raise exception 'Could not make a new link code. Try again.';
+    end if;
   else
     v_code := v_old.code;
     if v_old.active = p_on then

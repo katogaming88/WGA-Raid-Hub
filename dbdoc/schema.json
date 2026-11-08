@@ -2475,6 +2475,10 @@
         {
           "name": "team_members_pass_ownership",
           "def": "CREATE TRIGGER team_members_pass_ownership AFTER DELETE OR UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_pass_ownership()"
+        },
+        {
+          "name": "team_members_recruiters_off_on_leaving",
+          "def": "CREATE TRIGGER team_members_recruiters_off_on_leaving AFTER DELETE OR UPDATE OF archived_at, person_id, team_id ON public.team_members FOR EACH ROW EXECUTE FUNCTION recruiters_off_on_leaving()"
         }
       ]
     },
@@ -9864,6 +9868,10 @@
         {
           "name": "guild_ranks_keep_grant",
           "def": "CREATE TRIGGER guild_ranks_keep_grant AFTER INSERT OR DELETE OR UPDATE OF rank ON public.guild_ranks FOR EACH ROW EXECUTE FUNCTION guild_ranks_keep_grant()"
+        },
+        {
+          "name": "guild_ranks_recruiters_off_on_leaving",
+          "def": "CREATE TRIGGER guild_ranks_recruiters_off_on_leaving AFTER DELETE OR UPDATE OF rank, person_id, guild_id ON public.guild_ranks FOR EACH ROW EXECUTE FUNCTION recruiters_off_on_leaving()"
         }
       ]
     },
@@ -14560,6 +14568,12 @@
       "type": "FUNCTION"
     },
     {
+      "name": "public.guild_person_public_name",
+      "return_type": "text",
+      "arguments": "p_guild_id integer, p_person_id integer",
+      "type": "FUNCTION"
+    },
+    {
       "name": "public.in_guild",
       "return_type": "bool",
       "arguments": "p_guild_id integer, p_person_id integer",
@@ -14587,6 +14601,12 @@
       "name": "public.guild_active_recruiters",
       "return_type": "record",
       "arguments": "p_guild_key text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruiters_off_on_leaving",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],

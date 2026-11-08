@@ -8,7 +8,7 @@ CREATE OR REPLACE FUNCTION public.recruiter_for_code(p_guild_key text, p_code te
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-  select jsonb_build_object('name', guild_person_name(r.guild_id, r.person_id),
+  select jsonb_build_object('name', guild_person_public_name(r.guild_id, r.person_id),
                             'active', r.active and in_guild(r.guild_id, r.person_id))
     from guild_recruiters r
     join guilds g on g.id = r.guild_id

@@ -72,7 +72,7 @@ describe('guild recruiters', () => {
     });
   });
 
-  it('a recruiter who leaves the guild stops crediting, keeps their code, and cannot be switched back on until back', async () => {
+  it('leaving the guild switches a recruiter off and keeps their code; coming back needs an Admin', async () => {
     await withTxn(async ({ q, asUser, asAnon }) => {
       const raider = await personOf(q, RAIDER_T1);
       const code = await setRecruiter(asUser, OWNER, raider, true);
@@ -83,10 +83,43 @@ describe('guild recruiters', () => {
       expect(await lookup(asAnon, code)).toMatchObject({ active: false });
       expect(await activeList(asAnon)).toEqual([]);
       const { rows } = await asUser(OWNER, `select code, active, in_guild from public.guild_recruiter_list(${WGA})`);
-      expect(rows).toEqual([{ code, active: true, in_guild: false }]);
+      expect(rows).toEqual([{ code, active: false, in_guild: false }]);
+      expect((await audits(q)).at(-1)).toEqual({
+        action: 'Recruiter Switched Off',
+        detail: { person_id: raider, code, reason: 'left the guild' }
+      });
       await expect(setRecruiter(asUser, OWNER, raider, true)).rejects.toThrow(/not in this guild/);
-      // Switching them off still works.
-      expect(await setRecruiter(asUser, OWNER, raider, false)).toBe(code);
+
+      // Back on a team, they stay off until an Admin switches them on: same code.
+      await q('update public.team_members set archived_at = null where person_id = $1 and team_id = 1', [raider]);
+      expect(await lookup(asAnon, code)).toMatchObject({ active: false });
+      expect(await setRecruiter(asUser, GUILD_OFFICER, raider, true)).toBe(code);
+      expect(await lookup(asAnon, code)).toMatchObject({ active: true });
+    });
+  });
+
+  it('signed out, a recruiter shows by Name or Discord display name, never the Discord username', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      const officer = await personOf(q, OFFICER_T1);
+      await q(
+        `update auth.identities set identity_data = identity_data || '{"full_name": "kato_handle", "name": "kato_handle"}'
+          where user_id = $1`,
+        [OFFICER_T1]
+      );
+      const code = await setRecruiter(asUser, OWNER, officer, true);
+      expect(await lookup(asAnon, code)).toEqual({ name: null, active: true });
+      expect(await activeList(asAnon)).toEqual([]);
+      // The officers' list keeps the full fallback.
+      const { rows } = await asUser(OWNER, `select display_name from public.guild_recruiter_list(${WGA})`);
+      expect(rows).toEqual([{ display_name: 'kato_handle' }]);
+
+      await q(
+        `update auth.identities set identity_data = identity_data || '{"custom_claims": {"global_name": "Kato"}}'
+          where user_id = $1`,
+        [OFFICER_T1]
+      );
+      expect(await lookup(asAnon, code)).toEqual({ name: 'Kato', active: true });
+      expect(await activeList(asAnon)).toEqual([{ name: 'Kato', code }]);
     });
   });
 

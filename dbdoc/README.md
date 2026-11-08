@@ -312,11 +312,13 @@
 | public.set_team_recruiting_spots | void | p_team_id integer, p_spots jsonb | FUNCTION |
 | public.team_recruiting_page | jsonb | p_guild_key text, p_team_key text DEFAULT NULL::text | FUNCTION |
 | public.guild_person_name | text | p_guild_id integer, p_person_id integer | FUNCTION |
+| public.guild_person_public_name | text | p_guild_id integer, p_person_id integer | FUNCTION |
 | public.in_guild | bool | p_guild_id integer, p_person_id integer | FUNCTION |
 | public.set_guild_recruiter | text | p_guild_id integer, p_person_id integer, p_on boolean | FUNCTION |
 | public.guild_recruiter_list | record | p_guild_id integer | FUNCTION |
 | public.recruiter_for_code | jsonb | p_guild_key text, p_code text | FUNCTION |
 | public.guild_active_recruiters | record | p_guild_key text | FUNCTION |
+| public.recruiters_off_on_leaving | trigger |  | FUNCTION |
 
 ## Enums
 

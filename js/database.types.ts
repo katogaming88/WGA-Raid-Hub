@@ -5010,6 +5010,10 @@ export type Database = {
         Args: { p_guild_id: number; p_person_id: number }
         Returns: string
       }
+      guild_person_public_name: {
+        Args: { p_guild_id: number; p_person_id: number }
+        Returns: string
+      }
       guild_recruiter_list: {
         Args: { p_guild_id: number }
         Returns: {

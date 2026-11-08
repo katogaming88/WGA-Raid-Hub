@@ -274,7 +274,7 @@ As of 2026-11-02, [#998](https://github.com/katogaming88/WGA-Raid-Hub/issues/998
 
 As of 2026-11-08, [#1535](https://github.com/katogaming88/WGA-Raid-Hub/issues/1535) added `team_recruiting` and `team_recruiting_spots` (both in-app-only), 73 base tables. Keys: `team_recruiting` to `teams`; the spots to `team_recruiting` and `classes_specs`. No new `auth.users` FK. One trigger on `teams` makes each new team's row, so a selective restore of `teams` runs with user triggers off. No `EMPTY_CHECK` floor: every team has a row, but a restore taken before this migration has none. No re-drill due.
 
-As of 2026-11-08, [#1537](https://github.com/katogaming88/WGA-Raid-Hub/issues/1537) added `guild_recruiters` (in-app-only), 74 base tables. Keys: `guilds` and `people`, so it restores after both. No new `auth.users` FK and no triggers. No `EMPTY_CHECK` floor: a guild may have no recruiters. No re-drill due.
+As of 2026-11-08, [#1537](https://github.com/katogaming88/WGA-Raid-Hub/issues/1537) added `guild_recruiters` (in-app-only), 74 base tables. Keys: `guilds` and `people`, so it restores after both. No new `auth.users` FK. Triggers on `team_members` and `guild_ranks` switch a recruiter off when they leave, so a selective restore of either runs with user triggers off (see the selective-restore runbook). No `EMPTY_CHECK` floor: a guild may have no recruiters. No re-drill due.
 
 ## Ops notes
 
