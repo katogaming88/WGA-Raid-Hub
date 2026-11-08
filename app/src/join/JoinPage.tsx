@@ -326,6 +326,9 @@ function Picker({ code, target }: { code: string; target: InviteTarget }) {
   return (
     <>
       <p className="text-muted">Last step: pick the character you’ll raid on.</p>
+      {rows.length > 6 && (
+        <p className="text-muted">{rows.length} characters on this account. Scroll the list to see them all.</p>
+      )}
       {rows.length === 0 ? (
         <p className="text-muted">No characters found on this Battle.net account.</p>
       ) : (
