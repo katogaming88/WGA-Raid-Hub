@@ -126,6 +126,8 @@ function Groups({
   const [stale, setStale] = useState<number[]>([]);
   const [message, setMessage] = useState('');
   const save = useSaveBossGroups(team.id);
+  // A guild Admin on another team reads the groups; edit_schedule changes them (#1703).
+  const readOnly = !can('editSchedule');
 
   // What the database holds, and the same without anyone who has left the
   // roster: the grid and the save work on the second, the stale check on the
@@ -222,48 +224,59 @@ function Groups({
 
       <p className="boss-groups-targets text-muted">
         Role targets: {plural(targets.tanks, 'tank')} · {plural(targets.healers, 'healer')}{' '}
-        <button type="button" className="link-button" onClick={() => setEditingTargets(true)}>
-          Edit
-        </button>
+        {!readOnly && (
+          <button type="button" className="link-button" onClick={() => setEditingTargets(true)}>
+            Edit
+          </button>
+        )}
       </p>
       {editingTargets && <RoleTargetsDialog targets={targets} onClose={() => setEditingTargets(false)} />}
       {capBoss && <CapDialog boss={capBoss} raidCap={raid.cap} onClose={() => setCapBoss(null)} />}
 
-      <div className="lineup-savebar" data-state={barState} role="status">
-        <p>
-          <strong>{barTitle}</strong> <span className="text-muted">{barHelp}</span>
-        </p>
-        <div className="lineup-actions">
-          {barState === 'stale' && (
+      {!readOnly && (
+        <div className="lineup-savebar" data-state={barState} role="status">
+          <p>
+            <strong>{barTitle}</strong> <span className="text-muted">{barHelp}</span>
+          </p>
+          <div className="lineup-actions">
+            {barState === 'stale' && (
+              <button
+                type="button"
+                className="button"
+                onClick={() => {
+                  setEdits((e) => new Map([...e].filter(([id]) => !stale.includes(id))));
+                  setStale([]);
+                }}
+              >
+                Show their version
+              </button>
+            )}
             <button
               type="button"
-              className="button"
+              className="button button-quiet"
+              disabled={save.isPending || !dirty}
               onClick={() => {
-                setEdits((e) => new Map([...e].filter(([id]) => !stale.includes(id))));
+                setEdits(new Map());
                 setStale([]);
               }}
             >
-              Show their version
+              Discard
             </button>
-          )}
-          <button
-            type="button"
-            className="button button-quiet"
-            disabled={save.isPending || !dirty}
-            onClick={() => {
-              setEdits(new Map());
-              setStale([]);
-            }}
-          >
-            Discard
-          </button>
-          <button type="button" className="button button-primary" disabled={save.isPending || !dirty} onClick={onSave}>
-            {save.isPending ? 'Saving…' : 'Save groups'}
-          </button>
+            <button
+              type="button"
+              className="button button-primary"
+              disabled={save.isPending || !dirty}
+              onClick={onSave}
+            >
+              {save.isPending ? 'Saving…' : 'Save groups'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {unset ? (
+      {unset && readOnly ? (
+        <p className="card calendar-note">No boss in {raid.name} has a usual group yet.</p>
+      ) : unset ? (
         <section className="card lineup-empty" aria-labelledby="groups-empty-title">
           <h2 id="groups-empty-title">No boss in {raid.name} has a usual group yet.</h2>
           <p className="text-muted">
@@ -292,7 +305,7 @@ function Groups({
           changedBosses={changed.bosses}
           targets={targets}
           canEditCap={can('manageRaidReference')}
-          busy={save.isPending}
+          busy={save.isPending || readOnly}
           onToggle={(boss, id) => {
             setEdits((e) => toggle(saved, e, boss, id));
             setMessage('');

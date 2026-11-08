@@ -143,6 +143,10 @@ export type Ability =
   | 'editSchedule'
   | 'seeRsvps'
   | 'manageAttendance'
+  // Attendance and Boss groups, read-only: the page's own permission, or the
+  // guild grid's "See every team (read-only)" (#1703).
+  | 'viewAttendance'
+  | 'viewGroups'
   | 'viewReports'
   | 'viewLoot'
   | 'manageLoot'
@@ -223,6 +227,10 @@ export function can(
       return admin || team('see_rsvps');
     case 'manageAttendance':
       return admin || team('attendance');
+    case 'viewAttendance':
+      return admin || team('attendance') || guild('view_every_team');
+    case 'viewGroups':
+      return admin || team('edit_schedule') || guild('view_every_team');
     case 'viewReports':
       return admin || team('view_reports');
     case 'viewLoot':

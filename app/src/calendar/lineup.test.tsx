@@ -680,6 +680,18 @@ describe('the boss groups page', () => {
     expect(screen.queryByRole('link', { name: 'Boss groups' })).not.toBeInTheDocument();
   });
 
+  it('shows a guild Admin on another team the groups with no way to change them (#1703)', async () => {
+    const readOnly: Setup = {
+      ...GROUPED,
+      rpc: (name) => (name === 'my_permissions' ? { data: { team: [], guild: ['view_every_team'] } } : undefined)
+    };
+    renderApp(GROUPS, handlers(who('raider'), readOnly));
+    const g = await groupsGrid();
+    expect(g.getByRole('button', { name: "Ana, Nek'zali the Soulcoiler: in the group" })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Save groups' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+  });
+
   it('shows the usual groups with the checks and what saving changes', async () => {
     renderApp(GROUPS, handlers(who('officer'), GROUPED));
     const g = await groupsGrid();

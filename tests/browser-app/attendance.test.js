@@ -220,6 +220,32 @@ describe('Attendance Manage (new app): editing a status', () => {
   });
 });
 
+describe('Attendance Manage (new app): a guild Admin on another team (#1703)', () => {
+  // A guild Admin with no seat on Phoenix: the guild grid's "See every team".
+  const ADMIN = {
+    discordId: 'discord-admin-1',
+    person: { site_admin: false, guild_officer: true, boe_manager: false, teams: [] }
+  };
+
+  it('reads the grid but cannot change it', async () => {
+    const opened = await openApp(browser, server.port, { ...state(BASE, '.attend-grid-rows'), person: ADMIN });
+    try {
+      await expect(opened.page.getByRole('link', { name: 'Boss groups' }).count()).resolves.toBe(1);
+      await expect(opened.page.getByRole('button', { name: 'Refresh from WCL' }).count()).resolves.toBe(0);
+      await expect(opened.page.getByRole('button', { name: 'Commit Attendance Scores' }).count()).resolves.toBe(0);
+      await expect(opened.page.getByRole('button', { name: 'Exclude Report' }).count()).resolves.toBe(0);
+      const disabled = await opened.page
+        .locator('.attend-status-select')
+        .evaluateAll((els) => els.every((e) => e.disabled));
+      expect(disabled).toBe(true);
+      expect(opened.unexpected).toEqual([]);
+      expect(opened.pageErrors).toEqual([]);
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
 describe('Attendance Manage (new app): excluding a report', () => {
   it('flags the night as excluded from scoring', async () => {
     const opened = await openApp(browser, server.port, state(BASE, '.attend-grid-rows'));
