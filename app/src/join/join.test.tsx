@@ -134,7 +134,7 @@ describe('the Join page', () => {
     });
     await user.click(await screen.findByRole('button', { name: 'Join Phoenix' }));
     expect(client.rpcs).toContainEqual(['team_invite_link_join', { p_code: 'phoenix-abc', p_blizzard_id: null }]);
-    expect(await screen.findByRole('heading', { name: 'Which Member is you?' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'What should the team call you?' })).toBeInTheDocument();
   });
 
   it('claims a Member an officer made, then shows the character pick', async () => {

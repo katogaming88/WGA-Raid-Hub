@@ -45,11 +45,18 @@ function Join({ code, target }: { code: string; target: InviteTarget }) {
       Join {target.teamName} ({target.guildName})
     </h1>
   );
+  const invited = (
+    <p>
+      You’ve been invited to join {target.teamName}, a raid team in {target.guildName}.
+    </p>
+  );
 
   if (!user) {
     return (
       <section className="card signup-card">
         {heading}
+        {invited}
+        <p className="text-muted">Step 1: sign in with Battle.net.</p>
         <button type="button" className="button button-primary" onClick={() => void signIn(BATTLENET)}>
           Sign in with Battle.net
         </button>
@@ -60,6 +67,7 @@ function Join({ code, target }: { code: string; target: InviteTarget }) {
     return (
       <section className="card signup-card">
         {heading}
+        {invited}
         <p className="text-muted">Connect Battle.net so you can pick your character.</p>
         <button type="button" className="button" onClick={() => void connect(BATTLENET, 'signup-character')}>
           Connect Battle.net
@@ -72,6 +80,7 @@ function Join({ code, target }: { code: string; target: InviteTarget }) {
     return (
       <section className="card signup-card">
         {heading}
+        {invited}
         <p className="text-muted">Connect your Discord too: your team roles and raid notifications come from it.</p>
         <DiscordStep onConnect={() => void connect(DISCORD)} />
       </section>
@@ -80,6 +89,7 @@ function Join({ code, target }: { code: string; target: InviteTarget }) {
   return (
     <section className="card signup-card">
       {heading}
+      {invited}
       <Steps code={code} target={target} />
     </section>
   );
@@ -184,7 +194,7 @@ function MemberStep({ target, onSkip }: { target: InviteTarget; onSkip: () => vo
   const bare = (names.data ?? []).filter((n) => n.team_member_id === null);
   return (
     <>
-      <h2>Which Member is you?</h2>
+      <h2>What should the team call you?</h2>
       {bare.length > 0 && (
         <>
           <p className="text-muted">If an officer already added you, pick your name.</p>
@@ -302,6 +312,7 @@ function Picker({ code, target }: { code: string; target: InviteTarget }) {
   const rows = pickerRows(answer, new Map());
   return (
     <>
+      <p className="text-muted">Last step: pick the character you’ll raid on.</p>
       {rows.length === 0 ? (
         <p className="text-muted">No characters found on this Battle.net account.</p>
       ) : (
