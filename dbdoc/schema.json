@@ -2669,6 +2669,10 @@
         {
           "name": "teams_seed_rank_permissions",
           "def": "CREATE TRIGGER teams_seed_rank_permissions AFTER INSERT ON public.teams FOR EACH ROW EXECUTE FUNCTION seed_rank_permissions()"
+        },
+        {
+          "name": "teams_seed_team_recruiting",
+          "def": "CREATE TRIGGER teams_seed_team_recruiting AFTER INSERT ON public.teams FOR EACH ROW EXECUTE FUNCTION seed_team_recruiting()"
         }
       ]
     },
@@ -10564,6 +10568,683 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.team_recruiting",
+      "type": "BASE TABLE",
+      "comment": "A team's recruiting settings, one row per team, made with the team (#1535): whether it takes applications and how people join, the apply page's text, what it asks of applicants, and what the bot does in Discord when someone applies. Read and changed by the team's officers through team_recruiting_settings() and save_team_recruiting(); the apply pages read it through team_recruiting_page(); the bot reads it with the service key.",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "taking_applications",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "Off keeps everything else for next time; the apply page then says Not recruiting and still shows how the team raids. Open applications and trials carry on (#1535)."
+        },
+        {
+          "name": "join_method",
+          "type": "text",
+          "nullable": false,
+          "default": "'application'::text",
+          "comment": "application: the Raid Hub form. discord_ticket: no form; the apply page links to ticket_link, which must be set while taking applications."
+        },
+        {
+          "name": "ticket_link",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "listed_on_guild_page",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true",
+          "comment": "Off lets a team recruit quietly: its own apply link still works, it just is not listed with the guild's other teams."
+        },
+        {
+          "name": "about",
+          "type": "text",
+          "nullable": true,
+          "comment": "About the team, light Markdown, up to 2,000 characters."
+        },
+        {
+          "name": "schedule_note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "extra_night",
+          "type": "text",
+          "nullable": false,
+          "default": "'none'::text"
+        },
+        {
+          "name": "raid_languages",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'::text[]",
+          "comment": "The team's raid languages in order, the first being the main one. Up to 5, each up to 30 characters."
+        },
+        {
+          "name": "split_runs",
+          "type": "text",
+          "nullable": false,
+          "default": "'none'::text"
+        },
+        {
+          "name": "alts_expected",
+          "type": "integer",
+          "nullable": true,
+          "comment": "How many alts a raider is expected to keep; null hides the line."
+        },
+        {
+          "name": "ptr_testing",
+          "type": "text",
+          "nullable": false,
+          "default": "'none'::text"
+        },
+        {
+          "name": "min_item_level",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "attendance_percent",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "trial_days",
+          "type": "integer",
+          "nullable": false,
+          "default": "14"
+        },
+        {
+          "name": "logs_required",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "other_requirements",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "exceptional_line_on",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "Shows exceptional_line on the apply page in addition to the open spots, never instead of them."
+        },
+        {
+          "name": "exceptional_line",
+          "type": "text",
+          "nullable": false,
+          "default": "'Exceptional players of any class or spec are welcome to apply.'::text"
+        },
+        {
+          "name": "discord_mode",
+          "type": "text",
+          "nullable": false,
+          "default": "'none'::text",
+          "comment": "What the bot makes when someone applies: ticket (a private channel with the applicant and the officers), officer_thread (officers only), officer_post (one message in the officer channel) or none. ticket needs add_to_server."
+        },
+        {
+          "name": "officer_thread_with_ticket",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "With a ticket, also open an officer-only thread about the applicant."
+        },
+        {
+          "name": "add_to_server",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "Add the applicant to the team's Discord server when they apply (#1540)."
+        },
+        {
+          "name": "ticket_category_id",
+          "type": "text",
+          "nullable": true,
+          "comment": "The Discord category the bot makes tickets in."
+        },
+        {
+          "name": "visible_to_team_officers",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true"
+        },
+        {
+          "name": "visible_to_team_assistants",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "Assistants see tickets and officer threads (the Assistant rank is #1517's)."
+        },
+        {
+          "name": "visible_to_guild_admins",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "The guild's Owner and Admins see tickets and officer threads."
+        },
+        {
+          "name": "visible_to_role_ids",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'::text[]",
+          "comment": "Extra Discord roles that see tickets and officer threads, such as a recruiter role. Up to 25, picked from the server (#994)."
+        },
+        {
+          "name": "dm_reply_after_minutes",
+          "type": "integer",
+          "nullable": true,
+          "default": "120",
+          "comment": "DM the applicant this long after an officer's unanswered message in their ticket. Null for never. The timings are the bot's (#1543)."
+        },
+        {
+          "name": "remind_after_hours",
+          "type": "integer",
+          "nullable": true,
+          "default": "48"
+        },
+        {
+          "name": "close_no_reply_after_hours",
+          "type": "integer",
+          "nullable": true,
+          "default": "120"
+        },
+        {
+          "name": "ping_officers_after_hours",
+          "type": "integer",
+          "nullable": true,
+          "default": "24"
+        },
+        {
+          "name": "ping_owner_after_hours",
+          "type": "integer",
+          "nullable": true,
+          "default": "72"
+        },
+        {
+          "name": "trial_end_notice_hours",
+          "type": "integer",
+          "nullable": true,
+          "default": "48"
+        },
+        {
+          "name": "delete_closed_after_hours",
+          "type": "integer",
+          "nullable": true,
+          "default": "24"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_recruiting_pkey",
+          "def": "CREATE UNIQUE INDEX team_recruiting_pkey ON public.team_recruiting USING btree (team_id)",
+          "table": "public.team_recruiting",
+          "columns": [
+            "team_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_recruiting_about",
+          "type": "CHECK",
+          "def": "CHECK ((char_length(about) \u003c= 2000))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "about"
+          ]
+        },
+        {
+          "name": "team_recruiting_alts_expected",
+          "type": "CHECK",
+          "def": "CHECK (((alts_expected \u003e= 0) AND (alts_expected \u003c= 10)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "alts_expected"
+          ]
+        },
+        {
+          "name": "team_recruiting_attendance_percent",
+          "type": "CHECK",
+          "def": "CHECK (((attendance_percent \u003e= 1) AND (attendance_percent \u003c= 100)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "attendance_percent"
+          ]
+        },
+        {
+          "name": "team_recruiting_close_no_reply_after_hours",
+          "type": "CHECK",
+          "def": "CHECK (((close_no_reply_after_hours \u003e= 1) AND (close_no_reply_after_hours \u003c= 720)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "close_no_reply_after_hours"
+          ]
+        },
+        {
+          "name": "team_recruiting_delete_closed_after_hours",
+          "type": "CHECK",
+          "def": "CHECK (((delete_closed_after_hours \u003e= 1) AND (delete_closed_after_hours \u003c= 720)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "delete_closed_after_hours"
+          ]
+        },
+        {
+          "name": "team_recruiting_discord_mode",
+          "type": "CHECK",
+          "def": "CHECK ((discord_mode = ANY (ARRAY['ticket'::text, 'officer_thread'::text, 'officer_post'::text, 'none'::text])))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "discord_mode"
+          ]
+        },
+        {
+          "name": "team_recruiting_dm_reply_after_minutes",
+          "type": "CHECK",
+          "def": "CHECK (((dm_reply_after_minutes \u003e= 1) AND (dm_reply_after_minutes \u003c= 10080)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "dm_reply_after_minutes"
+          ]
+        },
+        {
+          "name": "team_recruiting_exceptional_line",
+          "type": "CHECK",
+          "def": "CHECK ((((char_length(exceptional_line) \u003e= 1) AND (char_length(exceptional_line) \u003c= 200)) AND (exceptional_line !~ '[\\r\\n]'::text)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "exceptional_line"
+          ]
+        },
+        {
+          "name": "team_recruiting_extra_night",
+          "type": "CHECK",
+          "def": "CHECK ((extra_night = ANY (ARRAY['none'::text, 'first_two_weeks'::text, 'sometimes'::text])))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "extra_night"
+          ]
+        },
+        {
+          "name": "team_recruiting_join_method",
+          "type": "CHECK",
+          "def": "CHECK ((join_method = ANY (ARRAY['application'::text, 'discord_ticket'::text])))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "join_method"
+          ]
+        },
+        {
+          "name": "team_recruiting_min_item_level",
+          "type": "CHECK",
+          "def": "CHECK (((min_item_level \u003e= 1) AND (min_item_level \u003c= 1000)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "min_item_level"
+          ]
+        },
+        {
+          "name": "team_recruiting_other_requirements",
+          "type": "CHECK",
+          "def": "CHECK (((char_length(other_requirements) \u003c= 200) AND (other_requirements !~ '[\\r\\n]'::text)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "other_requirements"
+          ]
+        },
+        {
+          "name": "team_recruiting_owner_after_officers",
+          "type": "CHECK",
+          "def": "CHECK (((ping_officers_after_hours IS NULL) OR (ping_owner_after_hours IS NULL) OR (ping_officers_after_hours \u003c ping_owner_after_hours)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "ping_officers_after_hours",
+            "ping_owner_after_hours"
+          ]
+        },
+        {
+          "name": "team_recruiting_ping_officers_after_hours",
+          "type": "CHECK",
+          "def": "CHECK (((ping_officers_after_hours \u003e= 1) AND (ping_officers_after_hours \u003c= 720)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "ping_officers_after_hours"
+          ]
+        },
+        {
+          "name": "team_recruiting_ping_owner_after_hours",
+          "type": "CHECK",
+          "def": "CHECK (((ping_owner_after_hours \u003e= 1) AND (ping_owner_after_hours \u003c= 720)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "ping_owner_after_hours"
+          ]
+        },
+        {
+          "name": "team_recruiting_ptr_testing",
+          "type": "CHECK",
+          "def": "CHECK ((ptr_testing = ANY (ARRAY['none'::text, 'optional'::text, 'expected'::text])))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "ptr_testing"
+          ]
+        },
+        {
+          "name": "team_recruiting_raid_languages",
+          "type": "CHECK",
+          "def": "CHECK (((cardinality(raid_languages) = 0) OR (array_to_string(raid_languages, '|'::text, ''::text) ~ '^[^|\\r\\n]{1,30}(\\|[^|\\r\\n]{1,30}){0,4}$'::text)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "raid_languages"
+          ]
+        },
+        {
+          "name": "team_recruiting_remind_after_hours",
+          "type": "CHECK",
+          "def": "CHECK (((remind_after_hours \u003e= 1) AND (remind_after_hours \u003c= 720)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "remind_after_hours"
+          ]
+        },
+        {
+          "name": "team_recruiting_remind_before_close",
+          "type": "CHECK",
+          "def": "CHECK (((remind_after_hours IS NULL) OR (close_no_reply_after_hours IS NULL) OR (remind_after_hours \u003c close_no_reply_after_hours)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "remind_after_hours",
+            "close_no_reply_after_hours"
+          ]
+        },
+        {
+          "name": "team_recruiting_schedule_note",
+          "type": "CHECK",
+          "def": "CHECK (((char_length(schedule_note) \u003c= 100) AND (schedule_note !~ '[\\r\\n]'::text)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "schedule_note"
+          ]
+        },
+        {
+          "name": "team_recruiting_split_runs",
+          "type": "CHECK",
+          "def": "CHECK ((split_runs = ANY (ARRAY['none'::text, 'early_season'::text, 'weekly'::text])))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "split_runs"
+          ]
+        },
+        {
+          "name": "team_recruiting_thread_with_ticket",
+          "type": "CHECK",
+          "def": "CHECK (((NOT officer_thread_with_ticket) OR (discord_mode = 'ticket'::text)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "officer_thread_with_ticket",
+            "discord_mode"
+          ]
+        },
+        {
+          "name": "team_recruiting_ticket_adds_to_server",
+          "type": "CHECK",
+          "def": "CHECK (((discord_mode \u003c\u003e 'ticket'::text) OR add_to_server))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "discord_mode",
+            "add_to_server"
+          ]
+        },
+        {
+          "name": "team_recruiting_ticket_category_id",
+          "type": "CHECK",
+          "def": "CHECK ((ticket_category_id ~ '^[0-9]{17,20}$'::text))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "ticket_category_id"
+          ]
+        },
+        {
+          "name": "team_recruiting_ticket_link",
+          "type": "CHECK",
+          "def": "CHECK (((ticket_link ~ '^https://[^\\s]+$'::text) AND (char_length(ticket_link) \u003c= 500)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "ticket_link"
+          ]
+        },
+        {
+          "name": "team_recruiting_ticket_needs_link",
+          "type": "CHECK",
+          "def": "CHECK (((NOT taking_applications) OR (join_method \u003c\u003e 'discord_ticket'::text) OR (ticket_link IS NOT NULL)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "taking_applications",
+            "join_method",
+            "ticket_link"
+          ]
+        },
+        {
+          "name": "team_recruiting_trial_days",
+          "type": "CHECK",
+          "def": "CHECK (((trial_days \u003e= 1) AND (trial_days \u003c= 90)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "trial_days"
+          ]
+        },
+        {
+          "name": "team_recruiting_trial_end_notice_hours",
+          "type": "CHECK",
+          "def": "CHECK (((trial_end_notice_hours \u003e= 1) AND (trial_end_notice_hours \u003c= 720)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "trial_end_notice_hours"
+          ]
+        },
+        {
+          "name": "team_recruiting_visible_to_role_ids",
+          "type": "CHECK",
+          "def": "CHECK (((cardinality(visible_to_role_ids) = 0) OR (array_to_string(visible_to_role_ids, ','::text, ''::text) ~ '^[0-9]{17,20}(,[0-9]{17,20}){0,24}$'::text)))",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "visible_to_role_ids"
+          ]
+        },
+        {
+          "name": "team_recruiting_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_recruiting",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_recruiting_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id)",
+          "table": "public.team_recruiting",
+          "referenced_table": "",
+          "columns": [
+            "team_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.team_recruiting_spots",
+      "type": "BASE TABLE",
+      "comment": "A team's open spots (#1535), one row each, in sort_order. A spec, or no spec for Any tank, Any healer, Any melee or Any ranged. role matches the spec's. Replaced as a list through set_team_recruiting_spots().",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "class_spec_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "priority",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_recruiting_spots_pkey",
+          "def": "CREATE UNIQUE INDEX team_recruiting_spots_pkey ON public.team_recruiting_spots USING btree (id)",
+          "table": "public.team_recruiting_spots",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_recruiting_spots_spec",
+          "def": "CREATE UNIQUE INDEX team_recruiting_spots_spec ON public.team_recruiting_spots USING btree (team_id, class_spec_id) WHERE (class_spec_id IS NOT NULL)",
+          "table": "public.team_recruiting_spots",
+          "columns": [
+            "team_id",
+            "class_spec_id"
+          ]
+        },
+        {
+          "name": "team_recruiting_spots_any",
+          "def": "CREATE UNIQUE INDEX team_recruiting_spots_any ON public.team_recruiting_spots USING btree (team_id, role) WHERE (class_spec_id IS NULL)",
+          "table": "public.team_recruiting_spots",
+          "columns": [
+            "team_id",
+            "role"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_recruiting_spots_priority_check",
+          "type": "CHECK",
+          "def": "CHECK ((priority = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text])))",
+          "table": "public.team_recruiting_spots",
+          "referenced_table": "",
+          "columns": [
+            "priority"
+          ]
+        },
+        {
+          "name": "team_recruiting_spots_role_check",
+          "type": "CHECK",
+          "def": "CHECK ((role = ANY (ARRAY['tank'::text, 'healer'::text, 'melee'::text, 'ranged'::text])))",
+          "table": "public.team_recruiting_spots",
+          "referenced_table": "",
+          "columns": [
+            "role"
+          ]
+        },
+        {
+          "name": "team_recruiting_spots_class_spec_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)",
+          "table": "public.team_recruiting_spots",
+          "referenced_table": "public.classes_specs",
+          "columns": [
+            "class_spec_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_recruiting_spots_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE",
+          "table": "public.team_recruiting_spots",
+          "referenced_table": "public.team_recruiting",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "team_id"
+          ]
+        },
+        {
+          "name": "team_recruiting_spots_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.team_recruiting_spots",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -12411,6 +13092,45 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_recruiting",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_recruiting_spots",
+      "columns": [
+        "class_spec_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.classes_specs",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
+    },
+    {
+      "table": "public.team_recruiting_spots",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_recruiting",
+      "parent_columns": [
+        "team_id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -13642,6 +14362,42 @@
       "name": "public.signup_wishlist_rank_locked",
       "return_type": "bool",
       "arguments": "p_signup_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.seed_team_recruiting",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_recruiting_spot_list",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_recruiting_settings",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.save_team_recruiting",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_changes jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_recruiting_spots",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_spots jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_recruiting_page",
+      "return_type": "jsonb",
+      "arguments": "p_guild_key text, p_team_key text DEFAULT NULL::text",
       "type": "FUNCTION"
     }
   ],

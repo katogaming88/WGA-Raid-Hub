@@ -263,6 +263,37 @@ Guild officers of the team's guild add, rename, re-address, archive and unlist t
 
 ---
 
+## `team_recruiting`
+
+A team's recruiting settings, one row per team, made with the team ([#1535](https://github.com/katogaming88/WGA-Raid-Hub/issues/1535)). No direct access: officers use `team_recruiting_settings()` and `save_team_recruiting()` (team permission `edit_recruiting`), the apply pages `team_recruiting_page()`, the bot the service key. Every column's limit is a named check constraint; see `dbdoc/public.team_recruiting.md` for all 35 columns.
+
+| Group | Columns |
+| ----- | ------- |
+| Recruiting | `taking_applications` (default off), `join_method` (`application` / `discord_ticket`), `ticket_link` (https, needed for `discord_ticket` while taking applications), `listed_on_guild_page` (default on) |
+| About the team | `about` (Markdown, up to 2,000 characters) |
+| How you raid | `schedule_note` (one line, 100), `extra_night` (`none` / `first_two_weeks` / `sometimes`), `raid_languages` (ordered, up to 5), `split_runs` (`none` / `early_season` / `weekly`), `alts_expected` (0-10 or null to hide), `ptr_testing` (`none` / `optional` / `expected`). Raid nights are `raid_schedule`'s |
+| What you ask for | `min_item_level`, `attendance_percent`, `trial_days` (default 14), `logs_required`, `other_requirements` (one line, 200) |
+| Exceptional players line | `exceptional_line_on`, `exceptional_line` |
+| Discord | `discord_mode` (`ticket` / `officer_thread` / `officer_post` / `none`; `ticket` needs `add_to_server`), `officer_thread_with_ticket`, `add_to_server`, `ticket_category_id`, `visible_to_team_officers`, `visible_to_team_assistants`, `visible_to_guild_admins`, `visible_to_role_ids` (up to 25) |
+| Timings (null = never) | `dm_reply_after_minutes` 120, `remind_after_hours` 48, `close_no_reply_after_hours` 120, `ping_officers_after_hours` 24, `ping_owner_after_hours` 72, `trial_end_notice_hours` 48, `delete_closed_after_hours` 24 |
+
+---
+
+## `team_recruiting_spots`
+
+A team's open spots, in order ([#1535](https://github.com/katogaming88/WGA-Raid-Hub/issues/1535)). Replaced as a whole list by `set_team_recruiting_spots()`.
+
+| Column          | Type | Purpose |
+| --------------- | ---- | ------- |
+| `id`            | int4 | PK |
+| `team_id`       | int4 | FK -> `team_recruiting.team_id` |
+| `role`          | text | `tank` / `healer` / `melee` / `ranged`; the spec's own when `class_spec_id` is set |
+| `class_spec_id` | int4 | FK -> `classes_specs.id`; null for "Any <role>". One row per spec, one "Any" row per role |
+| `priority`      | text | `high` / `medium` / `low` |
+| `sort_order`    | int4 | Position on the list |
+
+---
+
 ## `team_settings`
 
 Key-value config blob per team. One row per team.

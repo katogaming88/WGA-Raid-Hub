@@ -10,19 +10,45 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 ## Totals
 
-| Phase                              |   Time so far |
-| ---------------------------------- | ------------: |
-| Planning and design                |     17 h 10 m |
-| Revamp 1: decisions and foundation |      6 h 55 m |
-| Revamp 2: public pages             |     38 h 15 m |
-| Revamp 3: officer dashboard        |     55 h 46 m |
-| Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |     37 h 25 m |
-| Phase 2: Before the new site goes live |       0 m |
-| Phase 3: After the new site goes live  |   2 h 20 m |
-| Phase 4: Anytime, alongside        |           0 m |
-| Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **171 h 56 m** |
+| Phase                              |   Time so far |        Goal |
+| ---------------------------------- | ------------: | ----------: |
+| Planning and design                |     17 h 10 m |             |
+| Revamp 1: decisions and foundation |      6 h 55 m |             |
+| Revamp 2: public pages             |     38 h 15 m |             |
+| Revamp 3: officer dashboard        |     55 h 46 m |             |
+| Revamp 4: cutover                  |      14 h 5 m |             |
+| Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
+| Phase 2: Before the new site goes live |      20 m |  ~105 h 50 m |
+| Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
+| Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
+| Phase 5: Back burner               |           0 m |       ~13 h |
+| **All revamp work**                | **172 h 16 m** |             |
+
+### By area
+
+| Area | Phase | Time so far | Goal |
+| --- | --- | ---: | ---: |
+| Recruiting | Phase 2 | 20 m | ~9 h 50 m |
+| The roster audit and reports | Phase 2 | 0 m | ~9 h 50 m |
+| Roster, loot and the team's raids | Phase 2 | 0 m | ~42 h |
+| The guild test | Phase 2 | 0 m | ~12 h 40 m |
+| What going live changes | Phase 2 | 0 m | ~24 h |
+| Going live | Phase 2 | 0 m | ~7 h 30 m |
+| Revamp 3 extras | Phase 3 | 0 m | ~21 h 30 m |
+| Revamp 4 | Phase 3 | 0 m | ~4 h 50 m |
+| Discord notifications | Phase 3 | 0 m | ~2 h 30 m |
+| Addon and Sync | Phase 3 | 2 h 20 m | ~22 h 50 m |
+| The look across the site | Phase 3 | 0 m | ~5 h |
+| App delivery and CI | Phase 4 | 0 m | ~2 h 50 m |
+| CI and deploy | Phase 4 | 0 m | ~10 h 50 m |
+| BoE sales | Phase 4 | 0 m | ~1 h 20 m |
+| Database hardening | Phase 4 | 0 m | ~7 h 20 m |
+| Security hardening | Phase 4 | 0 m | ~8 h 10 m |
+| Streams | Phase 4 | 0 m | ~50 m |
+| Heroic Sale Runs | Phase 5 | 0 m | ~8 h 50 m |
+| Guild records and the guild bank | Phase 5 | 0 m | ~4 h 10 m |
+
+**Goals.** Each phase's Goal is the #1487 estimate it was held to, set once and never moved, so the finished phase can be compared with it. Phase 1's is its highest estimate (2026-10-31; GitHub keeps no earlier edits). Phases 2-5 are the #1487 estimates on 2026-11-08, plus time already logged (Phase 3's 2 h 20 m). Areas work the same way: each is a #1487 area, its Goal is its #1487 estimate on 2026-11-08 (Addon and Sync adds the 2 h 20 m already logged), and an area added later takes its estimate on the day it is added. Phase 1 had no area goals; its estimates were lost with GitHub's older edits. A row from Phase 2 on names its area after the phase, as in "Phase 2: Before the new site goes live / Recruiting (#1535)", and an area's time is the sum of its rows.
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -547,11 +573,11 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:41-10:55 AM | #961: the bot's commands grouped as `/raider` and `/officer` with `/help` (replacing `/about`); `/raider me`, `/raider schedule` and `/officer invite` built, `/nudge-missing` moved under `/officer`; Kat's two answers (post the invite link now, keep the old bot's two columns); edge tests, stamp, changelog, this row; PR #1751 | Phase 1: For the guild test (#961) | 15 m | ~13 m build, ~2 m Kat | 218,300 | |
 | 11:03-11:06 AM | PR #1751 (#961): CodeRabbit's two notes (the invite link was going out "only you", since Discord takes the first follow-up after "thinking" as an edit of it; `/help` lists a team's channels only to people on it) | Phase 1: For the guild test (#961) | 5 m | ~5 m build | 30,000 | Merge not yet counted |
 | 11:06-11:16 AM | PR #1751 (#961): merged, cleanup, #1487 row out; Kat registered the commands by hand (step-by-step help); #1752 filed and placed | Phase 1: For the guild test (#961) | 10 m | ~6 m build, ~4 m Kat | 273,900 | |
-| 11:18-11:39 AM | Sync started out of #1487's order (Kat's pick): #1654 plus an app shell, .NET WinForms (on .NET 10, since .NET 8's support ends 2026-11-10); the public WGA-Raid-Hub-Sync repo with labels, templates and CodeRabbit (PR sync #6); #1445 to #1449 moved there as sync #1 to #5, their bodies and blocked-by links repaired by hand, and #1487's body restored after the move rewrote every issue number in it; the tray app that finds the game folder and lists game accounts (PR sync #7) | Phase 3: After the new site goes live (#1654) | 20 m | ~17 m build, ~3 m Kat | 132,900 | |
-| 11:39 AM-12:28 PM | PRs sync #6 and #7: five CodeRabbit rounds (docs notes declined; the null account list, a malformed saved path, links inside WTF, unreadable folders, a missing game drive keeping its ticks, failed saves, letter case fixed; one declined); the branch rules for Kat; the tray-menu screenshot; both merged, the ruleset and squash-only merges set by API | Phase 3: After the new site goes live (#1654) | 50 m | ~35 m build, ~15 m Kat | 72,200 | |
-| 12:30-12:35 PM | #1654's last chore: the CONTRIBUTING pointer to the Sync repo, these rows, stamp, changelog | Phase 3: After the new site goes live (#1654) | 5 m | ~5 m build | 14,900 | Review and merge not yet counted |
-| 12:34-12:41 PM | PR #1756 (#1654): sync links fixed in the PR body and CHANGELOG (bare #N pointed at this repo), merged, cleanup, #1654's #1487 row out; sync #8 filed (a Sync window, Kat) and placed | Phase 3: After the new site goes live (#1654) | 5 m | ~4 m build, ~1 m Kat | 34,600 | |
-| 11:03 PM-12:04 AM | Sync #8: the Sync window mockups, three rounds against two other apps Kat showed; Kat picked the sidebar layout; not built | Phase 3: After the new site goes live (#1654) | 60 m | ~35 m build, ~25 m Kat | 52,000 | |
+| 11:18-11:39 AM | Sync started out of #1487's order (Kat's pick): #1654 plus an app shell, .NET WinForms (on .NET 10, since .NET 8's support ends 2026-11-10); the public WGA-Raid-Hub-Sync repo with labels, templates and CodeRabbit (PR sync #6); #1445 to #1449 moved there as sync #1 to #5, their bodies and blocked-by links repaired by hand, and #1487's body restored after the move rewrote every issue number in it; the tray app that finds the game folder and lists game accounts (PR sync #7) | Phase 3: After the new site goes live / Addon and Sync (#1654) | 20 m | ~17 m build, ~3 m Kat | 132,900 | |
+| 11:39 AM-12:28 PM | PRs sync #6 and #7: five CodeRabbit rounds (docs notes declined; the null account list, a malformed saved path, links inside WTF, unreadable folders, a missing game drive keeping its ticks, failed saves, letter case fixed; one declined); the branch rules for Kat; the tray-menu screenshot; both merged, the ruleset and squash-only merges set by API | Phase 3: After the new site goes live / Addon and Sync (#1654) | 50 m | ~35 m build, ~15 m Kat | 72,200 | |
+| 12:30-12:35 PM | #1654's last chore: the CONTRIBUTING pointer to the Sync repo, these rows, stamp, changelog | Phase 3: After the new site goes live / Addon and Sync (#1654) | 5 m | ~5 m build | 14,900 | Review and merge not yet counted |
+| 12:34-12:41 PM | PR #1756 (#1654): sync links fixed in the PR body and CHANGELOG (bare #N pointed at this repo), merged, cleanup, #1654's #1487 row out; sync #8 filed (a Sync window, Kat) and placed | Phase 3: After the new site goes live / Addon and Sync (#1654) | 5 m | ~4 m build, ~1 m Kat | 34,600 | |
+| 11:03 PM-12:04 AM | Sync #8: the Sync window mockups, three rounds against two other apps Kat showed; Kat picked the sidebar layout; not built | Phase 3: After the new site goes live / Addon and Sync (#1654) | 60 m | ~35 m build, ~25 m Kat | 52,000 | |
 
 ### 2026-11-04
 
@@ -614,6 +640,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 9:55-11:20 AM | #1722: the invite page says where you are and what each step asks for (Kat picked wording over several rounds: the Join line dropped, "What should the team call you?", a claim line, a five-row scrolling Members list with a count, "Add me to the roster"); screenshots, PR #1779, Kat's merge and cleanup | Phase 1: For the guild test (#1722) | 1 h 25 m | ~55 m build, ~30 m Kat (wording picks, review, merge) | 145,300 | Preflight run to a file after one run's failures were cut off |
 | 11:20-11:45 AM | #1723: the invite page's long character list scrolls in its own box so Join stays in view, with a count above it; "Choose your character from Battle.net"; screenshots at desktop and phone width; PR #1780; this row | Phase 1: For the guild test (#1723) | 25 m | ~20 m build, ~5 m Kat (one wording note) | 22,500 | Review and merge not yet counted |
+| 1:00-1:20 PM | #1535: each team's recruiting settings row and open spots, function-only (`team_recruiting_settings()`, `save_team_recruiting()`, `set_team_recruiting_spots()`, the public `team_recruiting_page()` carrying raid nights and progress so #1699 needn't open those tables), new `edit_recruiting` permission for Officers, WGA's four teams set; RLS tests, generated docs, decision log, RLS.md, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1535) | 20 m | ~20 m build | 170,300 | CodeRabbit, the fresh-agent review and Kat's merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

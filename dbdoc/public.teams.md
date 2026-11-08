@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('teams_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.audit_log](public.audit_log.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.players](public.players.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.team_members](public.team_members.md) [public.team_settings](public.team_settings.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.team_raid_progress](public.team_raid_progress.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.boe_listings](public.boe_listings.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.player_equipped_gear](public.player_equipped_gear.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.raid_schedule](public.raid_schedule.md) [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) [public.raid_rsvps](public.raid_rsvps.md) [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) [public.raid_signup_sheets](public.raid_signup_sheets.md) [public.player_officer_notes](public.player_officer_notes.md) [public.team_discord_config](public.team_discord_config.md) [public.account_preferences](public.account_preferences.md) [public.retired_url_keys](public.retired_url_keys.md) [public.main_swap_requests](public.main_swap_requests.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.team_lineup_settings](public.team_lineup_settings.md) [public.team_seasons](public.team_seasons.md) [public.team_invite_links](public.team_invite_links.md) [public.team_raid_kills](public.team_raid_kills.md) [public.team_schedule_settings](public.team_schedule_settings.md) [public.removal_reasons](public.removal_reasons.md) [public.names](public.names.md) [public.team_raid_reports](public.team_raid_reports.md) [public.team_rank_permissions](public.team_rank_permissions.md) [public.discord_post_queue](public.discord_post_queue.md) [public.team_lineup_posts](public.team_lineup_posts.md) |  |  |
+| id | integer | nextval('teams_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.audit_log](public.audit_log.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.players](public.players.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.team_members](public.team_members.md) [public.team_settings](public.team_settings.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.team_raid_progress](public.team_raid_progress.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.boe_listings](public.boe_listings.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.player_equipped_gear](public.player_equipped_gear.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.raid_schedule](public.raid_schedule.md) [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) [public.raid_rsvps](public.raid_rsvps.md) [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) [public.raid_signup_sheets](public.raid_signup_sheets.md) [public.player_officer_notes](public.player_officer_notes.md) [public.team_discord_config](public.team_discord_config.md) [public.account_preferences](public.account_preferences.md) [public.retired_url_keys](public.retired_url_keys.md) [public.main_swap_requests](public.main_swap_requests.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.team_lineup_settings](public.team_lineup_settings.md) [public.team_seasons](public.team_seasons.md) [public.team_invite_links](public.team_invite_links.md) [public.team_raid_kills](public.team_raid_kills.md) [public.team_schedule_settings](public.team_schedule_settings.md) [public.removal_reasons](public.removal_reasons.md) [public.names](public.names.md) [public.team_raid_reports](public.team_raid_reports.md) [public.team_rank_permissions](public.team_rank_permissions.md) [public.discord_post_queue](public.discord_post_queue.md) [public.team_lineup_posts](public.team_lineup_posts.md) [public.team_recruiting](public.team_recruiting.md) |  |  |
 | name | text |  | false |  |  | The team's display name. Unique within its guild, ignoring case, so a guild cannot have two teams with the same name; other guilds may reuse it (#1226). |
 | slug | text | new_url_code() | false |  |  | The team's URL key: the /t/\<key\> segment of an address, unique within its guild (#1114). The current site's ?team= parameter reads it too. |
 | archived_at | timestamp with time zone |  | true |  |  |  |
@@ -35,6 +35,7 @@
 | ---- | ---------- |
 | teams_retire_url_key | CREATE TRIGGER teams_retire_url_key AFTER UPDATE OF slug, guild_id ON public.teams FOR EACH ROW WHEN (((old.slug IS DISTINCT FROM new.slug) OR (old.guild_id IS DISTINCT FROM new.guild_id))) EXECUTE FUNCTION retire_team_url_key() |
 | teams_seed_rank_permissions | CREATE TRIGGER teams_seed_rank_permissions AFTER INSERT ON public.teams FOR EACH ROW EXECUTE FUNCTION seed_rank_permissions() |
+| teams_seed_team_recruiting | CREATE TRIGGER teams_seed_team_recruiting AFTER INSERT ON public.teams FOR EACH ROW EXECUTE FUNCTION seed_team_recruiting() |
 
 ## Relations
 
@@ -87,6 +88,7 @@ erDiagram
 "public.team_rank_permissions" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.discord_post_queue" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_lineup_posts" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_recruiting" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.teams" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
 
 "public.teams" {
@@ -619,6 +621,43 @@ erDiagram
   text message_id
   text content_key
   timestamp_with_time_zone posted_at
+}
+"public.team_recruiting" {
+  integer team_id FK
+  boolean taking_applications
+  text join_method
+  text ticket_link
+  boolean listed_on_guild_page
+  text about
+  text schedule_note
+  text extra_night
+  text__ raid_languages
+  text split_runs
+  integer alts_expected
+  text ptr_testing
+  integer min_item_level
+  integer attendance_percent
+  integer trial_days
+  boolean logs_required
+  text other_requirements
+  boolean exceptional_line_on
+  text exceptional_line
+  text discord_mode
+  boolean officer_thread_with_ticket
+  boolean add_to_server
+  text ticket_category_id
+  boolean visible_to_team_officers
+  boolean visible_to_team_assistants
+  boolean visible_to_guild_admins
+  text__ visible_to_role_ids
+  integer dm_reply_after_minutes
+  integer remind_after_hours
+  integer close_no_reply_after_hours
+  integer ping_officers_after_hours
+  integer ping_owner_after_hours
+  integer trial_end_notice_hours
+  integer delete_closed_after_hours
+  timestamp_with_time_zone updated_at
 }
 "public.guilds" {
   integer id
