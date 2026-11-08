@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.249.0] - 2026-11-07
+
+### Frontend
+
+- In the new app, every page for a team shows a strip across the top while that
+  team's signups are open: "Signups are open for <season>. Sign up", linking
+  straight to the signup form. Someone who has already signed up sees "Your
+  signup for <season>" instead. Nothing shows while signups are closed, or while
+  that can't be read, or on the signup form itself (#1630).
+
+### Project
+
+- Tests for the signups-open banner, and the time log (#1630).
+
 ## [3.248.0] - 2026-11-07
 
 ### Frontend

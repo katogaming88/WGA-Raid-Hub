@@ -313,3 +313,13 @@
 .join-skip {
   margin-top: var(--space-2);
 }
+
+/* The strip across the top of a team's pages while its signups are open
+   (#1630). */
+.signup-banner {
+  margin-bottom: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--brand);
+  background: var(--raised);
+  font-size: var(--text-sm);
+}

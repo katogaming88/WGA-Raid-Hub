@@ -71,7 +71,9 @@ function open({
   viewer = 'torbjorn',
   open = true,
   allowed = false,
-  viewport,
+  // A little taller than the default: the signups-open strip (#1630) pushes the
+  // slot rows down under the floating Streams panel otherwise.
+  viewport = { width: 1280, height: 900 },
   touch = false,
   view = null,
   openSeasons = [SEASON.code],
