@@ -199,7 +199,7 @@ function MemberStep({ target, onSkip }: { target: InviteTarget; onSkip: () => vo
       {bare.length > 0 && (
         <>
           <p className="text-muted">An officer may have already added you; find your Member row below and claim it.</p>
-          <ul className="join-members" tabIndex={0} aria-label="Members an officer already added">
+          <ul className="join-members" aria-label="Members an officer already added">
             {bare.map((n) => (
               <li key={n.id}>
                 <span>{n.label}</span>
