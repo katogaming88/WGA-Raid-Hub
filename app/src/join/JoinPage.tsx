@@ -198,7 +198,7 @@ function MemberStep({ target, onSkip }: { target: InviteTarget; onSkip: () => vo
       <h2>What should the team call you?</h2>
       {bare.length > 0 && (
         <>
-          <p className="text-muted">If an officer already added you, pick your name.</p>
+          <p className="text-muted">An officer may have already added you; find your Member row below and claim it.</p>
           <ul className="join-members">
             {bare.map((n) => (
               <li key={n.id}>

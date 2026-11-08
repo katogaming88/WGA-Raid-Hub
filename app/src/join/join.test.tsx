@@ -152,11 +152,11 @@ describe('the Join page', () => {
     const { client } = renderApp('/join/phoenix-abc', handlers({ world: { member: true } }), {
       battlenetToken: 'tok'
     });
-    const field = await screen.findByRole('textbox', { name: 'Not listed? Your name' });
+    const field = await screen.findByRole('textbox', { name: 'Not on the list? Type the name your team knows you by' });
     expect(field).toHaveValue('Kat');
     await user.clear(field);
     await user.type(field, 'Katorri');
-    await user.click(screen.getByRole('button', { name: 'Make my Member' }));
+    await user.click(screen.getByRole('button', { name: 'Save my name' }));
     expect(client.rpcs).toContainEqual(['create_own_name', { p_team_id: 1, p_label: 'Katorri' }]);
     expect(await screen.findByRole('radio', { name: /Katorri/ })).toBeInTheDocument();
   });
@@ -166,7 +166,9 @@ describe('the Join page', () => {
       authReturn: { intent: 'connect-battlenet', error: null },
       battlenetToken: 'tok'
     });
-    expect(await screen.findByRole('textbox', { name: 'Not listed? Your name' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('textbox', { name: 'Not on the list? Type the name your team knows you by' })
+    ).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: 'Import your characters' })).not.toBeInTheDocument();
   });
 

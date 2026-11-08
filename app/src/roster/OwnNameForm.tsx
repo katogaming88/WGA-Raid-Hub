@@ -26,7 +26,7 @@ export function OwnNameForm({ teamId, card = true }: { teamId: number; card?: bo
       <form onSubmit={onSubmit} noValidate className="create-name-form">
         <div className="field">
           <label className="field-label" htmlFor={`${id}-label`}>
-            {card ? 'Your name' : 'Not listed? Your name'}
+            {card ? 'Your name' : 'Not on the list? Type the name your team knows you by'}
           </label>
           <input
             id={`${id}-label`}
@@ -39,7 +39,7 @@ export function OwnNameForm({ teamId, card = true }: { teamId: number; card?: bo
           />
         </div>
         <button type="submit" className="button" disabled={create.isPending || !label.trim()}>
-          {create.isPending ? 'Saving…' : 'Make my Member'}
+          {create.isPending ? 'Saving…' : 'Save my name'}
         </button>
       </form>
       {create.isError && (
