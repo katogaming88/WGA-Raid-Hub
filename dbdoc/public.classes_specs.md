@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('classes_specs_id_seq'::regclass) | false | [public.players](public.players.md) [public.season_signups](public.season_signups.md) [public.main_swap_requests](public.main_swap_requests.md) |  |  |
+| id | integer | nextval('classes_specs_id_seq'::regclass) | false | [public.players](public.players.md) [public.season_signups](public.season_signups.md) [public.main_swap_requests](public.main_swap_requests.md) [public.team_recruiting_spots](public.team_recruiting_spots.md) |  |  |
 | class | text |  | false |  |  |  |
 | spec | text |  | false |  |  |  |
 | role | text |  | true |  |  |  |
@@ -35,6 +35,7 @@ erDiagram
 "public.season_signups" }o--o| "public.classes_specs" : "FOREIGN KEY (swap_class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.season_signups" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.main_swap_requests" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
+"public.team_recruiting_spots" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
 
 "public.classes_specs" {
   integer id
@@ -109,6 +110,14 @@ erDiagram
   integer reviewed_by FK
   text officer_note
   integer approved_player_id FK
+}
+"public.team_recruiting_spots" {
+  integer id
+  integer team_id FK
+  text role
+  integer class_spec_id FK
+  text priority
+  integer sort_order
 }
 ```
 

@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.250.0] - 2026-11-08
+
+### Backend
+
+- Each team now has recruiting settings and a list of open spots stored on Raid Hub, ready for the apply pages and the officers' Recruiting settings page: whether it is taking applications and how people join (the Raid Hub form or the team's own Discord ticket), the "about the team" text, how it raids, what it asks of applicants, an "exceptional players welcome" line, and what happens in Discord when someone applies. Officers and the Team Owner change them, every change goes to the audit log, and anyone, signed out too, can read a recruiting team's public part. Every team starts with recruiting off (#1535).
+
+### Project
+
+- Tests for the recruiting settings' read and write rules (#1535), and a goal column on the revamp time log.
+
 ## [3.249.2] - 2026-11-08
 
 ### Project

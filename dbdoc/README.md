@@ -91,6 +91,8 @@
 | [public.discord_post_queue](public.discord_post_queue.md) | 12 | Every Discord notice the bot posts to a team's channels, queued by the write behind it and posted by discord-bot-webhook's drain every minute (#962). Added only through queue_discord_post(), taken only through claim_discord_posts(). Service role only. | BASE TABLE |
 | [public.discord_nudges_sent](public.discord_nudges_sent.md) | 3 | When the bot last DMed each Discord user about each thing it chases: a missing wishlist, BiS link or BiS pick (/officer nudge-missing, #998) or a season signup (/officer missing-signups, #990). One row per Discord id and category, overwritten on each DM, so the 24-hour cooldown holds across every team. Written by discord-interactions with the service role, after the DM was sent. | BASE TABLE |
 | [public.team_lineup_posts](public.team_lineup_posts.md) | 6 | The weekly boss lineup message posted for each team and week (#1709). week_of is the date the post was due, in the team's lineup time zone; content_key is what the message shows. No message: the week posted, then its lineup was emptied and the message taken down. Written by discord-bot-webhook with the service role; later runs edit this message when the lineup changes. | BASE TABLE |
+| [public.team_recruiting](public.team_recruiting.md) | 35 | A team's recruiting settings, one row per team, made with the team (#1535): whether it takes applications and how people join, the apply page's text, what it asks of applicants, and what the bot does in Discord when someone applies. Read and changed by the team's officers through team_recruiting_settings() and save_team_recruiting(); the apply pages read it through team_recruiting_page(); the bot reads it with the service key. | BASE TABLE |
+| [public.team_recruiting_spots](public.team_recruiting_spots.md) | 6 | A team's open spots (#1535), one row each, in sort_order. A spec, or no spec for Any tank, Any healer, Any melee or Any ranged. role matches the spec's. Replaced as a list through set_team_recruiting_spots(). | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -301,6 +303,13 @@
 | public.set_guild_rank_permissions | void | p_guild_id integer, p_changes jsonb | FUNCTION |
 | public.set_team_rank_permissions | void | p_team_id integer, p_changes jsonb | FUNCTION |
 | public.signup_wishlist_rank_locked | bool | p_signup_id integer | FUNCTION |
+| public.text_items_match | bool | p_items text[], p_pattern text | FUNCTION |
+| public.seed_team_recruiting | trigger |  | FUNCTION |
+| public.team_recruiting_spot_list | jsonb | p_team_id integer | FUNCTION |
+| public.team_recruiting_settings | jsonb | p_team_id integer | FUNCTION |
+| public.save_team_recruiting | void | p_team_id integer, p_changes jsonb | FUNCTION |
+| public.set_team_recruiting_spots | void | p_team_id integer, p_spots jsonb | FUNCTION |
+| public.team_recruiting_page | jsonb | p_guild_key text, p_team_key text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 
@@ -466,6 +475,9 @@ erDiagram
 "public.discord_server_access" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
 "public.discord_post_queue" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_lineup_posts" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_recruiting" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_recruiting_spots" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
+"public.team_recruiting_spots" }o--|| "public.team_recruiting" : "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -1342,6 +1354,51 @@ erDiagram
   text message_id
   text content_key
   timestamp_with_time_zone posted_at
+}
+"public.team_recruiting" {
+  integer team_id FK
+  boolean taking_applications
+  text join_method
+  text ticket_link
+  boolean listed_on_guild_page
+  text about
+  text schedule_note
+  text extra_night
+  text__ raid_languages
+  text split_runs
+  integer alts_expected
+  text ptr_testing
+  integer min_item_level
+  integer attendance_percent
+  integer trial_days
+  boolean logs_required
+  text other_requirements
+  boolean exceptional_line_on
+  text exceptional_line
+  text discord_mode
+  boolean officer_thread_with_ticket
+  boolean add_to_server
+  text ticket_category_id
+  boolean visible_to_team_officers
+  boolean visible_to_team_assistants
+  boolean visible_to_guild_admins
+  text__ visible_to_role_ids
+  integer dm_reply_after_minutes
+  integer remind_after_hours
+  integer close_no_reply_after_hours
+  integer ping_officers_after_hours
+  integer ping_owner_after_hours
+  integer trial_end_notice_hours
+  integer delete_closed_after_hours
+  timestamp_with_time_zone updated_at
+}
+"public.team_recruiting_spots" {
+  integer id
+  integer team_id FK
+  text role
+  integer class_spec_id FK
+  text priority
+  integer sort_order
 }
 ```
 

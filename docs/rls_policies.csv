@@ -203,6 +203,8 @@ team_raid_reports,Team raiders read team_raid_reports,public,SELECT,PERMISSIVE,"
   WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))))",
 team_rank_permissions,Anyone reads team_rank_permissions,anon;authenticated,SELECT,PERMISSIVE,true,
 team_rank_permissions,Claude readers read team_rank_permissions,claude_readers,SELECT,PERMISSIVE,true,
+team_recruiting,Claude readers read team_recruiting,claude_readers,SELECT,PERMISSIVE,true,
+team_recruiting_spots,Claude readers read team_recruiting_spots,claude_readers,SELECT,PERMISSIVE,true,
 team_schedule_settings,Claude readers read team_schedule_settings,claude_readers,SELECT,PERMISSIVE,true,
 team_schedule_settings,Officers write team_schedule_settings,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('edit_schedule'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 team_schedule_settings,Public read team_schedule_settings,public,SELECT,PERMISSIVE,true,

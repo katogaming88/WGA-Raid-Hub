@@ -3638,6 +3638,170 @@ export type Database = {
           },
         ]
       }
+      team_recruiting: {
+        Row: {
+          about: string | null
+          add_to_server: boolean
+          alts_expected: number | null
+          attendance_percent: number | null
+          close_no_reply_after_hours: number | null
+          delete_closed_after_hours: number | null
+          discord_mode: string
+          dm_reply_after_minutes: number | null
+          exceptional_line: string
+          exceptional_line_on: boolean
+          extra_night: string
+          join_method: string
+          listed_on_guild_page: boolean
+          logs_required: boolean
+          min_item_level: number | null
+          officer_thread_with_ticket: boolean
+          other_requirements: string | null
+          ping_officers_after_hours: number | null
+          ping_owner_after_hours: number | null
+          ptr_testing: string
+          raid_languages: string[]
+          remind_after_hours: number | null
+          schedule_note: string | null
+          split_runs: string
+          taking_applications: boolean
+          team_id: number
+          ticket_category_id: string | null
+          ticket_link: string | null
+          trial_days: number
+          trial_end_notice_hours: number | null
+          updated_at: string
+          visible_to_guild_admins: boolean
+          visible_to_role_ids: string[]
+          visible_to_team_assistants: boolean
+          visible_to_team_officers: boolean
+        }
+        Insert: {
+          about?: string | null
+          add_to_server?: boolean
+          alts_expected?: number | null
+          attendance_percent?: number | null
+          close_no_reply_after_hours?: number | null
+          delete_closed_after_hours?: number | null
+          discord_mode?: string
+          dm_reply_after_minutes?: number | null
+          exceptional_line?: string
+          exceptional_line_on?: boolean
+          extra_night?: string
+          join_method?: string
+          listed_on_guild_page?: boolean
+          logs_required?: boolean
+          min_item_level?: number | null
+          officer_thread_with_ticket?: boolean
+          other_requirements?: string | null
+          ping_officers_after_hours?: number | null
+          ping_owner_after_hours?: number | null
+          ptr_testing?: string
+          raid_languages?: string[]
+          remind_after_hours?: number | null
+          schedule_note?: string | null
+          split_runs?: string
+          taking_applications?: boolean
+          team_id: number
+          ticket_category_id?: string | null
+          ticket_link?: string | null
+          trial_days?: number
+          trial_end_notice_hours?: number | null
+          updated_at?: string
+          visible_to_guild_admins?: boolean
+          visible_to_role_ids?: string[]
+          visible_to_team_assistants?: boolean
+          visible_to_team_officers?: boolean
+        }
+        Update: {
+          about?: string | null
+          add_to_server?: boolean
+          alts_expected?: number | null
+          attendance_percent?: number | null
+          close_no_reply_after_hours?: number | null
+          delete_closed_after_hours?: number | null
+          discord_mode?: string
+          dm_reply_after_minutes?: number | null
+          exceptional_line?: string
+          exceptional_line_on?: boolean
+          extra_night?: string
+          join_method?: string
+          listed_on_guild_page?: boolean
+          logs_required?: boolean
+          min_item_level?: number | null
+          officer_thread_with_ticket?: boolean
+          other_requirements?: string | null
+          ping_officers_after_hours?: number | null
+          ping_owner_after_hours?: number | null
+          ptr_testing?: string
+          raid_languages?: string[]
+          remind_after_hours?: number | null
+          schedule_note?: string | null
+          split_runs?: string
+          taking_applications?: boolean
+          team_id?: number
+          ticket_category_id?: string | null
+          ticket_link?: string | null
+          trial_days?: number
+          trial_end_notice_hours?: number | null
+          updated_at?: string
+          visible_to_guild_admins?: boolean
+          visible_to_role_ids?: string[]
+          visible_to_team_assistants?: boolean
+          visible_to_team_officers?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_recruiting_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: true
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_recruiting_spots: {
+        Row: {
+          class_spec_id: number | null
+          id: number
+          priority: string
+          role: string
+          sort_order: number
+          team_id: number
+        }
+        Insert: {
+          class_spec_id?: number | null
+          id?: never
+          priority: string
+          role: string
+          sort_order: number
+          team_id: number
+        }
+        Update: {
+          class_spec_id?: number | null
+          id?: never
+          priority?: string
+          role?: string
+          sort_order?: number
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_recruiting_spots_class_spec_id_fkey"
+            columns: ["class_spec_id"]
+            isOneToOne: false
+            referencedRelation: "classes_specs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_recruiting_spots_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "team_recruiting"
+            referencedColumns: ["team_id"]
+          },
+        ]
+      }
       team_schedule_settings: {
         Row: {
           default_difficulty: string | null
@@ -5063,6 +5227,10 @@ export type Database = {
         }
         Returns: number
       }
+      save_team_recruiting: {
+        Args: { p_changes: Json; p_team_id: number }
+        Returns: undefined
+      }
       set_boe_payout_settings: {
         Args: { p_floor: number; p_guild_id?: number; p_pivot: number }
         Returns: undefined
@@ -5168,6 +5336,10 @@ export type Database = {
       }
       set_team_rank_permissions: {
         Args: { p_changes: Json; p_team_id: number }
+        Returns: undefined
+      }
+      set_team_recruiting_spots: {
+        Args: { p_spots: Json; p_team_id: number }
         Returns: undefined
       }
       set_team_rsvp_post: {
@@ -5350,6 +5522,12 @@ export type Database = {
           team_member_id: number
         }[]
       }
+      team_recruiting_page: {
+        Args: { p_guild_key: string; p_team_key?: string }
+        Returns: Json
+      }
+      team_recruiting_settings: { Args: { p_team_id: number }; Returns: Json }
+      team_recruiting_spot_list: { Args: { p_team_id: number }; Returns: Json }
       team_rsvp_answers: {
         Args: { p_from: string; p_team_id: number; p_to: string }
         Returns: {
@@ -5371,6 +5549,10 @@ export type Database = {
           discord_name: string
           team_member_id: number
         }[]
+      }
+      text_items_match: {
+        Args: { p_items: string[]; p_pattern: string }
+        Returns: boolean
       }
       transfer_guild_ownership: {
         Args: { p_guild_id: number; p_person_id: number }

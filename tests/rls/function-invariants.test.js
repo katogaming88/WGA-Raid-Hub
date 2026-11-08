@@ -57,7 +57,9 @@ const ANON_DEFINER_ALLOWLIST = [
   'submit_boe_found',
   'submit_mplus_exclusion',
   'submit_self_received',
-  'team_invite_link_resolve'
+  'team_invite_link_resolve',
+  // #1535: the public apply pages' read, returning only what they show.
+  'team_recruiting_page'
 ];
 
 // Comments are stripped before the body is searched: a function that

@@ -10,6 +10,25 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-11-08 -- Each team's recruiting settings and open spots (#1535)
+
+Shipped: 20261108130421_team_recruiting.sql
+
+- **Two tables, no direct access.** `team_recruiting` is one row per team, made with the team by a trigger and backfilled for every team, with recruiting off and the issue's defaults. `team_recruiting_spots` is the open spots list. Both revoke everything from `anon` and `authenticated`, like the Discord settings tables (#1712).
+- **The Discord part lives on `team_recruiting`, not `team_discord_config`.** A team has a `team_discord_config` row only once it picks a server, and a recruiting page should open before that.
+- **A spot's role is tank, healer, melee or ranged**, not tank/healer/DPS plus a melee-or-ranged column: the apply page filters by those four, so one column covers both. A spot with a spec takes the spec's role from `classes_specs`; an "Any" spot names its role. The same spec twice, or two "Any" rows for one role, is refused by two partial unique indexes.
+- **A new team permission, `edit_recruiting`, on for Officers.** The Team Owner has every permission; Assistants don't edit recruiting (#1517). The team grid on Settings > Ranks doesn't list it yet; #1548 adds the row, and then the Team Owner can hand it to Assistants.
+- **Writes are two functions.** `save_team_recruiting(team, changes)` takes an object of the fields to change, so each section of the page saves only its own; an unknown field is refused, and every limit is a named check constraint the page can map to a message. The two list columns check each item on its own (one level deep, no blank or null items, no `|`, `,`, `;` or `/` in a language) through an immutable helper, `text_items_match()`, since a check can't hold a subquery (CodeRabbit and the fresh-agent review). `set_team_recruiting_spots(team, spots)` replaces the whole list in order, and refuses a key it doesn't know, so a mistyped `spec_id` can't save an "Any" spot (fresh-agent review). Each writes one `audit_log` row (field by field from and to, or the list before and after), none when nothing changed.
+- **The apply pages read through `team_recruiting_page(guild, team)`, granted to `anon`** (#1286's rule for a public page showing guild data). It returns only what the pages show: the public settings, the spots, the team's active weekly raid nights and its boss progress, and none of the Discord settings. With a team, that team if it is taking applications or listed; without, the guild's listed teams, leaving out archived teams and teams kept off the guild's pages. Raid nights and progress come through it so the apply pages keep working when `raid_schedule` and `team_raid_progress` go to members only at cutover (#1699), without those tables staying open to anyone.
+- **Cross-field rules:** a `discord_ticket` team needs a ticket link while taking applications; a Discord `ticket` needs "add to the server" on; the officer thread alongside a ticket needs ticket mode; the reminder comes before the "No reply" close and the officer ping before the Team Owner ping, when both are set.
+- **WGA's teams:** Phoenix and Hellfire Rollers take the form with a private ticket (adding the applicant to the server); Immolation and Wrathless send people to their own ticket. All four stay off until the cutover turns them on, and their ticket links are filled in then.
+- **An unlisted team starts off the guild's apply page** (Kat, 2026-11-08, from the fresh-agent review): the row's `listed_on_guild_page` copies `not teams.unlisted`, at the backfill (Wrathless) and for each new team, so its officers' settings say what visitors see. `team_recruiting_page()` leaves unlisted teams out of the guild's list either way.
+- **Turning applications off changes only the row**, so open applications and trials (#1539) carry on.
+
+[Full discussion -> #1535](https://github.com/katogaming88/WGA-Raid-Hub/issues/1535).
+
+---
+
 ## 2026-11-06 -- Changing a team rank and the Team Owner (#1651)
 
 Shipped: 20261106121137_team_ranks_and_owner.sql
