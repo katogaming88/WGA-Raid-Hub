@@ -32,6 +32,17 @@
 -- Turning taking_applications off changes nothing but this row: open
 -- applications and trials (#1539) carry on.
 
+-- Whether every item of a list matches a pattern, for the two list columns'
+-- checks (a check can't hold a subquery). No item may be null.
+create function public.text_items_match(p_items text[], p_pattern text)
+returns boolean
+language sql
+immutable
+set search_path = public
+as $$
+  select not exists (select 1 from unnest(p_items) as i where i is null or i !~ p_pattern);
+$$;
+
 create table public.team_recruiting (
   team_id integer primary key references public.teams(id) on delete cascade,
 
@@ -54,8 +65,7 @@ create table public.team_recruiting (
     constraint team_recruiting_extra_night check (extra_night in ('none', 'first_two_weeks', 'sometimes')),
   raid_languages text[] not null default '{}'
     constraint team_recruiting_raid_languages check (
-      cardinality(raid_languages) = 0
-      or array_to_string(raid_languages, '|', '') ~ '^[^|\r\n]{1,30}(\|[^|\r\n]{1,30}){0,4}$'
+      cardinality(raid_languages) <= 5 and public.text_items_match(raid_languages, '^[^\r\n]{1,30}$')
     ),
   split_runs text not null default 'none'
     constraint team_recruiting_split_runs check (split_runs in ('none', 'early_season', 'weekly')),
@@ -92,8 +102,7 @@ create table public.team_recruiting (
   visible_to_guild_admins boolean not null default false,
   visible_to_role_ids text[] not null default '{}'
     constraint team_recruiting_visible_to_role_ids check (
-      cardinality(visible_to_role_ids) = 0
-      or array_to_string(visible_to_role_ids, ',', '') ~ '^[0-9]{17,20}(,[0-9]{17,20}){0,24}$'
+      cardinality(visible_to_role_ids) <= 25 and public.text_items_match(visible_to_role_ids, '^[0-9]{17,20}$')
     ),
 
   -- Timings; empty means never

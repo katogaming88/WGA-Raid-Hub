@@ -303,6 +303,7 @@
 | public.set_guild_rank_permissions | void | p_guild_id integer, p_changes jsonb | FUNCTION |
 | public.set_team_rank_permissions | void | p_team_id integer, p_changes jsonb | FUNCTION |
 | public.signup_wishlist_rank_locked | bool | p_signup_id integer | FUNCTION |
+| public.text_items_match | bool | p_items text[], p_pattern text | FUNCTION |
 | public.seed_team_recruiting | trigger |  | FUNCTION |
 | public.team_recruiting_spot_list | jsonb | p_team_id integer | FUNCTION |
 | public.team_recruiting_settings | jsonb | p_team_id integer | FUNCTION |

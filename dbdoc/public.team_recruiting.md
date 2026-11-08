@@ -64,7 +64,7 @@ A team's recruiting settings, one row per team, made with the team (#1535): whet
 | team_recruiting_ping_officers_after_hours | CHECK | CHECK (((ping_officers_after_hours >= 1) AND (ping_officers_after_hours <= 720))) |
 | team_recruiting_ping_owner_after_hours | CHECK | CHECK (((ping_owner_after_hours >= 1) AND (ping_owner_after_hours <= 720))) |
 | team_recruiting_ptr_testing | CHECK | CHECK ((ptr_testing = ANY (ARRAY['none'::text, 'optional'::text, 'expected'::text]))) |
-| team_recruiting_raid_languages | CHECK | CHECK (((cardinality(raid_languages) = 0) OR (array_to_string(raid_languages, '|'::text, ''::text) ~ '^[^|\r\n]{1,30}(\|[^|\r\n]{1,30}){0,4}$'::text))) |
+| team_recruiting_raid_languages | CHECK | CHECK (((cardinality(raid_languages) <= 5) AND text_items_match(raid_languages, '^[^\r\n]{1,30}$'::text))) |
 | team_recruiting_remind_after_hours | CHECK | CHECK (((remind_after_hours >= 1) AND (remind_after_hours <= 720))) |
 | team_recruiting_remind_before_close | CHECK | CHECK (((remind_after_hours IS NULL) OR (close_no_reply_after_hours IS NULL) OR (remind_after_hours < close_no_reply_after_hours))) |
 | team_recruiting_schedule_note | CHECK | CHECK (((char_length(schedule_note) <= 100) AND (schedule_note !~ '[\r\n]'::text))) |
@@ -76,7 +76,7 @@ A team's recruiting settings, one row per team, made with the team (#1535): whet
 | team_recruiting_ticket_needs_link | CHECK | CHECK (((NOT taking_applications) OR (join_method <> 'discord_ticket'::text) OR (ticket_link IS NOT NULL))) |
 | team_recruiting_trial_days | CHECK | CHECK (((trial_days >= 1) AND (trial_days <= 90))) |
 | team_recruiting_trial_end_notice_hours | CHECK | CHECK (((trial_end_notice_hours >= 1) AND (trial_end_notice_hours <= 720))) |
-| team_recruiting_visible_to_role_ids | CHECK | CHECK (((cardinality(visible_to_role_ids) = 0) OR (array_to_string(visible_to_role_ids, ','::text, ''::text) ~ '^[0-9]{17,20}(,[0-9]{17,20}){0,24}$'::text))) |
+| team_recruiting_visible_to_role_ids | CHECK | CHECK (((cardinality(visible_to_role_ids) <= 25) AND text_items_match(visible_to_role_ids, '^[0-9]{17,20}$'::text))) |
 | team_recruiting_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | team_recruiting_pkey | PRIMARY KEY | PRIMARY KEY (team_id) |
 

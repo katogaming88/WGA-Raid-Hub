@@ -5550,6 +5550,10 @@ export type Database = {
           team_member_id: number
         }[]
       }
+      text_items_match: {
+        Args: { p_items: string[]; p_pattern: string }
+        Returns: boolean
+      }
       transfer_guild_ownership: {
         Args: { p_guild_id: number; p_person_id: number }
         Returns: undefined

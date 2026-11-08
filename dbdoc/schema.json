@@ -10966,7 +10966,7 @@
         {
           "name": "team_recruiting_raid_languages",
           "type": "CHECK",
-          "def": "CHECK (((cardinality(raid_languages) = 0) OR (array_to_string(raid_languages, '|'::text, ''::text) ~ '^[^|\\r\\n]{1,30}(\\|[^|\\r\\n]{1,30}){0,4}$'::text)))",
+          "def": "CHECK (((cardinality(raid_languages) \u003c= 5) AND text_items_match(raid_languages, '^[^\\r\\n]{1,30}$'::text)))",
           "table": "public.team_recruiting",
           "referenced_table": "",
           "columns": [
@@ -11091,7 +11091,7 @@
         {
           "name": "team_recruiting_visible_to_role_ids",
           "type": "CHECK",
-          "def": "CHECK (((cardinality(visible_to_role_ids) = 0) OR (array_to_string(visible_to_role_ids, ','::text, ''::text) ~ '^[0-9]{17,20}(,[0-9]{17,20}){0,24}$'::text)))",
+          "def": "CHECK (((cardinality(visible_to_role_ids) \u003c= 25) AND text_items_match(visible_to_role_ids, '^[0-9]{17,20}$'::text)))",
           "table": "public.team_recruiting",
           "referenced_table": "",
           "columns": [
@@ -14362,6 +14362,12 @@
       "name": "public.signup_wishlist_rank_locked",
       "return_type": "bool",
       "arguments": "p_signup_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.text_items_match",
+      "return_type": "bool",
+      "arguments": "p_items text[], p_pattern text",
       "type": "FUNCTION"
     },
     {

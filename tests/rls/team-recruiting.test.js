@@ -88,6 +88,10 @@ describe('team recruiting', () => {
         [{ attendance_percent: 101 }, /team_recruiting_attendance_percent/],
         [{ raid_languages: ['a', 'b', 'c', 'd', 'e', 'f'] }, /team_recruiting_raid_languages/],
         [{ visible_to_role_ids: ['123'] }, /team_recruiting_visible_to_role_ids/],
+        // Each item is checked on its own, so two ids can't pass as one.
+        [{ visible_to_role_ids: ['300000000000000001,300000000000000002'] }, /team_recruiting_visible_to_role_ids/],
+        [{ raid_languages: ['English', ''] }, /team_recruiting_raid_languages/],
+        [{ raid_languages: ['English', null] }, /team_recruiting_raid_languages/],
         [{ ticket_link: 'http://example.com' }, /team_recruiting_ticket_link/],
         [{ discord_mode: 'ticket' }, /team_recruiting_ticket_adds_to_server/],
         [{ remind_after_hours: 200 }, /team_recruiting_remind_before_close/],
@@ -178,7 +182,9 @@ describe('team recruiting', () => {
       await q("delete from public.team_rank_permissions where team_id = $1 and permission = 'edit_recruiting'", [
         team.teamId
       ]);
-      await expect(asUser(team.officer.uid, calls[0][0], calls[0][1])).rejects.toThrow(/Not authorized/);
+      for (const [sql, params] of calls) {
+        await expect(asUser(team.officer.uid, sql, params)).rejects.toThrow(/Not authorized/);
+      }
     });
   });
 
@@ -192,6 +198,21 @@ describe('team recruiting', () => {
         visible_to_role_ids: ['300000000000000001']
       });
       await q("insert into public.raid_schedule (team_id, weekday, start_time) values (1, 2, '20:00')");
+      const zone = (
+        await q(
+          "insert into public.raid_zones (wcl_zone_id, name, season) values (9001, 'Test Zone', 'seed-season') returning id"
+        )
+      ).rows[0].id;
+      const boss = (
+        await q(
+          "insert into public.raid_encounters (zone_id, wcl_encounter_id, name) values ($1, 9002, 'Test Boss') returning id",
+          [zone]
+        )
+      ).rows[0].id;
+      await q(
+        "insert into public.team_raid_progress (team_id, encounter_id, heroic_date, mythic_best_pct) values (1, $1, '2026-11-01', 42.5)",
+        [boss]
+      );
 
       const list = await page(asAnon);
       expect(list.map((t) => t.slug)).toEqual(['hellfire', 'immolation', 'phoenix']);
@@ -202,7 +223,14 @@ describe('team recruiting', () => {
         spots: [expect.objectContaining({ spec: 'Restoration', priority: 'high' })]
       });
       expect(phoenix.nights).toContainEqual(expect.objectContaining({ weekday: 2, start_time: '20:00:00' }));
-      expect(Array.isArray(phoenix.progress)).toBe(true);
+      expect(phoenix.progress).toEqual([
+        expect.objectContaining({
+          zone: 'Test Zone',
+          boss: 'Test Boss',
+          heroic_date: '2026-11-01',
+          mythic_best_pct: 42.5
+        })
+      ]);
       expect(Object.keys(phoenix).filter((k) => /discord|visible|ticket_category|after_/.test(k))).toEqual([]);
       // Hidden line stays hidden.
       expect(list.find((t) => t.slug === 'hellfire').exceptional_line).toBeNull();
