@@ -2475,6 +2475,10 @@
         {
           "name": "team_members_pass_ownership",
           "def": "CREATE TRIGGER team_members_pass_ownership AFTER DELETE OR UPDATE ON public.team_members FOR EACH ROW EXECUTE FUNCTION team_members_pass_ownership()"
+        },
+        {
+          "name": "team_members_recruiters_off_on_leaving",
+          "def": "CREATE TRIGGER team_members_recruiters_off_on_leaving AFTER DELETE OR UPDATE OF archived_at, person_id, team_id ON public.team_members FOR EACH ROW EXECUTE FUNCTION recruiters_off_on_leaving()"
         }
       ]
     },
@@ -9864,6 +9868,10 @@
         {
           "name": "guild_ranks_keep_grant",
           "def": "CREATE TRIGGER guild_ranks_keep_grant AFTER INSERT OR DELETE OR UPDATE OF rank ON public.guild_ranks FOR EACH ROW EXECUTE FUNCTION guild_ranks_keep_grant()"
+        },
+        {
+          "name": "guild_ranks_recruiters_off_on_leaving",
+          "def": "CREATE TRIGGER guild_ranks_recruiters_off_on_leaving AFTER DELETE OR UPDATE OF rank, person_id, guild_id ON public.guild_ranks FOR EACH ROW EXECUTE FUNCTION recruiters_off_on_leaving()"
         }
       ]
     },
@@ -11242,6 +11250,127 @@
           "referenced_table": "",
           "columns": [
             "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.guild_recruiters",
+      "type": "BASE TABLE",
+      "comment": "A guild's recruiters (#1537): one row per person per guild, with the code in their apply links (?from=\u003ccode\u003e) and whether they are switched on. Switched off keeps the row and its code. Changed only through set_guild_recruiter(); read through guild_recruiter_list(), recruiter_for_code() and guild_active_recruiters().",
+      "columns": [
+        {
+          "name": "guild_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "nullable": false,
+          "default": "new_url_code()",
+          "comment": "The code in the recruiter's apply links. Random, unique site-wide, and fixed once issued so links already posted keep working; never the recruiter's name."
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true",
+          "comment": "Off: the code stops crediting new applications. Past applications keep the recruiter."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "guild_recruiters_pkey",
+          "def": "CREATE UNIQUE INDEX guild_recruiters_pkey ON public.guild_recruiters USING btree (guild_id, person_id)",
+          "table": "public.guild_recruiters",
+          "columns": [
+            "guild_id",
+            "person_id"
+          ]
+        },
+        {
+          "name": "guild_recruiters_code_key",
+          "def": "CREATE UNIQUE INDEX guild_recruiters_code_key ON public.guild_recruiters USING btree (code)",
+          "table": "public.guild_recruiters",
+          "columns": [
+            "code"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "guild_recruiters_code_format",
+          "type": "CHECK",
+          "def": "CHECK ((code ~ '^[a-z0-9]{8}$'::text))",
+          "table": "public.guild_recruiters",
+          "referenced_table": "",
+          "columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "guild_recruiters_guild_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE",
+          "table": "public.guild_recruiters",
+          "referenced_table": "public.guilds",
+          "columns": [
+            "guild_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "guild_recruiters_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE",
+          "table": "public.guild_recruiters",
+          "referenced_table": "public.people",
+          "columns": [
+            "person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "guild_recruiters_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (guild_id, person_id)",
+          "table": "public.guild_recruiters",
+          "referenced_table": "",
+          "columns": [
+            "guild_id",
+            "person_id"
+          ]
+        },
+        {
+          "name": "guild_recruiters_code_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (code)",
+          "table": "public.guild_recruiters",
+          "referenced_table": "",
+          "columns": [
+            "code"
           ]
         }
       ]
@@ -13131,6 +13260,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.guild_recruiters",
+      "columns": [
+        "guild_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.guilds",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.guild_recruiters",
+      "columns": [
+        "person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -14404,6 +14559,54 @@
       "name": "public.team_recruiting_page",
       "return_type": "jsonb",
       "arguments": "p_guild_key text, p_team_key text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.guild_person_name",
+      "return_type": "text",
+      "arguments": "p_guild_id integer, p_person_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.guild_person_public_name",
+      "return_type": "text",
+      "arguments": "p_guild_id integer, p_person_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.in_guild",
+      "return_type": "bool",
+      "arguments": "p_guild_id integer, p_person_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_guild_recruiter",
+      "return_type": "text",
+      "arguments": "p_guild_id integer, p_person_id integer, p_on boolean",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.guild_recruiter_list",
+      "return_type": "record",
+      "arguments": "p_guild_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruiter_for_code",
+      "return_type": "jsonb",
+      "arguments": "p_guild_key text, p_code text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.guild_active_recruiters",
+      "return_type": "record",
+      "arguments": "p_guild_key text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruiters_off_on_leaving",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],

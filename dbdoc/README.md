@@ -93,6 +93,7 @@
 | [public.team_lineup_posts](public.team_lineup_posts.md) | 6 | The weekly boss lineup message posted for each team and week (#1709). week_of is the date the post was due, in the team's lineup time zone; content_key is what the message shows. No message: the week posted, then its lineup was emptied and the message taken down. Written by discord-bot-webhook with the service role; later runs edit this message when the lineup changes. | BASE TABLE |
 | [public.team_recruiting](public.team_recruiting.md) | 35 | A team's recruiting settings, one row per team, made with the team (#1535): whether it takes applications and how people join, the apply page's text, what it asks of applicants, and what the bot does in Discord when someone applies. Read and changed by the team's officers through team_recruiting_settings() and save_team_recruiting(); the apply pages read it through team_recruiting_page(); the bot reads it with the service key. | BASE TABLE |
 | [public.team_recruiting_spots](public.team_recruiting_spots.md) | 6 | A team's open spots (#1535), one row each, in sort_order. A spec, or no spec for Any tank, Any healer, Any melee or Any ranged. role matches the spec's. Replaced as a list through set_team_recruiting_spots(). | BASE TABLE |
+| [public.guild_recruiters](public.guild_recruiters.md) | 6 | A guild's recruiters (#1537): one row per person per guild, with the code in their apply links (?from=<code>) and whether they are switched on. Switched off keeps the row and its code. Changed only through set_guild_recruiter(); read through guild_recruiter_list(), recruiter_for_code() and guild_active_recruiters(). | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -310,6 +311,14 @@
 | public.save_team_recruiting | void | p_team_id integer, p_changes jsonb | FUNCTION |
 | public.set_team_recruiting_spots | void | p_team_id integer, p_spots jsonb | FUNCTION |
 | public.team_recruiting_page | jsonb | p_guild_key text, p_team_key text DEFAULT NULL::text | FUNCTION |
+| public.guild_person_name | text | p_guild_id integer, p_person_id integer | FUNCTION |
+| public.guild_person_public_name | text | p_guild_id integer, p_person_id integer | FUNCTION |
+| public.in_guild | bool | p_guild_id integer, p_person_id integer | FUNCTION |
+| public.set_guild_recruiter | text | p_guild_id integer, p_person_id integer, p_on boolean | FUNCTION |
+| public.guild_recruiter_list | record | p_guild_id integer | FUNCTION |
+| public.recruiter_for_code | jsonb | p_guild_key text, p_code text | FUNCTION |
+| public.guild_active_recruiters | record | p_guild_key text | FUNCTION |
+| public.recruiters_off_on_leaving | trigger |  | FUNCTION |
 
 ## Enums
 
@@ -478,6 +487,8 @@ erDiagram
 "public.team_recruiting" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_recruiting_spots" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
 "public.team_recruiting_spots" }o--|| "public.team_recruiting" : "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
+"public.guild_recruiters" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
+"public.guild_recruiters" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -1399,6 +1410,14 @@ erDiagram
   integer class_spec_id FK
   text priority
   integer sort_order
+}
+"public.guild_recruiters" {
+  integer guild_id FK
+  integer person_id FK
+  text code
+  boolean active
+  timestamp_with_time_zone created_at
+  timestamp_with_time_zone updated_at
 }
 ```
 

@@ -354,6 +354,21 @@ Unique on `(person_id, guild_id, grant_type)`. A site admin can grant to someone
 
 ---
 
+## `guild_recruiters`
+
+A guild's recruiters and the codes in their apply links ([#1537](https://github.com/katogaming88/WGA-Raid-Hub/issues/1537)). No direct access: changed through `set_guild_recruiter()`, read through `guild_recruiter_list()`, `recruiter_for_code()` and `guild_active_recruiters()`.
+
+| Column       | Type        | Purpose |
+| ------------ | ----------- | ------- |
+| `guild_id`   | int4        | PK (with `person_id`), FK -> `guilds.id` |
+| `person_id`  | int4        | FK -> `people.id`. A recruiter need not be an officer |
+| `code`       | text        | 8 random characters, unique site-wide and fixed once issued: the `?from=` in their links. Never their name |
+| `active`     | bool        | Off: the code stops crediting new applications; the row and code stay |
+| `created_at` | timestamptz | When they were first switched on |
+| `updated_at` | timestamptz | Last switch |
+
+---
+
 ## `guild_ranks`
 
 A person's rank in a guild ([#1645](https://github.com/katogaming88/WGA-Raid-Hub/issues/1645), the roles of [#1517](https://github.com/katogaming88/WGA-Raid-Hub/issues/1517)). One row per person per guild; member is automatic for anyone on a team in the guild, so a member has a row only to hold one of the two switches.

@@ -10,6 +10,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-11-08 -- Recruiters and their links (#1537)
+
+Shipped: 20261108171312_guild_recruiters.sql
+
+- **A table of its own, not a `guild_grants` row.** `guild_recruiters` holds the person, the guild, the code and whether they are switched on. A grant row would have had nowhere to keep the code, and deleting it on switch-off would lose the code that past links and past credit name.
+- **The code is a player-code-style `new_url_code()`**: 8 random characters, unique site-wide, never the recruiter's name, and fixed once issued. Switching off keeps the row and the code, so switching back on brings the same link back, and links already posted keep naming the same person.
+- **A new guild permission, `manage_recruiters`, on for Admins** (the Owner has every permission), rather than reusing `edit_guild_profile`, so a guild can give it to Team Leads. No site admin override, as with `set_guild_rank()`. The guild grid page doesn't list it yet; the Members tab issue (#1550) adds the row with the switch.
+- **Only people in the guild** (a guild rank, or a current team there) can be switched on, the same test as `set_guild_rank()`, now the helper `in_guild()`. **Leaving the guild switches a recruiter off** (Kat, 2026-11-08, from the fresh-agent review; CodeRabbit raised the gap): a trigger on `team_members` and `guild_ranks` turns `active` off when their last current team in the guild or their guild rank goes, logged as a switch-off with the reason. They can't be switched back on until they're back, and coming back doesn't switch them on: an Admin does, and gets the same code. `guild_recruiter_list()` also says whether each one is still `in_guild`, and both lookups check it too.
+- **Two lookups for anyone, signed out included**, since a link may be opened before signing in. `recruiter_for_code()` gives a name and whether they are on, and only for the guild in the link's address, so the same code credits its recruiter whichever of the guild's teams the person applies to. `guild_active_recruiters()` is the "Who sent you?" list. Names only, and only a public name (Kat, 2026-11-08, from the fresh-agent review): their Name on a current team, else their Discord display name, never the Discord username people search for to message someone. A recruiter with neither is left off the list and their link shows no name. The officers' list keeps the Members tab's full fallback; the list carries each code as the key the form sends back, which is already in the recruiter's public links, rather than a people id.
+- Each switch writes one guild-level `audit_log` row naming the person and the code; the same switch again writes none.
+- A new code that's already taken is retried up to 5 times, telling it apart from the same person switched on a moment ago by the failed constraint's name (fresh-agent review).
+
+[Full discussion -> #1537](https://github.com/katogaming88/WGA-Raid-Hub/issues/1537).
+
+---
+
 ## 2026-11-08 -- Each team's recruiting settings and open spots (#1535)
 
 Shipped: 20261108130421_team_recruiting.sql
