@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.249.2] - 2026-11-08
+
+### Project
+
+- In the new app, the invite link's character step keeps the Join button in view: a long list of characters now scrolls inside its own box, so someone with 50 characters picks one and presses Join without scrolling the page. The button before it reads "Choose your character from Battle.net" and says they pick the one they'll raid on and can add the rest from their profile later (#1723).
+
 ## [3.249.1] - 2026-11-08
 
 ### Project

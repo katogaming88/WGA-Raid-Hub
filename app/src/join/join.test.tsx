@@ -179,7 +179,7 @@ describe('the Join page', () => {
 
   it('asks a member without a token to load their characters', async () => {
     renderApp('/join/phoenix-abc', atPicker());
-    expect(await screen.findByRole('button', { name: 'Load your characters from Battle.net' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Choose your character from Battle.net' })).toBeInTheDocument();
   });
 
   it('puts the picked character on the roster and links to the team', async () => {

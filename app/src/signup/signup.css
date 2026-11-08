@@ -157,6 +157,13 @@
   border-radius: var(--radius-md);
 }
 
+/* The invite page's long list scrolls inside its own box, so the Join button
+   under it is always in view. A cut-off row and a scrollbar show there is more. */
+.join-characters {
+  max-height: min(24rem, 45vh);
+  overflow-y: scroll;
+}
+
 .signup-bnet-list button + button {
   border-top: 1px solid var(--border);
 }

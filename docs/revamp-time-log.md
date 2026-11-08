@@ -17,12 +17,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 2: public pages             |     38 h 15 m |
 | Revamp 3: officer dashboard        |     55 h 46 m |
 | Revamp 4: cutover                  |      14 h 5 m |
-| Phase 1: For the guild test        |     35 h 35 m |
+| Phase 1: For the guild test        |     37 h 25 m |
 | Phase 2: Before the new site goes live |       0 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |
 | Phase 4: Anytime, alongside        |           0 m |
 | Phase 5: Back burner               |           0 m |
-| **All revamp work**                | **170 h 6 m** |
+| **All revamp work**                | **171 h 56 m** |
 
 **Phases from 2026-10-29.** The Revamp 1-4 milestones gave way to five phases, each its own milestone, in the order #1487 keeps: for the guild test, before the new site goes live, after it goes live, anytime alongside, and the back burner. Rows from 2026-10-29 10:49 PM on are filed under a phase; earlier rows keep the milestone they were logged under, so those totals stay as they were.
 
@@ -607,6 +607,13 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:12-9:35 PM | #1703: a guild Admin on another team sees Attendance and Boss groups read-only (two new view rules, both pages hide their edit controls); app and browser tests, stamp, changelog; PR | Phase 1: For the guild test (#1703) | 25 m | ~25 m build | 110,000 | Review and merge not yet counted |
 | 9:40-10:10 PM | #1703 after the PR: screenshots, Kat's merge and cleanup; #1771: anyone with a guild rank on no team opens the guild's pages (one rule in the app shell), two tests; stamp, changelog; PR | Phase 1: For the guild test (#1771) | 30 m | ~25 m build, ~5 m Kat | 150,000 | Review and merge not yet counted |
 | 10:20-10:50 PM | #1771: Kat's merge and cleanup; #1487 edited (two rows and the empty area removed, totals redone); #1630: the signups-open strip on every team page, sharing the Sign up button's open/closed rule; five tests, stamp, changelog; PR | Phase 1: For the guild test (#1630) | 30 m | ~25 m build, ~5 m Kat | 130,000 | Review and merge not yet counted |
+
+### 2026-11-08
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 9:55-11:20 AM | #1722: the invite page says where you are and what each step asks for (Kat picked wording over several rounds: the Join line dropped, "What should the team call you?", a claim line, a five-row scrolling Members list with a count, "Add me to the roster"); screenshots, PR #1779, Kat's merge and cleanup | Phase 1: For the guild test (#1722) | 1 h 25 m | ~55 m build, ~30 m Kat (wording picks, review, merge) | 145,300 | Preflight run to a file after one run's failures were cut off |
+| 11:20-11:45 AM | #1723: the invite page's long character list scrolls in its own box so Join stays in view, with a count above it; "Choose your character from Battle.net"; screenshots at desktop and phone width; PR #1780; this row | Phase 1: For the guild test (#1723) | 25 m | ~20 m build, ~5 m Kat (one wording note) | 22,500 | Review and merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
