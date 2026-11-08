@@ -52,6 +52,13 @@ describe('team recruiting', () => {
         taking_applications: false,
         discord_mode: 'none'
       });
+      // An unlisted team starts off the guild's apply page too.
+      const hidden = (
+        await q(
+          "insert into public.teams (name, guild_id, unlisted) values ('Hidden', (select id from public.guilds where url_key = 'wga'), true) returning id"
+        )
+      ).rows[0].id;
+      expect((await settings(asUser, SITE_ADMIN, hidden)).listed_on_guild_page).toBe(false);
       // A site admin reads any team's.
       expect((await settings(asUser, SITE_ADMIN, 3)).trial_days).toBe(14);
     });

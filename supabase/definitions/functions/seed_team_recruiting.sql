@@ -9,7 +9,7 @@ CREATE OR REPLACE FUNCTION public.seed_team_recruiting()
  SET search_path TO 'public'
 AS $function$
 begin
-  insert into team_recruiting (team_id) values (new.id);
+  insert into team_recruiting (team_id, listed_on_guild_page) values (new.id, not new.unlisted);
   return null;
 end;
 $function$;

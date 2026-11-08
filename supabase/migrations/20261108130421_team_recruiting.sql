@@ -207,7 +207,8 @@ grant select, insert, update, delete on table public.team_recruiting to service_
 revoke all on table public.team_recruiting_spots from public, anon, authenticated, service_role;
 grant select, insert, update, delete on table public.team_recruiting_spots to service_role;
 
--- A new team starts with recruiting off and the defaults.
+-- A new team starts with recruiting off and the defaults, and off the guild's
+-- apply page when it is unlisted.
 create function public.seed_team_recruiting()
 returns trigger
 language plpgsql
@@ -215,7 +216,7 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into team_recruiting (team_id) values (new.id);
+  insert into team_recruiting (team_id, listed_on_guild_page) values (new.id, not new.unlisted);
   return null;
 end;
 $$;
@@ -226,7 +227,11 @@ create trigger teams_seed_team_recruiting
   after insert on public.teams
   for each row execute function public.seed_team_recruiting();
 
-insert into public.team_recruiting (team_id) select t.id from public.teams t;
+-- An unlisted team (Wrathless) starts off the guild's apply page too, so its
+-- settings say what visitors see (Kat, 2026-11-08). The page's read leaves
+-- unlisted teams out of the list either way.
+insert into public.team_recruiting (team_id, listed_on_guild_page)
+select t.id, not t.unlisted from public.teams t;
 
 -- WGA's teams at cutover: Phoenix and Hellfire Rollers take the form and open
 -- a private ticket; Immolation and Wrathless send people to their own ticket.
