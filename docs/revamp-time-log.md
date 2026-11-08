@@ -18,17 +18,17 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live |      20 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live |   1 h 10 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **172 h 16 m** |             |
+| **All revamp work**                | **173 h 6 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Recruiting | Phase 2 | 20 m | ~9 h 50 m |
+| Recruiting | Phase 2 | 1 h 10 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 0 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 0 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
@@ -641,6 +641,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:55-11:20 AM | #1722: the invite page says where you are and what each step asks for (Kat picked wording over several rounds: the Join line dropped, "What should the team call you?", a claim line, a five-row scrolling Members list with a count, "Add me to the roster"); screenshots, PR #1779, Kat's merge and cleanup | Phase 1: For the guild test (#1722) | 1 h 25 m | ~55 m build, ~30 m Kat (wording picks, review, merge) | 145,300 | Preflight run to a file after one run's failures were cut off |
 | 11:20-11:45 AM | #1723: the invite page's long character list scrolls in its own box so Join stays in view, with a count above it; "Choose your character from Battle.net"; screenshots at desktop and phone width; PR #1780; this row | Phase 1: For the guild test (#1723) | 25 m | ~20 m build, ~5 m Kat (one wording note) | 22,500 | Review and merge not yet counted |
 | 1:00-1:20 PM | #1535: each team's recruiting settings row and open spots, function-only (`team_recruiting_settings()`, `save_team_recruiting()`, `set_team_recruiting_spots()`, the public `team_recruiting_page()` carrying raid nights and progress so #1699 needn't open those tables), new `edit_recruiting` permission for Officers, WGA's four teams set; RLS tests, generated docs, decision log, RLS.md, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1535) | 20 m | ~20 m build | 170,300 | CodeRabbit, the fresh-agent review and Kat's merge not yet counted |
+| 1:20-1:50 PM | PR #1781 (#1535): CodeRabbit's two comments (list items checked one by one, fixed; `write_audit_log()`, answered and withdrawn), the fresh-agent review (approve; five fixes: one-level lists, no blank or joined languages, unknown spot keys refused, backup doc, a guild officer test), Kat's Wrathless pick (an unlisted team starts off the apply page), checked against the production snapshot | Phase 2: Before the new site goes live / Recruiting (#1535) | 30 m | ~25 m build, ~5 m Kat | 71,300 | Kat answered from her phone while at work |
+| 4:32-4:35 PM | PR #1781 (#1535): CodeRabbit's second review (nothing to fix), Kat's merge and cleanup | Phase 2: Before the new site goes live / Recruiting (#1535) | 5 m | ~5 m build | 18,500 | Tokens include watching the PR from 1:50 PM; the wait itself isn't counted |
+| 5:12-5:25 PM | #1537: `guild_recruiters` with fixed 8-character link codes, a new guild permission `manage_recruiters` for Admins, `set_guild_recruiter()` and `guild_recruiter_list()`, signed-out lookups `recruiter_for_code()` and `guild_active_recruiters()` (names only); RLS tests, generated docs, decision log, RLS.md, backup doc, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1537) | 15 m | ~15 m build | 47,300 | CodeRabbit, the fresh-agent review and Kat's merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

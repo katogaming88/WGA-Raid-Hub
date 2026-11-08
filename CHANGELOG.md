@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.251.0] - 2026-11-08
+
+### Backend
+
+- A guild's Owner and Admins can now make someone a recruiter, giving them their own apply link (`?from=` and a short code). Someone who opens that link sees who sent them, even signed out, and the apply form can list the guild's recruiters by name. The code never changes and is never the recruiter's name, so links already posted keep working; switching a recruiter off stops new credit but keeps the old (#1537).
+
+### Project
+
+- Tests for recruiters and their links (#1537), and time log rows for #1535's review and merge and #1537's build.
+
 ## [3.250.0] - 2026-11-08
 
 ### Backend

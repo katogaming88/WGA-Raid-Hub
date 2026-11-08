@@ -49,6 +49,7 @@ guild_ranks,Claude readers read guild_ranks,claude_readers,SELECT,PERMISSIVE,tru
 guild_ranks,"Own, guild officers and site admins read guild_ranks",authenticated,SELECT,PERMISSIVE,"((person_id = ( SELECT my_person_id() AS my_person_id)) OR ( SELECT is_site_admin() AS is_site_admin) OR (guild_id IN ( SELECT t.guild_id
    FROM teams t
   WHERE (t.id = ANY (( SELECT my_guild_officer_team_ids() AS my_guild_officer_team_ids)::integer[])))))",
+guild_recruiters,Claude readers read guild_recruiters,claude_readers,SELECT,PERMISSIVE,true,
 guilds,Claude readers read guilds,claude_readers,SELECT,PERMISSIVE,true,
 guilds,Public read guilds,public,SELECT,PERMISSIVE,true,
 item_bosses,Claude readers read item_bosses,claude_readers,SELECT,PERMISSIVE,true,

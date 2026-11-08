@@ -8,7 +8,7 @@ One row per human (#942). auth_user_id is their sign-in account, null for a Disc
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer |  | false | [public.season_signups](public.season_signups.md) [public.team_members](public.team_members.md) [public.guild_grants](public.guild_grants.md) [public.characters](public.characters.md) [public.main_swap_requests](public.main_swap_requests.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.removal_reasons](public.removal_reasons.md) [public.team_raid_reports](public.team_raid_reports.md) [public.guild_ranks](public.guild_ranks.md) [public.discord_server_access](public.discord_server_access.md) |  |  |
+| id | integer |  | false | [public.season_signups](public.season_signups.md) [public.team_members](public.team_members.md) [public.guild_grants](public.guild_grants.md) [public.characters](public.characters.md) [public.main_swap_requests](public.main_swap_requests.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.removal_reasons](public.removal_reasons.md) [public.team_raid_reports](public.team_raid_reports.md) [public.guild_ranks](public.guild_ranks.md) [public.discord_server_access](public.discord_server_access.md) [public.guild_recruiters](public.guild_recruiters.md) |  |  |
 | auth_user_id | uuid |  | true |  |  |  |
 | discord_id | text |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
@@ -53,6 +53,7 @@ erDiagram
 "public.team_raid_reports" }o--o| "public.people" : "FOREIGN KEY (kind_override_by) REFERENCES people(id) ON DELETE SET NULL"
 "public.guild_ranks" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.discord_server_access" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
+"public.guild_recruiters" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
 
 "public.people" {
   integer id
@@ -184,6 +185,14 @@ erDiagram
   integer person_id FK
   text server_id
   timestamp_with_time_zone verified_at
+}
+"public.guild_recruiters" {
+  integer guild_id FK
+  integer person_id FK
+  text code
+  boolean active
+  timestamp_with_time_zone created_at
+  timestamp_with_time_zone updated_at
 }
 ```
 

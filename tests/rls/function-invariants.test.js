@@ -59,7 +59,10 @@ const ANON_DEFINER_ALLOWLIST = [
   'submit_self_received',
   'team_invite_link_resolve',
   // #1535: the public apply pages' read, returning only what they show.
-  'team_recruiting_page'
+  'team_recruiting_page',
+  // #1537: an apply link's recruiter and the "Who sent you?" list, names only.
+  'recruiter_for_code',
+  'guild_active_recruiters'
 ];
 
 // Comments are stripped before the body is searched: a function that

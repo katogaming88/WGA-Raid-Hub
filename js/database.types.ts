@@ -738,6 +738,48 @@ export type Database = {
           },
         ]
       }
+      guild_recruiters: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          guild_id: number
+          person_id: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          guild_id: number
+          person_id: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          guild_id?: number
+          person_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guild_recruiters_guild_id_fkey"
+            columns: ["guild_id"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guild_recruiters_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guilds: {
         Row: {
           boe_payout_floor: number
@@ -4944,6 +4986,13 @@ export type Database = {
           swap_spec: string
         }[]
       }
+      guild_active_recruiters: {
+        Args: { p_guild_key: string }
+        Returns: {
+          code: string
+          name: string
+        }[]
+      }
       guild_creation_open: { Args: never; Returns: boolean }
       guild_members: {
         Args: { p_guild_id: number }
@@ -4955,6 +5004,19 @@ export type Database = {
           person_id: number
           rank: string
           teams: Json
+        }[]
+      }
+      guild_person_name: {
+        Args: { p_guild_id: number; p_person_id: number }
+        Returns: string
+      }
+      guild_recruiter_list: {
+        Args: { p_guild_id: number }
+        Returns: {
+          active: boolean
+          code: string
+          display_name: string
+          person_id: number
         }[]
       }
       has_guild_permission: {
@@ -5119,6 +5181,10 @@ export type Database = {
         }
         Returns: number
       }
+      recruiter_for_code: {
+        Args: { p_code: string; p_guild_key: string }
+        Returns: Json
+      }
       remove_team_discord_signup_sheet: {
         Args: { p_sheet_id: number; p_team_id: number }
         Returns: undefined
@@ -5259,6 +5325,10 @@ export type Database = {
       set_guild_rank_permissions: {
         Args: { p_changes: Json; p_guild_id: number }
         Returns: undefined
+      }
+      set_guild_recruiter: {
+        Args: { p_guild_id: number; p_on: boolean; p_person_id: number }
+        Returns: string
       }
       set_lineup_role_targets: {
         Args: { p_healers: number; p_tanks: number; p_team_id: number }
