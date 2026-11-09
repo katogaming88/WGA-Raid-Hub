@@ -23,8 +23,8 @@
 -- * Functions, the only way in for the site. The bot uses the service key: it
 --   writes the Discord ids, last-message times, history, conversation and
 --   reminders directly, and calls bot_* versions of the officer actions, which
---   take the Discord id of the person who pressed the button once the bot has
---   checked they may.
+--   take the Discord id of the person who pressed the button and refuse
+--   anyone who couldn't do the same on the site.
 --
 -- Who sees a team's records is recruit_access(): the team's edit_recruiting
 -- holders and site admins manage them; its assistants add notes when the team
@@ -324,14 +324,18 @@ language plpgsql
 set search_path = public
 as $$
 declare
+  v_app recruit_applications;
   v_id integer;
 begin
-  perform recruit_lock(p_application_id);
+  v_app := recruit_lock(p_application_id);
   insert into recruit_notes (application_id, author_person_id, source, body)
   values (p_application_id, p_actor, p_source, btrim(p_body))
   returning id into v_id;
   insert into recruit_events (application_id, kind, actor_person_id)
   values (p_application_id, 'note_added', p_actor);
+  -- Who and where, never the note itself.
+  perform recruit_log(v_app.team_id, p_actor, 'Recruit Note Added', p_application_id,
+                      jsonb_build_object('name_realm', v_app.name_realm, 'source', p_source));
   return v_id;
 end;
 $$;
@@ -391,7 +395,11 @@ begin
               where a.team_id = v_app.team_id and a.person_id = v_app.person_id and a.closed_at is null) then
     raise exception 'That person has another open application with this team';
   end if;
-  update recruit_applications set status = 'waiting_on_officers', closed_at = null where id = p_application_id;
+  begin
+    update recruit_applications set status = 'waiting_on_officers', closed_at = null where id = p_application_id;
+  exception when unique_violation then
+    raise exception 'That person has another open application with this team';
+  end;
   insert into recruit_events (application_id, kind, actor_person_id) values (p_application_id, 'reopened', p_actor);
   perform recruit_log(v_app.team_id, p_actor, 'Recruit Reopened', p_application_id,
                       jsonb_build_object('name_realm', v_app.name_realm));
@@ -543,12 +551,16 @@ begin
     raise exception 'An answer is for a question that is not on this form';
   end if;
 
-  insert into recruit_applications (
-    team_id, person_id, source, character_id, name_realm, class_name, spec_name, item_level,
-    answers, sent_by, recruiter_person_id, recruiter_code, sent_by_name, time_zone)
-  values (p_team_id, v_me, 'application', v_char.id, v_char.name_realm, v_char.class_name, v_char.spec_name,
-          v_char.item_level, v_answers, v_sent_by, v_recruiter, v_code, v_sent_name, p_time_zone)
-  returning id into v_id;
+  begin
+    insert into recruit_applications (
+      team_id, person_id, source, character_id, name_realm, class_name, spec_name, item_level,
+      answers, sent_by, recruiter_person_id, recruiter_code, sent_by_name, time_zone)
+    values (p_team_id, v_me, 'application', v_char.id, v_char.name_realm, v_char.class_name, v_char.spec_name,
+            v_char.item_level, v_answers, v_sent_by, v_recruiter, v_code, v_sent_name, p_time_zone)
+    returning id into v_id;
+  exception when unique_violation then
+    raise exception 'You already have an open application with this team';
+  end;
   insert into recruit_events (application_id, kind, actor_person_id) values (v_id, 'applied', v_me);
   perform recruit_log(p_team_id, v_me, 'Application Sent', v_id, jsonb_build_object('name_realm', v_char.name_realm));
   return v_id;
@@ -662,6 +674,12 @@ begin
   perform 1 from teams t where t.id = p_team_id and t.archived_at is null for share;
   if not found then
     raise exception 'That team is archived. Bring it back first.';
+  end if;
+  if not exists (select 1 from team_recruiting r where r.team_id = p_team_id) then
+    raise exception 'That team does not exist';
+  end if;
+  if v_name is null or char_length(v_name) > 100 or v_name !~ '^[^\s-][^-]*-\S' or v_name ~ '[\r\n]' then
+    raise exception 'Enter the character as Name-Realm';
   end if;
   if p_discord_id is not null then
     if p_discord_id !~ '^[0-9]{17,20}$' then
@@ -960,8 +978,9 @@ revoke all on function public.reopen_recruit(integer) from public, anon;
 grant execute on function public.reopen_recruit(integer) to authenticated;
 
 -- The bot's versions. A Discord button arrives with a Discord id, not a
--- signed-in user; the bot checks that person may act, then calls these with
--- the service key. Same actions, history and audit rows as the site's.
+-- signed-in user; the bot calls these with the service key and the presser's
+-- Discord id. Same actions, history and audit rows as the site's, and the
+-- same rights, checked here as well as in the bot.
 create function public.bot_actor(p_discord_id text)
 returns integer
 language plpgsql
@@ -981,36 +1000,112 @@ $$;
 
 revoke all on function public.bot_actor(text) from public, anon, authenticated;
 
-create function public.bot_add_recruit_note(p_application_id integer, p_actor_discord_id text, p_body text)
-returns integer
+-- recruit_access() for a given person, the tiers that act: 'manage' (the
+-- team's edit_recruiting by their rank, or a site admin) or 'note' (an
+-- assistant when the team lets assistants see tickets). Read-only access
+-- never acts, so it isn't here.
+create function public.recruit_actor_access(p_team_id integer, p_person_id integer)
+returns text
 language sql
+stable
 set search_path = public
 as $$
-  select recruit_add_note(p_application_id, bot_actor(p_actor_discord_id), 'discord', p_body);
+  select case
+    when exists (select 1 from guild_grants g where g.person_id = p_person_id and g.grant_type = 'site_admin')
+      or exists (select 1 from team_members m
+                  where m.team_id = p_team_id and m.person_id = p_person_id and m.archived_at is null
+                    and (m.rank = 'owner'
+                         or exists (select 1 from team_rank_permissions k
+                                     where k.team_id = m.team_id and k.rank = m.rank
+                                       and k.permission = 'edit_recruiting'))) then 'manage'
+    when exists (select 1 from team_recruiting r
+                   join team_members m on m.team_id = r.team_id
+                  where r.team_id = p_team_id and r.visible_to_team_assistants
+                    and m.person_id = p_person_id and m.archived_at is null and m.rank = 'assistant') then 'note'
+  end;
+$$;
+
+revoke all on function public.recruit_actor_access(integer, integer) from public, anon, authenticated;
+grant execute on function public.recruit_actor_access(integer, integer) to service_role;
+
+-- The person may act on the record: 'manage', or for a note also 'note' or
+-- the recruiter who sent the person.
+create function public.bot_check(p_application_id integer, p_actor integer, p_note boolean)
+returns void
+language plpgsql
+stable
+set search_path = public
+as $$
+declare
+  v_app recruit_applications;
+  v_access text;
+begin
+  select * into v_app from recruit_applications where id = p_application_id;
+  if not found then
+    raise exception 'That recruit does not exist';
+  end if;
+  v_access := recruit_actor_access(v_app.team_id, p_actor);
+  if v_access = 'manage'
+     or (p_note and (v_access = 'note'
+                     or coalesce(v_app.recruiter_person_id = p_actor
+                                 and in_guild((select t.guild_id from teams t where t.id = v_app.team_id), p_actor),
+                                 false))) then
+    return;
+  end if;
+  raise exception 'Not authorized';
+end;
+$$;
+
+revoke all on function public.bot_check(integer, integer, boolean) from public, anon, authenticated;
+grant execute on function public.bot_check(integer, integer, boolean) to service_role;
+-- bot_check() asks whether a recruiter is still in the guild.
+grant execute on function public.in_guild(integer, integer) to service_role;
+
+create function public.bot_add_recruit_note(p_application_id integer, p_actor_discord_id text, p_body text)
+returns integer
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_actor integer := bot_actor(p_actor_discord_id);
+begin
+  perform bot_check(p_application_id, v_actor, true);
+  return recruit_add_note(p_application_id, v_actor, 'discord', p_body);
+end;
 $$;
 
 create function public.bot_close_recruit(p_application_id integer, p_actor_discord_id text, p_status text, p_reason text)
 returns void
-language sql
+language plpgsql
 set search_path = public
 as $$
-  select recruit_close(p_application_id, bot_actor(p_actor_discord_id), p_status, p_reason);
+declare
+  v_actor integer := bot_actor(p_actor_discord_id);
+begin
+  perform bot_check(p_application_id, v_actor, false);
+  perform recruit_close(p_application_id, v_actor, p_status, p_reason);
+end;
 $$;
 
 create function public.bot_reopen_recruit(p_application_id integer, p_actor_discord_id text)
 returns void
-language sql
+language plpgsql
 set search_path = public
 as $$
-  select recruit_reopen(p_application_id, bot_actor(p_actor_discord_id));
+declare
+  v_actor integer := bot_actor(p_actor_discord_id);
+begin
+  perform bot_check(p_application_id, v_actor, false);
+  perform recruit_reopen(p_application_id, v_actor);
+end;
 $$;
 
 comment on function public.bot_add_recruit_note(integer, text, text) is
-  'The bot''s Add note button (#1539): adds a note as the person with that Discord id, source discord. Service role only; the bot checks the person may.';
+  'The bot''s Add note button (#1539): adds a note as the person with that Discord id, source discord. Service role only; refused unless that person could add the note on the site.';
 comment on function public.bot_close_recruit(integer, text, text, text) is
-  'The bot''s Decline button and no-reply close (#1539), as the person with that Discord id. Service role only; the bot checks the person may.';
+  'The bot''s Decline button and no-reply close (#1539), as the person with that Discord id. Service role only; refused unless that person manages the team''s recruits.';
 comment on function public.bot_reopen_recruit(integer, text) is
-  'The bot''s reopen (#1539), as the person with that Discord id. Service role only; the bot checks the person may.';
+  'The bot''s reopen (#1539), as the person with that Discord id. Service role only; refused unless that person manages the team''s recruits.';
 
 revoke all on function public.bot_add_recruit_note(integer, text, text) from public, anon, authenticated;
 grant execute on function public.bot_add_recruit_note(integer, text, text) to service_role;

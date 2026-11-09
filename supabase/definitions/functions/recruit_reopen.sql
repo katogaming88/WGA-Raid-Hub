@@ -18,7 +18,11 @@ begin
               where a.team_id = v_app.team_id and a.person_id = v_app.person_id and a.closed_at is null) then
     raise exception 'That person has another open application with this team';
   end if;
-  update recruit_applications set status = 'waiting_on_officers', closed_at = null where id = p_application_id;
+  begin
+    update recruit_applications set status = 'waiting_on_officers', closed_at = null where id = p_application_id;
+  exception when unique_violation then
+    raise exception 'That person has another open application with this team';
+  end;
   insert into recruit_events (application_id, kind, actor_person_id) values (p_application_id, 'reopened', p_actor);
   perform recruit_log(v_app.team_id, p_actor, 'Recruit Reopened', p_application_id,
                       jsonb_build_object('name_realm', v_app.name_realm));

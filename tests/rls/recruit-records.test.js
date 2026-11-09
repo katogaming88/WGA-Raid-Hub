@@ -271,6 +271,16 @@ describe('recruit records', () => {
       );
       expect(await status()).toBe('waiting_on_officers');
 
+      // Another team's officer, signed out, or someone else withdrawing: refused.
+      for (const sql of ["select public.close_recruit($1, 'declined', null)", 'select public.reopen_recruit($1)']) {
+        await expect(asUser(OFFICER_T2, sql, [id])).rejects.toThrow('Not authorized');
+        await expect(asUser(null, sql, [id])).rejects.toThrow('Not signed in');
+      }
+      await expect(asUser(RAIDER_T1, 'select public.withdraw_application($1)', [id])).rejects.toThrow('not yours');
+      await expect(asUser(null, 'select public.withdraw_application($1)', [id])).rejects.toThrow('Not signed in');
+      await expect(asUser(null, 'select public.my_applications()')).rejects.toThrow('Not signed in');
+      await expect(asUser(null, 'select public.my_recruits()')).rejects.toThrow('Not signed in');
+
       await asUser(OFFICER_T1, "select public.close_recruit($1, 'declined', 'Full on locks')", [id]);
       expect(await status()).toBe('declined');
       expect((await record(asUser, OFFICER_T1, id)).events.at(-1)).toMatchObject({
@@ -326,10 +336,24 @@ describe('recruit records', () => {
         asUser(OFFICER_T1, "select public.add_recruit(1, 'Thrall-Stormrage', '123456789012345678')")
       ).rejects.toThrow('already has an open application');
       await asUser(OFFICER_T1, "select public.add_recruit(1, 'Jaina-Stormrage', null)");
-      await expect(asUser(OFFICER_T1, "select public.add_recruit(1, 'Jaina', null)")).rejects.toThrow('name_realm');
+      await expect(asUser(OFFICER_T1, "select public.add_recruit(1, 'Jaina', null)")).rejects.toThrow('Name-Realm');
+      await expect(asUser(OFFICER_T1, "select public.add_recruit(1, '  ', null)")).rejects.toThrow('Name-Realm');
       await expect(asUser(OFFICER_T2, "select public.add_recruit(1, 'Jaina-Stormrage', null)")).rejects.toThrow(
         'Not authorized'
       );
+      await expect(asUser(null, "select public.add_recruit(1, 'Jaina-Stormrage', null)")).rejects.toThrow(
+        'Not signed in'
+      );
+      // An assistant who adds notes and an Admin who reads don't add records.
+      await q("update public.team_members set rank = 'assistant' where team_id = 1 and person_id = $1", [
+        await personOf(q, RAIDER_T1)
+      ]);
+      await q('update public.team_recruiting set visible_to_team_assistants = true where team_id = 1');
+      for (const uid of [RAIDER_T1, GUILD_OFFICER]) {
+        await expect(asUser(uid, "select public.add_recruit(1, 'Jaina-Stormrage', null)")).rejects.toThrow(
+          'Not authorized'
+        );
+      }
       expect(
         (await q("select count(*)::int as n from public.audit_log where action = 'Recruit Added'")).rows[0].n
       ).toBe(2);
@@ -359,6 +383,37 @@ describe('recruit records', () => {
       await expect(bot("select public.bot_add_recruit_note($1, 'nobody-here', 'x')", [id])).rejects.toThrow(
         'Discord id'
       );
+      // A note's audit row says who and where, never what.
+      expect(
+        (await q("select detail from public.audit_log where action = 'Recruit Note Added' and target_id = $1", [id]))
+          .rows
+      ).toEqual([{ detail: { name_realm: 'Katorrí-Stormrage', source: 'discord' } }]);
+
+      // The database checks the presser too: the applicant in their own ticket,
+      // a raider, and another team's officer are refused; an assistant notes
+      // but doesn't close.
+      for (const who of ['discord-signup-owner', 'discord-raider-1', 'discord-officer-2']) {
+        await expect(bot(`select public.bot_add_recruit_note($1, '${who}', 'x')`, [id])).rejects.toThrow(
+          'Not authorized'
+        );
+        await expect(bot(`select public.bot_close_recruit($1, '${who}', 'declined', null)`, [id])).rejects.toThrow(
+          'Not authorized'
+        );
+      }
+      await q("update public.team_members set rank = 'assistant' where team_id = 1 and person_id = $1", [
+        await personOf(q, RAIDER_T1)
+      ]);
+      await q('update public.team_recruiting set visible_to_team_assistants = true where team_id = 1');
+      await bot("select public.bot_add_recruit_note($1, 'discord-raider-1', 'Seen them in keys')", [id]);
+      await expect(
+        bot("select public.bot_close_recruit($1, 'discord-raider-1', 'declined', null)", [id])
+      ).rejects.toThrow('Not authorized');
+      await expect(bot("select public.bot_reopen_recruit($1, 'discord-raider-1')", [id])).rejects.toThrow(
+        'Not authorized'
+      );
+      await expect(
+        bot("select public.bot_close_recruit(999999, 'discord-officer-1', 'declined', null)")
+      ).rejects.toThrow('does not exist');
 
       // The bot's own bookkeeping goes straight into the tables.
       await bot(
@@ -375,9 +430,13 @@ describe('recruit records', () => {
       ]);
 
       // Nobody signed in calls the bot's versions.
-      await expect(
-        asUser(OFFICER_T1, "select public.bot_add_recruit_note($1, 'discord-officer-1', 'x')", [id])
-      ).rejects.toMatchObject({ code: RLS_DENIED });
+      for (const sql of [
+        "select public.bot_add_recruit_note($1, 'discord-officer-1', 'x')",
+        "select public.bot_close_recruit($1, 'discord-officer-1', 'declined', null)",
+        "select public.bot_reopen_recruit($1, 'discord-officer-1')"
+      ]) {
+        await expect(asUser(OFFICER_T1, sql, [id])).rejects.toMatchObject({ code: RLS_DENIED });
+      }
     });
   });
 

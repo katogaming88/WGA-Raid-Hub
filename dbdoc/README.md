@@ -351,6 +351,8 @@
 | public.close_recruit | void | p_application_id integer, p_status text, p_reason text | FUNCTION |
 | public.reopen_recruit | void | p_application_id integer | FUNCTION |
 | public.bot_actor | int4 | p_discord_id text | FUNCTION |
+| public.recruit_actor_access | text | p_team_id integer, p_person_id integer | FUNCTION |
+| public.bot_check | void | p_application_id integer, p_actor integer, p_note boolean | FUNCTION |
 | public.bot_add_recruit_note | int4 | p_application_id integer, p_actor_discord_id text, p_body text | FUNCTION |
 | public.bot_close_recruit | void | p_application_id integer, p_actor_discord_id text, p_status text, p_reason text | FUNCTION |
 | public.bot_reopen_recruit | void | p_application_id integer, p_actor_discord_id text | FUNCTION |

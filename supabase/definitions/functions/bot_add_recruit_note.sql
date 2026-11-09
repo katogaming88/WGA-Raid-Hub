@@ -4,8 +4,13 @@
 
 CREATE OR REPLACE FUNCTION public.bot_add_recruit_note(p_application_id integer, p_actor_discord_id text, p_body text)
  RETURNS integer
- LANGUAGE sql
+ LANGUAGE plpgsql
  SET search_path TO 'public'
 AS $function$
-  select recruit_add_note(p_application_id, bot_actor(p_actor_discord_id), 'discord', p_body);
+declare
+  v_actor integer := bot_actor(p_actor_discord_id);
+begin
+  perform bot_check(p_application_id, v_actor, true);
+  return recruit_add_note(p_application_id, v_actor, 'discord', p_body);
+end;
 $function$;

@@ -139,12 +139,16 @@ begin
     raise exception 'An answer is for a question that is not on this form';
   end if;
 
-  insert into recruit_applications (
-    team_id, person_id, source, character_id, name_realm, class_name, spec_name, item_level,
-    answers, sent_by, recruiter_person_id, recruiter_code, sent_by_name, time_zone)
-  values (p_team_id, v_me, 'application', v_char.id, v_char.name_realm, v_char.class_name, v_char.spec_name,
-          v_char.item_level, v_answers, v_sent_by, v_recruiter, v_code, v_sent_name, p_time_zone)
-  returning id into v_id;
+  begin
+    insert into recruit_applications (
+      team_id, person_id, source, character_id, name_realm, class_name, spec_name, item_level,
+      answers, sent_by, recruiter_person_id, recruiter_code, sent_by_name, time_zone)
+    values (p_team_id, v_me, 'application', v_char.id, v_char.name_realm, v_char.class_name, v_char.spec_name,
+            v_char.item_level, v_answers, v_sent_by, v_recruiter, v_code, v_sent_name, p_time_zone)
+    returning id into v_id;
+  exception when unique_violation then
+    raise exception 'You already have an open application with this team';
+  end;
   insert into recruit_events (application_id, kind, actor_person_id) values (v_id, 'applied', v_me);
   perform recruit_log(p_team_id, v_me, 'Application Sent', v_id, jsonb_build_object('name_realm', v_char.name_realm));
   return v_id;

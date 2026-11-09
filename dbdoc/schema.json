@@ -16353,6 +16353,18 @@
       "type": "FUNCTION"
     },
     {
+      "name": "public.recruit_actor_access",
+      "return_type": "text",
+      "arguments": "p_team_id integer, p_person_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.bot_check",
+      "return_type": "void",
+      "arguments": "p_application_id integer, p_actor integer, p_note boolean",
+      "type": "FUNCTION"
+    },
+    {
       "name": "public.bot_add_recruit_note",
       "return_type": "int4",
       "arguments": "p_application_id integer, p_actor_discord_id text, p_body text",

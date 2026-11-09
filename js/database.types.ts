@@ -5206,6 +5206,10 @@ export type Database = {
         }
         Returns: number
       }
+      bot_check: {
+        Args: { p_actor: number; p_application_id: number; p_note: boolean }
+        Returns: undefined
+      }
       bot_close_recruit: {
         Args: {
           p_actor_discord_id: string
@@ -5632,6 +5636,10 @@ export type Database = {
         Returns: number
       }
       recruit_access: { Args: { p_team_id: number }; Returns: string }
+      recruit_actor_access: {
+        Args: { p_person_id: number; p_team_id: number }
+        Returns: string
+      }
       recruit_add_note: {
         Args: {
           p_actor: number

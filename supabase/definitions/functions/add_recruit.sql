@@ -25,6 +25,12 @@ begin
   if not found then
     raise exception 'That team is archived. Bring it back first.';
   end if;
+  if not exists (select 1 from team_recruiting r where r.team_id = p_team_id) then
+    raise exception 'That team does not exist';
+  end if;
+  if v_name is null or char_length(v_name) > 100 or v_name !~ '^[^\s-][^-]*-\S' or v_name ~ '[\r\n]' then
+    raise exception 'Enter the character as Name-Realm';
+  end if;
   if p_discord_id is not null then
     if p_discord_id !~ '^[0-9]{17,20}$' then
       raise exception 'That is not a Discord id';
