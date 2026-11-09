@@ -46,7 +46,12 @@ describe('application questions', () => {
         'computer',
         'sent_by'
       ]);
-      expect(starter(l, 'about')).toMatchObject({ on: true, required: true, answer_type: 'short_text', max_length: 100 });
+      expect(starter(l, 'about')).toMatchObject({
+        on: true,
+        required: true,
+        answer_type: 'short_text',
+        max_length: 100
+      });
       expect(starter(l, 'goals')).toMatchObject({ on: false, required: false });
       expect(starter(l, 'nights')).toMatchObject({
         prompt: 'Can you make {raid nights}?',
@@ -58,15 +63,10 @@ describe('application questions', () => {
 
   it('an Officer switches starters and keeps its own questions, ids fixed, logged once', async () => {
     await withTxn(async ({ q, asUser }) => {
-      await save(
-        asUser,
-        OFFICER_T1,
-        { goals: { on: true, required: true }, voice: { on: false, required: false } },
-        [
-          { label: 'Off-spec', prompt: 'OK swapping to an off-spec for some fights?', answer_type: 'yes_no' },
-          { label: 'Main', prompt: 'Your main spec?', answer_type: 'short_text', max_length: 50, required: true }
-        ]
-      );
+      await save(asUser, OFFICER_T1, { goals: { on: true, required: true }, voice: { on: false, required: false } }, [
+        { label: 'Off-spec', prompt: 'OK swapping to an off-spec for some fights?', answer_type: 'yes_no' },
+        { label: 'Main', prompt: 'Your main spec?', answer_type: 'short_text', max_length: 50, required: true }
+      ]);
       let l = await list(asUser, OFFICER_T1);
       expect(starter(l, 'goals')).toMatchObject({ on: true, required: true });
       expect(starter(l, 'voice')).toMatchObject({ on: false });
@@ -76,7 +76,14 @@ describe('application questions', () => {
 
       // Reorder, reword one, drop none: ids stay. The Team Owner can too.
       await save(asUser, TEAM_LEADER_T1, {}, [
-        { id: main.id, label: 'Main', prompt: 'Your main spec?', answer_type: 'short_text', max_length: 50, required: true },
+        {
+          id: main.id,
+          label: 'Main',
+          prompt: 'Your main spec?',
+          answer_type: 'short_text',
+          max_length: 50,
+          required: true
+        },
         { id: offspec.id, label: 'Off-spec', prompt: 'Happy on an off-spec?', answer_type: 'yes_no' }
       ]);
       l = await list(asUser, OFFICER_T1);
@@ -86,9 +93,9 @@ describe('application questions', () => {
 
       // Back to a default keeps no row; the same save again logs nothing.
       await save(asUser, OFFICER_T1, { goals: { on: false, required: false } }, [{ ...l.questions[0] }]);
-      expect((await q('select count(*)::int as n from public.team_application_starters where team_id = 1')).rows[0].n).toBe(
-        1
-      );
+      expect(
+        (await q('select count(*)::int as n from public.team_application_starters where team_id = 1')).rows[0].n
+      ).toBe(1);
       await save(asUser, OFFICER_T1, { goals: { on: false, required: false } }, [{ ...l.questions[0] }]);
       expect(await audits(q)).toHaveLength(3);
     });
@@ -120,7 +127,11 @@ describe('application questions', () => {
       await bad({}, [{ ...q, answer_type: 'yes_no', max_length: 10 }], 'max_length');
       await bad({}, [{ ...q, label: 'x'.repeat(41), answer_type: 'link' }], 'label');
       await bad({}, [{ ...q, answer_type: 'link', colour: 'red' }], 'has only');
-      await bad({}, Array.from({ length: 21 }, () => ({ ...q, answer_type: 'link' })), 'at most 20');
+      await bad(
+        {},
+        Array.from({ length: 21 }, () => ({ ...q, answer_type: 'link' })),
+        'at most 20'
+      );
       // Another team's question id is not this team's to change.
       await save(asUser, OFFICER_T2, {}, [{ ...q, answer_type: 'link' }], 2);
       const other = (await list(asUser, OFFICER_T2, 2)).questions[0].id;
@@ -139,7 +150,16 @@ describe('application questions', () => {
 
       await openTeam(asUser);
       const f = await form(asUser, OFFICER_T2);
-      expect(f.starters.map((s) => s.key)).toEqual(['about', 'why', 'other', 'experience', 'guild', 'log', 'nights', 'sent_by']);
+      expect(f.starters.map((s) => s.key)).toEqual([
+        'about',
+        'why',
+        'other',
+        'experience',
+        'guild',
+        'log',
+        'nights',
+        'sent_by'
+      ]);
       expect(f.starters[0]).not.toHaveProperty('on');
       expect(f.questions[0]).toMatchObject({ prompt: 'Off-spec at {team}?' });
       await expect(form(asUser, null)).rejects.toThrow();
@@ -161,7 +181,9 @@ describe('application questions', () => {
       expect(await sees(OFFICER_T1)).toBe(1); // team 1's officer
       expect(await sees(RAIDER_T1)).toBe(0);
       expect(await sees(SITE_ADMIN)).toBe(1);
-      expect((await q("select public from storage.buckets where id = 'application-pictures'")).rows[0].public).toBe(false);
+      expect((await q("select public from storage.buckets where id = 'application-pictures'")).rows[0].public).toBe(
+        false
+      );
     });
   });
 });

@@ -251,7 +251,7 @@ declare
   v_q jsonb;
   v_n integer := 0;
   v_id integer;
-  v_ids integer[] := '{}';
+  v_ids integer[] := '{}'::integer[];
   v_choices text[];
 begin
   if v_uid is null then
