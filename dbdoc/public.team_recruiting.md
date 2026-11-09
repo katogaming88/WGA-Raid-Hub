@@ -8,7 +8,7 @@ A team's recruiting settings, one row per team, made with the team (#1535): whet
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| team_id | integer |  | false | [public.team_recruiting_spots](public.team_recruiting_spots.md) | [public.teams](public.teams.md) |  |
+| team_id | integer |  | false | [public.team_recruiting_spots](public.team_recruiting_spots.md) [public.team_application_starters](public.team_application_starters.md) [public.team_application_questions](public.team_application_questions.md) | [public.teams](public.teams.md) |  |
 | taking_applications | boolean | false | false |  |  | Off keeps everything else for next time; the apply page then says Not recruiting and still shows how the team raids. Open applications and trials carry on (#1535). |
 | join_method | text | 'application'::text | false |  |  | application: the Raid Hub form. discord_ticket: no form; the apply page links to ticket_link, which must be set while taking applications. |
 | ticket_link | text |  | true |  |  |  |
@@ -93,6 +93,8 @@ erDiagram
 
 "public.team_recruiting" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_recruiting_spots" }o--|| "public.team_recruiting" : "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
+"public.team_application_starters" }o--|| "public.team_recruiting" : "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
+"public.team_application_questions" }o--|| "public.team_recruiting" : "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
 
 "public.team_recruiting" {
   integer team_id FK
@@ -146,6 +148,23 @@ erDiagram
   text role
   integer class_spec_id FK
   text priority
+  integer sort_order
+}
+"public.team_application_starters" {
+  integer team_id FK
+  text starter_key FK
+  boolean is_on
+  boolean required
+}
+"public.team_application_questions" {
+  integer id
+  integer team_id FK
+  text label
+  text prompt
+  text answer_type
+  integer max_length
+  text__ choices
+  boolean required
   integer sort_order
 }
 ```

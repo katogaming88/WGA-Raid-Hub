@@ -294,6 +294,35 @@ A team's open spots, in order ([#1535](https://github.com/katogaming88/WGA-Raid-
 
 ---
 
+## `application_starter_questions`
+
+The starter application questions, site-wide and the same for every guild ([#1536](https://github.com/katogaming88/WGA-Raid-Hub/issues/1536)), seeded by migration and never edited by a team. Read through `team_application_questions()` and `team_application_form()`.
+
+| Column | Purpose |
+| ------ | ------- |
+| `key` | Fixed key: `about`, `why`, `other`, `experience`, `guild`, `goals`, `log`, `nights`, `voice`, `ui`, `computer`, `sent_by` |
+| `group_name` | About them / Raiding background / Fitting the team / How they found you |
+| `label` | Short name on the settings page |
+| `prompt` | What applicants see; `{team}` and `{raid nights}` are filled by the page |
+| `answer_type` | `short_text`, `paragraph`, `link`, `choice`, `yes_no`, `picture`, `recruiter` |
+| `max_length`, `choices` | A limit for text answers; 2-10 options for `choice` |
+| `default_on`, `default_required` | How a team starts |
+| `sort_order` | The site's order |
+
+---
+
+## `team_application_starters`
+
+What a team changed about a starter question ([#1536](https://github.com/katogaming88/WGA-Raid-Hub/issues/1536)): `team_id`, `starter_key`, `is_on`, `required`. A row only where it differs from the default; no row means the default.
+
+---
+
+## `team_application_questions`
+
+A team's own application questions, in `sort_order` after the starters ([#1536](https://github.com/katogaming88/WGA-Raid-Hub/issues/1536)). `label` (40), `prompt` (300, one line), `answer_type` (as above, without `recruiter`), `max_length` (short text up to 200, paragraph up to 4,000), `choices`, `required`. Up to 20; ids stay fixed across saves. Written only by `save_team_application_questions()`.
+
+---
+
 ## `team_settings`
 
 Key-value config blob per team. One row per team.

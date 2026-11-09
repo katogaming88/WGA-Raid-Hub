@@ -1,6 +1,7 @@
 table_name,policy_name,roles,operation,permissive,using_expression,with_check_expression
 account_preferences,Accounts manage own account_preferences,public,ALL,PERMISSIVE,(auth_user_id = ( SELECT auth.uid() AS uid)),(auth_user_id = ( SELECT auth.uid() AS uid))
 account_preferences,Claude readers read account_preferences,claude_readers,SELECT,PERMISSIVE,true,
+application_starter_questions,Claude readers read application_starter_questions,claude_readers,SELECT,PERMISSIVE,true,
 attendance,Claude readers read attendance,claude_readers,SELECT,PERMISSIVE,true,
 attendance,Officers write attendance,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('attendance'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('attendance'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 attendance,Public read attendance,public,SELECT,PERMISSIVE,true,
@@ -176,6 +177,8 @@ streamers,Claude readers read streamers,claude_readers,SELECT,PERMISSIVE,true,
 streamers,Officers write streamers,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 streamers,Public read streamers,public,SELECT,PERMISSIVE,true,
 streamers,Raiders manage own streamer,public,ALL,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))
+team_application_questions,Claude readers read team_application_questions,claude_readers,SELECT,PERMISSIVE,true,
+team_application_starters,Claude readers read team_application_starters,claude_readers,SELECT,PERMISSIVE,true,
 team_discord_config,Claude readers read team_discord_config,claude_readers,SELECT,PERMISSIVE,true,
 team_discord_posts,Claude readers read team_discord_posts,claude_readers,SELECT,PERMISSIVE,true,
 team_discord_signup_sheets,Claude readers read team_discord_signup_sheets,claude_readers,SELECT,PERMISSIVE,true,
