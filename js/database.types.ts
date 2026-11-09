@@ -44,6 +44,45 @@ export type Database = {
           },
         ]
       }
+      application_starter_questions: {
+        Row: {
+          answer_type: string
+          choices: string[]
+          default_on: boolean
+          default_required: boolean
+          group_name: string
+          key: string
+          label: string
+          max_length: number | null
+          prompt: string
+          sort_order: number
+        }
+        Insert: {
+          answer_type: string
+          choices?: string[]
+          default_on: boolean
+          default_required: boolean
+          group_name: string
+          key: string
+          label: string
+          max_length?: number | null
+          prompt: string
+          sort_order: number
+        }
+        Update: {
+          answer_type?: string
+          choices?: string[]
+          default_on?: boolean
+          default_required?: boolean
+          group_name?: string
+          key?: string
+          label?: string
+          max_length?: number | null
+          prompt?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
           id: number
@@ -3140,6 +3179,86 @@ export type Database = {
           },
         ]
       }
+      team_application_questions: {
+        Row: {
+          answer_type: string
+          choices: string[]
+          id: number
+          label: string
+          max_length: number | null
+          prompt: string
+          required: boolean
+          sort_order: number
+          team_id: number
+        }
+        Insert: {
+          answer_type: string
+          choices?: string[]
+          id?: never
+          label: string
+          max_length?: number | null
+          prompt: string
+          required?: boolean
+          sort_order: number
+          team_id: number
+        }
+        Update: {
+          answer_type?: string
+          choices?: string[]
+          id?: never
+          label?: string
+          max_length?: number | null
+          prompt?: string
+          required?: boolean
+          sort_order?: number
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_application_questions_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "team_recruiting"
+            referencedColumns: ["team_id"]
+          },
+        ]
+      }
+      team_application_starters: {
+        Row: {
+          is_on: boolean
+          required: boolean
+          starter_key: string
+          team_id: number
+        }
+        Insert: {
+          is_on: boolean
+          required: boolean
+          starter_key: string
+          team_id: number
+        }
+        Update: {
+          is_on?: boolean
+          required?: boolean
+          starter_key?: string
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_application_starters_starter_key_fkey"
+            columns: ["starter_key"]
+            isOneToOne: false
+            referencedRelation: "application_starter_questions"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "team_application_starters_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "team_recruiting"
+            referencedColumns: ["team_id"]
+          },
+        ]
+      }
       team_discord_config: {
         Row: {
           apps_script_url: string | null
@@ -4725,6 +4844,7 @@ export type Database = {
         }[]
       }
       app_version: { Args: never; Returns: Json }
+      application_picture_team: { Args: { p_name: string }; Returns: number }
       archive_player: {
         Args: { p_detail: string; p_player_id: number; p_reason: string }
         Returns: string
@@ -5290,6 +5410,10 @@ export type Database = {
         }
         Returns: number
       }
+      save_team_application_questions: {
+        Args: { p_questions: Json; p_starters: Json; p_team_id: number }
+        Returns: undefined
+      }
       save_team_discord_signup_sheet: {
         Args: {
           p_channel_id: string
@@ -5542,6 +5666,12 @@ export type Database = {
           id: number
         }[]
       }
+      team_application_form: { Args: { p_team_id: number }; Returns: Json }
+      team_application_question_list: {
+        Args: { p_team_id: number }
+        Returns: Json
+      }
+      team_application_questions: { Args: { p_team_id: number }; Returns: Json }
       team_battlenet_connections: {
         Args: { p_team_id: number }
         Returns: {
@@ -5620,6 +5750,7 @@ export type Database = {
         Args: { p_season?: string; p_team_id: number }
         Returns: string
       }
+      team_takes_applications: { Args: { p_team_id: number }; Returns: boolean }
       team_unnamed_members: {
         Args: { p_team_id: number }
         Returns: {

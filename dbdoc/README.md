@@ -94,6 +94,9 @@
 | [public.team_recruiting](public.team_recruiting.md) | 35 | A team's recruiting settings, one row per team, made with the team (#1535): whether it takes applications and how people join, the apply page's text, what it asks of applicants, and what the bot does in Discord when someone applies. Read and changed by the team's officers through team_recruiting_settings() and save_team_recruiting(); the apply pages read it through team_recruiting_page(); the bot reads it with the service key. | BASE TABLE |
 | [public.team_recruiting_spots](public.team_recruiting_spots.md) | 6 | A team's open spots (#1535), one row each, in sort_order. A spec, or no spec for Any tank, Any healer, Any melee or Any ranged. role matches the spec's. Replaced as a list through set_team_recruiting_spots(). | BASE TABLE |
 | [public.guild_recruiters](public.guild_recruiters.md) | 6 | A guild's recruiters (#1537): one row per person per guild, with the code in their apply links (?from=<code>) and whether they are switched on. Switched off keeps the row and its code. Changed only through set_guild_recruiter(); read through guild_recruiter_list(), recruiter_for_code() and guild_active_recruiters(). | BASE TABLE |
+| [public.application_starter_questions](public.application_starter_questions.md) | 10 | The starter application questions (#1536), site-wide and the same for every guild, seeded by migration. A team switches each on or off and marks it required (team_application_starters); it never edits one. {team} and {raid nights} in prompt are filled by the page. | BASE TABLE |
+| [public.team_application_starters](public.team_application_starters.md) | 4 | What a team changed about a starter question (#1536): a row only where is_on or required differs from the starter's default. No row: the default. Saved through save_team_application_questions(). | BASE TABLE |
+| [public.team_application_questions](public.team_application_questions.md) | 9 | A team's own application questions (#1536), in sort_order after the starter questions. Up to 20. short_text takes a max_length up to 200, paragraph up to 4,000; choice takes 2 to 10 choices. Saved through save_team_application_questions(), which keeps each question's id. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -319,6 +322,12 @@
 | public.recruiter_for_code | jsonb | p_guild_key text, p_code text | FUNCTION |
 | public.guild_active_recruiters | record | p_guild_key text | FUNCTION |
 | public.recruiters_off_on_leaving | trigger |  | FUNCTION |
+| public.team_application_question_list | jsonb | p_team_id integer | FUNCTION |
+| public.team_application_questions | jsonb | p_team_id integer | FUNCTION |
+| public.save_team_application_questions | void | p_team_id integer, p_starters jsonb, p_questions jsonb | FUNCTION |
+| public.team_application_form | jsonb | p_team_id integer | FUNCTION |
+| public.application_picture_team | int4 | p_name text | FUNCTION |
+| public.team_takes_applications | bool | p_team_id integer | FUNCTION |
 
 ## Enums
 
@@ -489,6 +498,9 @@ erDiagram
 "public.team_recruiting_spots" }o--|| "public.team_recruiting" : "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
 "public.guild_recruiters" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
 "public.guild_recruiters" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
+"public.team_application_starters" }o--|| "public.team_recruiting" : "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
+"public.team_application_starters" }o--|| "public.application_starter_questions" : "FOREIGN KEY (starter_key) REFERENCES application_starter_questions(key) ON DELETE CASCADE"
+"public.team_application_questions" }o--|| "public.team_recruiting" : "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -1418,6 +1430,35 @@ erDiagram
   boolean active
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+}
+"public.application_starter_questions" {
+  text key
+  text group_name
+  text label
+  text prompt
+  text answer_type
+  integer max_length
+  text__ choices
+  boolean default_on
+  boolean default_required
+  integer sort_order
+}
+"public.team_application_starters" {
+  integer team_id FK
+  text starter_key FK
+  boolean is_on
+  boolean required
+}
+"public.team_application_questions" {
+  integer id
+  integer team_id FK
+  text label
+  text prompt
+  text answer_type
+  integer max_length
+  text__ choices
+  boolean required
+  integer sort_order
 }
 ```
 

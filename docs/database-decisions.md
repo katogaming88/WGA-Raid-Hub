@@ -10,6 +10,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-11-09 -- Application questions (#1536)
+
+Shipped: 20261109100209_application_questions.sql
+
+- **Starter questions are site-wide rows; a team stores only what it changed.** `application_starter_questions` is seeded by the migration with the issue's 12 questions, each with a fixed key, a group, a short name for the settings page (the mockup's), the wording, the answer type and its default on and required. `team_application_starters` holds a row only where a team's on or required differs from the default, so a team with no rows gets the defaults, and a starter question added or re-defaulted later reaches every team that never touched it, without a backfill. Teams never edit a starter's wording; they switch it off and write their own.
+- **A team's own questions are their own list, after the starters**, as the mockup's settings page shows them. Starter questions keep the site's order; the team orders its own. Up to 20, label up to 40 characters, wording up to 300, one line each. Answer types: short text (a limit up to 200), paragraph (up to 4,000), link, choice (2 to 10 options), yes/no, picture. `recruiter` (Who sent you?) is a starter-only type.
+- **Own questions keep their ids across saves.** `save_team_application_questions()` takes the whole list: an id changes that question in place, no id adds one, and one left out is deleted, so answers (#1539) can point at a question. Answers keep their own copy of the wording (#1539), so a later edit doesn't rewrite an old application.
+- **`{team}` and `{raid nights}` are left in the wording for the page to fill.** The nights come from `raid_schedule` through `team_recruiting_page()`, and the page shows them in the applicant's own time zone, which SQL can't know. #1539 decides what wording an answer keeps.
+- **The form is read by anyone signed in while the team takes applications** (applying needs a Battle.net sign-in), and by the team's officers any time so they can look at it. It returns only the questions that are on.
+- **Picture answers go straight to a private Storage bucket**, `application-pictures`, under `<team id>/<user id>/`, with Storage's own 5 MB and image-type limits, rather than through an Edge Function like officer bio photos: there is nothing to resize, and the rules on `storage.objects` are enforced by the database. The uploader, the team's `edit_recruiting` holders and site admins can view them. #1539 may widen who views them if it gives recruits their own permission.
+- Each save writes one `audit_log` row (the whole section before and after), none when nothing changed.
+
+[Full discussion -> #1536](https://github.com/katogaming88/WGA-Raid-Hub/issues/1536).
+
+---
+
 ## 2026-11-08 -- Recruiters and their links (#1537)
 
 Shipped: 20261108171312_guild_recruiters.sql

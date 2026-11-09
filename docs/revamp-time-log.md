@@ -18,17 +18,17 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live |   1 h 10 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live |   2 h 10 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **173 h 6 m** |             |
+| **All revamp work**                | **174 h 6 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Recruiting | Phase 2 | 1 h 10 m | ~9 h 50 m |
+| Recruiting | Phase 2 | 2 h 10 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 0 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 0 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
@@ -644,6 +644,13 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 1:20-1:50 PM | PR #1781 (#1535): CodeRabbit's two comments (list items checked one by one, fixed; `write_audit_log()`, answered and withdrawn), the fresh-agent review (approve; five fixes: one-level lists, no blank or joined languages, unknown spot keys refused, backup doc, a guild officer test), Kat's Wrathless pick (an unlisted team starts off the apply page), checked against the production snapshot | Phase 2: Before the new site goes live / Recruiting (#1535) | 30 m | ~25 m build, ~5 m Kat | 71,300 | Kat answered from her phone while at work |
 | 4:32-4:35 PM | PR #1781 (#1535): CodeRabbit's second review (nothing to fix), Kat's merge and cleanup | Phase 2: Before the new site goes live / Recruiting (#1535) | 5 m | ~5 m build | 18,500 | Tokens include watching the PR from 1:50 PM; the wait itself isn't counted |
 | 5:12-5:25 PM | #1537: `guild_recruiters` with fixed 8-character link codes, a new guild permission `manage_recruiters` for Admins, `set_guild_recruiter()` and `guild_recruiter_list()`, signed-out lookups `recruiter_for_code()` and `guild_active_recruiters()` (names only); RLS tests, generated docs, decision log, RLS.md, backup doc, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1537) | 15 m | ~15 m build | 47,300 | CodeRabbit, the fresh-agent review and Kat's merge not yet counted |
+| 5:25-6:11 PM | PR #1782 (#1537): CodeRabbit and the fresh-agent review answered, Kat's two picks (signed out shows only a Name or Discord display name; leaving the guild switches a recruiter off), the code retry checking which constraint failed, db lint; Kat's merge | Phase 2: Before the new site goes live / Recruiting (#1537) | 45 m | ~40 m build, ~5 m Kat | 75,900 | Logged with #1536; the row above left it uncounted |
+
+### 2026-11-09
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 9:59-10:15 AM | #1536: starter application questions (12, site-wide, seeded) with only each team's changes stored, a team's own questions with fixed ids, `team_application_questions()`, `save_team_application_questions()`, `team_application_form()` for anyone signed in, and a private `application-pictures` bucket; RLS tests, generated docs, decision log, RLS.md, schema reference, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1536) | 15 m | ~15 m build | 210,000 | CodeRabbit, the fresh-agent review and Kat's merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

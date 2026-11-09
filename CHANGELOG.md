@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.252.0] - 2026-11-09
+
+### Backend
+
+- Each team now has application questions ready for the apply form and the officers' Recruiting settings page. Every team starts with the same 12 starter questions (about them, their raiding background, fitting the team, and who sent them), and can switch any of them off, mark which are required, and add up to 20 of its own (short text, paragraph, link, a choice, yes/no or a picture). Anyone signed in can read a team's form while it takes applications. Picture answers are stored privately: only the person who uploaded one and the team's officers can see it. Officers and the Team Owner make the changes, and each save goes to the audit log (#1536).
+
+### Project
+
+- Tests for application questions and the picture bucket (#1536), and time log rows for #1536's build and #1537's review and merge.
+
 ## [3.251.0] - 2026-11-08
 
 ### Backend

@@ -11374,6 +11374,428 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.application_starter_questions",
+      "type": "BASE TABLE",
+      "comment": "The starter application questions (#1536), site-wide and the same for every guild, seeded by migration. A team switches each on or off and marks it required (team_application_starters); it never edits one. {team} and {raid nights} in prompt are filled by the page.",
+      "columns": [
+        {
+          "name": "key",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "group_name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "label",
+          "type": "text",
+          "nullable": false,
+          "comment": "The short name the Recruiting settings page shows, e.g. Raid experience."
+        },
+        {
+          "name": "prompt",
+          "type": "text",
+          "nullable": false,
+          "comment": "The wording applicants see."
+        },
+        {
+          "name": "answer_type",
+          "type": "text",
+          "nullable": false,
+          "comment": "short_text and paragraph take max_length; choice takes choices; recruiter is Who sent you? (a recruiter, a friend in the guild, or nobody)."
+        },
+        {
+          "name": "max_length",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "choices",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'::text[]"
+        },
+        {
+          "name": "default_on",
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "default_required",
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "application_starter_questions_pkey",
+          "def": "CREATE UNIQUE INDEX application_starter_questions_pkey ON public.application_starter_questions USING btree (key)",
+          "table": "public.application_starter_questions",
+          "columns": [
+            "key"
+          ]
+        },
+        {
+          "name": "application_starter_questions_sort_order_key",
+          "def": "CREATE UNIQUE INDEX application_starter_questions_sort_order_key ON public.application_starter_questions USING btree (sort_order)",
+          "table": "public.application_starter_questions",
+          "columns": [
+            "sort_order"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "application_starter_questions_answer_type",
+          "type": "CHECK",
+          "def": "CHECK ((answer_type = ANY (ARRAY['short_text'::text, 'paragraph'::text, 'link'::text, 'choice'::text, 'yes_no'::text, 'picture'::text, 'recruiter'::text])))",
+          "table": "public.application_starter_questions",
+          "referenced_table": "",
+          "columns": [
+            "answer_type"
+          ]
+        },
+        {
+          "name": "application_starter_questions_choices",
+          "type": "CHECK",
+          "def": "CHECK (\nCASE\n    WHEN (answer_type = 'choice'::text) THEN (((cardinality(choices) \u003e= 2) AND (cardinality(choices) \u003c= 10)) AND text_items_match(choices, '^(?=.*\\S)[^\\r\\n]{1,100}$'::text))\n    ELSE (cardinality(choices) = 0)\nEND)",
+          "table": "public.application_starter_questions",
+          "referenced_table": "",
+          "columns": [
+            "answer_type",
+            "choices"
+          ]
+        },
+        {
+          "name": "application_starter_questions_group",
+          "type": "CHECK",
+          "def": "CHECK ((group_name = ANY (ARRAY['About them'::text, 'Raiding background'::text, 'Fitting the team'::text, 'How they found you'::text])))",
+          "table": "public.application_starter_questions",
+          "referenced_table": "",
+          "columns": [
+            "group_name"
+          ]
+        },
+        {
+          "name": "application_starter_questions_key",
+          "type": "CHECK",
+          "def": "CHECK ((key ~ '^[a-z_]{1,30}$'::text))",
+          "table": "public.application_starter_questions",
+          "referenced_table": "",
+          "columns": [
+            "key"
+          ]
+        },
+        {
+          "name": "application_starter_questions_label",
+          "type": "CHECK",
+          "def": "CHECK (((char_length(label) \u003e= 1) AND (char_length(label) \u003c= 40)))",
+          "table": "public.application_starter_questions",
+          "referenced_table": "",
+          "columns": [
+            "label"
+          ]
+        },
+        {
+          "name": "application_starter_questions_max_length",
+          "type": "CHECK",
+          "def": "CHECK (\nCASE\n    WHEN (answer_type = ANY (ARRAY['short_text'::text, 'paragraph'::text])) THEN COALESCE(((max_length \u003e= 1) AND (max_length \u003c= 4000)), false)\n    ELSE (max_length IS NULL)\nEND)",
+          "table": "public.application_starter_questions",
+          "referenced_table": "",
+          "columns": [
+            "answer_type",
+            "max_length"
+          ]
+        },
+        {
+          "name": "application_starter_questions_prompt",
+          "type": "CHECK",
+          "def": "CHECK (((char_length(prompt) \u003e= 1) AND (char_length(prompt) \u003c= 300)))",
+          "table": "public.application_starter_questions",
+          "referenced_table": "",
+          "columns": [
+            "prompt"
+          ]
+        },
+        {
+          "name": "application_starter_questions_required_on",
+          "type": "CHECK",
+          "def": "CHECK ((default_on OR (NOT default_required)))",
+          "table": "public.application_starter_questions",
+          "referenced_table": "",
+          "columns": [
+            "default_on",
+            "default_required"
+          ]
+        },
+        {
+          "name": "application_starter_questions_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (key)",
+          "table": "public.application_starter_questions",
+          "referenced_table": "",
+          "columns": [
+            "key"
+          ]
+        },
+        {
+          "name": "application_starter_questions_sort_order_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (sort_order)",
+          "table": "public.application_starter_questions",
+          "referenced_table": "",
+          "columns": [
+            "sort_order"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.team_application_starters",
+      "type": "BASE TABLE",
+      "comment": "What a team changed about a starter question (#1536): a row only where is_on or required differs from the starter's default. No row: the default. Saved through save_team_application_questions().",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "starter_key",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "is_on",
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "required",
+          "type": "boolean",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_application_starters_pkey",
+          "def": "CREATE UNIQUE INDEX team_application_starters_pkey ON public.team_application_starters USING btree (team_id, starter_key)",
+          "table": "public.team_application_starters",
+          "columns": [
+            "team_id",
+            "starter_key"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_application_starters_required_on",
+          "type": "CHECK",
+          "def": "CHECK ((is_on OR (NOT required)))",
+          "table": "public.team_application_starters",
+          "referenced_table": "",
+          "columns": [
+            "is_on",
+            "required"
+          ]
+        },
+        {
+          "name": "team_application_starters_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE",
+          "table": "public.team_application_starters",
+          "referenced_table": "public.team_recruiting",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "team_id"
+          ]
+        },
+        {
+          "name": "team_application_starters_starter_key_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (starter_key) REFERENCES application_starter_questions(key) ON DELETE CASCADE",
+          "table": "public.team_application_starters",
+          "referenced_table": "public.application_starter_questions",
+          "columns": [
+            "starter_key"
+          ],
+          "referenced_columns": [
+            "key"
+          ]
+        },
+        {
+          "name": "team_application_starters_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id, starter_key)",
+          "table": "public.team_application_starters",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "starter_key"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.team_application_questions",
+      "type": "BASE TABLE",
+      "comment": "A team's own application questions (#1536), in sort_order after the starter questions. Up to 20. short_text takes a max_length up to 200, paragraph up to 4,000; choice takes 2 to 10 choices. Saved through save_team_application_questions(), which keeps each question's id.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "label",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "prompt",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "answer_type",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "max_length",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "choices",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'::text[]"
+        },
+        {
+          "name": "required",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_application_questions_pkey",
+          "def": "CREATE UNIQUE INDEX team_application_questions_pkey ON public.team_application_questions USING btree (id)",
+          "table": "public.team_application_questions",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_application_questions_team",
+          "def": "CREATE INDEX team_application_questions_team ON public.team_application_questions USING btree (team_id, sort_order)",
+          "table": "public.team_application_questions",
+          "columns": [
+            "team_id",
+            "sort_order"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_application_questions_answer_type",
+          "type": "CHECK",
+          "def": "CHECK ((answer_type = ANY (ARRAY['short_text'::text, 'paragraph'::text, 'link'::text, 'choice'::text, 'yes_no'::text, 'picture'::text])))",
+          "table": "public.team_application_questions",
+          "referenced_table": "",
+          "columns": [
+            "answer_type"
+          ]
+        },
+        {
+          "name": "team_application_questions_choices",
+          "type": "CHECK",
+          "def": "CHECK (\nCASE\n    WHEN (answer_type = 'choice'::text) THEN (((cardinality(choices) \u003e= 2) AND (cardinality(choices) \u003c= 10)) AND text_items_match(choices, '^(?=.*\\S)[^\\r\\n]{1,100}$'::text))\n    ELSE (cardinality(choices) = 0)\nEND)",
+          "table": "public.team_application_questions",
+          "referenced_table": "",
+          "columns": [
+            "answer_type",
+            "choices"
+          ]
+        },
+        {
+          "name": "team_application_questions_label",
+          "type": "CHECK",
+          "def": "CHECK (((char_length(label) \u003c= 40) AND (label ~ '\\S'::text) AND (label !~ '[\\r\\n]'::text)))",
+          "table": "public.team_application_questions",
+          "referenced_table": "",
+          "columns": [
+            "label"
+          ]
+        },
+        {
+          "name": "team_application_questions_max_length",
+          "type": "CHECK",
+          "def": "CHECK (\nCASE answer_type\n    WHEN 'short_text'::text THEN COALESCE(((max_length \u003e= 1) AND (max_length \u003c= 200)), false)\n    WHEN 'paragraph'::text THEN COALESCE(((max_length \u003e= 1) AND (max_length \u003c= 4000)), false)\n    ELSE (max_length IS NULL)\nEND)",
+          "table": "public.team_application_questions",
+          "referenced_table": "",
+          "columns": [
+            "answer_type",
+            "max_length"
+          ]
+        },
+        {
+          "name": "team_application_questions_prompt",
+          "type": "CHECK",
+          "def": "CHECK (((char_length(prompt) \u003c= 300) AND (prompt ~ '\\S'::text) AND (prompt !~ '[\\r\\n]'::text)))",
+          "table": "public.team_application_questions",
+          "referenced_table": "",
+          "columns": [
+            "prompt"
+          ]
+        },
+        {
+          "name": "team_application_questions_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE",
+          "table": "public.team_application_questions",
+          "referenced_table": "public.team_recruiting",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "team_id"
+          ]
+        },
+        {
+          "name": "team_application_questions_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.team_application_questions",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -13286,6 +13708,45 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_application_starters",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_recruiting",
+      "parent_columns": [
+        "team_id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_application_starters",
+      "columns": [
+        "starter_key"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.application_starter_questions",
+      "parent_columns": [
+        "key"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (starter_key) REFERENCES application_starter_questions(key) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_application_questions",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_recruiting",
+      "parent_columns": [
+        "team_id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -14607,6 +15068,42 @@
       "name": "public.recruiters_off_on_leaving",
       "return_type": "trigger",
       "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_application_question_list",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_application_questions",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.save_team_application_questions",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_starters jsonb, p_questions jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_application_form",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.application_picture_team",
+      "return_type": "int4",
+      "arguments": "p_name text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_takes_applications",
+      "return_type": "bool",
+      "arguments": "p_team_id integer",
       "type": "FUNCTION"
     }
   ],
