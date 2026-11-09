@@ -11796,6 +11796,1014 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.recruit_applications",
+      "type": "BASE TABLE",
+      "comment": "Recruit records (#1539): one per person per team per attempt, sent from the form (source application) or added by an officer for a ticket-only applicant (added_by_officer). The character columns are a copy taken when sent. One open (closed_at null) per person per team. Read and written through functions; the bot writes the Discord ids and last-message times with the service key.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "person_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'waiting_on_officers'::text",
+          "comment": "waiting_on_officers and waiting_on_applicant follow the last-message times (recruit_applications_whose_turn); on_trial, joined and not_joining are #1793's; declined, no_reply and withdrawn close it."
+        },
+        {
+          "name": "character_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "name_realm",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "class_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "spec_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "other_specs",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'::text[]"
+        },
+        {
+          "name": "item_level",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "mplus_score",
+          "type": "numeric(6,1)",
+          "nullable": true
+        },
+        {
+          "name": "logs_best_average",
+          "type": "numeric(4,1)",
+          "nullable": true
+        },
+        {
+          "name": "logs_median_average",
+          "type": "numeric(4,1)",
+          "nullable": true
+        },
+        {
+          "name": "mythic_bosses_killed",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "answers",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb",
+          "comment": "The answers in form order, each {key or question_id, label, prompt, answer_type, answer}, with the question's wording as it was when sent. A picture answer is its path in the application-pictures bucket."
+        },
+        {
+          "name": "sent_by",
+          "type": "text",
+          "nullable": false,
+          "default": "'nobody'::text"
+        },
+        {
+          "name": "recruiter_person_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "recruiter_code",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "sent_by_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "time_zone",
+          "type": "text",
+          "nullable": true,
+          "comment": "The applicant's time zone, from their browser, so reminders never DM them overnight."
+        },
+        {
+          "name": "applicant_last_message_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "officers_last_message_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "trial_starts_on",
+          "type": "date",
+          "nullable": true
+        },
+        {
+          "name": "trial_ends_on",
+          "type": "date",
+          "nullable": true
+        },
+        {
+          "name": "discord_channel_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "discord_thread_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "discord_officer_message_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "applied_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "recruit_applications_pkey",
+          "def": "CREATE UNIQUE INDEX recruit_applications_pkey ON public.recruit_applications USING btree (id)",
+          "table": "public.recruit_applications",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_applications_one_open",
+          "def": "CREATE UNIQUE INDEX recruit_applications_one_open ON public.recruit_applications USING btree (team_id, person_id) WHERE (closed_at IS NULL)",
+          "table": "public.recruit_applications",
+          "columns": [
+            "team_id",
+            "person_id"
+          ]
+        },
+        {
+          "name": "recruit_applications_team",
+          "def": "CREATE INDEX recruit_applications_team ON public.recruit_applications USING btree (team_id, applied_at DESC)",
+          "table": "public.recruit_applications",
+          "columns": [
+            "team_id",
+            "applied_at"
+          ]
+        },
+        {
+          "name": "recruit_applications_person",
+          "def": "CREATE INDEX recruit_applications_person ON public.recruit_applications USING btree (person_id)",
+          "table": "public.recruit_applications",
+          "columns": [
+            "person_id"
+          ]
+        },
+        {
+          "name": "recruit_applications_recruiter",
+          "def": "CREATE INDEX recruit_applications_recruiter ON public.recruit_applications USING btree (recruiter_person_id)",
+          "table": "public.recruit_applications",
+          "columns": [
+            "recruiter_person_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "recruit_applications_answers",
+          "type": "CHECK",
+          "def": "CHECK ((jsonb_typeof(answers) = 'array'::text))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "answers"
+          ]
+        },
+        {
+          "name": "recruit_applications_class_name",
+          "type": "CHECK",
+          "def": "CHECK ((char_length(class_name) \u003c= 30))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "class_name"
+          ]
+        },
+        {
+          "name": "recruit_applications_closed",
+          "type": "CHECK",
+          "def": "CHECK (((status = ANY (ARRAY['joined'::text, 'declined'::text, 'not_joining'::text, 'no_reply'::text, 'withdrawn'::text])) = (closed_at IS NOT NULL)))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "status",
+            "closed_at"
+          ]
+        },
+        {
+          "name": "recruit_applications_discord_channel_id",
+          "type": "CHECK",
+          "def": "CHECK ((discord_channel_id ~ '^[0-9]{17,20}$'::text))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "discord_channel_id"
+          ]
+        },
+        {
+          "name": "recruit_applications_discord_officer_message_id",
+          "type": "CHECK",
+          "def": "CHECK ((discord_officer_message_id ~ '^[0-9]{17,20}$'::text))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "discord_officer_message_id"
+          ]
+        },
+        {
+          "name": "recruit_applications_discord_thread_id",
+          "type": "CHECK",
+          "def": "CHECK ((discord_thread_id ~ '^[0-9]{17,20}$'::text))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "discord_thread_id"
+          ]
+        },
+        {
+          "name": "recruit_applications_item_level",
+          "type": "CHECK",
+          "def": "CHECK (((item_level \u003e= 1) AND (item_level \u003c= 1000)))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "item_level"
+          ]
+        },
+        {
+          "name": "recruit_applications_logs_best_average",
+          "type": "CHECK",
+          "def": "CHECK (((logs_best_average \u003e= (0)::numeric) AND (logs_best_average \u003c= (100)::numeric)))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "logs_best_average"
+          ]
+        },
+        {
+          "name": "recruit_applications_logs_median_average",
+          "type": "CHECK",
+          "def": "CHECK (((logs_median_average \u003e= (0)::numeric) AND (logs_median_average \u003c= (100)::numeric)))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "logs_median_average"
+          ]
+        },
+        {
+          "name": "recruit_applications_mplus_score",
+          "type": "CHECK",
+          "def": "CHECK ((mplus_score \u003e= (0)::numeric))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "mplus_score"
+          ]
+        },
+        {
+          "name": "recruit_applications_mythic_bosses_killed",
+          "type": "CHECK",
+          "def": "CHECK ((mythic_bosses_killed \u003e= 0))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "mythic_bosses_killed"
+          ]
+        },
+        {
+          "name": "recruit_applications_name_realm",
+          "type": "CHECK",
+          "def": "CHECK (((char_length(name_realm) \u003c= 100) AND (name_realm ~ '^[^\\s-][^-]*-\\S'::text) AND (name_realm !~ '[\\r\\n]'::text)))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "name_realm"
+          ]
+        },
+        {
+          "name": "recruit_applications_on_trial_dated",
+          "type": "CHECK",
+          "def": "CHECK (((status \u003c\u003e 'on_trial'::text) OR (trial_ends_on IS NOT NULL)))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "status",
+            "trial_ends_on"
+          ]
+        },
+        {
+          "name": "recruit_applications_other_specs",
+          "type": "CHECK",
+          "def": "CHECK (((cardinality(other_specs) \u003c= 4) AND text_items_match(other_specs, '^[^\\r\\n]{1,30}$'::text)))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "other_specs"
+          ]
+        },
+        {
+          "name": "recruit_applications_recruiter_code",
+          "type": "CHECK",
+          "def": "CHECK ((recruiter_code ~ '^[a-z0-9]{8}$'::text))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "recruiter_code"
+          ]
+        },
+        {
+          "name": "recruit_applications_sent_by",
+          "type": "CHECK",
+          "def": "CHECK ((sent_by = ANY (ARRAY['recruiter'::text, 'friend'::text, 'nobody'::text])))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "sent_by"
+          ]
+        },
+        {
+          "name": "recruit_applications_sent_by_name",
+          "type": "CHECK",
+          "def": "CHECK (((char_length(sent_by_name) \u003c= 100) AND (sent_by_name ~ '\\S'::text) AND (sent_by_name !~ '[\\r\\n]'::text)))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "sent_by_name"
+          ]
+        },
+        {
+          "name": "recruit_applications_sent_by_shape",
+          "type": "CHECK",
+          "def": "CHECK (COALESCE(\nCASE sent_by\n    WHEN 'recruiter'::text THEN ((recruiter_code IS NOT NULL) AND (sent_by_name IS NOT NULL))\n    WHEN 'friend'::text THEN ((sent_by_name IS NOT NULL) AND (recruiter_code IS NULL) AND (recruiter_person_id IS NULL))\n    ELSE ((sent_by_name IS NULL) AND (recruiter_code IS NULL) AND (recruiter_person_id IS NULL))\nEND, false))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "sent_by",
+            "recruiter_code",
+            "sent_by_name",
+            "recruiter_person_id"
+          ]
+        },
+        {
+          "name": "recruit_applications_source",
+          "type": "CHECK",
+          "def": "CHECK ((source = ANY (ARRAY['application'::text, 'added_by_officer'::text])))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "source"
+          ]
+        },
+        {
+          "name": "recruit_applications_spec_name",
+          "type": "CHECK",
+          "def": "CHECK ((char_length(spec_name) \u003c= 30))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "spec_name"
+          ]
+        },
+        {
+          "name": "recruit_applications_status",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['waiting_on_officers'::text, 'waiting_on_applicant'::text, 'on_trial'::text, 'joined'::text, 'declined'::text, 'not_joining'::text, 'no_reply'::text, 'withdrawn'::text])))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "recruit_applications_time_zone",
+          "type": "CHECK",
+          "def": "CHECK ((char_length(time_zone) \u003c= 64))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "time_zone"
+          ]
+        },
+        {
+          "name": "recruit_applications_trial_dates",
+          "type": "CHECK",
+          "def": "CHECK ((((trial_starts_on IS NULL) = (trial_ends_on IS NULL)) AND COALESCE((trial_ends_on \u003e= trial_starts_on), true)))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "trial_starts_on",
+            "trial_ends_on"
+          ]
+        },
+        {
+          "name": "recruit_applications_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE SET NULL",
+          "table": "public.recruit_applications",
+          "referenced_table": "public.people",
+          "columns": [
+            "person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_applications_recruiter_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (recruiter_person_id) REFERENCES people(id) ON DELETE SET NULL",
+          "table": "public.recruit_applications",
+          "referenced_table": "public.people",
+          "columns": [
+            "recruiter_person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_applications_character_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL",
+          "table": "public.recruit_applications",
+          "referenced_table": "public.characters",
+          "columns": [
+            "character_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_applications_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE",
+          "table": "public.recruit_applications",
+          "referenced_table": "public.team_recruiting",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "team_id"
+          ]
+        },
+        {
+          "name": "recruit_applications_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "recruit_applications_whose_turn",
+          "def": "CREATE TRIGGER recruit_applications_whose_turn BEFORE INSERT OR UPDATE OF status, applicant_last_message_at, officers_last_message_at ON public.recruit_applications FOR EACH ROW EXECUTE FUNCTION recruit_applications_whose_turn()"
+        }
+      ]
+    },
+    {
+      "name": "public.recruit_notes",
+      "type": "BASE TABLE",
+      "comment": "Notes on a recruit record (#1539), from Raid Hub (site) or a Discord button (discord). Never shown to the applicant; the recruiter who sent the person sees only their own.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "application_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "author_person_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "body",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "recruit_notes_pkey",
+          "def": "CREATE UNIQUE INDEX recruit_notes_pkey ON public.recruit_notes USING btree (id)",
+          "table": "public.recruit_notes",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_notes_application",
+          "def": "CREATE INDEX recruit_notes_application ON public.recruit_notes USING btree (application_id, created_at)",
+          "table": "public.recruit_notes",
+          "columns": [
+            "application_id",
+            "created_at"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "recruit_notes_body",
+          "type": "CHECK",
+          "def": "CHECK (((char_length(body) \u003c= 2000) AND (body ~ '\\S'::text)))",
+          "table": "public.recruit_notes",
+          "referenced_table": "",
+          "columns": [
+            "body"
+          ]
+        },
+        {
+          "name": "recruit_notes_source",
+          "type": "CHECK",
+          "def": "CHECK ((source = ANY (ARRAY['site'::text, 'discord'::text])))",
+          "table": "public.recruit_notes",
+          "referenced_table": "",
+          "columns": [
+            "source"
+          ]
+        },
+        {
+          "name": "recruit_notes_author_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (author_person_id) REFERENCES people(id) ON DELETE SET NULL",
+          "table": "public.recruit_notes",
+          "referenced_table": "public.people",
+          "columns": [
+            "author_person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_notes_application_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE",
+          "table": "public.recruit_notes",
+          "referenced_table": "public.recruit_applications",
+          "columns": [
+            "application_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_notes_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.recruit_notes",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.recruit_events",
+      "type": "BASE TABLE",
+      "comment": "A recruit record's history (#1539), for its What's happened list: who did what, when, and a short detail (a decline or extension reason, which reminder). The functions and the bot write it.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "application_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "actor_person_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "detail",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "recruit_events_pkey",
+          "def": "CREATE UNIQUE INDEX recruit_events_pkey ON public.recruit_events USING btree (id)",
+          "table": "public.recruit_events",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_events_application",
+          "def": "CREATE INDEX recruit_events_application ON public.recruit_events USING btree (application_id, created_at)",
+          "table": "public.recruit_events",
+          "columns": [
+            "application_id",
+            "created_at"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "recruit_events_detail",
+          "type": "CHECK",
+          "def": "CHECK ((char_length(detail) \u003c= 500))",
+          "table": "public.recruit_events",
+          "referenced_table": "",
+          "columns": [
+            "detail"
+          ]
+        },
+        {
+          "name": "recruit_events_kind",
+          "type": "CHECK",
+          "def": "CHECK ((kind = ANY (ARRAY['applied'::text, 'added_by_officer'::text, 'withdrawn'::text, 'joined_discord'::text, 'ticket_opened'::text, 'officer_replied'::text, 'reminder_sent'::text, 'trial_started'::text, 'trial_extended'::text, 'declined'::text, 'joined'::text, 'not_joining'::text, 'closed'::text, 'reopened'::text, 'note_added'::text])))",
+          "table": "public.recruit_events",
+          "referenced_table": "",
+          "columns": [
+            "kind"
+          ]
+        },
+        {
+          "name": "recruit_events_actor_person_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (actor_person_id) REFERENCES people(id) ON DELETE SET NULL",
+          "table": "public.recruit_events",
+          "referenced_table": "public.people",
+          "columns": [
+            "actor_person_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_events_application_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE",
+          "table": "public.recruit_events",
+          "referenced_table": "public.recruit_applications",
+          "columns": [
+            "application_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_events_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.recruit_events",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.recruit_messages",
+      "type": "BASE TABLE",
+      "comment": "A closed ticket's conversation (#1539), saved by the bot before the channel is deleted. attachments is a list of {name, content_type}: the files themselves are not kept, since Discord's links expire.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "application_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "discord_message_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "author_discord_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "author_name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "body",
+          "type": "text",
+          "nullable": false,
+          "default": "''::text"
+        },
+        {
+          "name": "attachments",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "recruit_messages_pkey",
+          "def": "CREATE UNIQUE INDEX recruit_messages_pkey ON public.recruit_messages USING btree (id)",
+          "table": "public.recruit_messages",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_messages_application_id_discord_message_id_key",
+          "def": "CREATE UNIQUE INDEX recruit_messages_application_id_discord_message_id_key ON public.recruit_messages USING btree (application_id, discord_message_id)",
+          "table": "public.recruit_messages",
+          "columns": [
+            "application_id",
+            "discord_message_id"
+          ]
+        },
+        {
+          "name": "recruit_messages_application",
+          "def": "CREATE INDEX recruit_messages_application ON public.recruit_messages USING btree (application_id, sent_at)",
+          "table": "public.recruit_messages",
+          "columns": [
+            "application_id",
+            "sent_at"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "recruit_messages_attachments",
+          "type": "CHECK",
+          "def": "CHECK ((jsonb_typeof(attachments) = 'array'::text))",
+          "table": "public.recruit_messages",
+          "referenced_table": "",
+          "columns": [
+            "attachments"
+          ]
+        },
+        {
+          "name": "recruit_messages_author_discord_id",
+          "type": "CHECK",
+          "def": "CHECK ((author_discord_id ~ '^[0-9]{17,20}$'::text))",
+          "table": "public.recruit_messages",
+          "referenced_table": "",
+          "columns": [
+            "author_discord_id"
+          ]
+        },
+        {
+          "name": "recruit_messages_author_name",
+          "type": "CHECK",
+          "def": "CHECK ((char_length(author_name) \u003c= 100))",
+          "table": "public.recruit_messages",
+          "referenced_table": "",
+          "columns": [
+            "author_name"
+          ]
+        },
+        {
+          "name": "recruit_messages_body",
+          "type": "CHECK",
+          "def": "CHECK ((char_length(body) \u003c= 4000))",
+          "table": "public.recruit_messages",
+          "referenced_table": "",
+          "columns": [
+            "body"
+          ]
+        },
+        {
+          "name": "recruit_messages_discord_message_id",
+          "type": "CHECK",
+          "def": "CHECK ((discord_message_id ~ '^[0-9]{17,20}$'::text))",
+          "table": "public.recruit_messages",
+          "referenced_table": "",
+          "columns": [
+            "discord_message_id"
+          ]
+        },
+        {
+          "name": "recruit_messages_application_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE",
+          "table": "public.recruit_messages",
+          "referenced_table": "public.recruit_applications",
+          "columns": [
+            "application_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_messages_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.recruit_messages",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_messages_application_id_discord_message_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (application_id, discord_message_id)",
+          "table": "public.recruit_messages",
+          "referenced_table": "",
+          "columns": [
+            "application_id",
+            "discord_message_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.recruit_reminders_sent",
+      "type": "BASE TABLE",
+      "comment": "Which recruiting reminders the bot sent (#1539, #1543), the shape of raid_rsvp_reminders_sent. due_for is the message time or trial end the reminder was for, so a new message starts a new round and a repeat sweep sends nothing twice.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "application_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "reminder",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "due_for",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "recruit_reminders_sent_pkey",
+          "def": "CREATE UNIQUE INDEX recruit_reminders_sent_pkey ON public.recruit_reminders_sent USING btree (id)",
+          "table": "public.recruit_reminders_sent",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_reminders_sent_application_id_reminder_due_for_key",
+          "def": "CREATE UNIQUE INDEX recruit_reminders_sent_application_id_reminder_due_for_key ON public.recruit_reminders_sent USING btree (application_id, reminder, due_for)",
+          "table": "public.recruit_reminders_sent",
+          "columns": [
+            "application_id",
+            "reminder",
+            "due_for"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "recruit_reminders_sent_reminder",
+          "type": "CHECK",
+          "def": "CHECK ((reminder ~ '^[a-z_]{1,40}$'::text))",
+          "table": "public.recruit_reminders_sent",
+          "referenced_table": "",
+          "columns": [
+            "reminder"
+          ]
+        },
+        {
+          "name": "recruit_reminders_sent_application_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE",
+          "table": "public.recruit_reminders_sent",
+          "referenced_table": "public.recruit_applications",
+          "columns": [
+            "application_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_reminders_sent_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.recruit_reminders_sent",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_reminders_sent_application_id_reminder_due_for_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (application_id, reminder, due_for)",
+          "table": "public.recruit_reminders_sent",
+          "referenced_table": "",
+          "columns": [
+            "application_id",
+            "reminder",
+            "due_for"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -13747,6 +14755,136 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.recruit_applications",
+      "columns": [
+        "person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.recruit_applications",
+      "columns": [
+        "recruiter_person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (recruiter_person_id) REFERENCES people(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.recruit_applications",
+      "columns": [
+        "character_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.characters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.recruit_applications",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_recruiting",
+      "parent_columns": [
+        "team_id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.recruit_notes",
+      "columns": [
+        "author_person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (author_person_id) REFERENCES people(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.recruit_notes",
+      "columns": [
+        "application_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.recruit_applications",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.recruit_events",
+      "columns": [
+        "actor_person_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (actor_person_id) REFERENCES people(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.recruit_events",
+      "columns": [
+        "application_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.recruit_applications",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.recruit_messages",
+      "columns": [
+        "application_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.recruit_applications",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.recruit_reminders_sent",
+      "columns": [
+        "application_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.recruit_applications",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -15104,6 +16242,132 @@
       "name": "public.team_takes_applications",
       "return_type": "bool",
       "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruit_applications_whose_turn",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruit_access",
+      "return_type": "text",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruit_log",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_actor integer, p_action text, p_application_id integer, p_detail jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruit_lock",
+      "return_type": "recruit_applications",
+      "arguments": "p_application_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruit_add_note",
+      "return_type": "int4",
+      "arguments": "p_application_id integer, p_actor integer, p_source text, p_body text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruit_close",
+      "return_type": "void",
+      "arguments": "p_application_id integer, p_actor integer, p_status text, p_reason text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruit_reopen",
+      "return_type": "void",
+      "arguments": "p_application_id integer, p_actor integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.send_application",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_character_id integer, p_answers jsonb, p_recruiter_code text, p_friend_name text, p_time_zone text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.withdraw_application",
+      "return_type": "void",
+      "arguments": "p_application_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_applications",
+      "return_type": "jsonb",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.add_recruit",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_name_realm text, p_discord_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_recruits",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruit_record",
+      "return_type": "jsonb",
+      "arguments": "p_application_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_recruits",
+      "return_type": "jsonb",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.add_recruit_note",
+      "return_type": "int4",
+      "arguments": "p_application_id integer, p_body text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.close_recruit",
+      "return_type": "void",
+      "arguments": "p_application_id integer, p_status text, p_reason text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.reopen_recruit",
+      "return_type": "void",
+      "arguments": "p_application_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.bot_actor",
+      "return_type": "int4",
+      "arguments": "p_discord_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.bot_add_recruit_note",
+      "return_type": "int4",
+      "arguments": "p_application_id integer, p_actor_discord_id text, p_body text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.bot_close_recruit",
+      "return_type": "void",
+      "arguments": "p_application_id integer, p_actor_discord_id text, p_status text, p_reason text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.bot_reopen_recruit",
+      "return_type": "void",
+      "arguments": "p_application_id integer, p_actor_discord_id text",
       "type": "FUNCTION"
     }
   ],

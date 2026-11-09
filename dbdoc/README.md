@@ -97,6 +97,11 @@
 | [public.application_starter_questions](public.application_starter_questions.md) | 10 | The starter application questions (#1536), site-wide and the same for every guild, seeded by migration. A team switches each on or off and marks it required (team_application_starters); it never edits one. {team} and {raid nights} in prompt are filled by the page. | BASE TABLE |
 | [public.team_application_starters](public.team_application_starters.md) | 4 | What a team changed about a starter question (#1536): a row only where is_on or required differs from the starter's default. No row: the default. Saved through save_team_application_questions(). | BASE TABLE |
 | [public.team_application_questions](public.team_application_questions.md) | 9 | A team's own application questions (#1536), in sort_order after the starter questions. Up to 20. short_text takes a max_length up to 200, paragraph up to 4,000; choice takes 2 to 10 choices. Saved through save_team_application_questions(), which keeps each question's id. | BASE TABLE |
+| [public.recruit_applications](public.recruit_applications.md) | 30 | Recruit records (#1539): one per person per team per attempt, sent from the form (source application) or added by an officer for a ticket-only applicant (added_by_officer). The character columns are a copy taken when sent. One open (closed_at null) per person per team. Read and written through functions; the bot writes the Discord ids and last-message times with the service key. | BASE TABLE |
+| [public.recruit_notes](public.recruit_notes.md) | 6 | Notes on a recruit record (#1539), from Raid Hub (site) or a Discord button (discord). Never shown to the applicant; the recruiter who sent the person sees only their own. | BASE TABLE |
+| [public.recruit_events](public.recruit_events.md) | 6 | A recruit record's history (#1539), for its What's happened list: who did what, when, and a short detail (a decline or extension reason, which reminder). The functions and the bot write it. | BASE TABLE |
+| [public.recruit_messages](public.recruit_messages.md) | 8 | A closed ticket's conversation (#1539), saved by the bot before the channel is deleted. attachments is a list of {name, content_type}: the files themselves are not kept, since Discord's links expire. | BASE TABLE |
+| [public.recruit_reminders_sent](public.recruit_reminders_sent.md) | 5 | Which recruiting reminders the bot sent (#1539, #1543), the shape of raid_rsvp_reminders_sent. due_for is the message time or trial end the reminder was for, so a new message starts a new round and a repeat sweep sends nothing twice. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -328,6 +333,27 @@
 | public.team_application_form | jsonb | p_team_id integer | FUNCTION |
 | public.application_picture_team | int4 | p_name text | FUNCTION |
 | public.team_takes_applications | bool | p_team_id integer | FUNCTION |
+| public.recruit_applications_whose_turn | trigger |  | FUNCTION |
+| public.recruit_access | text | p_team_id integer | FUNCTION |
+| public.recruit_log | void | p_team_id integer, p_actor integer, p_action text, p_application_id integer, p_detail jsonb | FUNCTION |
+| public.recruit_lock | recruit_applications | p_application_id integer | FUNCTION |
+| public.recruit_add_note | int4 | p_application_id integer, p_actor integer, p_source text, p_body text | FUNCTION |
+| public.recruit_close | void | p_application_id integer, p_actor integer, p_status text, p_reason text | FUNCTION |
+| public.recruit_reopen | void | p_application_id integer, p_actor integer | FUNCTION |
+| public.send_application | int4 | p_team_id integer, p_character_id integer, p_answers jsonb, p_recruiter_code text, p_friend_name text, p_time_zone text | FUNCTION |
+| public.withdraw_application | void | p_application_id integer | FUNCTION |
+| public.my_applications | jsonb |  | FUNCTION |
+| public.add_recruit | int4 | p_team_id integer, p_name_realm text, p_discord_id text | FUNCTION |
+| public.team_recruits | jsonb | p_team_id integer | FUNCTION |
+| public.recruit_record | jsonb | p_application_id integer | FUNCTION |
+| public.my_recruits | jsonb |  | FUNCTION |
+| public.add_recruit_note | int4 | p_application_id integer, p_body text | FUNCTION |
+| public.close_recruit | void | p_application_id integer, p_status text, p_reason text | FUNCTION |
+| public.reopen_recruit | void | p_application_id integer | FUNCTION |
+| public.bot_actor | int4 | p_discord_id text | FUNCTION |
+| public.bot_add_recruit_note | int4 | p_application_id integer, p_actor_discord_id text, p_body text | FUNCTION |
+| public.bot_close_recruit | void | p_application_id integer, p_actor_discord_id text, p_status text, p_reason text | FUNCTION |
+| public.bot_reopen_recruit | void | p_application_id integer, p_actor_discord_id text | FUNCTION |
 
 ## Enums
 
@@ -501,6 +527,16 @@ erDiagram
 "public.team_application_starters" }o--|| "public.team_recruiting" : "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
 "public.team_application_starters" }o--|| "public.application_starter_questions" : "FOREIGN KEY (starter_key) REFERENCES application_starter_questions(key) ON DELETE CASCADE"
 "public.team_application_questions" }o--|| "public.team_recruiting" : "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
+"public.recruit_applications" }o--o| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE SET NULL"
+"public.recruit_applications" }o--o| "public.people" : "FOREIGN KEY (recruiter_person_id) REFERENCES people(id) ON DELETE SET NULL"
+"public.recruit_applications" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
+"public.recruit_applications" }o--|| "public.team_recruiting" : "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
+"public.recruit_notes" }o--o| "public.people" : "FOREIGN KEY (author_person_id) REFERENCES people(id) ON DELETE SET NULL"
+"public.recruit_notes" }o--|| "public.recruit_applications" : "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE"
+"public.recruit_events" }o--o| "public.people" : "FOREIGN KEY (actor_person_id) REFERENCES people(id) ON DELETE SET NULL"
+"public.recruit_events" }o--|| "public.recruit_applications" : "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE"
+"public.recruit_messages" }o--|| "public.recruit_applications" : "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE"
+"public.recruit_reminders_sent" }o--|| "public.recruit_applications" : "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -1459,6 +1495,71 @@ erDiagram
   text__ choices
   boolean required
   integer sort_order
+}
+"public.recruit_applications" {
+  integer id
+  integer team_id FK
+  integer person_id FK
+  text source
+  text status
+  integer character_id FK
+  text name_realm
+  text class_name
+  text spec_name
+  text__ other_specs
+  integer item_level
+  numeric_6_1_ mplus_score
+  numeric_4_1_ logs_best_average
+  numeric_4_1_ logs_median_average
+  integer mythic_bosses_killed
+  jsonb answers
+  text sent_by
+  integer recruiter_person_id FK
+  text recruiter_code
+  text sent_by_name
+  text time_zone
+  timestamp_with_time_zone applicant_last_message_at
+  timestamp_with_time_zone officers_last_message_at
+  date trial_starts_on
+  date trial_ends_on
+  text discord_channel_id
+  text discord_thread_id
+  text discord_officer_message_id
+  timestamp_with_time_zone applied_at
+  timestamp_with_time_zone closed_at
+}
+"public.recruit_notes" {
+  integer id
+  integer application_id FK
+  integer author_person_id FK
+  text source
+  text body
+  timestamp_with_time_zone created_at
+}
+"public.recruit_events" {
+  integer id
+  integer application_id FK
+  text kind
+  integer actor_person_id FK
+  text detail
+  timestamp_with_time_zone created_at
+}
+"public.recruit_messages" {
+  integer id
+  integer application_id FK
+  text discord_message_id
+  text author_discord_id
+  text author_name
+  text body
+  jsonb attachments
+  timestamp_with_time_zone sent_at
+}
+"public.recruit_reminders_sent" {
+  integer id
+  integer application_id FK
+  text reminder
+  timestamp_with_time_zone due_for
+  timestamp_with_time_zone sent_at
 }
 ```
 

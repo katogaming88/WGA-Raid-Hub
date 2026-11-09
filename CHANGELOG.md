@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.253.0] - 2026-11-09
+
+### Backend
+
+- Every application and every recruit now has a record on Raid Hub that outlives the Discord ticket (#1539): the character they applied with and its numbers as they were when they applied, their answers with each question's wording, who sent them, where it stands, notes, what happened when, and the ticket's conversation once it closes. An applicant sends and withdraws their own and sees only their own, never notes. Officers read and manage their team's records, add one for someone who came in through a ticket, decline or close one and reopen it. Assistants add notes and the guild's Owner and Admins read them only when the team's settings say so. A recruiter sees the people they sent and their own notes. The bot has versions of the officer actions for Discord buttons. Nothing anyone sees yet: the pages and the bot come later. Trials are #1793.
+
+### Project
+
+- Tests for recruit records (#1539); the trials split into #1793; time log rows for #1536's review and merge and #1539's build, with #1536's real token count.
+
 ## [3.252.0] - 2026-11-09
 
 ### Backend

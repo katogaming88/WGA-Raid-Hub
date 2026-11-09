@@ -2537,6 +2537,291 @@ export type Database = {
           },
         ]
       }
+      recruit_applications: {
+        Row: {
+          answers: Json
+          applicant_last_message_at: string | null
+          applied_at: string
+          character_id: number | null
+          class_name: string | null
+          closed_at: string | null
+          discord_channel_id: string | null
+          discord_officer_message_id: string | null
+          discord_thread_id: string | null
+          id: number
+          item_level: number | null
+          logs_best_average: number | null
+          logs_median_average: number | null
+          mplus_score: number | null
+          mythic_bosses_killed: number | null
+          name_realm: string
+          officers_last_message_at: string | null
+          other_specs: string[]
+          person_id: number | null
+          recruiter_code: string | null
+          recruiter_person_id: number | null
+          sent_by: string
+          sent_by_name: string | null
+          source: string
+          spec_name: string | null
+          status: string
+          team_id: number
+          time_zone: string | null
+          trial_ends_on: string | null
+          trial_starts_on: string | null
+        }
+        Insert: {
+          answers?: Json
+          applicant_last_message_at?: string | null
+          applied_at?: string
+          character_id?: number | null
+          class_name?: string | null
+          closed_at?: string | null
+          discord_channel_id?: string | null
+          discord_officer_message_id?: string | null
+          discord_thread_id?: string | null
+          id?: never
+          item_level?: number | null
+          logs_best_average?: number | null
+          logs_median_average?: number | null
+          mplus_score?: number | null
+          mythic_bosses_killed?: number | null
+          name_realm: string
+          officers_last_message_at?: string | null
+          other_specs?: string[]
+          person_id?: number | null
+          recruiter_code?: string | null
+          recruiter_person_id?: number | null
+          sent_by?: string
+          sent_by_name?: string | null
+          source: string
+          spec_name?: string | null
+          status?: string
+          team_id: number
+          time_zone?: string | null
+          trial_ends_on?: string | null
+          trial_starts_on?: string | null
+        }
+        Update: {
+          answers?: Json
+          applicant_last_message_at?: string | null
+          applied_at?: string
+          character_id?: number | null
+          class_name?: string | null
+          closed_at?: string | null
+          discord_channel_id?: string | null
+          discord_officer_message_id?: string | null
+          discord_thread_id?: string | null
+          id?: never
+          item_level?: number | null
+          logs_best_average?: number | null
+          logs_median_average?: number | null
+          mplus_score?: number | null
+          mythic_bosses_killed?: number | null
+          name_realm?: string
+          officers_last_message_at?: string | null
+          other_specs?: string[]
+          person_id?: number | null
+          recruiter_code?: string | null
+          recruiter_person_id?: number | null
+          sent_by?: string
+          sent_by_name?: string | null
+          source?: string
+          spec_name?: string | null
+          status?: string
+          team_id?: number
+          time_zone?: string | null
+          trial_ends_on?: string | null
+          trial_starts_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recruit_applications_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recruit_applications_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recruit_applications_recruiter_person_id_fkey"
+            columns: ["recruiter_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recruit_applications_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "team_recruiting"
+            referencedColumns: ["team_id"]
+          },
+        ]
+      }
+      recruit_events: {
+        Row: {
+          actor_person_id: number | null
+          application_id: number
+          created_at: string
+          detail: string | null
+          id: number
+          kind: string
+        }
+        Insert: {
+          actor_person_id?: number | null
+          application_id: number
+          created_at?: string
+          detail?: string | null
+          id?: never
+          kind: string
+        }
+        Update: {
+          actor_person_id?: number | null
+          application_id?: number
+          created_at?: string
+          detail?: string | null
+          id?: never
+          kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recruit_events_actor_person_id_fkey"
+            columns: ["actor_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recruit_events_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "recruit_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recruit_messages: {
+        Row: {
+          application_id: number
+          attachments: Json
+          author_discord_id: string | null
+          author_name: string
+          body: string
+          discord_message_id: string
+          id: number
+          sent_at: string
+        }
+        Insert: {
+          application_id: number
+          attachments?: Json
+          author_discord_id?: string | null
+          author_name: string
+          body?: string
+          discord_message_id: string
+          id?: never
+          sent_at: string
+        }
+        Update: {
+          application_id?: number
+          attachments?: Json
+          author_discord_id?: string | null
+          author_name?: string
+          body?: string
+          discord_message_id?: string
+          id?: never
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recruit_messages_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "recruit_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recruit_notes: {
+        Row: {
+          application_id: number
+          author_person_id: number | null
+          body: string
+          created_at: string
+          id: number
+          source: string
+        }
+        Insert: {
+          application_id: number
+          author_person_id?: number | null
+          body: string
+          created_at?: string
+          id?: never
+          source: string
+        }
+        Update: {
+          application_id?: number
+          author_person_id?: number | null
+          body?: string
+          created_at?: string
+          id?: never
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recruit_notes_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "recruit_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recruit_notes_author_person_id_fkey"
+            columns: ["author_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recruit_reminders_sent: {
+        Row: {
+          application_id: number
+          due_for: string
+          id: number
+          reminder: string
+          sent_at: string
+        }
+        Insert: {
+          application_id: number
+          due_for: string
+          id?: never
+          reminder: string
+          sent_at?: string
+        }
+        Update: {
+          application_id?: number
+          due_for?: string
+          id?: never
+          reminder?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recruit_reminders_sent_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "recruit_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       removal_reasons: {
         Row: {
           detail: string | null
@@ -4716,6 +5001,14 @@ export type Database = {
         }
         Returns: number
       }
+      add_recruit: {
+        Args: { p_discord_id: string; p_name_realm: string; p_team_id: number }
+        Returns: number
+      }
+      add_recruit_note: {
+        Args: { p_application_id: number; p_body: string }
+        Returns: number
+      }
       add_signup_to_roster: {
         Args: {
           p_archive_player_id?: number
@@ -4904,6 +5197,28 @@ export type Database = {
         Returns: undefined
       }
       boe_revert: { Args: { p_id: number }; Returns: string }
+      bot_actor: { Args: { p_discord_id: string }; Returns: number }
+      bot_add_recruit_note: {
+        Args: {
+          p_actor_discord_id: string
+          p_application_id: number
+          p_body: string
+        }
+        Returns: number
+      }
+      bot_close_recruit: {
+        Args: {
+          p_actor_discord_id: string
+          p_application_id: number
+          p_reason: string
+          p_status: string
+        }
+        Returns: undefined
+      }
+      bot_reopen_recruit: {
+        Args: { p_actor_discord_id: string; p_application_id: number }
+        Returns: undefined
+      }
       build_rclc_export: {
         Args: { p_season: string; p_team_id: number; p_track: string }
         Returns: Json
@@ -4959,6 +5274,10 @@ export type Database = {
         Returns: {
           message_id: string
         }[]
+      }
+      close_recruit: {
+        Args: { p_application_id: number; p_reason: string; p_status: string }
+        Returns: undefined
       }
       close_season: {
         Args: { p_roster_snapshot: Json; p_season: string; p_team_id: number }
@@ -5219,6 +5538,7 @@ export type Database = {
         Returns: string
       }
       my_active_player_ids: { Args: never; Returns: number[] }
+      my_applications: { Args: never; Returns: Json }
       my_guild_officer_team_ids: { Args: never; Returns: number[] }
       my_guild_permission_team_ids: {
         Args: { p_permission: string }
@@ -5236,6 +5556,7 @@ export type Database = {
       }
       my_person_id: { Args: never; Returns: number }
       my_player_ids: { Args: never; Returns: number[] }
+      my_recruits: { Args: never; Returns: Json }
       my_team_role: { Args: { p_team_id: number }; Returns: string }
       my_wishlist_signup_ids: { Args: never; Returns: number[] }
       new_url_code: { Args: never; Returns: string }
@@ -5310,6 +5631,81 @@ export type Database = {
         }
         Returns: number
       }
+      recruit_access: { Args: { p_team_id: number }; Returns: string }
+      recruit_add_note: {
+        Args: {
+          p_actor: number
+          p_application_id: number
+          p_body: string
+          p_source: string
+        }
+        Returns: number
+      }
+      recruit_close: {
+        Args: {
+          p_actor: number
+          p_application_id: number
+          p_reason: string
+          p_status: string
+        }
+        Returns: undefined
+      }
+      recruit_lock: {
+        Args: { p_application_id: number }
+        Returns: {
+          answers: Json
+          applicant_last_message_at: string | null
+          applied_at: string
+          character_id: number | null
+          class_name: string | null
+          closed_at: string | null
+          discord_channel_id: string | null
+          discord_officer_message_id: string | null
+          discord_thread_id: string | null
+          id: number
+          item_level: number | null
+          logs_best_average: number | null
+          logs_median_average: number | null
+          mplus_score: number | null
+          mythic_bosses_killed: number | null
+          name_realm: string
+          officers_last_message_at: string | null
+          other_specs: string[]
+          person_id: number | null
+          recruiter_code: string | null
+          recruiter_person_id: number | null
+          sent_by: string
+          sent_by_name: string | null
+          source: string
+          spec_name: string | null
+          status: string
+          team_id: number
+          time_zone: string | null
+          trial_ends_on: string | null
+          trial_starts_on: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "recruit_applications"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      recruit_log: {
+        Args: {
+          p_action: string
+          p_actor: number
+          p_application_id: number
+          p_detail: Json
+          p_team_id: number
+        }
+        Returns: undefined
+      }
+      recruit_record: { Args: { p_application_id: number }; Returns: Json }
+      recruit_reopen: {
+        Args: { p_actor: number; p_application_id: number }
+        Returns: undefined
+      }
       recruiter_for_code: {
         Args: { p_code: string; p_guild_key: string }
         Returns: Json
@@ -5318,6 +5714,7 @@ export type Database = {
         Args: { p_sheet_id: number; p_team_id: number }
         Returns: undefined
       }
+      reopen_recruit: { Args: { p_application_id: number }; Returns: undefined }
       request_main_swap: {
         Args: {
           p_character_id: number
@@ -5429,6 +5826,17 @@ export type Database = {
       save_team_recruiting: {
         Args: { p_changes: Json; p_team_id: number }
         Returns: undefined
+      }
+      send_application: {
+        Args: {
+          p_answers: Json
+          p_character_id: number
+          p_friend_name: string
+          p_recruiter_code: string
+          p_team_id: number
+          p_time_zone: string
+        }
+        Returns: number
       }
       set_boe_payout_settings: {
         Args: { p_floor: number; p_guild_id?: number; p_pivot: number }
@@ -5737,6 +6145,7 @@ export type Database = {
       }
       team_recruiting_settings: { Args: { p_team_id: number }; Returns: Json }
       team_recruiting_spot_list: { Args: { p_team_id: number }; Returns: Json }
+      team_recruits: { Args: { p_team_id: number }; Returns: Json }
       team_rsvp_answers: {
         Args: { p_from: string; p_team_id: number; p_to: string }
         Returns: {
@@ -5797,6 +6206,10 @@ export type Database = {
           season_name: string
           wishlist_count: number
         }[]
+      }
+      withdraw_application: {
+        Args: { p_application_id: number }
+        Returns: undefined
       }
       write_audit_log: {
         Args: {
