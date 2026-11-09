@@ -11,6 +11,7 @@ import {
   RAIDER_T1,
   TEAM_LEADER_T1,
   SITE_ADMIN,
+  GUILD_OFFICER,
   RLS_DENIED
 } from './helpers.js';
 
@@ -119,6 +120,9 @@ describe('application questions', () => {
       await expect(list(asUser, OFFICER_T2)).rejects.toThrow('Not authorized');
       await expect(save(asUser, RAIDER_T1, {}, [])).rejects.toThrow('Not authorized');
       await expect(save(asUser, OFFICER_T2, {}, [])).rejects.toThrow('Not authorized');
+      // A guild officer sees every team but doesn't edit its recruiting.
+      await expect(list(asUser, GUILD_OFFICER)).rejects.toThrow('Not authorized');
+      await expect(save(asUser, GUILD_OFFICER, {}, [])).rejects.toThrow('Not authorized');
       await expect(list(asUser, null)).rejects.toThrow('Not signed in');
       await expect(save(asUser, null, {}, [])).rejects.toThrow('Not signed in');
       await expect(asAnon("select public.save_team_application_questions(1, '{}', '[]')")).rejects.toMatchObject({
@@ -141,6 +145,8 @@ describe('application questions', () => {
       const q = { label: 'Q', prompt: 'Q?' };
       await bad({}, [{ ...q, answer_type: 'recruiter' }], 'answer_type');
       await bad({}, [{ ...q, answer_type: 'choice', choices: ['Only one'] }], 'choices');
+      await bad({}, [{ ...q, answer_type: 'choice', choices: ['Yes', 2] }], 'Each choice is text');
+      await bad({}, [{ ...q, answer_type: 'choice', choices: ['Yes', 'Yes'] }], 'listed twice');
       await bad({}, [{ ...q, answer_type: 'short_text' }], 'max_length');
       await bad({}, [{ ...q, answer_type: 'short_text', max_length: 201 }], 'max_length');
       await bad({}, [{ ...q, answer_type: 'yes_no', max_length: 10 }], 'max_length');
@@ -193,6 +199,7 @@ describe('application questions', () => {
       await upload(asUser, OFFICER_T2, mine);
       await expect(upload(asUser, OFFICER_T2, `1/${RAIDER_T1}/ui.png`)).rejects.toMatchObject({ code: RLS_DENIED });
       await expect(upload(asUser, OFFICER_T2, `x/${OFFICER_T2}/ui.png`)).rejects.toMatchObject({ code: RLS_DENIED });
+      await expect(upload(asUser, OFFICER_T2, `01/${OFFICER_T2}/ui.png`)).rejects.toMatchObject({ code: RLS_DENIED });
 
       const sees = async (uid) =>
         (await asUser(uid, "select name from storage.objects where bucket_id = 'application-pictures'")).rows.length;
@@ -212,6 +219,16 @@ describe('application questions', () => {
         file_size_limit: '5242880',
         allowed_mime_types: ['image/jpeg', 'image/png', 'image/webp']
       });
+    });
+  });
+
+  it('an archived team takes no saves, form reads or uploads, even while taking applications', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await openTeam(asUser);
+      await q('update public.teams set archived_at = now() where id = 1');
+      await expect(save(asUser, OFFICER_T1, {}, [])).rejects.toThrow('archived');
+      await expect(form(asUser, OFFICER_T2)).rejects.toThrow("isn't taking applications");
+      await expect(upload(asUser, OFFICER_T2, `1/${OFFICER_T2}/ui.png`)).rejects.toMatchObject({ code: RLS_DENIED });
     });
   });
 });

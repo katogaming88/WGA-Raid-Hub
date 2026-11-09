@@ -321,6 +321,12 @@ begin
     if v_q ? 'choices' and jsonb_typeof(v_q -> 'choices') is distinct from 'array' then
       raise exception 'A question''s choices must be a list';
     end if;
+    if exists (select 1 from jsonb_array_elements(v_q -> 'choices') as c where jsonb_typeof(c) <> 'string') then
+      raise exception 'Each choice is text';
+    end if;
+    if (select count(*) <> count(distinct c) from jsonb_array_elements_text(v_q -> 'choices') as c) then
+      raise exception 'A choice is listed twice';
+    end if;
     if v_q ? 'required' and jsonb_typeof(v_q -> 'required') is distinct from 'boolean' then
       raise exception 'A question''s required is true or false';
     end if;
@@ -429,7 +435,7 @@ language sql
 immutable
 set search_path = public
 as $$
-  select case when (storage.foldername(p_name))[1] ~ '^[0-9]{1,9}$'
+  select case when (storage.foldername(p_name))[1] ~ '^[1-9][0-9]{0,8}$'
               then ((storage.foldername(p_name))[1])::integer end;
 $$;
 

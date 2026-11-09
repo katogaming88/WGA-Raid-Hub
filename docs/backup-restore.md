@@ -277,7 +277,7 @@ As of 2026-11-08, [#1535](https://github.com/katogaming88/WGA-Raid-Hub/issues/15
 
 As of 2026-11-08, [#1537](https://github.com/katogaming88/WGA-Raid-Hub/issues/1537) added `guild_recruiters` (in-app-only), 74 base tables. Keys: `guilds` and `people`, so it restores after both. No new `auth.users` FK. Triggers on `team_members` and `guild_ranks` switch a recruiter off when they leave, so a selective restore of either runs with user triggers off (see the selective-restore runbook). No `EMPTY_CHECK` floor: a guild may have no recruiters. No re-drill due.
 
-As of 2026-11-09, [#1536](https://github.com/katogaming88/WGA-Raid-Hub/issues/1536) added `application_starter_questions` (seeded by the migration), `team_application_starters` and `team_application_questions` (both in-app-only), 77 base tables. Keys: both team tables to `team_recruiting`; `team_application_starters` also to `application_starter_questions`. No new `auth.users` FK and no triggers. No `EMPTY_CHECK` floor: a team with only defaults has no rows. The `application-pictures` bucket's files are outside the dump. No re-drill due.
+As of 2026-11-09, [#1536](https://github.com/katogaming88/WGA-Raid-Hub/issues/1536) added `application_starter_questions` (seeded by the migration), `team_application_starters` and `team_application_questions` (both in-app-only), 78 base tables. Keys: both team tables to `team_recruiting`; `team_application_starters` also to `application_starter_questions`. No new `auth.users` FK and no triggers. No `EMPTY_CHECK` floor: a team with only defaults has no rows. The `application-pictures` bucket's files are outside the dump. No re-drill due.
 
 ## Ops notes
 

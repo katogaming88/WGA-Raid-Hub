@@ -8,6 +8,6 @@ CREATE OR REPLACE FUNCTION public.application_picture_team(p_name text)
  IMMUTABLE
  SET search_path TO 'public'
 AS $function$
-  select case when (storage.foldername(p_name))[1] ~ '^[0-9]{1,9}$'
+  select case when (storage.foldername(p_name))[1] ~ '^[1-9][0-9]{0,8}$'
               then ((storage.foldername(p_name))[1])::integer end;
 $function$;
