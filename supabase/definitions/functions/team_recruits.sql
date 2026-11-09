@@ -45,6 +45,6 @@ begin
              order by a.closed_at is not null, a.applied_at desc, a.id desc)
         from recruit_applications a
         join teams t on t.id = a.team_id
-       where a.team_id = p_team_id), '[]'::jsonb));
+       where a.team_id = p_team_id and a.person_id is distinct from my_person_id()), '[]'::jsonb));
 end;
 $function$;

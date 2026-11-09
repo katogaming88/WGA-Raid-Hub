@@ -24,6 +24,9 @@ begin
   if v_access is not null and v_app.id is null then
     raise exception 'That recruit does not exist';
   end if;
+  if v_app.person_id = v_me then
+    raise exception 'That is your own application';
+  end if;
   if v_access is null then
     if v_app.recruiter_person_id is distinct from v_me or not in_guild(v_guild, v_me) then
       raise exception 'Not authorized';

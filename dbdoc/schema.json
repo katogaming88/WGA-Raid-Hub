@@ -12487,7 +12487,7 @@
         {
           "name": "recruit_events_detail",
           "type": "CHECK",
-          "def": "CHECK ((char_length(detail) \u003c= 500))",
+          "def": "CHECK ((char_length(detail) \u003c= 600))",
           "table": "public.recruit_events",
           "referenced_table": "",
           "columns": [
@@ -16265,7 +16265,7 @@
     {
       "name": "public.recruit_lock",
       "return_type": "recruit_applications",
-      "arguments": "p_application_id integer",
+      "arguments": "p_application_id integer, p_actor integer",
       "type": "FUNCTION"
     },
     {

@@ -10,7 +10,7 @@ AS $function$
 declare
   v_app recruit_applications;
 begin
-  v_app := recruit_lock(p_application_id);
+  v_app := recruit_lock(p_application_id, p_actor);
   if v_app.status not in ('declined', 'no_reply') then
     raise exception 'Only a declined or no-reply recruit can be reopened';
   end if;

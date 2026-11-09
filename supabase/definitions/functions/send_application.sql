@@ -62,6 +62,9 @@ begin
     if not found then
       raise exception 'That recruiter link isn''t active';
     end if;
+    if v_recruiter = v_me then
+      raise exception 'You can''t be your own recruiter';
+    end if;
     v_sent_by := 'recruiter';
   elsif v_friend is not null then
     if char_length(v_friend) > 100 or v_friend ~ '[\r\n]' then

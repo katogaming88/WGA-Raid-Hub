@@ -17,7 +17,7 @@ begin
   if char_length(v_reason) > 500 then
     raise exception 'A reason is at most 500 characters';
   end if;
-  v_app := recruit_lock(p_application_id);
+  v_app := recruit_lock(p_application_id, p_actor);
   if v_app.closed_at is not null then
     raise exception 'That recruit is already closed';
   end if;

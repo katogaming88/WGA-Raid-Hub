@@ -336,7 +336,7 @@
 | public.recruit_applications_whose_turn | trigger |  | FUNCTION |
 | public.recruit_access | text | p_team_id integer | FUNCTION |
 | public.recruit_log | void | p_team_id integer, p_actor integer, p_action text, p_application_id integer, p_detail jsonb | FUNCTION |
-| public.recruit_lock | recruit_applications | p_application_id integer | FUNCTION |
+| public.recruit_lock | recruit_applications | p_application_id integer, p_actor integer | FUNCTION |
 | public.recruit_add_note | int4 | p_application_id integer, p_actor integer, p_source text, p_body text | FUNCTION |
 | public.recruit_close | void | p_application_id integer, p_actor integer, p_status text, p_reason text | FUNCTION |
 | public.recruit_reopen | void | p_application_id integer, p_actor integer | FUNCTION |

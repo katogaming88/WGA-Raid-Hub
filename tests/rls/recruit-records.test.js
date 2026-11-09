@@ -8,6 +8,7 @@ import {
   OFFICER_T1,
   OFFICER_T2,
   RAIDER_T1,
+  RAIDER_T3,
   TEAM_LEADER_T1,
   SITE_ADMIN,
   GUILD_OFFICER,
@@ -209,7 +210,10 @@ describe('recruit records', () => {
 
       // The applicant, a raider and another team's officer: nothing.
       for (const uid of [APPLICANT, RAIDER_T1, OFFICER_T2]) {
-        await expect(record(asUser, uid, id)).rejects.toThrow('Not authorized');
+        // The applicant is pointed at My applications instead.
+        await expect(record(asUser, uid, id)).rejects.toThrow(
+          uid === APPLICANT ? 'your own application' : 'Not authorized'
+        );
         await expect(recruits(asUser, uid)).rejects.toThrow('Not authorized');
         await expect(note(asUser, uid, id, 'x')).rejects.toThrow('Not authorized');
       }
@@ -437,6 +441,115 @@ describe('recruit records', () => {
       ]) {
         await expect(asUser(OFFICER_T1, sql, [id])).rejects.toMatchObject({ code: RLS_DENIED });
       }
+    });
+  });
+
+  it('someone who sees the team’s records and applies to it is an applicant on their own record', async () => {
+    await withTxn(async ({ q, asUser, asRole }) => {
+      await setup(q);
+      const admin = await personOf(q, SITE_ADMIN);
+      const char = (
+        await q(
+          `insert into public.characters (person_id, blizzard_id, name, realm, realm_slug, class_name, spec_name, level)
+           values ($1, 990002, 'Jaina', 'Stormrage', 'stormrage', 'Mage', 'Frost', 90) returning id`,
+          [admin]
+        )
+      ).rows[0].id;
+      const id = await send(asUser, SITE_ADMIN, char, REQUIRED);
+      await note(asUser, OFFICER_T1, id, 'Weak logs, plan to decline');
+
+      await expect(record(asUser, SITE_ADMIN, id)).rejects.toThrow('your own application');
+      expect((await recruits(asUser, SITE_ADMIN)).recruits.map((x) => x.id)).not.toContain(id);
+      await expect(note(asUser, SITE_ADMIN, id, 'Great player')).rejects.toThrow('your own application');
+      await expect(asUser(SITE_ADMIN, "select public.close_recruit($1, 'declined', null)", [id])).rejects.toThrow(
+        'your own application'
+      );
+      const bot = asRole('service_role', null);
+      await expect(
+        bot("select public.bot_add_recruit_note($1, 'discord-site-admin', 'Great player')", [id])
+      ).rejects.toThrow('your own application');
+      await asUser(OFFICER_T1, "select public.close_recruit($1, 'declined', null)", [id]);
+      await expect(asUser(SITE_ADMIN, 'select public.reopen_recruit($1)', [id])).rejects.toThrow(
+        'your own application'
+      );
+      // Their own view is still My applications.
+      expect((await asUser(SITE_ADMIN, 'select public.my_applications() as m')).rows[0].m[0]).toMatchObject({ id });
+    });
+  });
+
+  it('the limits, the guild, the archive and the rank grid all hold, on the site and through the bot', async () => {
+    await withTxn(async ({ q, asUser, asRole }) => {
+      const { char } = await setup(q);
+      const bot = asRole('service_role', null);
+      const raider = await personOf(q, RAIDER_T3);
+
+      // A recruiter can't credit themselves.
+      const code = (
+        await q('insert into public.guild_recruiters (guild_id, person_id) values (1, $1) returning code', [raider])
+      ).rows[0].code;
+      const own = (
+        await q(
+          `insert into public.characters (person_id, blizzard_id, name, realm, realm_slug) values ($1, 990003, 'Thrall', 'Stormrage', 'stormrage') returning id`,
+          [raider]
+        )
+      ).rows[0].id;
+      await expect(send(asUser, RAIDER_T3, own, REQUIRED, { code })).rejects.toThrow('your own recruiter');
+
+      // A 500-character no-reply reason fits; 501 doesn't.
+      const id = await send(asUser, APPLICANT, char, REQUIRED, { code });
+      await expect(
+        asUser(OFFICER_T1, "select public.close_recruit($1, 'no_reply', $2)", [id, 'x'.repeat(501)])
+      ).rejects.toThrow('at most 500');
+      await asUser(OFFICER_T1, "select public.close_recruit($1, 'no_reply', $2)", [id, 'x'.repeat(500)]);
+      await asUser(OFFICER_T1, 'select public.reopen_recruit($1)', [id]);
+
+      // The Team Owner and a site admin act through the bot.
+      await bot("select public.bot_add_recruit_note($1, 'discord-leader-1', 'Owner note')", [id]);
+      await bot("select public.bot_add_recruit_note($1, 'discord-site-admin', 'Admin note')", [id]);
+
+      // A recruiter who has left the guild sees nothing and adds nothing.
+      expect((await record(asUser, RAIDER_T3, id)).access).toBe('recruiter');
+      await q('update public.team_members set archived_at = now() where team_id = 3 and person_id = $1', [raider]);
+      await expect(record(asUser, RAIDER_T3, id)).rejects.toThrow('Not authorized');
+      await expect(note(asUser, RAIDER_T3, id, 'x')).rejects.toThrow('Not authorized');
+      await expect(bot("select public.bot_add_recruit_note($1, 'discord-raider-3', 'x')", [id])).rejects.toThrow(
+        'Not authorized'
+      );
+      expect((await asUser(RAIDER_T3, 'select public.my_recruits() as m')).rows[0].m).toEqual([]);
+
+      // An archived officer acts no more through the bot.
+      await q('update public.team_members set archived_at = now() where team_id = 1 and person_id = $1', [
+        await personOf(q, OFFICER_T1)
+      ]);
+      await expect(
+        bot("select public.bot_close_recruit($1, 'discord-officer-1', 'declined', null)", [id])
+      ).rejects.toThrow('Not authorized');
+      await q('update public.team_members set archived_at = null where team_id = 1 and person_id = $1', [
+        await personOf(q, OFFICER_T1)
+      ]);
+
+      // Officers without Edit recruiting on the team's grid are refused.
+      await q(
+        "delete from public.team_rank_permissions where team_id = 1 and rank = 'officer' and permission = 'edit_recruiting'"
+      );
+      await expect(asUser(OFFICER_T1, "select public.close_recruit($1, 'declined', null)", [id])).rejects.toThrow(
+        'Not authorized'
+      );
+      await expect(
+        bot("select public.bot_close_recruit($1, 'discord-officer-1', 'declined', null)", [id])
+      ).rejects.toThrow('Not authorized');
+      await asUser(TEAM_LEADER_T1, "select public.close_recruit($1, 'declined', null)", [id]);
+
+      // An archived team takes no note, close or reopen; an unknown one says so.
+      await q('update public.teams set archived_at = now() where id = 1');
+      await expect(note(asUser, TEAM_LEADER_T1, id, 'x')).rejects.toThrow('archived');
+      await expect(asUser(TEAM_LEADER_T1, 'select public.reopen_recruit($1)', [id])).rejects.toThrow('archived');
+      await expect(
+        bot("select public.bot_close_recruit($1, 'discord-leader-1', 'no_reply', null)", [id])
+      ).rejects.toThrow('archived');
+      await expect(asUser(SITE_ADMIN, "select public.add_recruit(999999, 'Jaina-Stormrage', null)")).rejects.toThrow(
+        'does not exist'
+      );
     });
   });
 

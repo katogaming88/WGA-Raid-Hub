@@ -19,7 +19,7 @@ A recruit record's history (#1539), for its What's happened list: who did what, 
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| recruit_events_detail | CHECK | CHECK ((char_length(detail) <= 500)) |
+| recruit_events_detail | CHECK | CHECK ((char_length(detail) <= 600)) |
 | recruit_events_kind | CHECK | CHECK ((kind = ANY (ARRAY['applied'::text, 'added_by_officer'::text, 'withdrawn'::text, 'joined_discord'::text, 'ticket_opened'::text, 'officer_replied'::text, 'reminder_sent'::text, 'trial_started'::text, 'trial_extended'::text, 'declined'::text, 'joined'::text, 'not_joining'::text, 'closed'::text, 'reopened'::text, 'note_added'::text]))) |
 | recruit_events_actor_person_id_fkey | FOREIGN KEY | FOREIGN KEY (actor_person_id) REFERENCES people(id) ON DELETE SET NULL |
 | recruit_events_application_id_fkey | FOREIGN KEY | FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE |

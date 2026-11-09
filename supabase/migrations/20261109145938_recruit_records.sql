@@ -166,7 +166,7 @@ create table public.recruit_events (
       'closed', 'reopened', 'note_added')),
   actor_person_id integer references public.people(id) on delete set null,
   detail text
-    constraint recruit_events_detail check (char_length(detail) <= 500),
+    constraint recruit_events_detail check (char_length(detail) <= 600),
   created_at timestamptz not null default now()
 );
 
@@ -292,9 +292,10 @@ $$;
 
 revoke all on function public.recruit_log(integer, integer, text, integer, jsonb) from public, anon, authenticated;
 
--- An open record of a team that isn't archived, locked for the change; the
--- team row's share lock holds off an archive until it commits.
-create function public.recruit_lock(p_application_id integer)
+-- A record of a team that isn't archived, locked for the change, and not
+-- the actor's own; the team row's share lock holds off an archive until it
+-- commits.
+create function public.recruit_lock(p_application_id integer, p_actor integer)
 returns public.recruit_applications
 language plpgsql
 set search_path = public
@@ -306,6 +307,11 @@ begin
   if not found then
     raise exception 'That recruit does not exist';
   end if;
+  -- Someone who can see the team's records and applied to it is an
+  -- applicant on their own record (fresh-agent review).
+  if v_app.person_id = p_actor then
+    raise exception 'That is your own application';
+  end if;
   perform 1 from teams t where t.id = v_app.team_id and t.archived_at is null for share;
   if not found then
     raise exception 'That team is archived. Bring it back first.';
@@ -314,7 +320,7 @@ begin
 end;
 $$;
 
-revoke all on function public.recruit_lock(integer) from public, anon, authenticated;
+revoke all on function public.recruit_lock(integer, integer) from public, anon, authenticated;
 
 -- The shared actions, for the site's functions and the bot's. The caller has
 -- checked that p_actor may.
@@ -327,7 +333,7 @@ declare
   v_app recruit_applications;
   v_id integer;
 begin
-  v_app := recruit_lock(p_application_id);
+  v_app := recruit_lock(p_application_id, p_actor);
   insert into recruit_notes (application_id, author_person_id, source, body)
   values (p_application_id, p_actor, p_source, btrim(p_body))
   returning id into v_id;
@@ -359,7 +365,7 @@ begin
   if char_length(v_reason) > 500 then
     raise exception 'A reason is at most 500 characters';
   end if;
-  v_app := recruit_lock(p_application_id);
+  v_app := recruit_lock(p_application_id, p_actor);
   if v_app.closed_at is not null then
     raise exception 'That recruit is already closed';
   end if;
@@ -387,7 +393,7 @@ as $$
 declare
   v_app recruit_applications;
 begin
-  v_app := recruit_lock(p_application_id);
+  v_app := recruit_lock(p_application_id, p_actor);
   if v_app.status not in ('declined', 'no_reply') then
     raise exception 'Only a declined or no-reply recruit can be reopened';
   end if;
@@ -473,6 +479,9 @@ begin
      where r.guild_id = v_guild and r.code = lower(p_recruiter_code) and r.active and in_guild(r.guild_id, r.person_id);
     if not found then
       raise exception 'That recruiter link isn''t active';
+    end if;
+    if v_recruiter = v_me then
+      raise exception 'You can''t be your own recruiter';
     end if;
     v_sent_by := 'recruiter';
   elsif v_friend is not null then
@@ -671,12 +680,12 @@ begin
   if recruit_access(p_team_id) is distinct from 'manage' then
     raise exception 'Not authorized';
   end if;
+  if not exists (select 1 from team_recruiting r where r.team_id = p_team_id) then
+    raise exception 'That team does not exist';
+  end if;
   perform 1 from teams t where t.id = p_team_id and t.archived_at is null for share;
   if not found then
     raise exception 'That team is archived. Bring it back first.';
-  end if;
-  if not exists (select 1 from team_recruiting r where r.team_id = p_team_id) then
-    raise exception 'That team does not exist';
   end if;
   if v_name is null or char_length(v_name) > 100 or v_name !~ '^[^\s-][^-]*-\S' or v_name ~ '[\r\n]' then
     raise exception 'Enter the character as Name-Realm';
@@ -686,6 +695,9 @@ begin
       raise exception 'That is not a Discord id';
     end if;
     v_person := person_for_discord_id(p_discord_id);
+    if v_person = v_me then
+      raise exception 'That is your own Discord id';
+    end if;
     if exists (select 1 from recruit_applications a
                 where a.team_id = p_team_id and a.person_id = v_person and a.closed_at is null) then
       raise exception 'That person already has an open application with this team';
@@ -694,10 +706,14 @@ begin
      where c.person_id = v_person and c.name_realm_key = lower(replace(v_name, ' ', ''));
   end if;
 
-  insert into recruit_applications (team_id, person_id, source, character_id, name_realm, class_name, spec_name, item_level)
-  values (p_team_id, v_person, 'added_by_officer', v_char.id, coalesce(v_char.name_realm, v_name),
-          v_char.class_name, v_char.spec_name, v_char.item_level)
-  returning id into v_id;
+  begin
+    insert into recruit_applications (team_id, person_id, source, character_id, name_realm, class_name, spec_name, item_level)
+    values (p_team_id, v_person, 'added_by_officer', v_char.id, coalesce(v_char.name_realm, v_name),
+            v_char.class_name, v_char.spec_name, v_char.item_level)
+    returning id into v_id;
+  exception when unique_violation then
+    raise exception 'That person already has an open application with this team';
+  end;
   insert into recruit_events (application_id, kind, actor_person_id) values (v_id, 'added_by_officer', v_me);
   perform recruit_log(p_team_id, v_me, 'Recruit Added', v_id, jsonb_build_object('name_realm', v_name));
   return v_id;
@@ -755,7 +771,7 @@ begin
              order by a.closed_at is not null, a.applied_at desc, a.id desc)
         from recruit_applications a
         join teams t on t.id = a.team_id
-       where a.team_id = p_team_id), '[]'::jsonb));
+       where a.team_id = p_team_id and a.person_id is distinct from my_person_id()), '[]'::jsonb));
 end;
 $$;
 
@@ -789,6 +805,9 @@ begin
   v_access := recruit_access(v_app.team_id);
   if v_access is not null and v_app.id is null then
     raise exception 'That recruit does not exist';
+  end if;
+  if v_app.person_id = v_me then
+    raise exception 'That is your own application';
   end if;
   if v_access is null then
     if v_app.recruiter_person_id is distinct from v_me or not in_guild(v_guild, v_me) then
@@ -1117,7 +1136,7 @@ grant execute on function public.bot_actor(text) to service_role;
 grant execute on function public.recruit_add_note(integer, integer, text, text) to service_role;
 grant execute on function public.recruit_close(integer, integer, text, text) to service_role;
 grant execute on function public.recruit_reopen(integer, integer) to service_role;
-grant execute on function public.recruit_lock(integer) to service_role;
+grant execute on function public.recruit_lock(integer, integer) to service_role;
 grant execute on function public.recruit_log(integer, integer, text, integer, jsonb) to service_role;
 
 -- Pictures follow the records now: whoever recruit_access() lets in sees a

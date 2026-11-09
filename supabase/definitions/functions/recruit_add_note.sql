@@ -11,7 +11,7 @@ declare
   v_app recruit_applications;
   v_id integer;
 begin
-  v_app := recruit_lock(p_application_id);
+  v_app := recruit_lock(p_application_id, p_actor);
   insert into recruit_notes (application_id, author_person_id, source, body)
   values (p_application_id, p_actor, p_source, btrim(p_body))
   returning id into v_id;

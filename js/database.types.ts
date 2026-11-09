@@ -5659,7 +5659,7 @@ export type Database = {
         Returns: undefined
       }
       recruit_lock: {
-        Args: { p_application_id: number }
+        Args: { p_actor: number; p_application_id: number }
         Returns: {
           answers: Json
           applicant_last_message_at: string | null
