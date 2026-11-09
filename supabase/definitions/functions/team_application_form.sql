@@ -19,6 +19,9 @@ begin
      and not (has_team_permission(p_team_id, 'edit_recruiting') or is_site_admin()) then
     raise exception 'That team isn''t taking applications';
   end if;
+  if not exists (select 1 from team_recruiting r where r.team_id = p_team_id) then
+    raise exception 'That team does not exist';
+  end if;
 
   v_list := team_application_question_list(p_team_id);
   return jsonb_build_object(

@@ -2,7 +2,17 @@
 // functions, read by applicants through one more, and the picture answers'
 // Storage bucket.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, OFFICER_T1, OFFICER_T2, RAIDER_T1, TEAM_LEADER_T1, SITE_ADMIN, RLS_DENIED } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  OFFICER_T1,
+  OFFICER_T2,
+  OFFICER_T3,
+  RAIDER_T1,
+  TEAM_LEADER_T1,
+  SITE_ADMIN,
+  RLS_DENIED
+} from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -96,18 +106,27 @@ describe('application questions', () => {
       expect(
         (await q('select count(*)::int as n from public.team_application_starters where team_id = 1')).rows[0].n
       ).toBe(1);
+      // The question left out is gone.
+      expect((await list(asUser, OFFICER_T1)).questions.map((x) => x.id)).toEqual([main.id]);
       await save(asUser, OFFICER_T1, { goals: { on: false, required: false } }, [{ ...l.questions[0] }]);
       expect(await audits(q)).toHaveLength(3);
     });
   });
 
   it('only the team’s officers read or save its questions', async () => {
-    await withTxn(async ({ asUser }) => {
+    await withTxn(async ({ asUser, asAnon }) => {
       await expect(list(asUser, RAIDER_T1)).rejects.toThrow('Not authorized');
       await expect(list(asUser, OFFICER_T2)).rejects.toThrow('Not authorized');
       await expect(save(asUser, RAIDER_T1, {}, [])).rejects.toThrow('Not authorized');
       await expect(save(asUser, OFFICER_T2, {}, [])).rejects.toThrow('Not authorized');
-      await expect(list(asUser, null)).rejects.toThrow();
+      await expect(list(asUser, null)).rejects.toThrow('Not signed in');
+      await expect(save(asUser, null, {}, [])).rejects.toThrow('Not signed in');
+      await expect(asAnon("select public.save_team_application_questions(1, '{}', '[]')")).rejects.toMatchObject({
+        code: RLS_DENIED
+      });
+      await expect(asAnon('select public.team_application_form(1)')).rejects.toMatchObject({ code: RLS_DENIED });
+      // A team that doesn't exist, even for a site admin.
+      await expect(form(asUser, SITE_ADMIN, 999999)).rejects.toThrow('does not exist');
       expect((await list(asUser, SITE_ADMIN, 2)).starters).toHaveLength(12);
     });
   });
@@ -180,10 +199,19 @@ describe('application questions', () => {
       expect(await sees(OFFICER_T2)).toBe(1); // the uploader
       expect(await sees(OFFICER_T1)).toBe(1); // team 1's officer
       expect(await sees(RAIDER_T1)).toBe(0);
+      expect(await sees(OFFICER_T3)).toBe(0); // another team's officer
       expect(await sees(SITE_ADMIN)).toBe(1);
-      expect((await q("select public from storage.buckets where id = 'application-pictures'")).rows[0].public).toBe(
-        false
-      );
+      expect(
+        (
+          await q(
+            "select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'application-pictures'"
+          )
+        ).rows[0]
+      ).toEqual({
+        public: false,
+        file_size_limit: '5242880',
+        allowed_mime_types: ['image/jpeg', 'image/png', 'image/webp']
+      });
     });
   });
 });

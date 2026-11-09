@@ -260,6 +260,9 @@ begin
   if not (has_team_permission(p_team_id, 'edit_recruiting') or is_site_admin()) then
     raise exception 'Not authorized';
   end if;
+  -- The team row's share lock holds off an archive until this save commits
+  -- (CodeRabbit).
+  perform 1 from teams t where t.id = p_team_id for share;
   if exists (select 1 from teams t where t.id = p_team_id and t.archived_at is not null) then
     raise exception 'That team is archived. Bring it back first.';
   end if;
@@ -391,6 +394,9 @@ begin
                   where r.team_id = p_team_id and r.taking_applications and t.archived_at is null)
      and not (has_team_permission(p_team_id, 'edit_recruiting') or is_site_admin()) then
     raise exception 'That team isn''t taking applications';
+  end if;
+  if not exists (select 1 from team_recruiting r where r.team_id = p_team_id) then
+    raise exception 'That team does not exist';
   end if;
 
   v_list := team_application_question_list(p_team_id);
