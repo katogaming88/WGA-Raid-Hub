@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Extra Definition | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | ---------------- | -------- | ------- | ------- |
-| id | integer | nextval('players_id_seq'::regclass) | false |  | [public.attendance](public.attendance.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.player_equipped_gear](public.player_equipped_gear.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.raid_rsvps](public.raid_rsvps.md) [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) [public.player_officer_notes](public.player_officer_notes.md) [public.main_swap_requests](public.main_swap_requests.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_lineups](public.raid_night_lineups.md) [public.raid_night_participation](public.raid_night_participation.md) [public.removal_reasons](public.removal_reasons.md) |  |  |
+| id | integer | nextval('players_id_seq'::regclass) | false |  | [public.attendance](public.attendance.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.player_equipped_gear](public.player_equipped_gear.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.raid_rsvps](public.raid_rsvps.md) [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) [public.player_officer_notes](public.player_officer_notes.md) [public.main_swap_requests](public.main_swap_requests.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_lineups](public.raid_night_lineups.md) [public.raid_night_participation](public.raid_night_participation.md) [public.removal_reasons](public.removal_reasons.md) [public.recruit_applications](public.recruit_applications.md) |  |  |
 | team_id | integer |  | false |  |  | [public.teams](public.teams.md) |  |
 | name_realm | text |  | false |  |  |  |  |
 | class_spec_id | integer |  | true |  |  | [public.classes_specs](public.classes_specs.md) |  |
@@ -97,6 +97,7 @@ erDiagram
 "public.raid_night_lineups" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.raid_night_participation" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.removal_reasons" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id)"
+"public.recruit_applications" }o--o| "public.players" : "FOREIGN KEY (trial_player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.players" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.players" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.players" }o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL"
@@ -410,6 +411,39 @@ erDiagram
   text reason
   text detail
   integer removed_by FK
+}
+"public.recruit_applications" {
+  integer id
+  integer team_id FK
+  integer person_id FK
+  text source
+  text status
+  integer character_id FK
+  text name_realm
+  text class_name
+  text spec_name
+  text__ other_specs
+  integer item_level
+  numeric_6_1_ mplus_score
+  numeric_4_1_ logs_best_average
+  numeric_4_1_ logs_median_average
+  integer mythic_bosses_killed
+  jsonb answers
+  text sent_by
+  integer recruiter_person_id FK
+  text recruiter_code
+  text sent_by_name
+  text time_zone
+  timestamp_with_time_zone applicant_last_message_at
+  timestamp_with_time_zone officers_last_message_at
+  date trial_starts_on
+  date trial_ends_on
+  text discord_channel_id
+  text discord_thread_id
+  text discord_officer_message_id
+  timestamp_with_time_zone applied_at
+  timestamp_with_time_zone closed_at
+  integer trial_player_id FK
 }
 "public.teams" {
   integer id

@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.254.0] - 2026-11-09
+
+### Backend
+
+- Officers can run a recruit's trial from their record (#1793). Start trial puts the person on the team's roster as a Trial with the character they applied with, and sets the trial to end after the team's trial length; someone who was on the team before comes back on their old membership and character, without the last stint's officer settings. Extend trial adds the trial length again and asks why. Joined takes Trial off their roster spot. Not joining takes the character off the roster with a removal reason, and takes the person off the team too when that was their only character there. Each writes the record's history and the audit log, from the site or from a Discord button. These need Edit roster as well as Edit recruiting, which officers have by default. Nothing anyone sees yet: the Recruits page and the bot's buttons come later.
+
+### Project
+
+- Tests for recruit trials (#1793); time log row for #1793's build.
+
 ## [3.253.0] - 2026-11-09
 
 ### Backend

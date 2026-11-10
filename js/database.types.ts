@@ -2568,6 +2568,7 @@ export type Database = {
           team_id: number
           time_zone: string | null
           trial_ends_on: string | null
+          trial_player_id: number | null
           trial_starts_on: string | null
         }
         Insert: {
@@ -2600,6 +2601,7 @@ export type Database = {
           team_id: number
           time_zone?: string | null
           trial_ends_on?: string | null
+          trial_player_id?: number | null
           trial_starts_on?: string | null
         }
         Update: {
@@ -2632,6 +2634,7 @@ export type Database = {
           team_id?: number
           time_zone?: string | null
           trial_ends_on?: string | null
+          trial_player_id?: number | null
           trial_starts_on?: string | null
         }
         Relationships: [
@@ -2662,6 +2665,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "team_recruiting"
             referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "recruit_applications_trial_player_id_fkey"
+            columns: ["trial_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recruit_applications_trial_player_id_fkey"
+            columns: ["trial_player_id"]
+            isOneToOne: false
+            referencedRelation: "priority_order_gaps"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "recruit_applications_trial_player_id_fkey"
+            columns: ["trial_player_id"]
+            isOneToOne: false
+            referencedRelation: "rnlsi"
+            referencedColumns: ["player_id"]
           },
         ]
       }
@@ -5219,9 +5243,34 @@ export type Database = {
         }
         Returns: undefined
       }
+      bot_extend_recruit_trial: {
+        Args: {
+          p_actor_discord_id: string
+          p_application_id: number
+          p_reason: string
+        }
+        Returns: string
+      }
+      bot_mark_recruit_joined: {
+        Args: { p_actor_discord_id: string; p_application_id: number }
+        Returns: undefined
+      }
+      bot_mark_recruit_not_joining: {
+        Args: {
+          p_actor_discord_id: string
+          p_application_id: number
+          p_detail: string
+          p_reason: string
+        }
+        Returns: undefined
+      }
       bot_reopen_recruit: {
         Args: { p_actor_discord_id: string; p_application_id: number }
         Returns: undefined
+      }
+      bot_start_recruit_trial: {
+        Args: { p_actor_discord_id: string; p_application_id: number }
+        Returns: number
       }
       build_rclc_export: {
         Args: { p_season: string; p_team_id: number; p_track: string }
@@ -5378,6 +5427,10 @@ export type Database = {
           earlier_player_id: number
           player_id: number
         }[]
+      }
+      extend_recruit_trial: {
+        Args: { p_application_id: number; p_reason: string }
+        Returns: string
       }
       fill_raid_night: {
         Args: { p_raid_date: string; p_team_id: number }
@@ -5541,6 +5594,14 @@ export type Database = {
         Args: { p_response: string; p_team_id: number }
         Returns: string
       }
+      mark_recruit_joined: {
+        Args: { p_application_id: number }
+        Returns: undefined
+      }
+      mark_recruit_not_joining: {
+        Args: { p_application_id: number; p_detail: string; p_reason: string }
+        Returns: undefined
+      }
       my_active_player_ids: { Args: never; Returns: number[] }
       my_applications: { Args: never; Returns: Json }
       my_guild_officer_team_ids: { Args: never; Returns: number[] }
@@ -5690,6 +5751,7 @@ export type Database = {
           team_id: number
           time_zone: string | null
           trial_ends_on: string | null
+          trial_player_id: number | null
           trial_starts_on: string | null
         }
         SetofOptions: {
@@ -5709,10 +5771,40 @@ export type Database = {
         }
         Returns: undefined
       }
+      recruit_reason_words: { Args: { p_reason: string }; Returns: string }
       recruit_record: { Args: { p_application_id: number }; Returns: Json }
       recruit_reopen: {
         Args: { p_actor: number; p_application_id: number }
         Returns: undefined
+      }
+      recruit_trial_bot_actor: {
+        Args: { p_actor_discord_id: string; p_application_id: number }
+        Returns: number
+      }
+      recruit_trial_extend: {
+        Args: { p_actor: number; p_application_id: number; p_reason: string }
+        Returns: string
+      }
+      recruit_trial_joined: {
+        Args: { p_actor: number; p_application_id: number }
+        Returns: undefined
+      }
+      recruit_trial_not_joining: {
+        Args: {
+          p_actor: number
+          p_application_id: number
+          p_detail: string
+          p_reason: string
+        }
+        Returns: undefined
+      }
+      recruit_trial_site_actor: {
+        Args: { p_application_id: number }
+        Returns: number
+      }
+      recruit_trial_start: {
+        Args: { p_actor: number; p_application_id: number }
+        Returns: number
       }
       recruiter_for_code: {
         Args: { p_code: string; p_guild_key: string }
@@ -6022,6 +6114,10 @@ export type Database = {
       signup_wishlist_rank_locked: {
         Args: { p_signup_id: number }
         Returns: boolean
+      }
+      start_recruit_trial: {
+        Args: { p_application_id: number }
+        Returns: number
       }
       submit_bis_link: {
         Args: {
