@@ -5,6 +5,7 @@ import {
   pool,
   withTxn,
   OFFICER_T1,
+  SITE_ADMIN,
   OFFICER_T2,
   RAIDER_T1,
   TEAM_LEADER_T1,
@@ -226,6 +227,69 @@ describe('recruit trials', () => {
       await asUser(OFFICER_T1, "select public.mark_recruit_not_joining($1, 'performance', null)", [id]);
       expect(await player(q, pid)).toMatchObject({ archived: true });
       expect(await membership(q, me)).toMatchObject({ archived: false });
+    });
+  });
+
+  it('a character that has moved to someone else goes on unlinked, and the membership the trial made ends with it', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { me, id } = await applied(q, asUser);
+      const other = await personOf(q, RAIDER_T1);
+      await q("update public.characters set person_id = $1 where name = 'Katorrí'", [other]);
+      const pid = (await asUser(OFFICER_T1, 'select public.start_recruit_trial($1) as p', [id])).rows[0].p;
+      expect(await player(q, pid)).toMatchObject({ is_trial: true, team_member_id: null });
+      const m = await membership(q, me);
+      expect(m).toMatchObject({ archived: false });
+      await asUser(OFFICER_T1, "select public.mark_recruit_not_joining($1, 'other', null)", [id]);
+      expect(await membership(q, me)).toMatchObject({ archived: true });
+    });
+  });
+
+  it('not joining keeps a membership they had before applying, even with no character on the team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { me, id } = await applied(q, asUser);
+      // Joined through the invite link with no character.
+      await q(
+        "insert into public.team_members (team_id, discord_id, role) values (1, 'discord-signup-owner', 'raider')"
+      );
+      const pid = (await asUser(OFFICER_T1, 'select public.start_recruit_trial($1) as p', [id])).rows[0].p;
+      expect((await player(q, pid)).team_member_id).toBe((await membership(q, me)).id);
+      await asUser(OFFICER_T1, "select public.mark_recruit_not_joining($1, 'other', null)", [id]);
+      expect(await player(q, pid)).toMatchObject({ archived: true });
+      expect(await membership(q, me)).toMatchObject({ archived: false });
+      expect(
+        (
+          await q(
+            'select count(*)::int as n from public.removal_reasons where player_id is null and team_member_id = $1',
+            [(await membership(q, me)).id]
+          )
+        ).rows[0].n
+      ).toBe(0);
+    });
+  });
+
+  it('a site admin runs a trial, but never on their own application', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { id } = await applied(q, asUser);
+      await asUser(SITE_ADMIN, 'select public.start_recruit_trial($1)', [id]);
+      expect((await app(q, id)).status).toBe('on_trial');
+
+      const admin = await personOf(q, SITE_ADMIN);
+      const char = (
+        await q(
+          `insert into public.characters (person_id, blizzard_id, name, realm, realm_slug, class_name, spec_name, level)
+           values ($1, 990102, 'Jaina', 'Stormrage', 'stormrage', 'Mage', 'Frost', 90) returning id`,
+          [admin]
+        )
+      ).rows[0].id;
+      const own = (
+        await asUser(SITE_ADMIN, "select public.send_application(1, $1, $2, null, null, 'America/New_York') as id", [
+          char,
+          JSON.stringify(REQUIRED)
+        ])
+      ).rows[0].id;
+      await expect(asUser(SITE_ADMIN, 'select public.start_recruit_trial($1)', [own])).rejects.toThrow(
+        'your own application'
+      );
     });
   });
 

@@ -2570,6 +2570,7 @@ export type Database = {
           trial_ends_on: string | null
           trial_player_id: number | null
           trial_starts_on: string | null
+          trial_team_member_id: number | null
         }
         Insert: {
           answers?: Json
@@ -2603,6 +2604,7 @@ export type Database = {
           trial_ends_on?: string | null
           trial_player_id?: number | null
           trial_starts_on?: string | null
+          trial_team_member_id?: number | null
         }
         Update: {
           answers?: Json
@@ -2636,6 +2638,7 @@ export type Database = {
           trial_ends_on?: string | null
           trial_player_id?: number | null
           trial_starts_on?: string | null
+          trial_team_member_id?: number | null
         }
         Relationships: [
           {
@@ -2686,6 +2689,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rnlsi"
             referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "recruit_applications_trial_team_member_id_fkey"
+            columns: ["trial_team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -5753,6 +5763,7 @@ export type Database = {
           trial_ends_on: string | null
           trial_player_id: number | null
           trial_starts_on: string | null
+          trial_team_member_id: number | null
         }
         SetofOptions: {
           from: "*"

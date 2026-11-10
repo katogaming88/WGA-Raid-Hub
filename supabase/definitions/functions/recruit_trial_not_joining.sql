@@ -27,20 +27,24 @@ begin
   end if;
 
   select p.team_member_id into v_member from players p where p.id = v_app.trial_player_id;
-  perform 1 from team_members m where m.id = v_member for update;
+  perform 1 from team_members m
+   where m.id in (v_member, v_app.trial_team_member_id)
+   order by m.id
+     for update;
 
-  -- A raider with no other character on the team leaves it too. The
-  -- membership goes first, as in archive_team_member(), so a waiting main
-  -- swap the character's archive closes reads "Membership ended" rather than
-  -- "Character removed" with a notice (CodeRabbit).
+  -- A membership the trial made or brought back, still a raider's, with no
+  -- other character on the team, ends too; one they had before applying
+  -- stays (fresh-agent review). It goes first, as in archive_team_member(),
+  -- so a waiting main swap the character's archive closes reads "Membership
+  -- ended" rather than "Character removed" with a notice (CodeRabbit).
   if exists (select 1 from team_members m
-              where m.id = v_member and m.archived_at is null and m.rank = 'raider')
+              where m.id = v_app.trial_team_member_id and m.archived_at is null and m.rank = 'raider')
      and not exists (select 1 from players p
-                      where p.team_member_id = v_member and p.archived_at is null
+                      where p.team_member_id = v_app.trial_team_member_id and p.archived_at is null
                         and p.id <> v_app.trial_player_id) then
     insert into removal_reasons (team_id, team_member_id, reason, detail, removed_by)
-    values (v_app.team_id, v_member, p_reason, v_detail, p_actor);
-    update team_members set archived_at = now() where id = v_member;
+    values (v_app.team_id, v_app.trial_team_member_id, p_reason, v_detail, p_actor);
+    update team_members set archived_at = now() where id = v_app.trial_team_member_id;
     v_member_archived := true;
   end if;
 

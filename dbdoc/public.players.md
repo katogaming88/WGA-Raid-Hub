@@ -444,6 +444,7 @@ erDiagram
   timestamp_with_time_zone applied_at
   timestamp_with_time_zone closed_at
   integer trial_player_id FK
+  integer trial_team_member_id FK
 }
 "public.teams" {
   integer id

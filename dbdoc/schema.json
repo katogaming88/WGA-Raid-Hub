@@ -11965,6 +11965,12 @@
           "type": "integer",
           "nullable": true,
           "comment": "The roster row Start trial put them on (#1793), which Joined and Not joining act on."
+        },
+        {
+          "name": "trial_team_member_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The membership Start trial made or brought back from the archive (#1793), null when they were already on the team. Not joining ends only this one, never a membership the person had before applying (fresh-agent review)."
         }
       ],
       "indexes": [
@@ -12016,6 +12022,14 @@
           "table": "public.recruit_applications",
           "columns": [
             "trial_player_id"
+          ]
+        },
+        {
+          "name": "recruit_applications_trial_team_member",
+          "def": "CREATE INDEX recruit_applications_trial_team_member ON public.recruit_applications USING btree (trial_team_member_id)",
+          "table": "public.recruit_applications",
+          "columns": [
+            "trial_team_member_id"
           ]
         }
       ],
@@ -12264,6 +12278,19 @@
           "referenced_table": "public.players",
           "columns": [
             "trial_player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_applications_trial_team_member_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (trial_team_member_id) REFERENCES team_members(id) ON DELETE SET NULL",
+          "table": "public.recruit_applications",
+          "referenced_table": "public.team_members",
+          "columns": [
+            "trial_team_member_id"
           ],
           "referenced_columns": [
             "id"
@@ -14795,6 +14822,19 @@
       ],
       "parent_cardinality": "zero_or_one",
       "def": "FOREIGN KEY (trial_player_id) REFERENCES players(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.recruit_applications",
+      "columns": [
+        "trial_team_member_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_members",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (trial_team_member_id) REFERENCES team_members(id) ON DELETE SET NULL"
     },
     {
       "table": "public.recruit_applications",

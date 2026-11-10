@@ -39,6 +39,7 @@ Recruit records (#1539): one per person per team per attempt, sent from the form
 | applied_at | timestamp with time zone | now() | false |  |  |  |
 | closed_at | timestamp with time zone |  | true |  |  |  |
 | trial_player_id | integer |  | true |  | [public.players](public.players.md) | The roster row Start trial put them on (#1793), which Joined and Not joining act on. |
+| trial_team_member_id | integer |  | true |  | [public.team_members](public.team_members.md) | The membership Start trial made or brought back from the archive (#1793), null when they were already on the team. Not joining ends only this one, never a membership the person had before applying (fresh-agent review). |
 
 ## Constraints
 
@@ -68,6 +69,7 @@ Recruit records (#1539): one per person per team per attempt, sent from the form
 | recruit_applications_time_zone | CHECK | CHECK ((char_length(time_zone) <= 64)) |
 | recruit_applications_trial_dates | CHECK | CHECK ((((trial_starts_on IS NULL) = (trial_ends_on IS NULL)) AND COALESCE((trial_ends_on >= trial_starts_on), true))) |
 | recruit_applications_trial_player_id_fkey | FOREIGN KEY | FOREIGN KEY (trial_player_id) REFERENCES players(id) ON DELETE SET NULL |
+| recruit_applications_trial_team_member_id_fkey | FOREIGN KEY | FOREIGN KEY (trial_team_member_id) REFERENCES team_members(id) ON DELETE SET NULL |
 | recruit_applications_person_id_fkey | FOREIGN KEY | FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE SET NULL |
 | recruit_applications_recruiter_person_id_fkey | FOREIGN KEY | FOREIGN KEY (recruiter_person_id) REFERENCES people(id) ON DELETE SET NULL |
 | recruit_applications_character_id_fkey | FOREIGN KEY | FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL |
@@ -84,6 +86,7 @@ Recruit records (#1539): one per person per team per attempt, sent from the form
 | recruit_applications_person | CREATE INDEX recruit_applications_person ON public.recruit_applications USING btree (person_id) |
 | recruit_applications_recruiter | CREATE INDEX recruit_applications_recruiter ON public.recruit_applications USING btree (recruiter_person_id) |
 | recruit_applications_trial_player | CREATE INDEX recruit_applications_trial_player ON public.recruit_applications USING btree (trial_player_id) |
+| recruit_applications_trial_team_member | CREATE INDEX recruit_applications_trial_team_member ON public.recruit_applications USING btree (trial_team_member_id) |
 
 ## Triggers
 
@@ -105,6 +108,7 @@ erDiagram
 "public.recruit_applications" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
 "public.recruit_applications" }o--o| "public.people" : "FOREIGN KEY (recruiter_person_id) REFERENCES people(id) ON DELETE SET NULL"
 "public.recruit_applications" }o--o| "public.players" : "FOREIGN KEY (trial_player_id) REFERENCES players(id) ON DELETE SET NULL"
+"public.recruit_applications" }o--o| "public.team_members" : "FOREIGN KEY (trial_team_member_id) REFERENCES team_members(id) ON DELETE SET NULL"
 
 "public.recruit_applications" {
   integer id
@@ -138,6 +142,7 @@ erDiagram
   timestamp_with_time_zone applied_at
   timestamp_with_time_zone closed_at
   integer trial_player_id FK
+  integer trial_team_member_id FK
 }
 "public.recruit_notes" {
   integer id
@@ -256,6 +261,18 @@ erDiagram
   timestamp_with_time_zone bis_link_updated_at
   text url_code
   text name_realm_key
+}
+"public.team_members" {
+  integer id
+  integer team_id FK
+  text discord_id
+  uuid auth_user_id FK
+  text role
+  text name_realm
+  timestamp_with_time_zone updated_at
+  integer person_id FK
+  timestamp_with_time_zone archived_at
+  text rank
 }
 ```
 
