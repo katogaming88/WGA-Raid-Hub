@@ -12,14 +12,25 @@ import {
   seasonPerfFetchedText,
   type SettingsHistoryEntry
 } from './settings';
-import { useSeasonHistorySettings, useSeasonPerfFetch, useSeasonPerfFetchedCount } from './useSettings';
+import {
+  useGeneralSettings,
+  useSeasonHistorySettings,
+  useSeasonPerfFetch,
+  useSeasonPerfFetchedCount,
+  useSeasonViewOptions
+} from './useSettings';
+import { bothQueries } from '../data/query';
+import { SeasonViewCard } from './GeneralSettingsPage';
+import { SignupsSection } from './SignupSettingsPage';
 import './settings.css';
 
-// The officer dashboard's Season settings (#1357, #1103 row 1): the Season
-// History list, ported from tab-season.js's History sub-tab (Close Season
-// moved to Danger zone, #1103's decision).
+// Settings > Season (#1357, #1735): everything about seasons on one page.
+// Season View (from General) and Signups, then the Season History list ported
+// from tab-season.js's History sub-tab. Closing a season stays in Danger zone
+// (#1103's decision).
 export function SeasonSettingsPage() {
   const team = useTeam();
+  const view = bothQueries(useGeneralSettings(team.id), useSeasonViewOptions());
   const query = useSeasonHistorySettings(team.id);
 
   return (
@@ -27,9 +38,15 @@ export function SeasonSettingsPage() {
       <div className="page-header">
         <h1 id="page-title">Season settings</h1>
       </div>
-      <DataState query={query} label="season history">
-        {(history) => <SeasonHistoryCard teamId={team.id} history={history} />}
-      </DataState>
+      <div className="settings-cards">
+        <DataState query={view} label="season view">
+          {([settings, options]) => <SeasonViewCard teamId={team.id} settings={settings} options={options} />}
+        </DataState>
+        <SignupsSection />
+        <DataState query={query} label="season history">
+          {(history) => <SeasonHistoryCard teamId={team.id} history={history} />}
+        </DataState>
+      </div>
     </section>
   );
 }

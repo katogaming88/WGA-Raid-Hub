@@ -63,7 +63,7 @@ export function TeamGridPanel({ teamId, isOwner }: { teamId: number; isOwner: bo
   const grid = useTeamGrid(teamId);
   return (
     <section aria-labelledby="team-grid-title">
-      <h2 id="team-grid-title">Rank permissions</h2>
+      <h3 id="team-grid-title">Rank permissions</h3>
       <p className="text-muted">
         What each rank can do on this team. The Team Owner can always do everything.
         {!isOwner && ' Only the Team Owner can change these.'}

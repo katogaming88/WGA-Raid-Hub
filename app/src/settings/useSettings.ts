@@ -269,21 +269,6 @@ export function useProgressionSettings(teamId: number) {
   });
 }
 
-export function useSaveRaidProgression(teamId: number) {
-  return useSupabaseMutation<null, Raid[]>(
-    async (client, raids) => {
-      const result = await setTeamSetting(client, teamId, { raidProgression: raids }, true);
-      if (result.error) return { data: null, error: result.error };
-      await writeAuditLog(client, teamId, 'Raid Progression Saved', `${raids.length} raid(s)`);
-      return { data: null, error: null };
-    },
-    {
-      key: ['save-raid-progression', teamId],
-      refreshes: [progressionKey(teamId), ['raid-progression', teamId], ['home-progression', teamId]]
-    }
-  );
-}
-
 // -- Season History / WCL Performance Baseline ---------------------------
 
 export const seasonHistoryKey = (teamId: number) => ['season-history', teamId] as const;

@@ -51,7 +51,7 @@ const state = (path, sentinel, extra = {}) => ({
   session: storedSession({ discord: 'Aurelith' }),
   person: OFFICER,
   ...extra,
-  rpc: { write_audit_log: null, team_season_start: null, set_team_setting: {}, ...extra.rpc }
+  rpc: { write_audit_log: null, team_season_start: null, set_team_setting: {}, team_member_ranks: [], ...extra.rpc }
 });
 
 let server;
@@ -80,7 +80,9 @@ describe('General settings (new app)', () => {
         warcraftLogsUrl: 'https://www.warcraftlogs.com/guild/id/12345'
       }
     ],
-    raid_zones: [{ season: 'MID1' }, { season: 'MID2' }]
+    raid_zones: [{ season: 'MID1' }, { season: 'MID2' }],
+    // General holds the invite link and the ranks too (#1735).
+    team_invite_links: []
   };
   const BASE = '/g/wga/t/phoenix/officer/settings';
 
@@ -159,40 +161,6 @@ describe('Season settings (new app): history and WCL Performance Baseline', () =
       await expect(
         opened.page.getByText('Not fetched yet -- do this before generating Heroic priority.').count()
       ).resolves.toBe(1);
-      expect(opened.unexpected).toEqual([]);
-      expect(opened.pageErrors).toEqual([]);
-    } finally {
-      await opened.context.close();
-    }
-  });
-});
-
-describe('Raid progression (new app)', () => {
-  const BASE = '/g/wga/t/phoenix/officer/settings/progression';
-
-  it('adds a raid and a boss, then saves the whole list', async () => {
-    const opened = await openApp(
-      browser,
-      server.port,
-      state(BASE, '.settings-raid-list', { tables: { team_settings: [{ team_id: TEAM_ID }] } })
-    );
-    try {
-      const calls = recordRpcCalls(opened.page, 'set_team_setting');
-      await opened.page.getByRole('button', { name: '+ Add Raid' }).click();
-      await opened.page.getByPlaceholder('Raid name (e.g. Liberation of Undermine)').fill('Test Raid');
-      await opened.page.getByRole('button', { name: '+ Add Boss' }).click();
-      await opened.page.getByPlaceholder('Boss name').fill('First Boss');
-      await opened.page.getByRole('button', { name: 'Save Progression' }).click();
-      await expect.poll(() => calls.length).toBe(1);
-      expect(calls[0]).toEqual({
-        p_team_id: TEAM_ID,
-        p_updates: {
-          raidProgression: [
-            { name: 'Test Raid', isMiniRaid: false, aotcDate: '', bosses: [{ name: 'First Boss', mythicDate: '' }] }
-          ]
-        },
-        p_skip_audit: true
-      });
       expect(opened.unexpected).toEqual([]);
       expect(opened.pageErrors).toEqual([]);
     } finally {

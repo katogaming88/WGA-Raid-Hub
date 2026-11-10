@@ -115,7 +115,7 @@ describe('Guild settings > Rank permissions', () => {
 describe('Settings > Ranks', () => {
   it('asks before making someone an Officer, from the keyboard, and Escape changes nothing', async () => {
     const { context, page } = await openApp(browser, server.port, {
-      path: '/g/wga/t/phoenix/officer/settings/ranks',
+      path: '/g/wga/t/phoenix/officer/settings',
       sentinel: 'main .ranks-select',
       session: STATE.session,
       who: 'officer',
@@ -143,7 +143,7 @@ describe('Settings > Ranks', () => {
 
 describe('Settings > Ranks, the team grid (#1653)', () => {
   const TEAM_GRID = {
-    path: '/g/wga/t/phoenix/officer/settings/ranks',
+    path: '/g/wga/t/phoenix/officer/settings',
     sentinel: 'main .rank-grid input',
     session: STATE.session,
     who: 'officer',

@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers } from '../test/fakeSupabase';
 
-// The officer Invite link panel (#1264 step 2): copy, expiry, reset.
+// The officer Invite link panel (#1264 step 2): copy, expiry, reset. A section
+// of Settings > General since #1735; its old address still lands there.
 
 const OFFICER = {
   site_admin: false,
@@ -38,7 +39,7 @@ function handlers(
 describe('the Invite link page', () => {
   it('says there is no link yet, and offers to generate one', async () => {
     renderApp('/g/wga/t/phoenix/officer/invite', handlers(null));
-    await screen.findByRole('heading', { level: 1, name: 'Invite link' });
+    await screen.findByRole('heading', { level: 2, name: 'Invite link' });
     expect(await screen.findByText('Phoenix has no invite link yet.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Generate link' })).toBeInTheDocument();
   });

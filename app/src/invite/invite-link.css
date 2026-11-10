@@ -1,6 +1,8 @@
 /* Invite link (#1264 step 2): copy, choose an expiry, reset. */
 
-.invite-link-page {
+/* The card keeps its width; the section's rule runs the page's width, like Ranks' (#1735). */
+.invite-link-section .invite-link-card,
+.invite-link-section .settings-section-head p {
   max-width: 560px;
 }
 

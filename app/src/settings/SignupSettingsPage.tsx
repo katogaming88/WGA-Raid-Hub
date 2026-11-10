@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import { Link } from 'react-router';
 import { usePageCan } from '../auth/access';
+import { useHashTarget } from '../lib/useHashTarget';
 import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
@@ -22,21 +23,20 @@ import './settings.css';
 // closes them, which puts everyone who signed up on the roster (#1467).
 // Officers see the page read-only; open and close are the team leader's, as
 // set_team_season() and promote_season_signups() check.
-export function SignupSettingsPage() {
+// A card on Settings > Season since #1735.
+export function SignupsSection() {
   const team = useTeam();
   const query = useSignupSettings(team.id);
   const { can } = usePageCan();
   const canEdit = can('leadTeam');
+  const ref = useHashTarget<HTMLDivElement>('signups');
 
   return (
-    <section className="page settings-page" aria-labelledby="page-title">
-      <div className="page-header">
-        <h1 id="page-title">Signup settings</h1>
-      </div>
+    <div id="signups" ref={ref}>
       <DataState query={query} label="signup settings">
         {(seasons) => <SignupsCard teamId={team.id} seasons={seasons} canEdit={canEdit} />}
       </DataState>
-    </section>
+    </div>
   );
 }
 

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { DataState } from '../components/DataState';
 import { useAddress } from '../data/address';
+import { canAny } from '../layout/nav';
 import { useCan, type Ability } from './access';
 import { useSession } from './session';
 
@@ -9,13 +10,14 @@ import { useSession } from './session';
 // database refuses the reads and writes on its own, so this is about showing
 // a clear message instead of an empty page.
 // `forWhom` names who the page is for in the closed message; officers by default.
+// Several abilities open it for anyone with one of them.
 export function RequireAbility({
   ability,
   title,
   forWhom,
   children
 }: {
-  ability: Ability;
+  ability: Ability | readonly Ability[];
   title: string;
   forWhom?: string;
   children: ReactNode;
@@ -33,7 +35,7 @@ export function RequireAbility({
         {() => null}
       </DataState>
     );
-  } else if (!permissions.can(ability)) {
+  } else if (!canAny(permissions.can, ability)) {
     body = <p>This page is for {forWhom ?? `officers of ${team?.name ?? 'this team'}`}.</p>;
   } else {
     return <>{children}</>;

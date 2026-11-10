@@ -166,7 +166,10 @@ function CreateForm() {
           You’re the leader of {fields.teamName.trim() || fields.name.trim()}. Next, make an invite link so your raiders
           can join.
         </p>
-        <Link className="button button-primary" to={`/g/${done.guildKey}/t/${done.teamKey}/officer/invite`}>
+        <Link
+          className="button button-primary"
+          to={`/g/${done.guildKey}/t/${done.teamKey}/officer/settings#invite-link`}
+        >
           Make an invite link
         </Link>
       </section>

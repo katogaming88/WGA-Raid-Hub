@@ -19,7 +19,8 @@ export function useTeamMemberRanks(teamId: number) {
   return useSupabaseQuery<TeamMemberRank[]>(ranksKey(teamId), async (client) => {
     const { data, error } = await client.rpc('team_member_ranks', { p_team_id: teamId });
     // The column is text; team_members_rank_matches_role holds it to these four.
-    return { data: data as TeamMemberRank[] | null, error };
+    // No rows without an error is an empty team, not a failure.
+    return { data: error ? null : ((data ?? []) as TeamMemberRank[]), error };
   });
 }
 

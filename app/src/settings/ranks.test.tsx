@@ -6,7 +6,7 @@ import { fakeSession, seededHandlers, type FakeHandlers } from '../test/fakeSupa
 import { rankChoices, rankLine } from './RanksSettingsPage';
 
 // Settings > Ranks (#1651). The viewer is the row with is_you.
-const PATH = '/g/wga/t/phoenix/officer/settings/ranks';
+const PATH = '/g/wga/t/phoenix/officer/settings';
 
 function ranksHandlers(
   mine: string,
@@ -96,7 +96,7 @@ describe('Settings > Ranks', () => {
     renderApp(PATH, ranksHandlers('officer', 'officer'));
     const officers = await screen.findByRole('region', { name: /Officers/ });
     expect(within(officers).getByText('Raz')).toBeInTheDocument();
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Ranks' })).queryByRole('combobox')).not.toBeInTheDocument();
   });
 
   it('is closed to a Raider, and missing from their menu', async () => {

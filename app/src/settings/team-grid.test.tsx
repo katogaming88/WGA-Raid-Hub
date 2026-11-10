@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers } from '../test/fakeSupabase';
 
 // The team's rank permissions grid on Settings > Ranks (#1653).
-const PATH = '/g/wga/t/phoenix/officer/settings/ranks';
+const PATH = '/g/wga/t/phoenix/officer/settings';
 const DEFAULTS = [
   { permission: 'edit_own_wishlist', default_ranks: ['raider', 'assistant', 'officer'] },
   { permission: 'edit_roster', default_ranks: ['assistant', 'officer'] },
@@ -55,6 +55,9 @@ function handlers(mine: 'owner' | 'officer', refuse?: string): FakeHandlers {
 const box = (name: string) => screen.findByRole('checkbox', { name });
 const sent = (client: { rpcs: unknown[][] }) => client.rpcs.filter(([name]) => name === 'set_team_rank_permissions');
 
+// The grid's own section: General also has the team basics' Save buttons (#1735).
+const gridRegion = async () => within(await screen.findByRole('region', { name: 'Rank permissions' }));
+
 describe('the Team Owner', () => {
   it('sees the stored ticks, with Team Owner fixed', async () => {
     renderApp(PATH, handlers('owner'));
@@ -67,7 +70,7 @@ describe('the Team Owner', () => {
   it('locks Raiders out of their wishlist and saves only that change', async () => {
     const user = userEvent.setup();
     const { client } = renderApp(PATH, handlers('owner'));
-    const save = await screen.findByRole('button', { name: 'Save' });
+    const save = await (await gridRegion()).findByRole('button', { name: 'Save' });
     expect(save).toBeDisabled();
     await user.click(await box('Raider: Edit own wishlist'));
     expect(screen.getByText('1 change not saved.')).toBeInTheDocument();
@@ -97,7 +100,7 @@ describe('the Team Owner', () => {
     const user = userEvent.setup();
     renderApp(PATH, handlers('owner', 'Not authorized'));
     await user.click(await box('Raider: Edit own wishlist'));
-    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click((await gridRegion()).getByRole('button', { name: 'Save' }));
     expect((await screen.findAllByText(/Could not save rank permissions: Not authorized/)).length).toBeGreaterThan(0);
   });
 });
@@ -107,6 +110,6 @@ describe('an Officer', () => {
     renderApp(PATH, handlers('officer'));
     expect(await box('Raider: Edit own wishlist')).toBeDisabled();
     expect(screen.getByText(/Only the Team Owner can change these/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect((await gridRegion()).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
   });
 });

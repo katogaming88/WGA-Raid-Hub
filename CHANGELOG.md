@@ -12,6 +12,13 @@ answers to.
 
 ---
 
+## [3.257.1] - 2026-11-10
+
+### Project
+
+- In the new app, officer Settings is six pages instead of ten, in this order: General, Discord, Loot, Season, Audit log, Danger zone (#1735). General holds the team's setup on one page: the Warcraft Logs guild page, roster size targets and trial thresholds, then the invite link and the ranks, each section shown only to those allowed to use it, so an Assistant who can edit the roster sees just the invite link. Season holds everything about seasons: Season View (moved from General) and Signups above the history. Raid progression leaves the new app's Settings; the current site's Raid Progression tab still edits it, and the progression cards on Home and Guild home are unchanged. The old Invite link, Ranks and Signups addresses open their section on the new page. The Set up your team and Invite your raiders guides, and their pictures, match the new menu.
+- Time log rows for #1541's merge and #1735.
+
 ## [3.257.0] - 2026-11-10
 
 ### Functions

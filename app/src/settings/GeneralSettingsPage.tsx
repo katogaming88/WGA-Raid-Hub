@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { usePageCan } from '../auth/access';
 import { useTeam } from '../data/address';
-import { bothQueries } from '../data/query';
 import { DataState } from '../components/DataState';
 import { useStatus } from '../components/Status';
 import { errorMessage } from '../lib/errors';
+import { InviteLinkSection } from '../invite/InviteLinkPage';
+import { RanksSection } from './RanksSettingsPage';
 import { clampInt } from './settings';
 import {
   useGeneralSettings,
@@ -11,38 +13,47 @@ import {
   useSaveSeasonView,
   useSaveTrialThresholds,
   useSaveWclUrl,
-  useSeasonViewOptions,
   type GeneralSettings
 } from './useSettings';
 import './settings.css';
 
-// The officer dashboard's General settings (#1357, #1103 row 1), ported from
-// tab-season.js's Settings sub-tab: four independent cards, each its own Save.
-// The Discord signup sheet moved to Settings › Discord (#994).
+// Settings > General (#1357, #1735): the team's setup on one page. The basics
+// (Warcraft Logs page, roster sizes, trial thresholds) for whoever can manage
+// the team, the invite link for whoever can edit the roster, and the ranks for
+// whoever can promote assistants; each section shows only to them. Season View
+// moved to Settings > Season (#1735), the Discord signup sheet to Discord (#994).
 export function GeneralSettingsPage() {
   const team = useTeam();
-  const page = bothQueries(useGeneralSettings(team.id), useSeasonViewOptions());
+  const { can } = usePageCan();
 
   return (
     <section className="page settings-page" aria-labelledby="page-title">
       <div className="page-header">
         <h1 id="page-title">General settings</h1>
       </div>
-      <DataState query={page} label="settings">
-        {([settings, seasonOptions]) => (
-          <div className="settings-cards">
-            <SeasonViewCard teamId={team.id} settings={settings} options={seasonOptions} />
-            <TrialThresholdsCard teamId={team.id} settings={settings} />
-            <RosterTargetsCard teamId={team.id} settings={settings} />
-            <WclUrlCard teamId={team.id} settings={settings} />
-          </div>
-        )}
-      </DataState>
+      {can('manageTeam') && <TeamBasics teamId={team.id} />}
+      {can('editRoster') && <InviteLinkSection />}
+      {can('promoteAssistants') && <RanksSection />}
     </section>
   );
 }
 
-function SeasonViewCard({
+function TeamBasics({ teamId }: { teamId: number }) {
+  const query = useGeneralSettings(teamId);
+  return (
+    <DataState query={query} label="settings">
+      {(settings) => (
+        <div className="settings-cards">
+          <WclUrlCard teamId={teamId} settings={settings} />
+          <RosterTargetsCard teamId={teamId} settings={settings} />
+          <TrialThresholdsCard teamId={teamId} settings={settings} />
+        </div>
+      )}
+    </DataState>
+  );
+}
+
+export function SeasonViewCard({
   teamId,
   settings,
   options

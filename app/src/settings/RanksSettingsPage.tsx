@@ -14,6 +14,7 @@ import {
   type TeamRank
 } from './useRanks';
 import { TeamGridPanel } from './TeamGridPanel';
+import { useHashTarget } from '../lib/useHashTarget';
 import './settings.css';
 
 const LABELS: Record<TeamRank, string> = {
@@ -85,14 +86,16 @@ export function rankChoices(rank: TeamRank, teamOwner: boolean, promotes: boolea
 
 // Settings > Ranks (#1651): who holds which rank on the team: a section per rank, highest first, with its people across the width in columns, then
 // the team's rank permissions grid (#1653).
-export function RanksSettingsPage() {
+// A section of Settings > General since #1735, for whoever can promote assistants.
+export function RanksSection() {
   const team = useTeam();
   const ranks = useTeamMemberRanks(team.id);
+  const ref = useHashTarget('ranks');
   return (
-    <section className="page settings-page ranks-page" aria-labelledby="page-title">
-      <div className="page-header">
-        <h1 id="page-title">Ranks</h1>
-        <p className="text-muted page-subtitle">
+    <section id="ranks" ref={ref} className="settings-section ranks-page" aria-labelledby="ranks-title">
+      <div className="settings-section-head">
+        <h2 id="ranks-title">Ranks</h2>
+        <p className="text-muted">
           Who holds which rank on {team.name}. The Team Owner makes someone an Officer, and Officers make someone an
           Assistant. A guild Owner or Admin changes the Team Owner.
         </p>
@@ -176,9 +179,9 @@ function RanksTable({ teamId, rows }: { teamId: number; rows: TeamMemberRank[] }
             return (
               <section key={rank} className="ranks-section" aria-labelledby={`${listId}-${rank}`}>
                 <div className="ranks-section-head">
-                  <h2 id={`${listId}-${rank}`}>
+                  <h3 id={`${listId}-${rank}`}>
                     {heading} {members.length}
-                  </h2>
+                  </h3>
                   {grid.isSuccess && <p className="text-muted">{rankLine(rank, grid.data)}</p>}
                   {grid.isError && <p className="text-muted">Couldn’t load what this rank can do.</p>}
                 </div>

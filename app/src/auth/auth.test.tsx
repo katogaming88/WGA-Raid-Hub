@@ -132,9 +132,10 @@ describe('signed in', () => {
     const assistant = renderApp('/g/wga/t/phoenix/officer/attendance', signedIn(OFFICER, person('assistant')));
     await screen.findByRole('heading', { name: 'Officer' });
     expect(menu()).toEqual(expect.arrayContaining(['Attendance', 'Reports']));
-    // Settings keeps only the Invite link (edit_roster), none of the team's own settings.
+    // Settings keeps only General, for its Invite link (edit_roster, #1735), none of the team's own settings.
     await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
-    expect(screen.getByRole('link', { name: 'Invite link' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'General' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Season' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Danger zone' })).not.toBeInTheDocument();
     // Loot keeps Priority and Reviews (view_loot) but not Import or Reassign.
     await userEvent.click(screen.getByRole('button', { name: 'Loot' }));
