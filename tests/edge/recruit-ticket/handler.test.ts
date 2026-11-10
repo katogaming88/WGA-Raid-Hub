@@ -6,7 +6,9 @@ import { assert, assertEquals } from 'jsr:@std/assert@1';
 import {
   API,
   DISCORD_DOWN,
+  DMS_BLOCKED,
   DMS_CLOSED,
+  DM_NOT_SENT,
   type Deps,
   type Made,
   NOT_YOURS,
@@ -62,6 +64,7 @@ const TICKET_APP: Ticket = {
   discord_channel_id: null,
   discord_thread_id: null,
   discord_officer_message_id: null,
+  opened_detail: null,
   mode: 'ticket',
   thread_with_ticket: false,
   server_id: SERVER,
@@ -91,7 +94,12 @@ function routes(): Record<string, () => Response> {
   };
 }
 
-function setup(over: Record<string, () => Response> = {}, app: Partial<Ticket> | null = {}, env = ENV) {
+function setup(
+  over: Record<string, () => Response> = {},
+  app: Partial<Ticket> | null = {},
+  env = ENV,
+  saveFails = false
+) {
   const table = { ...routes(), ...over };
   const calls: Call[] = [];
   const saved: Array<{ made: Made; detail: string | null }> = [];
@@ -111,6 +119,7 @@ function setup(over: Record<string, () => Response> = {}, app: Partial<Ticket> |
       getUser: (h) => Promise.resolve(h === 'Bearer jwt' ? { id: 'u1' } : null),
       ticket: (uid, id) => Promise.resolve(uid === 'u1' && ticket && id === ticket.id ? ticket : null),
       saveMade: (_id, _actor, made, detail) => {
+        if (saveFails) return Promise.reject(new Error('db down'));
         saved.push({ made: { ...made }, detail });
         return Promise.resolve();
       }
@@ -382,4 +391,47 @@ Deno.test('channel names: lowercased, accents stripped, deduplicated', () => {
     channelName('phoenix', 'Katorrí-Stormrage', new Set(['phoenix-katorri', 'phoenix-katorri-2'])),
     'phoenix-katorri-3'
   );
+});
+
+Deno.test('made already: the DM outcome is the one the record kept, and a partly made one never sent it', async () => {
+  let r = setup({}, { discord_channel_id: TICKET, opened_detail: DMS_CLOSED });
+  assertEquals((await send(r.deps)).body.welcome_dm, DMS_CLOSED);
+  r = setup({}, { discord_channel_id: TICKET, opened_detail: PARTLY_MADE });
+  assertEquals((await send(r.deps)).body.welcome_dm, DM_NOT_SENT);
+  r = setup({}, { discord_channel_id: TICKET });
+  assertEquals((await send(r.deps)).body.welcome_dm, 'sent');
+});
+
+Deno.test('ticket: the bot removed from the server is a failure, not "not in the server yet"', async () => {
+  const { deps, saved } = setup({
+    ['GET ' + API + '/guilds/' + SERVER + '/members/' + APPLICANT]: () => json({ code: 10004 }, 404)
+  });
+  const { status, body } = await send(deps);
+  assertEquals(status, 502);
+  assertEquals(body.error, DISCORD_DOWN);
+  assertEquals(saved, []);
+});
+
+Deno.test('without a ticket, a 50007 says closed DMs or not in the server', async () => {
+  const { deps, saved } = setup(
+    { ['POST ' + API + '/channels/' + DM + '/messages']: () => json({ code: 50007 }, 403) },
+    { mode: 'officer_post' }
+  );
+  assertEquals((await send(deps)).body.welcome_dm, DMS_BLOCKED);
+  assertEquals(saved[0].detail, DMS_BLOCKED);
+});
+
+Deno.test('made but the record not saved: the ids go in the log, and no second save is tried', async () => {
+  const logged: string[] = [];
+  const original = console.error;
+  console.error = (...a: unknown[]) => logged.push(a.join(' '));
+  try {
+    const { deps } = setup({}, {}, ENV, true);
+    const { status } = await send(deps);
+    assertEquals(status, 500);
+    assertEquals(logged.length, 1);
+    assert(logged[0].includes(TICKET) && logged[0].includes('"application":7'));
+  } finally {
+    console.error = original;
+  }
 });

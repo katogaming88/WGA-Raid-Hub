@@ -56,7 +56,7 @@ function supabaseDb(): TicketDb {
       ) as any;
       if (!app) return null;
 
-      const [team, recruiting, discord, character, before] = await Promise.all([
+      const [team, recruiting, discord, character, before, opened] = await Promise.all([
         db().from('teams').select('name, slug, guild_id, guilds(name)').eq('id', app.team_id).single().then(check),
         db().from('team_recruiting').select('*').eq('team_id', app.team_id).maybeSingle().then(check),
         db()
@@ -73,7 +73,16 @@ function supabaseDb(): TicketDb {
           .select('id', { count: 'exact', head: true })
           .eq('team_id', app.team_id)
           .eq('person_id', person.id)
-          .neq('id', app.id)
+          .neq('id', app.id),
+        db()
+          .from('recruit_events')
+          .select('detail')
+          .eq('application_id', app.id)
+          .eq('kind', 'ticket_opened')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+          .then(check)
       ]);
       if (before.error) throw new Error(before.error.message);
       const r = recruiting as any;
@@ -135,6 +144,7 @@ function supabaseDb(): TicketDb {
         discord_channel_id: app.discord_channel_id,
         discord_thread_id: app.discord_thread_id,
         discord_officer_message_id: app.discord_officer_message_id,
+        opened_detail: (opened as any)?.detail ?? null,
         mode: (r?.discord_mode ?? 'none') as Mode,
         thread_with_ticket: r?.officer_thread_with_ticket === true,
         server_id: (discord as any)?.guild_id ?? null,

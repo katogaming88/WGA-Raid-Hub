@@ -60,6 +60,8 @@ export type Ticket = {
   discord_channel_id: string | null;
   discord_thread_id: string | null;
   discord_officer_message_id: string | null;
+  // The latest ticket_opened row's detail: null when the welcome DM went out.
+  opened_detail: string | null;
   // The team's settings.
   mode: Mode;
   thread_with_ticket: boolean;
@@ -144,6 +146,11 @@ export const NOT_YOURS = 'That application is not yours, or it is closed.';
 export const DISCORD_DOWN = 'Discord did not answer. Your application is saved; an officer will reach out.';
 export const SOMETHING_WRONG = 'Something went wrong. Your application is saved.';
 export const DMS_CLOSED = "Their Discord DMs are closed, so the welcome message didn't arrive.";
+// Without a ticket they may never have been added to the server, and Discord
+// gives the same answer (50007) for that as for closed DMs.
+export const DMS_BLOCKED =
+  "Discord wouldn't deliver the welcome message: their DMs are closed, or they aren't in the server.";
+export const DM_NOT_SENT = "The welcome message wasn't sent.";
 export const DM_FAILED = "The welcome message couldn't be sent.";
 
 // Discord's permission bits this needs.
@@ -158,6 +165,7 @@ const APPLICANT = VIEW | SEND | ATTACH | HISTORY;
 const BOT = VIEW | SEND | EMBED | HISTORY | MANAGE_CHANNELS;
 
 const TEXT = 0;
+const UNKNOWN_MEMBER = 10007;
 const PRIVATE_THREAD = 12;
 // Discord allows 100 overwrites on a channel. @everyone, the bot, the
 // applicant and up to 25 roles leave 71 for people; a team's officers,
@@ -310,6 +318,11 @@ export function overwrites(t: Ticket, botId: string) {
 // A private thread in the officer channel with the team's people in it. The
 // roles join by being mentioned in its first message, which is how Discord
 // adds a role to a private thread.
+//
+// Discord decides the rest from the officer channel's own permissions: anyone
+// with Manage Threads there sees every private thread in it, and someone who
+// can't see the channel is never added. So each team needs its own officer
+// channel, which the Recruiting settings page (#1548) says.
 async function officerThread(deps: Deps, token: string, t: Ticket, siteUrl: string, ticketId: string | null) {
   const thread = await must<{ id: string }>(
     await call(deps, token, 'POST', '/channels/' + t.officer_channel_id + '/threads', {
@@ -354,7 +367,8 @@ async function welcome(deps: Deps, token: string, t: Ticket, ticketUrl: string |
         : []
     });
     if (res.ok) return null;
-    return (await res.json().catch(() => null))?.code === 50007 ? DMS_CLOSED : DM_FAILED;
+    if ((await res.json().catch(() => null))?.code !== 50007) return DM_FAILED;
+    return t.mode === 'ticket' ? DMS_CLOSED : DMS_BLOCKED;
   } catch {
     return DM_FAILED;
   }
@@ -374,6 +388,19 @@ function answerMade(t: Ticket, made: Made, dm: string | null) {
   };
 }
 
+class SaveFailed extends Error {}
+
+// Made in Discord but not on the record: the next call would make it again,
+// so the ids go in the function's log for an officer to clean up by hand.
+async function save(deps: Deps, t: Ticket, made: Made, detail: string | null) {
+  try {
+    await deps.db.saveMade(t.id, t.person_id, made, detail);
+  } catch {
+    console.error('recruit-ticket: made in Discord but not recorded', JSON.stringify({ application: t.id, ...made }));
+    throw new SaveFailed();
+  }
+}
+
 export const PARTLY_MADE = 'Discord stopped answering partway; the card may be missing.';
 
 async function make(deps: Deps, token: string, siteUrl: string, t: Ticket): Promise<Response> {
@@ -382,8 +409,11 @@ async function make(deps: Deps, token: string, siteUrl: string, t: Ticket): Prom
     return await makeInto(deps, token, siteUrl, t, made);
   } catch (e) {
     // Whatever exists is recorded, so a retry doesn't make a second one.
-    if (made.discord_channel_id || made.discord_thread_id || made.discord_officer_message_id) {
-      await deps.db.saveMade(t.id, t.person_id, made, PARTLY_MADE);
+    if (
+      !(e instanceof SaveFailed) &&
+      (made.discord_channel_id || made.discord_thread_id || made.discord_officer_message_id)
+    ) {
+      await save(deps, t, made, PARTLY_MADE);
     }
     throw e;
   }
@@ -396,8 +426,14 @@ async function makeInto(deps: Deps, token: string, siteUrl: string, t: Ticket, m
     // The applicant has to be in the server to be let into a channel there;
     // the page calls again once discord-join has added them.
     const member = await call(deps, token, 'GET', '/guilds/' + t.server_id + '/members/' + t.discord_id);
-    if (member.status === 404) return jsonResponse({ success: true, status: 'not_in_server' });
-    if (!member.ok) throw new DiscordDown();
+    // Only Discord's Unknown Member means not in yet: a 404 for an unknown
+    // server (the bot was removed) is a failure, or they'd wait forever.
+    if (!member.ok) {
+      const code = (await member.json().catch(() => null))?.code;
+      if (member.status === 404 && code === UNKNOWN_MEMBER)
+        return jsonResponse({ success: true, status: 'not_in_server' });
+      throw new DiscordDown();
+    }
     const channels = await must<Array<{ name: string }>>(
       await call(deps, token, 'GET', '/guilds/' + t.server_id + '/channels')
     );
@@ -436,7 +472,7 @@ async function makeInto(deps: Deps, token: string, siteUrl: string, t: Ticket, m
 
   const ticketUrl = made.discord_channel_id ? jump(t.server_id!, made.discord_channel_id) : null;
   const dm = await welcome(deps, token, t, ticketUrl);
-  await deps.db.saveMade(t.id, t.person_id, made, dm);
+  await save(deps, t, made, dm);
   return jsonResponse(answerMade(t, made, dm));
 }
 
@@ -478,7 +514,9 @@ async function route(req: Request, deps: Deps): Promise<Response> {
   // ponytail: two calls at the same instant could both make one; the page
   // calls once per send. A claim column on the record if that ever shows up.
   if (t.discord_channel_id || t.discord_thread_id || t.discord_officer_message_id) {
-    return jsonResponse(answerMade(t, t, null));
+    // The DM's outcome is the one the record kept; a partly made one never sent it.
+    const dm = t.opened_detail === PARTLY_MADE ? DM_NOT_SENT : t.opened_detail;
+    return jsonResponse(answerMade(t, t, dm));
   }
 
   if (dest.kind !== 'bot') {
