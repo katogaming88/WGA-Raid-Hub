@@ -84,10 +84,13 @@ describe('recruit trials', () => {
         class: 'Warlock',
         spec: 'Demonology'
       });
-      expect(await app(q, id)).toMatchObject({ status: 'on_trial', trial_player_id: pid, days: 14, starts_today: true });
-      await expect(asUser(OFFICER_T1, 'select public.start_recruit_trial($1)', [id])).rejects.toThrow(
-        "isn't on trial"
-      );
+      expect(await app(q, id)).toMatchObject({
+        status: 'on_trial',
+        trial_player_id: pid,
+        days: 14,
+        starts_today: true
+      });
+      await expect(asUser(OFFICER_T1, 'select public.start_recruit_trial($1)', [id])).rejects.toThrow("isn't on trial");
 
       // An extension needs a reason, and adds the team's trial length.
       await q('update public.team_recruiting set trial_days = 7 where team_id = 1');
@@ -173,8 +176,20 @@ describe('recruit trials', () => {
           )
         ).rows
       ).toEqual([
-        { player_id: pid, team_member_id: member, reason: 'schedule_conflict', detail: 'Works nights', removed_by: officer },
-        { player_id: null, team_member_id: member, reason: 'schedule_conflict', detail: 'Works nights', removed_by: officer }
+        {
+          player_id: pid,
+          team_member_id: member,
+          reason: 'schedule_conflict',
+          detail: 'Works nights',
+          removed_by: officer
+        },
+        {
+          player_id: null,
+          team_member_id: member,
+          reason: 'schedule_conflict',
+          detail: 'Works nights',
+          removed_by: officer
+        }
       ]);
       expect((await events(q, id)).at(-1)).toEqual({ kind: 'not_joining', detail: 'Schedule conflict: Works nights' });
       expect((await audit(q, id)).at(-1)).toMatchObject({
@@ -188,7 +203,9 @@ describe('recruit trials', () => {
     await withTxn(async ({ q, asUser }) => {
       const { me, id } = await applied(q, asUser);
       const member = (
-        await q(`insert into public.team_members (team_id, discord_id, role) values (1, 'discord-signup-owner', 'raider') returning id`)
+        await q(
+          `insert into public.team_members (team_id, discord_id, role) values (1, 'discord-signup-owner', 'raider') returning id`
+        )
       ).rows[0].id;
       await q(`insert into public.players (team_id, name_realm, team_member_id) values (1, 'Altorrí-Stormrage', $1)`, [
         member
@@ -212,13 +229,15 @@ describe('recruit trials', () => {
         await expect(asUser(OFFICER_T1, sql, [id])).rejects.toThrow('not on trial');
       }
 
-      const pid = (await q(`insert into public.players (team_id, name_realm) values (1, 'Katorrí-Stormrage') returning id`))
-        .rows[0].id;
+      const pid = (
+        await q(`insert into public.players (team_id, name_realm) values (1, 'Katorrí-Stormrage') returning id`)
+      ).rows[0].id;
       await expect(asUser(OFFICER_T1, 'select public.start_recruit_trial($1)', [id])).rejects.toThrow(
         'already on the roster'
       );
-      const raider = (await q("select id from public.team_members where team_id = 1 and discord_id = 'discord-raider-1'"))
-        .rows[0].id;
+      const raider = (
+        await q("select id from public.team_members where team_id = 1 and discord_id = 'discord-raider-1'")
+      ).rows[0].id;
       await q('update public.players set archived_at = now(), team_member_id = $2 where id = $1', [pid, raider]);
       await expect(asUser(OFFICER_T1, 'select public.start_recruit_trial($1)', [id])).rejects.toThrow(
         "someone else's character"
@@ -248,7 +267,9 @@ describe('recruit trials', () => {
         'Not authorized'
       );
 
-      await q("delete from public.team_rank_permissions where team_id = 1 and rank = 'officer' and permission = 'edit_roster'");
+      await q(
+        "delete from public.team_rank_permissions where team_id = 1 and rank = 'officer' and permission = 'edit_roster'"
+      );
       await expect(asUser(OFFICER_T1, 'select public.start_recruit_trial($1)', [id])).rejects.toThrow('Not authorized');
       await expect(bot("select public.bot_start_recruit_trial($1, 'discord-officer-1')", [id])).rejects.toThrow(
         'Not authorized'
@@ -268,17 +289,17 @@ describe('recruit trials', () => {
       const pid = (await bot("select public.bot_start_recruit_trial($1, 'discord-officer-1') as p", [id])).rows[0].p;
       expect((await player(q, pid)).is_trial).toBe(true);
       expect(
-        (await bot("select public.bot_extend_recruit_trial($1, 'discord-officer-1', 'Needs a week') as d", [id])).rows[0]
-          .d
+        (await bot("select public.bot_extend_recruit_trial($1, 'discord-officer-1', 'Needs a week') as d", [id]))
+          .rows[0].d
       ).toBeTruthy();
-      await expect(
-        bot("select public.bot_extend_recruit_trial($1, 'nobody-here', 'x')", [id])
-      ).rejects.toThrow('Discord id');
+      await expect(bot("select public.bot_extend_recruit_trial($1, 'nobody-here', 'x')", [id])).rejects.toThrow(
+        'Discord id'
+      );
       await bot("select public.bot_mark_recruit_not_joining($1, 'discord-officer-1', 'moved_guilds', null)", [id]);
       expect(await membership(q, me)).toMatchObject({ archived: true });
-      expect(
-        (await q('select removed_by from public.removal_reasons where player_id = $1', [pid])).rows
-      ).toEqual([{ removed_by: await personOf(q, OFFICER_T1) }]);
+      expect((await q('select removed_by from public.removal_reasons where player_id = $1', [pid])).rows).toEqual([
+        { removed_by: await personOf(q, OFFICER_T1) }
+      ]);
       expect((await audit(q, id)).slice(1).map((a) => [a.action, a.actor_id])).toEqual([
         ['Recruit Trial Started', OFFICER_T1],
         ['Recruit Trial Extended', OFFICER_T1],
