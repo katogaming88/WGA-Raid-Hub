@@ -9,7 +9,8 @@
 // own list. Anyone else's character is refused.
 //
 // Each number is read on its own, and one that fails or has nothing comes back
-// null rather than failing the rest:
+// null rather than failing the rest; `failed` names the sources that could not
+// be read, so the form can tell "couldn't load" from "nothing there":
 //   item level, spec       Blizzard profile summary
 //   class, name, realm     the account list the gate already read
 //   M+ score               Blizzard Mythic Keystone profile, current season
@@ -129,12 +130,17 @@ export function bossesKilledOf(rankings: any): { killed: number; total: number }
   return { killed: list.filter((r: any) => (r?.totalKills ?? 0) > 0).length, total: list.length };
 }
 
-// A read that throws, times out or answers non-2xx is "couldn't load".
+// A read that throws, times out or answers non-2xx is "couldn't load". The
+// race holds the deadline even for work that ignores the signal (a database
+// read), so one stalled source cannot hold the others (CodeRabbit on #1796).
 type Read<T> = { ok: true; value: T } | { ok: false };
 
 async function read<T>(work: (signal: AbortSignal) => Promise<T>): Promise<Read<T>> {
+  const signal = AbortSignal.timeout(SOURCE_DEADLINE_MS);
+  const expired = new Promise<never>((_, reject) => signal.addEventListener('abort', () => reject(signal.reason)));
+  expired.catch(() => {}); // the work won: nobody waits on the deadline any more
   try {
-    return { ok: true, value: await work(AbortSignal.timeout(SOURCE_DEADLINE_MS)) };
+    return { ok: true, value: await Promise.race([work(signal), expired]) };
   } catch {
     return { ok: false };
   }
@@ -192,7 +198,18 @@ async function wclRankings(deps: Deps, c: AccountCharacter, zoneId: number, sign
   return (body?.data?.characterData?.character ?? null) as { heroic: any; mythic: any } | null;
 }
 
+// A throw anywhere (the database, a network failure at the gate) still answers
+// with the CORS headers, so the form can show a message instead of the
+// browser reporting a CORS failure (CodeRabbit on #1796).
 export async function handle(req: Request, deps: Deps): Promise<Response> {
+  try {
+    return await route(req, deps);
+  } catch {
+    return refuse(BLIZZARD_DOWN, 502);
+  }
+}
+
+async function route(req: Request, deps: Deps): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return refuse('Method not allowed', 405);
 
@@ -217,13 +234,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const linked = await deps.db.battlenetAccountId(user.id);
   if (!linked) return refuse(NOT_CONNECTED, 409);
 
-  const bearer = { headers: { Authorization: 'Bearer ' + token } };
-  const who = await deps.fetch(USERINFO_URL, bearer);
+  const bearer = () => ({
+    headers: { Authorization: 'Bearer ' + token },
+    signal: AbortSignal.timeout(SOURCE_DEADLINE_MS)
+  });
+  const who = await deps.fetch(USERINFO_URL, bearer());
   if (who.status === 401) return refuse(EXPIRED, 401);
   if (!who.ok) return refuse(BLIZZARD_DOWN, 502);
   if (battlenetAccountIdOf(await who.json()) !== linked) return refuse(NOT_YOURS, 403);
 
-  const list = await deps.fetch(API_BASE + '/profile/user/wow' + PROFILE_QUERY, bearer);
+  const list = await deps.fetch(API_BASE + '/profile/user/wow' + PROFILE_QUERY, bearer());
   if (list.status === 401) return refuse(EXPIRED, 401);
   if (!list.ok && list.status !== 404) return refuse(BLIZZARD_DOWN, 502);
   const own = list.ok ? charactersOf(await list.json()) : [];
@@ -232,17 +252,21 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   const key = String(c.blizzard_id);
   const hit = deps.cache.get(key);
-  if (hit && deps.now() - hit.at < CACHE_MS) return jsonResponse({ success: true, character: hit.stats });
+  if (hit && deps.now() - hit.at < CACHE_MS) {
+    return jsonResponse({ success: true, failed: [], character: hit.stats });
+  }
 
   const [summary, keystone, zone] = await Promise.all([
     read((signal) => blizzardJson(deps, summaryPath(c), token, signal)),
     read((signal) => blizzardJson(deps, summaryPath(c) + '/mythic-keystone-profile', token, signal)),
     read(() => deps.db.seasonZone())
   ]);
-  const logs =
-    zone.ok && zone.value
+  // No season raid yet is nothing to show, not a failure.
+  const logs: Read<{ heroic: any; mythic: any } | null> = !zone.ok
+    ? { ok: false }
+    : zone.value
       ? await read((signal) => wclRankings(deps, c, zone.value!.wcl_zone_id, signal))
-      : ({ ok: false } as const);
+      : { ok: true, value: null };
 
   const detail = summary.ok ? detailOf(summary.value) : { spec_name: null, item_level: null };
   const rating = keystone.ok ? keystone.value?.current_mythic_rating?.rating : null;
@@ -265,6 +289,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   // ponytail: per-isolate memory, so a cold start or a second isolate reads
   // again; a table would share it, worth it only if points run short.
-  if (summary.ok && keystone.ok && logs.ok) deps.cache.set(key, { at: deps.now(), stats });
-  return jsonResponse({ success: true, character: stats });
+  // `failed` names the sources that could not be read, so a null there means
+  // "try again" and anywhere else means "nothing to show" (CodeRabbit on
+  // #1796): #1539 saves this answer, and a passing outage must not read as
+  // "no logs".
+  const failed = [
+    ...(summary.ok ? [] : ['blizzard_profile']),
+    ...(keystone.ok ? [] : ['mythic_keystone']),
+    ...(logs.ok ? [] : ['warcraft_logs'])
+  ];
+  if (failed.length === 0) deps.cache.set(key, { at: deps.now(), stats });
+  return jsonResponse({ success: true, failed, character: stats });
 }

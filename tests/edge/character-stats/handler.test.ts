@@ -146,6 +146,8 @@ Deno.test('each source fails on its own without failing the rest', async () => {
   const down = () => status(503);
   const summary = (await call(setup({ [API_BASE + GRIHZ_PATH]: down }).deps)).body.character;
   assertEquals([summary.item_level, summary.spec_name, summary.mplus_score], [null, null, 2535]);
+  const summaryFailed = (await call(setup({ [API_BASE + GRIHZ_PATH]: down }).deps)).body.failed;
+  assertEquals(summaryFailed, ['blizzard_profile']);
 
   const keys = (await call(setup({ [API_BASE + GRIHZ_PATH + '/mythic-keystone-profile']: down }).deps)).body.character;
   assertEquals([keys.mplus_score, keys.item_level, keys.heroic_logs.best], [null, 704, 91.4]);
@@ -160,6 +162,47 @@ Deno.test('each source fails on its own without failing the rest', async () => {
     )
   ).body.character;
   assertEquals([wcl.heroic_logs, wcl.mythic_logs, wcl.mythic_bosses_killed, wcl.item_level], [null, null, null, 704]);
+
+  const keysFailed = (await call(setup({ [API_BASE + GRIHZ_PATH + '/mythic-keystone-profile']: down }).deps)).body;
+  assertEquals(keysFailed.failed, ['mythic_keystone']);
+  const wclFailed = (await call(setup({ [WCL_API]: down }).deps)).body;
+  assertEquals(wclFailed.failed, ['warcraft_logs']);
+});
+
+Deno.test('a full answer names no failed source', async () => {
+  assertEquals((await call(setup().deps)).body.failed, []);
+});
+
+Deno.test('the season raid read failing marks the logs failed, and the rest arrive', async () => {
+  const { deps, calls } = setup();
+  deps.db.seasonZone = () => Promise.reject(new Error('db down'));
+  const { body } = await call(deps);
+  assertEquals([body.failed, body.character.heroic_logs, body.character.item_level], [['warcraft_logs'], null, 704]);
+  assertEquals(calls.includes(WCL_API), false);
+});
+
+Deno.test('no season raid yet is nothing to show, not a failure', async () => {
+  const { deps, calls } = setup();
+  deps.db.seasonZone = () => Promise.resolve(null);
+  const { body } = await call(deps);
+  assertEquals([body.failed, body.character.raid, body.character.heroic_logs], [[], null, null]);
+  assertEquals(calls.includes(WCL_API), false);
+});
+
+Deno.test('a throw at the gate answers 502 with the CORS headers, not a bare runtime 500', async () => {
+  for (const breakIt of [
+    (d: Deps) => (d.db.getUser = () => Promise.reject(new Error('db down'))),
+    (d: Deps) => (d.db.battlenetAccountId = () => Promise.reject(new Error('rpc'))),
+    (d: Deps) => (d.fetch = (() => Promise.reject(new TypeError('network'))) as typeof globalThis.fetch)
+  ]) {
+    const { deps } = setup();
+    breakIt(deps);
+    const res = await handle(post({ token: 'tok', character: GRIHZ }), deps);
+    assertEquals(
+      [res.status, res.headers.get('Access-Control-Allow-Origin'), (await res.json()).error],
+      [502, '*', BLIZZARD_DOWN]
+    );
+  }
 });
 
 Deno.test('nothing to show is null too: no keys, logs Warcraft Logs never saw', async () => {
