@@ -1,0 +1,133 @@
+// Find my ticket (#1542): one message per Discord server with a button that
+// shows the presser, and only them, links to their own open recruiting
+// tickets (discord-interactions answers the press). Teams share a server, so
+// the message is the server's, not a team's; the officer picks its channel on
+// Recruiting settings (#1548).
+//
+// POST { teamId, action: 'find_ticket' } answers the channel picked for the
+//   team's server (channelId, null for none).
+// POST { teamId, action: 'find_ticket', channelId } posts the message there,
+//   or edits it when it is already there; moving it removes the old one.
+// POST { teamId, action: 'find_ticket', channelId: null } removes it.
+//
+// For whoever may edit the team's recruiting (team_recruiting_settings(),
+// asked with the caller's own token, so the database decides). A channel is
+// only taken while some team in the server uses private tickets, since the
+// button has nothing to find otherwise.
+
+export const FIND_TICKET_ID = 'find-ticket';
+
+export const FIND_TICKET_MESSAGE = {
+  content:
+    "**Can't find your recruiting ticket?** Press the button and the bot shows you a link to each of your open tickets in this server. Only you see the answer.",
+  components: [{ type: 1, components: [{ type: 2, style: 1, label: 'Find my ticket', custom_id: FIND_TICKET_ID }] }],
+  allowed_mentions: { parse: [] }
+};
+
+export const NO_TICKET_TEAM =
+  'No team in this Discord server uses private tickets, so there is nothing for the button to find.';
+export const NOT_IN_SERVER = "That channel is not in the team's Discord server.";
+export const CANT_POST = "The bot can't post there. Check its permissions in that channel.";
+export const NO_SERVER = "Pick the team's Discord server first.";
+export const NOT_TEXT = 'Pick a text channel: the bot can only post its message in one.';
+
+export const OTHER_GUILD =
+  "Another guild's team set this server's Find my ticket message, so only that guild's teams can change it.";
+
+// guildId: the guild whose team set it; only that guild's teams change it.
+export type FindTicket = { channelId: string; messageId: string | null; guildId: number };
+
+export interface FindTicketDb {
+  // Whether the caller may edit the team's recruiting.
+  mayEditRecruiting(authHeader: string, teamId: number): Promise<boolean>;
+  // The team's Discord server (null for none) and its guild.
+  placeOf(teamId: number): Promise<{ serverId: string | null; guildId: number }>;
+  // Whether some team in this server makes private tickets.
+  ticketTeamIn(serverId: string): Promise<boolean>;
+  current(serverId: string): Promise<FindTicket | null>;
+  save(serverId: string, value: FindTicket, userId: string): Promise<void>;
+  clear(serverId: string): Promise<void>;
+  // One audit_log row on the team, as the caller.
+  audit(teamId: number, userId: string, action: string, detail: Record<string, unknown>): Promise<void>;
+}
+
+type Call = (method: string, path: string, body?: unknown) => Promise<{ ok: boolean; status: number; body: any }>;
+
+const SNOWFLAKE = /^[0-9]{17,20}$/;
+
+type Answer = { status: number; body: Record<string, unknown> };
+const ok = (body: Record<string, unknown>): Answer => ({ status: 200, body: { success: true, ...body } });
+const no = (error: string, status: number): Answer => ({ status, body: { success: false, error } });
+
+export async function findTicket(
+  db: FindTicketDb,
+  discord: Call,
+  authHeader: string,
+  userId: string,
+  teamId: number,
+  body: Record<string, unknown>
+): Promise<Answer> {
+  if (!(await db.mayEditRecruiting(authHeader, teamId))) return no('Not authorized', 403);
+  const { serverId, guildId } = await db.placeOf(teamId);
+  if (!serverId) return no(NO_SERVER, 409);
+  const current = await db.current(serverId);
+  if (!('channelId' in body)) return ok({ channelId: current?.channelId ?? null });
+  // Teams of another guild pointed at the same server can't move or remove
+  // it (Kat, 2026-11-10, from the fresh-agent review on #1801).
+  if (current && current.guildId !== guildId) return no(OTHER_GUILD, 403);
+
+  const channelId = body.channelId;
+  if (channelId === null) {
+    if (!current) return ok({ channelId: null });
+    if (current.messageId) {
+      await discord('DELETE', `/channels/${current.channelId}/messages/${current.messageId}`).catch(() => null);
+    }
+    await db.clear(serverId);
+    await db.audit(teamId, userId, 'Find My Ticket Removed', { channel_id: current.channelId });
+    return ok({ channelId: null });
+  }
+  if (typeof channelId !== 'string' || !SNOWFLAKE.test(channelId)) return no('Missing channel', 400);
+  if (!(await db.ticketTeamIn(serverId))) return no(NO_TICKET_TEAM, 409);
+
+  // The channel must be in the team's own server.
+  const channel = await discord('GET', `/channels/${channelId}`);
+  if (channel.status === 403) return no(CANT_POST, 409);
+  if (!channel.ok || channel.body?.guild_id !== serverId) return no(NOT_IN_SERVER, 404);
+  // Text and announcement channels only: a category, voice or forum channel
+  // takes no message (fresh-agent review on #1801).
+  if (channel.body?.type !== 0 && channel.body?.type !== 5) return no(NOT_TEXT, 409);
+
+  // Same channel: edit the message there; it may have been deleted by hand.
+  if (current?.channelId === channelId && current.messageId) {
+    const edited = await discord('PATCH', `/channels/${channelId}/messages/${current.messageId}`, FIND_TICKET_MESSAGE);
+    if (edited.ok) return ok({ channelId });
+  }
+  const posted = await discord('POST', `/channels/${channelId}/messages`, FIND_TICKET_MESSAGE);
+  if (posted.status === 403) return no(CANT_POST, 409);
+  if (!posted.ok || typeof posted.body?.id !== 'string') return no(NOT_IN_SERVER, 404);
+  try {
+    // A message reposted where it was stays with the guild that set it.
+    await db.save(serverId, { channelId, messageId: posted.body.id, guildId: current?.guildId ?? guildId }, userId);
+  } catch (e) {
+    // Posted but not kept: the next pick would post another and never remove
+    // this one, so its id goes in the function's log for someone to delete.
+    console.error(
+      'find-ticket: posted but not recorded',
+      JSON.stringify({ serverId, channelId, messageId: posted.body.id })
+    );
+    throw e;
+  }
+  // The old one goes once the new one is up. Best effort: a message left
+  // behind still finds tickets.
+  if (current?.messageId && current.messageId !== posted.body.id) {
+    await discord('DELETE', `/channels/${current.channelId}/messages/${current.messageId}`).catch(() => null);
+  }
+  // A repost in the same channel (it had been deleted by hand) changes nothing anyone chose.
+  if (current?.channelId !== channelId) {
+    await db.audit(teamId, userId, current ? 'Find My Ticket Moved' : 'Find My Ticket Set', {
+      channel_id: channelId,
+      ...(current ? { from_channel_id: current.channelId } : {})
+    });
+  }
+  return ok({ channelId });
+}

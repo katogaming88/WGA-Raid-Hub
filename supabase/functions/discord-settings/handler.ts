@@ -8,6 +8,8 @@
 //   - server: the team's saved server, with whether the bot is still in it,
 //     its text channels (each with what the bot is missing there), its
 //     categories (for the ticket category, #1541) and its roles; null when the team has none yet.
+// POST { teamId, action: 'find_ticket', ... } is Find my ticket's channel (#1542),
+//   find-ticket.ts's, asked for on Recruiting settings with its own gate.
 // POST { teamId, action: 'test', channelId, kind } posts a short test message
 //   in a channel of the team's saved server, pinging nobody.
 //
@@ -28,6 +30,7 @@ import {
   shownChannels,
   shownRoles
 } from './discord.ts';
+import { type FindTicketDb, findTicket } from './find-ticket.ts';
 import { VERSION } from './version.ts';
 
 export interface SettingsDb {
@@ -40,7 +43,13 @@ export interface SettingsDb {
   teamName(teamId: number): Promise<string>;
 }
 
-export type Deps = { fetch: typeof fetch; db: SettingsDb; botToken: string | undefined };
+export type Deps = {
+  fetch: typeof fetch;
+  db: SettingsDb;
+  botToken: string | undefined;
+  // Find my ticket's channel (#1542), asked for on Recruiting settings.
+  findTicket?: FindTicketDb;
+};
 
 export const API = 'https://discord.com/api/v10';
 
@@ -102,6 +111,26 @@ function discord(fetchFn: typeof fetch, token: string) {
   };
 }
 
+// Any Discord REST call as the bot, with its status, for Find my ticket's
+// edit and delete. A network failure or Discord being down (5xx, 429) is
+// DiscordDown.
+function call(fetchFn: typeof fetch, token: string) {
+  return async (method: string, path: string, body?: unknown) => {
+    let res: Response;
+    try {
+      res = await fetchFn(API + path, {
+        method,
+        headers: { Authorization: 'Bot ' + token, 'Content-Type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body)
+      });
+    } catch {
+      throw new DiscordDown();
+    }
+    if (res.status >= 500 || res.status === 429) throw new DiscordDown();
+    return { ok: res.ok, status: res.status, body: await res.json().catch(() => null) };
+  };
+}
+
 export type ServerAnswer = {
   id: string;
   name: string | null;
@@ -126,10 +155,30 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   }
   const teamId = body?.teamId;
   if (typeof teamId !== 'number' || !Number.isInteger(teamId)) return refuse('Missing team', 400);
-  if (body.action !== 'load' && body.action !== 'test') return refuse('Bad request', 400);
+  if (body.action !== 'load' && body.action !== 'test' && body.action !== 'find_ticket') {
+    return refuse('Bad request', 400);
+  }
 
   const user = await deps.db.getUser(authHeader);
   if (!user) return refuse('Not signed in', 401);
+  // Find my ticket is a recruiting setting (#1542): its own gate, below.
+  if (body.action === 'find_ticket') {
+    if (!deps.botToken || !deps.findTicket) return refuse(NOT_SET_UP, 500);
+    try {
+      const answer = await findTicket(
+        deps.findTicket,
+        call(deps.fetch, deps.botToken),
+        authHeader,
+        user.id,
+        teamId,
+        body as Record<string, unknown>
+      );
+      return jsonResponse(answer.body, answer.status);
+    } catch (e) {
+      if (e instanceof DiscordDown) return refuse(DISCORD_DOWN, 502);
+      throw e;
+    }
+  }
   const team = await deps.db.teamServer(authHeader, teamId);
   if (team === 'forbidden') return refuse('Not authorized', 403);
   if (!deps.botToken) return refuse(NOT_SET_UP, 500);

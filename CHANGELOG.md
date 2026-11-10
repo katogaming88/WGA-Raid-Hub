@@ -12,6 +12,21 @@ answers to.
 
 ---
 
+## [3.259.0] - 2026-11-10
+
+### Backend
+
+- A place to keep each Discord server's Find my ticket message: the channel an officer picked and the message the bot posted there, one per server since teams share one, and which guild set it (#1542). Only the bot's functions can read or change it.
+
+### Functions
+
+- **Find my ticket** (#1542, part 2 of 2). One message per Discord server with a **Find my ticket** button. Pressing it shows the presser, and nobody else, a link and a button for each of their own open recruiting tickets in that server ("Your ticket with Phoenix's officers: #phoenix-katorri"), or "You don't have an open application. Apply here:" with the guild's apply page. It never shows anyone else's tickets.
+- `discord-settings` can read, set, move and remove that message's channel, for whoever can edit the team's recruiting. It's only taken while some team in the server uses private tickets. Picking the same channel again edits the message in place; picking another posts there and removes the old one. Only teams of the guild that set it can move or remove it, and each set, move or removal is written to the team's audit log. Nothing anyone sees yet: the Recruiting settings page (#1548) will offer the picker.
+
+### Project
+
+- Tests for Find my ticket (#1542): the setting, the press, and that nobody on the site can read or change the new table directly; time log rows for #1800's merge and part 2.
+
 ## [3.258.0] - 2026-11-10
 
 ### Functions

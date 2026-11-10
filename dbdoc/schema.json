@@ -12859,6 +12859,131 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.discord_find_ticket",
+      "type": "BASE TABLE",
+      "comment": "Find my ticket (#1542): per Discord server, the channel its message goes in and the message the bot posted, so the bot edits or removes that one. Read and written by the discord-settings Edge Function for whoever may edit recruiting for a team in the server. Service role only.",
+      "columns": [
+        {
+          "name": "server_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "channel_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "message_id",
+          "type": "text",
+          "nullable": true,
+          "comment": "The posted message; null between picking the channel and the post going through."
+        },
+        {
+          "name": "guild_id",
+          "type": "integer",
+          "nullable": false,
+          "comment": "The guild whose team first set it. Only that guild's teams move or remove it, so another guild's team pointed at the same server can't (Kat, 2026-11-10)."
+        },
+        {
+          "name": "updated_by",
+          "type": "integer",
+          "nullable": true,
+          "comment": "Who last picked the channel."
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "discord_find_ticket_pkey",
+          "def": "CREATE UNIQUE INDEX discord_find_ticket_pkey ON public.discord_find_ticket USING btree (server_id)",
+          "table": "public.discord_find_ticket",
+          "columns": [
+            "server_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "discord_find_ticket_channel_id",
+          "type": "CHECK",
+          "def": "CHECK ((channel_id ~ '^[0-9]{17,20}$'::text))",
+          "table": "public.discord_find_ticket",
+          "referenced_table": "",
+          "columns": [
+            "channel_id"
+          ]
+        },
+        {
+          "name": "discord_find_ticket_message_id",
+          "type": "CHECK",
+          "def": "CHECK ((message_id ~ '^[0-9]{17,20}$'::text))",
+          "table": "public.discord_find_ticket",
+          "referenced_table": "",
+          "columns": [
+            "message_id"
+          ]
+        },
+        {
+          "name": "discord_find_ticket_server_id",
+          "type": "CHECK",
+          "def": "CHECK ((server_id ~ '^[0-9]{17,20}$'::text))",
+          "table": "public.discord_find_ticket",
+          "referenced_table": "",
+          "columns": [
+            "server_id"
+          ]
+        },
+        {
+          "name": "discord_find_ticket_guild_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE",
+          "table": "public.discord_find_ticket",
+          "referenced_table": "public.guilds",
+          "columns": [
+            "guild_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "discord_find_ticket_updated_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (updated_by) REFERENCES people(id) ON DELETE SET NULL",
+          "table": "public.discord_find_ticket",
+          "referenced_table": "public.people",
+          "columns": [
+            "updated_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "discord_find_ticket_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (server_id)",
+          "table": "public.discord_find_ticket",
+          "referenced_table": "",
+          "columns": [
+            "server_id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_discord_find_ticket_updated_at",
+          "def": "CREATE TRIGGER trg_discord_find_ticket_updated_at BEFORE UPDATE ON public.discord_find_ticket FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -14966,6 +15091,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.discord_find_ticket",
+      "columns": [
+        "guild_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.guilds",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.discord_find_ticket",
+      "columns": [
+        "updated_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (updated_by) REFERENCES people(id) ON DELETE SET NULL"
     }
   ],
   "functions": [
