@@ -75,7 +75,10 @@ const serverRoutes = {
   ]),
   [`GET /guilds/${SERVER}/members/${DISCORD_ID}`]: ok({ roles: [] }),
   [`GET /guilds/${SERVER}`]: ok(GUILD),
-  [`GET /guilds/${SERVER}/channels`]: ok([{ id: CHANNEL, name: 'phoenix-officers', type: 0, position: 0 }]),
+  [`GET /guilds/${SERVER}/channels`]: ok([
+    { id: CHANNEL, name: 'phoenix-officers', type: 0, position: 0 },
+    { id: '100000000000000777', name: 'Tickets', type: 4, position: 1 }
+  ]),
   'GET /users/@me': ok({ id: BOT }),
   [`GET /guilds/${SERVER}/members/${BOT}`]: ok({ roles: ['300000000000000003'] })
 };
@@ -104,6 +107,7 @@ Deno.test('load: shared servers recorded, and the saved server read with its cha
   assertEquals(body.server.name, 'We Go Again');
   assertEquals(body.server.botIn, true);
   assertEquals(body.server.channels, [{ id: CHANNEL, name: 'phoenix-officers', category: null, missing: [] }]);
+  assertEquals(body.server.categories, [{ id: '100000000000000777', name: 'Tickets' }]);
   assertEquals(
     body.server.roles.map((r: { name: string }) => r.name),
     ['Phoenix Officer', 'Phoenix Raider']
@@ -126,7 +130,14 @@ Deno.test('load: a team with no server yet gets the shared servers and no lists'
 
 Deno.test('load: a saved server the bot has left says so, with no lists', async () => {
   const { body } = await run({ teamId: 1, action: 'load' }, fakeDb({ server: { serverId: '100000000000000999' } }));
-  assertEquals(body.server, { id: '100000000000000999', name: null, botIn: false, channels: [], roles: [] });
+  assertEquals(body.server, {
+    id: '100000000000000999',
+    name: null,
+    botIn: false,
+    channels: [],
+    categories: [],
+    roles: []
+  });
 });
 
 Deno.test('load: no Discord on the account means no servers and nothing recorded', async () => {

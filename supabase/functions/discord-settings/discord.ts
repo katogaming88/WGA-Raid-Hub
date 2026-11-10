@@ -98,6 +98,15 @@ export function shownChannels(
     });
 }
 
+// The server's categories in Discord's order, for the ticket category
+// picker (#1541).
+export function shownCategories(channels: DiscordChannel[]): Array<{ id: string; name: string }> {
+  return channels
+    .filter((c) => c.type === CATEGORY)
+    .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))
+    .map((c) => ({ id: c.id, name: c.name }));
+}
+
 // The roles a post can ping, highest first as Discord lists them: not
 // @everyone (its id is the server's), and not a role Discord made for a bot.
 export function shownRoles(guild: DiscordGuild): ShownRole[] {
