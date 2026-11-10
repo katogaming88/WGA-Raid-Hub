@@ -21,7 +21,9 @@
 //   officers are told in their channel.
 //
 // The application is already saved by then (send_application), so a failed
-// join never loses one.
+// join never loses one. Calling again is safe: a recorded join is answered
+// from the record, someone the bot sees in the server is never a failure, and
+// a failure is recorded and told once per REPEAT_FAILURE_MS.
 //
 // handle() takes its reads and its fetch as an argument (#1006); deps.ts
 // supplies the real ones and index.ts serves it.
@@ -49,13 +51,23 @@ export interface JoinDb {
     actor: number,
     detail: string | null
   ): Promise<void>;
+  // The application's latest joined_discord or discord_join_failed row.
+  lastDiscordEvent(
+    applicationId: number
+  ): Promise<{ kind: 'joined_discord' | 'discord_join_failed'; at: number } | null>;
 }
 
 export type Deps = {
   fetch: typeof fetch;
   db: JoinDb;
   env: Env;
+  now: () => number;
 };
+
+// A failure is recorded and told to the officers once in this long, so a
+// reloaded after-send page or a repeated call can't flood the history, the
+// officer channel or the server's invites (CodeRabbit on #1797).
+export const REPEAT_FAILURE_MS = 10 * 60_000;
 
 export const API = 'https://discord.com/api/v10';
 export const AUTHORIZE_URL = 'https://discord.com/oauth2/authorize';
@@ -149,16 +161,29 @@ async function botCall(deps: Deps, c: Config, path: string, init: RequestInit = 
   return await deps.fetch(r.url, r.init);
 }
 
-async function start(deps: Deps, c: Config, app: Application): Promise<Response> {
-  // Already in the server: nothing to ask. A failed check just asks.
+// Whether the bot sees them in the server; null when Discord doesn't say.
+async function isMember(deps: Deps, c: Config, app: Application): Promise<boolean | null> {
   try {
     const res = await botCall(deps, c, '/guilds/' + app.server_id + '/members/' + app.discord_id);
-    if (res.ok) {
-      await deps.db.addEvent(app.id, 'joined_discord', app.person_id, 'Already a member');
-      return jsonResponse({ success: true, status: 'already_member' });
-    }
+    return res.ok ? true : res.status === 404 ? false : null;
   } catch {
-    // ask below
+    return null;
+  }
+}
+
+// Joined already recorded: answer it again and write nothing.
+async function alreadyRecorded(deps: Deps, app: Application) {
+  const last = await deps.db.lastDiscordEvent(app.id);
+  return last?.kind === 'joined_discord' ? jsonResponse({ success: true, status: 'already_member' }) : null;
+}
+
+async function start(deps: Deps, c: Config, app: Application): Promise<Response> {
+  const recorded = await alreadyRecorded(deps, app);
+  if (recorded) return recorded;
+  // Already in the server: nothing to ask. A failed check just asks.
+  if ((await isMember(deps, c, app)) === true) {
+    await deps.db.addEvent(app.id, 'joined_discord', app.person_id, 'Already a member');
+    return jsonResponse({ success: true, status: 'already_member' });
   }
   const url = new URL(AUTHORIZE_URL);
   url.searchParams.set('client_id', c.clientId);
@@ -261,8 +286,17 @@ async function tellOfficers(deps: Deps, c: Config, app: Application, why: Why, i
 }
 
 async function finish(deps: Deps, c: Config, app: Application, body: Record<string, unknown>): Promise<Response> {
-  const outcome: 'joined' | 'already_member' | Why =
+  // A reload after a join reuses a spent code: the record already says so.
+  const recorded = await alreadyRecorded(deps, app);
+  if (recorded) return recorded;
+
+  let outcome: 'joined' | 'already_member' | Why =
     typeof body.code === 'string' && body.code !== '' ? await join(deps, c, app, body.code) : 'declined';
+  // In the server after all (a second send of the code, or they joined by
+  // hand): not a failure. A different Discord account never counts.
+  if (outcome !== 'joined' && outcome !== 'already_member' && outcome !== 'other_account') {
+    if ((await isMember(deps, c, app)) === true) outcome = 'already_member';
+  }
 
   if (outcome === 'joined' || outcome === 'already_member') {
     await deps.db.addEvent(
@@ -272,6 +306,12 @@ async function finish(deps: Deps, c: Config, app: Application, body: Record<stri
       outcome === 'already_member' ? 'Already a member' : null
     );
     return jsonResponse({ success: true, status: outcome });
+  }
+  // A failure already recorded a moment ago: same answer, nothing new made.
+  // The page keeps the first answer's invite on screen (#1547).
+  const last = await deps.db.lastDiscordEvent(app.id);
+  if (last?.kind === 'discord_join_failed' && deps.now() - last.at < REPEAT_FAILURE_MS) {
+    return jsonResponse({ success: true, status: 'failed', reason: outcome, invite: null, repeat: true });
   }
   const invite = await inviteFor(deps, c, app.server_id!);
   await deps.db.addEvent(app.id, 'discord_join_failed', app.person_id, WHY[outcome]);

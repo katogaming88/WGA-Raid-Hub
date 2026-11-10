@@ -66,10 +66,22 @@ function supabaseDb(): JoinDb {
         .from('recruit_events')
         .insert({ application_id: applicationId, kind, actor_person_id: actor, detail });
       if (error) throw new Error(error.message);
+    },
+    async lastDiscordEvent(applicationId) {
+      const { data, error } = await db()
+        .from('recruit_events')
+        .select('kind, created_at')
+        .eq('application_id', applicationId)
+        .in('kind', ['joined_discord', 'discord_join_failed'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data ? { kind: data.kind, at: Date.parse(data.created_at) } : null;
     }
   };
 }
 
 export function productionDeps(): Deps {
-  return { fetch: globalThis.fetch, db: supabaseDb(), env: Deno.env };
+  return { fetch: globalThis.fetch, db: supabaseDb(), env: Deno.env, now: Date.now };
 }

@@ -9,6 +9,7 @@ import {
   type Deps,
   NOT_SET_UP,
   NOT_YOURS,
+  REPEAT_FAILURE_MS,
   RETURN_PATH,
   WHY,
   handle,
@@ -67,6 +68,8 @@ function setup(over: Partial<Record<string, Route>> = {}, app: Application | nul
   const table = { ...routes(), ...over };
   const calls: Call[] = [];
   const events: Array<{ kind: string; actor: number; detail: string | null }> = [];
+  const stamps: number[] = [];
+  let clock = 1_000_000;
   const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const req = new Request(input, init);
     const body = await req.text();
@@ -83,12 +86,18 @@ function setup(over: Partial<Record<string, Route>> = {}, app: Application | nul
       application: (uid, id) => Promise.resolve(uid === 'u1' && app && id === app.id ? app : null),
       addEvent: (_id, kind, actor, detail) => {
         events.push({ kind, actor, detail });
+        stamps.push(clock);
         return Promise.resolve();
+      },
+      lastDiscordEvent: () => {
+        const i = events.length - 1;
+        return Promise.resolve(i < 0 ? null : { kind: events[i].kind as 'joined_discord', at: stamps[i] });
       }
     },
-    env: { get: (n) => env[n] }
+    env: { get: (n) => env[n] },
+    now: () => clock
   };
-  return { deps, calls, events };
+  return { deps, calls, events, tick: (ms: number) => (clock += ms) };
 }
 
 async function call(deps: Deps, body: unknown, auth = 'Bearer jwt') {
@@ -281,4 +290,69 @@ Deno.test('not set up, not signed in, bad bodies; a throw still answers with COR
   broken.deps.db.application = () => Promise.reject(new Error('db down'));
   const r = await call(broken.deps, { action: 'start', application: 7 });
   assertEquals([r.status, r.cors], [500, '*']);
+});
+
+Deno.test('a reload after joining reuses a spent code: answered from the record, nothing new', async () => {
+  const { deps, calls, events } = setup();
+  const state = await goodState();
+  await call(deps, { action: 'finish', state, code: 'c' });
+  const before = calls.length;
+  const again = await call(deps, { action: 'finish', state, code: 'c' });
+  assertEquals(again.body.status, 'already_member');
+  assertEquals(calls.length, before);
+  assertEquals(
+    events.map((e) => e.kind),
+    ['joined_discord']
+  );
+  assertEquals((await call(deps, { action: 'start', application: 7 })).body.status, 'already_member');
+  assertEquals(events.length, 1);
+});
+
+Deno.test('a spent code for someone already in the server is already a member, not a failure', async () => {
+  const { deps, calls, events } = setup({
+    ['POST ' + API + '/oauth2/token']: () => json({ error: 'invalid_grant' }, 400),
+    ['GET ' + MEMBER]: () => json({ user: { id: APPLICANT } })
+  });
+  const { body } = await call(deps, { action: 'finish', state: await goodState(), code: 'spent' });
+  assertEquals(body.status, 'already_member');
+  assertEquals(
+    events.map((e) => e.kind),
+    ['joined_discord']
+  );
+  assertEquals(
+    calls.some((c) => c.url.endsWith('/messages') || c.url.endsWith('/invites')),
+    false
+  );
+});
+
+Deno.test('a repeated failure within ten minutes writes, tells and invites nothing more', async () => {
+  const { deps, calls, events, tick } = setup({ ['PUT ' + MEMBER]: () => status(403) });
+  const state = await goodState();
+  const first = await call(deps, { action: 'finish', state, code: 'c' });
+  assertEquals(first.body.invite, 'https://discord.gg/abc123');
+  const count = (end: string) => calls.filter((c) => c.url.endsWith(end)).length;
+  for (const body of [
+    { action: 'finish', state, code: 'c' },
+    { action: 'finish', state }
+  ]) {
+    const r = await call(deps, body);
+    assertEquals([r.body.status, r.body.invite, r.body.repeat], ['failed', null, true]);
+  }
+  assertEquals([events.length, count('/messages'), count('/invites')], [1, 1, 1]);
+  tick(REPEAT_FAILURE_MS);
+  await call(deps, { action: 'finish', state });
+  assertEquals([events.length, count('/messages'), count('/invites')], [2, 2, 2]);
+});
+
+Deno.test('a retry after a failure can still join', async () => {
+  let put = 403;
+  const { deps, events } = setup({ ['PUT ' + MEMBER]: () => status(put) });
+  const state = await goodState();
+  await call(deps, { action: 'finish', state, code: 'c' });
+  put = 201;
+  assertEquals((await call(deps, { action: 'finish', state, code: 'c2' })).body.status, 'joined');
+  assertEquals(
+    events.map((e) => e.kind),
+    ['discord_join_failed', 'joined_discord']
+  );
 });

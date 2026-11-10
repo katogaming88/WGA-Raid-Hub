@@ -20,7 +20,7 @@ answers to.
 
 ### Functions
 
-- New `discord-join` function (#1540): when someone sends an application to a team with "Add them to the Discord server" on, it adds them to the team's server. They OK it once on Discord's own screen ("Join servers for you"), come back to the site, and are in, with no invite link. Someone already in the server skips the Discord screen. Discord's permission is used once and never kept. If the add fails (banned, Discord down, they said no, or they used a different Discord account), the application is still saved: the record's history says why, the officers are told in their officer channel, and the applicant gets a single-use invite link that lasts a week. Nothing anyone sees yet: the after-send page uses it later.
+- New `discord-join` function (#1540): when someone sends an application to a team with "Add them to the Discord server" on, it adds them to the team's server. They OK it once on Discord's own screen ("Join servers for you"), come back to the site, and are in, with no invite link. Someone already in the server skips the Discord screen. Discord's permission is used once and never kept. If the add fails (banned, Discord down, they said no, or they used a different Discord account), the application is still saved: the record's history says why, the officers are told in their officer channel, and the applicant gets a single-use invite link that lasts a week. Reloading the page or sending again never records a false failure or messages the officers twice. Nothing anyone sees yet: the after-send page uses it later.
 
 ### Project
 
