@@ -212,6 +212,49 @@ Written two ways: the officer note is written directly from the Roster tab (an u
 
 ---
 
+## `recruit_applications`
+
+Recruit records ([#1539](https://github.com/katogaming88/WGA-Raid-Hub/issues/1539)): one per person per team per attempt, from the form (`source` `application`) or added by an officer for someone who came in through a Discord ticket (`added_by_officer`). One open (`closed_at` null) per person per team.
+
+| Column | Purpose |
+| ------ | ------- |
+| `team_id`, `person_id` | The team and the applicant (null for an officer-added record with no Discord id) |
+| `status` | `waiting_on_officers`, `waiting_on_applicant` (set from the last-message times by a trigger), `on_trial`, `joined`, `not_joining` (#1793), `declined`, `no_reply`, `withdrawn` |
+| `character_id`, `name_realm`, `class_name`, `spec_name`, `other_specs`, `item_level`, `mplus_score`, `logs_best_average`, `logs_median_average`, `mythic_bosses_killed` | The character, and a copy of its numbers when sent (#1538 fills the ones this can't read) |
+| `answers` | In form order, each with the question's label and wording as sent |
+| `sent_by`, `recruiter_person_id`, `recruiter_code`, `sent_by_name` | `recruiter` (code and name kept), `friend` (the name as typed) or `nobody` |
+| `time_zone` | From the applicant's browser, for reminders |
+| `applicant_last_message_at`, `officers_last_message_at` | Written by the bot |
+| `trial_starts_on`, `trial_ends_on` | Set by #1793's trial actions |
+| `discord_channel_id`, `discord_thread_id`, `discord_officer_message_id` | Whatever the team's Discord mode made, written by the bot |
+| `applied_at`, `closed_at` | `closed_at` is set exactly when the status is a closed one |
+
+---
+
+## `recruit_notes`
+
+Notes on a recruit record ([#1539](https://github.com/katogaming88/WGA-Raid-Hub/issues/1539)): `author_person_id`, `source` (`site` or `discord`), `body` (2,000). Never shown to the applicant.
+
+---
+
+## `recruit_events`
+
+A recruit record's history ([#1539](https://github.com/katogaming88/WGA-Raid-Hub/issues/1539)): `kind` (applied, added_by_officer, withdrawn, joined_discord, ticket_opened, officer_replied, reminder_sent, trial_started, trial_extended, declined, joined, not_joining, closed, reopened, note_added), `actor_person_id`, `detail` (500), `created_at`.
+
+---
+
+## `recruit_messages`
+
+A closed ticket's conversation, saved by the bot ([#1539](https://github.com/katogaming88/WGA-Raid-Hub/issues/1539)): `discord_message_id`, `author_discord_id`, `author_name`, `body`, `attachments` (name and content type only; the files are not kept), `sent_at`.
+
+---
+
+## `recruit_reminders_sent`
+
+Which recruiting reminders went out ([#1539](https://github.com/katogaming88/WGA-Raid-Hub/issues/1539)): `reminder`, `due_for` (the message time or trial end it was for), `sent_at`. Unique per record, reminder and `due_for`.
+
+---
+
 ## `removal_reasons`
 
 Every reason a character or a membership was removed for (#1427), one row each, never updated or deleted. The notes row above keeps only the latest reason; this keeps all of them.

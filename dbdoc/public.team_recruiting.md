@@ -8,7 +8,7 @@ A team's recruiting settings, one row per team, made with the team (#1535): whet
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| team_id | integer |  | false | [public.team_recruiting_spots](public.team_recruiting_spots.md) [public.team_application_starters](public.team_application_starters.md) [public.team_application_questions](public.team_application_questions.md) | [public.teams](public.teams.md) |  |
+| team_id | integer |  | false | [public.team_recruiting_spots](public.team_recruiting_spots.md) [public.team_application_starters](public.team_application_starters.md) [public.team_application_questions](public.team_application_questions.md) [public.recruit_applications](public.recruit_applications.md) | [public.teams](public.teams.md) |  |
 | taking_applications | boolean | false | false |  |  | Off keeps everything else for next time; the apply page then says Not recruiting and still shows how the team raids. Open applications and trials carry on (#1535). |
 | join_method | text | 'application'::text | false |  |  | application: the Raid Hub form. discord_ticket: no form; the apply page links to ticket_link, which must be set while taking applications. |
 | ticket_link | text |  | true |  |  |  |
@@ -95,6 +95,7 @@ erDiagram
 "public.team_recruiting_spots" }o--|| "public.team_recruiting" : "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
 "public.team_application_starters" }o--|| "public.team_recruiting" : "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
 "public.team_application_questions" }o--|| "public.team_recruiting" : "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
+"public.recruit_applications" }o--|| "public.team_recruiting" : "FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE"
 
 "public.team_recruiting" {
   integer team_id FK
@@ -166,6 +167,38 @@ erDiagram
   text__ choices
   boolean required
   integer sort_order
+}
+"public.recruit_applications" {
+  integer id
+  integer team_id FK
+  integer person_id FK
+  text source
+  text status
+  integer character_id FK
+  text name_realm
+  text class_name
+  text spec_name
+  text__ other_specs
+  integer item_level
+  numeric_6_1_ mplus_score
+  numeric_4_1_ logs_best_average
+  numeric_4_1_ logs_median_average
+  integer mythic_bosses_killed
+  jsonb answers
+  text sent_by
+  integer recruiter_person_id FK
+  text recruiter_code
+  text sent_by_name
+  text time_zone
+  timestamp_with_time_zone applicant_last_message_at
+  timestamp_with_time_zone officers_last_message_at
+  date trial_starts_on
+  date trial_ends_on
+  text discord_channel_id
+  text discord_thread_id
+  text discord_officer_message_id
+  timestamp_with_time_zone applied_at
+  timestamp_with_time_zone closed_at
 }
 ```
 

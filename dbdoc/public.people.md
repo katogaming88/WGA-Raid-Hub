@@ -8,7 +8,7 @@ One row per human (#942). auth_user_id is their sign-in account, null for a Disc
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer |  | false | [public.season_signups](public.season_signups.md) [public.team_members](public.team_members.md) [public.guild_grants](public.guild_grants.md) [public.characters](public.characters.md) [public.main_swap_requests](public.main_swap_requests.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.removal_reasons](public.removal_reasons.md) [public.team_raid_reports](public.team_raid_reports.md) [public.guild_ranks](public.guild_ranks.md) [public.discord_server_access](public.discord_server_access.md) [public.guild_recruiters](public.guild_recruiters.md) |  |  |
+| id | integer |  | false | [public.season_signups](public.season_signups.md) [public.team_members](public.team_members.md) [public.guild_grants](public.guild_grants.md) [public.characters](public.characters.md) [public.main_swap_requests](public.main_swap_requests.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.removal_reasons](public.removal_reasons.md) [public.team_raid_reports](public.team_raid_reports.md) [public.guild_ranks](public.guild_ranks.md) [public.discord_server_access](public.discord_server_access.md) [public.guild_recruiters](public.guild_recruiters.md) [public.recruit_applications](public.recruit_applications.md) [public.recruit_notes](public.recruit_notes.md) [public.recruit_events](public.recruit_events.md) |  |  |
 | auth_user_id | uuid |  | true |  |  |  |
 | discord_id | text |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
@@ -54,6 +54,10 @@ erDiagram
 "public.guild_ranks" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 "public.discord_server_access" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
 "public.guild_recruiters" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
+"public.recruit_applications" }o--o| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE SET NULL"
+"public.recruit_applications" }o--o| "public.people" : "FOREIGN KEY (recruiter_person_id) REFERENCES people(id) ON DELETE SET NULL"
+"public.recruit_notes" }o--o| "public.people" : "FOREIGN KEY (author_person_id) REFERENCES people(id) ON DELETE SET NULL"
+"public.recruit_events" }o--o| "public.people" : "FOREIGN KEY (actor_person_id) REFERENCES people(id) ON DELETE SET NULL"
 
 "public.people" {
   integer id
@@ -193,6 +197,54 @@ erDiagram
   boolean active
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+}
+"public.recruit_applications" {
+  integer id
+  integer team_id FK
+  integer person_id FK
+  text source
+  text status
+  integer character_id FK
+  text name_realm
+  text class_name
+  text spec_name
+  text__ other_specs
+  integer item_level
+  numeric_6_1_ mplus_score
+  numeric_4_1_ logs_best_average
+  numeric_4_1_ logs_median_average
+  integer mythic_bosses_killed
+  jsonb answers
+  text sent_by
+  integer recruiter_person_id FK
+  text recruiter_code
+  text sent_by_name
+  text time_zone
+  timestamp_with_time_zone applicant_last_message_at
+  timestamp_with_time_zone officers_last_message_at
+  date trial_starts_on
+  date trial_ends_on
+  text discord_channel_id
+  text discord_thread_id
+  text discord_officer_message_id
+  timestamp_with_time_zone applied_at
+  timestamp_with_time_zone closed_at
+}
+"public.recruit_notes" {
+  integer id
+  integer application_id FK
+  integer author_person_id FK
+  text source
+  text body
+  timestamp_with_time_zone created_at
+}
+"public.recruit_events" {
+  integer id
+  integer application_id FK
+  text kind
+  integer actor_person_id FK
+  text detail
+  timestamp_with_time_zone created_at
 }
 ```
 

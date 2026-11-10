@@ -10,6 +10,27 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-11-09 -- Recruit records (#1539)
+
+Shipped: 20261109145938_recruit_records.sql
+
+- **The trial actions are their own issue, #1793** (Kat, 2026-11-09). Start trial puts the applicant on the roster, which wants the signup add's locking and restore path, and was too much to review beside the rest. This adds the trial columns #1793 fills.
+- **One table for the record, four beside it.** `recruit_applications` holds the application and where it stands; notes, history, the saved conversation and reminders sent are their own tables, so the record stays light and a long conversation doesn't ride along on every list read.
+- **The character's numbers are copied when sent**, as columns, so a later gear change doesn't rewrite what officers saw. Name, realm, class, spec and item level come from `characters`; #1538 fills the M+ score, logs and kills.
+- **Answers are a list on the record, each with the question's label and wording as sent**, so editing or deleting a question later never rewrites an old application. `{team}` and `{raid nights}` stay as written; the page fills them as it does on the form. A picture answer is its path, and must be one the applicant uploaded for that team.
+- **A recruiter's credit keeps the code and name**, not only the person: `guild_recruiters` rows go when the person does (#1537's review). The code is checked on the server against the guild's active recruiters.
+- **Whose turn it is follows the last-message times.** The bot sets `applicant_last_message_at` and `officers_last_message_at`; a trigger flips an open record between `waiting_on_officers` and `waiting_on_applicant`, so the two can't disagree.
+- **Who sees records is one function, `recruit_access()`**, built on #1535's ticket settings: `edit_recruiting` holders manage; assistants add notes when `visible_to_team_assistants`; the guild's Owner and Admins read when `visible_to_guild_admins`, as does anyone with `view_every_team`. `visible_to_team_officers` is left to the Discord ticket: the officers who could untick it are the ones it would hide records from. The `application-pictures` bucket's view rule now uses the same function.
+- **The bot calls service-role versions that take the acting person's Discord id**, and the database checks that person's rights as well as the bot (#1542), so an applicant pressing a button in their own ticket is refused even if the bot's check slips (CodeRabbit). They share their body with the site's functions, so history and audit rows are the same; a note's audit row names the record and where it came from, never the note. Plain bookkeeping (Discord ids, last-message times, history, the conversation, reminders sent) the bot writes straight into the tables.
+- **Your own record is never yours to manage.** Someone who can see a team's records (an Admin with See every team, a site admin, an officer) and applies to it sees it only as an applicant: not in the Recruits list, no notes, history or conversation, and no notes, declines or reopens on it, from the site or the bot (fresh-agent review). A recruiter can't credit themselves either.
+- **Attachments keep their name and type only** (Kat, 2026-11-09). Discord's links expire, and copying files to Storage would need a bucket and a cleanup job for little use.
+- **Everything is kept for now** (Kat, 2026-11-09), closed records and conversations included, until #1527's data deletion rules.
+- **An officer adds a ticket-only recruit by character**, with their Discord id if known (which gives them a `people` row, as `person_for_discord_id()` does elsewhere), so a later application of theirs shows as Applied before.
+
+[Full discussion -> #1539](https://github.com/katogaming88/WGA-Raid-Hub/issues/1539).
+
+---
+
 ## 2026-11-09 -- Application questions (#1536)
 
 Shipped: 20261109100209_application_questions.sql

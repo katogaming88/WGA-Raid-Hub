@@ -147,6 +147,11 @@ rank_permissions,Claude readers read rank_permissions,claude_readers,SELECT,PERM
 rclc_loot,Claude readers read rclc_loot,claude_readers,SELECT,PERMISSIVE,true,
 rclc_loot,Officer write loot,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 rclc_loot,Public read loot,public,SELECT,PERMISSIVE,true,
+recruit_applications,Claude readers read recruit_applications,claude_readers,SELECT,PERMISSIVE,true,
+recruit_events,Claude readers read recruit_events,claude_readers,SELECT,PERMISSIVE,true,
+recruit_messages,Claude readers read recruit_messages,claude_readers,SELECT,PERMISSIVE,true,
+recruit_notes,Claude readers read recruit_notes,claude_readers,SELECT,PERMISSIVE,true,
+recruit_reminders_sent,Claude readers read recruit_reminders_sent,claude_readers,SELECT,PERMISSIVE,true,
 removal_reasons,Claude readers read removal_reasons,claude_readers,SELECT,PERMISSIVE,true,
 removal_reasons,Officers read removal_reasons,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 retired_url_keys,Claude readers read retired_url_keys,claude_readers,SELECT,PERMISSIVE,true,

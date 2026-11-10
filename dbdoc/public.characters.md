@@ -8,7 +8,7 @@ Characters a person chose to show from their Battle.net account (#942 step 5, #1
 
 | Name | Type | Default | Nullable | Extra Definition | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | ---------------- | -------- | ------- | ------- |
-| id | integer |  | false |  | [public.season_signups](public.season_signups.md) [public.main_swap_requests](public.main_swap_requests.md) |  |  |
+| id | integer |  | false |  | [public.season_signups](public.season_signups.md) [public.main_swap_requests](public.main_swap_requests.md) [public.recruit_applications](public.recruit_applications.md) |  |  |
 | person_id | integer |  | false |  |  | [public.people](public.people.md) |  |
 | blizzard_id | bigint |  | false |  |  |  |  |
 | name | text |  | false |  |  |  |  |
@@ -45,6 +45,7 @@ erDiagram
 
 "public.season_signups" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
 "public.main_swap_requests" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
+"public.recruit_applications" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
 "public.characters" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
 
 "public.characters" {
@@ -102,6 +103,38 @@ erDiagram
   integer reviewed_by FK
   text officer_note
   integer approved_player_id FK
+}
+"public.recruit_applications" {
+  integer id
+  integer team_id FK
+  integer person_id FK
+  text source
+  text status
+  integer character_id FK
+  text name_realm
+  text class_name
+  text spec_name
+  text__ other_specs
+  integer item_level
+  numeric_6_1_ mplus_score
+  numeric_4_1_ logs_best_average
+  numeric_4_1_ logs_median_average
+  integer mythic_bosses_killed
+  jsonb answers
+  text sent_by
+  integer recruiter_person_id FK
+  text recruiter_code
+  text sent_by_name
+  text time_zone
+  timestamp_with_time_zone applicant_last_message_at
+  timestamp_with_time_zone officers_last_message_at
+  date trial_starts_on
+  date trial_ends_on
+  text discord_channel_id
+  text discord_thread_id
+  text discord_officer_message_id
+  timestamp_with_time_zone applied_at
+  timestamp_with_time_zone closed_at
 }
 "public.people" {
   integer id
