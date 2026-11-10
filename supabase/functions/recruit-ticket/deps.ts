@@ -53,7 +53,7 @@ function supabaseDb(): TicketDb {
       if (!app) return null;
 
       const [team, recruiting, discord, character, before] = await Promise.all([
-        db().from('teams').select('name, slug, guild_id').eq('id', app.team_id).single().then(check),
+        db().from('teams').select('name, slug, guild_id, guilds(name)').eq('id', app.team_id).single().then(check),
         db().from('team_recruiting').select('*').eq('team_id', app.team_id).maybeSingle().then(check),
         db()
           .from('team_discord_config')
@@ -111,6 +111,7 @@ function supabaseDb(): TicketDb {
         id: app.id,
         team_id: app.team_id,
         team_name: (team as any).name,
+        guild_name: (team as any).guilds?.name ?? (team as any).name,
         team_slug: (team as any).slug,
         person_id: app.person_id,
         discord_id: person.discord_id ?? null,

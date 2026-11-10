@@ -39,6 +39,7 @@ const TICKET_APP: Ticket = {
   id: 7,
   team_id: 3,
   team_name: 'Phoenix',
+  guild_name: 'We Go Again',
   team_slug: 'phoenix',
   person_id: 42,
   discord_id: APPLICANT,
@@ -246,6 +247,13 @@ Deno.test('welcome DM: links the ticket; closed DMs are noted on the record', as
   await send(r.deps);
   const [dm] = find(r.calls, 'POST', '/channels/' + DM + '/messages');
   assert(dm.body.content.includes('https://discord.com/channels/' + SERVER + '/' + TICKET));
+  assertEquals(
+    dm.body.content,
+    "Welcome to We Go Again! Your private ticket with Phoenix's officers is ready: https://discord.com/channels/" +
+      SERVER +
+      '/' +
+      TICKET
+  );
   assertEquals(dm.body.components[0].components[0].label, 'Open your ticket');
 
   r = setup({ ['POST ' + API + '/channels/' + DM + '/messages']: () => json({ code: 50007 }, 403) });

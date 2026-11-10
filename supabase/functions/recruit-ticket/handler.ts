@@ -39,6 +39,7 @@ export type Ticket = {
   id: number;
   team_id: number;
   team_name: string;
+  guild_name: string;
   team_slug: string;
   person_id: number;
   discord_id: string | null;
@@ -341,7 +342,12 @@ async function welcome(deps: Deps, token: string, t: Ticket, ticketUrl: string |
     );
     const res = await call(deps, token, 'POST', '/channels/' + dm.id + '/messages', {
       content: ticketUrl
-        ? 'Welcome to ' + t.team_name + "'s Discord! Your private ticket with the officers is ready: " + ticketUrl
+        ? 'Welcome to ' +
+          t.guild_name +
+          '! Your private ticket with ' +
+          t.team_name +
+          "'s officers is ready: " +
+          ticketUrl
         : 'Your application to ' + t.team_name + ' is in. An officer will message you.',
       components: ticketUrl
         ? [{ type: 1, components: [{ type: 2, style: 5, label: 'Open your ticket', url: ticketUrl }] }]
