@@ -122,7 +122,7 @@ export const pageHolds = (page: NavPage, pathname: string) =>
 // group open at a time. Anything that changes the team as a whole is a setting.
 // A Loot council team (#1563) has no Priority page.
 function officerMenu(o: string, council: boolean, can: (ability: Ability) => boolean): NavItem[] {
-  const allowed = (page: NavPage) => can(officerAbility(page.to));
+  const allowed = (page: NavPage) => canAny(can, officerAbility(page.to));
   return allMenu(o, council)
     .map((item) => {
       const pages = (item.pages ?? []).filter(allowed);
@@ -134,8 +134,10 @@ function officerMenu(o: string, council: boolean, can: (ability: Ability) => boo
 // What each officer page needs, by its path below the team (#1649). A page
 // the rank has no permission for is left out of the menu and closed on its
 // address; the database refuses it either way. Settings have no permission of
-// their own on the grid, so they ask 'manageTeam'.
-const OFFICER_ABILITY: Record<string, Ability> = {
+// their own on the grid, so they ask 'manageTeam'. A page listing several opens
+// for any of them: General holds the team basics, the invite link and the
+// ranks, each section shown to whoever may use it (#1735).
+const OFFICER_ABILITY: Record<string, Ability | readonly Ability[]> = {
   'officer/priority': 'viewLoot',
   'officer/reviews': 'viewLoot',
   'officer/import': 'manageLoot',
@@ -143,16 +145,19 @@ const OFFICER_ABILITY: Record<string, Ability> = {
   'officer/attendance': 'viewAttendance',
   'officer/attendance/scores': 'viewAttendance',
   'officer/groups': 'viewGroups',
-  'officer/invite': 'editRoster',
+  'officer/settings': ['manageTeam', 'editRoster', 'promoteAssistants'],
   'officer/settings/audit-log': 'viewAuditLog',
-  'officer/settings/discord': 'manageDiscord',
-  'officer/settings/ranks': 'promoteAssistants'
+  'officer/settings/discord': 'manageDiscord'
 };
 
-export function officerAbility(path: string): Ability {
+export function officerAbility(path: string): Ability | readonly Ability[] {
   const key = /(?:\/t\/[^/]+\/|^\/?)(officer\/.*)$/.exec(path)?.[1] ?? path;
   return OFFICER_ABILITY[key] ?? (key.startsWith('officer/reports/') ? 'viewReports' : 'manageTeam');
 }
+
+// Whether someone may open a page needing one ability, or any of several.
+export const canAny = (can: (ability: Ability) => boolean, need: Ability | readonly Ability[]) =>
+  typeof need === 'string' ? can(need) : need.some(can);
 
 function allMenu(o: string, council: boolean): (NavItem & { pages: NavPage[] })[] {
   return [
@@ -195,14 +200,12 @@ function allMenu(o: string, council: boolean): (NavItem & { pages: NavPage[] })[
       icon: 'gear',
       to: `${o}/settings`,
       pages: [
+        // #1735: team setup on General (with the invite link and ranks), then
+        // Discord and Loot, and everything about seasons on Season.
         { label: 'General', to: `${o}/settings` },
-        { label: 'Season', to: `${o}/settings/season` },
-        { label: 'Raid progression', to: `${o}/settings/progression` },
-        { label: 'Loot', to: `${o}/settings/loot` },
-        { label: 'Signups', to: `${o}/settings/signups` },
         { label: 'Discord', to: `${o}/settings/discord` },
-        { label: 'Ranks', to: `${o}/settings/ranks` },
-        { label: 'Invite link', to: `${o}/invite` },
+        { label: 'Loot', to: `${o}/settings/loot` },
+        { label: 'Season', to: `${o}/settings/season` },
         { label: 'Audit log', to: `${o}/settings/audit-log` },
         { label: 'Danger zone', to: `${o}/settings/danger`, danger: true }
       ]
@@ -237,12 +240,8 @@ export const TEAM_PAGES: Record<string, string> = {
   'officer/reports/performance': 'Performance trends',
   'officer/settings': 'General settings',
   'officer/settings/season': 'Season settings',
-  'officer/settings/progression': 'Raid progression',
   'officer/settings/loot': 'Loot settings',
-  'officer/settings/signups': 'Signup settings',
   'officer/settings/discord': 'Discord settings',
-  'officer/settings/ranks': 'Ranks',
-  'officer/invite': 'Invite link',
   'officer/settings/audit-log': 'Audit log',
   'officer/settings/danger': 'Danger zone',
   history: 'History',

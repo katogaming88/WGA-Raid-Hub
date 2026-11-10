@@ -14,11 +14,8 @@ import { LineupReportPage } from './reports/LineupReport';
 import { PriorityPage } from './priority/PriorityPage';
 import { GeneralSettingsPage } from './settings/GeneralSettingsPage';
 import { SeasonSettingsPage } from './settings/SeasonSettingsPage';
-import { ProgressionSettingsPage } from './settings/ProgressionSettingsPage';
 import { LootSettingsPage } from './settings/LootSettingsPage';
-import { SignupSettingsPage } from './settings/SignupSettingsPage';
 import { DiscordSettingsPage } from './settings/DiscordSettingsPage';
-import { RanksSettingsPage } from './settings/RanksSettingsPage';
 import { AuditLogPage } from './settings/AuditLogPage';
 import { DangerZonePage } from './settings/DangerZonePage';
 import { GuildHomePage } from './guild/GuildHomePage';
@@ -32,7 +29,6 @@ import { SignUpPage } from './signup/SignUpPage';
 import { GuildOfficersPage } from './officers/GuildOfficersPage';
 import { GuildSettingsIndex, GuildSettingsPage } from './guildsettings/GuildSettingsPage';
 import { TeamOfficersPage } from './officers/TeamOfficersPage';
-import { InviteLinkPage } from './invite/InviteLinkPage';
 import { SiteAdminPage } from './siteadmin/SiteAdminPage';
 import { CreateGuildPage } from './front/CreateGuildPage';
 import { FrontPage } from './front/FrontPage';
@@ -74,14 +70,10 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   history: <HistoryPage />,
   officers: <TeamOfficersPage />,
   signup: <SignUpPage />,
-  'officer/invite': <InviteLinkPage />,
   'officer/settings': <GeneralSettingsPage />,
   'officer/settings/season': <SeasonSettingsPage />,
-  'officer/settings/progression': <ProgressionSettingsPage />,
   'officer/settings/loot': <LootSettingsPage />,
-  'officer/settings/signups': <SignupSettingsPage />,
   'officer/settings/discord': <DiscordSettingsPage />,
-  'officer/settings/ranks': <RanksSettingsPage />,
   'officer/settings/audit-log': <AuditLogPage />,
   'officer/settings/danger': <DangerZonePage />
 };
@@ -124,6 +116,20 @@ const BUILT_SITE_PAGES: Record<string, ReactElement> = {
 function ToSitePage({ path }: { path: string }) {
   const { search, hash } = useLocation();
   return <Navigate to={`/${path}${search}${hash}`} replace />;
+}
+
+// Settings pages folded into others (#1735) keep their old addresses, posted
+// in Discord and the Help guides, landing on the section's new page.
+const MOVED_TEAM_PAGES: Record<string, string> = {
+  'officer/invite': 'officer/settings#invite-link',
+  'officer/settings/ranks': 'officer/settings#ranks',
+  'officer/settings/signups': 'officer/settings/season#signups'
+};
+
+function ToTeamPage({ to }: { to: string }) {
+  const { pathname } = useLocation();
+  const team = /^(.*\/t\/[^/]+)\//.exec(pathname)?.[1] ?? '';
+  return <Navigate to={`${team}/${to}`} replace />;
 }
 
 // Addresses from #1100: /g/<guild key>/t/<team key>/... for team pages,
@@ -205,6 +211,7 @@ export const routes: RouteObject[] = [
                 ),
                 handle: { title } satisfies RouteHandle
               })),
+              ...Object.entries(MOVED_TEAM_PAGES).map(([path, to]) => ({ path, element: <ToTeamPage to={to} /> })),
               // A player's profile by its address code (#1100), for the raider and officers.
               {
                 path: 'p/:playerCode/:tab?',

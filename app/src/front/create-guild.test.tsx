@@ -97,7 +97,7 @@ describe('the create-guild page', () => {
     ]);
     expect(screen.getByRole('link', { name: 'Make an invite link' })).toHaveAttribute(
       'href',
-      '/g/k7q2m9xa/t/p3n8v5tc/officer/invite'
+      '/g/k7q2m9xa/t/p3n8v5tc/officer/settings#invite-link'
     );
   });
 

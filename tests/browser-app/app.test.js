@@ -827,7 +827,7 @@ const PRIORITY_SCORING = {
   }
 };
 
-// Officer Settings (#1357, #1103 row 1): General, Season, Raid progression and
+// Officer Settings (#1357, #1103 row 1): General, Season and
 // Danger zone, so every card state (a saved value, a closed tier's WCL
 // Performance Baseline row, a raid/boss row, and the Archive season control)
 // is on the page axe measures.
@@ -845,14 +845,23 @@ const SETTINGS_GENERAL_TABLES = {
       signupSheetLeadHours: 48
     }
   ],
-  raid_zones: [{ season: 'MID1' }, { season: 'MID2' }]
+  raid_zones: [{ season: 'MID1' }, { season: 'MID2' }],
+  team_invite_links: [{ team_id: 1, code: 'phoenix-abc123', expires_at: null }]
 };
+// General holds the invite link and the ranks too (#1735).
 const SETTINGS_GENERAL = {
   session: OFFICER,
   who: 'officer',
   path: '/g/wga/t/phoenix/officer/settings',
-  sentinel: 'main:has(.settings-cards)',
-  tables: SETTINGS_GENERAL_TABLES
+  sentinel: 'main:has(.settings-cards) .ranks-sections',
+  tables: SETTINGS_GENERAL_TABLES,
+  rpc: {
+    team_member_ranks: [
+      { team_member_id: 1, display_name: 'Olive', rank: 'owner', signed_in: true, is_you: true },
+      { team_member_id: 2, display_name: 'Raz', rank: 'officer', signed_in: true, is_you: false },
+      { team_member_id: 3, display_name: 'Listed', rank: 'raider', signed_in: false, is_you: false }
+    ]
+  }
 };
 
 const SETTINGS_HISTORY = [
@@ -880,28 +889,6 @@ const SETTINGS_SEASON = {
   path: '/g/wga/t/phoenix/officer/settings/season',
   sentinel: 'main:has(.settings-history-list)',
   tables: { team_settings: [{ team_id: 1, history: SETTINGS_HISTORY }], player_wcl_season_perf: [] }
-};
-
-const SETTINGS_PROGRESSION = {
-  session: OFFICER,
-  who: 'officer',
-  path: '/g/wga/t/phoenix/officer/settings/progression',
-  sentinel: 'main:has(.settings-raid-list)',
-  tables: {
-    team_settings: [
-      {
-        team_id: 1,
-        raidProgression: [
-          {
-            name: 'Test Raid',
-            isMiniRaid: false,
-            aotcDate: '2026-05-01',
-            bosses: [{ name: 'First Boss', mythicDate: '2026-04-20' }]
-          }
-        ]
-      }
-    ]
-  }
 };
 
 // Settings > Loot (#1560): an officer sees it read-only; the team leader
@@ -965,7 +952,7 @@ const dayFromNow = (n) => new Date(Date.now() + n * 86400000).toISOString().slic
 const SETTINGS_SIGNUPS = {
   session: OFFICER,
   who: 'officer',
-  path: '/g/wga/t/phoenix/officer/settings/signups',
+  path: '/g/wga/t/phoenix/officer/settings/season',
   sentinel: 'main:has(.signup-settings-row) button:text("Close signups")',
   person: SETTINGS_LOOT_LEADER.person,
   tables: {
@@ -1558,13 +1545,14 @@ const TEAM_OWNER_DIALOG = {
   click: 'role=button[name="Change Team Owner of Phoenix"]',
   afterClick: '[role="dialog"] select'
 };
-// Settings > Ranks (#1651): the viewer owns the team, so every other row gets a box.
+// Settings > General's Ranks (#1651, #1735): the viewer owns the team, so every other row gets a box.
 const RANKS_PAGE = {
-  path: '/g/wga/t/phoenix/officer/settings/ranks',
+  path: '/g/wga/t/phoenix/officer/settings',
   sentinel: 'main .ranks-select',
   session: OFFICER,
   who: 'officer',
   tables: {
+    team_invite_links: [],
     team_rank_permissions: [
       { rank: 'raider', permission: 'own_character' },
       { rank: 'assistant', permission: 'own_character' },
@@ -1937,8 +1925,6 @@ const STATES = [
     ...SETTINGS_SEASON,
     click: 'role=button[name="View Roster"]'
   },
-  { label: 'settings progression, officer', ...SETTINGS_PROGRESSION },
-  { label: 'settings progression, officer, light', ...SETTINGS_PROGRESSION, colorScheme: 'light' },
   { label: 'settings loot, officer', ...SETTINGS_LOOT },
   { label: 'settings loot, officer, light', ...SETTINGS_LOOT, colorScheme: 'light' },
   { label: 'settings loot, team leader', ...SETTINGS_LOOT_LEADER },
@@ -2366,9 +2352,9 @@ describe('sidebar folding', () => {
         .toEqual({ overflow: 0, folds: 1, open: ['You', 'Team', 'Officer', 'Site'] });
       await nav.getByRole('button', { name: 'Settings', exact: true }).click();
       await nav.getByRole('link', { name: 'General', exact: true }).click();
-      // Settings is the longest officer menu (nine pages since Discord, #994),
-      // so at this height Site folds too.
-      await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 5, open: ['Officer'] });
+      // Settings is the longest officer menu (six pages since #1735), so the
+      // sections above it fold again, and Site still fits.
+      await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 3, open: ['Officer', 'Site'] });
       expect(pageErrors).toEqual([]);
     } finally {
       await context.close();
@@ -2739,10 +2725,6 @@ const HELP_MENU_SHOTS = {
   // since a team's pages send anyone signed out there (#1264).
   'sign-in': { state: FRONT, item: '.sidebar >> role=button[name="Sign in with Battle.net"]' },
   'officer-settings': { state: SETTINGS_GENERAL, item: '.sidebar >> text="Settings"' },
-  'officer-invite': {
-    state: { session: OFFICER, who: 'officer', path: '/g/wga/t/phoenix/officer/invite', sentinel: '.sidebar' },
-    item: '.sidebar >> role=link[name="Invite link"]'
-  },
   roster: { state: katOnPage('/g/wga/t/phoenix/roster', '.sidebar'), item: '.sidebar >> role=link[name="Roster"]' },
   'my-profile': { state: katProfile(), item: '.sidebar >> role=link[name="My profile"]' },
   calendar: { state: CAL_MONTH, item: '.sidebar >> role=link[name="Calendar"]' },

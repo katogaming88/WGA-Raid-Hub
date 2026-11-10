@@ -42,7 +42,6 @@ export const MENUS = {
   calendar: 'Calendar in the sidebar',
   roster: 'Roster in the sidebar',
   'officer-settings': 'Settings in the sidebar’s Officer menu',
-  'officer-invite': 'Invite link under Settings in the sidebar’s Officer menu',
   'officer-boss-groups': 'Boss groups under Attendance in the sidebar’s Officer menu',
   'officer-manage': 'Manage under Attendance in the sidebar’s Officer menu',
   'new-team': 'New team at the bottom of the team picker, open at the top of the sidebar'
@@ -131,14 +130,14 @@ export const GUIDES: Guide[] = [
     topic: 'start',
     title: 'Set up your team',
     officers: true,
-    quick: 'Officer Settings holds your team’s Warcraft Logs guild and roster size targets.',
+    quick: 'Officer Settings › General holds your team’s Warcraft Logs guild, roster size targets and invite link.',
     place: { label: 'Settings', to: (b) => `${b.team}/officer/settings` },
     picture: 'The General settings page, with the Warcraft Logs guild address marked.',
     marked: [1, 2],
     menu: 'officer-settings',
     steps: [
       'In the Officer menu, open Settings.',
-      'On General, add your team’s Warcraft Logs guild page and the roster size targets, then choose Save.'
+      'On General, add your team’s Warcraft Logs guild page and the roster size targets, then choose Save. The invite link your raiders join with is further down the same page.'
     ]
   },
   {
@@ -164,11 +163,11 @@ export const GUIDES: Guide[] = [
     title: 'Invite your raiders',
     officers: true,
     quick: 'Make one invite link and post it in your Discord. Anyone who opens it joins the team.',
-    place: { label: 'Invite link', to: (b) => `${b.team}/officer/invite` },
-    menu: 'officer-invite',
+    place: { label: 'General settings', to: (b) => `${b.team}/officer/settings#invite-link` },
+    menu: 'officer-settings',
     marked: [1],
     steps: [
-      'In the Officer menu, open Settings, then Invite link.',
+      'In the Officer menu, open Settings. Invite link is on General, below your team’s basics.',
       'Choose how long the link lasts (or No expiry), then Generate link, and copy it into your Discord.',
       'Raiders who open it join the team, then claim their name on the Roster.',
       'If the link gets out, choose Reset link (the old one stops working) or Remove link.'

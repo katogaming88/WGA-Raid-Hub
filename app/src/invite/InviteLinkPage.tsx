@@ -3,6 +3,7 @@ import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
 import { useTeam } from '../data/address';
+import { useHashTarget } from '../lib/useHashTarget';
 import { formatInstantDate, localTimeZoneNote } from '../lib/dates';
 import { useInviteLink, useResetInviteLink, useRevokeInviteLink, type InviteLink } from './useInviteLink';
 import './invite-link.css';
@@ -30,15 +31,22 @@ function expiryLabel(expiresAt: string | null): string {
   return date.getTime() < Date.now() ? `Expired ${formatted}` : `Expires ${formatted}`;
 }
 
-export function InviteLinkPage() {
+// A section of Settings > General (#1735), for whoever can edit the roster.
+export function InviteLinkSection() {
   const team = useTeam();
   const link = useInviteLink(team.id);
+  const ref = useHashTarget('invite-link');
 
   return (
-    <section className="page invite-link-page" aria-labelledby="page-title">
-      <div className="page-header">
-        <h1 id="page-title">Invite link</h1>
-        <p className="text-muted page-subtitle">
+    <section
+      id="invite-link"
+      ref={ref}
+      className="settings-section invite-link-section"
+      aria-labelledby="invite-link-title"
+    >
+      <div className="settings-section-head">
+        <h2 id="invite-link-title">Invite link</h2>
+        <p className="text-muted">
           Share this link so a raider can join {team.name} straight from it -- no approval needed, since opening the
           link is the approval. Resetting it stops the old one working immediately.
         </p>

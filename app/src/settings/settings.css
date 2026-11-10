@@ -1,9 +1,30 @@
-/* Officer Settings: General, Season, Raid progression, Danger zone (#1357, #1103 row 1). */
+/* Officer Settings: General, Season, Danger zone (#1357, #1103 row 1, #1735). */
 
 .settings-cards {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+
+/* A section of a settings page (#1735: Invite link and Ranks on General),
+   set off by a rule rather than a box. */
+.settings-section {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.settings-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.settings-section-head p {
+  margin: 0;
 }
 
 .settings-card {
@@ -561,7 +582,7 @@
 }
 
 /* Settings > Ranks (#1651). */
-.ranks-page .page-subtitle {
+.ranks-page .settings-section-head p {
   max-width: 65ch;
 }
 

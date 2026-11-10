@@ -4,8 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers, type Read } from '../test/fakeSupabase';
 
-// Officer Settings (#1357, #1103 row 1): General, Season, Raid progression
-// and Danger zone, ported from js/tabs/tab-season.js's Season Settings tab.
+// Officer Settings (#1357, #1103 row 1, #1735): General, Season and Danger
+// zone, ported from js/tabs/tab-season.js's Season Settings tab.
 
 const OFFICER_PERSON = {
   site_admin: false,
@@ -75,8 +75,13 @@ describe('General settings', () => {
               : undefined
       })
     );
-    await screen.findByRole('heading', { name: 'Season View' });
-    expect((screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value).toBe('6');
+    await screen.findByRole('heading', { name: 'Trial Promotion Thresholds' });
+    expect((screen.getByLabelText('Weeks on roster') as HTMLInputElement).value).toBe('6');
+    // Season View moved to Settings > Season (#1735).
+    expect(screen.queryByRole('heading', { name: 'Season View' })).not.toBeInTheDocument();
+    // The invite link and the ranks are sections here now (#1735).
+    expect(await screen.findByRole('heading', { level: 2, name: 'Invite link' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Ranks' })).toBeInTheDocument();
     expect(screen.getByDisplayValue('https://www.warcraftlogs.com/guild/id/12345')).toBeInTheDocument();
     // The signup sheet moved to Settings › Discord (#994).
     expect(screen.queryByRole('heading', { name: 'Discord Signup Sheet' })).not.toBeInTheDocument();
@@ -103,7 +108,7 @@ describe('General settings', () => {
       })
     );
     await screen.findByRole('heading', { name: 'Trial Promotion Thresholds' });
-    const weeksInput = screen.getAllByRole('spinbutton')[0]!;
+    const weeksInput = screen.getByLabelText('Weeks on roster');
     await userEvent.clear(weeksInput);
     await userEvent.type(weeksInput, '999');
     await userEvent.click(within(weeksInput.closest('.settings-card')!).getByRole('button', { name: 'Save' }));
@@ -113,6 +118,20 @@ describe('General settings', () => {
       p_updates: { trialWeeks: 52, trialAttend: 80 },
       p_skip_audit: true
     });
+  });
+});
+
+describe('General settings for roster editing only (#1735)', () => {
+  it('shows just the Invite link section', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/officer/settings',
+      officerHandlers({
+        rpc: (name) => (name === 'my_permissions' ? { data: { team: ['edit_roster'], guild: [] } } : undefined)
+      })
+    );
+    expect(await screen.findByRole('heading', { level: 2, name: 'Invite link' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Trial Promotion Thresholds' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Ranks' })).not.toBeInTheDocument();
   });
 });
 
@@ -140,6 +159,23 @@ describe('Season settings', () => {
       ]
     }
   ];
+
+  it('holds Season View above the history (#1735)', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/officer/settings/season',
+      officerHandlers({
+        from: (read) =>
+          read.table === 'team_settings'
+            ? { data: { seasonView: 'MID2', trialWeeks: 4, trialAttend: 75 } }
+            : read.table === 'raid_zones'
+              ? { data: [{ season: 'MID1' }, { season: 'MID2' }] }
+              : undefined
+      })
+    );
+    expect(await screen.findByRole('heading', { name: 'Season View' })).toBeInTheDocument();
+    expect(((await screen.findByLabelText('Season view')) as HTMLSelectElement).value).toBe('MID2');
+    expect(screen.getByRole('heading', { name: 'Season History' })).toBeInTheDocument();
+  });
 
   it('shows the newest entry with its WCL Performance Baseline row', async () => {
     renderApp(
@@ -185,56 +221,6 @@ describe('Season settings', () => {
     expect(await screen.findByText('No tier closed for this team yet.')).toBeInTheDocument();
   });
 });
-
-// -- Raid progression ---------------------------------------------------------
-
-describe('Raid progression', () => {
-  it('adds a raid and a boss, then saves the whole list', async () => {
-    const calls: unknown[] = [];
-    renderApp(
-      '/g/wga/t/phoenix/officer/settings/progression',
-      officerHandlers({
-        from: (read) => (read.table === 'team_settings' ? { data: {} } : undefined),
-        rpc: (name, args) => {
-          if (name === 'set_team_setting') {
-            calls.push(args);
-            return { data: {} };
-          }
-          return undefined;
-        }
-      })
-    );
-    await screen.findByRole('button', { name: '+ Add Raid' });
-    await userEvent.click(screen.getByRole('button', { name: '+ Add Raid' }));
-    await userEvent.type(screen.getByPlaceholderText('Raid name (e.g. Liberation of Undermine)'), 'Test Raid');
-    await userEvent.click(screen.getByRole('button', { name: '+ Add Boss' }));
-    await userEvent.type(screen.getByPlaceholderText('Boss name'), 'First Boss');
-    await userEvent.click(screen.getByRole('button', { name: 'Save Progression' }));
-    await expect.poll(() => calls.length).toBe(1);
-    expect(calls[0]).toMatchObject({
-      p_team_id: 1,
-      p_updates: {
-        raidProgression: [
-          { name: 'Test Raid', isMiniRaid: false, aotcDate: '', bosses: [{ name: 'First Boss', mythicDate: '' }] }
-        ]
-      }
-    });
-  });
-
-  it('hides the AOTC date once a raid is marked mini', async () => {
-    renderApp(
-      '/g/wga/t/phoenix/officer/settings/progression',
-      officerHandlers({ from: (read) => (read.table === 'team_settings' ? { data: {} } : undefined) })
-    );
-    await screen.findByRole('button', { name: '+ Add Raid' });
-    await userEvent.click(screen.getByRole('button', { name: '+ Add Raid' }));
-    expect(screen.getByText('AOTC Date')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Mini-raid' }));
-    expect(screen.queryByText('AOTC Date')).not.toBeInTheDocument();
-  });
-});
-
-// -- Audit log ----------------------------------------------------------------
 
 describe('Audit log', () => {
   const ROWS = [
