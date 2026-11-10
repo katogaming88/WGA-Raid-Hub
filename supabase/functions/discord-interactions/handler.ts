@@ -10,6 +10,8 @@
 //   after, under waitUntil, then edits that answer. Discord gives 3 seconds
 //   for the first answer and 15 minutes for the edit.
 //
+// The recruiting card's and trial message's buttons (#1542) are recruit.ts's.
+//
 // Commands (#961): /help, /raider me, /raider schedule, /officer
 // nudge-missing and /officer invite. The signup sheet's Refresh button (#960)
 // and its "Set your status" dropdown and note pop-up (#983) land here too:
@@ -51,6 +53,7 @@ import {
 import type { Picture } from '../_shared/sheet-picture.ts';
 import { isoDate } from '../_shared/time.ts';
 import { type Award, type HelpTeam, type Signup, counted, helpMessage, meMessage, scheduleMessage } from './raider.ts';
+import { type RecruitDb, handleRecruit } from './recruit.ts';
 import { VERSION } from './version.ts';
 
 export type Team = { id: number; name: string };
@@ -113,6 +116,8 @@ export type Deps = {
   // /officer post lineup (#1709): the lineup reads, and how its grid is drawn.
   lineups?: LineupDb;
   drawSvg?: (svg: string) => Promise<Uint8Array>;
+  // The recruiting buttons (#1542): the recruit record's reads and the bot_* actions.
+  recruits?: RecruitDb;
   waitUntil(work: Promise<unknown>): void;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
@@ -338,6 +343,19 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (!WANTS_NOTE.has(status)) return say(UNKNOWN_COMMAND);
     const note = String(interaction.data?.components?.[0]?.components?.[0]?.value ?? '').trim();
     return setOwn(deps, interaction, Number(teamId), raidDate, status, note || null);
+  }
+  if (deps.recruits) {
+    // The recruiting card and trial message (#1542), and their pop-ups.
+    const recruit = handleRecruit(
+      {
+        db: deps.recruits,
+        discord: (method, path, body) => discord(deps, method, path, body),
+        waitUntil: (work) => deps.waitUntil(work),
+        now: deps.now ?? (() => new Date())
+      },
+      interaction
+    );
+    if (recruit) return recruit;
   }
   if (interaction.type !== COMMAND) return say(UNKNOWN_COMMAND);
 
