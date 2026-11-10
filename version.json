@@ -1,5 +1,5 @@
 {
-  "version": "3.257.1",
+  "version": "3.258.0",
   "pieces": {
     "frontend": "3.233.0",
     "db": "3.256.0",
@@ -13,7 +13,7 @@
       "contact-webhook": "3.237.0",
       "discard-empty-account": "3.114.0",
       "discord-bot-webhook": "3.240.0",
-      "discord-interactions": "3.240.0",
+      "discord-interactions": "3.258.0",
       "discord-join": "3.256.0",
       "discord-settings": "3.257.0",
       "optional-rsvp-reminders": "3.240.0",

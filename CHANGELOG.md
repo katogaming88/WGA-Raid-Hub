@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.258.0] - 2026-11-10
+
+### Functions
+
+- The recruiting card's buttons now work in Discord (#1542, part 1 of 2). On the application card: **Start a trial** puts the applicant on the roster as a Trial for the team's trial length and says so in their ticket; **Decline** asks for a reason, saves it to their record, then offers to send them a short message; **Add note** saves a note to their record, marked as from Discord, that the applicant never sees. On the "trial ends soon" message (posted by a later update): **Joined**, **Extend trial** (a required reason, then an offer to post the new end date in the ticket) and **Not joining** (pick a reason, then add anything else). Each press acts as the person who pressed it, by their linked Discord account, so only someone who could do the same on Raid Hub can do it from Discord; anyone else is told privately "Only Phoenix's officers can do that." The card then says what happened ("Trial started by @Officer, Nov 10") and the used buttons go grey; pressing again changes nothing.
+
+### Project
+
+- Tests for the recruiting buttons (#1542), with Discord and the database stubbed; time log rows for #1735's screenshots and merge and #1542.
+
 ## [3.257.1] - 2026-11-10
 
 ### Project
