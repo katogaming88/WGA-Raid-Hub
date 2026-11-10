@@ -319,6 +319,8 @@ function recruitDb(): RecruitDb {
         .eq('guild_id', serverId);
       if (teamsError) throw new Error(teamsError.message);
       const rows = (teams as any[] | null) ?? [];
+      // ponytail: the first team's guild; every team in a server is one guild's
+      // today. A server shared by two guilds needs the presser's guild here.
       const guildKey = rows.map((t) => t.teams?.guilds?.url_key).find(Boolean) ?? null;
       const { data: person, error: personError } = await db()
         .from('people')

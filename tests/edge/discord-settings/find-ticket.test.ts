@@ -11,6 +11,7 @@ import {
   NO_SERVER,
   NO_TICKET_TEAM,
   NOT_IN_SERVER,
+  NOT_TEXT,
   findTicket
 } from '../../../supabase/functions/discord-settings/find-ticket.ts';
 import { FIND_TICKET_ID as PRESSED_ID } from '../../../supabase/functions/discord-interactions/recruit.ts';
@@ -21,6 +22,7 @@ const CHANNEL = '300000000000000003';
 const NEW_CHANNEL = '300000000000000004';
 const MESSAGE = '600000000000000006';
 const POSTED = '600000000000000007';
+const VOICE = '300000000000000005';
 
 type Call = { method: string; path: string; body: any };
 
@@ -52,8 +54,9 @@ function setup(
   const discord = (method: string, path: string, body?: unknown) => {
     calls.push({ method, path, body });
     if (method === 'GET') {
-      const guild = path.endsWith(CHANNEL) || path.endsWith(NEW_CHANNEL) ? SERVER : OTHER;
-      return Promise.resolve({ ok: true, status: 200, body: { guild_id: guild } });
+      const guild = path.endsWith(CHANNEL) || path.endsWith(NEW_CHANNEL) || path.endsWith(VOICE) ? SERVER : OTHER;
+      // VOICE is a voice channel in the right server.
+      return Promise.resolve({ ok: true, status: 200, body: { guild_id: guild, type: path.endsWith(VOICE) ? 2 : 0 } });
     }
     if (method === 'PATCH' && opts.editFails) return Promise.resolve({ ok: false, status: 404, body: null });
     if (method === 'POST') return Promise.resolve({ ok: true, status: 200, body: { id: POSTED } });
@@ -154,4 +157,12 @@ Deno.test('removing it deletes the message and forgets the channel', async () =>
 Deno.test('a channel id that is not one is refused', async () => {
   const { run } = setup();
   assertEquals((await run({ channelId: 'general' })).status, 400);
+});
+
+Deno.test('a voice, category or forum channel is refused with the reason', async () => {
+  const { run, calls, saved } = setup();
+  const answer = await run({ channelId: VOICE });
+  assertEquals(answer.body.error, NOT_TEXT);
+  assert(!calls.some((c) => c.method === 'POST'));
+  assertEquals(saved, []);
 });

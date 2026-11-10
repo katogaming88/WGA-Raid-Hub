@@ -29,6 +29,7 @@ export const NO_TICKET_TEAM =
 export const NOT_IN_SERVER = "That channel is not in the team's Discord server.";
 export const CANT_POST = "The bot can't post there. Check its permissions in that channel.";
 export const NO_SERVER = "Pick the team's Discord server first.";
+export const NOT_TEXT = 'Pick a text channel: the bot can only post its message in one.';
 
 export type FindTicket = { channelId: string; messageId: string | null };
 
@@ -81,6 +82,9 @@ export async function findTicket(
   const channel = await discord('GET', `/channels/${channelId}`);
   if (channel.status === 403) return no(CANT_POST, 409);
   if (!channel.ok || channel.body?.guild_id !== serverId) return no(NOT_IN_SERVER, 404);
+  // Text and announcement channels only: a category, voice or forum channel
+  // takes no message (fresh-agent review on #1801).
+  if (channel.body?.type !== 0 && channel.body?.type !== 5) return no(NOT_TEXT, 409);
 
   // Same channel: edit the message there; it may have been deleted by hand.
   if (current?.channelId === channelId && current.messageId) {
@@ -90,7 +94,17 @@ export async function findTicket(
   const posted = await discord('POST', `/channels/${channelId}/messages`, FIND_TICKET_MESSAGE);
   if (posted.status === 403) return no(CANT_POST, 409);
   if (!posted.ok || typeof posted.body?.id !== 'string') return no(NOT_IN_SERVER, 404);
-  await db.save(serverId, { channelId, messageId: posted.body.id }, userId);
+  try {
+    await db.save(serverId, { channelId, messageId: posted.body.id }, userId);
+  } catch (e) {
+    // Posted but not kept: the next pick would post another and never remove
+    // this one, so its id goes in the function's log for someone to delete.
+    console.error(
+      'find-ticket: posted but not recorded',
+      JSON.stringify({ serverId, channelId, messageId: posted.body.id })
+    );
+    throw e;
+  }
   // The old one goes once the new one is up. Best effort: a message left
   // behind still finds tickets.
   if (current?.messageId && current.messageId !== posted.body.id) {
