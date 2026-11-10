@@ -9,7 +9,7 @@ import {
   detailOf,
   pickedFrom,
   summaryPath
-} from '../../../supabase/functions/battlenet-characters/characters.ts';
+} from '../../../supabase/functions/_shared/battlenet.ts';
 
 // The shape /profile/user/wow answers with, trimmed to the fields read.
 export const PROFILE = {

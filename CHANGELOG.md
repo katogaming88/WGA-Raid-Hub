@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.255.0] - 2026-11-09
+
+### Functions
+
+- New `character-stats` function (#1538): given one of the caller's own Battle.net characters, it answers the character's item level, class and spec, M+ score, best and median logs average on Heroic and Mythic for the season's raid, Mythic bosses killed, and links to Warcraft Logs, Raider.IO and the Armory. Each number comes back empty on its own when its source is down or has nothing, and the rest still arrive; the answer names which sources could not be read, so an outage never reads as "no logs". Every read has a five-second limit, and any error still answers with a message the form can show. A character on someone else's Battle.net account is refused. A full answer is kept for ten minutes so the form re-asking costs no Warcraft Logs points. Nothing anyone sees yet: the application form uses it later.
+- `battlenet-characters` reads Blizzard's answers through a shared file now, the same one `character-stats` uses. No change to what it does.
+
+### Project
+
+- Tests for `character-stats` (#1538), including the refusal for someone else's character; time log row for #1538.
+
 ## [3.254.0] - 2026-11-09
 
 ### Backend
