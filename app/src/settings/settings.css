@@ -17,6 +17,13 @@
   gap: var(--space-3);
 }
 
+/* First on the page (someone who sees only the invite link): no rule to set it off from. */
+.page-header + .settings-section {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
 .settings-section-head {
   display: flex;
   flex-direction: column;
