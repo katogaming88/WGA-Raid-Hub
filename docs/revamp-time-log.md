@@ -18,19 +18,19 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live |  6 h 25 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live |  7 h 5 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **178 h 21 m** |             |
+| **All revamp work**                | **179 h 1 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Recruiting | Phase 2 | 5 h 45 m | ~9 h 50 m |
+| Recruiting | Phase 2 | 6 h 0 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 0 m | ~9 h 50 m |
-| Roster, loot and the team's raids | Phase 2 | 40 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -674,6 +674,10 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:49-1:00 PM | PR #1798 (#1541): the fresh-agent review Kat asked for (approve; five nice-to-haves) and all five done: a retry reports the welcome DM as the record kept it, only Discord's Unknown Member means not in the server yet (the bot removed is a failure), closed-DMs wording that also covers not being in the server, the officer-channel caveat in a comment, and a made-but-not-saved ticket's ids logged; four more tests. The #1548 note on separate officer channels left for Kat | Phase 2: Before the new site goes live / Recruiting (#1541) | 10 m | ~10 m build | ~125,000 | Tokens include the fresh agent's 96,287; Kat's merge not yet counted. |
 | 12:58-1:02 PM | PR #1798 (#1541): Kat's merge and cleanup; #1487 updated (#1541 row off, #1542 next); handoff refreshed | Phase 2: Before the new site goes live / Recruiting (#1541) | 5 m | ~5 m build | ~6,800 | |
 | 1:02-1:40 PM | #1735: Kat's two picks (Ranks folds into General too; #1735 joins #1487's Phase 2); officer Settings down to six pages (General, Discord, Loot, Season, Audit log, Danger zone): the invite link and the ranks as sections of General, each shown to whoever may use it, Season View and Signups on Season, Raid progression gone from the new app, the old addresses landing on their section; Help guides and their two pictures; unit and browser tests, stamp, changelog; PR | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1735) | 40 m | ~40 m build | ~180,000 | Screenshots, Kat's design review and merge not yet counted. |
+| 1:40-1:50 PM | PR #1799 (#1735): the six screenshots (menu and General, roster-only General, Season, phone, light), and two fixes they showed: the invite link section's rule runs the page width, and a section first on the page has none; status comment on #1735 | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1735) | 10 m | ~10 m build | ~59,700 | |
+| 1:50-2:03 PM | PR #1799 (#1735): Kat's design review and merge, cleanup, #1487 updated; the bot's install permissions checked (they already cover tickets and invites) | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1735) | 15 m | ~5 m build, ~10 m Kat | ~11,100 | |
+| 2:03-2:15 PM | #1542, PR 1 of 2: the recruiting buttons in discord-interactions (Start a trial, Decline with its pop-up and the optional message to the applicant, Add note, Joined, Extend trial with its pop-up and the optional ticket post, Not joining with its reason list and pop-up), the card saying what happened with its used buttons grey, the database's own refusals told privately; Deno tests, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1542) | 10 m | ~10 m build | ~95,000 | Find my ticket is PR 2. Kat's review and merge not yet counted. |
+| 2:24-2:30 PM | PR #1800 (#1542): CodeRabbit (the recruit read named both its paths, to the team through team_recruiting and to the applicant by person_id, checked against the local database; the decline and extension follow-ups drop their buttons with the first answer so a double click sends once; the read-before-check one answered: it only reveals the team name already on the card) | Phase 2: Before the new site goes live / Recruiting (#1542) | 5 m | ~5 m build | ~40,000 | Kat's merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 

@@ -7,6 +7,7 @@ import { drawPicture, drawSvg } from '../_shared/sheet-picture-draw.ts';
 import { lineupDb } from '../_shared/lineup-db.ts';
 import type { Deps, InteractionsDb } from './handler.ts';
 import type { WishlistSetupStatusRow } from './nudge.ts';
+import type { RecruitAction, RecruitDb } from './recruit.ts';
 
 declare const EdgeRuntime: { waitUntil(work: Promise<unknown>): void };
 
@@ -256,6 +257,63 @@ function supabaseDb(): InteractionsDb {
   };
 }
 
+// The recruiting buttons' reads and actions (#1542). The bot_* functions take
+// the presser's Discord id and decide on their own whether that person may act.
+const RECRUIT_RPC: Record<RecruitAction, string> = {
+  trial: 'bot_start_recruit_trial',
+  decline: 'bot_close_recruit',
+  note: 'bot_add_recruit_note',
+  joined: 'bot_mark_recruit_joined',
+  extend: 'bot_extend_recruit_trial',
+  not_joining: 'bot_mark_recruit_not_joining'
+};
+
+function recruitDb(): RecruitDb {
+  const db = serviceClient;
+  return {
+    async recruit(applicationId) {
+      const { data, error } = await db()
+        .from('recruit_applications')
+        // Through team_recruiting, its only path to teams; people by person_id, since
+        // recruiter_person_id is a second key to people (CodeRabbit on #1800).
+        .select(
+          'name_realm, status, trial_ends_on, discord_channel_id, team_recruiting(teams(name)),' +
+            ' people!recruit_applications_person_id_fkey(discord_id)'
+        )
+        .eq('id', applicationId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) return null;
+      const r = data as any;
+      return {
+        teamName: r.team_recruiting?.teams?.name ?? 'this team',
+        nameRealm: r.name_realm,
+        status: r.status,
+        trialEndsOn: r.trial_ends_on ?? null,
+        ticketChannelId: r.discord_channel_id ?? null,
+        applicantDiscordId: r.people?.discord_id ?? null
+      };
+    },
+    async act(action, applicationId, discordId, args) {
+      const base = { p_application_id: applicationId, p_actor_discord_id: discordId };
+      const params: Record<string, unknown> =
+        action === 'decline'
+          ? { ...base, p_status: 'declined', p_reason: args.reason ?? null }
+          : action === 'note'
+            ? { ...base, p_body: args.reason ?? '' }
+            : action === 'extend'
+              ? { ...base, p_reason: args.reason ?? '' }
+              : action === 'not_joining'
+                ? { ...base, p_reason: args.reason ?? '', p_detail: args.detail || null }
+                : base;
+      const { data, error } = await db().rpc(RECRUIT_RPC[action], params);
+      // P0001 is a raise exception: a refusal worded for people.
+      if (error) return { ok: false, refused: error.code === 'P0001', message: error.message };
+      return { ok: true, value: data };
+    }
+  };
+}
+
 export function productionDeps(): Deps {
   return {
     fetch: globalThis.fetch,
@@ -264,6 +322,7 @@ export function productionDeps(): Deps {
     sheets: sheetDb(serviceClient),
     drawPicture: (picture) => drawPicture(picture),
     lineups: lineupDb(serviceClient),
+    recruits: recruitDb(),
     drawSvg: (svg) => drawSvg(svg),
     waitUntil: (work) => EdgeRuntime.waitUntil(work)
   };
