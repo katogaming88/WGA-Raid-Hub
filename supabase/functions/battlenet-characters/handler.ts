@@ -24,7 +24,7 @@ import {
   detailOf,
   pickedFrom,
   summaryPath
-} from './characters.ts';
+} from '../_shared/battlenet.ts';
 import { VERSION } from './version.ts';
 
 export type RosterLink = {

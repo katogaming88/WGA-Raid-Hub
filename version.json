@@ -1,14 +1,15 @@
 {
-  "version": "3.254.0",
+  "version": "3.255.0",
   "pieces": {
     "frontend": "3.233.0",
     "db": "3.254.0",
     "bot": "3.225.0",
     "functions": {
-      "battlenet-characters": "3.236.0",
+      "battlenet-characters": "3.255.0",
       "blizzard-gear-sync": "3.219.0",
       "boe-sold-webhook": "3.229.0",
       "boe-webhook": "3.237.0",
+      "character-stats": "3.255.0",
       "contact-webhook": "3.237.0",
       "discard-empty-account": "3.114.0",
       "discord-bot-webhook": "3.240.0",

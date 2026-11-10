@@ -1,4 +1,5 @@
-// The pure half of battlenet-characters (#942 step 5, #1162): reading
+// The pure half of battlenet-characters (#942 step 5, #1162), shared with
+// character-stats (#1538) since it gates on the same account list: reading
 // Blizzard's answers and deciding which characters a raider is shown. No
 // network and no database, so tests/edge runs it on captured shapes.
 
