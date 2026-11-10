@@ -1,7 +1,16 @@
 // #1793: the trial actions on a recruit record. SIGNUP_OWNER_T1 is on no team,
 // so they play the applicant, as in recruit-records.test.js.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, OFFICER_T1, RAIDER_T1, TEAM_LEADER_T1, SIGNUP_OWNER_T1, RLS_DENIED } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  OFFICER_T1,
+  OFFICER_T2,
+  RAIDER_T1,
+  TEAM_LEADER_T1,
+  SIGNUP_OWNER_T1,
+  RLS_DENIED
+} from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -45,7 +54,7 @@ const player = async (q, id) =>
   (
     await q(
       `select p.team_id, p.name_realm, p.is_trial, p.archived_at is not null as archived, p.team_member_id,
-              p.wishlist_allowed, p.is_backup_tank, cs.class, cs.spec
+              p.wishlist_allowed, p.is_backup_tank, p.is_bench, p.is_rotator, cs.class, cs.spec
          from public.players p left join public.classes_specs cs on cs.id = p.class_spec_id where p.id = $1`,
       [id]
     )
@@ -139,8 +148,8 @@ describe('recruit trials', () => {
       ).rows[0].id;
       const old = (
         await q(
-          `insert into public.players (team_id, name_realm, team_member_id, archived_at, wishlist_allowed, is_backup_tank)
-           values (1, 'Katorrí-Stormrage', $1, now() - interval '1 year', true, true) returning id`,
+          `insert into public.players (team_id, name_realm, team_member_id, archived_at, wishlist_allowed, is_backup_tank, is_bench, is_rotator)
+           values (1, 'Katorrí-Stormrage', $1, now() - interval '1 year', true, true, true, true) returning id`,
           [member]
         )
       ).rows[0].id;
@@ -153,7 +162,9 @@ describe('recruit trials', () => {
         archived: false,
         team_member_id: member,
         wishlist_allowed: false,
-        is_backup_tank: false
+        is_backup_tank: false,
+        is_bench: false,
+        is_rotator: false
       });
       expect((await audit(q, id))[1].detail).toMatchObject({ membership_restored: true });
 
@@ -257,10 +268,55 @@ describe('recruit trials', () => {
     });
   });
 
+  it('not joining ends the membership before the character, so a waiting main swap reads Membership ended', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { me, id } = await applied(q, asUser);
+      const pid = (await asUser(OFFICER_T1, 'select public.start_recruit_trial($1) as p', [id])).rows[0].p;
+      const swap = (
+        await q(
+          `insert into public.main_swap_requests (team_id, person_id, from_player_id, name_realm)
+           values (1, $1, $2, 'Altorrí-Stormrage') returning id`,
+          [me, pid]
+        )
+      ).rows[0].id;
+      await asUser(OFFICER_T1, "select public.mark_recruit_not_joining($1, 'other', null)", [id]);
+      expect(
+        (await q('select status, officer_note from public.main_swap_requests where id = $1', [swap])).rows[0]
+      ).toEqual({ status: 'cancelled', officer_note: 'Membership ended' });
+    });
+  });
+
   it('asks Edit recruiting and Edit roster, on the site and through the bot', async () => {
     await withTxn(async ({ q, asUser, asRole }) => {
       const { id } = await applied(q, asUser);
       const bot = asRole('service_role', null);
+
+      // Every action refuses a raider, another team's officer and the
+      // applicant on their own record, on the site and through the bot, and
+      // a signed-out caller on the site.
+      const site = [
+        'select public.start_recruit_trial($1)',
+        "select public.extend_recruit_trial($1, 'x')",
+        'select public.mark_recruit_joined($1)',
+        "select public.mark_recruit_not_joining($1, 'other', null)"
+      ];
+      const viaBot = (who) => [
+        `select public.bot_start_recruit_trial($1, '${who}')`,
+        `select public.bot_extend_recruit_trial($1, '${who}', 'x')`,
+        `select public.bot_mark_recruit_joined($1, '${who}')`,
+        `select public.bot_mark_recruit_not_joining($1, '${who}', 'other', null)`
+      ];
+      for (const sql of site) {
+        for (const uid of [RAIDER_T1, OFFICER_T2, APPLICANT]) {
+          await expect(asUser(uid, sql, [id])).rejects.toThrow('Not authorized');
+        }
+        await expect(asUser(null, sql, [id])).rejects.toThrow('Not signed in');
+      }
+      for (const who of ['discord-raider-1', 'discord-officer-2', 'discord-signup-owner']) {
+        for (const sql of viaBot(who)) {
+          await expect(bot(sql, [id])).rejects.toThrow('Not authorized');
+        }
+      }
       await expect(asUser(RAIDER_T1, 'select public.start_recruit_trial($1)', [id])).rejects.toThrow('Not authorized');
       await expect(asUser(null, 'select public.start_recruit_trial($1)', [id])).rejects.toThrow('Not signed in');
       await expect(bot("select public.bot_start_recruit_trial($1, 'discord-raider-1')", [id])).rejects.toThrow(

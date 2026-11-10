@@ -107,6 +107,10 @@ begin
      set team_member_id = excluded.team_member_id,
          class_spec_id = coalesce(excluded.class_spec_id, players.class_spec_id),
          is_trial = true,
+         -- Bench or Rotator from the last stint would outrank Trial in loot
+         -- priority (CodeRabbit).
+         is_bench = false,
+         is_rotator = false,
          join_date = excluded.join_date,
          is_backup_tank = false,
          is_backup_healer = false,
@@ -234,6 +238,21 @@ begin
   select p.team_member_id into v_member from players p where p.id = v_app.trial_player_id;
   perform 1 from team_members m where m.id = v_member for update;
 
+  -- A raider with no other character on the team leaves it too. The
+  -- membership goes first, as in archive_team_member(), so a waiting main
+  -- swap the character's archive closes reads "Membership ended" rather than
+  -- "Character removed" with a notice (CodeRabbit).
+  if exists (select 1 from team_members m
+              where m.id = v_member and m.archived_at is null and m.rank = 'raider')
+     and not exists (select 1 from players p
+                      where p.team_member_id = v_member and p.archived_at is null
+                        and p.id <> v_app.trial_player_id) then
+    insert into removal_reasons (team_id, team_member_id, reason, detail, removed_by)
+    values (v_app.team_id, v_member, p_reason, v_detail, p_actor);
+    update team_members set archived_at = now() where id = v_member;
+    v_member_archived := true;
+  end if;
+
   update players set archived_at = now()
    where id = v_app.trial_player_id and archived_at is null
   returning archived_at into v_removed_at;
@@ -249,16 +268,6 @@ begin
     on conflict (player_id) do update
        set archived_reason = excluded.archived_reason,
            archived_reason_detail = excluded.archived_reason_detail;
-  end if;
-
-  -- A raider left with no character on the team leaves it too.
-  if exists (select 1 from team_members m
-              where m.id = v_member and m.archived_at is null and m.rank = 'raider')
-     and not exists (select 1 from players p where p.team_member_id = v_member and p.archived_at is null) then
-    insert into removal_reasons (team_id, team_member_id, reason, detail, removed_by)
-    values (v_app.team_id, v_member, p_reason, v_detail, p_actor);
-    update team_members set archived_at = now() where id = v_member;
-    v_member_archived := true;
   end if;
 
   update recruit_applications set status = 'not_joining', closed_at = now() where id = p_application_id;

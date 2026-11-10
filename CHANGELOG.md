@@ -20,7 +20,7 @@ answers to.
 
 ### Project
 
-- Tests for recruit trials (#1793); time log row for #1793's build.
+- Tests for recruit trials (#1793); time log rows for #1793's build and CodeRabbit round.
 
 ## [3.253.0] - 2026-11-09
 

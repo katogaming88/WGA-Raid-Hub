@@ -18,17 +18,17 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live |  3 h 25 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live |  3 h 30 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **175 h 21 m** |             |
+| **All revamp work**                | **175 h 26 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Recruiting | Phase 2 | 3 h 25 m | ~9 h 50 m |
+| Recruiting | Phase 2 | 3 h 30 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 0 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 0 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
@@ -655,6 +655,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2:51-2:53 PM | PR #1792 (#1536): Kat's merge and cleanup; #1487 updated | Phase 2: Before the new site goes live / Recruiting (#1536) | 5 m | ~5 m build | 51,749 | |
 | 2:53-3:25 PM | #1539: Kat's three picks (trials split out as #1793, attachments keep their name only, keep everything for now); recruit records (`recruit_applications` with the send-time character copy and answers, notes, history, saved conversations, reminders sent), `recruit_access()`, the applicant's, officers', recruiter's and bot's functions, the picture bucket's view rule on the same access; RLS tests, generated docs, decision log, RLS.md, schema reference, backup doc, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1539) | 30 m | ~25 m build, ~5 m Kat | 211,869 | CodeRabbit, the fresh-agent review and Kat's merge not yet counted |
 | 8:25-8:45 PM | #1793: recruit trials (Start trial onto the roster as a Trial with the membership made or brought back, Extend with a reason, Joined, Not joining with a removal reason and the membership archived when it was their only character), site and bot versions asking Edit recruiting and Edit roster; RLS tests, generated docs, decision log, RLS.md, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1793) | 20 m | ~20 m build | 196,800 | CodeRabbit, the fresh-agent review and Kat's merge not yet counted |
+| 9:01-9:05 PM | PR #1795 (#1793): CodeRabbit (Bench and Rotator cleared on a returning trial character; Not joining ends the membership before the character, so a waiting main swap reads Membership ended; refusal tests for all eight functions and another team's officer) | Phase 2: Before the new site goes live / Recruiting (#1793) | 5 m | ~5 m build | ~30,000 | The fresh-agent review and Kat's merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 

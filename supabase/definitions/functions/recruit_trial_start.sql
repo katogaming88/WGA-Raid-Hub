@@ -64,6 +64,10 @@ begin
      set team_member_id = excluded.team_member_id,
          class_spec_id = coalesce(excluded.class_spec_id, players.class_spec_id),
          is_trial = true,
+         -- Bench or Rotator from the last stint would outrank Trial in loot
+         -- priority (CodeRabbit).
+         is_bench = false,
+         is_rotator = false,
          join_date = excluded.join_date,
          is_backup_tank = false,
          is_backup_healer = false,
