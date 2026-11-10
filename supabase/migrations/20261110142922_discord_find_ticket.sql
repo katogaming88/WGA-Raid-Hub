@@ -15,6 +15,7 @@ create table public.discord_find_ticket (
     constraint discord_find_ticket_channel_id check (channel_id ~ '^[0-9]{17,20}$'),
   message_id text
     constraint discord_find_ticket_message_id check (message_id ~ '^[0-9]{17,20}$'),
+  guild_id integer not null references public.guilds(id) on delete cascade,
   updated_by integer references public.people(id) on delete set null,
   updated_at timestamp with time zone not null default now()
 );
@@ -23,6 +24,8 @@ comment on table public.discord_find_ticket is
   'Find my ticket (#1542): per Discord server, the channel its message goes in and the message the bot posted, so the bot edits or removes that one. Read and written by the discord-settings Edge Function for whoever may edit recruiting for a team in the server. Service role only.';
 comment on column public.discord_find_ticket.message_id is
   'The posted message; null between picking the channel and the post going through.';
+comment on column public.discord_find_ticket.guild_id is
+  'The guild whose team first set it. Only that guild''s teams move or remove it, so another guild''s team pointed at the same server can''t (Kat, 2026-11-10).';
 comment on column public.discord_find_ticket.updated_by is
   'Who last picked the channel.';
 

@@ -31,18 +31,24 @@ export const CANT_POST = "The bot can't post there. Check its permissions in tha
 export const NO_SERVER = "Pick the team's Discord server first.";
 export const NOT_TEXT = 'Pick a text channel: the bot can only post its message in one.';
 
-export type FindTicket = { channelId: string; messageId: string | null };
+export const OTHER_GUILD =
+  "Another guild's team set this server's Find my ticket message, so only that guild's teams can change it.";
+
+// guildId: the guild whose team set it; only that guild's teams change it.
+export type FindTicket = { channelId: string; messageId: string | null; guildId: number };
 
 export interface FindTicketDb {
   // Whether the caller may edit the team's recruiting.
   mayEditRecruiting(authHeader: string, teamId: number): Promise<boolean>;
-  // The team's Discord server, null for none.
-  serverOf(teamId: number): Promise<string | null>;
+  // The team's Discord server (null for none) and its guild.
+  placeOf(teamId: number): Promise<{ serverId: string | null; guildId: number }>;
   // Whether some team in this server makes private tickets.
   ticketTeamIn(serverId: string): Promise<boolean>;
   current(serverId: string): Promise<FindTicket | null>;
   save(serverId: string, value: FindTicket, userId: string): Promise<void>;
   clear(serverId: string): Promise<void>;
+  // One audit_log row on the team, as the caller.
+  audit(teamId: number, userId: string, action: string, detail: Record<string, unknown>): Promise<void>;
 }
 
 type Call = (method: string, path: string, body?: unknown) => Promise<{ ok: boolean; status: number; body: any }>;
@@ -62,17 +68,22 @@ export async function findTicket(
   body: Record<string, unknown>
 ): Promise<Answer> {
   if (!(await db.mayEditRecruiting(authHeader, teamId))) return no('Not authorized', 403);
-  const serverId = await db.serverOf(teamId);
+  const { serverId, guildId } = await db.placeOf(teamId);
   if (!serverId) return no(NO_SERVER, 409);
   const current = await db.current(serverId);
   if (!('channelId' in body)) return ok({ channelId: current?.channelId ?? null });
+  // Teams of another guild pointed at the same server can't move or remove
+  // it (Kat, 2026-11-10, from the fresh-agent review on #1801).
+  if (current && current.guildId !== guildId) return no(OTHER_GUILD, 403);
 
   const channelId = body.channelId;
   if (channelId === null) {
-    if (current?.messageId) {
+    if (!current) return ok({ channelId: null });
+    if (current.messageId) {
       await discord('DELETE', `/channels/${current.channelId}/messages/${current.messageId}`).catch(() => null);
     }
     await db.clear(serverId);
+    await db.audit(teamId, userId, 'Find My Ticket Removed', { channel_id: current.channelId });
     return ok({ channelId: null });
   }
   if (typeof channelId !== 'string' || !SNOWFLAKE.test(channelId)) return no('Missing channel', 400);
@@ -95,7 +106,8 @@ export async function findTicket(
   if (posted.status === 403) return no(CANT_POST, 409);
   if (!posted.ok || typeof posted.body?.id !== 'string') return no(NOT_IN_SERVER, 404);
   try {
-    await db.save(serverId, { channelId, messageId: posted.body.id }, userId);
+    // A message reposted where it was stays with the guild that set it.
+    await db.save(serverId, { channelId, messageId: posted.body.id, guildId: current?.guildId ?? guildId }, userId);
   } catch (e) {
     // Posted but not kept: the next pick would post another and never remove
     // this one, so its id goes in the function's log for someone to delete.
@@ -109,6 +121,13 @@ export async function findTicket(
   // behind still finds tickets.
   if (current?.messageId && current.messageId !== posted.body.id) {
     await discord('DELETE', `/channels/${current.channelId}/messages/${current.messageId}`).catch(() => null);
+  }
+  // A repost in the same channel (it had been deleted by hand) changes nothing anyone chose.
+  if (current?.channelId !== channelId) {
+    await db.audit(teamId, userId, current ? 'Find My Ticket Moved' : 'Find My Ticket Set', {
+      channel_id: channelId,
+      ...(current ? { from_channel_id: current.channelId } : {})
+    });
   }
   return ok({ channelId });
 }

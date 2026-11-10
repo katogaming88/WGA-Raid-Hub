@@ -12,6 +12,7 @@ import {
   NO_TICKET_TEAM,
   NOT_IN_SERVER,
   NOT_TEXT,
+  OTHER_GUILD,
   findTicket
 } from '../../../supabase/functions/discord-settings/find-ticket.ts';
 import { FIND_TICKET_ID as PRESSED_ID } from '../../../supabase/functions/discord-interactions/recruit.ts';
@@ -37,9 +38,11 @@ function setup(
 ) {
   const calls: Call[] = [];
   const saved: Array<FindTicket | null> = [];
+  const audits: Array<{ action: string; detail: unknown }> = [];
   const db: FindTicketDb = {
     mayEditRecruiting: (auth, teamId) => Promise.resolve((opts.may ?? true) && auth === 'Bearer jwt' && teamId === 1),
-    serverOf: () => Promise.resolve(opts.server === undefined ? SERVER : opts.server),
+    // The team is in guild 1 (We Go Again).
+    placeOf: () => Promise.resolve({ serverId: opts.server === undefined ? SERVER : opts.server, guildId: 1 }),
     ticketTeamIn: () => Promise.resolve(opts.tickets ?? true),
     current: () => Promise.resolve(opts.current ?? null),
     save: (_server, value) => {
@@ -48,6 +51,11 @@ function setup(
     },
     clear: () => {
       saved.push(null);
+      return Promise.resolve();
+    },
+    audit: (teamId, userId, action, detail) => {
+      assertEquals([teamId, userId], [1, 'u1']);
+      audits.push({ action, detail });
       return Promise.resolve();
     }
   };
@@ -63,7 +71,7 @@ function setup(
     return Promise.resolve({ ok: true, status: 204, body: null });
   };
   const run = (body: Record<string, unknown>, auth = 'Bearer jwt') => findTicket(db, discord, auth, 'u1', 1, body);
-  return { run, calls, saved };
+  return { run, calls, saved, audits };
 }
 
 Deno.test('the button is the one discord-interactions answers', () => {
@@ -86,7 +94,7 @@ Deno.test('no server picked yet', async () => {
 });
 
 Deno.test('asking without a channel answers the one picked', async () => {
-  const { run, calls } = setup({ current: { channelId: CHANNEL, messageId: MESSAGE } });
+  const { run, calls } = setup({ current: { channelId: CHANNEL, messageId: MESSAGE, guildId: 1 } });
   assertEquals((await run({})).body, { success: true, channelId: CHANNEL });
   assertEquals(calls, []);
 });
@@ -113,11 +121,11 @@ Deno.test('first pick: posts the message there and keeps its id', async () => {
   const post = calls.find((c) => c.method === 'POST');
   assertEquals(post!.path, `/channels/${CHANNEL}/messages`);
   assertEquals(post!.body, FIND_TICKET_MESSAGE);
-  assertEquals(saved, [{ channelId: CHANNEL, messageId: POSTED }]);
+  assertEquals(saved, [{ channelId: CHANNEL, messageId: POSTED, guildId: 1 }]);
 });
 
 Deno.test('the same channel again edits the message in place, no second post', async () => {
-  const { run, calls, saved } = setup({ current: { channelId: CHANNEL, messageId: MESSAGE } });
+  const { run, calls, saved } = setup({ current: { channelId: CHANNEL, messageId: MESSAGE, guildId: 1 } });
   await run({ channelId: CHANNEL });
   assertEquals(
     calls.map((c) => c.method + ' ' + c.path),
@@ -127,13 +135,13 @@ Deno.test('the same channel again edits the message in place, no second post', a
 });
 
 Deno.test('the same channel with its message deleted by hand posts it again', async () => {
-  const { run, saved } = setup({ current: { channelId: CHANNEL, messageId: MESSAGE }, editFails: true });
+  const { run, saved } = setup({ current: { channelId: CHANNEL, messageId: MESSAGE, guildId: 1 }, editFails: true });
   await run({ channelId: CHANNEL });
-  assertEquals(saved, [{ channelId: CHANNEL, messageId: POSTED }]);
+  assertEquals(saved, [{ channelId: CHANNEL, messageId: POSTED, guildId: 1 }]);
 });
 
 Deno.test('a new channel: posted there first, then the old message removed', async () => {
-  const { run, calls, saved } = setup({ current: { channelId: CHANNEL, messageId: MESSAGE } });
+  const { run, calls, saved } = setup({ current: { channelId: CHANNEL, messageId: MESSAGE, guildId: 1 } });
   await run({ channelId: NEW_CHANNEL });
   const order = calls.map((c) => c.method + ' ' + c.path);
   assertEquals(order, [
@@ -141,11 +149,11 @@ Deno.test('a new channel: posted there first, then the old message removed', asy
     `POST /channels/${NEW_CHANNEL}/messages`,
     `DELETE /channels/${CHANNEL}/messages/${MESSAGE}`
   ]);
-  assertEquals(saved, [{ channelId: NEW_CHANNEL, messageId: POSTED }]);
+  assertEquals(saved, [{ channelId: NEW_CHANNEL, messageId: POSTED, guildId: 1 }]);
 });
 
 Deno.test('removing it deletes the message and forgets the channel', async () => {
-  const { run, calls, saved } = setup({ current: { channelId: CHANNEL, messageId: MESSAGE } });
+  const { run, calls, saved } = setup({ current: { channelId: CHANNEL, messageId: MESSAGE, guildId: 1 } });
   assertEquals((await run({ channelId: null })).body, { success: true, channelId: null });
   assertEquals(
     calls.map((c) => c.method + ' ' + c.path),
@@ -165,4 +173,43 @@ Deno.test('a voice, category or forum channel is refused with the reason', async
   assertEquals(answer.body.error, NOT_TEXT);
   assert(!calls.some((c) => c.method === 'POST'));
   assertEquals(saved, []);
+});
+
+Deno.test("another guild's team pointed at the same server can't move or remove the message", async () => {
+  const theirs = { channelId: CHANNEL, messageId: MESSAGE, guildId: 2 };
+  for (const channelId of [NEW_CHANNEL, null]) {
+    const { run, calls, saved, audits } = setup({ current: theirs });
+    const answer = await run({ channelId });
+    assertEquals(answer.status, 403);
+    assertEquals(answer.body.error, OTHER_GUILD);
+    assertEquals(calls, []);
+    assertEquals(saved, []);
+    assertEquals(audits, []);
+  }
+});
+
+Deno.test('setting, moving and removing each write one audit row; an edit in place writes none', async () => {
+  let r = setup();
+  await r.run({ channelId: CHANNEL });
+  assertEquals(r.audits, [{ action: 'Find My Ticket Set', detail: { channel_id: CHANNEL } }]);
+
+  r = setup({ current: { channelId: CHANNEL, messageId: MESSAGE, guildId: 1 } });
+  await r.run({ channelId: NEW_CHANNEL });
+  assertEquals(r.audits, [
+    { action: 'Find My Ticket Moved', detail: { channel_id: NEW_CHANNEL, from_channel_id: CHANNEL } }
+  ]);
+
+  r = setup({ current: { channelId: CHANNEL, messageId: MESSAGE, guildId: 1 } });
+  await r.run({ channelId: null });
+  assertEquals(r.audits, [{ action: 'Find My Ticket Removed', detail: { channel_id: CHANNEL } }]);
+
+  r = setup({ current: { channelId: CHANNEL, messageId: MESSAGE, guildId: 1 } });
+  await r.run({ channelId: CHANNEL });
+  assertEquals(r.audits, []);
+
+  // Removing when there's nothing writes nothing.
+  r = setup();
+  await r.run({ channelId: null });
+  assertEquals(r.saved, []);
+  assertEquals(r.audits, []);
 });

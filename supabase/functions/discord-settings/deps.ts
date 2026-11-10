@@ -85,11 +85,16 @@ function findTicketDb(): FindTicketDb {
       if (/Not authorized|Not signed in/.test(error.message)) return false;
       throw new Error(error.message);
     },
-    async serverOf(teamId) {
-      const row = check(
-        await db().from('team_discord_config').select('guild_id').eq('team_id', teamId).maybeSingle()
-      ) as { guild_id: string | null } | null;
-      return row?.guild_id ?? null;
+    async placeOf(teamId) {
+      // team_discord_config.guild_id is the Discord server; teams.guild_id the Raid Hub guild.
+      const [config, team] = await Promise.all([
+        db().from('team_discord_config').select('guild_id').eq('team_id', teamId).maybeSingle().then(check),
+        db().from('teams').select('guild_id').eq('id', teamId).single().then(check)
+      ]);
+      return {
+        serverId: (config as { guild_id: string | null } | null)?.guild_id ?? null,
+        guildId: (team as { guild_id: number }).guild_id
+      };
     },
     async ticketTeamIn(serverId) {
       const teams = check(await db().from('team_discord_config').select('team_id').eq('guild_id', serverId)) as {
@@ -109,9 +114,13 @@ function findTicketDb(): FindTicketDb {
     },
     async current(serverId) {
       const row = check(
-        await db().from('discord_find_ticket').select('channel_id, message_id').eq('server_id', serverId).maybeSingle()
-      ) as { channel_id: string; message_id: string | null } | null;
-      return row ? { channelId: row.channel_id, messageId: row.message_id } : null;
+        await db()
+          .from('discord_find_ticket')
+          .select('channel_id, message_id, guild_id')
+          .eq('server_id', serverId)
+          .maybeSingle()
+      ) as { channel_id: string; message_id: string | null; guild_id: number } | null;
+      return row ? { channelId: row.channel_id, messageId: row.message_id, guildId: row.guild_id } : null;
     },
     async save(serverId, value, userId) {
       const person = check(await db().from('people').select('id').eq('auth_user_id', userId).maybeSingle()) as {
@@ -124,12 +133,23 @@ function findTicketDb(): FindTicketDb {
             server_id: serverId,
             channel_id: value.channelId,
             message_id: value.messageId,
+            guild_id: value.guildId,
             updated_by: person?.id ?? null
           })
       );
     },
     async clear(serverId) {
       check(await db().from('discord_find_ticket').delete().eq('server_id', serverId));
+    },
+    async audit(teamId, userId, action, detail) {
+      // Directly with the service key, as the rest of discord-settings does
+      // (#1764): write_audit_log() doesn't take Edit recruiting. actor_id is the
+      // caller's auth user, as write_audit_log() would record.
+      check(
+        await db()
+          .from('audit_log')
+          .insert({ team_id: teamId, actor_id: userId, action, target_type: 'discord_find_ticket', detail })
+      );
     }
   };
 }

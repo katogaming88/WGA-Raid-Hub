@@ -11,6 +11,7 @@ Find my ticket (#1542): per Discord server, the channel its message goes in and 
 | server_id | text |  | false |  |  |  |
 | channel_id | text |  | false |  |  |  |
 | message_id | text |  | true |  |  | The posted message; null between picking the channel and the post going through. |
+| guild_id | integer |  | false |  | [public.guilds](public.guilds.md) | The guild whose team first set it. Only that guild's teams move or remove it, so another guild's team pointed at the same server can't (Kat, 2026-11-10). |
 | updated_by | integer |  | true |  | [public.people](public.people.md) | Who last picked the channel. |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
 
@@ -21,6 +22,7 @@ Find my ticket (#1542): per Discord server, the channel its message goes in and 
 | discord_find_ticket_channel_id | CHECK | CHECK ((channel_id ~ '^[0-9]{17,20}$'::text)) |
 | discord_find_ticket_message_id | CHECK | CHECK ((message_id ~ '^[0-9]{17,20}$'::text)) |
 | discord_find_ticket_server_id | CHECK | CHECK ((server_id ~ '^[0-9]{17,20}$'::text)) |
+| discord_find_ticket_guild_id_fkey | FOREIGN KEY | FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE |
 | discord_find_ticket_updated_by_fkey | FOREIGN KEY | FOREIGN KEY (updated_by) REFERENCES people(id) ON DELETE SET NULL |
 | discord_find_ticket_pkey | PRIMARY KEY | PRIMARY KEY (server_id) |
 
@@ -41,14 +43,27 @@ Find my ticket (#1542): per Discord server, the channel its message goes in and 
 ```mermaid
 erDiagram
 
+"public.discord_find_ticket" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
 "public.discord_find_ticket" }o--o| "public.people" : "FOREIGN KEY (updated_by) REFERENCES people(id) ON DELETE SET NULL"
 
 "public.discord_find_ticket" {
   text server_id
   text channel_id
   text message_id
+  integer guild_id FK
   integer updated_by FK
   timestamp_with_time_zone updated_at
+}
+"public.guilds" {
+  integer id
+  text name
+  text url_key
+  timestamp_with_time_zone created_at
+  text region
+  text realm
+  jsonb officer_bios
+  bigint boe_payout_floor
+  bigint boe_payout_pivot
 }
 "public.people" {
   integer id

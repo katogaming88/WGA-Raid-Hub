@@ -572,6 +572,7 @@ export type Database = {
       discord_find_ticket: {
         Row: {
           channel_id: string
+          guild_id: number
           message_id: string | null
           server_id: string
           updated_at: string
@@ -579,6 +580,7 @@ export type Database = {
         }
         Insert: {
           channel_id: string
+          guild_id: number
           message_id?: string | null
           server_id: string
           updated_at?: string
@@ -586,12 +588,20 @@ export type Database = {
         }
         Update: {
           channel_id?: string
+          guild_id?: number
           message_id?: string | null
           server_id?: string
           updated_at?: string
           updated_by?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "discord_find_ticket_guild_id_fkey"
+            columns: ["guild_id"]
+            isOneToOne: false
+            referencedRelation: "guilds"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "discord_find_ticket_updated_by_fkey"
             columns: ["updated_by"]

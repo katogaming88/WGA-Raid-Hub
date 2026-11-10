@@ -12882,6 +12882,12 @@
           "comment": "The posted message; null between picking the channel and the post going through."
         },
         {
+          "name": "guild_id",
+          "type": "integer",
+          "nullable": false,
+          "comment": "The guild whose team first set it. Only that guild's teams move or remove it, so another guild's team pointed at the same server can't (Kat, 2026-11-10)."
+        },
+        {
           "name": "updated_by",
           "type": "integer",
           "nullable": true,
@@ -12933,6 +12939,19 @@
           "referenced_table": "",
           "columns": [
             "server_id"
+          ]
+        },
+        {
+          "name": "discord_find_ticket_guild_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE",
+          "table": "public.discord_find_ticket",
+          "referenced_table": "public.guilds",
+          "columns": [
+            "guild_id"
+          ],
+          "referenced_columns": [
+            "id"
           ]
         },
         {
@@ -15072,6 +15091,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.discord_find_ticket",
+      "columns": [
+        "guild_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.guilds",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
     },
     {
       "table": "public.discord_find_ticket",

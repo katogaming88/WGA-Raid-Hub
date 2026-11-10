@@ -253,6 +253,7 @@ erDiagram
   text server_id
   text channel_id
   text message_id
+  integer guild_id FK
   integer updated_by FK
   timestamp_with_time_zone updated_at
 }

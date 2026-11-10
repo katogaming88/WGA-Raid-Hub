@@ -214,7 +214,7 @@ Written two ways: the officer note is written directly from the Roster tab (an u
 
 ## `discord_find_ticket`
 
-Find my ticket, per Discord server ([#1542](https://github.com/katogaming88/WGA-Raid-Hub/issues/1542)): `server_id` (PK), `channel_id` (where its message goes), `message_id` (the message the bot posted, null until it has), `updated_by` (who last picked the channel), `updated_at`. One message per server, since teams share one.
+Find my ticket, per Discord server ([#1542](https://github.com/katogaming88/WGA-Raid-Hub/issues/1542)): `server_id` (PK), `channel_id` (where its message goes), `message_id` (the message the bot posted, null until it has), `guild_id` (the guild whose team set it; only its teams change it), `updated_by` (who last picked the channel), `updated_at`. One message per server, since teams share one.
 
 ---
 

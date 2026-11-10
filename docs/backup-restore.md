@@ -283,7 +283,7 @@ As of 2026-11-09, [#1536](https://github.com/katogaming88/WGA-Raid-Hub/issues/15
 
 As of 2026-11-09, [#1539](https://github.com/katogaming88/WGA-Raid-Hub/issues/1539) added `recruit_applications`, `recruit_notes`, `recruit_events`, `recruit_messages` and `recruit_reminders_sent` (all in-app-only), 83 base tables. Keys: the other four to `recruit_applications`; it to `team_recruiting`, `people` (twice) and `characters`; notes and events also to `people`. No new `auth.users` FK. One trigger, `recruit_applications_whose_turn` (BEFORE, sets the status only; nothing to disable on restore). No `EMPTY_CHECK` floor: a team with no applicants has no rows. No re-drill due.
 
-As of 2026-11-10, [#1542](https://github.com/katogaming88/WGA-Raid-Hub/issues/1542) added `discord_find_ticket` (in-app-only), 84 base tables. Its only key is `updated_by` to `people` (ON DELETE SET NULL), so it restores after `people`. No new `auth.users` FK. One trigger, `trg_discord_find_ticket_updated_at` (sets `updated_at` only; nothing to disable on restore). No `EMPTY_CHECK` floor: a server may have no Find my ticket message. No re-drill due.
+As of 2026-11-10, [#1542](https://github.com/katogaming88/WGA-Raid-Hub/issues/1542) added `discord_find_ticket` (in-app-only), 84 base tables. Keys: `guild_id` to `guilds` (ON DELETE CASCADE) and `updated_by` to `people` (ON DELETE SET NULL), so it restores after both. No new `auth.users` FK. One trigger, `trg_discord_find_ticket_updated_at` (sets `updated_at` only; nothing to disable on restore). No `EMPTY_CHECK` floor: a server may have no Find my ticket message. No re-drill due.
 
 ## Ops notes
 

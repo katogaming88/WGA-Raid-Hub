@@ -8,7 +8,7 @@ One row per guild. url_key is the /g/<key> segment of an address: readable for W
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer |  | false | [public.teams](public.teams.md) [public.retired_url_keys](public.retired_url_keys.md) [public.guild_grants](public.guild_grants.md) [public.guild_rank_permissions](public.guild_rank_permissions.md) [public.guild_ranks](public.guild_ranks.md) [public.guild_recruiters](public.guild_recruiters.md) |  |  |
+| id | integer |  | false | [public.teams](public.teams.md) [public.retired_url_keys](public.retired_url_keys.md) [public.guild_grants](public.guild_grants.md) [public.guild_rank_permissions](public.guild_rank_permissions.md) [public.guild_ranks](public.guild_ranks.md) [public.guild_recruiters](public.guild_recruiters.md) [public.discord_find_ticket](public.discord_find_ticket.md) |  |  |
 | name | text |  | false |  |  | The guild's display name. A label only: guilds are identified by url_key and id, so two guilds may share a name (#1226). |
 | url_key | text | new_url_code() | false |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
@@ -55,6 +55,7 @@ erDiagram
 "public.guild_rank_permissions" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
 "public.guild_ranks" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id)"
 "public.guild_recruiters" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
+"public.discord_find_ticket" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
 
 "public.guilds" {
   integer id
@@ -108,6 +109,14 @@ erDiagram
   text code
   boolean active
   timestamp_with_time_zone created_at
+  timestamp_with_time_zone updated_at
+}
+"public.discord_find_ticket" {
+  text server_id
+  text channel_id
+  text message_id
+  integer guild_id FK
+  integer updated_by FK
   timestamp_with_time_zone updated_at
 }
 ```
