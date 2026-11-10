@@ -10,7 +10,11 @@ function check<T>({ data, error }: { data: T; error: { message: string } | null 
 
 function supabaseDb(): TicketDb {
   // The caller's own token answers who they are. The reads and writes are the
-  // service role's, scoped here to the caller's own open application.
+  // service role's: the application is the caller's own open one, and the
+  // team-side reads (its settings, ranks and the officers' Discord ids) are
+  // ones the applicant can't make. Those stay in this function: they build the
+  // Discord permissions and mentions, and never reach the answer (a test
+  // checks it).
   const caller = (authHeader: string) =>
     createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: authHeader } }

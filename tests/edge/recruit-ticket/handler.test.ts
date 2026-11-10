@@ -167,6 +167,21 @@ Deno.test('ticket: a private channel in the category, @everyone out, the applica
   assertEquals(find(calls, 'POST', '/channels/' + OFFICERS + '/threads'), []);
 });
 
+Deno.test("the answer never carries the officers' Discord ids or the team's settings", async () => {
+  for (const over of [
+    {},
+    { thread_with_ticket: true },
+    { mode: 'officer_thread' as const },
+    { discord_channel_id: TICKET }
+  ]) {
+    const { deps } = setup({}, over);
+    const { body } = await send(deps);
+    const text = JSON.stringify(body);
+    for (const secret of [OFFICER_A, OFFICER_B, RECRUITER_ROLE, OFFICERS, CATEGORY]) assert(!text.includes(secret));
+    assertEquals(Object.keys(body).sort(), ['mode', 'status', 'success', 'ticket_url', 'welcome_dm']);
+  }
+});
+
 Deno.test('ticket card: mentions only the applicant and officers, fields, links and buttons', async () => {
   const { deps, calls } = setup();
   await send(deps);
