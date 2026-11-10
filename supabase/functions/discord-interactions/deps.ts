@@ -310,6 +310,39 @@ function recruitDb(): RecruitDb {
       // P0001 is a raise exception: a refusal worded for people.
       if (error) return { ok: false, refused: error.code === 'P0001', message: error.message };
       return { ok: true, value: data };
+    },
+    async openTickets(serverId, discordId) {
+      // The server's teams, then the presser's open records on them that have a ticket.
+      const { data: teams, error: teamsError } = await db()
+        .from('team_discord_config')
+        .select('team_id, teams(name, guilds(url_key))')
+        .eq('guild_id', serverId);
+      if (teamsError) throw new Error(teamsError.message);
+      const rows = (teams as any[] | null) ?? [];
+      const guildKey = rows.map((t) => t.teams?.guilds?.url_key).find(Boolean) ?? null;
+      const { data: person, error: personError } = await db()
+        .from('people')
+        .select('id')
+        .eq('discord_id', discordId)
+        .maybeSingle();
+      if (personError) throw new Error(personError.message);
+      if (!person || rows.length === 0) return { tickets: [], guildKey };
+      const names = new Map(rows.map((t) => [t.team_id as number, (t.teams?.name as string) ?? 'the team']));
+      const { data: open, error } = await db()
+        .from('recruit_applications')
+        .select('team_id, discord_channel_id')
+        .eq('person_id', (person as { id: number }).id)
+        .is('closed_at', null)
+        .not('discord_channel_id', 'is', null)
+        .in('team_id', [...names.keys()]);
+      if (error) throw new Error(error.message);
+      return {
+        tickets: ((open as any[] | null) ?? []).map((a) => ({
+          teamName: names.get(a.team_id) ?? 'the team',
+          channelId: a.discord_channel_id as string
+        })),
+        guildKey
+      };
     }
   };
 }

@@ -102,6 +102,7 @@
 | [public.recruit_events](public.recruit_events.md) | 6 | A recruit record's history (#1539), for its What's happened list: who did what, when, and a short detail (a decline or extension reason, which reminder). The functions and the bot write it. | BASE TABLE |
 | [public.recruit_messages](public.recruit_messages.md) | 8 | A closed ticket's conversation (#1539), saved by the bot before the channel is deleted. attachments is a list of {name, content_type}: the files themselves are not kept, since Discord's links expire. | BASE TABLE |
 | [public.recruit_reminders_sent](public.recruit_reminders_sent.md) | 5 | Which recruiting reminders the bot sent (#1539, #1543), the shape of raid_rsvp_reminders_sent. due_for is the message time or trial end the reminder was for, so a new message starts a new round and a repeat sweep sends nothing twice. | BASE TABLE |
+| [public.discord_find_ticket](public.discord_find_ticket.md) | 5 | Find my ticket (#1542): per Discord server, the channel its message goes in and the message the bot posted, so the bot edits or removes that one. Read and written by the discord-settings Edge Function for whoever may edit recruiting for a team in the server. Service role only. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -556,6 +557,7 @@ erDiagram
 "public.recruit_events" }o--|| "public.recruit_applications" : "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE"
 "public.recruit_messages" }o--|| "public.recruit_applications" : "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE"
 "public.recruit_reminders_sent" }o--|| "public.recruit_applications" : "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE"
+"public.discord_find_ticket" }o--o| "public.people" : "FOREIGN KEY (updated_by) REFERENCES people(id) ON DELETE SET NULL"
 
 "public.attendance" {
   integer id
@@ -1581,6 +1583,13 @@ erDiagram
   text reminder
   timestamp_with_time_zone due_for
   timestamp_with_time_zone sent_at
+}
+"public.discord_find_ticket" {
+  text server_id
+  text channel_id
+  text message_id
+  integer updated_by FK
+  timestamp_with_time_zone updated_at
 }
 ```
 

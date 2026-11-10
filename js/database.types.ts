@@ -569,6 +569,38 @@ export type Database = {
         }
         Relationships: []
       }
+      discord_find_ticket: {
+        Row: {
+          channel_id: string
+          message_id: string | null
+          server_id: string
+          updated_at: string
+          updated_by: number | null
+        }
+        Insert: {
+          channel_id: string
+          message_id?: string | null
+          server_id: string
+          updated_at?: string
+          updated_by?: number | null
+        }
+        Update: {
+          channel_id?: string
+          message_id?: string | null
+          server_id?: string
+          updated_at?: string
+          updated_by?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discord_find_ticket_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       discord_nudges_sent: {
         Row: {
           category: string

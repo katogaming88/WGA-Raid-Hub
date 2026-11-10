@@ -23,6 +23,9 @@
 // press comes from the reason list, not that message.
 
 export const RECRUIT_PREFIX = 'recruit:';
+// Find my ticket's button (#1542), posted by discord-settings' find-ticket.ts
+// under the same id; a test holds the two together.
+export const FIND_TICKET_ID = 'find-ticket';
 
 export type Recruit = {
   teamName: string;
@@ -50,6 +53,12 @@ export interface RecruitDb {
     discordId: string,
     args: { reason?: string; detail?: string }
   ): Promise<ActResult>;
+  // Find my ticket: the open tickets of the person with this Discord id in
+  // this server's teams, and the guild's address key for its apply page.
+  openTickets(
+    serverId: string,
+    discordId: string
+  ): Promise<{ tickets: { teamName: string; channelId: string }[]; guildKey: string | null }>;
 }
 
 export type RecruitDeps = {
@@ -58,6 +67,7 @@ export type RecruitDeps = {
   discord(method: string, path: string, body?: unknown): Promise<{ ok: boolean; status: number; body: any }>;
   waitUntil(work: Promise<unknown>): void;
   now: () => Date;
+  siteUrl?: string;
 };
 
 type Interaction = {
@@ -65,6 +75,7 @@ type Interaction = {
   application_id: string;
   token: string;
   channel_id?: string;
+  guild_id?: string;
   member?: { user?: { id: string } };
   message?: { id: string };
   data?: {
@@ -113,6 +124,9 @@ export const DM_CLOSED = "Couldn't message them: their Discord DMs are closed.";
 export const NOT_SENT = 'Nothing sent.';
 export const POSTED = 'Posted in the ticket.';
 export const NO_TICKET = 'There is no ticket to post in.';
+export const YOUR_TICKET = (team: string, channelId: string) => `Your ticket with ${team}'s officers: <#${channelId}>`;
+export const NO_APPLICATION = (applyUrl: string | null) =>
+  `You don't have an open application${applyUrl ? `. Apply here: ${applyUrl}` : ' in this server.'}`;
 
 // What the card says happened, by action.
 const DONE: Record<RecruitAction, string | null> = {
@@ -165,6 +179,7 @@ const choice = (label: string, customId: string, style = 2) => ({ type: 2, style
 // The answer to a press, or null when the custom id isn't a recruiting one.
 export function handleRecruit(deps: RecruitDeps, i: Interaction): Response | null {
   const customId = i.data?.custom_id ?? '';
+  if (customId === FIND_TICKET_ID && i.type === BUTTON) return findMine(deps, i);
   if (!customId.startsWith(RECRUIT_PREFIX)) return null;
   const [kind, idText, a, b] = customId.slice(RECRUIT_PREFIX.length).split(':');
   const id = Number(idText);
@@ -413,4 +428,41 @@ async function afterExtend(deps: RecruitDeps, i: Interaction, id: number, until:
   if (!r.ticketChannelId) return finish(deps, i, { content: NO_TICKET, components: [] });
   await post(deps, r.ticketChannelId, `Your trial with ${r.teamName} is extended to ${dateOnly(until)}.`);
   return finish(deps, i, { content: POSTED, components: [] });
+}
+
+// Find my ticket (#1542): anyone may press it, and the answer only ever shows
+// the presser's own open tickets in this server, to the presser alone. Up to
+// 25 (five rows of five link buttons); nobody has that many.
+function findMine(deps: RecruitDeps, i: Interaction): Response {
+  const presser = i.member?.user?.id;
+  const serverId = i.guild_id;
+  if (!presser || !serverId) return say(BROKE);
+  deps.waitUntil(
+    new Promise((r) => setTimeout(r, 0))
+      .then(async () => {
+        const { tickets, guildKey } = await deps.db.openTickets(serverId, presser);
+        if (tickets.length === 0) {
+          const apply = deps.siteUrl && guildKey ? `${deps.siteUrl.replace(/\/+$/, '')}/g/${guildKey}/apply` : null;
+          return finish(deps, i, { content: NO_APPLICATION(apply) });
+        }
+        const shown = tickets.slice(0, 25);
+        const buttons = shown.map((t) => ({
+          type: 2,
+          style: 5,
+          label: `Open ${t.teamName}'s ticket`.slice(0, 80),
+          url: `https://discord.com/channels/${serverId}/${t.channelId}`
+        }));
+        const rows = [];
+        for (let n = 0; n < buttons.length; n += 5) rows.push({ type: 1, components: buttons.slice(n, n + 5) });
+        return finish(deps, i, {
+          content: shown.map((t) => YOUR_TICKET(t.teamName, t.channelId)).join('\n'),
+          components: rows
+        });
+      })
+      .catch(async (err) => {
+        console.error('discord-interactions: find my ticket failed:', err);
+        await finish(deps, i, { content: BROKE }).catch(() => null);
+      })
+  );
+  return thinking();
 }

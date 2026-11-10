@@ -10,6 +10,18 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-11-10 -- Find my ticket (#1542)
+
+Shipped: 20261110142922_discord_find_ticket.sql
+
+- **Kept per Discord server, not per team.** Teams share a server, and the issue asks for one Find my ticket message per server, so `discord_find_ticket` is keyed by `server_id`: the channel picked and the message the bot posted there, so it edits or removes that one instead of posting another. A column on `team_recruiting` would have let two teams in one server pick two channels.
+- **An Edge Function's own table.** Only `discord-settings` uses it, with the service key (the button's press reads the recruit records, not this), so the table grants only `service_role` and `claude_readers`. No SQL function: the setting needs a Discord post in the same step, which only the Edge Function can make.
+- **Setting it asks Edit recruiting, through the database.** The function calls `team_recruiting_settings()` with the caller's own token, which refuses anyone without `edit_recruiting` on the team (or a site admin), then takes the team's own server from `team_discord_config`. A channel is only taken while some team in that server uses private tickets.
+
+[Full discussion -> #1542](https://github.com/katogaming88/WGA-Raid-Hub/issues/1542).
+
+---
+
 ## 2026-11-09 -- Adding an applicant to the Discord server (#1540)
 
 Shipped: 20261109225537_recruit_discord_join_failed.sql

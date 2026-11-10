@@ -14,10 +14,12 @@ import {
   JOINED,
   NOT_JOINING,
   NOT_JOINING_REASONS,
+  NO_APPLICATION,
   NOT_SENT,
   NOTE_SAVED,
   ONLY_OFFICERS,
   POSTED,
+  YOUR_TICKET,
   type Recruit,
   type RecruitAction,
   type RecruitDeps,
@@ -33,6 +35,7 @@ const CARD = '900000000000000009';
 const TICKET = '810000000000000001';
 const DM = '820000000000000002';
 const NOW = new Date('2026-11-10T18:00:00Z');
+const SERVER = '100000000000000001';
 
 const KAT: Recruit = {
   teamName: 'Phoenix',
@@ -67,6 +70,10 @@ function setup(
     after?: Partial<Recruit>;
     result?: ActResult;
     dmCode?: number;
+    // Find my ticket: open tickets by presser, and the guild's address key.
+    open?: Record<string, { teamName: string; channelId: string }[]>;
+    guildKey?: string | null;
+    siteUrl?: string;
   } = {}
 ) {
   const calls: Call[] = [];
@@ -83,7 +90,12 @@ function setup(
         acts.push({ action, id, discordId, args });
         acted = true;
         return Promise.resolve(opts.result ?? { ok: true, value: null });
-      }
+      },
+      openTickets: (serverId, discordId) =>
+        Promise.resolve({
+          tickets: serverId === SERVER ? (opts.open?.[discordId] ?? []) : [],
+          guildKey: opts.guildKey === undefined ? 'wga' : opts.guildKey
+        })
     },
     discord: (method, path, body) => {
       calls.push({ method, path, body });
@@ -95,7 +107,8 @@ function setup(
       return Promise.resolve({ ok: true, status: 200, body: { id: '1' } });
     },
     waitUntil: (work) => pending.push(work),
-    now: () => NOW
+    now: () => NOW,
+    siteUrl: opts.siteUrl ?? 'https://raidhub.example/'
   };
   return { deps, calls, acts, settle: () => Promise.all(pending) };
 }
@@ -314,4 +327,45 @@ Deno.test('Joined: the record, the trial message greyed, a welcome in the ticket
 Deno.test('a press that is not a recruiting one is left to the rest of the handler', () => {
   const { deps } = setup();
   assertEquals(handleRecruit(deps, press('signup-sheet-refresh:1:2026-11-12')), null);
+});
+
+Deno.test('Find my ticket: only the presser, only their own open tickets in this server, each a button', async () => {
+  const { deps, calls, settle } = setup({
+    open: {
+      [APPLICANT]: [
+        { teamName: 'Phoenix', channelId: TICKET },
+        { teamName: 'Hellfire Rollers', channelId: '810000000000000009' }
+      ]
+    }
+  });
+  const press1 = press('find-ticket', { guild_id: SERVER, member: { user: { id: APPLICANT } } });
+  assertEquals(await handleRecruit(deps, press1)!.json(), { type: 5, data: { flags: 64 } });
+  await settle();
+  const answer = calls.find((c) => c.path === ORIGINAL)!.body;
+  assertEquals(
+    answer.content,
+    [YOUR_TICKET('Phoenix', TICKET), YOUR_TICKET('Hellfire Rollers', '810000000000000009')].join('\n')
+  );
+  assertEquals(
+    answer.components[0].components.map((b: any) => b.url),
+    [`https://discord.com/channels/${SERVER}/${TICKET}`, `https://discord.com/channels/${SERVER}/810000000000000009`]
+  );
+  assertEquals(answer.allowed_mentions, { parse: [] });
+});
+
+Deno.test(
+  "Find my ticket: someone else's tickets never show; no open application points to the apply page",
+  async () => {
+    const { deps, calls, settle } = setup({ open: { [APPLICANT]: [{ teamName: 'Phoenix', channelId: TICKET }] } });
+    handleRecruit(deps, press('find-ticket', { guild_id: SERVER, member: { user: { id: OFFICER } } }));
+    await settle();
+    assertEquals(answered(calls), [NO_APPLICATION('https://raidhub.example/g/wga/apply')]);
+  }
+);
+
+Deno.test('Find my ticket in a server no team has set up says so without a link', async () => {
+  const { deps, calls, settle } = setup({ guildKey: null });
+  handleRecruit(deps, press('find-ticket', { guild_id: '100000000000000099' }));
+  await settle();
+  assertEquals(answered(calls), [NO_APPLICATION(null)]);
 });

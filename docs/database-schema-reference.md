@@ -212,6 +212,12 @@ Written two ways: the officer note is written directly from the Roster tab (an u
 
 ---
 
+## `discord_find_ticket`
+
+Find my ticket, per Discord server ([#1542](https://github.com/katogaming88/WGA-Raid-Hub/issues/1542)): `server_id` (PK), `channel_id` (where its message goes), `message_id` (the message the bot posted, null until it has), `updated_by` (who last picked the channel), `updated_at`. One message per server, since teams share one.
+
+---
+
 ## `recruit_applications`
 
 Recruit records ([#1539](https://github.com/katogaming88/WGA-Raid-Hub/issues/1539)): one per person per team per attempt, from the form (`source` `application`) or added by an officer for someone who came in through a Discord ticket (`added_by_officer`). One open (`closed_at` null) per person per team.

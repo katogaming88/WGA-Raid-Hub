@@ -351,7 +351,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         db: deps.recruits,
         discord: (method, path, body) => discord(deps, method, path, body),
         waitUntil: (work) => deps.waitUntil(work),
-        now: deps.now ?? (() => new Date())
+        now: deps.now ?? (() => new Date()),
+        siteUrl: deps.env.get('SITE_URL')
       },
       interaction
     );
