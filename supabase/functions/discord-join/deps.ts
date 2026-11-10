@@ -70,14 +70,14 @@ function supabaseDb(): JoinDb {
     async lastDiscordEvent(applicationId) {
       const { data, error } = await db()
         .from('recruit_events')
-        .select('kind, created_at')
+        .select('kind, created_at, detail')
         .eq('application_id', applicationId)
         .in('kind', ['joined_discord', 'discord_join_failed'])
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       if (error) throw new Error(error.message);
-      return data ? { kind: data.kind, at: Date.parse(data.created_at) } : null;
+      return data ? { kind: data.kind, at: Date.parse(data.created_at), detail: data.detail ?? null } : null;
     }
   };
 }

@@ -56,6 +56,7 @@ function routes(): Record<string, Route> {
   return {
     ['GET ' + MEMBER]: () => status(404),
     ['POST ' + API + '/oauth2/token']: () => json({ access_token: 'user-token', token_type: 'Bearer' }),
+    ['POST ' + API + '/oauth2/token/revoke']: () => status(200),
     ['GET ' + API + '/users/@me']: () => json({ id: APPLICANT }),
     ['PUT ' + MEMBER]: () => status(201),
     ['GET ' + API + '/guilds/' + SERVER]: () => json({ id: SERVER, system_channel_id: WELCOME }),
@@ -91,7 +92,9 @@ function setup(over: Partial<Record<string, Route>> = {}, app: Application | nul
       },
       lastDiscordEvent: () => {
         const i = events.length - 1;
-        return Promise.resolve(i < 0 ? null : { kind: events[i].kind as 'joined_discord', at: stamps[i] });
+        return Promise.resolve(
+          i < 0 ? null : { kind: events[i].kind as 'joined_discord', at: stamps[i], detail: events[i].detail }
+        );
       }
     },
     env: { get: (n) => env[n] },
@@ -163,16 +166,16 @@ Deno.test('finish: Discord says already a member (204)', async () => {
   assertEquals(events, [{ kind: 'joined_discord', actor: 42, detail: 'Already a member' }]);
 });
 
-Deno.test('finish: banned (403) is recorded, the officers told, and an invite answered', async () => {
-  const { deps, calls, events } = setup({ ['PUT ' + MEMBER]: () => status(403) });
+Deno.test('finish: banned (403, 40007) is recorded, the officers told, and an invite answered', async () => {
+  const { deps, calls, events } = setup({ ['PUT ' + MEMBER]: () => json({ code: 40007 }, 403) });
   const { body } = await call(deps, { action: 'finish', state: await goodState(), code: 'c' });
   assertEquals(body, {
     success: true,
     status: 'failed',
-    reason: 'banned_or_no_permission',
+    reason: 'banned',
     invite: 'https://discord.gg/abc123'
   });
-  assertEquals(events, [{ kind: 'discord_join_failed', actor: 42, detail: WHY.banned_or_no_permission }]);
+  assertEquals(events, [{ kind: 'discord_join_failed', actor: 42, detail: WHY.banned }]);
   const invite = JSON.parse(calls.find((c) => c.url.endsWith('/invites'))!.body!);
   assertEquals(invite, { max_age: 604800, max_uses: 1, unique: true });
   const notice = JSON.parse(calls.find((c) => c.url.endsWith('/messages'))!.body!);
@@ -354,5 +357,63 @@ Deno.test('a retry after a failure can still join', async () => {
   assertEquals(
     events.map((e) => e.kind),
     ['discord_join_failed', 'joined_discord']
+  );
+});
+
+Deno.test('a 403 names its cause: missing permission (50013), or just refused', async () => {
+  const no = await call(setup({ ['PUT ' + MEMBER]: () => json({ code: 50013 }, 403) }).deps, {
+    action: 'finish',
+    state: await goodState(),
+    code: 'c'
+  });
+  assertEquals(no.body.reason, 'no_permission');
+  const other = await call(setup({ ['PUT ' + MEMBER]: () => status(403) }).deps, {
+    action: 'finish',
+    state: await goodState(),
+    code: 'c'
+  });
+  assertEquals(other.body.reason, 'refused');
+});
+
+Deno.test('the applicant token is revoked once the add is done, and after a failed check too', async () => {
+  for (const over of [{}, { ['GET ' + API + '/users/@me']: () => json({ id: '555555555555555555' }) }]) {
+    const { deps, calls } = setup(over);
+    await call(deps, { action: 'finish', state: await goodState(), code: 'c' });
+    const revoke = calls.filter((c) => c.url.endsWith('/oauth2/token/revoke'));
+    assertEquals(revoke.length, 1);
+    const form = new URLSearchParams(revoke[0].body!);
+    assertEquals([form.get('token'), form.get('token_type_hint')], ['user-token', 'access_token']);
+  }
+});
+
+Deno.test('no code and no access_denied is Discord not answering, not a no', async () => {
+  const { body } = await call(setup().deps, { action: 'finish', state: await goodState(), error: 'server_error' });
+  assertEquals(body.reason, 'discord_down');
+  assertEquals((await call(setup().deps, { action: 'finish', state: await goodState() })).body.reason, 'discord_down');
+});
+
+Deno.test('the same failure again after the window is recorded, but the officers hear it once', async () => {
+  const { deps, calls, events, tick } = setup({ ['PUT ' + MEMBER]: () => json({ code: 40007 }, 403) });
+  const state = await goodState();
+  await call(deps, { action: 'finish', state, code: 'c' });
+  tick(REPEAT_FAILURE_MS);
+  const again = await call(deps, { action: 'finish', state, code: 'c2' });
+  assertEquals(again.body.invite, 'https://discord.gg/abc123');
+  assertEquals(events.length, 2);
+  assertEquals(calls.filter((c) => c.url.endsWith('/messages')).length, 1);
+});
+
+Deno.test('a local stack makes no invites in the server it names', async () => {
+  const env = { ...ENV, SUPABASE_URL: 'http://kong:8000', DISCORD_TEST_WEBHOOK_URL: 'http://sink.test/hook' };
+  const { deps, calls } = setup(
+    { ['PUT ' + MEMBER]: () => status(403), ['POST http://sink.test/hook']: () => status(204) },
+    APP,
+    env
+  );
+  const { body } = await call(deps, { action: 'finish', state: await goodState(), code: 'c' });
+  assertEquals(body.invite, null);
+  assertEquals(
+    calls.some((c) => c.url.endsWith('/invites') || c.url === API + '/guilds/' + SERVER),
+    false
   );
 });

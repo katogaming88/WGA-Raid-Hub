@@ -54,7 +54,7 @@ export interface JoinDb {
   // The application's latest joined_discord or discord_join_failed row.
   lastDiscordEvent(
     applicationId: number
-  ): Promise<{ kind: 'joined_discord' | 'discord_join_failed'; at: number } | null>;
+  ): Promise<{ kind: 'joined_discord' | 'discord_join_failed'; at: number; detail: string | null } | null>;
 }
 
 export type Deps = {
@@ -66,7 +66,8 @@ export type Deps = {
 
 // A failure is recorded and told to the officers once in this long, so a
 // reloaded after-send page or a repeated call can't flood the history, the
-// officer channel or the server's invites (CodeRabbit on #1797).
+// officer channel or the server's invites (CodeRabbit on #1797). Past it, a
+// failure is recorded again but the officers hear about each reason once.
 export const REPEAT_FAILURE_MS = 10 * 60_000;
 
 export const API = 'https://discord.com/api/v10';
@@ -95,14 +96,16 @@ const refuse = (error: string, status: number) => jsonResponse({ success: false,
 
 export const NOT_SET_UP = 'Adding applicants to Discord is not set up on this site yet.';
 export const NOT_YOURS = 'That application is not yours, or it is closed.';
-export const BAD_STATE = 'That Discord link has expired. Open your application and try again.';
+export const BAD_STATE = "That Discord link doesn't fit this application. Open your application and try again.";
 export const SOMETHING_WRONG = 'Something went wrong. Your application is saved.';
 
 // Why a join failed, as the history and the officers' notice say it.
 export const WHY = {
   declined: 'They said no on Discord',
   other_account: 'They signed in to Discord with a different account',
-  banned_or_no_permission: 'Discord refused: they may be banned, or the bot lacks Create Invite',
+  banned: 'They are banned from the server',
+  no_permission: 'The bot lacks Create Invite in the server',
+  refused: 'Discord refused to add them',
   discord_down: 'Discord did not answer'
 } as const;
 type Why = keyof typeof WHY;
@@ -196,7 +199,7 @@ async function start(deps: Deps, c: Config, app: Application): Promise<Response>
 
 // The code for the applicant's own token, their Discord id, and the add.
 async function join(deps: Deps, c: Config, app: Application, code: string): Promise<'joined' | 'already_member' | Why> {
-  let accessToken: string;
+  let accessToken: string | undefined;
   try {
     const res = await deps.fetch(API + '/oauth2/token', {
       method: 'POST',
@@ -229,16 +232,47 @@ async function join(deps: Deps, c: Config, app: Application, code: string): Prom
     });
     if (put.status === 201) return 'joined';
     if (put.status === 204) return 'already_member';
-    if (put.status === 403) return 'banned_or_no_permission';
+    // Discord's error code says which refusal it is (40007 banned, 50013
+    // missing permission), so the officers know what to fix.
+    if (put.status === 403) {
+      const code = (await put.json().catch(() => null))?.code;
+      return code === 40007 ? 'banned' : code === 50013 ? 'no_permission' : 'refused';
+    }
     return 'discord_down';
   } catch {
     return 'discord_down';
+  } finally {
+    // The token did its one job: hand it back so Discord stops honoring it
+    // (it would stay good for about a week). Best effort.
+    if (accessToken) await revoke(deps, c, accessToken);
+  }
+}
+
+async function revoke(deps: Deps, c: Config, token: string) {
+  try {
+    await deps.fetch(API + '/oauth2/token/revoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: c.clientId,
+        client_secret: c.clientSecret,
+        token,
+        token_type_hint: 'access_token'
+      }),
+      signal: timed()
+    });
+  } catch {
+    // it expires on its own
   }
 }
 
 // A single-use, week-long invite to the server's welcome channel (or its rules
 // channel), or null when there is neither or Discord says no.
+// A local stack makes none: restored from the production backup, its server
+// ids are the real servers, and an invite is the one thing here that would
+// change one without anybody's OK (the add needs the applicant's own).
 async function inviteFor(deps: Deps, c: Config, serverId: string): Promise<string | null> {
+  if (resolveBot(deps.env).kind !== 'bot') return null;
   try {
     const g = await botCall(deps, c, '/guilds/' + serverId);
     if (!g.ok) return null;
@@ -291,7 +325,11 @@ async function finish(deps: Deps, c: Config, app: Application, body: Record<stri
   if (recorded) return recorded;
 
   let outcome: 'joined' | 'already_member' | Why =
-    typeof body.code === 'string' && body.code !== '' ? await join(deps, c, app, body.code) : 'declined';
+    typeof body.code === 'string' && body.code !== ''
+      ? await join(deps, c, app, body.code)
+      : body.error === 'access_denied'
+        ? 'declined'
+        : 'discord_down';
   // In the server after all (a second send of the code, or they joined by
   // hand): not a failure. A different Discord account never counts.
   if (outcome !== 'joined' && outcome !== 'already_member' && outcome !== 'other_account') {
@@ -315,7 +353,11 @@ async function finish(deps: Deps, c: Config, app: Application, body: Record<stri
   }
   const invite = await inviteFor(deps, c, app.server_id!);
   await deps.db.addEvent(app.id, 'discord_join_failed', app.person_id, WHY[outcome]);
-  await tellOfficers(deps, c, app, outcome, invite);
+  // The officers hear about a reason once: the same failure again (someone
+  // opening the page over and over) only goes in the history.
+  if (!(last?.kind === 'discord_join_failed' && last.detail === WHY[outcome])) {
+    await tellOfficers(deps, c, app, outcome, invite);
+  }
   return jsonResponse({ success: true, status: 'failed', reason: outcome, invite });
 }
 
