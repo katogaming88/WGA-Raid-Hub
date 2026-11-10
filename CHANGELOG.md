@@ -21,6 +21,7 @@ answers to.
 ### Project
 
 - Tests for recruit trials (#1793); time log rows for #1793's build, CodeRabbit round and fresh-agent review fixes.
+- The boss-lineups tests for #1246 no longer fail on a Monday evening: they fix today to the lockout's Tuesday, so the Monday they plan is always still to come (Kat asked for it in #1795).
 
 ## [3.253.0] - 2026-11-09
 

@@ -617,14 +617,19 @@ const skippedOn = async (q, date, team = 1) => (await night(q, date, team)).map(
 describe('a boss killed earlier in the lockout (#1246)', () => {
   // Team 1 raids Mythic unless told otherwise, both bosses have a group, and
   // the Monday that closes this lockout is planned before any kill arrives.
+  // Today is the lockout's Tuesday, so that Monday is still to come: on a
+  // real Monday evening it is tonight and already started, and nothing
+  // would be skipped from it (#1793's CI).
   async function planned(q, asUser, { difficulty = 'mythic' } = {}) {
     const players = await seed(q);
     await setTeamDifficulty(q, difficulty);
     await setGroup(asUser, OFFICER_T1, FIRST, [players.p1, players.p2]);
     await setGroup(asUser, OFFICER_T1, SECOND, [players.p1]);
+    const tuesday = await day(q, 0);
+    await pinToday(q, tuesday);
     const monday = await day(q, 6);
     await plan(asUser, OFFICER_T1, monday);
-    return { ...players, monday, tuesday: await day(q, 0) };
+    return { ...players, monday, tuesday };
   }
 
   it('takes the boss off a later night that week at the kill’s difficulty, with its lineup, and keeps which kill did it', async () => {
@@ -832,7 +837,6 @@ describe('a boss killed earlier in the lockout (#1246)', () => {
   it('takes a boss off a night when the first kill before it arrives, even after a later one', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { monday, tuesday } = await planned(q, asUser);
-      await pinToday(q, tuesday);
       const thursday = await day(q, 2);
       await plan(asUser, OFFICER_T1, thursday);
       // Friday's log is uploaded before Tuesday's.
@@ -965,6 +969,8 @@ describe('a boss killed earlier in the lockout (#1246)', () => {
     await withTxn(async ({ q }) => {
       await seed(q);
       await setTeamDifficulty(q, 'mythic');
+      // Today is the lockout's Tuesday, as in planned().
+      await pinToday(q, await day(q, 0));
       const monday = await day(q, 6);
       // Written directly: planning takes the lock, which then stays held to the
       // end of the transaction and would satisfy the check below by itself.
