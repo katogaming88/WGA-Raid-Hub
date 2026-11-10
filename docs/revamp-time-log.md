@@ -18,17 +18,17 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live |  5 h 5 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live |  5 h 25 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **177 h 1 m** |             |
+| **All revamp work**                | **177 h 21 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Recruiting | Phase 2 | 5 h 5 m | ~9 h 50 m |
+| Recruiting | Phase 2 | 5 h 25 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 0 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 0 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
@@ -663,6 +663,13 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:50-11:10 PM | #1540: Kat's two picks (Raid Hub's own Discord step, not Supabase's sign-in; the bot makes the fallback invite); `discord-join` Edge Function (start: already a member or Discord's consent link; finish: code swap, own-account check, the add, the token dropped; failures recorded, officers told, single-use invite), `discord_join_failed` history kind; Deno tests, generated docs, decision log, schema reference, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1540) | 20 m | ~20 m build | ~120,000 | Review and merge not yet counted. |
 | 11:10-11:20 PM | PR #1797 (#1540): CodeRabbit (a reload or a repeated call no longer records a false failure, messages the officers or makes invites again: a recorded join is answered from the record, membership is checked before failing, a failure is recorded once per ten minutes; four more tests) | Phase 2: Before the new site goes live / Recruiting (#1540) | 10 m | ~10 m build | ~50,000 |  |
 | 11:20-11:45 PM | PR #1797 (#1540): the fresh-agent review (approve; seven nice-to-haves), Kat asked for six: the applicant's token revoked after the add, banned and missing Create Invite told apart by Discord's error code, "said no" only for a real no, officers told once per reason, the state message reworded, no invites from a local stack plus a warning in the env template; five more tests. Skipped: a lock for two finish calls at the same instant | Phase 2: Before the new site goes live / Recruiting (#1540) | 25 m | ~20 m build, ~5 m Kat deciding | ~150,000 | Kat's merge not yet counted. |
+
+### 2026-11-10
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 12:32-12:40 AM | PR #1797 (#1540): Kat's merge and cleanup; #1487 updated (#1540 row off, #1541 next) | Phase 2: Before the new site goes live / Recruiting (#1540) | 5 m | ~5 m build | ~2,700 | Carried from the 2026-11-10 handoff |
+| 12:05-12:20 PM | #1541: `recruit-ticket` Edge Function (by the team's mode: a private ticket channel with the applicant and the team's people, an officer-only thread beside it or on its own, or one officer-channel post; the application card with its numbers, links and buttons, mentions limited to the applicant and officers; the welcome DM with closed DMs noted; made once, recorded even when Discord stops partway; nothing made from a local stack), ticket categories in `discord-settings`; Deno tests, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1541) | 15 m | ~15 m build | ~166,000 | Tokens include the /resume read. Review and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 
