@@ -10,6 +10,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-11-09 -- Recruit trials (#1793)
+
+Shipped: 20261109202717_recruit_trials.sql
+
+- **Start trial makes the membership, as the invite link does.** The person comes on as a raider, or back from the archive as one, and the character they applied with goes on the roster as a Trial: new, or back from the archive with the last stint's officer flags cleared, as the invite link and the signup add reset them. A character on the roster now, or one someone else holds, is refused. The character is linked to them only while it is still theirs; one that has moved to someone else goes on unlinked, as the signup add does (fresh-agent review). A ticket-only recruit with no Discord id has no person, so their character goes on unlinked, as an officer's hand add.
+- **It shares the signup add's pieces, not the function.** `add_signup_to_roster()` reads a signup and asks for a signed-in officer at every step (`restore_team_member()`, `hold_team_member()`, `write_audit_log()`), which the bot isn't. The trial functions write the same rows in the same lock order: the record, the team, the membership, then the character, as Archive Member takes them.
+- **The record keeps the roster row it made** (`trial_player_id`), so Joined and Not joining act on that row, not on a name that may have changed, **and the membership it made or brought back** (`trial_team_member_id`, null when they were already on the team).
+- **The dates are Eastern calendar dates**, like a roster join date: today to today plus the team's `trial_days`. Extend adds the team's current `trial_days` to the end date and needs a reason. Whether the bot also says it in the ticket is the bot's question (#1542), not a column.
+- **Not joining takes one of the roster's removal reasons**, so it reads like any other removal, and writes the removal in the acting officer's name, which the notes trigger would leave blank from the bot. The membership the trial made or brought back is archived too, with the same reason, when it is still a raider's with no other character on the team: being on a team is what makes someone a guild member (#1517), and they aren't joining. It goes before the character, as Archive Member does, so a waiting main swap reads Membership ended (CodeRabbit). A membership they had before applying stays, even with no character on the team (fresh-agent review).
+- **Joined is refused when an officer already took the trial character off the roster**; Not joining still closes the record then.
+- **The trial actions ask Edit roster as well as Edit recruiting**, as the signup add asks Edit roster as well as Manage signups (#1646). Officers have both by default; the Team Owner and site admins always do.
+
+[Full discussion -> #1793](https://github.com/katogaming88/WGA-Raid-Hub/issues/1793).
+
+---
+
 ## 2026-11-09 -- Recruit records (#1539)
 
 Shipped: 20261109145938_recruit_records.sql

@@ -225,7 +225,9 @@ Recruit records ([#1539](https://github.com/katogaming88/WGA-Raid-Hub/issues/153
 | `sent_by`, `recruiter_person_id`, `recruiter_code`, `sent_by_name` | `recruiter` (code and name kept), `friend` (the name as typed) or `nobody` |
 | `time_zone` | From the applicant's browser, for reminders |
 | `applicant_last_message_at`, `officers_last_message_at` | Written by the bot |
-| `trial_starts_on`, `trial_ends_on` | Set by #1793's trial actions |
+| `trial_starts_on`, `trial_ends_on` | Eastern calendar dates set by Start trial: today to today plus the team's `trial_days`; Extend trial adds `trial_days` to the end (#1793) |
+| `trial_player_id` | The roster row Start trial put them on, which Joined and Not joining act on (#1793) |
+| `trial_team_member_id` | The membership Start trial made or brought back, null when they were already on the team; Not joining ends only this one (#1793) |
 | `discord_channel_id`, `discord_thread_id`, `discord_officer_message_id` | Whatever the team's Discord mode made, written by the bot |
 | `applied_at`, `closed_at` | `closed_at` is set exactly when the status is a closed one |
 

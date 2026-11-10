@@ -11959,6 +11959,18 @@
           "name": "closed_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "trial_player_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The roster row Start trial put them on (#1793), which Joined and Not joining act on."
+        },
+        {
+          "name": "trial_team_member_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The membership Start trial made or brought back from the archive (#1793), null when they were already on the team. Not joining ends only this one, never a membership the person had before applying (fresh-agent review)."
         }
       ],
       "indexes": [
@@ -12002,6 +12014,22 @@
           "table": "public.recruit_applications",
           "columns": [
             "recruiter_person_id"
+          ]
+        },
+        {
+          "name": "recruit_applications_trial_player",
+          "def": "CREATE INDEX recruit_applications_trial_player ON public.recruit_applications USING btree (trial_player_id)",
+          "table": "public.recruit_applications",
+          "columns": [
+            "trial_player_id"
+          ]
+        },
+        {
+          "name": "recruit_applications_trial_team_member",
+          "def": "CREATE INDEX recruit_applications_trial_team_member ON public.recruit_applications USING btree (trial_team_member_id)",
+          "table": "public.recruit_applications",
+          "columns": [
+            "trial_team_member_id"
           ]
         }
       ],
@@ -12240,6 +12268,32 @@
           "columns": [
             "trial_starts_on",
             "trial_ends_on"
+          ]
+        },
+        {
+          "name": "recruit_applications_trial_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (trial_player_id) REFERENCES players(id) ON DELETE SET NULL",
+          "table": "public.recruit_applications",
+          "referenced_table": "public.players",
+          "columns": [
+            "trial_player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "recruit_applications_trial_team_member_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (trial_team_member_id) REFERENCES team_members(id) ON DELETE SET NULL",
+          "table": "public.recruit_applications",
+          "referenced_table": "public.team_members",
+          "columns": [
+            "trial_team_member_id"
+          ],
+          "referenced_columns": [
+            "id"
           ]
         },
         {
@@ -14759,6 +14813,32 @@
     {
       "table": "public.recruit_applications",
       "columns": [
+        "trial_player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (trial_player_id) REFERENCES players(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.recruit_applications",
+      "columns": [
+        "trial_team_member_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_members",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (trial_team_member_id) REFERENCES team_members(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.recruit_applications",
+      "columns": [
         "person_id"
       ],
       "cardinality": "zero_or_more",
@@ -16380,6 +16460,96 @@
       "name": "public.bot_reopen_recruit",
       "return_type": "void",
       "arguments": "p_application_id integer, p_actor_discord_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruit_reason_words",
+      "return_type": "text",
+      "arguments": "p_reason text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruit_trial_start",
+      "return_type": "int4",
+      "arguments": "p_application_id integer, p_actor integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruit_trial_extend",
+      "return_type": "date",
+      "arguments": "p_application_id integer, p_actor integer, p_reason text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruit_trial_joined",
+      "return_type": "void",
+      "arguments": "p_application_id integer, p_actor integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruit_trial_not_joining",
+      "return_type": "void",
+      "arguments": "p_application_id integer, p_actor integer, p_reason text, p_detail text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruit_trial_site_actor",
+      "return_type": "int4",
+      "arguments": "p_application_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.recruit_trial_bot_actor",
+      "return_type": "int4",
+      "arguments": "p_application_id integer, p_actor_discord_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.start_recruit_trial",
+      "return_type": "int4",
+      "arguments": "p_application_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.extend_recruit_trial",
+      "return_type": "date",
+      "arguments": "p_application_id integer, p_reason text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.mark_recruit_joined",
+      "return_type": "void",
+      "arguments": "p_application_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.mark_recruit_not_joining",
+      "return_type": "void",
+      "arguments": "p_application_id integer, p_reason text, p_detail text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.bot_start_recruit_trial",
+      "return_type": "int4",
+      "arguments": "p_application_id integer, p_actor_discord_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.bot_extend_recruit_trial",
+      "return_type": "date",
+      "arguments": "p_application_id integer, p_actor_discord_id text, p_reason text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.bot_mark_recruit_joined",
+      "return_type": "void",
+      "arguments": "p_application_id integer, p_actor_discord_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.bot_mark_recruit_not_joining",
+      "return_type": "void",
+      "arguments": "p_application_id integer, p_actor_discord_id text, p_reason text, p_detail text",
       "type": "FUNCTION"
     }
   ],

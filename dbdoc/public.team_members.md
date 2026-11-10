@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('team_members_id_seq'::regclass) | false | [public.players](public.players.md) [public.season_signups](public.season_signups.md) [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) [public.removal_reasons](public.removal_reasons.md) [public.names](public.names.md) |  |  |
+| id | integer | nextval('team_members_id_seq'::regclass) | false | [public.players](public.players.md) [public.season_signups](public.season_signups.md) [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) [public.removal_reasons](public.removal_reasons.md) [public.names](public.names.md) [public.recruit_applications](public.recruit_applications.md) |  |  |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | discord_id | text |  | false |  |  |  |
 | auth_user_id | uuid |  | true |  |  |  |
@@ -60,6 +60,7 @@ erDiagram
 "public.raid_schedule_exceptions" }o--o| "public.team_members" : "FOREIGN KEY (created_by) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.removal_reasons" }o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id)"
 "public.names" |o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE"
+"public.recruit_applications" }o--o| "public.team_members" : "FOREIGN KEY (trial_team_member_id) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.team_members" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_members" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id)"
 
@@ -157,6 +158,40 @@ erDiagram
   integer team_member_id FK
   text role
   timestamp_with_time_zone created_at
+}
+"public.recruit_applications" {
+  integer id
+  integer team_id FK
+  integer person_id FK
+  text source
+  text status
+  integer character_id FK
+  text name_realm
+  text class_name
+  text spec_name
+  text__ other_specs
+  integer item_level
+  numeric_6_1_ mplus_score
+  numeric_4_1_ logs_best_average
+  numeric_4_1_ logs_median_average
+  integer mythic_bosses_killed
+  jsonb answers
+  text sent_by
+  integer recruiter_person_id FK
+  text recruiter_code
+  text sent_by_name
+  text time_zone
+  timestamp_with_time_zone applicant_last_message_at
+  timestamp_with_time_zone officers_last_message_at
+  date trial_starts_on
+  date trial_ends_on
+  text discord_channel_id
+  text discord_thread_id
+  text discord_officer_message_id
+  timestamp_with_time_zone applied_at
+  timestamp_with_time_zone closed_at
+  integer trial_player_id FK
+  integer trial_team_member_id FK
 }
 "public.teams" {
   integer id
