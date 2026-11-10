@@ -693,6 +693,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2026-11-03 | 8:56-8:58 AM | Where the work stood | 5 m |
 | 2026-11-03 | 9:20-11:45 AM | Sandbox testers: the Sentry join error read (#1748), Cloudflare Access sign-in help, the live database checked for what testers saved, #1749 and #1753 filed, #1753 fixed (the Import characters window no longer covers the join page); review and merge not yet counted | 2 h 25 m |
 | 2026-11-04 | 9:47-9:48 AM | Where the work stood | 5 m |
+| 2026-11-09 | 9:20-9:40 PM | #1795's rls check: the #1246 boss-lineups tests failed every Monday evening (the Monday they plan had already started); today fixed to the lockout's Tuesday, in #1795 at Kat's ask. A flaky deadlock between team-ranks and the recruit and guild test files noted | 20 m |
 
 ## Remaining in Revamp 1
 
