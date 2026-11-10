@@ -274,14 +274,19 @@ function recruitDb(): RecruitDb {
     async recruit(applicationId) {
       const { data, error } = await db()
         .from('recruit_applications')
-        .select('name_realm, status, trial_ends_on, discord_channel_id, teams(name), people(discord_id)')
+        // Through team_recruiting, its only path to teams; people by person_id, since
+        // recruiter_person_id is a second key to people (CodeRabbit on #1800).
+        .select(
+          'name_realm, status, trial_ends_on, discord_channel_id, team_recruiting(teams(name)),' +
+            ' people!recruit_applications_person_id_fkey(discord_id)'
+        )
         .eq('id', applicationId)
         .maybeSingle();
       if (error) throw new Error(error.message);
       if (!data) return null;
       const r = data as any;
       return {
-        teamName: r.teams?.name ?? 'this team',
+        teamName: r.team_recruiting?.teams?.name ?? 'this team',
         nameRealm: r.name_realm,
         status: r.status,
         trialEndsOn: r.trial_ends_on ?? null,

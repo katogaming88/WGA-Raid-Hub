@@ -195,7 +195,10 @@ Deno.test('Decline opens a pop-up before any read; sending it declines and offer
 
 Deno.test("after a decline: Send message DMs the applicant, closed DMs say so, Don't send sends nothing", async () => {
   let r = setup({ recruit: { ...KAT, status: 'declined' } });
-  assertEquals((await handleRecruit(r.deps, press('recruit:decline-dm:7'))!.json()).type, 6);
+  const first = await handleRecruit(r.deps, press('recruit:decline-dm:7'))!.json();
+  // The buttons go with the first answer, so a second click can't send again.
+  assertEquals(first.type, 7);
+  assertEquals(first.data.components, []);
   await r.settle();
   const dm = r.calls.find((c) => c.path === `/channels/${DM}/messages`);
   assertEquals(dm!.body.content, DECLINE_DM('Phoenix'));

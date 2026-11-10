@@ -78,7 +78,7 @@ const BUTTON = 3;
 const MODAL_SUBMIT = 5;
 const MESSAGE = 4;
 const DEFERRED_MESSAGE = 5;
-const DEFERRED_UPDATE = 6;
+const UPDATE_MESSAGE = 7;
 const MODAL = 9;
 const EPHEMERAL = 1 << 6;
 const REASON_MAX = 500;
@@ -137,6 +137,9 @@ const GREYS: Record<RecruitAction, string[]> = {
 const json = (body: unknown) => new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } });
 const thinking = () => json({ type: DEFERRED_MESSAGE, data: { flags: EPHEMERAL } });
 const say = (content: string) => json({ type: MESSAGE, data: { content, flags: EPHEMERAL } });
+// A follow-up's buttons go at once, so a double click can't send the DM or
+// the ticket post twice (CodeRabbit on #1800); the result replaces this.
+const working = () => ({ type: UPDATE_MESSAGE, data: { content: 'Working on it…', components: [] } });
 
 const shortDate = (d: Date) =>
   d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' });
@@ -233,11 +236,11 @@ export function handleRecruit(deps: RecruitDeps, i: Interaction): Response | nul
       case 'decline-dm':
       case 'decline-nodm':
         later(() => afterDecline(deps, i, id, kind === 'decline-dm'));
-        return json({ type: DEFERRED_UPDATE });
+        return json(working());
       case 'extend-post':
       case 'extend-nopost':
         later(() => afterExtend(deps, i, id, kind === 'extend-post' ? a : null));
-        return json({ type: DEFERRED_UPDATE });
+        return json(working());
     }
     return say(BROKE);
   }
