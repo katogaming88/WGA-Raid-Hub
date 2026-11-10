@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.257.0] - 2026-11-10
+
+### Functions
+
+- New `recruit-ticket` function (#1541): when someone applies, the bot does what the team picked in its recruiting settings, and only that team's people can see it. A **ticket** is a private channel in the team's ticket category, named like `phoenix-katorri`, with the applicant, the team's Owner and officers, and (if the team ticked them) its assistants, the guild's Owner and Admins and extra Discord roles such as a recruiter role; everyone else is shut out. An **officer thread** is a private thread in the officer channel without the applicant, either on its own or beside a ticket. An **officer post** is one message in the officer channel. Each opens with the application card: the applicant's line about themselves, spec, item level, M+ score, best logs average, Mythic bosses killed, raid nights, who sent them, whether they applied before, links to Warcraft Logs, Raider.IO and the Armory, and the Start a trial, Decline, Add note and Open in Raid Hub buttons (what the buttons do comes later, #1542). Only the applicant and the officers are pinged. The applicant gets a welcome DM with a button to their ticket, or "an officer will message you" when there is no ticket; closed DMs are noted on their record. Calling it again never makes a second ticket, and a local copy of the site makes nothing in Discord. Nothing anyone sees yet: the after-send page uses it later.
+- `discord-settings` also lists the server's categories, for the ticket category picker (#1541).
+
+### Project
+
+- Tests for `recruit-ticket` (#1541), with Discord stubbed, including that Hellfire's officers get no access to a Phoenix ticket; time log rows for #1540's merge and #1541.
+
 ## [3.256.0] - 2026-11-09
 
 ### Backend

@@ -6,8 +6,8 @@
 //     recorded in discord_server_access, which set_team_discord_server()
 //     needs within the hour before it takes one;
 //   - server: the team's saved server, with whether the bot is still in it,
-//     its text channels (each with what the bot is missing there) and its
-//     roles; null when the team has none yet.
+//     its text channels (each with what the bot is missing there), its
+//     categories (for the ticket category, #1541) and its roles; null when the team has none yet.
 // POST { teamId, action: 'test', channelId, kind } posts a short test message
 //   in a channel of the team's saved server, pinging nobody.
 //
@@ -24,6 +24,7 @@ import {
   type DiscordMember,
   type ShownChannel,
   type ShownRole,
+  shownCategories,
   shownChannels,
   shownRoles
 } from './discord.ts';
@@ -106,6 +107,7 @@ export type ServerAnswer = {
   name: string | null;
   botIn: boolean;
   channels: ShownChannel[];
+  categories: Array<{ id: string; name: string }>;
   roles: ShownRole[];
 };
 
@@ -183,7 +185,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     let server: ServerAnswer | null = null;
     if (team.serverId) {
       const serverId = team.serverId;
-      server = { id: serverId, name: null, botIn: false, channels: [], roles: [] };
+      server = { id: serverId, name: null, botIn: false, channels: [], categories: [], roles: [] };
       if (botGuilds.some((g) => g.id === serverId)) {
         const [guild, channels, me] = await Promise.all([
           api<DiscordGuild>(`/guilds/${serverId}`),
@@ -200,6 +202,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           name: guild.name,
           botIn: true,
           channels: shownChannels(guild, channels, me.id, bot),
+          categories: shownCategories(channels),
           roles: shownRoles(guild)
         };
       }
