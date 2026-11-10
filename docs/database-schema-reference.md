@@ -241,7 +241,7 @@ Notes on a recruit record ([#1539](https://github.com/katogaming88/WGA-Raid-Hub/
 
 ## `recruit_events`
 
-A recruit record's history ([#1539](https://github.com/katogaming88/WGA-Raid-Hub/issues/1539)): `kind` (applied, added_by_officer, withdrawn, joined_discord, ticket_opened, officer_replied, reminder_sent, trial_started, trial_extended, declined, joined, not_joining, closed, reopened, note_added), `actor_person_id`, `detail` (500), `created_at`.
+A recruit record's history ([#1539](https://github.com/katogaming88/WGA-Raid-Hub/issues/1539)): `kind` (applied, added_by_officer, withdrawn, joined_discord, discord_join_failed ([#1540](https://github.com/katogaming88/WGA-Raid-Hub/issues/1540), reason in `detail`), ticket_opened, officer_replied, reminder_sent, trial_started, trial_extended, declined, joined, not_joining, closed, reopened, note_added), `actor_person_id`, `detail` (500), `created_at`.
 
 ---
 

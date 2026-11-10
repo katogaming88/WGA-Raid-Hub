@@ -12499,7 +12499,8 @@
         {
           "name": "kind",
           "type": "text",
-          "nullable": false
+          "nullable": false,
+          "comment": "What happened. joined_discord and discord_join_failed are discord-join's (#1540): added to the team's Discord server when they applied (detail 'Already a member' when they were), or not, with the reason in detail."
         },
         {
           "name": "actor_person_id",
@@ -12551,7 +12552,7 @@
         {
           "name": "recruit_events_kind",
           "type": "CHECK",
-          "def": "CHECK ((kind = ANY (ARRAY['applied'::text, 'added_by_officer'::text, 'withdrawn'::text, 'joined_discord'::text, 'ticket_opened'::text, 'officer_replied'::text, 'reminder_sent'::text, 'trial_started'::text, 'trial_extended'::text, 'declined'::text, 'joined'::text, 'not_joining'::text, 'closed'::text, 'reopened'::text, 'note_added'::text])))",
+          "def": "CHECK ((kind = ANY (ARRAY['applied'::text, 'added_by_officer'::text, 'withdrawn'::text, 'joined_discord'::text, 'discord_join_failed'::text, 'ticket_opened'::text, 'officer_replied'::text, 'reminder_sent'::text, 'trial_started'::text, 'trial_extended'::text, 'declined'::text, 'joined'::text, 'not_joining'::text, 'closed'::text, 'reopened'::text, 'note_added'::text])))",
           "table": "public.recruit_events",
           "referenced_table": "",
           "columns": [

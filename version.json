@@ -1,8 +1,8 @@
 {
-  "version": "3.255.0",
+  "version": "3.256.0",
   "pieces": {
     "frontend": "3.233.0",
-    "db": "3.254.0",
+    "db": "3.256.0",
     "bot": "3.225.0",
     "functions": {
       "battlenet-characters": "3.255.0",
@@ -14,6 +14,7 @@
       "discard-empty-account": "3.114.0",
       "discord-bot-webhook": "3.240.0",
       "discord-interactions": "3.240.0",
+      "discord-join": "3.256.0",
       "discord-settings": "3.238.0",
       "optional-rsvp-reminders": "3.240.0",
       "twitch-live-check": "3.112.13",

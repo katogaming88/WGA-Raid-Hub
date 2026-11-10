@@ -10,6 +10,18 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-11-09 -- Adding an applicant to the Discord server (#1540)
+
+Shipped: 20261109225537_recruit_discord_join_failed.sql
+
+- **Raid Hub runs its own Discord step, not Supabase's sign-in** (Kat, 2026-11-09). Discord adds someone to a server only with a `guilds.join` token from the bot's own app, and Supabase's Discord sign-in hands its token over once, may be another app, and refuses to re-link an account that already linked Discord. The `discord-join` Edge Function sends the applicant to Discord's consent screen for the bot's app after they send, then swaps the code, checks the Discord account is theirs, adds them, and drops the token. It is never stored.
+- **The code comes back through the site, not straight to the function.** Discord returns the applicant to the after-send page, which hands the code over signed in as them, so the function keeps its sign-in check. The state is an HMAC of the application and the person, so a code can't be put on someone else's application.
+- **A failed add is a history row, `discord_join_failed`, with the reason in `detail`.** No new column: the Recruits page reads it off the history, as it does the other events. The officers are told in their officer channel, and the applicant gets a single-use, week-long invite the bot makes to the server's welcome channel (Kat's pick over officers pasting a link). Already a member is `joined_discord` with detail `Already a member`.
+
+[Full discussion -> #1540](https://github.com/katogaming88/WGA-Raid-Hub/issues/1540).
+
+---
+
 ## 2026-11-09 -- Recruit trials (#1793)
 
 Shipped: 20261109202717_recruit_trials.sql
