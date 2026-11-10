@@ -18,17 +18,17 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live |  4 h 5 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live |  4 h 30 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **176 h 1 m** |             |
+| **All revamp work**                | **176 h 26 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Recruiting | Phase 2 | 4 h 5 m | ~9 h 50 m |
+| Recruiting | Phase 2 | 4 h 30 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 0 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 0 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
@@ -659,6 +659,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:05-9:15 PM | PR #1795 (#1793): the fresh-agent review (changes needed: a character that moved to someone else was linked to the applicant; Not joining could end a membership they had before applying) and the fixes (link only while theirs, `trial_team_member_id` so only the trial's own membership ends, membership found by person, site admin and own-record tests) | Phase 2: Before the new site goes live / Recruiting (#1793) | 10 m | ~10 m build | ~172,000 | Tokens include the fresh agent's 148,603; Kat's merge not yet counted |
 | 10:15-10:30 PM | #1538: `character-stats` Edge Function (item level, class, spec, M+ score, Heroic and Mythic logs averages, Mythic bosses killed, links, for one of the caller's own Battle.net characters; each number fails on its own; ten-minute cache), Blizzard helpers moved to `_shared/battlenet.ts`; Deno tests, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1538) | 15 m | ~15 m build | ~150,000 | Review and merge not yet counted. |
 | 10:30-10:40 PM | PR #1796 (#1538): CodeRabbit (any error answers with the CORS headers, a five-second limit on every read including the gate and the season raid, `failed` names the sources that could not be read; five more tests) | Phase 2: Before the new site goes live / Recruiting (#1538) | 10 m | ~10 m build | ~60,000 | Kat's merge not yet counted. |
+| 10:46-10:50 PM | PR #1796 (#1538): Kat's merge and cleanup; #1487 updated (#1538 row off, #1540 next) | Phase 2: Before the new site goes live / Recruiting (#1538) | 5 m | ~5 m build | ~10,000 | |
+| 10:50-11:10 PM | #1540: Kat's two picks (Raid Hub's own Discord step, not Supabase's sign-in; the bot makes the fallback invite); `discord-join` Edge Function (start: already a member or Discord's consent link; finish: code swap, own-account check, the add, the token dropped; failures recorded, officers told, single-use invite), `discord_join_failed` history kind; Deno tests, generated docs, decision log, schema reference, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1540) | 20 m | ~20 m build | ~120,000 | Review and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 

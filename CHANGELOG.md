@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.256.0] - 2026-11-09
+
+### Backend
+
+- A recruit record's history can now say an applicant couldn't be added to the team's Discord server, with the reason (#1540).
+
+### Functions
+
+- New `discord-join` function (#1540): when someone sends an application to a team with "Add them to the Discord server" on, it adds them to the team's server. They OK it once on Discord's own screen ("Join servers for you"), come back to the site, and are in, with no invite link. Someone already in the server skips the Discord screen. Discord's permission is used once and never kept. If the add fails (banned, Discord down, they said no, or they used a different Discord account), the application is still saved: the record's history says why, the officers are told in their officer channel, and the applicant gets a single-use invite link that lasts a week. Nothing anyone sees yet: the after-send page uses it later.
+
+### Project
+
+- Tests for `discord-join` (#1540), with Discord stubbed for each case; two new function secrets in `supabase/functions/.env.example`; time log rows for #1538's merge and #1540.
+
 ## [3.255.0] - 2026-11-09
 
 ### Functions
