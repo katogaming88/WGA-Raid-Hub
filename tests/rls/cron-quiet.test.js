@@ -26,6 +26,7 @@ const SCHEDULED = [
   'discord-signup-sheets',
   'fill-raid-night-lineups',
   'optional-rsvp-reminders',
+  'recruit-reminders',
   'twitch-live-check',
   'wcl-progression-sync'
 ];

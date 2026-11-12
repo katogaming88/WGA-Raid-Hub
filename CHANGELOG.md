@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.260.0] - 2026-11-11
+
+### Backend
+
+- The recruiting reminders run every 15 minutes (#1543). No new secret is needed: the job reuses the one the RSVP reminders already have.
+
+### Functions
+
+- **Recruiting reminders** (#1543). The bot checks every open recruit and nudges only whoever's turn it is, on the team's own timings (these are the defaults). When an officer has written last in the applicant's ticket: after 2 hours, one DM ("Phoenix's officers replied to your application") with a button to the ticket, one per turn however many officers write; after 2 days, an @mention in the ticket and a DM saying the application closes in 3 days. When it's the officers' turn: after a day, "Katorrí has been waiting 1 day" in the team's officer channel with a link; after 3 days, the same with the Team Owner @mentioned. During a trial there are no turn reminders. Instead, 2 days before the trial ends, "Katorrí's trial with Phoenix ends in 2 days. Officers, how did it go?" goes to the officer channel and the ticket with the **Joined**, **Extend trial** and **Not joining** buttons. An extension gets its own heads-up. The bot never DMs an applicant between 1 and 9 AM their time, and anything due overnight goes after 9. Messages in an officer-only thread never count as a turn. Starting a trial, declining, joining or closing stops the turn reminders. Each reminder goes out once and shows in the record's history. Closing at 5 days with no reply comes in #1544.
+
+### Project
+
+- Tests for the reminders (#1543): an applicant's run (reply, DM, reminder) and an officers' run (a day, then 3 days), with the clock and Discord stubbed, plus the overnight hold, the trial heads-up and a retry after Discord fails. The cron and deploy checks list the new job, and the decision log and time log have their entries.
+
 ## [3.259.1] - 2026-11-11
 
 ### Project

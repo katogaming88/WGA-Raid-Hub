@@ -4,15 +4,15 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listFunctions } from '../../scripts/ci/functions-to-deploy.js';
 
-// Six Edge Functions are deployed with Supabase's JWT gate off (#958), because
+// Seven Edge Functions are deployed with Supabase's JWT gate off (#958), because
 // some of their callers carry no login. `supabase functions deploy` with no name
 // deploys every function and reads verify_jwt from supabase/config.toml, so with
-// no [functions.*] block there a bare deploy turns the gate back on for all six
+// no [functions.*] block there a bare deploy turns the gate back on for all of them
 // and every cron call and relay call starts answering 401.
 //
 // The block is the fix; this keeps it honest. A [functions.<name>] table whose
 // name is misspelt applies to nothing and reads as correct, which is the same
-// silent miss the block exists to prevent. The five are pinned here rather than
+// silent miss the block exists to prevent. They are pinned here rather than
 // read from each function's header comment: the relay's never named the flag,
 // and two more stopped naming it when they were reworded, which left the check
 // covering two (#1128). A function joins or leaves the list by an edit here and
@@ -43,13 +43,14 @@ function readFunctionTables(toml) {
 
 const tables = readFunctionTables(readFileSync(join(ROOT, 'supabase', 'config.toml'), 'utf8'));
 
-// The functions deployed with the gate off: four called by pg_cron, the relay
+// The functions deployed with the gate off: five called by pg_cron, the relay
 // the public forms post through, and Discord's interactions endpoint (#998).
 const GATE_OFF = [
   'blizzard-gear-sync',
   'discord-bot-webhook',
   'discord-interactions',
   'optional-rsvp-reminders',
+  'recruit-reminders',
   'twitch-live-check',
   'wcl-progression-sync'
 ];

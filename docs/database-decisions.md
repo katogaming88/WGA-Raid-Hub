@@ -3491,3 +3491,17 @@ Shipped: `20261107101124_team_rank_permissions_grid.sql`.
 **"Edit own wishlist" is now enforced.** Nothing read it before. The two wishlist triggers (`item_preferences`, `signup_item_preferences`) refuse a member whose rank has it off, ahead of the open-season check, so `players.wishlist_allowed` can't reopen a locked wishlist. A signer with no place on the team has no rank to ask and is left to the season check. The signup trigger asks `signup_wishlist_rank_locked()` (SECURITY DEFINER, like `signup_wishlist_open()`), because a raider cannot read their own `season_signups` row and a plain lookup would have skipped the lock (found in CodeRabbit's review). A save that sends a switch off then on logs nothing for it.
 
 [Full discussion -> #1653](https://github.com/katogaming88/WGA-Raid-Hub/issues/1653).
+
+## #1543 -- recruiting reminders: whose turn it is, and the trial heads-up
+
+Shipped: `20261111202918_recruit_reminders_cron.sql`.
+
+**A cron job only; the tables were already there.** `recruit_applications` already kept the last-message times and the applicant's time zone, `team_recruiting` the timings, and `recruit_reminders_sent` the once-each record (#1535, #1539). The migration schedules the `recruit-reminders` Edge Function every 15 minutes with the `optional_rsvp_reminders_secret` vault value, as `discord-signup-sheets` does, so no new secret is owed.
+
+**Whose turn is read from Discord, not heard.** With no gateway process (#997), each sweep reads every open ticket's newest 50 messages, ignores bots, and writes the last-message times onto the record; the record's trigger moves the status. Only the ticket channel is read, so an officer-only thread never counts. A team without a ticket gets only the officer-side pings, counted from the newest history row that isn't a reminder (status changes and notes both write one).
+
+**One reminder per turn, keyed on the turn.** `due_for` is the applicant's last message (or when they applied) for both sides' turn reminders, so more officer messages in the same turn don't send a second DM, and the applicant answering starts a new round. The trial heads-up is keyed on the trial's end, so an extension gets its own. A sweep that missed a step sends only the latest one due. A reminder is claimed before it goes and the claim is dropped only if Discord failed before anything went out, so nobody is pinged twice.
+
+**Times.** A trial "ends" at noon Eastern on its end date, the one zone the RSVP reminders also use. DMs wait out 1 to 9 AM in the applicant's time zone (Eastern when unknown). Closing at 5 days is #1544's.
+
+[Full discussion -> #1543](https://github.com/katogaming88/WGA-Raid-Hub/issues/1543).
