@@ -12,6 +12,14 @@ answers to.
 
 ---
 
+## [3.267.0] - 2026-11-12
+
+### Project
+
+- The new app has the Recruits page (#1549), in the Recruiting group of the Officer menu: `/g/<guild>/t/<team>/officer/recruiting`. Tabs for Open, On trial, Joined, Declined and No reply, each with its count, and the sidebar shows how many recruits are waiting on officers. Each row has the recruit in their class colour, spec, item level (orange under the team's minimum), best logs average, where it is at ("Waiting on officers 2 h", "Waiting on them 4 d, reminded") and who sent them; a class the team's spots don't ask for says "Not on your needs list". On trial, a row says "Day 12 of 14, ends Thursday" with Joined, Extend trial (it asks why) and Not joining (it asks for a reason). Choosing a recruit opens their record beside the list: other specs, who sent them and that recruiter's note, their numbers, links to their ticket, Warcraft Logs, Raider.IO and the Armory, their answers with See the whole application, what has happened, earlier applications to the guild, the saved conversation of a closed ticket, and officer notes they never see. Start a trial, Decline (with a reason if you like) and Reopen do the same as the Discord card. Add a recruit makes a record, by character, for someone who came in through a Discord ticket instead of the form. Assistants the team lets in can add notes; guild Admins who may only look see everything and change nothing. The Help page has a guide, Work with recruits.
+
+- A new `--ember-text` colour for the ember as text, dark enough on the light theme to read; browser tests for the page in dark, light and on a phone, and for starting a trial, extending one, declining and adding a note; a time log row for #1549 and for the rest of #1817.
+
 ## [3.266.0] - 2026-11-12
 
 ### Backend

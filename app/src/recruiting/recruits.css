@@ -1,0 +1,330 @@
+/* The Recruits page (#1549). Rules and plain colored text, no pills or boxed rows. */
+
+.rcs-page {
+  max-width: 1280px;
+}
+
+.rcs-head {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.rcs-head > :first-child {
+  flex: 1 1 360px;
+}
+
+.rcs-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-5);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.rcs-tabs a {
+  padding: 10px 2px;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: var(--text-md);
+  text-decoration: none;
+}
+
+.rcs-tabs a:hover {
+  color: var(--text);
+}
+
+.rcs-tabs a[aria-current='page'] {
+  border-bottom-color: var(--brand);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.rcs-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.rcs-list {
+  flex: 1 1 560px;
+  min-width: 0;
+}
+
+.rcs-panel {
+  flex: 1 1 340px;
+  max-width: 460px;
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  box-sizing: border-box;
+}
+
+.rcs-table-wrap {
+  overflow-x: auto;
+}
+
+.rcs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.rcs-table th {
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: var(--space-1) var(--space-3) var(--space-1) 0;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.rcs-table td {
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.rcs-table .rcs-num {
+  text-align: right;
+}
+
+/* The chosen row: the brand bar on its left edge, no box. */
+.rcs-selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--brand);
+  padding-left: var(--space-2);
+}
+
+.rcs-recruit {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.rcs-recruit:hover {
+  text-decoration: underline;
+}
+
+.rcs-warn {
+  color: var(--ember-text);
+  font-weight: 600;
+}
+
+.rcs-where {
+  font-weight: 600;
+}
+
+.rcs-where-waiting_on_officers {
+  color: var(--ember-text);
+}
+
+.rcs-where-waiting_on_applicant,
+.rcs-where-on_trial {
+  color: var(--warn);
+}
+
+.rcs-where-joined {
+  color: var(--good);
+}
+
+.rcs-small {
+  font-size: var(--text-xs);
+}
+
+.rcs-small-button {
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.rcs-empty {
+  margin: var(--space-4) 0;
+}
+
+.rcs-legend {
+  margin-top: var(--space-3);
+}
+
+/* One recruit */
+
+.rcs-name {
+  margin: 0;
+  font-size: var(--text-xl, 19px);
+}
+
+.rcs-realm {
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+.rcs-line {
+  margin: 2px 0 0;
+}
+
+.rcs-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-3) 0 0;
+}
+
+.rcs-quote {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) 0 var(--space-2) var(--space-3);
+  border-left: 2px solid var(--border-strong);
+}
+
+.rcs-quote p {
+  margin: var(--space-1) 0 0;
+  line-height: 1.5;
+}
+
+.rcs-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+}
+
+.rcs-stat {
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.rcs-stat dd {
+  margin: 0;
+  font-size: var(--text-lg, 17px);
+  font-weight: 650;
+}
+
+.rcs-stat dt {
+  font-size: var(--text-xs);
+}
+
+.rcs-lowline {
+  margin: var(--space-2) 0 0;
+  color: var(--ember-text);
+}
+
+.rcs-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+}
+
+.rcs-block {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.rcs-h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-md);
+}
+
+.rcs-h4 {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.rcs-aside {
+  font-weight: 400;
+}
+
+.rcs-qa {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.rcs-link {
+  margin-top: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.rcs-link:hover {
+  text-decoration: underline;
+}
+
+.rcs-picture {
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+.rcs-events,
+.rcs-notes,
+.rcs-before,
+.rcs-chat {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.rcs-events li {
+  display: flex;
+  gap: var(--space-3);
+  padding: 3px 0;
+}
+
+.rcs-events li > :first-child {
+  flex: 0 0 52px;
+}
+
+.rcs-notes li,
+.rcs-chat li {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+.rcs-conversation summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: var(--text-md);
+}
+
+.rcs-note-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.rcs-note-form textarea,
+.rcs-dialog textarea,
+.rcs-dialog input,
+.rcs-dialog select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.rcs-actions {
+  margin-top: var(--space-4);
+}
+
+.rcs-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.rcs-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: min(420px, 100%);
+}

@@ -346,6 +346,11 @@ export async function openApp(browser, port, state) {
       if (rest === 'rpc/get_own_signup' && !state.rpc?.get_own_signup) return route.fulfill(json([]));
       // The sidebar asks for the signed-in person's applications (#1547).
       if (rest === 'rpc/my_applications' && !state.rpc?.my_applications) return route.fulfill(json([]));
+      // The sidebar counts the recruits waiting on officers for anyone who may
+      // open the Recruits page (#1549): nobody, unless the state says otherwise.
+      if (rest === 'rpc/team_recruits' && !state.rpc?.team_recruits) {
+        return route.fulfill(json({ access: 'manage', min_item_level: null, needs: [], recruits: [] }));
+      }
       // Guild creation is off unless the state says otherwise (#1226).
       if (rest === 'rpc/guild_creation_open' && !state.rpc?.guild_creation_open) return route.fulfill(json(false));
       // Other RPCs a state expects, like a form's submit.
