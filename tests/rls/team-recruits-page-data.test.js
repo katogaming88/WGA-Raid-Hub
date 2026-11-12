@@ -56,10 +56,13 @@ describe('team_recruits() for the Recruits page', () => {
       expect(officer).toMatchObject({ access: 'manage', ...want });
       expect(Object.keys(officer).sort()).toEqual(['access', 'min_item_level', 'needs', 'recruits']);
 
-      // note: an assistant, once the team lets them see tickets
+      // note: an assistant, once the team lets them see tickets; a raider never
+      await q('update public.team_recruiting set visible_to_team_assistants = false where team_id = 3');
+      await expect(recruits(asUser, RAIDER_T3)).rejects.toThrow('Not authorized');
       await q("update public.team_members set rank = 'assistant' where team_id = 3 and person_id = $1", [
         await personOf(q, RAIDER_T3)
       ]);
+      await expect(recruits(asUser, RAIDER_T3)).rejects.toThrow('Not authorized');
       await q('update public.team_recruiting set visible_to_team_assistants = true where team_id = 3');
       expect(await recruits(asUser, RAIDER_T3)).toMatchObject({ access: 'note', ...want });
 
