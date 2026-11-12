@@ -687,7 +687,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
-| 8:23-8:50 PM | #1543: `recruit-reminders` Edge Function (reads each open ticket's newest messages for whose turn it is; the applicant's reply DM once per turn and the 2-day reminder with when it closes; the officers' 1-day ping and the 3-day one with the Team Owner; the trial heads-up with Joined / Extend trial / Not joining to the officer channel and the ticket; no DMs 1-9 AM their time; claimed once each, retried only when nothing went out), the 15-minute cron migration reusing the RSVP reminders' secret; Deno tests, RLS run, decision log, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1543) | 25 m | ~25 m build | ~TOKENS | CodeRabbit, the fresh-agent review and Kat's merge not yet counted. |
+| 8:23-8:50 PM | #1543: `recruit-reminders` Edge Function (reads each open ticket's newest messages for whose turn it is; the applicant's reply DM once per turn and the 2-day reminder with when it closes; the officers' 1-day ping and the 3-day one with the Team Owner; the trial heads-up with Joined / Extend trial / Not joining to the officer channel and the ticket; no DMs 1-9 AM their time; claimed once each, retried only when nothing went out), the 15-minute cron migration reusing the RSVP reminders' secret; Deno tests, RLS run, decision log, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1543) | 25 m | ~25 m build | ~206,000 | CodeRabbit, the fresh-agent review and Kat's merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 
