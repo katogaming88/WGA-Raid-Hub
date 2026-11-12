@@ -11971,6 +11971,31 @@
           "type": "integer",
           "nullable": true,
           "comment": "The membership Start trial made or brought back from the archive (#1793), null when they were already on the team. Not joining ends only this one, never a membership the person had before applying (fresh-agent review)."
+        },
+        {
+          "name": "ticket_closed_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "When the bot locked the closed record's ticket and posted the closing message (#1544). Cleared when a reopen unlocks it."
+        },
+        {
+          "name": "ticket_saved_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "When the bot saved the closed ticket's whole conversation to recruit_messages (#1544). Never deleted before this is set."
+        },
+        {
+          "name": "ticket_deleted_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "When the bot deleted the closed ticket and officer thread from Discord (#1544), delete_closed_after_hours after ticket_closed_at."
+        },
+        {
+          "name": "ticket_save_failures",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "comment": "Sweeps in a row the save failed (#1544); the officer channel is told at 3. Back to 0 once it saves."
         }
       ],
       "indexes": [
@@ -12247,6 +12272,16 @@
           "referenced_table": "",
           "columns": [
             "status"
+          ]
+        },
+        {
+          "name": "recruit_applications_ticket_save_failures",
+          "type": "CHECK",
+          "def": "CHECK ((ticket_save_failures \u003e= 0))",
+          "table": "public.recruit_applications",
+          "referenced_table": "",
+          "columns": [
+            "ticket_save_failures"
           ]
         },
         {
@@ -12643,6 +12678,13 @@
           "name": "sent_at",
           "type": "timestamp with time zone",
           "nullable": false
+        },
+        {
+          "name": "in_officer_thread",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "From the officer-only thread, not the ticket the applicant saw (#1544)."
         }
       ],
       "indexes": [
@@ -16702,6 +16744,12 @@
       "name": "public.bot_mark_recruit_not_joining",
       "return_type": "void",
       "arguments": "p_application_id integer, p_actor_discord_id text, p_reason text, p_detail text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.bot_close_no_reply",
+      "return_type": "bool",
+      "arguments": "p_application_id integer",
       "type": "FUNCTION"
     }
   ],

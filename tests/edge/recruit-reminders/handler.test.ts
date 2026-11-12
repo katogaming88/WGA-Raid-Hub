@@ -8,6 +8,7 @@ import {
   API,
   type Deps,
   type Rec,
+  NO_REPLY_DM,
   REMIND_DM,
   REMIND_TICKET,
   REPLY_DM,
@@ -81,6 +82,7 @@ function setup(rec: Partial<Rec> = {}, env = ENV) {
   let down = false;
   let readStatus = 200;
   let saveCount = 0;
+  let closes = 0;
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
   const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
@@ -133,7 +135,18 @@ function setup(rec: Partial<Rec> = {}, env = ENV) {
       sent: (_id, detail) => {
         events.push(detail);
         return Promise.resolve();
-      }
+      },
+      closeNoReply: () => {
+        const was = record.status === 'waiting_on_applicant';
+        if (was) closes++;
+        // Closed records leave the open list.
+        if (was) (record as any).status = 'no_reply';
+        return Promise.resolve(was);
+      },
+      closingTickets: () => Promise.resolve([]),
+      ticketProgress: () => Promise.resolve(),
+      saveMessages: () => Promise.resolve(),
+      claimDelete: () => Promise.resolve(true)
     }
   };
 
@@ -159,6 +172,7 @@ function setup(rec: Partial<Rec> = {}, env = ENV) {
     say,
     bot: (ms: number) => ticket.push({ type: 0, author: { id: BOT, bot: true }, timestamp: at(ms) }),
     saves: () => saveCount,
+    closes: () => closes,
     setDown: (v: boolean) => (down = v),
     setRead: (v: number) => (readStatus = v)
   };
@@ -172,7 +186,7 @@ Deno.test('applicant side: one DM per turn, then the reminder, then nothing more
 
   // The officer's message is read and it's the applicant's turn; the DM isn't due yet.
   let r = await s.sweep(T0 + 1.5 * H);
-  assertEquals(r.body, { success: true, sent: 0, failed: 0 });
+  assertEquals([r.body.success, r.body.sent, r.body.failed], [true, 0, 0]);
   assertEquals(s.record.officers_last_message_at, at(T0 + H));
   assertEquals(s.record.status, 'waiting_on_applicant');
 
@@ -201,7 +215,7 @@ Deno.test('applicant side: one DM per turn, then the reminder, then nothing more
   assertEquals(ticketPost.body.allowed_mentions, { parse: [], users: [APPLICANT] });
   assertEquals(dms(s.posts)[0].body.content, REMIND_DM('Phoenix', '3 days'));
 
-  // Nothing again in the same turn; the closing at 5 days is #1544's.
+  // Nothing again in the same turn, short of the close at 5 days.
   r = await s.sweep(T0 + 3.2 * H + 100 * H);
   assertEquals(r.body.sent, 0);
   assertEquals(s.events, ['Told them the officers replied', 'Reminded them to reply']);
@@ -301,7 +315,7 @@ Deno.test('Discord down before anything went: nothing recorded, the next sweep s
   const s = setup({ uses_ticket: false, ticket_channel_id: null });
   s.setDown(true);
   let r = await s.sweep(T0 + 25 * H);
-  assertEquals(r.body, { success: true, sent: 0, failed: 1 });
+  assertEquals([r.body.success, r.body.sent, r.body.failed], [true, 0, 1]);
   assertEquals(s.events, []);
   s.setDown(false);
   r = await s.sweep(T0 + 25.25 * H);
@@ -314,7 +328,12 @@ Deno.test('a turn with no timing set sends nothing, and the spans read as words'
     ...TICKET_REC,
     status: 'waiting_on_applicant',
     officers_last_message_at: at(T0),
-    timings: { ...TICKET_REC.timings, dm_reply_after_minutes: null, remind_after_hours: null }
+    timings: {
+      ...TICKET_REC.timings,
+      dm_reply_after_minutes: null,
+      remind_after_hours: null,
+      close_no_reply_after_hours: null
+    }
   };
   assertEquals(due(r, new Date(T0 + 200 * H)), null);
   assertEquals(span(26 * H), '1 day');
@@ -411,3 +430,29 @@ Deno.test('a deleted ticket counts as none: officer pings, no link to it, no tur
   assertEquals(r.body.sent, 1);
   assertEquals(s.posts[0].body.content, WAITING('Katorrí', '1 day'));
 });
+
+Deno.test(
+  "no reply: closed once the team's time has passed, with a last DM, held overnight like the rest",
+  async () => {
+    const s = setup({ status: 'waiting_on_applicant', officers_last_message_at: at(T0) });
+    // 120 hours on is 10 AM Eastern.
+    let r = await s.sweep(T0 + 119 * H);
+    assertEquals(s.closes(), 0);
+    r = await s.sweep(T0 + 120 * H + 60_000);
+    assertEquals(r.body.noReply, 1);
+    assertEquals(s.closes(), 1);
+    assertEquals(dms(s.posts)[0].body.content, NO_REPLY_DM('Phoenix'));
+    // Already closed: no second DM.
+    r = await s.sweep(T0 + 121 * H);
+    assertEquals(s.closes(), 1);
+    assertEquals(dms(s.posts).length, 0);
+
+    // Due at 2 AM Eastern: waits until 9.
+    const night = Date.parse('2026-11-11T07:00:00Z') - 120 * H;
+    const n = setup({ status: 'waiting_on_applicant', officers_last_message_at: at(night) });
+    await n.sweep(night + 120 * H + 60_000);
+    assertEquals(n.closes(), 0);
+    await n.sweep(Date.parse('2026-11-11T14:05:00Z'));
+    assertEquals(n.closes(), 1);
+  }
+);

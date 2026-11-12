@@ -2608,6 +2608,10 @@ export type Database = {
           spec_name: string | null
           status: string
           team_id: number
+          ticket_closed_at: string | null
+          ticket_deleted_at: string | null
+          ticket_save_failures: number
+          ticket_saved_at: string | null
           time_zone: string | null
           trial_ends_on: string | null
           trial_player_id: number | null
@@ -2642,6 +2646,10 @@ export type Database = {
           spec_name?: string | null
           status?: string
           team_id: number
+          ticket_closed_at?: string | null
+          ticket_deleted_at?: string | null
+          ticket_save_failures?: number
+          ticket_saved_at?: string | null
           time_zone?: string | null
           trial_ends_on?: string | null
           trial_player_id?: number | null
@@ -2676,6 +2684,10 @@ export type Database = {
           spec_name?: string | null
           status?: string
           team_id?: number
+          ticket_closed_at?: string | null
+          ticket_deleted_at?: string | null
+          ticket_save_failures?: number
+          ticket_saved_at?: string | null
           time_zone?: string | null
           trial_ends_on?: string | null
           trial_player_id?: number | null
@@ -2792,6 +2804,7 @@ export type Database = {
           body: string
           discord_message_id: string
           id: number
+          in_officer_thread: boolean
           sent_at: string
         }
         Insert: {
@@ -2802,6 +2815,7 @@ export type Database = {
           body?: string
           discord_message_id: string
           id?: never
+          in_officer_thread?: boolean
           sent_at: string
         }
         Update: {
@@ -2812,6 +2826,7 @@ export type Database = {
           body?: string
           discord_message_id?: string
           id?: never
+          in_officer_thread?: boolean
           sent_at?: string
         }
         Relationships: [
@@ -5286,6 +5301,10 @@ export type Database = {
         Args: { p_actor: number; p_application_id: number; p_note: boolean }
         Returns: undefined
       }
+      bot_close_no_reply: {
+        Args: { p_application_id: number }
+        Returns: boolean
+      }
       bot_close_recruit: {
         Args: {
           p_actor_discord_id: string
@@ -5801,6 +5820,10 @@ export type Database = {
           spec_name: string | null
           status: string
           team_id: number
+          ticket_closed_at: string | null
+          ticket_deleted_at: string | null
+          ticket_save_failures: number
+          ticket_saved_at: string | null
           time_zone: string | null
           trial_ends_on: string | null
           trial_player_id: number | null

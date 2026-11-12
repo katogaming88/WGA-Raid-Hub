@@ -192,6 +192,10 @@ erDiagram
   timestamp_with_time_zone closed_at
   integer trial_player_id FK
   integer trial_team_member_id FK
+  timestamp_with_time_zone ticket_closed_at
+  timestamp_with_time_zone ticket_saved_at
+  timestamp_with_time_zone ticket_deleted_at
+  integer ticket_save_failures
 }
 "public.teams" {
   integer id

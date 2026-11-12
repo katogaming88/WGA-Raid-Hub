@@ -79,12 +79,14 @@ begin
                                and m.author_discord_id is not null,
                'body', m.body,
                'attachments', m.attachments,
-               'sent_at', m.sent_at) order by m.sent_at, m.id)
+               'sent_at', m.sent_at,
+               'in_officer_thread', m.in_officer_thread) order by m.sent_at, m.id)
         from recruit_messages m
        where m.application_id = v_app.id), '[]'::jsonb),
     -- Earlier applications by the same person to the same guild, any team.
     'applied_before', coalesce((
       select jsonb_agg(jsonb_build_object(
+               'id', a.id,
                'team_name', t.name,
                'applied_at', a.applied_at,
                'status', a.status) order by a.applied_at desc)
