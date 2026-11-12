@@ -4,7 +4,7 @@
   max-width: 1280px;
 }
 
-.rcs-head {
+.page-header.rcs-head {
   flex-direction: row;
   flex-wrap: wrap;
   align-items: flex-start;
@@ -12,7 +12,7 @@
   gap: var(--space-3);
 }
 
-.rcs-head > :first-child {
+.page-header.rcs-head > :first-child {
   flex: 1 1 360px;
 }
 
