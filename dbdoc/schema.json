@@ -16561,12 +16561,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.send_application",
-      "return_type": "int4",
-      "arguments": "p_team_id integer, p_character_id integer, p_answers jsonb, p_recruiter_code text, p_friend_name text, p_time_zone text",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.withdraw_application",
       "return_type": "void",
       "arguments": "p_application_id integer",
@@ -16750,6 +16744,12 @@
       "name": "public.bot_close_no_reply",
       "return_type": "bool",
       "arguments": "p_application_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.send_application",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_character_id integer, p_answers jsonb, p_recruiter_code text, p_friend_name text, p_time_zone text, p_other_specs text[] DEFAULT '{}'::text[]",
       "type": "FUNCTION"
     }
   ],

@@ -2,7 +2,7 @@
 // Warcraft Logs credentials, and the per-isolate cache. The only module that
 // imports supabase-js or reads the environment.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
-import type { Cached, Deps, StatsDb } from './handler.ts';
+import type { Cached, Deps, Numbers, StatsDb } from './handler.ts';
 
 function supabaseDb(): StatsDb {
   // The caller's own token answers who they are; the rest is the service
@@ -47,6 +47,49 @@ function supabaseDb(): StatsDb {
         .maybeSingle();
       if (error) throw new Error(error.message);
       return (data as { wcl_zone_id: number; name: string } | null) ?? null;
+    },
+    async saveToApplication(userId, applicationId, blizzardId, numbers) {
+      const { data: person, error: personError } = await db()
+        .from('people')
+        .select('id')
+        .eq('auth_user_id', userId)
+        .maybeSingle();
+      if (personError) throw new Error(personError.message);
+      if (!person) return false;
+      const { data: app, error } = await db()
+        .from('recruit_applications')
+        .select(
+          'id, mplus_score, logs_best_average, logs_median_average, mythic_bosses_killed, characters!inner(blizzard_id)'
+        )
+        .eq('id', applicationId)
+        .eq('person_id', person.id)
+        .eq('characters.blizzard_id', blizzardId)
+        .is('closed_at', null)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!app) return false;
+      // Only the empty columns: a saved number never moves. Each source is
+      // its own update, guarded on its columns still being empty, so two calls
+      // at once can't lose one source's numbers to the other's (CodeRabbit).
+      // The two logs averages go together, so they are always one difficulty's.
+      const groups: (keyof Numbers)[][] = [
+        ['mplus_score'],
+        ['logs_best_average', 'logs_median_average'],
+        ['mythic_bosses_killed']
+      ];
+      const row = app as Record<string, unknown>;
+      for (const cols of groups) {
+        if (cols.every((k) => numbers[k] === null) || cols.some((k) => row[k] !== null)) continue;
+        let update = db()
+          .from('recruit_applications')
+          .update(Object.fromEntries(cols.map((k) => [k, numbers[k]])))
+          .eq('id', applicationId)
+          .is('closed_at', null);
+        for (const k of cols) update = update.is(k, null);
+        const { error: updateError } = await update;
+        if (updateError) throw new Error(updateError.message);
+      }
+      return true;
     }
   };
 }

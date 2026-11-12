@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.264.0] - 2026-11-12
+
+### Backend
+
+- What the application form (#1547) needs from the database (#1810). An applicant's own application list now carries the link to their open Discord ticket (only once the ticket exists, and gone once the application closes), whether the bot added them to the server or couldn't, and whether the team adds applicants to its server at all, so the after-send page can show "Open my ticket in Discord" or "Setting up your ticket...". Sending an application takes the other specs the applicant plays well: up to 4, each another spec of the character's own class.
+
+### Functions
+
+- `character-stats` (#1810) keeps a character's M+ score, logs average and Mythic kills on the applicant's own open application when the form asks it to, right after sending, so officers see them on the record and the ticket card. The numbers are written by the server, never taken from the browser, and only into empty columns: a number officers already saw never changes, and one whose source was down can be filled by asking again. The logs average is Mythic's when the character has Mythic logs, else Heroic's.
+
+### Project
+
+- RLS tests for the ticket link, the Discord step and other specs; Edge Function tests for keeping the numbers on an application.
+
 ## [3.263.1] - 2026-11-12
 
 ### Project

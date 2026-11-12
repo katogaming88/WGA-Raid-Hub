@@ -341,7 +341,6 @@
 | public.recruit_add_note | int4 | p_application_id integer, p_actor integer, p_source text, p_body text | FUNCTION |
 | public.recruit_close | void | p_application_id integer, p_actor integer, p_status text, p_reason text | FUNCTION |
 | public.recruit_reopen | void | p_application_id integer, p_actor integer | FUNCTION |
-| public.send_application | int4 | p_team_id integer, p_character_id integer, p_answers jsonb, p_recruiter_code text, p_friend_name text, p_time_zone text | FUNCTION |
 | public.withdraw_application | void | p_application_id integer | FUNCTION |
 | public.my_applications | jsonb |  | FUNCTION |
 | public.add_recruit | int4 | p_team_id integer, p_name_realm text, p_discord_id text | FUNCTION |
@@ -373,6 +372,7 @@
 | public.bot_mark_recruit_joined | void | p_application_id integer, p_actor_discord_id text | FUNCTION |
 | public.bot_mark_recruit_not_joining | void | p_application_id integer, p_actor_discord_id text, p_reason text, p_detail text | FUNCTION |
 | public.bot_close_no_reply | bool | p_application_id integer | FUNCTION |
+| public.send_application | int4 | p_team_id integer, p_character_id integer, p_answers jsonb, p_recruiter_code text, p_friend_name text, p_time_zone text, p_other_specs text[] DEFAULT '{}'::text[] | FUNCTION |
 
 ## Enums
 

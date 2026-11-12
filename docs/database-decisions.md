@@ -10,6 +10,19 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-11-12 -- What the application form needs from the database (#1810)
+
+Shipped: 20261112105006_applicant_ticket_and_other_specs.sql
+
+- **The applicant reads their ticket through `my_applications()`, not the table.** It now returns `ticket_url`, the full `https://discord.com/channels/<server>/<channel>` link built from the record's `discord_channel_id` and the team's `team_discord_config.guild_id`, so neither id is opened to applicants on its own and `recruit_applications` keeps no read for signed-in users. The link is null until the ticket channel exists, once the application closes, and once the ticket is deleted: opened early or late, it lands on Discord's "no access" screen.
+- **Whether they joined the Discord is the latest of discord-join's two history rows** (`joined_discord` / `join_failed`), read inside the function, so the after-send page can say "Setting up your ticket..." or "we couldn't add you" without the applicant reading the history. `add_to_server` is the team's setting now, so the page knows whether to wait for the Discord step at all.
+- **`send_application()` takes `p_other_specs`**, defaulting to none, so a call with the old six arguments still works; the old six-argument function is dropped, since a second overload would make those calls ambiguous. Up to 4, each a spec of the character's own class in `classes_specs`, not the one it applies as, none twice.
+- **The M+ score, logs and Mythic kills are written by `character-stats`, with the service key, never by the browser** (an applicant could type any score). The form calls it once more after sending, with the application; the function checks it is the caller's own open application, sent with that Blizzard character, and fills only empty columns, so a number officers saw on the ticket card never moves and a source that was down can be filled by asking again. One logs average fits the record, so it is Mythic's when the character has Mythic logs, else Heroic's. No migration: the columns are #1539's.
+
+[Full discussion -> #1810](https://github.com/katogaming88/WGA-Raid-Hub/issues/1810).
+
+---
+
 ## 2026-11-10 -- Find my ticket (#1542)
 
 Shipped: 20261110142922_discord_find_ticket.sql

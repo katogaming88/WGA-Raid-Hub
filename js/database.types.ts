@@ -6008,6 +6008,7 @@ export type Database = {
           p_answers: Json
           p_character_id: number
           p_friend_name: string
+          p_other_specs?: string[]
           p_recruiter_code: string
           p_team_id: number
           p_time_zone: string
