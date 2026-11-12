@@ -68,6 +68,8 @@ export type Rec = {
   applied_at: string;
   // The newest history row that isn't a reminder (status changes, notes).
   last_activity_at: string | null;
+  // The newest reopened history row: a reopen starts the clocks again.
+  reopened_at: string | null;
   trial_ends_on: string | null;
   uses_ticket: boolean;
   ticket_channel_id: string | null;
@@ -131,7 +133,7 @@ export function due(r: Rec, now: Date): { reminder: Reminder; dueFor: string } |
     // The turn is the applicant's last word: more officer messages don't start
     // a new one, so they get one DM per turn.
     const turn = r.applicant_last_message_at ?? r.applied_at;
-    const from = r.officers_last_message_at;
+    const from = later(r.officers_last_message_at, r.reopened_at) as string;
     if (passed(from, hours(r.timings.remind_after_hours))) return { reminder: 'reply_reminder', dueFor: turn };
     const dm = r.timings.dm_reply_after_minutes;
     if (passed(from, dm === null ? null : dm * 60_000)) return { reminder: 'reply_dm', dueFor: turn };
@@ -139,7 +141,7 @@ export function due(r: Rec, now: Date): { reminder: Reminder; dueFor: string } |
   }
 
   const start = ticket
-    ? (r.applicant_last_message_at ?? r.applied_at)
+    ? (later(later(r.applicant_last_message_at, r.reopened_at), r.applied_at) as string)
     : (later(r.last_activity_at, r.applied_at) as string);
   if (passed(start, hours(r.timings.ping_owner_after_hours))) return { reminder: 'owner_ping', dueFor: start };
   if (passed(start, hours(r.timings.ping_officers_after_hours))) return { reminder: 'officers_ping', dueFor: start };
@@ -240,29 +242,37 @@ async function dm(deps: Deps, token: string, userId: string, body: Record<string
 }
 
 // Reads the ticket's newest messages and saves who wrote last on each side.
-// A ticket that's gone (deleted by hand) is left as it is. Any other refusal
+// Only people's own messages and replies count (Discord's types 0 and 19), not
+// pins or other system lines. A ticket that's gone (deleted by hand) is
+// treated as no ticket, so nothing links to it. Any other refusal
 // (the bot lost access) could hide a newer message, so the record is skipped
 // (null) until a read works.
 async function readTicket(deps: Deps, token: string, r: Rec): Promise<Rec | null> {
   const res = await call(deps, token, 'GET', '/channels/' + r.ticket_channel_id + '/messages?limit=50');
   if (!res.ok) {
     await res.body?.cancel();
-    return res.status === 404 ? r : null;
+    return res.status === 404 ? { ...r, ticket_channel_id: null } : null;
   }
-  const messages = (await res.json()) as Array<{ author?: { id?: string; bot?: boolean }; timestamp?: string }>;
+  const messages = (await res.json()) as Array<{
+    type?: number;
+    author?: { id?: string; bot?: boolean };
+    timestamp?: string;
+  }>;
   let applicant: string | null = null;
   let officers: string | null = null;
   for (const m of messages) {
-    if (!m.author?.id || m.author.bot || !m.timestamp) continue;
+    if (!m.author?.id || m.author.bot || !m.timestamp || (m.type !== 0 && m.type !== 19)) continue;
     const at = new Date(m.timestamp).toISOString();
     if (m.author.id === r.applicant_discord_id) applicant = later(applicant, at);
     else officers = later(officers, at);
   }
   const times: { applicant_last_message_at?: string; officers_last_message_at?: string } = {};
-  if (applicant && later(applicant, r.applicant_last_message_at) !== r.applicant_last_message_at) {
-    times.applicant_last_message_at = applicant;
+  // By instant, not by text: the database writes +00:00 and Discord Z.
+  const newer = (a: string | null, b: string | null) => !!a && (!b || Date.parse(a) > Date.parse(b));
+  if (newer(applicant, r.applicant_last_message_at)) {
+    times.applicant_last_message_at = applicant!;
   }
-  if (officers && later(officers, r.officers_last_message_at) !== r.officers_last_message_at) {
+  if (newer(officers, r.officers_last_message_at)) {
     times.officers_last_message_at = officers;
   }
   if (!times.applicant_last_message_at && !times.officers_last_message_at) return r;
@@ -390,8 +400,10 @@ export async function sweep(deps: Deps, token: string, siteUrl: string) {
   let failed = 0;
   for (const found of await deps.db.openRecords()) {
     try {
+      // Without the applicant's Discord id every message would read as an
+      // officer's, so the ticket isn't read and the saved times stand.
       const r =
-        found.status !== 'on_trial' && found.uses_ticket && found.ticket_channel_id
+        found.status !== 'on_trial' && found.uses_ticket && found.ticket_channel_id && found.applicant_discord_id
           ? await readTicket(deps, token, found)
           : found;
       if (!r) continue;

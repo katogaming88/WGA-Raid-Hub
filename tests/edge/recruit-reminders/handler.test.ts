@@ -50,6 +50,7 @@ const TICKET_REC: Rec = {
   officers_last_message_at: null,
   applied_at: at(T0),
   last_activity_at: at(T0),
+  reopened_at: null,
   trial_ends_on: null,
   uses_ticket: true,
   ticket_channel_id: TICKET,
@@ -68,7 +69,7 @@ const TICKET_REC: Rec = {
 };
 
 type Post = { channel: string; body: any };
-type Msg = { author: { id: string; bot?: boolean }; timestamp: string };
+type Msg = { type?: number; author: { id: string; bot?: boolean }; timestamp: string };
 
 function setup(rec: Partial<Rec> = {}, env = ENV) {
   const record: Rec = { ...TICKET_REC, ...rec };
@@ -79,6 +80,7 @@ function setup(rec: Partial<Rec> = {}, env = ENV) {
   let clock = T0;
   let down = false;
   let readStatus = 200;
+  let saveCount = 0;
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
   const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
@@ -106,6 +108,7 @@ function setup(rec: Partial<Rec> = {}, env = ENV) {
     db: {
       openRecords: () => Promise.resolve([{ ...record }]),
       saveTimes: (_id, times) => {
+        saveCount++;
         Object.assign(record, times);
         // The record's trigger.
         if (record.status !== 'on_trial') {
@@ -146,7 +149,7 @@ function setup(rec: Partial<Rec> = {}, env = ENV) {
     );
     return { status: res.status, body: await res.json() };
   };
-  const say = (id: string, ms: number) => ticket.push({ author: { id }, timestamp: at(ms) });
+  const say = (id: string, ms: number, type = 0) => ticket.push({ type, author: { id }, timestamp: at(ms) });
   return {
     deps,
     record,
@@ -154,7 +157,8 @@ function setup(rec: Partial<Rec> = {}, env = ENV) {
     posts,
     sweep,
     say,
-    bot: (ms: number) => ticket.push({ author: { id: BOT, bot: true }, timestamp: at(ms) }),
+    bot: (ms: number) => ticket.push({ type: 0, author: { id: BOT, bot: true }, timestamp: at(ms) }),
+    saves: () => saveCount,
     setDown: (v: boolean) => (down = v),
     setRead: (v: number) => (readStatus = v)
   };
@@ -327,12 +331,12 @@ Deno.test('the cron secret is required, and a local stack sends nothing', async 
   assertEquals(r.body, { success: true, status: 'local' });
 });
 
-Deno.test('a ticket the bot lost access to is skipped; a deleted one keeps its saved turn', async () => {
+Deno.test('a ticket the bot lost access to is skipped until a read works', async () => {
   const s = setup({ status: 'waiting_on_applicant', officers_last_message_at: at(T0) });
   s.setRead(403);
   let r = await s.sweep(T0 + 2.5 * H);
   assertEquals(r.body.sent, 0);
-  s.setRead(404);
+  s.setRead(200);
   r = await s.sweep(T0 + 2.75 * H);
   assertEquals(r.body.sent, 1);
 });
@@ -358,3 +362,52 @@ Deno.test(
     assertEquals(s.events, ['Reminded the officers again (no Team Owner with a linked Discord to mention)']);
   }
 );
+
+Deno.test('times are saved only when a message is really newer, whatever the format', async () => {
+  // The database answers +00:00; Discord answers Z.
+  const s = setup({ officers_last_message_at: '2026-11-10T16:00:00+00:00', status: 'waiting_on_applicant' });
+  s.say(OFFICER, T0 + H);
+  await s.sweep(T0 + 1.5 * H);
+  assertEquals(s.saves(), 0);
+});
+
+Deno.test('a pin or other system line in the ticket is not a turn', async () => {
+  const s = setup();
+  // 6 = a pinned message.
+  s.say(OFFICER, T0 + H, 6);
+  await s.sweep(T0 + 3.5 * H);
+  assertEquals(s.record.officers_last_message_at, null);
+  assertEquals(s.record.status, 'waiting_on_officers');
+  // 19 = a reply, which counts.
+  s.say(OFFICER, T0 + 4 * H, 19);
+  await s.sweep(T0 + 4.5 * H);
+  assertEquals(s.record.officers_last_message_at, at(T0 + 4 * H));
+});
+
+Deno.test("without the applicant's Discord id the ticket is not read", async () => {
+  const s = setup({ applicant_discord_id: null });
+  s.say(APPLICANT, T0 + H);
+  await s.sweep(T0 + 2 * H);
+  assertEquals(s.saves(), 0);
+});
+
+Deno.test("a reopen starts the officers' clock again", async () => {
+  const s = setup({ applicant_last_message_at: at(T0), reopened_at: at(T0 + 200 * H) });
+  s.say(APPLICANT, T0);
+  let r = await s.sweep(T0 + 201 * H);
+  assertEquals(r.body.sent, 0);
+  r = await s.sweep(T0 + 224 * H + 60_000);
+  assertEquals(r.body.sent, 1);
+  assertEquals(s.posts[0].body.content, WAITING('Katorrí', '1 day') + ' <#' + TICKET + '>');
+});
+
+Deno.test('a deleted ticket counts as none: officer pings, no link to it, no turn reminders', async () => {
+  const s = setup({ status: 'waiting_on_applicant', officers_last_message_at: at(T0) });
+  s.setRead(404);
+  let r = await s.sweep(T0 + 50 * H);
+  assertEquals(r.body.sent, 0);
+  s.record.status = 'waiting_on_officers';
+  r = await s.sweep(T0 + 25 * H);
+  assertEquals(r.body.sent, 1);
+  assertEquals(s.posts[0].body.content, WAITING('Katorrí', '1 day'));
+});

@@ -71,7 +71,7 @@ function supabaseDb(): ReminderDb {
         paged((from, to) =>
           db
             .from('recruit_events')
-            .select('id, application_id, created_at, recruit_applications!inner(closed_at)')
+            .select('id, application_id, kind, created_at, recruit_applications!inner(closed_at)')
             .is('recruit_applications.closed_at', null)
             .neq('kind', 'reminder_sent')
             .order('id')
@@ -101,9 +101,14 @@ function supabaseDb(): ReminderDb {
       const ownerOf = by(owners as any[], (o) => o.team_id);
       const discordId = new Map(people.map((p) => [p.id, p.discord_id as string | null]));
       const lastActivity = new Map<number, string>();
+      const lastReopen = new Map<number, string>();
+      const keep = (m: Map<number, string>, id: number, at: string) => {
+        const was = m.get(id);
+        if (!was || Date.parse(at) > Date.parse(was)) m.set(id, at);
+      };
       for (const e of events as any[]) {
-        const was = lastActivity.get(e.application_id);
-        if (!was || Date.parse(e.created_at) > Date.parse(was)) lastActivity.set(e.application_id, e.created_at);
+        keep(lastActivity, e.application_id, e.created_at);
+        if (e.kind === 'reopened') keep(lastReopen, e.application_id, e.created_at);
       }
 
       return apps.map((a): Rec => {
@@ -121,6 +126,7 @@ function supabaseDb(): ReminderDb {
           officers_last_message_at: a.officers_last_message_at,
           applied_at: a.applied_at,
           last_activity_at: lastActivity.get(a.id) ?? null,
+          reopened_at: lastReopen.get(a.id) ?? null,
           trial_ends_on: a.trial_ends_on,
           uses_ticket: s?.discord_mode === 'ticket',
           ticket_channel_id: a.discord_channel_id,
