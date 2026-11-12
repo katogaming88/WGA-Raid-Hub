@@ -16,6 +16,7 @@ A closed ticket's conversation (#1539), saved by the bot before the channel is d
 | body | text | ''::text | false |  |  |  |
 | attachments | jsonb | '[]'::jsonb | false |  |  |  |
 | sent_at | timestamp with time zone |  | false |  |  |  |
+| in_officer_thread | boolean | false | false |  |  | From the officer-only thread, not the ticket the applicant saw (#1544). |
 
 ## Constraints
 
@@ -54,6 +55,7 @@ erDiagram
   text body
   jsonb attachments
   timestamp_with_time_zone sent_at
+  boolean in_officer_thread
 }
 "public.recruit_applications" {
   integer id
@@ -88,6 +90,10 @@ erDiagram
   timestamp_with_time_zone closed_at
   integer trial_player_id FK
   integer trial_team_member_id FK
+  timestamp_with_time_zone ticket_closed_at
+  timestamp_with_time_zone ticket_saved_at
+  timestamp_with_time_zone ticket_deleted_at
+  integer ticket_save_failures
 }
 ```
 

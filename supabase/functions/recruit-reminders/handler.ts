@@ -7,8 +7,9 @@
 //     reply_dm        dm_reply_after_minutes after the officers' last message,
 //                     one DM: "Phoenix's officers replied to your application"
 //     reply_reminder  remind_after_hours after it: an @mention in the ticket
-//                     and a DM saying when it closes. The closing itself is
-//                     #1544's.
+//                     and a DM saying when it closes
+//     no_reply        close_no_reply_after_hours after it: closed as No reply
+//                     (bot_close_no_reply), with a last DM (#1544)
 //   Officers' turn (the applicant wrote last, or just applied):
 //     officers_ping   ping_officers_after_hours: "Katorri has been waiting
 //                     1 day" in the officer channel
@@ -40,12 +41,17 @@
 // and less per route; with many guilds and hundreds of open tickets this needs
 // pacing, or the gateway (#997) to hear messages instead of reading them.
 //
+// Then each closed record's ticket is locked, saved and deleted (tickets.ts,
+// #1544).
+//
 // Called by pg_cron with the x-cron-secret header. It reuses the
 // OPTIONAL_RSVP_REMINDERS_SECRET value, as the signup-sheets cron does, so no
 // new secret is owed. Deploy with --no-verify-jwt.
 import { type Env, resolveBot } from '../_shared/discord-destination.ts';
 import { zonedTimeToUtc } from '../_shared/time.ts';
 import { VERSION } from './version.ts';
+import { API, call, dm, postTo, type Sent } from './discord.ts';
+import { closeTickets, type TicketDb } from './tickets.ts';
 
 export type Timings = {
   dm_reply_after_minutes: number | null;
@@ -80,9 +86,14 @@ export type Rec = {
   timings: Timings;
 };
 
-export type Reminder = 'reply_dm' | 'reply_reminder' | 'officers_ping' | 'owner_ping' | 'trial_end';
+// no_reply isn't a reminder but the close itself (#1544): the record is
+// closed and the applicant told, once, since only one call can close it.
+export type Reminder = 'reply_dm' | 'reply_reminder' | 'officers_ping' | 'owner_ping' | 'trial_end' | 'no_reply';
 
-export interface ReminderDb {
+export interface ReminderDb extends TicketDb {
+  // Closes the record as No reply while it's still the applicant's turn; false
+  // when it was already closed or they answered.
+  closeNoReply(id: number): Promise<boolean>;
   // Every open record waiting on someone or on trial.
   openRecords(): Promise<Rec[]>;
   saveTimes(
@@ -98,9 +109,8 @@ export interface ReminderDb {
 
 export type Deps = { fetch: typeof fetch; db: ReminderDb; env: Env; now: () => Date };
 
-export const API = 'https://discord.com/api/v10';
-const HOUR = 3_600_000;
-const DEADLINE_MS = 5_000;
+export { API };
+export const HOUR = 3_600_000;
 const DEFAULT_TIMEZONE = 'America/New_York';
 const QUIET_FROM = 1;
 const QUIET_UNTIL = 9;
@@ -134,6 +144,7 @@ export function due(r: Rec, now: Date): { reminder: Reminder; dueFor: string } |
     // a new one, so they get one DM per turn.
     const turn = r.applicant_last_message_at ?? r.applied_at;
     const from = later(r.officers_last_message_at, r.reopened_at) as string;
+    if (passed(from, hours(r.timings.close_no_reply_after_hours))) return { reminder: 'no_reply', dueFor: turn };
     if (passed(from, hours(r.timings.remind_after_hours))) return { reminder: 'reply_reminder', dueFor: turn };
     const dm = r.timings.dm_reply_after_minutes;
     if (passed(from, dm === null ? null : dm * 60_000)) return { reminder: 'reply_dm', dueFor: turn };
@@ -168,7 +179,7 @@ export const span = (ms: number) => {
   return h >= 24 ? plural(Math.floor(h / 24), 'day') : plural(Math.max(h, 1), 'hour');
 };
 
-const firstName = (nameRealm: string) => nameRealm.split('-')[0];
+export const firstName = (nameRealm: string) => nameRealm.split('-')[0];
 const jump = (serverId: string, channelId: string) => 'https://discord.com/channels/' + serverId + '/' + channelId;
 export const recordUrl = (siteUrl: string, id: number) => siteUrl + '/recruits/' + id;
 const mention = (id: string) => '<@' + id + '>';
@@ -190,56 +201,10 @@ export const REMIND_DM = (team: string, closesIn: string | null) =>
   "'s officers are waiting on your reply" +
   (closesIn ? '. Your application closes in ' + closesIn + " if you don't answer." : '.');
 export const WAITING = (name: string, waited: string) => name + ' has been waiting ' + waited + '.';
+export const NO_REPLY_DM = (team: string) =>
+  'Your application to ' + team + ' was closed because there was no reply. You can apply again any time.';
 export const TRIAL_ENDS = (name: string, team: string, endsIn: string) =>
   name + "'s trial with " + team + ' ends in ' + endsIn + '. Officers, how did it go?';
-
-class DiscordDown extends Error {
-  override message = 'Discord did not answer';
-}
-const DMS_CLOSED = 50007;
-
-type Sent = { ok: boolean; dmsClosed?: boolean };
-
-async function call(deps: Deps, token: string, method: string, path: string, body?: unknown): Promise<Response> {
-  let res: Response;
-  try {
-    res = await deps.fetch(API + path, {
-      method,
-      headers: { Authorization: 'Bot ' + token, 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(DEADLINE_MS)
-    });
-  } catch {
-    throw new DiscordDown();
-  }
-  // A rate limit or an outage: the claim is dropped and the next sweep retries.
-  if (res.status === 429 || res.status >= 500) throw new DiscordDown();
-  return res;
-}
-
-async function postTo(deps: Deps, token: string, channelId: string, body: Record<string, unknown>): Promise<Sent> {
-  const res = await call(deps, token, 'POST', '/channels/' + channelId + '/messages', {
-    allowed_mentions: { parse: [] },
-    ...body
-  });
-  await res.body?.cancel();
-  return res.ok ? { ok: true } : { ok: false, dmsClosed: false };
-}
-
-async function dm(deps: Deps, token: string, userId: string, body: Record<string, unknown>): Promise<Sent> {
-  const open = await call(deps, token, 'POST', '/users/@me/channels', { recipient_id: userId });
-  if (!open.ok) return { ok: false, dmsClosed: (await open.json().catch(() => null))?.code === DMS_CLOSED };
-  const channel = (await open.json()) as { id: string };
-  const res = await call(deps, token, 'POST', '/channels/' + channel.id + '/messages', {
-    allowed_mentions: { parse: [] },
-    ...body
-  });
-  if (res.ok) {
-    await res.body?.cancel();
-    return { ok: true };
-  }
-  return { ok: false, dmsClosed: (await res.json().catch(() => null))?.code === DMS_CLOSED };
-}
 
 // Reads the ticket's newest messages and saves who wrote last on each side.
 // Only people's own messages and replies count (Discord's types 0 and 19), not
@@ -292,7 +257,8 @@ const DETAIL: Record<Reminder, string> = {
   reply_reminder: 'Reminded them to reply',
   officers_ping: 'Reminded the officers',
   owner_ping: 'Reminded the Team Owner',
-  trial_end: 'Trial ends soon: asked the officers how it went'
+  trial_end: 'Trial ends soon: asked the officers how it went',
+  no_reply: 'Closed: no reply'
 };
 
 // Sends one reminder, each message's outcome pushed onto out as it goes, so
@@ -377,6 +343,7 @@ function deliverable(r: Rec, reminder: Reminder): boolean {
     return !!r.applicant_discord_id && !!r.server_id && !!r.ticket_channel_id;
   }
   if (reminder === 'trial_end') return !!(r.officer_channel_id || r.ticket_channel_id);
+  if (reminder === 'no_reply') return true;
   return !!r.officer_channel_id;
 }
 
@@ -397,6 +364,7 @@ function jsonResponse(body: unknown, status = 200) {
 
 export async function sweep(deps: Deps, token: string, siteUrl: string) {
   let sent = 0;
+  let noReply = 0;
   let failed = 0;
   for (const found of await deps.db.openRecords()) {
     try {
@@ -409,8 +377,17 @@ export async function sweep(deps: Deps, token: string, siteUrl: string) {
       if (!r) continue;
       const next = due(r, deps.now());
       if (!next || !deliverable(r, next.reminder)) continue;
-      const dms = next.reminder === 'reply_dm' || next.reminder === 'reply_reminder';
+      const dms = next.reminder === 'reply_dm' || next.reminder === 'reply_reminder' || next.reminder === 'no_reply';
       if (dms && overnight(r.time_zone, deps.now())) continue;
+      if (next.reminder === 'no_reply') {
+        if (!(await deps.db.closeNoReply(r.id))) continue;
+        noReply++;
+        // Best effort: the record is closed whatever Discord says.
+        if (r.applicant_discord_id) {
+          await dm(deps, token, r.applicant_discord_id, { content: NO_REPLY_DM(r.team_name) }).catch(() => null);
+        }
+        continue;
+      }
       if (!(await deps.db.claim(r.id, next.reminder, next.dueFor))) continue;
       const out: Sent[] = [];
       let down: unknown = null;
@@ -440,7 +417,9 @@ export async function sweep(deps: Deps, token: string, siteUrl: string) {
       console.error('recruit-reminders: record ' + found.id + ' failed:', e instanceof Error ? e.message : e);
     }
   }
-  return { sent, failed };
+  // Then the closed records' tickets, including any closed just now.
+  const tickets = await closeTickets(deps, token);
+  return { sent, failed, noReply, tickets };
 }
 
 async function route(req: Request, deps: Deps): Promise<Response> {

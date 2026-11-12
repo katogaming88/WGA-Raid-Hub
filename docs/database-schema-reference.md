@@ -235,6 +235,7 @@ Recruit records ([#1539](https://github.com/katogaming88/WGA-Raid-Hub/issues/153
 | `trial_player_id` | The roster row Start trial put them on, which Joined and Not joining act on (#1793) |
 | `trial_team_member_id` | The membership Start trial made or brought back, null when they were already on the team; Not joining ends only this one (#1793) |
 | `discord_channel_id`, `discord_thread_id`, `discord_officer_message_id` | Whatever the team's Discord mode made, written by the bot |
+| `ticket_closed_at`, `ticket_saved_at`, `ticket_deleted_at`, `ticket_save_failures` | The bot's progress closing the ticket once the record closes ([#1544](https://github.com/katogaming88/WGA-Raid-Hub/issues/1544)): locked with its closing message, the conversation saved, deleted after the team's delay (never before it saved), and how many sweeps in a row the save failed (the officers are told at 3). A reopen before the deletion clears the first two |
 | `applied_at`, `closed_at` | `closed_at` is set exactly when the status is a closed one |
 
 ---
@@ -253,7 +254,7 @@ A recruit record's history ([#1539](https://github.com/katogaming88/WGA-Raid-Hub
 
 ## `recruit_messages`
 
-A closed ticket's conversation, saved by the bot ([#1539](https://github.com/katogaming88/WGA-Raid-Hub/issues/1539)): `discord_message_id`, `author_discord_id`, `author_name`, `body`, `attachments` (name and content type only; the files are not kept), `sent_at`.
+A closed ticket's conversation, saved by the bot ([#1539](https://github.com/katogaming88/WGA-Raid-Hub/issues/1539)): `discord_message_id`, `author_discord_id`, `author_name`, `body`, `attachments` (name and content type only; the files are not kept), `sent_at`, `in_officer_thread` (from the officer-only thread rather than the ticket, [#1544](https://github.com/katogaming88/WGA-Raid-Hub/issues/1544)).
 
 ---
 

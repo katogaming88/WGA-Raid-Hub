@@ -3,6 +3,7 @@
 // imports supabase-js.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { type Deps, type Rec, type ReminderDb } from './handler.ts';
+import { type TicketRec } from './tickets.ts';
 
 function check<T>({ data, error }: { data: T; error: { message: string } | null }): T {
   if (error) throw new Error(error.message);
@@ -30,7 +31,88 @@ async function paged(
 function supabaseDb(): ReminderDb {
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
+  // Linked Discord ids by person, in batches well under PostgREST's 1000-row
+  // answer and the address length.
+  async function discordIds(personIds: number[]) {
+    const ids = new Map<number, string | null>();
+    for (let i = 0; i < personIds.length; i += 200) {
+      const rows = check(
+        await db
+          .from('people')
+          .select('id, discord_id')
+          .in('id', personIds.slice(i, i + 200))
+      ) as any[];
+      for (const p of rows) ids.set(p.id, p.discord_id);
+    }
+    return ids;
+  }
+
   return {
+    async closeNoReply(id) {
+      return check(await db.rpc('bot_close_no_reply', { p_application_id: id })) === true;
+    },
+
+    async closingTickets() {
+      const apps = await paged((from, to) =>
+        db
+          .from('recruit_applications')
+          .select(
+            'id, team_id, person_id, status, closed_at, name_realm, discord_channel_id, discord_thread_id,' +
+              ' ticket_closed_at, ticket_saved_at, ticket_save_failures'
+          )
+          .is('ticket_deleted_at', null)
+          .or(
+            'and(closed_at.not.is.null,discord_channel_id.not.is.null),' +
+              'and(closed_at.not.is.null,discord_thread_id.not.is.null),' +
+              'ticket_closed_at.not.is.null'
+          )
+          .order('id')
+          .range(from, to)
+      );
+      if (!apps.length) return [];
+      const teamIds = [...new Set(apps.map((a) => a.team_id))];
+      const [teams, recruiting, discord] = await Promise.all([
+        db.from('teams').select('id, name').in('id', teamIds).then(check),
+        db.from('team_recruiting').select('team_id, delete_closed_after_hours').in('team_id', teamIds).then(check),
+        db.from('team_discord_config').select('team_id, officer_channel_id').in('team_id', teamIds).then(check)
+      ]);
+      const discordId = await discordIds([...new Set(apps.map((a) => a.person_id).filter(Boolean))]);
+      const by = <T>(rows: T[], key: (r: T) => number) => new Map(rows.map((r) => [key(r), r]));
+      const teamOf = by(teams as any[], (t) => t.id);
+      const settingsOf = by(recruiting as any[], (r) => r.team_id);
+      const discordOf = by(discord as any[], (d) => d.team_id);
+      return apps.map((a): TicketRec => ({
+        id: a.id,
+        team_name: (teamOf.get(a.team_id) as any)?.name ?? 'The team',
+        status: a.status,
+        open: a.closed_at === null,
+        name_realm: a.name_realm,
+        applicant_discord_id: a.person_id ? (discordId.get(a.person_id) ?? null) : null,
+        channel_id: a.discord_channel_id,
+        thread_id: a.discord_thread_id,
+        officer_channel_id: (discordOf.get(a.team_id) as any)?.officer_channel_id ?? null,
+        ticket_closed_at: a.ticket_closed_at,
+        ticket_saved_at: a.ticket_saved_at,
+        ticket_save_failures: a.ticket_save_failures ?? 0,
+        delete_after_hours: (settingsOf.get(a.team_id) as any)?.delete_closed_after_hours ?? null
+      }));
+    },
+
+    async ticketProgress(id, progress) {
+      check(await db.from('recruit_applications').update(progress).eq('id', id));
+    },
+
+    async saveMessages(id, messages) {
+      for (let i = 0; i < messages.length; i += 500) {
+        check(
+          await db.from('recruit_messages').upsert(
+            messages.slice(i, i + 500).map((m) => ({ application_id: id, ...m })),
+            { onConflict: 'application_id,discord_message_id', ignoreDuplicates: true }
+          )
+        );
+      }
+    },
+
     async openRecords() {
       const apps = await paged((from, to) =>
         db
@@ -81,25 +163,13 @@ function supabaseDb(): ReminderDb {
       const personIds = [
         ...new Set([...apps.map((a) => a.person_id), ...(owners as any[]).map((o) => o.person_id)].filter(Boolean))
       ];
-      // In batches well under PostgREST's 1000-row answer and the address length.
-      const people: any[] = [];
-      for (let i = 0; i < personIds.length; i += 200) {
-        people.push(
-          ...(check(
-            await db
-              .from('people')
-              .select('id, discord_id')
-              .in('id', personIds.slice(i, i + 200))
-          ) as any[])
-        );
-      }
+      const discordId = await discordIds(personIds);
 
       const by = <T>(rows: T[], key: (r: T) => number) => new Map(rows.map((r) => [key(r), r]));
       const teamOf = by(teams as any[], (t) => t.id);
       const settingsOf = by(recruiting as any[], (r) => r.team_id);
       const discordOf = by(discord as any[], (d) => d.team_id);
       const ownerOf = by(owners as any[], (o) => o.team_id);
-      const discordId = new Map(people.map((p) => [p.id, p.discord_id as string | null]));
       const lastActivity = new Map<number, string>();
       const lastReopen = new Map<number, string>();
       const keep = (m: Map<number, string>, id: number, at: string) => {

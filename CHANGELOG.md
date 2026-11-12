@@ -12,6 +12,27 @@ answers to.
 
 ---
 
+## [3.261.0] - 2026-11-11
+
+### Backend
+
+- What the bot needs to close a recruit's ticket (#1544): the record keeps how far the bot got (locked, saved, deleted, and how many times in a row the save failed), a saved message says whether it came from the officer-only thread, and a recruit's earlier applications carry their id for the link coming in part 2. A new function closes a record as No reply, but only while it's still the applicant's turn; only the bot can call it.
+
+### Functions
+
+- **Closing recruiting tickets** (#1544, part 1 of 2). An applicant who hasn't answered by the team's closing time (5 days after the officers' last message by default) has their application closed as No reply, with a last DM: "Your application to Phoenix was closed because there was no reply. You can apply again any time." Like the other DMs, it waits out 1 to 9 AM their time. Whenever a recruit's record closes (declined, no reply, joined, not joining, withdrawn), within 15 minutes:
+  - The ticket locks: the applicant can still read it but can't post.
+  - A closing message goes in, worded by the reason. Joined reads "Welcome to Phoenix for real! This ticket is closed and will be deleted in 1 day. Everything here is saved on Raid Hub."
+  - The officer-only thread locks too.
+  - Every message in both is saved to the record, with who wrote it, when, and the names of any files.
+  - After the team's "delete closed tickets after" time (a day by default), the bot deletes the ticket and the thread. It never deletes one that hasn't saved; it keeps trying, and tells the officer channel once if saving has failed three times.
+  - Reopened before it's deleted, the ticket unlocks and says "This ticket is open again."
+- Part 2 (#1544) will give a fresh ticket to a record reopened after its ticket is gone, and add a link to the saved conversation on its card.
+
+### Project
+
+- Tests for closing tickets (#1544): every close reason's message, the save 100 at a time with the thread apart, no deleting before it saves, the officers told at the third failure, a reopen, a ticket deleted by hand, Discord being down, the No reply close and its overnight hold, and that nobody signed in can close a record as No reply. The decision log, RLS.md, the schema reference and the time log have their entries.
+
 ## [3.260.0] - 2026-11-11
 
 ### Backend

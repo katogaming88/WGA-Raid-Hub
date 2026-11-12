@@ -40,6 +40,10 @@ Recruit records (#1539): one per person per team per attempt, sent from the form
 | closed_at | timestamp with time zone |  | true |  |  |  |
 | trial_player_id | integer |  | true |  | [public.players](public.players.md) | The roster row Start trial put them on (#1793), which Joined and Not joining act on. |
 | trial_team_member_id | integer |  | true |  | [public.team_members](public.team_members.md) | The membership Start trial made or brought back from the archive (#1793), null when they were already on the team. Not joining ends only this one, never a membership the person had before applying (fresh-agent review). |
+| ticket_closed_at | timestamp with time zone |  | true |  |  | When the bot locked the closed record's ticket and posted the closing message (#1544). Cleared when a reopen unlocks it. |
+| ticket_saved_at | timestamp with time zone |  | true |  |  | When the bot saved the closed ticket's whole conversation to recruit_messages (#1544). Never deleted before this is set. |
+| ticket_deleted_at | timestamp with time zone |  | true |  |  | When the bot deleted the closed ticket and officer thread from Discord (#1544), delete_closed_after_hours after ticket_closed_at. |
+| ticket_save_failures | integer | 0 | false |  |  | Sweeps in a row the save failed (#1544); the officer channel is told at 3. Back to 0 once it saves. |
 
 ## Constraints
 
@@ -66,6 +70,7 @@ Recruit records (#1539): one per person per team per attempt, sent from the form
 | recruit_applications_source | CHECK | CHECK ((source = ANY (ARRAY['application'::text, 'added_by_officer'::text]))) |
 | recruit_applications_spec_name | CHECK | CHECK ((char_length(spec_name) <= 30)) |
 | recruit_applications_status | CHECK | CHECK ((status = ANY (ARRAY['waiting_on_officers'::text, 'waiting_on_applicant'::text, 'on_trial'::text, 'joined'::text, 'declined'::text, 'not_joining'::text, 'no_reply'::text, 'withdrawn'::text]))) |
+| recruit_applications_ticket_save_failures | CHECK | CHECK ((ticket_save_failures >= 0)) |
 | recruit_applications_time_zone | CHECK | CHECK ((char_length(time_zone) <= 64)) |
 | recruit_applications_trial_dates | CHECK | CHECK ((((trial_starts_on IS NULL) = (trial_ends_on IS NULL)) AND COALESCE((trial_ends_on >= trial_starts_on), true))) |
 | recruit_applications_trial_player_id_fkey | FOREIGN KEY | FOREIGN KEY (trial_player_id) REFERENCES players(id) ON DELETE SET NULL |
@@ -143,6 +148,10 @@ erDiagram
   timestamp_with_time_zone closed_at
   integer trial_player_id FK
   integer trial_team_member_id FK
+  timestamp_with_time_zone ticket_closed_at
+  timestamp_with_time_zone ticket_saved_at
+  timestamp_with_time_zone ticket_deleted_at
+  integer ticket_save_failures
 }
 "public.recruit_notes" {
   integer id
@@ -169,6 +178,7 @@ erDiagram
   text body
   jsonb attachments
   timestamp_with_time_zone sent_at
+  boolean in_officer_thread
 }
 "public.recruit_reminders_sent" {
   integer id

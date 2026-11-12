@@ -97,10 +97,10 @@
 | [public.application_starter_questions](public.application_starter_questions.md) | 10 | The starter application questions (#1536), site-wide and the same for every guild, seeded by migration. A team switches each on or off and marks it required (team_application_starters); it never edits one. {team} and {raid nights} in prompt are filled by the page. | BASE TABLE |
 | [public.team_application_starters](public.team_application_starters.md) | 4 | What a team changed about a starter question (#1536): a row only where is_on or required differs from the starter's default. No row: the default. Saved through save_team_application_questions(). | BASE TABLE |
 | [public.team_application_questions](public.team_application_questions.md) | 9 | A team's own application questions (#1536), in sort_order after the starter questions. Up to 20. short_text takes a max_length up to 200, paragraph up to 4,000; choice takes 2 to 10 choices. Saved through save_team_application_questions(), which keeps each question's id. | BASE TABLE |
-| [public.recruit_applications](public.recruit_applications.md) | 32 | Recruit records (#1539): one per person per team per attempt, sent from the form (source application) or added by an officer for a ticket-only applicant (added_by_officer). The character columns are a copy taken when sent. One open (closed_at null) per person per team. Read and written through functions; the bot writes the Discord ids and last-message times with the service key. | BASE TABLE |
+| [public.recruit_applications](public.recruit_applications.md) | 36 | Recruit records (#1539): one per person per team per attempt, sent from the form (source application) or added by an officer for a ticket-only applicant (added_by_officer). The character columns are a copy taken when sent. One open (closed_at null) per person per team. Read and written through functions; the bot writes the Discord ids and last-message times with the service key. | BASE TABLE |
 | [public.recruit_notes](public.recruit_notes.md) | 6 | Notes on a recruit record (#1539), from Raid Hub (site) or a Discord button (discord). Never shown to the applicant; the recruiter who sent the person sees only their own. | BASE TABLE |
 | [public.recruit_events](public.recruit_events.md) | 6 | A recruit record's history (#1539), for its What's happened list: who did what, when, and a short detail (a decline or extension reason, which reminder). The functions and the bot write it. | BASE TABLE |
-| [public.recruit_messages](public.recruit_messages.md) | 8 | A closed ticket's conversation (#1539), saved by the bot before the channel is deleted. attachments is a list of {name, content_type}: the files themselves are not kept, since Discord's links expire. | BASE TABLE |
+| [public.recruit_messages](public.recruit_messages.md) | 9 | A closed ticket's conversation (#1539), saved by the bot before the channel is deleted. attachments is a list of {name, content_type}: the files themselves are not kept, since Discord's links expire. | BASE TABLE |
 | [public.recruit_reminders_sent](public.recruit_reminders_sent.md) | 5 | Which recruiting reminders the bot sent (#1539, #1543), the shape of raid_rsvp_reminders_sent. due_for is the message time or trial end the reminder was for, so a new message starts a new round and a repeat sweep sends nothing twice. | BASE TABLE |
 | [public.discord_find_ticket](public.discord_find_ticket.md) | 6 | Find my ticket (#1542): per Discord server, the channel its message goes in and the message the bot posted, so the bot edits or removes that one. Read and written by the discord-settings Edge Function for whoever may edit recruiting for a team in the server. Service role only. | BASE TABLE |
 
@@ -372,6 +372,7 @@
 | public.bot_extend_recruit_trial | date | p_application_id integer, p_actor_discord_id text, p_reason text | FUNCTION |
 | public.bot_mark_recruit_joined | void | p_application_id integer, p_actor_discord_id text | FUNCTION |
 | public.bot_mark_recruit_not_joining | void | p_application_id integer, p_actor_discord_id text, p_reason text, p_detail text | FUNCTION |
+| public.bot_close_no_reply | bool | p_application_id integer | FUNCTION |
 
 ## Enums
 
@@ -1551,6 +1552,10 @@ erDiagram
   timestamp_with_time_zone closed_at
   integer trial_player_id FK
   integer trial_team_member_id FK
+  timestamp_with_time_zone ticket_closed_at
+  timestamp_with_time_zone ticket_saved_at
+  timestamp_with_time_zone ticket_deleted_at
+  integer ticket_save_failures
 }
 "public.recruit_notes" {
   integer id
@@ -1577,6 +1582,7 @@ erDiagram
   text body
   jsonb attachments
   timestamp_with_time_zone sent_at
+  boolean in_officer_thread
 }
 "public.recruit_reminders_sent" {
   integer id

@@ -3505,3 +3505,19 @@ Shipped: `20261111202918_recruit_reminders_cron.sql`.
 **Times.** A trial "ends" at noon Eastern on its end date, the one zone the RSVP reminders also use. DMs wait out 1 to 9 AM in the applicant's time zone (Eastern when unknown). Closing at 5 days is #1544's.
 
 [Full discussion -> #1543](https://github.com/katogaming88/WGA-Raid-Hub/issues/1543).
+
+## #1544 -- closing, saving and deleting recruit tickets
+
+Shipped: `20261111212335_recruit_ticket_close.sql`.
+
+**The 15-minute sweep does it, in three steps written onto the record.** `ticket_closed_at` (the applicant can read but not post, the closing message is in, the officer thread is locked), `ticket_saved_at` (every message in the ticket and the thread saved to `recruit_messages`, 100 at a time) and `ticket_deleted_at` (`delete_closed_after_hours` after it was locked). Each step is written once done, so a failed one is tried again next sweep. "Locked right away" means by the next sweep, within 15 minutes, rather than from each button: one place closes every kind of close (a button, the site, a withdrawal, No reply).
+
+**Save first, delete second.** A ticket that hasn't saved is never deleted. `ticket_save_failures` counts the sweeps in a row the save failed; at 3 the officer channel is told once. Attachments keep only their names and types, as #1539 chose, since Discord's links expire.
+
+**The officer thread's messages are marked.** `recruit_messages.in_officer_thread`, returned by `recruit_record()`, so the Recruits page (#1549) can show the ticket and the officer-only talk apart. `recruit_record()`'s earlier applications now carry their id, for the second part's link from a fresh ticket's card to the saved conversation.
+
+**No reply closes in the database, not the function.** `bot_close_no_reply()` closes only while the record is still waiting on the applicant, so an answer read in the same sweep keeps it open. It has no actor (the audit row's actor is empty) and is the service role's only. The sweep decides when, from the officers' last message (or a reopen) plus `close_no_reply_after_hours`, and holds it 1 to 9 AM in the applicant's time zone like the other DMs, since it sends one.
+
+**A reopen before deletion is the sweep's to undo.** `recruit_reopen()` is unchanged: an open record with `ticket_closed_at` still set tells the sweep to let the applicant post again, open the thread and clear the steps. After deletion, a fresh ticket is the second part of #1544.
+
+[Full discussion -> #1544](https://github.com/katogaming88/WGA-Raid-Hub/issues/1544).
