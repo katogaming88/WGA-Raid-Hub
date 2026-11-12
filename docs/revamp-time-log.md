@@ -18,17 +18,17 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 10 h 10 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 10 h 40 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **182 h 6 m** |             |
+| **All revamp work**                | **182 h 36 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Recruiting | Phase 2 | 9 h 5 m | ~9 h 50 m |
+| Recruiting | Phase 2 | 9 h 35 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 0 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
@@ -700,6 +700,13 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:31-10:57 PM | PR #1806 (#1544 part 2): CodeRabbit rate-limited, so Kat picked the fresh-agent review in its place (approve; seven nice-to-haves) and all seven at Kat's word: the fresh ticket claimed on the record first so it's made once, a Discord failure with nothing made handing the claim back, the sweep waiting long enough, the secret making only a reopened record's ticket, no actor on the sweep's history row, off and not-in-server stopping the retries (the officers told once), archived teams left out, a tiebreak on the earlier record; eight more tests | Phase 2: Before the new site goes live / Recruiting (#1544) | 25 m | ~20 m build, ~5 m Kat deciding | ~166,800 | Tokens include the fresh agent's 110,413. Kat's merge not yet counted. |
 | 10:57-11:03 PM | PR #1806 (#1544 part 2): CodeRabbit once the limit cleared (six): the fresh ticket's claim moved to a once-only row so `ticket_deleted_at` stays set until the new ids save and a second caller meets the claim; an officer thread recorded the moment it's made; made-but-not-saved keeps the claim; left-the-server checks each sweep and makes the ticket on rejoin, with a once-only officer notice handed back if it didn't post; the earlier-record pick compares (applied time, id); four more tests | Phase 2: Before the new site goes live / Recruiting (#1544) | 5 m | ~5 m build | ~38,900 | Kat's merge not yet counted. Re-timed from the transcript on 2026-11-12 with the rows above from 9:53 PM: their ends had been estimated past the real clock. |
 | 11:03-11:07 PM | PR #1806 (#1544 part 2): CodeRabbit's last reply answered, Kat's merge, cleanup, #1487 updated (#1544 row off, #1545 next), handoff | Phase 2: Before the new site goes live / Recruiting (#1544) | 5 m | ~5 m build | ~23,200 | Added 2026-11-12. |
+
+### 2026-11-12
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 9:09-9:28 AM | #1540 go-live: what the Discord join step needs (the redirect, `SITE_URL`); `discord-join` switched to the secrets production already has (`DISCORD_APPLICATION_ID`, `DISCORD_BOT_CLIENT_SECRET`, saved 2026-11-01 for #1728) so none is stored twice; tests, stamp, changelog; PR #1807, Kat's merge, cleanup, the three secrets checked by name | Phase 2: Before the new site goes live / Recruiting (#1540) | 20 m | ~10 m build, ~10 m Kat (secrets, redirect) | ~78,600 | Tokens include the /resume read. |
+| 9:28-9:40 AM | #1545: the sweep keeps who sees each open ticket and officer thread in step with Raid Hub (`recruit-ticket` `sync` action called once per sweep; only Raid Hub's own overwrites removed, hand-made ones left; officer threads add role holders one by one, Kat's pick to turn on Server Members; an archived thread brought back only when something changes); Deno tests, decision log, stamp, changelog; time log re-timed for 2026-11-11; PR | Phase 2: Before the new site goes live / Recruiting (#1545) | 10 m | ~10 m build | ~123,300 | CodeRabbit and Kat's merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 
