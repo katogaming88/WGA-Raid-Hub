@@ -16,7 +16,9 @@
 //
 // Reopened before it's deleted (the record is open again with
 // ticket_closed_at set): the applicant can post again, the thread opens, a
-// line says so, and the steps start over at the next close. "Locked right
+// line says so, and the steps start over at the next close. A ticket deleted
+// by hand is simply missing: nothing to lock or save there, and its officer
+// thread still goes through every step. "Locked right
 // away" means by the next sweep, within 15 minutes.
 import { call, DiscordDown, type Fetcher, postTo } from './discord.ts';
 
@@ -77,6 +79,9 @@ export interface TicketDb {
   closingTickets(): Promise<TicketRec[]>;
   ticketProgress(id: number, progress: Progress): Promise<void>;
   saveMessages(id: number, messages: SavedMessage[]): Promise<void>;
+  // Sets ticket_deleted_at while the record is still closed; false if it was
+  // reopened.
+  claimDelete(id: number, at: string): Promise<boolean>;
 }
 
 type Deps = Fetcher & { db: TicketDb; now: () => Date };
@@ -112,8 +117,6 @@ export const SAVE_FAILED = (name: string, where: string) =>
   " tries, so it won't be deleted until it saves. " +
   where;
 
-class Gone extends Error {}
-
 async function setApplicant(deps: Deps, token: string, t: TicketRec, allow: bigint, deny: bigint) {
   if (!t.channel_id || !t.applicant_discord_id) return;
   const res = await call(deps, token, 'PUT', '/channels/' + t.channel_id + '/permissions/' + t.applicant_discord_id, {
@@ -122,7 +125,8 @@ async function setApplicant(deps: Deps, token: string, t: TicketRec, allow: bigi
     deny: String(deny)
   });
   await res.body?.cancel();
-  if (res.status === 404) throw new Gone();
+  // A ticket deleted by hand has nothing to lock; its thread carries on.
+  if (res.status === 404) return;
   if (!res.ok) throw new Error('Discord refused the ticket permission change: ' + res.status);
 }
 
@@ -220,7 +224,11 @@ async function step(deps: Deps, token: string, t: TicketRec): Promise<string | n
     await deps.db.ticketProgress(t.id, { ticket_closed_at: closedAt });
   }
 
-  if (!t.ticket_saved_at) {
+  const deleteDue =
+    t.delete_after_hours !== null && now.getTime() >= Date.parse(closedAt) + t.delete_after_hours * HOUR;
+  // Saved once closed, and again just before deletion, so anything an officer
+  // wrote during the wait is kept too (the save skips messages it has).
+  if (!t.ticket_saved_at || deleteDue) {
     try {
       const messages = [
         ...(t.channel_id ? await readAll(deps, token, t.channel_id, false) : []),
@@ -234,19 +242,26 @@ async function step(deps: Deps, token: string, t: TicketRec): Promise<string | n
         const where = t.channel_id ? '<#' + t.channel_id + '>' : t.thread_id ? '<#' + t.thread_id + '>' : '';
         await postTo(deps, token, t.officer_channel_id, {
           content: SAVE_FAILED(t.name_realm.split('-')[0], where)
-        }).catch(() => null);
+        }).catch((err) =>
+          console.error('recruit-reminders: the save-failed notice for ticket ' + t.id + ' did not post:', err)
+        );
       }
       throw e;
     }
     await deps.db.ticketProgress(t.id, { ticket_saved_at: now.toISOString(), ticket_save_failures: 0 });
   }
 
-  if (t.delete_after_hours === null || now.getTime() < Date.parse(closedAt) + t.delete_after_hours * HOUR) {
-    return t.ticket_closed_at ? null : 'closed';
+  if (!deleteDue) return t.ticket_closed_at ? null : 'closed';
+  // Claimed on the record first, only while it's still closed, so a reopen
+  // since this sweep read it keeps its ticket (CodeRabbit).
+  if (!(await deps.db.claimDelete(t.id, now.toISOString()))) return null;
+  try {
+    await remove(deps, token, t.channel_id);
+    await remove(deps, token, t.thread_id);
+  } catch (e) {
+    await deps.db.ticketProgress(t.id, { ticket_deleted_at: null });
+    throw e;
   }
-  await remove(deps, token, t.channel_id);
-  await remove(deps, token, t.thread_id);
-  await deps.db.ticketProgress(t.id, { ticket_deleted_at: now.toISOString() });
   return 'deleted';
 }
 
@@ -257,16 +272,6 @@ export async function closeTickets(deps: Deps, token: string) {
       const did = await step(deps, token, t);
       if (did) done[did as 'closed' | 'deleted' | 'reopened']++;
     } catch (e) {
-      if (e instanceof Gone) {
-        // Deleted by hand: nothing left to lock, save or delete.
-        const at = deps.now().toISOString();
-        await deps.db.ticketProgress(t.id, {
-          ticket_closed_at: t.ticket_closed_at ?? at,
-          ticket_saved_at: t.ticket_saved_at ?? at,
-          ticket_deleted_at: at
-        });
-        continue;
-      }
       done.failed++;
       console.error(
         'recruit-reminders: ticket ' + t.id + ' failed:',

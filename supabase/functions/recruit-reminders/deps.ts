@@ -98,6 +98,19 @@ function supabaseDb(): ReminderDb {
       }));
     },
 
+    async claimDelete(id, at) {
+      const rows = check(
+        await db
+          .from('recruit_applications')
+          .update({ ticket_deleted_at: at })
+          .eq('id', id)
+          .not('closed_at', 'is', null)
+          .is('ticket_deleted_at', null)
+          .select('id')
+      ) as any[];
+      return rows.length > 0;
+    },
+
     async ticketProgress(id, progress) {
       check(await db.from('recruit_applications').update(progress).eq('id', id));
     },

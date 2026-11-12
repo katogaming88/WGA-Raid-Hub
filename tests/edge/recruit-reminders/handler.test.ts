@@ -145,7 +145,8 @@ function setup(rec: Partial<Rec> = {}, env = ENV) {
       },
       closingTickets: () => Promise.resolve([]),
       ticketProgress: () => Promise.resolve(),
-      saveMessages: () => Promise.resolve()
+      saveMessages: () => Promise.resolve(),
+      claimDelete: () => Promise.resolve(true)
     }
   };
 

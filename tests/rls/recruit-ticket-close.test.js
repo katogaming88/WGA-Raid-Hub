@@ -38,6 +38,29 @@ describe('closing a recruit ticket (#1544)', () => {
       // The officers' turn: not closed.
       expect(await close()).toBe(false);
 
+      // Their turn, but the team's time hasn't passed since the officers wrote.
+      await bot(
+        "update public.recruit_applications set officers_last_message_at = now() - interval '2 days' where id = $1",
+        [id]
+      );
+      expect(await close()).toBe(false);
+      // Passed, but a reopen since starts the wait over.
+      await bot(
+        "update public.recruit_applications set officers_last_message_at = now() - interval '6 days' where id = $1",
+        [id]
+      );
+      await bot("insert into public.recruit_events (application_id, kind) values ($1, 'reopened')", [id]);
+      expect(await close()).toBe(false);
+      await bot("delete from public.recruit_events where application_id = $1 and kind = 'reopened'", [id]);
+      // A team that never closes for no reply.
+      await q(
+        'update public.team_recruiting set close_no_reply_after_hours = null, remind_after_hours = null where team_id = 1'
+      );
+      expect(await close()).toBe(false);
+      await q(
+        'update public.team_recruiting set close_no_reply_after_hours = 120, remind_after_hours = 48 where team_id = 1'
+      );
+
       await bot(
         "update public.recruit_applications set officers_last_message_at = now() - interval '6 days' where id = $1",
         [id]

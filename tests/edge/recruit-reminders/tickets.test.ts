@@ -55,6 +55,7 @@ function setup(rec: Partial<TicketRec> = {}, ticketMessages = 103) {
   const progress: Progress[] = [];
   const answers: Record<string, number> = {};
   let clock = T0;
+  let reopenBeforeDelete = false;
   // Newest first, as Discord answers.
   const inTicket = Array.from({ length: ticketMessages }, (_, i) => message(i + 1)).reverse();
   const inThread = [message(500, '600000000000000001')];
@@ -88,8 +89,14 @@ function setup(rec: Partial<TicketRec> = {}, ticketMessages = 103) {
         return Promise.resolve();
       },
       saveMessages: (_id: number, m: SavedMessage[]) => {
-        saved.push(...m);
+        // The real upsert skips messages it already has.
+        for (const x of m) if (!saved.some((y) => y.discord_message_id === x.discord_message_id)) saved.push(x);
         return Promise.resolve();
+      },
+      claimDelete: (_id: number, at: string) => {
+        if (reopenBeforeDelete) return Promise.resolve(false);
+        progress.push({ ticket_deleted_at: at });
+        return Promise.resolve(true);
       }
     }
   };
@@ -105,7 +112,9 @@ function setup(rec: Partial<TicketRec> = {}, ticketMessages = 103) {
     progress,
     run,
     answer: (key: string, status: number) => (answers[key] = status),
-    clear: (key: string) => delete answers[key]
+    clear: (key: string) => delete answers[key],
+    reopenMidway: () => (reopenBeforeDelete = true),
+    officerWrites: () => inTicket.unshift(message(900, '600000000000000001'))
   };
 }
 
@@ -147,7 +156,7 @@ Deno.test('a closed ticket is locked, gets its message, is saved, then deleted a
   done = await s.run(T0 + 24 * H);
   assertEquals(done.deleted, 1);
   assertEquals(
-    s.calls.map((c) => c.method + ' ' + c.path),
+    s.calls.filter((c) => c.method === 'DELETE').map((c) => c.method + ' ' + c.path),
     ['DELETE /channels/' + TICKET, 'DELETE /channels/' + THREAD]
   );
   assert(s.progress.at(-1)?.ticket_deleted_at);
@@ -223,16 +232,53 @@ Deno.test(
   }
 );
 
-Deno.test('a ticket deleted by hand is marked done; Discord down changes nothing', async () => {
-  const gone = setup();
-  gone.answer('PUT /channels/' + TICKET + '/permissions/' + APPLICANT, 404);
-  await gone.run(T0);
-  assert(gone.progress.at(-1)?.ticket_deleted_at);
-  assertEquals(gone.calls.length, 1);
+Deno.test('a ticket deleted by hand is skipped; its officer thread is still saved and deleted', async () => {
+  const s = setup();
+  s.answer('PUT /channels/' + TICKET + '/permissions/' + APPLICANT, 404);
+  s.answer('POST /channels/' + TICKET + '/messages', 404);
+  s.answer('GET /channels/' + TICKET + '/messages', 404);
+  s.answer('DELETE /channels/' + TICKET, 404);
+  await s.run(T0);
+  assertEquals(s.calls.find((c) => c.method === 'PATCH')!.body, { locked: true });
+  assertEquals(
+    s.saved.map((m) => m.in_officer_thread),
+    [true]
+  );
+  const done = await s.run(T0 + 24 * H);
+  assertEquals(done.deleted, 1);
+  assert(s.calls.some((c) => c.method === 'DELETE' && c.path === '/channels/' + THREAD));
+});
 
+Deno.test('anything written during the wait is saved before the delete', async () => {
+  const s = setup();
+  await s.run(T0);
+  s.officerWrites();
+  await s.run(T0 + 24 * H);
+  assert(s.saved.some((m) => m.body === 'message 900'));
+  assertEquals(s.saved.length, 105);
+});
+
+Deno.test('a record reopened while the sweep runs keeps its ticket', async () => {
+  const s = setup({
+    ticket_closed_at: new Date(T0 - 48 * H).toISOString(),
+    ticket_saved_at: new Date(T0 - 48 * H).toISOString()
+  });
+  s.reopenMidway();
+  const done = await s.run(T0);
+  assertEquals(done.deleted, 0);
+  assert(!s.calls.some((c) => c.method === 'DELETE'));
+});
+
+Deno.test('Discord down changes nothing', async () => {
   const down = setup();
   down.answer('PUT /channels/' + TICKET + '/permissions/' + APPLICANT, 503);
   const done = await down.run(T0);
   assertEquals(done.failed, 1);
   assertEquals(down.progress, []);
+
+  // A delete Discord refuses is un-claimed, so the next sweep tries again.
+  const refused = setup({ ticket_closed_at: new Date(T0 - 48 * H).toISOString() });
+  refused.answer('DELETE /channels/' + THREAD, 503);
+  assertEquals((await refused.run(T0)).failed, 1);
+  assertEquals(refused.progress.at(-1), { ticket_deleted_at: null });
 });
