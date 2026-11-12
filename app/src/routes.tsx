@@ -34,6 +34,8 @@ import { CreateGuildPage } from './front/CreateGuildPage';
 import { FrontPage } from './front/FrontPage';
 import { JoinRoute } from './join/JoinRoute';
 import { GuildApplyPage, TeamApplyPage } from './apply/ApplyPages';
+import { ApplyFormPage } from './apply/ApplyFormPage';
+import { ApplicationPage, DiscordReturnPage, MyApplicationsPage } from './apply/ApplicationPages';
 import { ImportLootPage } from './loot/ImportLootPage';
 import { ReviewsPage } from './loot/ReviewsPage';
 import { ReassignPage } from './loot/ReassignPage';
@@ -82,6 +84,7 @@ const BUILT_PAGES: Record<string, ReactElement> = {
 // Guild pages rebuilt so far (#1102), beside Guild home itself.
 const BUILT_GUILD_PAGES: Record<string, ReactElement> = {
   apply: <GuildApplyPage />,
+  applications: <MyApplicationsPage />,
   boe: <BoePage />,
   streams: <StreamsPage />,
   officers: <GuildOfficersPage />,
@@ -167,6 +170,11 @@ export const routes: RouteObject[] = [
             handle: { title: 'Create your guild' } satisfies RouteHandle
           },
           // An invite link (#1264), in the frame so its steps keep the sidebar.
+          {
+            path: '/apply/discord',
+            element: <DiscordReturnPage />,
+            handle: { title: 'Joining the Discord' } satisfies RouteHandle
+          },
           { path: '/join/:code', element: <JoinRoute />, handle: { title: 'Join a team' } satisfies RouteHandle },
           ...Object.entries(SITE_PAGES).map(([path, title]) => ({
             // A guide open over the Help page has its own address, to post in
@@ -194,6 +202,17 @@ export const routes: RouteObject[] = [
             element: BUILT_GUILD_PAGES[path] ?? <PlaceholderPage title={title} />,
             handle: { title } satisfies RouteHandle
           })),
+          // The application form, an application and where Discord sends the applicant back (#1547).
+          {
+            path: 'apply/:applyTeam/form',
+            element: <ApplyFormPage />,
+            handle: { title: 'Apply' } satisfies RouteHandle
+          },
+          {
+            path: 'applications/:applicationId',
+            element: <ApplicationPage />,
+            handle: { title: 'My applications' } satisfies RouteHandle
+          },
           // One team's public apply page (#1546). Not :teamKey, which the shell reads
           // as a team page and would put the team's menu and streams around it.
           { path: 'apply/:applyTeam', element: <TeamApplyPage />, handle: { title: 'Join us' } satisfies RouteHandle },

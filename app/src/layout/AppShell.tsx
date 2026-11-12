@@ -21,6 +21,7 @@ import { AltsPickerProvider } from '../characters/AltsPicker';
 import { SignupBanner } from '../signup/SignupButton';
 import { useAccess, useCan, usePreviewTeams } from '../auth/access';
 import { useSession } from '../auth/session';
+import { useMyApplications } from '../apply/useApplyForm';
 import { navGroups, pageHolds, type NavGroup, type NavItem } from './nav';
 import { defaultGuildKey, forgetGuild, lastGuildKey, lastTeamKey, rememberGuild, rememberTeam } from './lastGuild';
 import { TeamSwitcher } from './TeamSwitcher';
@@ -115,14 +116,17 @@ export function AppShell() {
   // from the outlet.
   const base = { team: `/g/${guildKey}/t/${navTeamKey}`, guild: `/g/${guildKey}` };
   const council = useLootCouncil(navTeam?.id ?? 0);
+  // My applications shows under You once the person has applied (#1547).
+  const myApplications = useMyApplications(!!user);
   const permissions = useCan(navTeam?.id, guildId);
   const { can, hasGuildRank } = permissions;
   // The apply pages (#1546) are open to anyone: no team or guild rank needed.
-  const applyPage = /^\/g\/[^/]+\/apply(\/|$)/.test(location.pathname);
+  const applyPage = /^\/g\/[^/]+\/(apply|applications)(\/|$)/.test(location.pathname);
   const visitor = !hasGuildRank && !teams.some((t) => onTeamIds.has(t.id));
   const groups = navGroups(base, {
     can,
     visitor: applyPage && visitor,
+    applied: (myApplications.data?.length ?? 0) > 0,
     guildSettings: (can('manageTeams') || can('manageMembers')) && !limited,
     hideBoe: limited,
     siteAdmin: can('adminSite'),
