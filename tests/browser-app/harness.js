@@ -118,7 +118,8 @@ const OFFICER_GRID = [
   'pay_boe_cuts',
   'promote_assistants',
   'view_team_audit_log',
-  'change_discord_settings'
+  'change_discord_settings',
+  'edit_recruiting'
 ];
 const ADMIN_GRID = [
   'create_teams',

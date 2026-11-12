@@ -171,7 +171,9 @@ const OFFICER_ABILITY: Record<string, Ability | readonly Ability[]> = {
   'officer/groups': 'viewGroups',
   'officer/settings': ['manageTeam', 'editRoster', 'promoteAssistants'],
   'officer/settings/audit-log': 'viewAuditLog',
-  'officer/settings/discord': 'manageDiscord'
+  'officer/settings/discord': 'manageDiscord',
+  'officer/recruiting': 'editRecruiting',
+  'officer/recruiting/settings': 'editRecruiting'
 };
 
 export function officerAbility(path: string): Ability | readonly Ability[] {
@@ -220,6 +222,16 @@ function allMenu(o: string, council: boolean): (NavItem & { pages: NavPage[] })[
       ]
     },
     {
+      label: 'Recruiting',
+      icon: 'mail',
+      to: `${o}/recruiting/settings`,
+      pages: [
+        // The Recruits page is #1549's, a placeholder until it is built.
+        { label: 'Recruits', to: `${o}/recruiting` },
+        { label: 'Settings', to: `${o}/recruiting/settings` }
+      ]
+    },
+    {
       label: 'Settings',
       icon: 'gear',
       to: `${o}/settings`,
@@ -262,6 +274,8 @@ export const TEAM_PAGES: Record<string, string> = {
   'officer/reports/priority-health': 'Priority order health',
   'officer/reports/tier-sets': 'Tier sets',
   'officer/reports/performance': 'Performance trends',
+  'officer/recruiting': 'Recruits',
+  'officer/recruiting/settings': 'Recruiting settings',
   'officer/settings': 'General settings',
   'officer/settings/season': 'Season settings',
   'officer/settings/loot': 'Loot settings',

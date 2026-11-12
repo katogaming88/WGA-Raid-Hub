@@ -12,6 +12,14 @@ answers to.
 
 ---
 
+## [3.265.1] - 2026-11-12
+
+### Project
+
+- The new app has Recruiting settings (#1548), in a new Recruiting group of the Officer menu, for officers who can edit recruiting: `/g/<guild>/t/<team>/officer/recruiting/settings`. Seven sections open one at a time, each with where it stands on its heading (a tick when done, its number when not): Recruiting (taking applications, how people join, listing on the guild's apply page), About the team (a text box with bold, italic, heading, list and link buttons, a count out of 2,000, and "Start from a draft" built from the raid nights and open spots), How you raid (raid nights read from the team's schedule, the schedule note, extra night, raid languages, split runs, alts, PTR testing), What you ask for, Application questions (starter questions on or off and Required, the grey wording applicants see, and the team's own, with choices, limits and order), Who you're looking for (specs or "Any" per role with High, Medium or Low, and the exceptional-players line) and Discord (what the bot does when someone applies, the ticket category with what the bot is missing there, who can see tickets with a warning for anyone without a linked Discord, extra Discord roles from the server's list, the timings, and the Find my ticket channel, which posts at once). One save bar stays at the bottom, greyed until something changes, and saves only what changed. About now shows its formatting on the public apply pages. Recruits, the other page in the group, is still a placeholder (#1549). The Help page has a guide, Set up recruiting.
+
+- Time log rows for #1546, #1547, #1810, #1814 and #1548 so far.
+
 ## [3.265.0] - 2026-11-12
 
 ### Backend

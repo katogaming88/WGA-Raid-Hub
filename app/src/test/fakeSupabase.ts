@@ -72,7 +72,8 @@ const OFFICER_PERMISSIONS = [
   'pay_boe_cuts',
   'promote_assistants',
   'view_team_audit_log',
-  'change_discord_settings'
+  'change_discord_settings',
+  'edit_recruiting'
 ];
 const ASSISTANT_PERMISSIONS = [
   'own_character',

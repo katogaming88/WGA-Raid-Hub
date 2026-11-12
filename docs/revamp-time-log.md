@@ -18,17 +18,17 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 10 h 40 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 13 h 10 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **182 h 36 m** |             |
+| **All revamp work**                | **185 h 6 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Recruiting | Phase 2 | 9 h 35 m | ~9 h 50 m |
+| Recruiting | Phase 2 | 12 h 5 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 0 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
@@ -707,6 +707,12 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 9:09-9:28 AM | #1540 go-live: what the Discord join step needs (the redirect, `SITE_URL`); `discord-join` switched to the secrets production already has (`DISCORD_APPLICATION_ID`, `DISCORD_BOT_CLIENT_SECRET`, saved 2026-11-01 for #1728) so none is stored twice; tests, stamp, changelog; PR #1807, Kat's merge, cleanup, the three secrets checked by name | Phase 2: Before the new site goes live / Recruiting (#1540) | 20 m | ~10 m build, ~10 m Kat (secrets, redirect) | ~78,600 | Tokens include the /resume read. |
 | 9:28-9:40 AM | #1545: the sweep keeps who sees each open ticket and officer thread in step with Raid Hub (`recruit-ticket` `sync` action called once per sweep; only Raid Hub's own overwrites removed, hand-made ones left; officer threads add role holders one by one, Kat's pick to turn on Server Members; an archived thread brought back only when something changes); Deno tests, decision log, stamp, changelog; time log re-timed for 2026-11-11; PR | Phase 2: Before the new site goes live / Recruiting (#1545) | 10 m | ~10 m build | ~123,300 | CodeRabbit and Kat's merge not yet counted. |
+| 10:04-10:33 AM | #1546: the public apply pages: the guild's teams with the "I play" filter and "Needs a healer" tags, one team's page, each team's button by how it takes people, raid nights in the visitor's own time zone, the recruiter link kept in the browser for 30 days, a short menu for someone on no team; tests, stamp, changelog, PR #1809, screenshots, Kat's review and merge, cleanup | Phase 2: Before the new site goes live / Recruiting (#1546) | 30 m | ~15 m build, ~15 m Kat | 235,500 | Added 2026-11-12. |
+| 10:33-10:48 AM | #1547, first pass: the application form, the after-send page, My applications and the Discord return page built; found the database could not give an applicant their ticket link or Discord status, take their other specs, or save the numbers the form shows, so #1810 was filed with its blocker set and Kat chose the backend first | Phase 2: Before the new site goes live / Recruiting (#1547) | 15 m | ~15 m build, Kat's pick | 175,700 | Added 2026-11-12. |
+| 10:48-11:35 AM | #1810 (PR #1811): `my_applications()` gives the applicant their ticket link and Discord step, `send_application()` takes other specs, `character-stats` saves the numbers on the application with the service key; migration, edge and RLS tests, docs; CodeRabbit (per-source saves, no link while the team does not add applicants, refused-case tests), the fresh-agent migration review (approve) and its fixes, follow-up #1812 filed, Kat's merge, cleanup | Phase 2: Before the new site goes live / Recruiting (#1810) | 45 m | build and Kat's review, not split | 420,600 | Added 2026-11-12. The local RLS suite hit one unrelated deadlock per run, also without this PR's tests. |
+| 11:35-11:53 AM | #1547 (PR #1813): the form uses #1810's fields, asks for the ticket after the Discord step, Help guide "Apply to a raid team", stamp, changelog, browser tests, PR, screenshots, Kat's merge, cleanup, #1487 updated | Phase 2: Before the new site goes live / Recruiting (#1547) | 15 m | ~10 m build, ~5 m Kat | 40,500 | Added 2026-11-12. |
+| 11:53 AM-12:24 PM | #1548, planning: the Recruiting settings page needs two things the database cannot give an officer, so #1814 was filed and Kat chose the backend first; #1814 (PR #1815): `team_ticket_viewers()` and what the bot lacks in each ticket category, tests, docs; CodeRabbit, then a fresh-agent review that asked for changes (guild-only Admins shown as "Unnamed", Attach Files missing, Manage Permissions must be checked on the bot's role, not the category) and its fixes, a re-review (approve), the status notes | Phase 2: Before the new site goes live / Recruiting (#1548) | 30 m | build; Kat's CodeRabbit trigger, not split | 963,200 | Added 2026-11-12. Kat left for work at 12:15 PM; her merge at 4:16 PM is counted in the next row. |
+| 4:16-4:33 PM | #1548: Kat's merge of #1815 and cleanup, then the Recruiting settings page itself: seven sections open one at a time, one save bar, the spot and question editors, the Discord section (ticket category with what the bot lacks, who sees tickets with the linked-Discord warning, Find my ticket), light Markdown for About on the public pages, the Officer menu's Recruiting group, an Edit recruiting ability; tests; this time log's rows | Phase 2: Before the new site goes live / Recruiting (#1548) | 15 m | build; review and merge not yet counted | 1,212,900 | Added 2026-11-12. Includes about 500,000 tokens to rebuild the session's context after the break. |
 
 ## Not counted (same sessions, not revamp)
 

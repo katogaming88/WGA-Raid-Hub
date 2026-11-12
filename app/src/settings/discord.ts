@@ -41,11 +41,14 @@ export type DiscordSettings = {
 
 export type ServerChannel = { id: string; name: string; category: string | null; missing: string[] };
 export type ServerRole = { id: string; name: string };
+// A category tickets can be made in, with what the bot still lacks there (#1814).
+export type ServerCategory = { id: string; name: string; missing: string[] };
 export type DiscordServer = {
   id: string;
   name: string | null;
   botIn: boolean;
   channels: ServerChannel[];
+  categories: ServerCategory[];
   roles: ServerRole[];
 };
 export type DiscordRead = {
