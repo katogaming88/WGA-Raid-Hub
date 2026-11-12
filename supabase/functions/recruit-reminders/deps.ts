@@ -53,8 +53,13 @@ function supabaseDb(): ReminderDb {
     },
 
     async closingTickets() {
-      const apps = await paged((from, to) =>
-        db
+      // A saved closed ticket of a team that never deletes has nothing left
+      // to do; leaving those out keeps the read from growing for good.
+      const keep = (
+        check(await db.from('team_recruiting').select('team_id').is('delete_closed_after_hours', null)) as any[]
+      ).map((r) => r.team_id);
+      const apps = await paged((from, to) => {
+        const q = db
           .from('recruit_applications')
           .select(
             'id, team_id, person_id, status, closed_at, name_realm, discord_channel_id, discord_thread_id,' +
@@ -65,10 +70,13 @@ function supabaseDb(): ReminderDb {
             'and(closed_at.not.is.null,discord_channel_id.not.is.null),' +
               'and(closed_at.not.is.null,discord_thread_id.not.is.null),' +
               'ticket_closed_at.not.is.null'
-          )
+          );
+        return (
+          keep.length ? q.or('closed_at.is.null,ticket_saved_at.is.null,team_id.not.in.(' + keep.join(',') + ')') : q
+        )
           .order('id')
-          .range(from, to)
-      );
+          .range(from, to);
+      });
       if (!apps.length) return [];
       const teamIds = [...new Set(apps.map((a) => a.team_id))];
       const [teams, recruiting, discord] = await Promise.all([
@@ -143,7 +151,7 @@ function supabaseDb(): ReminderDb {
       const teamIds = [...new Set(apps.map((a) => a.team_id))];
 
       const [teams, recruiting, discord, owners, events] = await Promise.all([
-        db.from('teams').select('id, name').in('id', teamIds).then(check),
+        db.from('teams').select('id, name, archived_at').in('id', teamIds).then(check),
         db
           .from('team_recruiting')
           .select('team_id, discord_mode, ' + TIMINGS)
@@ -194,39 +202,43 @@ function supabaseDb(): ReminderDb {
         if (e.kind === 'reopened') keep(lastReopen, e.application_id, e.created_at);
       }
 
-      return apps.map((a): Rec => {
-        const s = settingsOf.get(a.team_id) as any;
-        const d = discordOf.get(a.team_id) as any;
-        const owner = ownerOf.get(a.team_id) as any;
-        return {
-          id: a.id,
-          team_name: (teamOf.get(a.team_id) as any)?.name ?? 'The team',
-          status: a.status,
-          name_realm: a.name_realm,
-          applicant_discord_id: a.person_id ? (discordId.get(a.person_id) ?? null) : null,
-          time_zone: a.time_zone,
-          applicant_last_message_at: a.applicant_last_message_at,
-          officers_last_message_at: a.officers_last_message_at,
-          applied_at: a.applied_at,
-          last_activity_at: lastActivity.get(a.id) ?? null,
-          reopened_at: lastReopen.get(a.id) ?? null,
-          trial_ends_on: a.trial_ends_on,
-          uses_ticket: s?.discord_mode === 'ticket',
-          ticket_channel_id: a.discord_channel_id,
-          thread_id: a.discord_thread_id,
-          server_id: d?.guild_id ?? null,
-          officer_channel_id: d?.officer_channel_id ?? null,
-          owner_discord_id: owner ? (discordId.get(owner.person_id) ?? null) : null,
-          timings: {
-            dm_reply_after_minutes: s?.dm_reply_after_minutes ?? null,
-            remind_after_hours: s?.remind_after_hours ?? null,
-            close_no_reply_after_hours: s?.close_no_reply_after_hours ?? null,
-            ping_officers_after_hours: s?.ping_officers_after_hours ?? null,
-            ping_owner_after_hours: s?.ping_owner_after_hours ?? null,
-            trial_end_notice_hours: s?.trial_end_notice_hours ?? null
-          }
-        };
-      });
+      // An archived team's records wait until it's back: its records can't
+      // be changed meanwhile (recruit_lock()), so No reply would fail each sweep.
+      return apps
+        .filter((a) => !(teamOf.get(a.team_id) as any)?.archived_at)
+        .map((a): Rec => {
+          const s = settingsOf.get(a.team_id) as any;
+          const d = discordOf.get(a.team_id) as any;
+          const owner = ownerOf.get(a.team_id) as any;
+          return {
+            id: a.id,
+            team_name: (teamOf.get(a.team_id) as any)?.name ?? 'The team',
+            status: a.status,
+            name_realm: a.name_realm,
+            applicant_discord_id: a.person_id ? (discordId.get(a.person_id) ?? null) : null,
+            time_zone: a.time_zone,
+            applicant_last_message_at: a.applicant_last_message_at,
+            officers_last_message_at: a.officers_last_message_at,
+            applied_at: a.applied_at,
+            last_activity_at: lastActivity.get(a.id) ?? null,
+            reopened_at: lastReopen.get(a.id) ?? null,
+            trial_ends_on: a.trial_ends_on,
+            uses_ticket: s?.discord_mode === 'ticket',
+            ticket_channel_id: a.discord_channel_id,
+            thread_id: a.discord_thread_id,
+            server_id: d?.guild_id ?? null,
+            officer_channel_id: d?.officer_channel_id ?? null,
+            owner_discord_id: owner ? (discordId.get(owner.person_id) ?? null) : null,
+            timings: {
+              dm_reply_after_minutes: s?.dm_reply_after_minutes ?? null,
+              remind_after_hours: s?.remind_after_hours ?? null,
+              close_no_reply_after_hours: s?.close_no_reply_after_hours ?? null,
+              ping_officers_after_hours: s?.ping_officers_after_hours ?? null,
+              ping_owner_after_hours: s?.ping_owner_after_hours ?? null,
+              trial_end_notice_hours: s?.trial_end_notice_hours ?? null
+            }
+          };
+        });
     },
 
     async saveTimes(id, times) {

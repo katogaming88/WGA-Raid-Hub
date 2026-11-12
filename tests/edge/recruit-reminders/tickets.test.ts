@@ -11,6 +11,7 @@ import {
   type Progress,
   type SavedMessage,
   type TicketRec,
+  bodyOf,
   closeTickets,
   closingMessage
 } from '../../../supabase/functions/recruit-reminders/tickets.ts';
@@ -135,7 +136,7 @@ Deno.test('a closed ticket is locked, gets its message, is saved, then deleted a
     'Welcome to Phoenix for real! This ticket is closed and will be deleted in 1 day. Everything here is saved on Raid Hub.'
   );
   assertEquals(post.body.allowed_mentions, { parse: [] });
-  assertEquals(s.calls.find((c) => c.method === 'PATCH')!.body, { locked: true });
+  assertEquals(s.calls.find((c) => c.method === 'PATCH')!.body, { locked: true, archived: false });
 
   // Saved 100 at a time, oldest first, the thread's apart.
   const reads = s.calls.filter((c) => c.method === 'GET').map((c) => c.path);
@@ -239,7 +240,7 @@ Deno.test('a ticket deleted by hand is skipped; its officer thread is still save
   s.answer('GET /channels/' + TICKET + '/messages', 404);
   s.answer('DELETE /channels/' + TICKET, 404);
   await s.run(T0);
-  assertEquals(s.calls.find((c) => c.method === 'PATCH')!.body, { locked: true });
+  assertEquals(s.calls.find((c) => c.method === 'PATCH')!.body, { locked: true, archived: false });
   assertEquals(
     s.saved.map((m) => m.in_officer_thread),
     [true]
@@ -281,4 +282,38 @@ Deno.test('Discord down changes nothing', async () => {
   refused.answer('DELETE /channels/' + THREAD, 503);
   assertEquals((await refused.run(T0)).failed, 1);
   assertEquals(refused.progress.at(-1), { ticket_deleted_at: null });
+});
+
+Deno.test('a step that fails after the lock never posts the closing message twice', async () => {
+  const s = setup();
+  // Discord refuses the thread change, as it does an archived thread's.
+  s.answer('PATCH /channels/' + THREAD, 400);
+  for (let i = 0; i < 3; i++) {
+    const done = await s.run(T0 + i * H);
+    assertEquals(done.failed, 1);
+    assert(!s.calls.some((c) => c.method === 'POST' && c.path === '/channels/' + TICKET + '/messages'));
+  }
+  s.clear('PATCH /channels/' + THREAD);
+  const closing = () =>
+    s.calls.filter((c) => c.method === 'POST' && c.path === '/channels/' + TICKET + '/messages').length;
+  await s.run(T0 + 4 * H);
+  assertEquals(closing(), 1);
+  await s.run(T0 + 5 * H);
+  assertEquals(closing(), 0);
+  // Two sweeps after it works: one closing message in all.
+  assertEquals(s.saved.length, 104);
+  const posted = s.progress.filter((p) => p.ticket_closed_at).length;
+  assertEquals(posted, 1);
+});
+
+Deno.test('the saved text keeps an embed and drops a line of nothing but mentions', () => {
+  assertEquals(
+    bodyOf({
+      content: '<@444444444444444444> <@600000000000000001>',
+      embeds: [{ title: 'Katorrí-Stormrage', description: 'Warlock main' }]
+    }),
+    'Katorrí-Stormrage\nWarlock main'
+  );
+  assertEquals(bodyOf({ content: 'Hi <@600000000000000001>, thanks!' }), 'Hi <@600000000000000001>, thanks!');
+  assertEquals(bodyOf({ content: '' }), '');
 });

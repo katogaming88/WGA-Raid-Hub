@@ -137,7 +137,9 @@ async function setThreadLocked(deps: Deps, token: string, t: TicketRec, locked: 
     token,
     'PATCH',
     '/channels/' + t.thread_id,
-    locked ? { locked: true } : { locked: false, archived: false }
+    // An archived thread (7 quiet days) refuses a change that leaves it
+    // archived, so both ways bring it back (fresh-agent review).
+    { locked, archived: false }
   );
   await res.body?.cancel();
   // A thread deleted by hand has nothing left to lock.
@@ -148,9 +150,25 @@ type DiscordMessage = {
   id: string;
   author?: { id?: string; username?: string; global_name?: string | null };
   content?: string;
+  embeds?: { title?: string; description?: string }[];
   timestamp: string;
   attachments?: { filename?: string; content_type?: string }[];
 };
+
+// The text worth keeping: what was written, and an embed's title and text
+// (the bot's card), with a line of nothing but mentions dropped.
+const NEWLINE = '\n';
+export function bodyOf(m: { content?: string; embeds?: { title?: string; description?: string }[] }): string {
+  const content = (m.content ?? '').trim();
+  const parts = [
+    /^(<@[!&]?\d+>\s*)+$/.test(content) ? '' : content,
+    ...(m.embeds ?? []).map((e) => [e.title, e.description].filter(Boolean).join(NEWLINE))
+  ];
+  return parts
+    .filter(Boolean)
+    .join(NEWLINE + NEWLINE)
+    .slice(0, 4000);
+}
 
 // Every message in a channel or thread, oldest first. A channel that's gone
 // has nothing to save.
@@ -178,7 +196,7 @@ async function readAll(deps: Deps, token: string, channelId: string, inThread: b
         discord_message_id: m.id,
         author_discord_id: m.author?.id ?? null,
         author_name: (m.author?.global_name || m.author?.username || 'Unknown').slice(0, 100),
-        body: (m.content ?? '').slice(0, 4000),
+        body: bodyOf(m),
         attachments: (m.attachments ?? []).map((a) => ({
           name: (a.filename ?? 'file').slice(0, 200),
           content_type: a.content_type ?? null
@@ -206,22 +224,26 @@ async function step(deps: Deps, token: string, t: TicketRec): Promise<string | n
   if (t.open) {
     await setApplicant(deps, token, t, APPLICANT, 0n);
     await setThreadLocked(deps, token, t, false);
-    if (t.channel_id) await postTo(deps, token, t.channel_id, { content: REOPENED });
     await deps.db.ticketProgress(t.id, { ticket_closed_at: null, ticket_saved_at: null, ticket_save_failures: 0 });
+    // Last and best effort, so a failure can't post it twice.
+    if (t.channel_id) await postTo(deps, token, t.channel_id, { content: REOPENED }).catch(() => null);
     return 'reopened';
   }
 
   let closedAt = t.ticket_closed_at;
   if (!closedAt) {
     await setApplicant(deps, token, t, READ_ONLY, NO_POSTING);
-    if (t.channel_id) {
-      await postTo(deps, token, t.channel_id, {
-        content: closingMessage(t.status, t.team_name, t.delete_after_hours)
-      });
-    }
     await setThreadLocked(deps, token, t, true);
     closedAt = now.toISOString();
     await deps.db.ticketProgress(t.id, { ticket_closed_at: closedAt });
+    // Posted once the close is on the record, so a step that fails and is
+    // tried again can never post it twice (fresh-agent review). Best effort:
+    // a lost message doesn't stop the save.
+    if (t.channel_id) {
+      await postTo(deps, token, t.channel_id, {
+        content: closingMessage(t.status, t.team_name, t.delete_after_hours)
+      }).catch(() => null);
+    }
   }
 
   const deleteDue =
