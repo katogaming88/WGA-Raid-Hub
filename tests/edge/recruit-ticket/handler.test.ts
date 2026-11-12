@@ -14,8 +14,10 @@ import {
   NOT_YOURS,
   PARTLY_MADE,
   type Ticket,
+  channelChanges,
   channelName,
   handle,
+  threadChanges,
   viewerIds
 } from '../../../supabase/functions/recruit-ticket/handler.ts';
 
@@ -146,7 +148,10 @@ function setup(
       stopFresh: () => {
         claims.push('stop');
         return Promise.resolve();
-      }
+      },
+      openTickets: () => Promise.resolve(ticket ? [ticket.id] : []),
+      // Linked on Raid Hub: the two officers and a demoted one.
+      linkedDiscordIds: (ids) => Promise.resolve(new Set(ids.filter((id) => LINKED.includes(id))))
     },
     env: { get: (n) => env[n] }
   };
@@ -626,4 +631,143 @@ Deno.test("the secret only makes a reopened record's fresh ticket, and only when
   const unset = setup({}, REOPENED, ENV);
   assertEquals((await sweepCall(unset.deps, '')).status, 401);
   assertEquals((await sweepCall(unset.deps, 'undefined')).status, 401);
+});
+
+// Keeping who sees a ticket in step with Raid Hub (#1545).
+const DEMOTED = '600000000000000003';
+const STRANGER = '600000000000000004';
+const OLD_ROLE = '700000000000000002';
+const ROLE_HOLDER = '600000000000000005';
+const LINKED = [OFFICER_A, OFFICER_B, DEMOTED];
+const PEOPLE = String((1n << 10n) | (1n << 11n) | (1n << 14n) | (1n << 15n) | (1n << 16n));
+const ow = (id: string, type: number, allow = PEOPLE, deny = '0') => ({ id, type, allow, deny });
+
+Deno.test('access: a promoted officer is let in, a demoted one and a dropped role are taken out', () => {
+  const current = [
+    ow(SERVER, 0, '0', VIEW),
+    ow(BOT, 1, '1'),
+    ow(APPLICANT, 1, String((1n << 10n) | (1n << 11n) | (1n << 15n) | (1n << 16n))),
+    ow(RECRUITER_ROLE, 0),
+    ow(OLD_ROLE, 0),
+    ow(OFFICER_A, 1),
+    ow(DEMOTED, 1)
+  ];
+  const { add, remove } = channelChanges(TICKET_APP, BOT, current);
+  assertEquals(add, [ow(OFFICER_B, 1)]);
+  assertEquals(remove, [OLD_ROLE, DEMOTED]);
+});
+
+Deno.test('access: hand-made overwrites are left alone, and nobody gets a second one', () => {
+  const current = [
+    // An officer someone gave more by hand, and a stranger let in by hand.
+    ow(OFFICER_A, 1, String((1n << 10n) | (1n << 13n))),
+    ow(STRANGER, 1, String(1n << 10n)),
+    // The applicant locked or not, the bot and @everyone: never Raid Hub's to drop.
+    ow(APPLICANT, 1, PEOPLE),
+    ow(SERVER, 0, PEOPLE)
+  ];
+  const { add, remove } = channelChanges({ ...TICKET_APP, role_ids: [] }, BOT, current);
+  assertEquals(add, [ow(OFFICER_B, 1)]);
+  assertEquals(remove, []);
+});
+
+Deno.test('access: an officer thread adds the team people and role holders, removes only linked people', () => {
+  const members = [BOT, OFFICER_A, DEMOTED, STRANGER];
+  const linked = new Set([OFFICER_A, DEMOTED]);
+  const { add, remove } = threadChanges(TICKET_APP, BOT, members, [ROLE_HOLDER, APPLICANT], linked);
+  // The applicant never joins the officers' thread, even holding a role.
+  assertEquals(add, [OFFICER_B, ROLE_HOLDER]);
+  // The stranger isn't on Raid Hub: an officer added them, so they stay.
+  assertEquals(remove, [DEMOTED]);
+});
+
+Deno.test('access: without the member list, nobody leaves a thread while the team lists roles', () => {
+  const members = [BOT, DEMOTED];
+  const linked = new Set([DEMOTED]);
+  assertEquals(threadChanges(TICKET_APP, BOT, members, null, linked), { add: [OFFICER_A, OFFICER_B], remove: [] });
+  // No roles listed: nothing to tell apart, so the demoted officer goes.
+  assertEquals(threadChanges({ ...TICKET_APP, role_ids: [] }, BOT, members, null, linked).remove, [DEMOTED]);
+});
+
+const syncCall = (deps: Deps, secret = 'cron') =>
+  handle(
+    new Request('http://edge.test/functions/v1/recruit-ticket', {
+      method: 'POST',
+      headers: { 'x-cron-secret': secret, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'sync' })
+    }),
+    deps
+  ).then(async (res) => ({ status: res.status, body: await res.json() }));
+
+const NO_CONTENT = () => new Response(null, { status: 204 });
+const OPEN = { discord_channel_id: TICKET, discord_thread_id: THREAD, thread_with_ticket: true };
+
+Deno.test('sync: the sweep fixes an open ticket and its archived thread', async () => {
+  const { deps, calls } = setup(
+    {
+      ['GET ' + API + '/channels/' + TICKET]: () =>
+        json({
+          permission_overwrites: [ow(SERVER, 0, '0', VIEW), ow(RECRUITER_ROLE, 0), ow(OFFICER_A, 1), ow(DEMOTED, 1)]
+        }),
+      ['PUT ' + API + '/channels/' + TICKET + '/permissions/' + OFFICER_B]: NO_CONTENT,
+      ['DELETE ' + API + '/channels/' + TICKET + '/permissions/' + DEMOTED]: NO_CONTENT,
+      ['GET ' + API + '/channels/' + THREAD]: () => json({ thread_metadata: { archived: true } }),
+      ['GET ' + API + '/channels/' + THREAD + '/thread-members']: () =>
+        json([{ user_id: BOT }, { user_id: OFFICER_A }, { user_id: DEMOTED }]),
+      ['GET ' + API + '/guilds/' + SERVER + '/members?limit=1000&after=0']: () =>
+        json([
+          { user: { id: ROLE_HOLDER }, roles: [RECRUITER_ROLE] },
+          { user: { id: STRANGER }, roles: [] }
+        ]),
+      ['PATCH ' + API + '/channels/' + THREAD]: () => json({}),
+      ['PUT ' + API + '/channels/' + THREAD + '/thread-members/' + ROLE_HOLDER]: NO_CONTENT,
+      ['DELETE ' + API + '/channels/' + THREAD + '/thread-members/' + DEMOTED]: NO_CONTENT
+    },
+    OPEN,
+    SWEEP_ENV
+  );
+  const { body } = await syncCall(deps);
+  assertEquals(body, { success: true, status: 'synced', checked: 1, changed: 5, failed: 0 });
+  assertEquals(find(calls, 'PUT', '/channels/' + TICKET + '/permissions/' + OFFICER_B)[0].body, {
+    type: 1,
+    allow: PEOPLE,
+    deny: '0'
+  });
+  // Brought back from archived before its members change.
+  const patch = calls.findIndex((c) => c.method === 'PATCH');
+  const firstMember = calls.findIndex((c) => c.url.includes('/thread-members/'));
+  assert(patch >= 0 && patch < firstMember);
+  assertEquals(find(calls, 'PATCH', '/channels/' + THREAD)[0].body, { archived: false });
+});
+
+Deno.test('sync: nothing to change makes no changes; a ticket deleted by hand is skipped', async () => {
+  const { deps, calls } = setup(
+    {
+      ['GET ' + API + '/channels/' + TICKET]: () => json({}, 404),
+      ['GET ' + API + '/channels/' + THREAD]: () => json({ thread_metadata: { archived: true } }),
+      ['GET ' + API + '/channels/' + THREAD + '/thread-members']: () =>
+        json([{ user_id: BOT }, { user_id: OFFICER_A }, { user_id: OFFICER_B }]),
+      ['GET ' + API + '/guilds/' + SERVER + '/members?limit=1000&after=0']: () => json([])
+    },
+    { ...OPEN },
+    SWEEP_ENV
+  );
+  const { body } = await syncCall(deps);
+  assertEquals(body.changed, 0);
+  // An archived thread with nothing to change stays archived.
+  assertEquals(
+    calls.filter((c) => c.method !== 'GET'),
+    []
+  );
+});
+
+Deno.test('sync: only the sweep may ask, and a local stack changes nothing', async () => {
+  const wrong = setup({}, OPEN, SWEEP_ENV);
+  assertEquals((await syncCall(wrong.deps, 'nope')).status, 401);
+  // Signed in, an applicant's sync is just a missing application.
+  const signedIn = await send(wrong.deps, { action: 'sync' });
+  assertEquals(signedIn.status, 400);
+  const local = setup({}, OPEN, { ...SWEEP_ENV, SUPABASE_URL: 'http://127.0.0.1:54321' });
+  assertEquals((await syncCall(local.deps)).body.status, 'local');
+  assertEquals(local.calls.length, 0);
 });

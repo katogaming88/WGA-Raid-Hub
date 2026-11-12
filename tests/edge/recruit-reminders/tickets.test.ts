@@ -74,7 +74,7 @@ function setup(rec: Partial<TicketRec> = {}, ticketMessages = 103) {
         path: req.url,
         body: { ...JSON.parse(text), secret: req.headers.get('x-cron-secret') }
       });
-      return json({ success: true, status: freshAnswer });
+      return json({ success: true, status: freshAnswer, changed: 3 });
     }
     const path = req.url.slice(API.length);
     calls.push({ method: req.method, path, body: text ? JSON.parse(text) : null });
@@ -141,7 +141,7 @@ function setup(rec: Partial<TicketRec> = {}, ticketMessages = 103) {
 Deno.test('a closed ticket is locked, gets its message, is saved, then deleted after the delay', async () => {
   const s = setup();
   let done = await s.run(T0);
-  assertEquals(done, { closed: 1, deleted: 0, reopened: 0, failed: 0, fresh: 0 });
+  assertEquals(done, { closed: 1, deleted: 0, reopened: 0, failed: 0, fresh: 0, access: null });
 
   // Locked: the applicant can read, not post.
   const lock = s.calls.find((c) => c.method === 'PUT')!;
@@ -346,9 +346,12 @@ Deno.test('a record reopened after its ticket was deleted asks recruit-ticket fo
     s.freshCalls.map((c) => [c.path, c.body]),
     [
       ['https://project.example/functions/v1/recruit-ticket', { application: 7, secret: 'cron' }],
-      ['https://project.example/functions/v1/recruit-ticket', { application: 9, secret: 'cron' }]
+      ['https://project.example/functions/v1/recruit-ticket', { application: 9, secret: 'cron' }],
+      // Then every open ticket's access, in one call (#1545).
+      ['https://project.example/functions/v1/recruit-ticket', { action: 'sync', secret: 'cron' }]
     ]
   );
+  assertEquals(done.access, 3);
 });
 
 Deno.test('a fresh ticket the call does not make is not counted; no secret, no call', async () => {
@@ -356,7 +359,8 @@ Deno.test('a fresh ticket the call does not make is not counted; no secret, no c
   s.reopenedIds.push(7);
   s.freshAnswers('not_in_server');
   assertEquals((await s.run(T0, true)).fresh, 0);
-  assertEquals(s.freshCalls.length, 1);
+  // The fresh ticket, then the access check.
+  assertEquals(s.freshCalls.length, 2);
   // Without the project address and secret the sweep doesn't ask.
   const none = setup();
   none.reopenedIds.push(7);

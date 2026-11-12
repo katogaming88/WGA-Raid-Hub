@@ -143,6 +143,11 @@ export interface TicketDb {
   // The team stopped making tickets: clears ticket_deleted_at so the sweep
   // stops asking.
   stopFresh(applicationId: number): Promise<void>;
+  // Open records with a ticket or thread that isn't closed or deleted: the
+  // sweep keeps who sees them in step with Raid Hub (#1545).
+  openTickets(): Promise<number[]>;
+  // Which of these Discord ids are linked to someone on Raid Hub.
+  linkedDiscordIds(ids: string[]): Promise<Set<string>>;
 }
 
 export type Deps = { fetch: typeof fetch; db: TicketDb; env: Env };
@@ -554,6 +559,161 @@ async function makeInto(
   return jsonResponse(answerMade(t, made, dm));
 }
 
+// Keeping who sees a ticket in step with Raid Hub (#1545). The recruiting
+// sweep calls this every 15 minutes with { action: 'sync' }, so a promotion,
+// a demotion, someone leaving the team, a newly linked Discord account or a
+// change to the team's "who can see" settings reaches every open ticket and
+// officer thread by the next sweep. Comparing what should be with what is
+// also mends anything Discord dropped or someone changed by hand.
+
+type Overwrite = { id: string; type: number; allow: string; deny: string };
+const OWNED = String(PEOPLE);
+
+// A ticket channel's changes. Raid Hub's own overwrites are the people and
+// roles it lets in, each with exactly PEOPLE allowed and nothing denied; only
+// those are ever removed. Anything else (@everyone, the bot, the applicant, a
+// hand-made overwrite) is left alone, and someone who already has an
+// overwrite of any kind isn't given a second.
+export function channelChanges(t: Ticket, botId: string, current: Overwrite[]) {
+  const want = overwrites(t, botId).filter((o) => o.allow === OWNED);
+  const wanted = new Set(want.map((o) => o.id));
+  const have = new Set(current.map((o) => o.id));
+  const ours = (o: Overwrite) =>
+    o.allow === OWNED && o.deny === '0' && o.id !== t.discord_id && o.id !== botId && o.id !== t.server_id;
+  return {
+    add: want.filter((o) => !have.has(o.id)),
+    remove: current.filter((o) => ours(o) && !wanted.has(o.id)).map((o) => o.id)
+  };
+}
+
+// An officer thread's changes. Its people are the team's linked people and
+// everyone holding one of the team's roles. holders is null when the bot
+// can't list the server's members (Discord's Server Members switch is off):
+// then nobody is removed while the team lists roles, since a role holder
+// can't be told apart. Only people linked on Raid Hub are ever removed;
+// anyone else an officer added stays.
+export function threadChanges(
+  t: Ticket,
+  botId: string,
+  members: string[],
+  holders: string[] | null,
+  linked: Set<string>
+) {
+  const want = new Set([...t.viewer_ids, ...(holders ?? [])]);
+  want.delete(botId);
+  if (t.discord_id) want.delete(t.discord_id);
+  const have = new Set(members);
+  const sure = holders !== null || t.role_ids.length === 0;
+  return {
+    add: [...want].filter((id) => !have.has(id)).slice(0, MAX_THREAD_MEMBERS),
+    remove: sure ? members.filter((id) => id !== botId && !want.has(id) && linked.has(id)) : []
+  };
+}
+
+type Holders = Map<string, Array<{ id: string; roles: string[] }> | null>;
+
+// Everyone in the server holding one of these roles, the server's member list
+// read once per sync. null when Discord won't list members.
+async function roleHolders(deps: Deps, token: string, serverId: string, roleIds: string[], cache: Holders) {
+  if (roleIds.length === 0) return [];
+  if (!cache.has(serverId)) {
+    let all: Array<{ id: string; roles: string[] }> | null = [];
+    let after = '0';
+    for (;;) {
+      const res = await call(deps, token, 'GET', '/guilds/' + serverId + '/members?limit=1000&after=' + after);
+      if (!res.ok) {
+        await res.body?.cancel();
+        all = null;
+        break;
+      }
+      const page = (await res.json()) as Array<{ user: { id: string }; roles: string[] }>;
+      all.push(...page.map((m) => ({ id: m.user.id, roles: m.roles })));
+      if (page.length < 1000) break;
+      after = page[page.length - 1].user.id;
+    }
+    cache.set(serverId, all);
+  }
+  const all = cache.get(serverId);
+  return all ? all.filter((m) => m.roles.some((r) => roleIds.includes(r))).map((m) => m.id) : null;
+}
+
+// One change; a refused one is simply tried again next sweep.
+async function change(deps: Deps, token: string, method: string, path: string, body?: unknown) {
+  const res = await call(deps, token, method, path, body);
+  await res.body?.cancel();
+  return res.ok ? 1 : 0;
+}
+
+// What's there, or null for a channel deleted by hand.
+async function read<T>(deps: Deps, token: string, path: string): Promise<T | null> {
+  const res = await call(deps, token, 'GET', path);
+  if (res.status === 404) {
+    await res.body?.cancel();
+    return null;
+  }
+  return await must<T>(res);
+}
+
+async function syncOne(deps: Deps, token: string, botId: string, t: Ticket, cache: Holders) {
+  let changed = 0;
+  if (t.discord_channel_id) {
+    const path = '/channels/' + t.discord_channel_id;
+    const channel = await read<{ permission_overwrites?: Overwrite[] }>(deps, token, path);
+    if (channel) {
+      const { add, remove } = channelChanges(t, botId, channel.permission_overwrites ?? []);
+      for (const o of add) {
+        changed += await change(deps, token, 'PUT', path + '/permissions/' + o.id, {
+          type: o.type,
+          allow: o.allow,
+          deny: o.deny
+        });
+      }
+      for (const id of remove) changed += await change(deps, token, 'DELETE', path + '/permissions/' + id);
+    }
+  }
+  if (t.discord_thread_id) {
+    const path = '/channels/' + t.discord_thread_id;
+    const thread = await read<{ thread_metadata?: { archived?: boolean } }>(deps, token, path);
+    if (thread) {
+      const members = (
+        await must<Array<{ user_id: string }>>(await call(deps, token, 'GET', path + '/thread-members'))
+      ).map((m) => m.user_id);
+      const holders = await roleHolders(deps, token, t.server_id!, t.role_ids, cache);
+      const outside = members.filter((id) => id !== botId && !t.viewer_ids.includes(id));
+      const linked = outside.length ? await deps.db.linkedDiscordIds(outside) : new Set<string>();
+      const { add, remove } = threadChanges(t, botId, members, holders, linked);
+      if (add.length || remove.length) {
+        // A thread quiet for a week is archived, and Discord changes no
+        // members there until it's brought back.
+        if (thread.thread_metadata?.archived) await change(deps, token, 'PATCH', path, { archived: false });
+        for (const id of add) changed += await change(deps, token, 'PUT', path + '/thread-members/' + id);
+        for (const id of remove) changed += await change(deps, token, 'DELETE', path + '/thread-members/' + id);
+      }
+    }
+  }
+  return changed;
+}
+
+async function syncAll(deps: Deps, token: string): Promise<Response> {
+  const done = { checked: 0, changed: 0, failed: 0 };
+  const ids = await deps.db.openTickets();
+  if (ids.length === 0) return jsonResponse({ success: true, status: 'synced', ...done });
+  const me = await must<{ id: string }>(await call(deps, token, 'GET', '/users/@me'));
+  const cache: Holders = new Map();
+  for (const id of ids) {
+    try {
+      const t = await deps.db.ticket(null, id);
+      if (!t?.server_id) continue;
+      done.checked++;
+      done.changed += await syncOne(deps, token, me.id, t, cache);
+    } catch (e) {
+      done.failed++;
+      console.error('recruit-ticket: access for ' + id + ' failed:', e instanceof Error ? e.message : e);
+    }
+  }
+  return jsonResponse({ success: true, status: 'synced', ...done });
+}
+
 async function route(req: Request, deps: Deps): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return refuse('Method not allowed', 405);
@@ -571,6 +731,20 @@ async function route(req: Request, deps: Deps): Promise<Response> {
   } catch {
     return refuse('Missing application', 400);
   }
+
+  // The sweep's access check (#1545), for every open ticket at once.
+  if (sweep && body?.action === 'sync') {
+    if (resolveBot(deps.env).kind !== 'bot') return jsonResponse({ success: true, status: 'local' });
+    const botToken = deps.env.get('DISCORD_BOT_TOKEN');
+    if (!botToken) return refuse(NOT_SET_UP, 503);
+    try {
+      return await syncAll(deps, botToken);
+    } catch (e) {
+      if (e instanceof DiscordDown) return refuse(DISCORD_DOWN, 502);
+      throw e;
+    }
+  }
+
   const id = body?.application;
   if (typeof id !== 'number' || !Number.isInteger(id) || id <= 0) return refuse('Missing application', 400);
 
