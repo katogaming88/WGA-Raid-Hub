@@ -3560,3 +3560,15 @@ Shipped: no migration; `recruit-ticket` and `recruit-reminders` only.
 **An archived thread is brought back only when something changes.** Discord changes no members of an archived thread; one with nothing to change stays archived.
 
 [Full discussion -> #1545](https://github.com/katogaming88/WGA-Raid-Hub/issues/1545).
+
+## #1817 -- what the Recruits page reads from team_recruits()
+
+Shipped: `20261112175011_team_recruits_page_data.sql`.
+
+**One read, for everyone the page lets in.** `team_recruits()` now also returns the team's `min_item_level` and `needs` (its open spots, as `team_recruiting_spot_list()` gives them), so an assistant or a guild Admin who may see tickets is shown the low item level and "Not on your needs list" too. `team_recruiting_settings()` stays Edit recruiting only; nothing else of the settings is handed out.
+
+**`reminded` is this turn's reply reminder.** True while it's the applicant's turn and `recruit_reminders_sent` holds a `reply_reminder` for the turn the sweep keys it on (`due_for` = the applicant's last message, else `applied_at`). The "the officers replied" DM (`reply_dm`) doesn't count. An answer from the applicant hands the turn back, so it reads false; the next officer message waits on a new reminder for the same turn only if the applicant hasn't written since, matching what the sweep sends.
+
+**`ticket_url` while the channel exists.** Built as `my_applications()` builds the applicant's (#1810), from `team_discord_config.guild_id`, which officers can't read, and the record's ticket channel. Unlike the applicant's, a closed record keeps its link until the bot deletes the channel, so officers can read the locked ticket. Every access level gets it: a link is useless to anyone not in the server.
+
+[Full discussion -> #1817](https://github.com/katogaming88/WGA-Raid-Hub/issues/1817).

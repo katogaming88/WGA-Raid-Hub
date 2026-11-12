@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.266.0] - 2026-11-12
+
+### Backend
+
+- The Recruits page's list (#1817) now carries what officers couldn't read before: the team's minimum item level and open spots, so assistants and guild Admins allowed to see tickets also get the orange item level and "Not on your needs list"; whether the bot has already reminded an applicant to reply this turn ("Waiting on them 4 d · reminded"); and the link to each recruit's Discord ticket while it exists, closed ones too until the bot deletes the channel. Nothing else of the team's recruiting settings is handed out, and nothing new is writable.
+
+### Project
+
+- RLS tests for the new fields at each access level; a time log row for #1817.
+
 ## [3.265.1] - 2026-11-12
 
 ### Project
