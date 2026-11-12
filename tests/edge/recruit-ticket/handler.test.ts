@@ -60,7 +60,9 @@ const TICKET_APP: Ticket = {
   ],
   sent_by: 'recruiter',
   sent_by_name: 'Voxle',
-  applied_before: true,
+  applied_before: 3,
+  reopened: false,
+  ticket_deleted_at: null,
   discord_channel_id: null,
   discord_thread_id: null,
   discord_officer_message_id: null,
@@ -103,6 +105,9 @@ function setup(
   const table = { ...routes(), ...over };
   const calls: Call[] = [];
   const saved: Array<{ made: Made; detail: string | null }> = [];
+  const actors: Array<number | null> = [];
+  const claims: string[] = [];
+  const taken = new Set<string>();
   const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const req = new Request(input, init);
     const text = await req.text();
@@ -117,16 +122,35 @@ function setup(
     fetch,
     db: {
       getUser: (h) => Promise.resolve(h === 'Bearer jwt' ? { id: 'u1' } : null),
-      ticket: (uid, id) => Promise.resolve(uid === 'u1' && ticket && id === ticket.id ? ticket : null),
-      saveMade: (_id, _actor, made, detail) => {
+      // null is the sweep's call, with the cron secret.
+      ticket: (uid, id) =>
+        Promise.resolve((uid === 'u1' || uid === null) && ticket && id === ticket.id ? ticket : null),
+      saveMade: (_id, actor, made, detail) => {
         if (saveFails) return Promise.reject(new Error('db down'));
         saved.push({ made: { ...made }, detail });
+        actors.push(actor);
+        return Promise.resolve();
+      },
+      // Once-only claims, as the unique row in recruit_reminders_sent.
+      claim: (_id, key, at) => {
+        claims.push('claim ' + key);
+        if (taken.has(key + at)) return Promise.resolve(false);
+        taken.add(key + at);
+        return Promise.resolve(true);
+      },
+      unclaim: (_id, key, at) => {
+        claims.push('unclaim ' + key);
+        taken.delete(key + at);
+        return Promise.resolve();
+      },
+      stopFresh: () => {
+        claims.push('stop');
         return Promise.resolve();
       }
     },
     env: { get: (n) => env[n] }
   };
-  return { deps, calls, saved };
+  return { deps, calls, saved, claims, actors };
 }
 
 async function send(deps: Deps, body: unknown = { application: 7 }, auth = 'Bearer jwt') {
@@ -210,7 +234,7 @@ Deno.test('ticket card: mentions only the applicant and officers, fields, links 
     'Mythic bosses killed': '6',
     'Raid nights': 'Every week',
     'Sent by': 'Voxle',
-    'Applied before': 'Yes'
+    'Applied before': '[Yes: their earlier ticket](https://raidhub.example/recruits/3)'
   });
   const buttons = msg.body.components[0].components;
   assertEquals(
@@ -434,4 +458,172 @@ Deno.test('made but the record not saved: the ids go in the log, and no second s
   } finally {
     console.error = original;
   }
+});
+
+Deno.test('the sweep makes a fresh ticket for a record reopened after its ticket was deleted (#1544)', async () => {
+  const env = { ...ENV, OPTIONAL_RSVP_REMINDERS_SECRET: 'cron' };
+  const { deps, calls, saved } = setup(
+    {},
+    { reopened: true, applied_before: null, discord_channel_id: '800000000000000099' },
+    env
+  );
+  const res = await handle(
+    new Request('http://edge.test/functions/v1/recruit-ticket', {
+      method: 'POST',
+      headers: { 'x-cron-secret': 'cron', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ application: 7 })
+    }),
+    deps
+  );
+  const body = await res.json();
+  assertEquals(body.status, 'made');
+  // A new channel, not the deleted one answered again.
+  assertEquals(find(calls, 'POST', '/guilds/' + SERVER + '/channels').length, 1);
+  assertEquals(saved[0].made.discord_channel_id, TICKET);
+  const [msg] = find(calls, 'POST', '/channels/' + TICKET + '/messages');
+  const fields = Object.fromEntries(msg.body.embeds[0].fields.map((f: any) => [f.name, f.value]));
+  assertEquals(fields['Reopened'], '[Their earlier ticket is saved](https://raidhub.example/recruits/7)');
+  assertEquals(fields['Applied before'], undefined);
+  const [dm] = find(calls, 'POST', '/channels/' + DM + '/messages');
+  assert(dm.body.content.startsWith('Your application to Phoenix is open again. Your new ticket with the officers: '));
+
+  // Without the secret or a sign-in, nothing.
+  const wrong = await handle(
+    new Request('http://edge.test/functions/v1/recruit-ticket', {
+      method: 'POST',
+      headers: { 'x-cron-secret': 'nope', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ application: 7 })
+    }),
+    deps
+  );
+  assertEquals(wrong.status, 401);
+  await wrong.body?.cancel();
+});
+
+const SWEEP_ENV = { ...ENV, OPTIONAL_RSVP_REMINDERS_SECRET: 'cron' };
+const REOPENED = {
+  reopened: true,
+  ticket_deleted_at: '2026-11-10T15:00:00+00:00',
+  applied_before: null,
+  discord_channel_id: '800000000000000099'
+};
+const sweepCall = (deps: Deps, secret = 'cron') =>
+  handle(
+    new Request('http://edge.test/functions/v1/recruit-ticket', {
+      method: 'POST',
+      headers: { 'x-cron-secret': secret, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ application: 7 })
+    }),
+    deps
+  ).then(async (res) => ({ status: res.status, body: await res.json() }));
+
+Deno.test('a fresh ticket is claimed first: a second call at the same time makes nothing', async () => {
+  const { deps, calls, actors, claims } = setup({}, REOPENED, SWEEP_ENV);
+  const first = await sweepCall(deps);
+  assertEquals(first.body.status, 'made');
+  // The sweep's ticket names nobody as having opened it.
+  assertEquals(actors, [null]);
+  calls.length = 0;
+  const second = await sweepCall(deps);
+  assertEquals(second.body.status, 'busy');
+  assertEquals(calls.length, 0);
+  // The applicant's own call while it's being made: the same claim, refused.
+  assertEquals((await send(deps)).body.status, 'busy');
+  assertEquals(claims, ['claim fresh_ticket', 'claim fresh_ticket', 'claim fresh_ticket']);
+});
+
+Deno.test('the applicant calling on a reopened record takes the same claim', async () => {
+  const { deps, actors, claims } = setup({}, REOPENED, SWEEP_ENV);
+  const r = await send(deps);
+  assertEquals(r.body.status, 'made');
+  assertEquals(claims, ['claim fresh_ticket']);
+  assertEquals(actors, [42]);
+});
+
+Deno.test('a thread made before Discord failed is saved, and the claim kept', async () => {
+  const { deps, saved, claims } = setup(
+    { ['POST ' + API + '/channels/' + THREAD + '/messages']: () => new Response('', { status: 503 }) },
+    { ...REOPENED, mode: 'officer_thread' },
+    SWEEP_ENV
+  );
+  const r = await sweepCall(deps);
+  assertEquals(r.status, 502);
+  assertEquals(saved[0].made.discord_thread_id, THREAD);
+  assertEquals(saved[0].detail, PARTLY_MADE);
+  assertEquals(claims, ['claim fresh_ticket']);
+});
+
+Deno.test('made but not saved keeps the claim, so a second ticket is never made', async () => {
+  const { deps, claims } = setup({}, REOPENED, SWEEP_ENV, true);
+  const r = await sweepCall(deps);
+  assertEquals(r.status, 500);
+  assertEquals(claims, ['claim fresh_ticket']);
+  assertEquals((await sweepCall(deps)).body.status, 'busy');
+});
+
+Deno.test('Discord down with nothing made hands the claim back for the next sweep', async () => {
+  const { deps, claims } = setup(
+    { ['GET ' + API + '/users/@me']: () => new Response('', { status: 503 }) },
+    REOPENED,
+    SWEEP_ENV
+  );
+  const r = await sweepCall(deps);
+  assertEquals(r.status, 502);
+  assertEquals(claims, ['claim fresh_ticket', 'unclaim fresh_ticket']);
+});
+
+Deno.test(
+  'a reopened applicant who left the server: the officers are told once, and the sweep keeps checking',
+  async () => {
+    let noticeStatus = 500;
+    const { deps, calls, claims } = setup(
+      {
+        ['GET ' + API + '/guilds/' + SERVER + '/members/' + APPLICANT]: () =>
+          new Response(JSON.stringify({ code: 10007 }), { status: 404 }),
+        ['POST ' + API + '/channels/' + OFFICERS + '/messages']: () =>
+          new Response(JSON.stringify({ id: '1' }), { status: noticeStatus })
+      },
+      REOPENED,
+      SWEEP_ENV
+    );
+    // The notice fails: its claim is handed back, as is the ticket's.
+    let r = await sweepCall(deps);
+    assertEquals(r.body.status, 'not_in_server');
+    assertEquals(claims, [
+      'claim fresh_ticket',
+      'unclaim fresh_ticket',
+      'claim fresh_not_in_server',
+      'unclaim fresh_not_in_server'
+    ]);
+    // Next sweep it posts, once.
+    noticeStatus = 200;
+    calls.length = 0;
+    claims.length = 0;
+    r = await sweepCall(deps);
+    const [notice] = find(calls, 'POST', '/channels/' + OFFICERS + '/messages');
+    assert(notice.body.content.startsWith("Katorrí's application was reopened, but they've left the Discord server"));
+    assert(notice.body.content.endsWith('Raid Hub makes it once they rejoin.'));
+    assertEquals(notice.body.allowed_mentions, { parse: [] });
+    calls.length = 0;
+    await sweepCall(deps);
+    assertEquals(find(calls, 'POST', '/channels/' + OFFICERS + '/messages').length, 0);
+  }
+);
+
+Deno.test('a team that stopped making tickets: the sweep is told to stop asking', async () => {
+  const { deps, calls, claims } = setup({}, { ...REOPENED, mode: 'none' }, SWEEP_ENV);
+  const r = await sweepCall(deps);
+  assertEquals(r.body.status, 'off');
+  assertEquals(claims, ['stop']);
+  assertEquals(calls.length, 0);
+});
+
+Deno.test("the secret only makes a reopened record's fresh ticket, and only when it is set", async () => {
+  const notReopened = setup({}, {}, SWEEP_ENV);
+  assertEquals((await sweepCall(notReopened.deps)).status, 409);
+  assertEquals(notReopened.calls.length, 0);
+  // No secret on this stack: the header alone is no way in.
+  const unset = setup({}, REOPENED, ENV);
+  assertEquals((await sweepCall(unset.deps, '')).status, 401);
+  assertEquals((await sweepCall(unset.deps, 'undefined')).status, 401);
 });

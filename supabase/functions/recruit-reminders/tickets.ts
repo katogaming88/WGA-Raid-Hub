@@ -18,7 +18,8 @@
 // ticket_closed_at set): the applicant can post again, the thread opens, a
 // line says so, and the steps start over at the next close. A ticket deleted
 // by hand is simply missing: nothing to lock or save there, and its officer
-// thread still goes through every step. "Locked right
+// thread still goes through every step. Reopened after it's deleted, the
+// record gets a fresh ticket (freshTickets below). "Locked right
 // away" means by the next sweep, within 15 minutes.
 import { call, DiscordDown, type Fetcher, postTo } from './discord.ts';
 
@@ -82,6 +83,9 @@ export interface TicketDb {
   // Sets ticket_deleted_at while the record is still closed; false if it was
   // reopened.
   claimDelete(id: number, at: string): Promise<boolean>;
+  // Open records whose ticket was deleted before a reopen: each gets a fresh
+  // one from recruit-ticket.
+  reopenedAfterDelete(): Promise<number[]>;
 }
 
 type Deps = Fetcher & { db: TicketDb; now: () => Date };
@@ -287,8 +291,38 @@ async function step(deps: Deps, token: string, t: TicketRec): Promise<string | n
   return 'deleted';
 }
 
-export async function closeTickets(deps: Deps, token: string) {
-  const done = { closed: 0, deleted: 0, reopened: 0, failed: 0 };
+// A record reopened after its ticket was deleted gets a fresh one: the same
+// recruit-ticket an applicant's Send calls, with the cron secret in place of a
+// sign-in. recruit-ticket claims it first (a row in recruit_reminders_sent),
+// so only one fresh ticket is ever made. "off" (the team stopped making
+// tickets) stops the asking; "not_in_server" asks again each sweep until they
+// rejoin, with the officers told once; "busy" means another call is making it.
+export type Fresh = { url: string; secret: string };
+
+async function freshTickets(deps: Deps, fresh: Fresh) {
+  let made = 0;
+  for (const id of await deps.db.reopenedAfterDelete()) {
+    try {
+      const res = await deps.fetch(fresh.url + '/functions/v1/recruit-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-cron-secret': fresh.secret },
+        body: JSON.stringify({ application: id }),
+        // A ticket is up to about nine Discord calls at five seconds each.
+        signal: AbortSignal.timeout(90_000)
+      });
+      const answer = await res.json().catch(() => null);
+      if (res.ok && answer?.status === 'made') made++;
+      // off, not_in_server and busy are answers, not failures.
+      else if (!res.ok) console.error('recruit-reminders: fresh ticket for ' + id + ':', res.status, answer?.error);
+    } catch (e) {
+      console.error('recruit-reminders: fresh ticket for ' + id + ' failed:', e instanceof Error ? e.message : e);
+    }
+  }
+  return made;
+}
+
+export async function closeTickets(deps: Deps, token: string, fresh?: Fresh) {
+  const done = { closed: 0, deleted: 0, reopened: 0, failed: 0, fresh: 0 };
   for (const t of await deps.db.closingTickets()) {
     try {
       const did = await step(deps, token, t);
@@ -301,5 +335,6 @@ export async function closeTickets(deps: Deps, token: string) {
       );
     }
   }
+  if (fresh) done.fresh = await freshTickets(deps, fresh);
   return done;
 }

@@ -57,6 +57,9 @@ function setup(rec: Partial<TicketRec> = {}, ticketMessages = 103) {
   const answers: Record<string, number> = {};
   let clock = T0;
   let reopenBeforeDelete = false;
+  const reopenedIds: number[] = [];
+  const freshCalls: Call[] = [];
+  let freshAnswer = 'made';
   // Newest first, as Discord answers.
   const inTicket = Array.from({ length: ticketMessages }, (_, i) => message(i + 1)).reverse();
   const inThread = [message(500, '600000000000000001')];
@@ -65,6 +68,14 @@ function setup(rec: Partial<TicketRec> = {}, ticketMessages = 103) {
   const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const req = new Request(input, init);
     const text = await req.text();
+    if (req.url.startsWith('https://project.example/')) {
+      freshCalls.push({
+        method: req.method,
+        path: req.url,
+        body: { ...JSON.parse(text), secret: req.headers.get('x-cron-secret') }
+      });
+      return json({ success: true, status: freshAnswer });
+    }
     const path = req.url.slice(API.length);
     calls.push({ method: req.method, path, body: text ? JSON.parse(text) : null });
     const key = req.method + ' ' + path.split('?')[0];
@@ -94,6 +105,7 @@ function setup(rec: Partial<TicketRec> = {}, ticketMessages = 103) {
         for (const x of m) if (!saved.some((y) => y.discord_message_id === x.discord_message_id)) saved.push(x);
         return Promise.resolve();
       },
+      reopenedAfterDelete: () => Promise.resolve(reopenedIds),
       claimDelete: (_id: number, at: string) => {
         if (reopenBeforeDelete) return Promise.resolve(false);
         progress.push({ ticket_deleted_at: at });
@@ -101,10 +113,14 @@ function setup(rec: Partial<TicketRec> = {}, ticketMessages = 103) {
       }
     }
   };
-  const run = async (ms: number) => {
+  const run = async (ms: number, fresh = false) => {
     clock = ms;
     calls.length = 0;
-    return await closeTickets(deps, 'bot-token');
+    return await closeTickets(
+      deps,
+      'bot-token',
+      fresh ? { url: 'https://project.example', secret: 'cron' } : undefined
+    );
   };
   return {
     record,
@@ -115,6 +131,9 @@ function setup(rec: Partial<TicketRec> = {}, ticketMessages = 103) {
     answer: (key: string, status: number) => (answers[key] = status),
     clear: (key: string) => delete answers[key],
     reopenMidway: () => (reopenBeforeDelete = true),
+    reopenedIds,
+    freshCalls,
+    freshAnswers: (a: string) => (freshAnswer = a),
     officerWrites: () => inTicket.unshift(message(900, '600000000000000001'))
   };
 }
@@ -122,7 +141,7 @@ function setup(rec: Partial<TicketRec> = {}, ticketMessages = 103) {
 Deno.test('a closed ticket is locked, gets its message, is saved, then deleted after the delay', async () => {
   const s = setup();
   let done = await s.run(T0);
-  assertEquals(done, { closed: 1, deleted: 0, reopened: 0, failed: 0 });
+  assertEquals(done, { closed: 1, deleted: 0, reopened: 0, failed: 0, fresh: 0 });
 
   // Locked: the applicant can read, not post.
   const lock = s.calls.find((c) => c.method === 'PUT')!;
@@ -316,4 +335,31 @@ Deno.test('the saved text keeps an embed and drops a line of nothing but mention
   );
   assertEquals(bodyOf({ content: 'Hi <@600000000000000001>, thanks!' }), 'Hi <@600000000000000001>, thanks!');
   assertEquals(bodyOf({ content: '' }), '');
+});
+
+Deno.test('a record reopened after its ticket was deleted asks recruit-ticket for a fresh one', async () => {
+  const s = setup();
+  s.reopenedIds.push(7, 9);
+  const done = await s.run(T0, true);
+  assertEquals(done.fresh, 2);
+  assertEquals(
+    s.freshCalls.map((c) => [c.path, c.body]),
+    [
+      ['https://project.example/functions/v1/recruit-ticket', { application: 7, secret: 'cron' }],
+      ['https://project.example/functions/v1/recruit-ticket', { application: 9, secret: 'cron' }]
+    ]
+  );
+});
+
+Deno.test('a fresh ticket the call does not make is not counted; no secret, no call', async () => {
+  const s = setup();
+  s.reopenedIds.push(7);
+  s.freshAnswers('not_in_server');
+  assertEquals((await s.run(T0, true)).fresh, 0);
+  assertEquals(s.freshCalls.length, 1);
+  // Without the project address and secret the sweep doesn't ask.
+  const none = setup();
+  none.reopenedIds.push(7);
+  await none.run(T0);
+  assertEquals(none.freshCalls.length, 0);
 });

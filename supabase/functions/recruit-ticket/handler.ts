@@ -21,6 +21,13 @@
 // account, plus the extra roles the team picked. @everyone is denied. Someone
 // without a linked Discord can't be added (the settings page warns).
 //
+// The recruiting sweep (recruit-reminders) calls it too, with the cron secret
+// and no signed-in user, for a record reopened after its ticket was deleted:
+// that record gets a fresh ticket, its card links the saved conversation, and
+// the DM says the application is open again (#1544). Supabase's JWT gate is
+// off for this function so that call gets through; a signed-in call is still
+// checked against the caller's own token below.
+//
 // What was made goes on the record (discord_channel_id, discord_thread_id,
 // discord_officer_message_id), so calling again answers it and makes nothing.
 // A local stack makes nothing either: its server ids are the real servers
@@ -55,7 +62,14 @@ export type Ticket = {
   answers: Array<{ key?: string; answer?: unknown }>;
   sent_by: 'recruiter' | 'friend' | 'nobody';
   sent_by_name: string | null;
-  applied_before: boolean;
+  // Their latest earlier record with this team, whose saved conversation the
+  // card links to (#1544).
+  applied_before: number | null;
+  // Reopened after its ticket was deleted: this call makes a fresh one, and
+  // the card links to the record's own saved conversation (#1544).
+  reopened: boolean;
+  // When the old ticket was deleted: the key of this reopen's claims.
+  ticket_deleted_at: string | null;
   // Already made, from the record.
   discord_channel_id: string | null;
   discord_thread_id: string | null;
@@ -105,6 +119,8 @@ export function viewerIds(
   return [...new Set(ids)];
 }
 
+export type FreshClaim = 'fresh_ticket' | 'fresh_not_in_server';
+
 export type Made = {
   discord_channel_id: string | null;
   discord_thread_id: string | null;
@@ -113,10 +129,20 @@ export type Made = {
 
 export interface TicketDb {
   getUser(authHeader: string): Promise<{ id: string } | null>;
-  // The caller's own open application with this id, or null.
-  ticket(authUserId: string, applicationId: number): Promise<Ticket | null>;
+  // The caller's own open application with this id, or null. With no caller
+  // (the sweep), the open application itself.
+  ticket(authUserId: string | null, applicationId: number): Promise<Ticket | null>;
   // Writes what was made and the ticket_opened history row.
-  saveMade(applicationId: number, actor: number, made: Made, detail: string | null): Promise<void>;
+  saveMade(applicationId: number, actor: number | null, made: Made, detail: string | null): Promise<void>;
+  // Once-only claims for a reopen, a row each in recruit_reminders_sent keyed
+  // on when the old ticket was deleted: 'fresh_ticket' while one call makes
+  // the fresh ticket, 'fresh_not_in_server' for the officers' notice. False
+  // when the claim was already taken.
+  claim(applicationId: number, key: FreshClaim, deletedAt: string): Promise<boolean>;
+  unclaim(applicationId: number, key: FreshClaim, deletedAt: string): Promise<void>;
+  // The team stopped making tickets: clears ticket_deleted_at so the sweep
+  // stops asking.
+  stopFresh(applicationId: number): Promise<void>;
 }
 
 export type Deps = { fetch: typeof fetch; db: TicketDb; env: Env };
@@ -150,6 +176,7 @@ export const DMS_CLOSED = "Their Discord DMs are closed, so the welcome message 
 // gives the same answer (50007) for that as for closed DMs.
 export const DMS_BLOCKED =
   "Discord wouldn't deliver the welcome message: their DMs are closed, or they aren't in the server.";
+export const NOT_REOPENED = 'That application has no deleted ticket to replace.';
 export const DM_NOT_SENT = "The welcome message wasn't sent.";
 export const DM_FAILED = "The welcome message couldn't be sent.";
 
@@ -265,8 +292,15 @@ export function card(t: Ticket, siteUrl: string) {
     ['Best logs average', t.logs_best_average === null ? null : String(t.logs_best_average)],
     ['Mythic bosses killed', t.mythic_bosses_killed === null ? null : String(t.mythic_bosses_killed)],
     ['Raid nights', answerOf(t, 'nights')],
-    ['Sent by', sentBy],
-    ['Applied before', t.applied_before ? 'Yes' : null]
+    ['Sent by', sentBy]
+  ];
+  // Links, written as Discord markdown, so not escaped like the rest.
+  const linked: Array<[string, string | null]> = [
+    [
+      'Applied before',
+      t.applied_before ? '[Yes: their earlier ticket](' + recordUrl(siteUrl, t.applied_before) + ')' : null
+    ],
+    ['Reopened', t.reopened ? '[Their earlier ticket is saved](' + recordUrl(siteUrl, t.id) + ')' : null]
   ];
   return {
     embeds: [
@@ -281,9 +315,12 @@ export function card(t: Ticket, siteUrl: string) {
           ') · [Armory](' +
           links.armory +
           ')',
-        fields: fields
-          .filter(([, v]) => v !== null)
-          .map(([name, value]) => ({ name, value: escape(truncate(value!, 1024)), inline: true }))
+        fields: [
+          ...fields
+            .filter(([, v]) => v !== null)
+            .map(([name, value]) => ({ name, value: escape(truncate(value!, 1024)), inline: true })),
+          ...linked.filter(([, v]) => v !== null).map(([name, value]) => ({ name, value: value!, inline: true }))
+        ]
       }
     ],
     components: [
@@ -323,7 +360,14 @@ export function overwrites(t: Ticket, botId: string) {
 // with Manage Threads there sees every private thread in it, and someone who
 // can't see the channel is never added. So each team needs its own officer
 // channel, which the Recruiting settings page (#1548) says.
-async function officerThread(deps: Deps, token: string, t: Ticket, siteUrl: string, ticketId: string | null) {
+async function officerThread(
+  deps: Deps,
+  token: string,
+  t: Ticket,
+  siteUrl: string,
+  ticketId: string | null,
+  made: Made
+) {
   const thread = await must<{ id: string }>(
     await call(deps, token, 'POST', '/channels/' + t.officer_channel_id + '/threads', {
       name: truncate('Applicant: ' + t.name_realm, 100),
@@ -332,6 +376,8 @@ async function officerThread(deps: Deps, token: string, t: Ticket, siteUrl: stri
       auto_archive_duration: 10080
     })
   );
+  // On the record at once, so a failure below still saves it (CodeRabbit).
+  made.discord_thread_id = thread.id;
   for (const id of t.viewer_ids.slice(0, MAX_THREAD_MEMBERS)) {
     // One person who left the server shouldn't stop the rest.
     await call(deps, token, 'PUT', '/channels/' + thread.id + '/thread-members/' + id).catch(() => null);
@@ -354,14 +400,19 @@ async function welcome(deps: Deps, token: string, t: Ticket, ticketUrl: string |
       await call(deps, token, 'POST', '/users/@me/channels', { recipient_id: t.discord_id })
     );
     const res = await call(deps, token, 'POST', '/channels/' + dm.id + '/messages', {
-      content: ticketUrl
-        ? 'Welcome to ' +
-          t.guild_name +
-          '! Your private ticket with ' +
+      content: t.reopened
+        ? 'Your application to ' +
           t.team_name +
-          "'s officers is ready: " +
-          ticketUrl
-        : 'Your application to ' + t.team_name + ' is in. An officer will message you.',
+          ' is open again.' +
+          (ticketUrl ? ' Your new ticket with the officers: ' + ticketUrl : ' An officer will message you.')
+        : ticketUrl
+          ? 'Welcome to ' +
+            t.guild_name +
+            '! Your private ticket with ' +
+            t.team_name +
+            "'s officers is ready: " +
+            ticketUrl
+          : 'Your application to ' + t.team_name + ' is in. An officer will message you.',
       components: ticketUrl
         ? [{ type: 1, components: [{ type: 2, style: 5, label: 'Open your ticket', url: ticketUrl }] }]
         : []
@@ -392,9 +443,9 @@ class SaveFailed extends Error {}
 
 // Made in Discord but not on the record: the next call would make it again,
 // so the ids go in the function's log for an officer to clean up by hand.
-async function save(deps: Deps, t: Ticket, made: Made, detail: string | null) {
+async function save(deps: Deps, t: Ticket, actor: number | null, made: Made, detail: string | null) {
   try {
-    await deps.db.saveMade(t.id, t.person_id, made, detail);
+    await deps.db.saveMade(t.id, actor, made, detail);
   } catch {
     console.error('recruit-ticket: made in Discord but not recorded', JSON.stringify({ application: t.id, ...made }));
     throw new SaveFailed();
@@ -403,23 +454,34 @@ async function save(deps: Deps, t: Ticket, made: Made, detail: string | null) {
 
 export const PARTLY_MADE = 'Discord stopped answering partway; the card may be missing.';
 
-async function make(deps: Deps, token: string, siteUrl: string, t: Ticket): Promise<Response> {
+async function make(deps: Deps, token: string, siteUrl: string, t: Ticket, actor: number | null): Promise<Response> {
   const made: Made = { discord_channel_id: null, discord_thread_id: null, discord_officer_message_id: null };
   try {
-    return await makeInto(deps, token, siteUrl, t, made);
+    return await makeInto(deps, token, siteUrl, t, actor, made);
   } catch (e) {
+    const any = made.discord_channel_id || made.discord_thread_id || made.discord_officer_message_id;
     // Whatever exists is recorded, so a retry doesn't make a second one.
-    if (
-      !(e instanceof SaveFailed) &&
-      (made.discord_channel_id || made.discord_thread_id || made.discord_officer_message_id)
-    ) {
-      await save(deps, t, made, PARTLY_MADE);
-    }
+    if (!(e instanceof SaveFailed) && any) await save(deps, t, actor, made, PARTLY_MADE);
+    // Nothing made for a reopened record: hand the claim back so the next
+    // sweep tries again. Made but not saved keeps it, so nothing is made
+    // twice; the ids are in the log for an officer.
+    if (!any && t.reopened) await deps.db.unclaim(t.id, 'fresh_ticket', t.ticket_deleted_at!).catch(() => null);
     throw e;
   }
 }
 
-async function makeInto(deps: Deps, token: string, siteUrl: string, t: Ticket, made: Made): Promise<Response> {
+export const NOT_IN_SERVER_NOTICE = (name: string) =>
+  name +
+  "'s application was reopened, but they've left the Discord server, so there's no new ticket yet. Raid Hub makes it once they rejoin.";
+
+async function makeInto(
+  deps: Deps,
+  token: string,
+  siteUrl: string,
+  t: Ticket,
+  actor: number | null,
+  made: Made
+): Promise<Response> {
   const me = await must<{ id: string }>(await call(deps, token, 'GET', '/users/@me'));
 
   if (t.mode === 'ticket') {
@@ -430,8 +492,24 @@ async function makeInto(deps: Deps, token: string, siteUrl: string, t: Ticket, m
     // server (the bot was removed) is a failure, or they'd wait forever.
     if (!member.ok) {
       const code = (await member.json().catch(() => null))?.code;
-      if (member.status === 404 && code === UNKNOWN_MEMBER)
+      if (member.status === 404 && code === UNKNOWN_MEMBER) {
+        // A reopened record hands its claim back, so the sweep makes the
+        // ticket once they rejoin; the officers are told once why there's
+        // none yet, and again only if that notice didn't post.
+        if (t.reopened) {
+          await deps.db.unclaim(t.id, 'fresh_ticket', t.ticket_deleted_at!);
+          if (t.officer_channel_id && (await deps.db.claim(t.id, 'fresh_not_in_server', t.ticket_deleted_at!))) {
+            const posted = await call(deps, token, 'POST', '/channels/' + t.officer_channel_id + '/messages', {
+              content: NOT_IN_SERVER_NOTICE(t.name_realm.split('-')[0]),
+              allowed_mentions: { parse: [] }
+            })
+              .then((r) => r.ok)
+              .catch(() => false);
+            if (!posted) await deps.db.unclaim(t.id, 'fresh_not_in_server', t.ticket_deleted_at!);
+          }
+        }
         return jsonResponse({ success: true, status: 'not_in_server' });
+      }
       throw new DiscordDown();
     }
     const channels = await must<Array<{ name: string }>>(
@@ -455,10 +533,10 @@ async function makeInto(deps: Deps, token: string, siteUrl: string, t: Ticket, m
       })
     );
     if (t.thread_with_ticket && t.officer_channel_id) {
-      made.discord_thread_id = await officerThread(deps, token, t, siteUrl, channel.id);
+      await officerThread(deps, token, t, siteUrl, channel.id, made);
     }
   } else if (t.mode === 'officer_thread') {
-    made.discord_thread_id = await officerThread(deps, token, t, siteUrl, null);
+    await officerThread(deps, token, t, siteUrl, null, made);
   } else {
     const msg = await must<{ id: string }>(
       await call(deps, token, 'POST', '/channels/' + t.officer_channel_id + '/messages', {
@@ -472,7 +550,7 @@ async function makeInto(deps: Deps, token: string, siteUrl: string, t: Ticket, m
 
   const ticketUrl = made.discord_channel_id ? jump(t.server_id!, made.discord_channel_id) : null;
   const dm = await welcome(deps, token, t, ticketUrl);
-  await save(deps, t, made, dm);
+  await save(deps, t, actor, made, dm);
   return jsonResponse(answerMade(t, made, dm));
 }
 
@@ -480,8 +558,12 @@ async function route(req: Request, deps: Deps): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return refuse('Method not allowed', 405);
 
+  // The recruiting sweep, for a record reopened after its ticket was deleted
+  // (#1544), sends the cron secret instead of a signed-in applicant.
+  const secret = deps.env.get('OPTIONAL_RSVP_REMINDERS_SECRET');
+  const sweep = !!secret && req.headers.get('x-cron-secret') === secret;
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return refuse('Not signed in', 401);
+  if (!sweep && !authHeader) return refuse('Not signed in', 401);
 
   let body: Record<string, unknown>;
   try {
@@ -497,10 +579,12 @@ async function route(req: Request, deps: Deps): Promise<Response> {
   const dest = resolveBot(deps.env);
   if (dest.kind === 'bot' && (!token || !siteUrl)) return refuse(NOT_SET_UP, 503);
 
-  const user = await deps.db.getUser(authHeader);
-  if (!user) return refuse('Not signed in', 401);
-  const t = await deps.db.ticket(user.id, id);
+  const user = sweep ? null : await deps.db.getUser(authHeader!);
+  if (!sweep && !user) return refuse('Not signed in', 401);
+  const t = await deps.db.ticket(user?.id ?? null, id);
   if (!t) return refuse(NOT_YOURS, 403);
+  // The secret makes only a reopened record's fresh ticket.
+  if (sweep && !t.reopened) return refuse(NOT_REOPENED, 409);
 
   // Nothing to make: the team chose nothing, or hasn't picked what it needs.
   const ready =
@@ -508,12 +592,18 @@ async function route(req: Request, deps: Deps): Promise<Response> {
     t.server_id &&
     t.discord_id &&
     (t.mode === 'ticket' ? t.ticket_category_id : t.officer_channel_id);
-  if (!ready) return jsonResponse({ success: true, status: 'off' });
+  if (!ready) {
+    // The team stopped making tickets: nothing to make, so the sweep stops
+    // asking.
+    if (t.reopened) await deps.db.stopFresh(t.id);
+    return jsonResponse({ success: true, status: 'off' });
+  }
 
   // Made already: answer it again.
-  // ponytail: two calls at the same instant could both make one; the page
-  // calls once per send. A claim column on the record if that ever shows up.
-  if (t.discord_channel_id || t.discord_thread_id || t.discord_officer_message_id) {
+  // ponytail: two calls at the same instant could both make a first ticket;
+  // the page calls once per send. A reopened record's fresh one is claimed
+  // below, so it can't be made twice.
+  if (!t.reopened && (t.discord_channel_id || t.discord_thread_id || t.discord_officer_message_id)) {
     // The DM's outcome is the one the record kept; a partly made one never sent it.
     const dm = t.opened_detail === PARTLY_MADE ? DM_NOT_SENT : t.opened_detail;
     return jsonResponse(answerMade(t, t, dm));
@@ -537,8 +627,21 @@ async function route(req: Request, deps: Deps): Promise<Response> {
     return jsonResponse({ success: true, status: 'local' });
   }
 
+  // A reopened record's old ones are deleted. Whoever takes the claim makes
+  // the fresh one (the sweep or the applicant, two sweeps at once); anyone
+  // else is told it's already being made. ticket_deleted_at stays set until
+  // the new ids are saved, so every caller sees it's a reopen.
+  let fresh = t;
+  if (t.reopened) {
+    if (!(await deps.db.claim(t.id, 'fresh_ticket', t.ticket_deleted_at!))) {
+      return jsonResponse({ success: true, status: 'busy' });
+    }
+    fresh = { ...t, discord_channel_id: null, discord_thread_id: null, discord_officer_message_id: null };
+  }
+
   try {
-    return await make(deps, token!, siteUrl!, t);
+    // The sweep's call has no person behind it.
+    return await make(deps, token!, siteUrl!, fresh, sweep ? null : t.person_id);
   } catch (e) {
     if (e instanceof DiscordDown) return refuse(DISCORD_DOWN, 502);
     throw e;
