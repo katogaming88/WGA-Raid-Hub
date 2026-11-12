@@ -240,12 +240,14 @@ async function dm(deps: Deps, token: string, userId: string, body: Record<string
 }
 
 // Reads the ticket's newest messages and saves who wrote last on each side.
-// A ticket that's gone (deleted by hand) is left as it is.
-async function readTicket(deps: Deps, token: string, r: Rec): Promise<Rec> {
+// A ticket that's gone (deleted by hand) is left as it is. Any other refusal
+// (the bot lost access) could hide a newer message, so the record is skipped
+// (null) until a read works.
+async function readTicket(deps: Deps, token: string, r: Rec): Promise<Rec | null> {
   const res = await call(deps, token, 'GET', '/channels/' + r.ticket_channel_id + '/messages?limit=50');
   if (!res.ok) {
     await res.body?.cancel();
-    return r;
+    return res.status === 404 ? r : null;
   }
   const messages = (await res.json()) as Array<{ author?: { id?: string; bot?: boolean }; timestamp?: string }>;
   let applicant: string | null = null;
@@ -309,10 +311,13 @@ async function send(
       return;
     case 'reply_reminder': {
       const t = r.timings;
+      // From now, so a DM held overnight doesn't overstate it. #1544 closes it.
+      const closesAt =
+        t.close_no_reply_after_hours === null
+          ? null
+          : Date.parse(r.officers_last_message_at!) + t.close_no_reply_after_hours * HOUR;
       const closesIn =
-        t.close_no_reply_after_hours !== null && t.remind_after_hours !== null
-          ? span((t.close_no_reply_after_hours - t.remind_after_hours) * HOUR)
-          : null;
+        closesAt !== null && closesAt > deps.now().getTime() ? span(closesAt - deps.now().getTime() + HOUR / 2) : null;
       out.push(
         await postTo(deps, token, r.ticket_channel_id!, {
           content: REMIND_TICKET(r.applicant_discord_id!, r.team_name),
@@ -389,6 +394,7 @@ export async function sweep(deps: Deps, token: string, siteUrl: string) {
         found.status !== 'on_trial' && found.uses_ticket && found.ticket_channel_id
           ? await readTicket(deps, token, found)
           : found;
+      if (!r) continue;
       const next = due(r, deps.now());
       if (!next || !deliverable(r, next.reminder)) continue;
       const dms = next.reminder === 'reply_dm' || next.reminder === 'reply_reminder';
@@ -412,6 +418,9 @@ export async function sweep(deps: Deps, token: string, siteUrl: string) {
       await deps.db.sent(
         r.id,
         DETAIL[next.reminder] +
+          (next.reminder === 'owner_ping' && !r.owner_discord_id
+            ? ' (no Team Owner with a linked Discord, so nobody was mentioned)'
+            : '') +
           (closed ? "; their DMs are closed, so the DM didn't arrive" : refused ? '; Discord refused part of it' : '')
       );
       sent++;

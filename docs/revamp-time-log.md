@@ -18,17 +18,17 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live |  8 h 15 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live |  8 h 10 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **180 h 11 m** |             |
+| **All revamp work**                | **180 h 6 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Recruiting | Phase 2 | 7 h 10 m | ~9 h 50 m |
+| Recruiting | Phase 2 | 7 h 5 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 0 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
@@ -687,7 +687,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
-| 8:23-8:50 PM | #1543: `recruit-reminders` Edge Function (reads each open ticket's newest messages for whose turn it is; the applicant's reply DM once per turn and the 2-day reminder with when it closes; the officers' 1-day ping and the 3-day one with the Team Owner; the trial heads-up with Joined / Extend trial / Not joining to the officer channel and the ticket; no DMs 1-9 AM their time; claimed once each, retried only when nothing went out), the 15-minute cron migration reusing the RSVP reminders' secret; Deno tests, RLS run, decision log, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1543) | 25 m | ~25 m build | ~206,000 | CodeRabbit, the fresh-agent review and Kat's merge not yet counted. |
+| 8:23-8:40 PM | #1543: `recruit-reminders` Edge Function (reads each open ticket's newest messages for whose turn it is; the applicant's reply DM once per turn and the 2-day reminder with when it closes; the officers' 1-day ping and the 3-day one with the Team Owner; the trial heads-up with Joined / Extend trial / Not joining to the officer channel and the ticket; no DMs 1-9 AM their time; claimed once each, retried only when nothing went out), the 15-minute cron migration reusing the RSVP reminders' secret; Deno tests, RLS run, decision log, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1543) | 15 m | ~15 m build | ~206,000 | CodeRabbit, the fresh-agent review and Kat's merge not yet counted. |
+| 8:48-8:55 PM | PR #1804 (#1543): CodeRabbit (the open records and their history read page by page; a ticket the bot can't read is skipped, a deleted one keeps its saved turn; the reminder's "closes in" counted from when it goes, so an overnight hold doesn't overstate it; with no linked Team Owner the 3-day ping still goes and the history says nobody was mentioned; three more tests) | Phase 2: Before the new site goes live / Recruiting (#1543) | 5 m | ~5 m build | ~45,000 | The fresh-agent review and Kat's merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 

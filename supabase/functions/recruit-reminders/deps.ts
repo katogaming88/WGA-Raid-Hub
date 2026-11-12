@@ -13,16 +13,27 @@ const TIMINGS =
   'dm_reply_after_minutes, remind_after_hours, close_no_reply_after_hours, ping_officers_after_hours,' +
   ' ping_owner_after_hours, trial_end_notice_hours';
 
+// PostgREST answers at most 1000 rows and says nothing, so a short page looks
+// like the whole table; read page by page until one comes back short.
+const PAGE = 1000;
+async function paged(
+  page: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: { message: string } | null }>
+): Promise<any[]> {
+  const rows: any[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const got = check(await page(from, from + PAGE - 1)) ?? [];
+    rows.push(...got);
+    if (got.length < PAGE) return rows;
+  }
+}
+
 function supabaseDb(): ReminderDb {
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
   return {
     async openRecords() {
-      // ponytail: one read per table across every open record; past 1000 open
-      // records (or their history rows) PostgREST truncates, and this needs
-      // paging.
-      const apps = check(
-        await db
+      const apps = await paged((from, to) =>
+        db
           .from('recruit_applications')
           .select(
             'id, team_id, person_id, status, name_realm, time_zone, applicant_last_message_at,' +
@@ -30,7 +41,9 @@ function supabaseDb(): ReminderDb {
           )
           .is('closed_at', null)
           .in('status', ['waiting_on_officers', 'waiting_on_applicant', 'on_trial'])
-      ) as any[];
+          .order('id')
+          .range(from, to)
+      );
       if (!apps.length) return [];
       const teamIds = [...new Set(apps.map((a) => a.team_id))];
 
@@ -53,15 +66,17 @@ function supabaseDb(): ReminderDb {
           .eq('rank', 'owner')
           .is('archived_at', null)
           .then(check),
-        db
-          .from('recruit_events')
-          .select('application_id, created_at')
-          .in(
-            'application_id',
-            apps.map((a) => a.id)
-          )
-          .neq('kind', 'reminder_sent')
-          .then(check)
+        // Every open record's history, by the record's own filter rather than a
+        // list of ids, which could outgrow the address.
+        paged((from, to) =>
+          db
+            .from('recruit_events')
+            .select('id, application_id, created_at, recruit_applications!inner(closed_at)')
+            .is('recruit_applications.closed_at', null)
+            .neq('kind', 'reminder_sent')
+            .order('id')
+            .range(from, to)
+        )
       ]);
       const personIds = [
         ...new Set([...apps.map((a) => a.person_id), ...(owners as any[]).map((o) => o.person_id)].filter(Boolean))

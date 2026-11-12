@@ -78,6 +78,7 @@ function setup(rec: Partial<Rec> = {}, env = ENV) {
   const ticket: Msg[] = [];
   let clock = T0;
   let down = false;
+  let readStatus = 200;
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
   const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
@@ -86,6 +87,7 @@ function setup(rec: Partial<Rec> = {}, env = ENV) {
     if (down) return new Response('', { status: 503 });
     const path = req.url.slice(API.length);
     if (req.method === 'GET' && path === '/channels/' + TICKET + '/messages?limit=50') {
+      if (readStatus !== 200) return json({ code: 50001 }, readStatus);
       return json([...ticket].reverse());
     }
     if (req.method === 'POST' && path === '/users/@me/channels') return json({ id: DM });
@@ -153,7 +155,8 @@ function setup(rec: Partial<Rec> = {}, env = ENV) {
     sweep,
     say,
     bot: (ms: number) => ticket.push({ author: { id: BOT, bot: true }, timestamp: at(ms) }),
-    setDown: (v: boolean) => (down = v)
+    setDown: (v: boolean) => (down = v),
+    setRead: (v: number) => (readStatus = v)
   };
 }
 
@@ -323,3 +326,35 @@ Deno.test('the cron secret is required, and a local stack sends nothing', async 
   const r = await local.sweep(T0 + 100 * H);
   assertEquals(r.body, { success: true, status: 'local' });
 });
+
+Deno.test('a ticket the bot lost access to is skipped; a deleted one keeps its saved turn', async () => {
+  const s = setup({ status: 'waiting_on_applicant', officers_last_message_at: at(T0) });
+  s.setRead(403);
+  let r = await s.sweep(T0 + 2.5 * H);
+  assertEquals(r.body.sent, 0);
+  s.setRead(404);
+  r = await s.sweep(T0 + 2.75 * H);
+  assertEquals(r.body.sent, 1);
+});
+
+Deno.test('a reminder held overnight says how long is really left', async () => {
+  // The officers wrote at 1 AM Eastern; the 48-hour reminder falls at 1 AM and waits until 9.
+  const night = Date.parse('2026-11-11T06:00:00Z');
+  const s = setup({ status: 'waiting_on_applicant', officers_last_message_at: at(night) });
+  let r = await s.sweep(night + 48 * H + 60_000);
+  assertEquals(r.body.sent, 0);
+  r = await s.sweep(night + 56 * H + 60_000);
+  assertEquals(r.body.sent, 1);
+  assertEquals(dms(s.posts)[0].body.content, REMIND_DM('Phoenix', '2 days'));
+});
+
+Deno.test(
+  'with no Team Owner linked, the 3-day ping still goes and the history says nobody was mentioned',
+  async () => {
+    const s = setup({ uses_ticket: false, ticket_channel_id: null, owner_discord_id: null });
+    const r = await s.sweep(T0 + 72 * H + 60_000);
+    assertEquals(r.body.sent, 1);
+    assertEquals(s.posts[0].body.content, WAITING('Katorrí', '3 days'));
+    assertEquals(s.events, ['Reminded the Team Owner (no Team Owner with a linked Discord, so nobody was mentioned)']);
+  }
+);
