@@ -1,3 +1,4 @@
+import { calendarDay, isoDateShort } from '../lib/dates';
 import { roleOfSpec, type Priority, type Role, type SpecRow } from './recruiting';
 
 // The Recruits page (#1549): what team_recruits() and recruit_record() return,
@@ -134,10 +135,9 @@ export function trialEnds(r: Recruit, today: string): string {
   if (left < 0) return 'ended';
   if (left === 0) return 'ends today';
   const [y, m, d] = r.trial_ends_on.split('-').map(Number);
-  const date = new Date(y!, m! - 1, d!);
   return left < 7
-    ? `ends ${date.toLocaleDateString('en-US', { weekday: 'long' })}`
-    : `ends ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    ? `ends ${calendarDay(new Date(y!, m! - 1, d!), 'weekday')}`
+    : `ends ${isoDateShort(r.trial_ends_on)}`;
 }
 
 export function whereItsAt(r: Recruit, now: Date, today: string): { label: string; detail: string } {

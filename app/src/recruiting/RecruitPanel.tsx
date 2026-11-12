@@ -4,7 +4,7 @@ import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
 import { useSupabase } from '../data/DataProvider';
-import { easternToday } from '../lib/dates';
+import { easternToday, formatInstant, formatInstantDate, localTimeZoneNote } from '../lib/dates';
 import { errorMessage } from '../lib/errors';
 import { characterLinks } from '../profile/profile';
 import { classColor } from '../roster/roster';
@@ -197,6 +197,8 @@ function Panel({
 
       <Notes rec={rec} notes={officerNotes} canWrite={writeNotes} />
 
+      {(rec.notes.length > 0 || rec.messages.length > 0) && <p className="text-dim rcs-small">{localTimeZoneNote()}</p>}
+
       {manage && <Actions r={r} />}
       {!manage && (
         <p className="text-dim rcs-small">
@@ -269,7 +271,7 @@ function Conversation({ rec }: { rec: RecruitRecord }) {
     <ul className="rcs-chat">
       {list.map((m, i) => (
         <li key={i}>
-          <b>{m.author_name}</b> <span className="text-dim">{new Date(m.sent_at).toLocaleString()}</span>
+          <b>{m.author_name}</b> <span className="text-dim">{formatInstant(m.sent_at)}</span>
           <div>
             {m.body}
             {m.attachments.map((f) => (
@@ -331,7 +333,7 @@ function Notes({ rec, notes, canWrite }: { rec: RecruitRecord; notes: RecruitRec
             <li key={n.id}>
               <div className="text-dim rcs-small">
                 {n.author ?? 'Someone'}
-                {n.source === 'discord' ? ' in Discord' : ''} {'·'} {new Date(n.created_at).toLocaleDateString()}
+                {n.source === 'discord' ? ' in Discord' : ''} {'·'} {formatInstantDate(n.created_at)}
               </div>
               {n.body}
             </li>

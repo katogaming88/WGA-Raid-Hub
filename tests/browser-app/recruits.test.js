@@ -7,8 +7,8 @@ import { launchBrowser, openApp, startApp, storedSession, NARROW } from './harne
 // phone, no sideways scroll, and the four jobs the issue names: starting a
 // trial, extending one with a reason, declining and adding a note.
 
-const HOUR = 3_600_000;
-const ago = (ms) => new Date(Date.now() - ms - 60_000).toISOString();
+const HOUR = 3600000;
+const ago = (ms) => new Date(Date.now() - ms - 60000).toISOString();
 const dayOffset = (days) => {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() + days);
