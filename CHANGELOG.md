@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.262.1] - 2026-11-12
+
+### Functions
+
+- `discord-join` (#1540) reads the bot app's id and client secret from the secrets production already has, `DISCORD_APPLICATION_ID` and `DISCORD_BOT_CLIENT_SECRET`, instead of two new ones holding the same values. Turning the Discord join step on now needs only `SITE_URL` and the `/apply/discord` redirect on the bot app's OAuth2 page.
+
+### Project
+
+- The function secrets example and the `discord-join` tests use the existing names.
+
 ## [3.262.0] - 2026-11-11
 
 ### Functions
