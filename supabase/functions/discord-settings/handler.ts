@@ -7,7 +7,8 @@
 //     needs within the hour before it takes one;
 //   - server: the team's saved server, with whether the bot is still in it,
 //     its text channels (each with what the bot is missing there), its
-//     categories (for the ticket category, #1541) and its roles; null when the team has none yet.
+//     categories (for the ticket category, #1541, each with what the bot lacks
+//     there to make ticket channels, #1814) and its roles; null when the team has none yet.
 // POST { teamId, action: 'find_ticket', ... } is Find my ticket's channel (#1542),
 //   find-ticket.ts's, asked for on Recruiting settings with its own gate.
 // POST { teamId, action: 'test', channelId, kind } posts a short test message
@@ -24,6 +25,7 @@ import {
   type DiscordChannel,
   type DiscordGuild,
   type DiscordMember,
+  type ShownCategory,
   type ShownChannel,
   type ShownRole,
   shownCategories,
@@ -136,7 +138,7 @@ export type ServerAnswer = {
   name: string | null;
   botIn: boolean;
   channels: ShownChannel[];
-  categories: Array<{ id: string; name: string }>;
+  categories: ShownCategory[];
   roles: ShownRole[];
 };
 
@@ -251,7 +253,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           name: guild.name,
           botIn: true,
           channels: shownChannels(guild, channels, me.id, bot),
-          categories: shownCategories(channels),
+          categories: shownCategories(guild, channels, me.id, bot),
           roles: shownRoles(guild)
         };
       }

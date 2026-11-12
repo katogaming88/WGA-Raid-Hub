@@ -10,6 +10,18 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-11-12 -- Who tickets would add, and where the bot can make them (#1814)
+
+Shipped: 20261112115816_team_ticket_viewers.sql
+
+- **`team_ticket_viewers(team)` answers who the team's tickets would add, with a yes or no for a linked Discord.** The settings page (#1548) has to warn about anyone who can't be added, and an officer can't read `people.discord_id`. It follows `recruit-ticket`'s `viewerIds()`: current members only, Owner and officers, assistants and the guild's Owner and Admins as the team's three settings say, each person once in their first group. Names come from `team_member_name()` for someone on the team and `guild_person_name()` for a guild Owner or Admin who isn't, as on the Ranks and Members pages. Those fall back to the Discord name when nothing else is set; never a Discord id.
+- **Same gate as `team_recruiting_settings()`** (`edit_recruiting`, or a site admin), since only that page shows it.
+- **`discord-settings` marks each category with what the bot lacks to make ticket channels there** (no migration). `recruit-ticket` makes each ticket with its own overwrites, so the channel doesn't follow its category's, and Discord lets the bot grant only what it has. In the category: View Channel, Manage Channels, Send Messages, Embed Links, Attach Files (given to the applicant and the team's people) and Read Message History. Manage Permissions is checked on the bot's roles alone, server-wide, and shown as "Manage Roles (server setting)", its name under Server Settings › Roles: the ticket's own overwrites never grant it and only an Administrator can set it in one, so a category overwrite would show nothing missing while every #1545 sync was refused (fresh-agent review). Create Private Threads, for an officer thread, belongs to the officer channel and is not part of this.
+
+[Full discussion -> #1814](https://github.com/katogaming88/WGA-Raid-Hub/issues/1814).
+
+---
+
 ## 2026-11-12 -- What the application form needs from the database (#1810)
 
 Shipped: 20261112105006_applicant_ticket_and_other_specs.sql

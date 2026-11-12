@@ -4,6 +4,7 @@ import { assertEquals } from 'jsr:@std/assert@1';
 import {
   type DiscordGuild,
   channelPermissions,
+  shownCategories,
   shownChannels,
   shownRoles
 } from '../../../supabase/functions/discord-settings/discord.ts';
@@ -113,6 +114,94 @@ Deno.test('channels: text and announcement only, by category then position, each
     { id: 'n', name: 'news', category: 'RAIDS', missing: [] },
     { id: 't', name: 'tuesday-raids', category: 'RAIDS', missing: [] }
   ]);
+});
+
+// #1814: what the bot lacks to make ticket channels in a category.
+const MANAGE_CHANNELS = 1n << 4n;
+const ATTACH = 1n << 15n;
+const MANAGE_PERMISSIONS = 1n << 28n;
+const withBotRole = (perms: bigint) => ({
+  ...GUILD,
+  roles: GUILD.roles.map((r) => (r.id === BOT_ROLE ? { ...r, permissions: String(perms) } : r))
+});
+
+Deno.test('categories: in order, each with what the bot needs there to make ticket channels', () => {
+  const list = shownCategories(
+    GUILD,
+    [
+      {
+        id: 'c2',
+        name: 'TICKETS',
+        type: 4,
+        position: 2,
+        permission_overwrites: [{ id: BOT_ROLE, type: 0, allow: String(MANAGE_CHANNELS | ATTACH), deny: '0' }]
+      },
+      {
+        id: 'c1',
+        name: 'OFFICERS',
+        type: 4,
+        position: 1,
+        permission_overwrites: [{ id: SERVER, type: 0, allow: '0', deny: String(VIEW) }]
+      },
+      { id: 't', name: 'tuesday-raids', type: 0, position: 1, parent_id: 'c2' }
+    ],
+    BOT,
+    bot
+  );
+  // The bot's roles give no Manage Permissions, so every category says so.
+  assertEquals(list, [
+    {
+      id: 'c1',
+      name: 'OFFICERS',
+      missing: ['View Channel', 'Manage Channels', 'Attach Files', 'Manage Roles (server setting)']
+    },
+    { id: 'c2', name: 'TICKETS', missing: ['Manage Roles (server setting)'] }
+  ]);
+});
+
+Deno.test('categories: Manage Permissions on the category alone is not enough; on a bot role it is', () => {
+  const onCategory = shownCategories(
+    GUILD,
+    [
+      {
+        id: 'c',
+        name: 'TICKETS',
+        type: 4,
+        position: 0,
+        permission_overwrites: [
+          { id: BOT_ROLE, type: 0, allow: String(MANAGE_CHANNELS | ATTACH | MANAGE_PERMISSIONS), deny: '0' }
+        ]
+      }
+    ],
+    BOT,
+    bot
+  );
+  assertEquals(onCategory[0]!.missing, ['Manage Roles (server setting)']);
+  const roleHasIt = withBotRole(EMBED | MANAGE_CHANNELS | ATTACH | MANAGE_PERMISSIONS);
+  assertEquals(shownCategories(roleHasIt, [{ id: 'c', name: 'T', type: 4, position: 0 }], BOT, bot)[0]!.missing, []);
+});
+
+Deno.test('categories: a category that denies Attach Files says so', () => {
+  const list = shownCategories(
+    withBotRole(EMBED | MANAGE_CHANNELS | MANAGE_PERMISSIONS),
+    [
+      {
+        id: 'c',
+        name: 'TICKETS',
+        type: 4,
+        position: 0,
+        permission_overwrites: [{ id: SERVER, type: 0, allow: '0', deny: String(ATTACH) }]
+      }
+    ],
+    BOT,
+    bot
+  );
+  assertEquals(list[0]!.missing, ['Attach Files']);
+});
+
+Deno.test('categories: an Administrator bot lacks nothing', () => {
+  const admin = withBotRole(1n << 3n);
+  assertEquals(shownCategories(admin, [{ id: 'c', name: 'T', type: 4, position: 0 }], BOT, bot)[0]!.missing, []);
 });
 
 Deno.test("roles: highest first, without @everyone or a bot's own role", () => {
