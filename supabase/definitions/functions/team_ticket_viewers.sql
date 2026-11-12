@@ -40,7 +40,10 @@ begin
     -- A guild Admin who is also on this team goes by the team's name for them,
     -- as the roster shows it (CodeRabbit).
     select g.person_id, 'guild_admin', 3,
-           coalesce(team_member_name(p_team_id, tm.id), guild_person_name(v_guild, g.person_id))
+           -- team_member_name() never answers null (its last fallback is
+           -- 'Unnamed'), so pick by whether they are on the team (fresh review).
+           case when tm.id is not null then team_member_name(p_team_id, tm.id)
+                else guild_person_name(v_guild, g.person_id) end
       from guild_ranks g
       left join team_members tm
         on tm.team_id = p_team_id and tm.person_id = g.person_id and tm.archived_at is null

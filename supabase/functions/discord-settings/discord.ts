@@ -98,36 +98,49 @@ export function shownChannels(
     });
 }
 
-// What the bot needs in a team's ticket category to make each applicant's
-// ticket channel there and set who sees it (#1541, #1814): the channel
-// inherits the category's overwrites, and setting a channel's own needs
-// Manage Permissions (Discord's Manage Roles bit) where it is made.
+// What the bot needs to make each applicant's ticket channel in a team's
+// category and keep who sees it right (#1541, #1545, #1814). recruit-ticket
+// makes the channel with its own overwrites, so it doesn't follow the
+// category's, and Discord lets the bot grant only what it has itself:
+//   in the category   View Channel, Manage Channels, Send Messages, Embed
+//                     Links, Attach Files (given to the applicant and the
+//                     team's people) and Read Message History;
+//   server-wide       Manage Permissions (Discord's Manage Roles bit), from
+//                     the bot's roles alone: the ticket's own overwrites never
+//                     grant it, and only an Administrator could set it there,
+//                     so a category overwrite doesn't help the sync (#1545).
 export const TICKET_NEEDED: Array<[bigint, string]> = [
   [1n << 10n, 'View Channel'],
   [1n << 4n, 'Manage Channels'],
-  [1n << 28n, 'Manage Permissions'],
   [1n << 11n, 'Send Messages'],
   [1n << 14n, 'Embed Links'],
+  [1n << 15n, 'Attach Files'],
   [1n << 16n, 'Read Message History']
 ];
+const MANAGE_PERMISSIONS = 1n << 28n;
+export const SERVER_WIDE_MANAGE = 'Manage Permissions (server-wide)';
 
 export type ShownCategory = { id: string; name: string; missing: string[] };
 
 // The server's categories in Discord's order, for the ticket category
-// picker (#1541), each with what the bot still needs there to make ticket
-// channels (#1814), so the picker can say what to add in Discord.
+// picker (#1541), each with what the bot still needs to make ticket channels
+// there (#1814), so the picker can say what to add in Discord.
 export function shownCategories(
   guild: DiscordGuild,
   channels: DiscordChannel[],
   botId: string,
   bot: DiscordMember
 ): ShownCategory[] {
+  // The bot's roles alone: a channel with no overwrites of its own.
+  const serverWide = channelPermissions(guild, botId, bot, { id: '', name: '', type: CATEGORY, position: 0 });
   return channels
     .filter((c) => c.type === CATEGORY)
     .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))
     .map((c) => {
       const perms = channelPermissions(guild, botId, bot, c);
-      return { id: c.id, name: c.name, missing: TICKET_NEEDED.filter(([bit]) => !(perms & bit)).map(([, n]) => n) };
+      const missing = TICKET_NEEDED.filter(([bit]) => !(perms & bit)).map(([, n]) => n);
+      if (!(serverWide & MANAGE_PERMISSIONS)) missing.push(SERVER_WIDE_MANAGE);
+      return { id: c.id, name: c.name, missing };
     });
 }
 

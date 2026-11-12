@@ -5,8 +5,9 @@
 -- guild's Owner and Admins (the last two when the team ticked them) to each
 -- ticket by their linked Discord account. Someone with none can't be added,
 -- and the settings page has to say so (#1541). An officer can't read anyone's
--- Discord link, so this returns the list with a yes or no for each, and
--- nothing else about their Discord.
+-- Discord link, so this returns the list with a yes or no for each. A name
+-- is whatever the Roster or Members page would show, which falls back to the
+-- Discord name when nothing else is set; never a Discord id.
 
 create function public.team_ticket_viewers(p_team_id integer)
 returns table (display_name text, viewer_group text, discord_linked boolean)
@@ -47,7 +48,10 @@ begin
     -- A guild Admin who is also on this team goes by the team's name for them,
     -- as the roster shows it (CodeRabbit).
     select g.person_id, 'guild_admin', 3,
-           coalesce(team_member_name(p_team_id, tm.id), guild_person_name(v_guild, g.person_id))
+           -- team_member_name() never answers null (its last fallback is
+           -- 'Unnamed'), so pick by whether they are on the team (fresh review).
+           case when tm.id is not null then team_member_name(p_team_id, tm.id)
+                else guild_person_name(v_guild, g.person_id) end
       from guild_ranks g
       left join team_members tm
         on tm.team_id = p_team_id and tm.person_id = g.person_id and tm.archived_at is null
@@ -66,7 +70,7 @@ end;
 $$;
 
 comment on function public.team_ticket_viewers(integer) is
-  'Who the team''s recruiting tickets would add (#1814, for #1548): its Owner and officers, assistants and the guild''s Owner and Admins as the team''s visibility settings say, each once, with whether their Discord is linked. For edit_recruiting holders and site admins. No Discord id or username.';
+  'Who the team''s recruiting tickets would add (#1814, for #1548): its Owner and officers, assistants and the guild''s Owner and Admins as the team''s visibility settings say, each once, with whether their Discord is linked. For edit_recruiting holders and site admins. Names as the Roster and Members pages show them; never a Discord id.';
 
 revoke all on function public.team_ticket_viewers(integer) from public, anon;
 grant execute on function public.team_ticket_viewers(integer) to authenticated;

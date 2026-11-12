@@ -83,6 +83,28 @@ describe('team_ticket_viewers()', () => {
     });
   });
 
+  it('names a guild Admin who is not on the team as the guild does', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await lockTeam(q);
+      await q(
+        'update public.team_recruiting set visible_to_team_officers = false, visible_to_team_assistants = false, visible_to_guild_admins = true where team_id = 3'
+      );
+      const me = await personOf(q, GUILD_OFFICER);
+      // Their Name on team 1, the seed's guild Admin's own team: the guild's
+      // name for them. Before the fix this showed as "Unnamed".
+      await q(
+        "insert into public.names (team_id, label, team_member_id) select m.team_id, 'Guildadmin', m.id from public.team_members m where m.team_id = 1 and m.person_id = $1",
+        [me]
+      );
+      const asGuild = (
+        await q('select public.guild_person_name(t.guild_id, $1) as n from public.teams t where t.id = 3', [me])
+      ).rows[0].n;
+      const names = (await viewers(asUser)).map((r) => r.display_name);
+      expect(asGuild).toBe('Guildadmin');
+      expect(names).toContain('Guildadmin');
+    });
+  });
+
   it('leaves out a member who left the team', async () => {
     await withTxn(async ({ q, asUser }) => {
       await lockTeam(q);
@@ -96,9 +118,15 @@ describe('team_ticket_viewers()', () => {
   });
 
   it('answers the team’s recruiting editors and a site admin, and refuses everyone else', async () => {
-    await withTxn(async ({ asUser }) => {
+    await withTxn(async ({ q, asUser }) => {
+      await lockTeam(q);
       expect((await viewers(asUser, TEAM_LEADER_T3)).length).toBeGreaterThan(0);
       expect((await viewers(asUser, SITE_ADMIN)).length).toBeGreaterThan(0);
+      await expect(viewers(asUser, RAIDER_T3)).rejects.toThrow('Not authorized');
+      // An Assistant can't change recruiting, so can't read who tickets add.
+      await q("update public.team_members set rank = 'assistant' where team_id = 3 and person_id = $1", [
+        await personOf(q, RAIDER_T3)
+      ]);
       await expect(viewers(asUser, RAIDER_T3)).rejects.toThrow('Not authorized');
       await expect(viewers(asUser, OFFICER_T1)).rejects.toThrow('Not authorized');
       await expect(viewers(asUser, GUILD_OFFICER)).rejects.toThrow('Not authorized');
