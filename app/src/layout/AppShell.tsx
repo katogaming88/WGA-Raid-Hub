@@ -117,8 +117,12 @@ export function AppShell() {
   const council = useLootCouncil(navTeam?.id ?? 0);
   const permissions = useCan(navTeam?.id, guildId);
   const { can, hasGuildRank } = permissions;
+  // The apply pages (#1546) are open to anyone: no team or guild rank needed.
+  const applyPage = /^\/g\/[^/]+\/apply(\/|$)/.test(location.pathname);
+  const visitor = !hasGuildRank && !teams.some((t) => onTeamIds.has(t.id));
   const groups = navGroups(base, {
     can,
+    visitor: applyPage && visitor,
     guildSettings: (can('manageTeams') || can('manageMembers')) && !limited,
     hideBoe: limited,
     siteAdmin: can('adminSite'),
@@ -260,7 +264,7 @@ export function AppShell() {
         {() => null}
       </DataState>
     );
-  } else if (!sitePage && !hasGuildRank && !teamsQuery.data.some((t) => onTeamIds.has(t.id))) {
+  } else if (!sitePage && !applyPage && !hasGuildRank && !teamsQuery.data.some((t) => onTeamIds.has(t.id))) {
     // A guild's pages are for its members (#1264): anyone without a current
     // membership on one of its teams, signed out included, gets the front
     // page, and so does Staff. Someone whose rank in this guild holds any

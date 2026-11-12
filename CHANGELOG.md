@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.263.1] - 2026-11-12
+
+### Project
+
+- The new app has public apply pages (#1546), open to anyone, signed in or not. `/g/<guild>/apply` ("Join us" in the sidebar's Guild group) shows one card per listed team: Recruiting or Not recruiting, how to join, raid nights in the visitor's own time zone, progress and who the team is looking for, High first. An "I play" filter (Anything, Tank, Healer, Melee, Ranged) outlines the teams that need that role and fades the rest. Form teams get an Apply button, ticket teams an Open a Discord ticket button, and a team that isn't recruiting shows its nights with no button. `/g/<guild>/apply/<team>` is one team's page: about, raid nights and quick facts, what it asks for, and who it wants. `?from=<code>` on either page is kept in the browser for 30 days, the latest click winning, for the application form's "Who sent you?"; an unknown or switched-off code is ignored. Someone with no team sees a short menu, Join us and the site pages, instead of the team menu. Not on the page yet: the team's officers to ask, how loot works and the guild's own Discord (none of them are in what `team_recruiting_page()` returns), and the Apply form (#1538), which the Apply button's address is reserved for.
+
 ## [3.263.0] - 2026-11-12
 
 ### Functions

@@ -86,3 +86,58 @@ export function localTimeZoneNote(): string {
   }
   return 'Times are shown in your own time zone.';
 }
+
+// A weekly raid night, kept as a weekday and a wall-clock time in the team's
+// own zone, shown in the viewer's zone (#1546): "Thursday" and "8:00 PM to
+// 11:00 PM". The weekday can move a day (11 PM Eastern is already Friday in
+// Europe). The zone's offset is read for the coming occurrence, so daylight
+// saving is right on the date the night is next played.
+const partsIn = (instant: number, timeZone: string) => {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric'
+    })
+      .formatToParts(new Date(instant))
+      .map((p) => [p.type, Number(p.value)])
+  ) as Record<'year' | 'month' | 'day' | 'hour' | 'minute', number>;
+  return parts;
+};
+
+// Minutes the zone is ahead of UTC at that instant.
+const offsetMinutes = (instant: number, timeZone: string) => {
+  const p = partsIn(instant, timeZone);
+  return (Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute) - Math.floor(instant / 60000) * 60000) / 60000;
+};
+
+export function nightInViewerZone(
+  night: { weekday: number; start_time: string; timezone: string; duration_minutes: number },
+  // The viewer's zone (their browser's when left out) and the moment to count from.
+  viewerZone?: string,
+  now: Date = new Date()
+): { day: string; time: string } {
+  const [h = 0, m = 0] = night.start_time.split(':').map(Number);
+  const today = partsIn(now.getTime(), night.timezone);
+  let start = now.getTime();
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(Date.UTC(today.year, today.month - 1, today.day + i));
+    if (date.getUTCDay() !== night.weekday) continue;
+    const guess = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), h, m);
+    start = guess - offsetMinutes(guess, night.timezone) * 60000;
+    // The offset can differ at the real instant, across a clock change.
+    start = guess - offsetMinutes(start, night.timezone) * 60000;
+    break;
+  }
+  const end = start + night.duration_minutes * 60000;
+  const day = new Intl.DateTimeFormat('en-US', { timeZone: viewerZone, weekday: 'long' });
+  const clock = new Intl.DateTimeFormat('en-US', { timeZone: viewerZone, hour: 'numeric', minute: '2-digit' });
+  return {
+    day: day.format(new Date(start)),
+    time: `${clock.format(new Date(start))} to ${clock.format(new Date(end))}`
+  };
+}
