@@ -107,7 +107,10 @@ Deno.test('load: shared servers recorded, and the saved server read with its cha
   assertEquals(body.server.name, 'We Go Again');
   assertEquals(body.server.botIn, true);
   assertEquals(body.server.channels, [{ id: CHANNEL, name: 'phoenix-officers', category: null, missing: [] }]);
-  assertEquals(body.server.categories, [{ id: '100000000000000777', name: 'Tickets' }]);
+  // The fixture's bot can post but not make channels there (#1814).
+  assertEquals(body.server.categories, [
+    { id: '100000000000000777', name: 'Tickets', missing: ['Manage Channels', 'Manage Permissions'] }
+  ]);
   assertEquals(
     body.server.roles.map((r: { name: string }) => r.name),
     ['Phoenix Officer', 'Phoenix Raider']

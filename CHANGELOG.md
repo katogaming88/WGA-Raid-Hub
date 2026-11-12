@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.265.0] - 2026-11-12
+
+### Backend
+
+- A team's recruiting editors can see who its recruiting tickets would add (#1814): the team's Owner and officers, its assistants and the guild's Owner and Admins, as the team's settings say, each once, with whether they have linked Discord. Someone without a linked Discord can't be added to a ticket, so the Recruiting settings page (#1548) will warn about them. Names and a yes or no only.
+
+### Functions
+
+- `discord-settings` (#1814) says, for each category in the team's Discord server, what the bot is missing there to make ticket channels: View Channel, Manage Channels, Manage Permissions, Send Messages, Embed Links and Read Message History. The ticket category picker on Recruiting settings (#1548) will mark a category that's missing any and say what to add.
+
+### Project
+
+- RLS tests for who tickets would add, edge tests for the categories' missing permissions.
+
 ## [3.264.1] - 2026-11-12
 
 ### Project

@@ -98,13 +98,37 @@ export function shownChannels(
     });
 }
 
+// What the bot needs in a team's ticket category to make each applicant's
+// ticket channel there and set who sees it (#1541, #1814): the channel
+// inherits the category's overwrites, and setting a channel's own needs
+// Manage Permissions (Discord's Manage Roles bit) where it is made.
+export const TICKET_NEEDED: Array<[bigint, string]> = [
+  [1n << 10n, 'View Channel'],
+  [1n << 4n, 'Manage Channels'],
+  [1n << 28n, 'Manage Permissions'],
+  [1n << 11n, 'Send Messages'],
+  [1n << 14n, 'Embed Links'],
+  [1n << 16n, 'Read Message History']
+];
+
+export type ShownCategory = { id: string; name: string; missing: string[] };
+
 // The server's categories in Discord's order, for the ticket category
-// picker (#1541).
-export function shownCategories(channels: DiscordChannel[]): Array<{ id: string; name: string }> {
+// picker (#1541), each with what the bot still needs there to make ticket
+// channels (#1814), so the picker can say what to add in Discord.
+export function shownCategories(
+  guild: DiscordGuild,
+  channels: DiscordChannel[],
+  botId: string,
+  bot: DiscordMember
+): ShownCategory[] {
   return channels
     .filter((c) => c.type === CATEGORY)
     .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))
-    .map((c) => ({ id: c.id, name: c.name }));
+    .map((c) => {
+      const perms = channelPermissions(guild, botId, bot, c);
+      return { id: c.id, name: c.name, missing: TICKET_NEEDED.filter(([bit]) => !(perms & bit)).map(([, n]) => n) };
+    });
 }
 
 // The roles a post can ping, highest first as Discord lists them: not

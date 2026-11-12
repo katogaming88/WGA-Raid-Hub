@@ -6341,6 +6341,14 @@ export type Database = {
         Returns: string
       }
       team_takes_applications: { Args: { p_team_id: number }; Returns: boolean }
+      team_ticket_viewers: {
+        Args: { p_team_id: number }
+        Returns: {
+          discord_linked: boolean
+          display_name: string
+          viewer_group: string
+        }[]
+      }
       team_unnamed_members: {
         Args: { p_team_id: number }
         Returns: {
