@@ -197,7 +197,7 @@ describe('Calendar (new app): a raid night, checked against the current site', (
     await form.getByRole('button', { name: 'Save' }).click();
     await expect.poll(() => calls.length).toBe(OWN_WRITES.length);
     expect(calls).toEqual(withTeamId(OWN_WRITES));
-    await expect(opened.page.getByRole('status').filter({ hasText: 'Saved: Tentative' }).count()).resolves.toBe(1);
+    await expect.poll(() => opened.page.getByRole('status').filter({ hasText: 'Saved: Tentative' }).count()).toBe(1);
     calls.length = 0;
   });
 
@@ -216,7 +216,7 @@ describe('Calendar (new app): a raid night, checked against the current site', (
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect.poll(() => calls.length).toBe(OFFICER_WRITES.length);
     expect(calls).toEqual(withTeamId(OFFICER_WRITES));
-    await expect(opened.page.getByRole('dialog').count()).resolves.toBe(0);
+    await expect.poll(() => opened.page.getByRole('dialog').count()).toBe(0);
     calls.length = 0;
   });
 

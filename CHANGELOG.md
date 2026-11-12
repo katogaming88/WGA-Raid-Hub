@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.259.1] - 2026-11-11
+
+### Project
+
+- The calendar browser tests no longer fail at random on a slow CI runner (#1802): after a save they keep checking until the "Saved" message shows and the dialog closes, instead of checking once.
+
 ## [3.259.0] - 2026-11-10
 
 ### Backend
