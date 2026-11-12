@@ -101,7 +101,6 @@
   color: var(--text-dim);
 }
 
-.rec-check,
 .rec-radios label,
 .rec-segments label,
 .rec-own-actions label,
@@ -110,6 +109,12 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.rec-check {
+  display: block;
   min-height: 32px;
   cursor: pointer;
 }
@@ -245,6 +250,11 @@
 .rec-spot-name {
   flex: 1 1 200px;
   font-weight: 600;
+}
+
+.rec-spot .select {
+  flex: 0 0 140px;
+  width: auto;
 }
 
 .rec-chips {
