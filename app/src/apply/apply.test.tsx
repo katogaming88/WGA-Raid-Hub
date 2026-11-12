@@ -162,7 +162,7 @@ describe('the guild apply page', () => {
     expect(wrathless.queryByRole('link', { name: 'Apply' })).toBeNull();
     expect(wrathless.queryByRole('link', { name: 'Open a Discord ticket' })).toBeNull();
     // Still shows when it raids.
-    expect(wrathless.getByText('Wednesday', { exact: false })).toBeInTheDocument();
+    expect(wrathless.getAllByRole('listitem')).toHaveLength(1);
     // The mockup's one visitor menu, not the whole team menu.
     expect(screen.queryByRole('link', { name: 'Roster' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Join us' })).toBeInTheDocument();
