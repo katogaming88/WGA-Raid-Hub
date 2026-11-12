@@ -343,6 +343,8 @@ export async function openApp(browser, port, state) {
       // The signed-in raider's signup, which My profile reads for a character
       // not on the roster yet (#1609): none unless the state says otherwise.
       if (rest === 'rpc/get_own_signup' && !state.rpc?.get_own_signup) return route.fulfill(json([]));
+      // The sidebar asks for the signed-in person's applications (#1547).
+      if (rest === 'rpc/my_applications' && !state.rpc?.my_applications) return route.fulfill(json([]));
       // Guild creation is off unless the state says otherwise (#1226).
       if (rest === 'rpc/guild_creation_open' && !state.rpc?.guild_creation_open) return route.fulfill(json(false));
       // Other RPCs a state expects, like a form's submit.

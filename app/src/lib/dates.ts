@@ -141,3 +141,13 @@ export function nightInViewerZone(
     time: `${clock.format(new Date(start))} to ${clock.format(new Date(end))}`
   };
 }
+
+// The viewer's IANA time zone, from the browser; null when it won't say. The
+// application form sends it (#1547) so reminders never DM overnight.
+export function localTimeZone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}

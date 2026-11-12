@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { AxeBuilder } from '@axe-core/playwright';
-import { launchBrowser, openApp, startApp, NARROW } from './harness.js';
+import { launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
 
 // The public apply pages (#1546) in a real browser, signed out: no violations
 // at WCAG 2.1 AA in dark and light, no sideways scroll on a phone, and the
@@ -115,6 +115,157 @@ describe('the role filter', () => {
       await expect(page.locator('.apply-faded').count()).resolves.toBe(2);
       await page.getByRole('radio', { name: 'Anything' }).check();
       await expect(page.locator('.apply-match').count()).resolves.toBe(0);
+    } finally {
+      await context.close();
+    }
+  });
+});
+
+// The application form (#1547), signed in with Battle.net and Discord, back
+// from Battle.net with a token. The fake answers the character list, its
+// numbers, the form, and the send.
+const FORM_STATE = {
+  path: '/g/wga/apply/phoenix/form',
+  sentinel: '#character',
+  session: storedSession({ battlenet: 'Katorri#1', discord: 'Katorri', providerToken: 'battlenet-token' }),
+  sessionStorage: { 'wga-auth-intent': 'signup-character', 'wga-auth-provider': 'custom:battlenet' },
+  rpc: {
+    team_recruiting_page: [TEAM],
+    team_application_form: {
+      starters: [
+        {
+          key: 'about',
+          group: 'About them',
+          label: 'A line',
+          prompt: 'Tell the team about yourself.',
+          answer_type: 'short_text',
+          max_length: 100,
+          choices: [],
+          required: true
+        },
+        {
+          key: 'sent_by',
+          group: 'How',
+          label: 'Who',
+          prompt: 'Who sent you?',
+          answer_type: 'recruiter',
+          max_length: null,
+          choices: [],
+          required: false
+        }
+      ],
+      questions: [
+        {
+          id: 9,
+          label: 'Voice',
+          prompt: 'Can you listen on voice?',
+          answer_type: 'yes_no',
+          max_length: null,
+          choices: null,
+          required: true
+        }
+      ]
+    },
+    guild_active_recruiters: [{ name: 'Rexa', code: 'abcd1234' }],
+    send_application: 55
+  },
+  tables: {
+    classes_specs: [
+      { spec: 'Affliction', role: 'Ranged' },
+      { spec: 'Demonology', role: 'Ranged' }
+    ],
+    characters: [{ id: 7 }]
+  },
+  functionAnswers: {
+    'battlenet-characters': {
+      characters: [
+        {
+          blizzard_id: 77,
+          name: 'Katorri',
+          realm: 'Stormrage',
+          realm_slug: 'stormrage',
+          class_name: 'Warlock',
+          spec_name: 'Demonology',
+          level: 90,
+          item_level: 250,
+          saved: false,
+          roster: null
+        }
+      ],
+      roster: []
+    },
+    'character-stats': {
+      success: true,
+      failed: ['mythic_keystone'],
+      character: {
+        item_level: 250,
+        mplus_score: null,
+        heroic_logs: { best: 91, median: 80 },
+        mythic_logs: null,
+        mythic_bosses_killed: { killed: 4, total: 9 }
+      }
+    },
+    'discord-join': { success: true, status: 'off' },
+    'recruit-ticket': { success: true, status: 'made', mode: 'ticket', ticket_url: null, welcome_dm: 'sent' }
+  }
+};
+
+describe.each([
+  { label: 'the form', ...FORM_STATE },
+  { label: 'the form, light', ...FORM_STATE, colorScheme: 'light' },
+  { label: 'the form, on a phone', ...FORM_STATE, viewport: NARROW }
+])('$label, signed in', (state) => {
+  it('has no WCAG 2.1 AA violations after a character is picked, and no sideways scroll', async () => {
+    const { context, page, unexpected, pageErrors } = await openApp(browser, server.port, state);
+    try {
+      await page.locator('#character').selectOption('77');
+      await page.getByText('Couldn’t load').waitFor();
+      expect(await axe(page)).toEqual([]);
+      expect(unexpected).toEqual([]);
+      expect(pageErrors).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(
+        0
+      );
+    } finally {
+      await context.close();
+    }
+  });
+});
+
+describe('the application form, in use', () => {
+  it('shows a failed number on its own and the friend box only for a friend', async () => {
+    const { context, page } = await openApp(browser, server.port, FORM_STATE);
+    try {
+      await page.locator('#character').selectOption('77');
+      await page.getByText('Couldn’t load').waitFor();
+      await expect(page.getByText('Couldn’t load').count()).resolves.toBe(1);
+      await expect(page.getByText('91', { exact: true }).count()).resolves.toBe(1);
+      await expect(page.locator('#friend').count()).resolves.toBe(0);
+      await page.locator('#sent-by').selectOption('friend');
+      await expect(page.locator('#friend').count()).resolves.toBe(1);
+    } finally {
+      await context.close();
+    }
+  });
+
+  it('holds back a missing required answer, then sends a full application', async () => {
+    const { context, page } = await openApp(browser, server.port, FORM_STATE);
+    const sent = [];
+    page.on('request', (r) => {
+      if (r.url().includes('rpc/send_application')) sent.push(r.postDataJSON());
+    });
+    try {
+      await page.locator('#character').selectOption('77');
+      await page.getByRole('button', { name: 'Send application' }).click();
+      await expect(page.getByText('Please answer this.').count()).resolves.toBe(2);
+      expect(sent).toEqual([]);
+
+      await page.getByLabel('Tell the team about yourself.').fill('Hi there');
+      await page.getByRole('radio', { name: 'Yes' }).check();
+      await page.getByRole('button', { name: 'Send application' }).click();
+      await page.waitForURL('**/g/wga/applications/55');
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toMatchObject({ p_team_id: 1, p_character_id: 7, p_answers: { about: 'Hi there', 9: true } });
     } finally {
       await context.close();
     }

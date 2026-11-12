@@ -202,3 +202,147 @@
     padding: var(--space-4);
   }
 }
+
+/* The application form, the after-send page and My applications (#1547). */
+
+.apply-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.apply-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-3);
+}
+
+.apply-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.apply-stat b {
+  font-size: var(--text-lg);
+}
+
+.apply-stat span {
+  font-size: var(--text-xs);
+}
+
+.apply-note {
+  margin: 0;
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--button);
+  color: var(--text-muted);
+}
+
+.apply-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.apply-choices legend {
+  flex-basis: 100%;
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.apply-choices label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.apply-counter {
+  align-self: flex-end;
+  font-size: var(--text-sm);
+}
+
+.apply-discord {
+  margin: 0;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.apply-discord p {
+  margin: 0 0 var(--space-2);
+}
+
+.apply-send {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.apply-send .apply-line {
+  flex: 1 1 280px;
+}
+
+.apply-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.apply-step {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+
+.apply-dot {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.apply-step-done .apply-dot {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.apply-step-now .apply-dot {
+  border-color: var(--button);
+  color: var(--button);
+}
+
+.apply-step-label {
+  font-weight: 600;
+}
+
+.apply-step-later .apply-step-label {
+  color: var(--text-muted);
+}
+
+.apply-withdraw {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.apply-under {
+  margin-top: var(--space-2);
+}
