@@ -321,8 +321,29 @@ async function freshTickets(deps: Deps, fresh: Fresh) {
   return made;
 }
 
+// Every open ticket and officer thread kept in step with who should see it
+// (#1545): recruit-ticket compares and fixes them all in one call. Returns how
+// many changes it made, or null when the call failed (tried again next sweep).
+async function syncAccess(deps: Deps, fresh: Fresh): Promise<number | null> {
+  try {
+    const res = await deps.fetch(fresh.url + '/functions/v1/recruit-ticket', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-cron-secret': fresh.secret },
+      body: JSON.stringify({ action: 'sync' }),
+      // A few Discord reads per open ticket, five seconds each at worst.
+      signal: AbortSignal.timeout(120_000)
+    });
+    const answer = await res.json().catch(() => null);
+    if (res.ok) return answer?.changed ?? 0;
+    console.error('recruit-reminders: access sync:', res.status, answer?.error);
+  } catch (e) {
+    console.error('recruit-reminders: access sync failed:', e instanceof Error ? e.message : e);
+  }
+  return null;
+}
+
 export async function closeTickets(deps: Deps, token: string, fresh?: Fresh) {
-  const done = { closed: 0, deleted: 0, reopened: 0, failed: 0, fresh: 0 };
+  const done = { closed: 0, deleted: 0, reopened: 0, failed: 0, fresh: 0, access: null as number | null };
   for (const t of await deps.db.closingTickets()) {
     try {
       const did = await step(deps, token, t);
@@ -335,6 +356,9 @@ export async function closeTickets(deps: Deps, token: string, fresh?: Fresh) {
       );
     }
   }
-  if (fresh) done.fresh = await freshTickets(deps, fresh);
+  if (fresh) {
+    done.fresh = await freshTickets(deps, fresh);
+    done.access = await syncAccess(deps, fresh);
+  }
   return done;
 }

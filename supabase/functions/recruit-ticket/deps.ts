@@ -207,6 +207,27 @@ function supabaseDb(): TicketDb {
       check(await db().from('recruit_applications').update({ ticket_deleted_at: null }).eq('id', applicationId));
     },
 
+    async openTickets() {
+      const rows = check(
+        await db()
+          .from('recruit_applications')
+          .select('id')
+          .is('closed_at', null)
+          .is('ticket_closed_at', null)
+          .is('ticket_deleted_at', null)
+          .or('discord_channel_id.not.is.null,discord_thread_id.not.is.null')
+          .order('id')
+      ) as Array<{ id: number }>;
+      return rows.map((r) => r.id);
+    },
+
+    async linkedDiscordIds(ids) {
+      const rows = check(await db().from('people').select('discord_id').in('discord_id', ids)) as Array<{
+        discord_id: string;
+      }>;
+      return new Set(rows.map((r) => r.discord_id));
+    },
+
     async saveMade(applicationId, actor, made, detail) {
       // A fresh ticket after a reopen starts the closing steps over (#1544).
       check(

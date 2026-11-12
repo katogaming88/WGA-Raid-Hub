@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.263.0] - 2026-11-12
+
+### Functions
+
+- **Who sees a recruit's ticket follows Raid Hub** (#1545). Every 15 minutes the recruiting sweep checks each open ticket and officer thread against who should see it, and fixes any difference: someone promoted to officer (or assistant, when the team shows tickets to assistants) or who links their Discord account is let in; someone demoted or who left the team is taken out; a change to the team's "who can see" settings (assistants, the guild's Owner and Admins, extra Discord roles) reaches every open ticket. It also mends anything Discord dropped or someone changed by hand. Only what Raid Hub itself added is ever taken away: an overwrite an officer set by hand on a ticket channel, and anyone in an officer thread who isn't on Raid Hub, are left alone. Holders of a team's Discord roles are added to officer threads one by one, with no pings, once the bot's Server Members switch is on in the Discord Developer Portal; until then a team that lists roles has nobody removed from its threads.
+
+### Project
+
+- Tests for the access check (#1545): a promotion, a demotion, a dropped role, hand-made overwrites left alone, an officer thread's role holders and non-Raid-Hub members, an archived thread brought back before its members change, a ticket deleted by hand, and only the sweep may ask. The decision log has the entry; the time log re-times the 2026-11-11 evening rows from the transcript.
+
 ## [3.262.1] - 2026-11-12
 
 ### Functions
