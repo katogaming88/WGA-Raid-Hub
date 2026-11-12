@@ -20,7 +20,7 @@ answers to.
 
 ### Functions
 
-- `discord-settings` (#1814) says, for each category in the team's Discord server, what the bot is missing there to make ticket channels: View Channel, Manage Channels, Send Messages, Embed Links, Attach Files and Read Message History in the category, and Manage Permissions on the bot's own role, since a ticket doesn't take its category's permissions. The ticket category picker on Recruiting settings (#1548) will mark a category that's missing any and say what to add.
+- `discord-settings` (#1814) says, for each category in the team's Discord server, what the bot is missing there to make ticket channels: View Channel, Manage Channels, Send Messages, Embed Links, Attach Files and Read Message History in the category, and Manage Roles on the bot's own role (a server setting), since a ticket doesn't take its category's permissions. The ticket category picker on Recruiting settings (#1548) will mark a category that's missing any and say what to add.
 
 ### Project
 

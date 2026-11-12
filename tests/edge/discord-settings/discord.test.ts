@@ -153,9 +153,9 @@ Deno.test('categories: in order, each with what the bot needs there to make tick
     {
       id: 'c1',
       name: 'OFFICERS',
-      missing: ['View Channel', 'Manage Channels', 'Attach Files', 'Manage Permissions (server-wide)']
+      missing: ['View Channel', 'Manage Channels', 'Attach Files', 'Manage Roles (server setting)']
     },
-    { id: 'c2', name: 'TICKETS', missing: ['Manage Permissions (server-wide)'] }
+    { id: 'c2', name: 'TICKETS', missing: ['Manage Roles (server setting)'] }
   ]);
 });
 
@@ -176,7 +176,7 @@ Deno.test('categories: Manage Permissions on the category alone is not enough; o
     BOT,
     bot
   );
-  assertEquals(onCategory[0]!.missing, ['Manage Permissions (server-wide)']);
+  assertEquals(onCategory[0]!.missing, ['Manage Roles (server setting)']);
   const roleHasIt = withBotRole(EMBED | MANAGE_CHANNELS | ATTACH | MANAGE_PERMISSIONS);
   assertEquals(shownCategories(roleHasIt, [{ id: 'c', name: 'T', type: 4, position: 0 }], BOT, bot)[0]!.missing, []);
 });

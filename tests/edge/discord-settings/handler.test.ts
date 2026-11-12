@@ -112,7 +112,7 @@ Deno.test('load: shared servers recorded, and the saved server read with its cha
     {
       id: '100000000000000777',
       name: 'Tickets',
-      missing: ['Manage Channels', 'Attach Files', 'Manage Permissions (server-wide)']
+      missing: ['Manage Channels', 'Attach Files', 'Manage Roles (server setting)']
     }
   ]);
   assertEquals(

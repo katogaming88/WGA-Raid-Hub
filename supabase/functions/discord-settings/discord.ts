@@ -118,7 +118,7 @@ export const TICKET_NEEDED: Array<[bigint, string]> = [
   [1n << 16n, 'Read Message History']
 ];
 const MANAGE_PERMISSIONS = 1n << 28n;
-export const SERVER_WIDE_MANAGE = 'Manage Permissions (server-wide)';
+export const SERVER_WIDE_MANAGE = 'Manage Roles (server setting)';
 
 export type ShownCategory = { id: string; name: string; missing: string[] };
 
