@@ -12,6 +12,8 @@ import {
   NOT_CONNECTED,
   NOT_YOUR_CHARACTER,
   NOT_YOURS,
+  NOT_YOUR_APPLICATION,
+  type Numbers,
   USERINFO_URL,
   WCL_API,
   WCL_TOKEN_URL,
@@ -52,6 +54,8 @@ function routes(): Record<string, Route> {
 function setup(over: Partial<Record<string, Route>> = {}, linked: string | null = BNET_ID) {
   const table = { ...routes(), ...over };
   const calls: string[] = [];
+  const saves: [string, number, number, Numbers][] = [];
+  let ownApplication = true;
   const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input).split('?')[0];
     calls.push(url);
@@ -65,14 +69,18 @@ function setup(over: Partial<Record<string, Route>> = {}, linked: string | null 
     db: {
       getUser: () => Promise.resolve({ id: 'u1' }),
       battlenetAccountId: () => Promise.resolve(linked),
-      seasonZone: () => Promise.resolve({ wcl_zone_id: 53, name: 'The Venomous Abyss' })
+      seasonZone: () => Promise.resolve({ wcl_zone_id: 53, name: 'The Venomous Abyss' }),
+      saveToApplication: (userId, applicationId, blizzardId, numbers) => {
+        saves.push([userId, applicationId, blizzardId, numbers]);
+        return Promise.resolve(ownApplication);
+      }
     },
     wcl: { clientId: 'id', clientSecret: 'secret' },
     cache: new Map<string, Cached>(),
     now: () => clock,
     tick: (ms) => (clock += ms)
   };
-  return { deps, calls };
+  return { deps, calls, saves, notOwn: () => (ownApplication = false) };
 }
 
 const post = (body: unknown) =>
@@ -230,4 +238,51 @@ Deno.test('an answer with a failed source is not cached', async () => {
   await call(deps);
   await call(deps);
   assertEquals(calls.filter((u) => u === WCL_API).length, 2);
+});
+
+// #1810: the copy kept on the application, written by the server.
+Deno.test('keeps the numbers on the caller own application, Mythic logs first', async () => {
+  const { deps, saves } = setup();
+  const { status: code } = await call(deps, { token: 'tok', character: GRIHZ, application: 55 });
+  assertEquals(code, 200);
+  assertEquals(saves, [
+    [
+      'u1',
+      55,
+      GRIHZ,
+      { mplus_score: 2535, logs_best_average: 62.5, logs_median_average: null, mythic_bosses_killed: 2 }
+    ]
+  ]);
+});
+
+Deno.test('keeps Heroic logs when there are no Mythic ones, and saves from the cache too', async () => {
+  const { deps, saves } = setup({
+    [WCL_API]: () =>
+      jsonOk({
+        data: { characterData: { character: { heroic: RANKINGS.heroic, mythic: { rankings: [] } } } }
+      })
+  });
+  await call(deps);
+  await call(deps, { token: 'tok', character: GRIHZ, application: 55 });
+  assertEquals(saves.length, 1);
+  assertEquals(saves[0]![3], {
+    mplus_score: 2535,
+    logs_best_average: 91.4,
+    logs_median_average: 80.2,
+    mythic_bosses_killed: null
+  });
+});
+
+Deno.test('refuses to keep numbers on an application that is not the caller own', async () => {
+  const { deps, notOwn } = setup();
+  notOwn();
+  const { status: code, body } = await call(deps, { token: 'tok', character: GRIHZ, application: 55 });
+  assertEquals([code, body.error], [403, NOT_YOUR_APPLICATION]);
+});
+
+Deno.test('refuses a malformed application before reading anything', async () => {
+  const { deps, calls } = setup();
+  const { status: code } = await call(deps, { token: 'tok', character: GRIHZ, application: 'x' });
+  assertEquals(code, 400);
+  assertEquals(calls, []);
 });

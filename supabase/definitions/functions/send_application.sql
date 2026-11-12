@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.send_application(p_team_id integer, p_character_id integer, p_answers jsonb, p_recruiter_code text, p_friend_name text, p_time_zone text)
+CREATE OR REPLACE FUNCTION public.send_application(p_team_id integer, p_character_id integer, p_answers jsonb, p_recruiter_code text, p_friend_name text, p_time_zone text, p_other_specs text[] DEFAULT '{}'::text[])
  RETURNS integer
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -24,6 +24,7 @@ declare
   v_code text;
   v_sent_name text;
   v_friend text := nullif(btrim(p_friend_name), '');
+  v_specs text[] := coalesce(p_other_specs, '{}');
   v_id integer;
 begin
   if v_uid is null then
@@ -49,6 +50,21 @@ begin
   end if;
   if p_time_zone is not null and not exists (select 1 from pg_timezone_names z where z.name = p_time_zone) then
     raise exception 'That is not a time zone';
+  end if;
+
+  -- Other specs: up to four, each a spec of the character's own class other
+  -- than the one it is applying as, none twice.
+  if cardinality(v_specs) > 4 then
+    raise exception 'Pick up to 4 other specs';
+  end if;
+  if exists (select 1 from unnest(v_specs) s
+              where s is null
+                 or s = v_char.spec_name
+                 or not exists (select 1 from classes_specs cs where cs.class = v_char.class_name and cs.spec = s)) then
+    raise exception 'Other specs must be other specs of your character''s class';
+  end if;
+  if (select count(distinct s) from unnest(v_specs) s) <> cardinality(v_specs) then
+    raise exception 'Pick each other spec once';
   end if;
 
   -- Who sent them. A code is checked here, never trusted from the browser.
@@ -144,10 +160,10 @@ begin
 
   begin
     insert into recruit_applications (
-      team_id, person_id, source, character_id, name_realm, class_name, spec_name, item_level,
+      team_id, person_id, source, character_id, name_realm, class_name, spec_name, other_specs, item_level,
       answers, sent_by, recruiter_person_id, recruiter_code, sent_by_name, time_zone)
     values (p_team_id, v_me, 'application', v_char.id, v_char.name_realm, v_char.class_name, v_char.spec_name,
-            v_char.item_level, v_answers, v_sent_by, v_recruiter, v_code, v_sent_name, p_time_zone)
+            v_specs, v_char.item_level, v_answers, v_sent_by, v_recruiter, v_code, v_sent_name, p_time_zone)
     returning id into v_id;
   exception when unique_violation then
     raise exception 'You already have an open application with this team';
