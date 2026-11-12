@@ -33,6 +33,7 @@ import { SiteAdminPage } from './siteadmin/SiteAdminPage';
 import { CreateGuildPage } from './front/CreateGuildPage';
 import { FrontPage } from './front/FrontPage';
 import { JoinRoute } from './join/JoinRoute';
+import { GuildApplyPage, TeamApplyPage } from './apply/ApplyPages';
 import { ImportLootPage } from './loot/ImportLootPage';
 import { ReviewsPage } from './loot/ReviewsPage';
 import { ReassignPage } from './loot/ReassignPage';
@@ -80,6 +81,7 @@ const BUILT_PAGES: Record<string, ReactElement> = {
 
 // Guild pages rebuilt so far (#1102), beside Guild home itself.
 const BUILT_GUILD_PAGES: Record<string, ReactElement> = {
+  apply: <GuildApplyPage />,
   boe: <BoePage />,
   streams: <StreamsPage />,
   officers: <GuildOfficersPage />,
@@ -192,6 +194,8 @@ export const routes: RouteObject[] = [
             element: BUILT_GUILD_PAGES[path] ?? <PlaceholderPage title={title} />,
             handle: { title } satisfies RouteHandle
           })),
+          // One team's public apply page (#1546).
+          { path: 'apply/:teamKey', element: <TeamApplyPage />, handle: { title: 'Join us' } satisfies RouteHandle },
           // Guild settings opens on the first tab the person can use.
           { path: 'settings', element: <GuildSettingsIndex /> },
           {

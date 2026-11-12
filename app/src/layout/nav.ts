@@ -37,6 +37,9 @@ export function navGroups(
     newsUnread?: boolean;
     liveCount?: number;
     council?: boolean;
+    // Someone with no team and no guild rank here (#1546): the apply pages
+    // are all the guild offers them, so the rest of the menu is left out.
+    visitor?: boolean;
   }
 ): NavGroup[] {
   const groups: NavGroup[] = [
@@ -44,6 +47,8 @@ export function navGroups(
       heading: 'Guild',
       items: [
         { label: 'Guild home', icon: 'home', to: base.guild, end: true },
+        // The public apply pages (#1546); the label may become "Apply" (Kat's call).
+        { label: 'Join us', icon: 'user', to: `${base.guild}/apply` },
         ...(show.hideBoe ? [] : [{ label: 'BoE sales', icon: 'coin' as const, to: `${base.guild}/boe` }]),
         { label: 'Streams', icon: 'tv', to: `${base.guild}/streams`, live: show.liveCount ?? 0 },
         { label: 'Guild officers', icon: 'shield', to: `${base.guild}/officers` },
@@ -82,6 +87,11 @@ export function navGroups(
       ]
     }
   ];
+  if (show.visitor) {
+    return groups
+      .filter((g) => g.heading === 'Guild' || g.heading === 'Site')
+      .map((g) => (g.heading === 'Guild' ? { ...g, items: g.items.filter((i) => i.label === 'Join us') } : g));
+  }
   // The Officer group is only for people who can open one of those pages.
   return groups.filter((g) => g.heading !== 'Officer' || g.items.length > 0);
 }
@@ -249,6 +259,7 @@ export const TEAM_PAGES: Record<string, string> = {
 };
 
 export const GUILD_PAGES: Record<string, string> = {
+  apply: 'Join us',
   boe: 'BoE sales',
   streams: 'Streams',
   officers: 'Guild officers',
