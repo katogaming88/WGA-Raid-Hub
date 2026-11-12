@@ -68,6 +68,8 @@ export type Ticket = {
   // Reopened after its ticket was deleted: this call makes a fresh one, and
   // the card links to the record's own saved conversation (#1544).
   reopened: boolean;
+  // When the old ticket was deleted: the key of this reopen's claims.
+  ticket_deleted_at: string | null;
   // Already made, from the record.
   discord_channel_id: string | null;
   discord_thread_id: string | null;
@@ -117,6 +119,8 @@ export function viewerIds(
   return [...new Set(ids)];
 }
 
+export type FreshClaim = 'fresh_ticket' | 'fresh_not_in_server';
+
 export type Made = {
   discord_channel_id: string | null;
   discord_thread_id: string | null;
@@ -130,12 +134,15 @@ export interface TicketDb {
   ticket(authUserId: string | null, applicationId: number): Promise<Ticket | null>;
   // Writes what was made and the ticket_opened history row.
   saveMade(applicationId: number, actor: number | null, made: Made, detail: string | null): Promise<void>;
-  // A reopened record's claim on its fresh ticket: clears ticket_deleted_at
-  // (and the old ids and steps) only if it's still set and the record open;
-  // false when someone else got there first.
-  claimFresh(applicationId: number): Promise<boolean>;
-  // Nothing was made: sets ticket_deleted_at again so the sweep retries.
-  unclaimFresh(applicationId: number): Promise<void>;
+  // Once-only claims for a reopen, a row each in recruit_reminders_sent keyed
+  // on when the old ticket was deleted: 'fresh_ticket' while one call makes
+  // the fresh ticket, 'fresh_not_in_server' for the officers' notice. False
+  // when the claim was already taken.
+  claim(applicationId: number, key: FreshClaim, deletedAt: string): Promise<boolean>;
+  unclaim(applicationId: number, key: FreshClaim, deletedAt: string): Promise<void>;
+  // The team stopped making tickets: clears ticket_deleted_at so the sweep
+  // stops asking.
+  stopFresh(applicationId: number): Promise<void>;
 }
 
 export type Deps = { fetch: typeof fetch; db: TicketDb; env: Env };
@@ -353,7 +360,14 @@ export function overwrites(t: Ticket, botId: string) {
 // with Manage Threads there sees every private thread in it, and someone who
 // can't see the channel is never added. So each team needs its own officer
 // channel, which the Recruiting settings page (#1548) says.
-async function officerThread(deps: Deps, token: string, t: Ticket, siteUrl: string, ticketId: string | null) {
+async function officerThread(
+  deps: Deps,
+  token: string,
+  t: Ticket,
+  siteUrl: string,
+  ticketId: string | null,
+  made: Made
+) {
   const thread = await must<{ id: string }>(
     await call(deps, token, 'POST', '/channels/' + t.officer_channel_id + '/threads', {
       name: truncate('Applicant: ' + t.name_realm, 100),
@@ -362,6 +376,8 @@ async function officerThread(deps: Deps, token: string, t: Ticket, siteUrl: stri
       auto_archive_duration: 10080
     })
   );
+  // On the record at once, so a failure below still saves it (CodeRabbit).
+  made.discord_thread_id = thread.id;
   for (const id of t.viewer_ids.slice(0, MAX_THREAD_MEMBERS)) {
     // One person who left the server shouldn't stop the rest.
     await call(deps, token, 'PUT', '/channels/' + thread.id + '/thread-members/' + id).catch(() => null);
@@ -447,15 +463,16 @@ async function make(deps: Deps, token: string, siteUrl: string, t: Ticket, actor
     // Whatever exists is recorded, so a retry doesn't make a second one.
     if (!(e instanceof SaveFailed) && any) await save(deps, t, actor, made, PARTLY_MADE);
     // Nothing made for a reopened record: hand the claim back so the next
-    // sweep tries again.
-    if (!any && t.reopened) await deps.db.unclaimFresh(t.id).catch(() => null);
+    // sweep tries again. Made but not saved keeps it, so nothing is made
+    // twice; the ids are in the log for an officer.
+    if (!any && t.reopened) await deps.db.unclaim(t.id, 'fresh_ticket', t.ticket_deleted_at!).catch(() => null);
     throw e;
   }
 }
 
 export const NOT_IN_SERVER_NOTICE = (name: string) =>
   name +
-  "'s application was reopened, but they've left the Discord server, so no new ticket was made. Ask them to rejoin, then close and reopen their record on Raid Hub.";
+  "'s application was reopened, but they've left the Discord server, so there's no new ticket yet. Raid Hub makes it once they rejoin.";
 
 async function makeInto(
   deps: Deps,
@@ -476,13 +493,20 @@ async function makeInto(
     if (!member.ok) {
       const code = (await member.json().catch(() => null))?.code;
       if (member.status === 404 && code === UNKNOWN_MEMBER) {
-        // A reopened record keeps its claim, so the sweep stops; the
-        // officers are told once why there's no new ticket.
-        if (t.reopened && t.officer_channel_id) {
-          await call(deps, token, 'POST', '/channels/' + t.officer_channel_id + '/messages', {
-            content: NOT_IN_SERVER_NOTICE(t.name_realm.split('-')[0]),
-            allowed_mentions: { parse: [] }
-          }).catch(() => null);
+        // A reopened record hands its claim back, so the sweep makes the
+        // ticket once they rejoin; the officers are told once why there's
+        // none yet, and again only if that notice didn't post.
+        if (t.reopened) {
+          await deps.db.unclaim(t.id, 'fresh_ticket', t.ticket_deleted_at!);
+          if (t.officer_channel_id && (await deps.db.claim(t.id, 'fresh_not_in_server', t.ticket_deleted_at!))) {
+            const posted = await call(deps, token, 'POST', '/channels/' + t.officer_channel_id + '/messages', {
+              content: NOT_IN_SERVER_NOTICE(t.name_realm.split('-')[0]),
+              allowed_mentions: { parse: [] }
+            })
+              .then((r) => r.ok)
+              .catch(() => false);
+            if (!posted) await deps.db.unclaim(t.id, 'fresh_not_in_server', t.ticket_deleted_at!);
+          }
         }
         return jsonResponse({ success: true, status: 'not_in_server' });
       }
@@ -509,10 +533,10 @@ async function makeInto(
       })
     );
     if (t.thread_with_ticket && t.officer_channel_id) {
-      made.discord_thread_id = await officerThread(deps, token, t, siteUrl, channel.id);
+      await officerThread(deps, token, t, siteUrl, channel.id, made);
     }
   } else if (t.mode === 'officer_thread') {
-    made.discord_thread_id = await officerThread(deps, token, t, siteUrl, null);
+    await officerThread(deps, token, t, siteUrl, null, made);
   } else {
     const msg = await must<{ id: string }>(
       await call(deps, token, 'POST', '/channels/' + t.officer_channel_id + '/messages', {
@@ -569,9 +593,9 @@ async function route(req: Request, deps: Deps): Promise<Response> {
     t.discord_id &&
     (t.mode === 'ticket' ? t.ticket_category_id : t.officer_channel_id);
   if (!ready) {
-    // The team stopped making tickets: the reopened record's claim is taken so
-    // the sweep stops asking.
-    if (t.reopened) await deps.db.claimFresh(t.id);
+    // The team stopped making tickets: nothing to make, so the sweep stops
+    // asking.
+    if (t.reopened) await deps.db.stopFresh(t.id);
     return jsonResponse({ success: true, status: 'off' });
   }
 
@@ -603,12 +627,15 @@ async function route(req: Request, deps: Deps): Promise<Response> {
     return jsonResponse({ success: true, status: 'local' });
   }
 
-  // A reopened record's old ones are deleted. Whoever clears ticket_deleted_at
-  // first makes the fresh one (the sweep or the applicant, two sweeps at
-  // once); anyone else is told it's already being made.
+  // A reopened record's old ones are deleted. Whoever takes the claim makes
+  // the fresh one (the sweep or the applicant, two sweeps at once); anyone
+  // else is told it's already being made. ticket_deleted_at stays set until
+  // the new ids are saved, so every caller sees it's a reopen.
   let fresh = t;
   if (t.reopened) {
-    if (!(await deps.db.claimFresh(t.id))) return jsonResponse({ success: true, status: 'busy' });
+    if (!(await deps.db.claim(t.id, 'fresh_ticket', t.ticket_deleted_at!))) {
+      return jsonResponse({ success: true, status: 'busy' });
+    }
     fresh = { ...t, discord_channel_id: null, discord_thread_id: null, discord_officer_message_id: null };
   }
 

@@ -293,10 +293,10 @@ async function step(deps: Deps, token: string, t: TicketRec): Promise<string | n
 
 // A record reopened after its ticket was deleted gets a fresh one: the same
 // recruit-ticket an applicant's Send calls, with the cron secret in place of a
-// sign-in. recruit-ticket claims the record first, so only one fresh ticket
-// is ever made; "off" (the team stopped making tickets) and "not_in_server"
-// (the officers are told) keep the claim, so the sweep stops asking, and only
-// a Discord failure with nothing made hands it back for the next sweep.
+// sign-in. recruit-ticket claims it first (a row in recruit_reminders_sent),
+// so only one fresh ticket is ever made. "off" (the team stopped making
+// tickets) stops the asking; "not_in_server" asks again each sweep until they
+// rejoin, with the officers told once; "busy" means another call is making it.
 export type Fresh = { url: string; secret: string };
 
 async function freshTickets(deps: Deps, fresh: Fresh) {

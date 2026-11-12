@@ -90,7 +90,8 @@ function supabaseDb(): TicketDb {
           .eq('team_id', app.team_id)
           .eq('person_id', person.id)
           .neq('id', app.id)
-          .lt('applied_at', app.applied_at)
+          // Earlier by (applied_at, id), so a tie still finds the other one.
+          .or('applied_at.lt.' + app.applied_at + ',and(applied_at.eq.' + app.applied_at + ',id.lt.' + app.id + ')')
           .order('applied_at', { ascending: false })
           .order('id', { ascending: false })
           .limit(1)
@@ -163,6 +164,7 @@ function supabaseDb(): TicketDb {
         sent_by_name: app.sent_by_name,
         applied_before: (before.data as any)?.id ?? null,
         reopened: app.ticket_deleted_at !== null,
+        ticket_deleted_at: app.ticket_deleted_at,
         discord_channel_id: app.discord_channel_id,
         discord_thread_id: app.discord_thread_id,
         discord_officer_message_id: app.discord_officer_message_id,
@@ -177,38 +179,32 @@ function supabaseDb(): TicketDb {
       } satisfies Ticket;
     },
 
-    async claimFresh(applicationId) {
+    async claim(applicationId, key, deletedAt) {
       const rows = check(
         await db()
-          .from('recruit_applications')
-          .update({
-            ticket_deleted_at: null,
-            ticket_closed_at: null,
-            ticket_saved_at: null,
-            ticket_save_failures: 0,
-            discord_channel_id: null,
-            discord_thread_id: null,
-            discord_officer_message_id: null
-          })
-          .eq('id', applicationId)
-          .is('closed_at', null)
-          .not('ticket_deleted_at', 'is', null)
+          .from('recruit_reminders_sent')
+          .upsert(
+            { application_id: applicationId, reminder: key, due_for: deletedAt },
+            { onConflict: 'application_id,reminder,due_for', ignoreDuplicates: true }
+          )
           .select('id')
       ) as any[];
       return rows.length > 0;
     },
 
-    async unclaimFresh(applicationId) {
+    async unclaim(applicationId, key, deletedAt) {
       check(
         await db()
-          .from('recruit_applications')
-          .update({ ticket_deleted_at: new Date().toISOString() })
-          .eq('id', applicationId)
-          .is('closed_at', null)
-          .is('discord_channel_id', null)
-          .is('discord_thread_id', null)
-          .is('discord_officer_message_id', null)
+          .from('recruit_reminders_sent')
+          .delete()
+          .eq('application_id', applicationId)
+          .eq('reminder', key)
+          .eq('due_for', deletedAt)
       );
+    },
+
+    async stopFresh(applicationId) {
+      check(await db().from('recruit_applications').update({ ticket_deleted_at: null }).eq('id', applicationId));
     },
 
     async saveMade(applicationId, actor, made, detail) {
