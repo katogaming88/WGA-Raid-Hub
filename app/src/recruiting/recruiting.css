@@ -1,0 +1,293 @@
+/* Recruiting settings (#1548). Rules and plain text, no pills or boxed rows. */
+
+.rec-page {
+  max-width: 900px;
+}
+
+.rec-head {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.rec-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.rec-section {
+  padding: 0;
+}
+
+.rec-heading {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.rec-heading button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rec-heading button:hover {
+  background: var(--hover);
+}
+
+.rec-mark {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  font-size: var(--text-sm);
+  color: var(--text-dim);
+}
+
+.rec-mark-done {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.rec-status {
+  margin-left: auto;
+  font-weight: 400;
+  font-size: var(--text-sm);
+}
+
+.rec-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0 var(--space-4) var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.rec-body[hidden] {
+  display: none;
+}
+
+.rec-help {
+  margin: var(--space-3) 0 0;
+}
+
+.rec-note {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.rec-sub {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.rec-radios label,
+.rec-segments label,
+.rec-own-actions label,
+.rec-question label {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.rec-check {
+  display: block;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.rec-radios,
+.rec-group,
+.rec-own {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.rec-own {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.rec-radios legend,
+.rec-group legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.rec-mode {
+  align-items: flex-start;
+}
+
+.rec-segments,
+.rec-inline,
+.rec-own-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--space-4);
+}
+
+.rec-inline .input,
+.rec-inline .select {
+  flex: 1 1 220px;
+  max-width: 320px;
+}
+
+.rec-narrow {
+  max-width: 140px;
+}
+
+.rec-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.rec-aboutfoot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.rec-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.rec-nights {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rec-nights li {
+  display: flex;
+  gap: var(--space-4);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.rec-day {
+  width: 3em;
+  font-weight: 600;
+}
+
+.rec-question {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.rec-question-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.rec-type {
+  font-size: var(--text-xs);
+}
+
+.rec-required {
+  margin-left: auto;
+}
+
+.rec-prompt {
+  margin: 2px 0 0;
+  font-size: var(--text-sm);
+}
+
+.rec-own-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
+.rec-spot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.rec-spot-name {
+  flex: 1 1 200px;
+  font-weight: 600;
+}
+
+.rec-spot .select {
+  flex: 0 0 140px;
+  width: auto;
+}
+
+.rec-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rec-timing {
+  max-width: 360px;
+}
+
+.rec-savebar {
+  position: sticky;
+  bottom: var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+
+.rec-savetext {
+  flex: 1 1 260px;
+}
+
+.rec-problems {
+  margin: 4px 0 0;
+  padding-left: var(--space-4);
+  color: var(--bad);
+  font-size: var(--text-sm);
+}

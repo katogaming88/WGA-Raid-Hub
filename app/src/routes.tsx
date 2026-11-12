@@ -34,6 +34,7 @@ import { CreateGuildPage } from './front/CreateGuildPage';
 import { FrontPage } from './front/FrontPage';
 import { JoinRoute } from './join/JoinRoute';
 import { GuildApplyPage, TeamApplyPage } from './apply/ApplyPages';
+import { RecruitingSettingsPage } from './recruiting/RecruitingSettingsPage';
 import { ApplyFormPage } from './apply/ApplyFormPage';
 import { ApplicationPage, DiscordReturnPage, MyApplicationsPage } from './apply/ApplicationPages';
 import { ImportLootPage } from './loot/ImportLootPage';
@@ -73,6 +74,7 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   history: <HistoryPage />,
   officers: <TeamOfficersPage />,
   signup: <SignUpPage />,
+  'officer/recruiting/settings': <RecruitingSettingsPage />,
   'officer/settings': <GeneralSettingsPage />,
   'officer/settings/season': <SeasonSettingsPage />,
   'officer/settings/loot': <LootSettingsPage />,

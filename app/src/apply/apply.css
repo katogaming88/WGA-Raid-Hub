@@ -184,9 +184,19 @@
 }
 
 .apply-about {
-  margin: 0;
-  white-space: pre-line;
   line-height: 1.65;
+}
+
+.apply-about > :first-child {
+  margin-top: 0;
+}
+
+.apply-about > :last-child {
+  margin-bottom: 0;
+}
+
+.apply-about h3 {
+  font-size: var(--text-md);
 }
 
 .apply-facts {

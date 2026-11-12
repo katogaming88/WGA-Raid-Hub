@@ -14,6 +14,7 @@ const SERVER: DiscordServer = {
   id: '100000000000000001',
   name: 'We Go Again',
   botIn: true,
+  categories: [],
   channels: [
     { id: 'off', name: 'phoenix-officers', category: 'OFFICERS', missing: [] },
     { id: 'att', name: 'phoenix-attendance', category: 'OFFICERS', missing: ['View Channel', 'Send Messages'] }

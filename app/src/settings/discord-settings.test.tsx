@@ -53,6 +53,7 @@ const READ: DiscordRead = {
     id: SERVER_ID,
     name: 'We Go Again',
     botIn: true,
+    categories: [],
     channels: [
       { id: '201', name: 'phoenix-officers', category: 'OFFICERS', missing: [] },
       { id: '202', name: 'phoenix-attendance', category: 'OFFICERS', missing: ['View Channel'] },

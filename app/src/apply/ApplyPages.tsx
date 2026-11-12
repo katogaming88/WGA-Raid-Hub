@@ -4,6 +4,7 @@ import { DataState } from '../components/DataState';
 import { classColor } from '../roster/roster';
 import { localTimeZoneNote, nightInViewerZone } from '../lib/dates';
 import { NotFoundPage } from '../pages/NotFoundPage';
+import { firstPlainLine, Markdown } from '../lib/markdown';
 import {
   FILTER_LABELS,
   PRIORITY_LABELS,
@@ -94,9 +95,6 @@ function Spots({ team, playing }: { team: RecruitingTeam; playing: RoleFilter })
   );
 }
 
-// The first line of a team's About, light Markdown stripped of its marks.
-const firstLine = (about: string) => (about.split('\n').find((l) => l.trim()) ?? '').replace(/[*_`#>]/g, '').trim();
-
 function TeamCard({ team, guildKey, role }: { team: RecruitingTeam; guildKey: string; role: RoleFilter }) {
   const match = needsRole(team, role);
   const progress = progressSummary(team.progress);
@@ -123,7 +121,7 @@ function TeamCard({ team, guildKey, role }: { team: RecruitingTeam; guildKey: st
             <JoinButton team={team} guildKey={guildKey} />
           </div>
         </div>
-        {team.about && <p className="text-muted apply-blurb">{firstLine(team.about)}</p>}
+        {team.about && <p className="text-muted apply-blurb">{firstPlainLine(team.about)}</p>}
         {team.taking_applications && <p className="text-dim apply-line">How to join: {joinNote(team)}</p>}
         <div className="apply-columns">
           <div>
@@ -231,7 +229,9 @@ function TeamPage({ team, guildKey }: { team: RecruitingTeam; guildKey: string }
             <h2 id="apply-about" className="section-title">
               About the team
             </h2>
-            <p className="apply-about">{team.about}</p>
+            <div className="apply-about">
+              <Markdown text={team.about} />
+            </div>
           </section>
         )}
         <section className="card apply-block" aria-labelledby="apply-nights">

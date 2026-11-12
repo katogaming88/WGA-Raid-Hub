@@ -2327,7 +2327,9 @@ describe('sidebar folding', () => {
   });
 
   it('folds only the top section when that is enough', async () => {
-    const { context, page, pageErrors } = await openApp(browser, server.port, at(1000));
+    // 1040, not 1000: the Officer menu gained its Recruiting item (#1548), a
+    // row more to fit before a second section has to fold.
+    const { context, page, pageErrors } = await openApp(browser, server.port, at(1040));
     try {
       await expect
         .poll(() => sidebarState(page))
