@@ -65,6 +65,24 @@ describe('team_ticket_viewers()', () => {
     });
   });
 
+  it('names a guild Admin who is on the team the way the team does', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await lockTeam(q);
+      await q(
+        'update public.team_recruiting set visible_to_team_officers = false, visible_to_team_assistants = false, visible_to_guild_admins = true where team_id = 3'
+      );
+      // The guild's Owner is Immolation's Owner: as a guild Admin here, still
+      // named as the team names them.
+      const asTeam = (
+        await q(
+          'select public.team_member_name(3, m.id) as n from public.team_members m where m.team_id = 3 and m.person_id = $1 and m.archived_at is null',
+          [await personOf(q, TEAM_LEADER_T3)]
+        )
+      ).rows[0].n;
+      expect((await viewers(asUser)).map((r) => r.display_name)).toContain(asTeam);
+    });
+  });
+
   it('leaves out a member who left the team', async () => {
     await withTxn(async ({ q, asUser }) => {
       await lockTeam(q);

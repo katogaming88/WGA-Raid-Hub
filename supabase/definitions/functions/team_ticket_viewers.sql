@@ -37,8 +37,13 @@ begin
        and ((v_row.visible_to_team_officers and m.rank in ('owner', 'officer'))
             or (v_row.visible_to_team_assistants and m.rank = 'assistant'))
     union all
-    select g.person_id, 'guild_admin', 3, guild_person_name(v_guild, g.person_id)
+    -- A guild Admin who is also on this team goes by the team's name for them,
+    -- as the roster shows it (CodeRabbit).
+    select g.person_id, 'guild_admin', 3,
+           coalesce(team_member_name(p_team_id, tm.id), guild_person_name(v_guild, g.person_id))
       from guild_ranks g
+      left join team_members tm
+        on tm.team_id = p_team_id and tm.person_id = g.person_id and tm.archived_at is null
      where v_row.visible_to_guild_admins and g.guild_id = v_guild and g.rank in ('owner', 'admin')
   ),
   once as (
