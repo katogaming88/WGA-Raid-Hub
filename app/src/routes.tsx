@@ -194,8 +194,9 @@ export const routes: RouteObject[] = [
             element: BUILT_GUILD_PAGES[path] ?? <PlaceholderPage title={title} />,
             handle: { title } satisfies RouteHandle
           })),
-          // One team's public apply page (#1546).
-          { path: 'apply/:teamKey', element: <TeamApplyPage />, handle: { title: 'Join us' } satisfies RouteHandle },
+          // One team's public apply page (#1546). Not :teamKey, which the shell reads
+          // as a team page and would put the team's menu and streams around it.
+          { path: 'apply/:applyTeam', element: <TeamApplyPage />, handle: { title: 'Join us' } satisfies RouteHandle },
           // Guild settings opens on the first tab the person can use.
           { path: 'settings', element: <GuildSettingsIndex /> },
           {

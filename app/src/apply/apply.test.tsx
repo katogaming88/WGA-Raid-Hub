@@ -215,6 +215,8 @@ describe('a team apply page', () => {
     expect(screen.getByText('14-day trial before a full spot')).toBeInTheDocument();
     expect(screen.getByText('Restoration Shaman')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Apply' })).toBeInTheDocument();
+    // A guild-level page: the shell must not treat Phoenix as the team being viewed.
+    expect(screen.getByRole('button', { name: /Choose a team/ })).toBeInTheDocument();
   });
 
   it('is not found for a team that is not listed', async () => {

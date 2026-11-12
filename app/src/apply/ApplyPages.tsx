@@ -193,9 +193,9 @@ export function GuildApplyPage() {
 
 // /g/<guild>/apply/<team>: one team.
 export function TeamApplyPage() {
-  const { guildKey = '', teamKey = '' } = useParams();
+  const { guildKey = '', applyTeam = '' } = useParams();
   useCaptureRecruiter(guildKey);
-  const teams = useRecruitingTeams(guildKey, teamKey);
+  const teams = useRecruitingTeams(guildKey, applyTeam);
   return (
     <DataState query={teams} label="this team">
       {(rows) => (rows[0] ? <TeamPage team={rows[0]} guildKey={guildKey} /> : <NotFoundPage />)}
