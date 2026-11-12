@@ -114,8 +114,8 @@ type Config = { botToken: string; clientId: string; clientSecret: string; siteUr
 
 function config(env: Env): Config | null {
   const botToken = env.get('DISCORD_BOT_TOKEN');
-  const clientId = env.get('DISCORD_CLIENT_ID');
-  const clientSecret = env.get('DISCORD_CLIENT_SECRET');
+  const clientId = env.get('DISCORD_APPLICATION_ID');
+  const clientSecret = env.get('DISCORD_BOT_CLIENT_SECRET');
   const siteUrl = env.get('SITE_URL');
   if (!botToken || !clientId || !clientSecret || !siteUrl) return null;
   return { botToken, clientId, clientSecret, siteUrl: siteUrl.replace(/\/+$/, '') };

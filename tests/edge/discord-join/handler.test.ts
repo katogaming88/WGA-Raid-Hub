@@ -23,8 +23,8 @@ const APPLICANT = '444444444444444444';
 const ENV: Record<string, string> = {
   SUPABASE_URL: 'https://kxgjqnpwfklbgrxdgmmv.supabase.co',
   DISCORD_BOT_TOKEN: 'bot-token',
-  DISCORD_CLIENT_ID: 'client-id',
-  DISCORD_CLIENT_SECRET: 'client-secret',
+  DISCORD_APPLICATION_ID: 'client-id',
+  DISCORD_BOT_CLIENT_SECRET: 'client-secret',
   SITE_URL: 'https://raidhub.example/'
 };
 const CONFIG = {
@@ -284,7 +284,7 @@ Deno.test('the team setting off, or no server, is nothing to do', async () => {
 });
 
 Deno.test('not set up, not signed in, bad bodies; a throw still answers with CORS', async () => {
-  const { DISCORD_CLIENT_SECRET: _, ...noSecret } = ENV;
+  const { DISCORD_BOT_CLIENT_SECRET: _, ...noSecret } = ENV;
   assertEquals((await call(setup({}, APP, noSecret).deps, { action: 'start', application: 7 })).body.error, NOT_SET_UP);
   assertEquals((await call(setup().deps, { action: 'start', application: 7 }, 'Bearer other')).status, 401);
   assertEquals((await call(setup().deps, { action: 'nope' })).status, 400);
