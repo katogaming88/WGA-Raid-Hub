@@ -205,7 +205,8 @@ const FORM_STATE = {
         mythic_bosses_killed: { killed: 4, total: 9 }
       }
     },
-    'discord-join': { success: true, status: 'off' }
+    'discord-join': { success: true, status: 'off' },
+    'recruit-ticket': { success: true, status: 'made', mode: 'ticket', ticket_url: null, welcome_dm: 'sent' }
   }
 };
 

@@ -20,6 +20,7 @@ import {
   type Question
 } from './form';
 import { rememberRecruiter } from './recruiterLink';
+import { rememberPending } from './pending';
 import type { MyApplication } from './useApplyForm';
 
 // The application form, the after-send page and My applications (#1547).
@@ -171,7 +172,10 @@ function handlers(world: World, over: { discord?: boolean } = {}): FakeHandlers 
   });
 }
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+});
 
 describe('the form rules', () => {
   const q = (over: Partial<Question>): Question => ({
@@ -253,7 +257,11 @@ describe('the progress list', () => {
     applied_at: '2026-11-12T12:00:00Z',
     closed_at: null,
     trial_starts_on: null,
-    trial_ends_on: null
+    trial_ends_on: null,
+    ticket_url: null,
+    joined_discord: false,
+    join_failed: false,
+    add_to_server: true
   };
 
   it('is still setting up until the ticket link exists', () => {
@@ -368,6 +376,15 @@ describe('the application form', () => {
       p_time_zone: expect.any(String),
       p_other_specs: ['Destruction']
     });
+    // No trip to Discord, so the ticket is asked for straight away.
+    expect(
+      client.authCalls.some(
+        ([kind, args]) =>
+          kind === 'invoke' &&
+          (args as [string, { body: { application?: number } }])[0] === 'recruit-ticket' &&
+          (args as [string, { body: { application?: number } }])[1].body.application === 55
+      )
+    ).toBe(true);
     // The numbers are asked to be kept on the new application.
     expect(
       client.authCalls.some(
@@ -402,7 +419,11 @@ describe('My applications and the after-send page', () => {
     applied_at: '2026-11-12T12:00:00Z',
     closed_at: null,
     trial_starts_on: null,
-    trial_ends_on: null
+    trial_ends_on: null,
+    ticket_url: null,
+    joined_discord: false,
+    join_failed: false,
+    add_to_server: true
   };
 
   function mine(rows: Record<string, unknown>[], world: { withdrawn: number[] } = { withdrawn: [] }) {
@@ -482,6 +503,7 @@ describe('My applications and the after-send page', () => {
 
 describe('where Discord sends the applicant back', () => {
   it('hands the code over once and shows an invite when Discord would not add them', async () => {
+    rememberPending(55, '/g/wga/applications/55');
     const calls: unknown[] = [];
     renderApp(
       '/apply/discord?code=c1&state=s1',
@@ -497,7 +519,11 @@ describe('where Discord sends the applicant back', () => {
       'href',
       'https://discord.gg/abc'
     );
-    expect(calls).toEqual([['discord-join', { action: 'finish', state: 's1', code: 'c1' }]]);
+    // Then the ticket is asked for, for the application waiting on this trip.
+    expect(calls).toEqual([
+      ['discord-join', { action: 'finish', state: 's1', code: 'c1' }],
+      ['recruit-ticket', { application: 55 }]
+    ]);
   });
 
   it('passes on Discord’s refusal when the applicant said no', async () => {

@@ -1,4 +1,5 @@
 import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
+import type { Client } from '../lib/supabase';
 import { refusalOf } from '../characters/useCharacters';
 import type { CharactersAnswer } from '../characters/characters';
 import type { ApplicationForm, Recruiter, SpecRow } from './form';
@@ -103,16 +104,16 @@ export function useSendApplication() {
       if (row.error || !row.data)
         return { data: null, error: row.error ?? { message: 'That character did not save. Try again.' } };
 
-      // other_specs is new with #1810; the generated types don't have it yet.
       const sent = await client.rpc('send_application', {
         p_team_id: v.teamId,
         p_character_id: (row.data as { id: number }).id,
         p_answers: v.answers,
+        // The generated types mark every argument required; the function takes null.
         p_recruiter_code: v.recruiterCode as string,
         p_friend_name: v.friendName as string,
         p_time_zone: v.timeZone as string,
         p_other_specs: v.otherSpecs
-      } as never);
+      });
       if (sent.error) return { data: null, error: sent.error };
       const id = sent.data as unknown as number;
 
@@ -128,10 +129,20 @@ export function useSendApplication() {
         answer?.status === 'authorize' && answer.url
           ? { status: 'authorize', url: answer.url }
           : { status: answer?.status === 'already_member' ? 'already_member' : 'off' };
+      // No trip to Discord's consent screen: the ticket (or officer thread, or
+      // post) can be made now. Otherwise the return page makes it.
+      if (step.status !== 'authorize') await openTicket(client, id);
       return { data: { id, join: step }, error: null };
     },
     { key: ['send-application'], refreshes: [['my-applications']] }
   );
+}
+
+// recruit-ticket (#1541): what the bot makes in Discord for the application,
+// by the team's setting. Calling again makes nothing new. Best effort: the
+// application is sent either way, and the officers can add a recruit by hand.
+async function openTicket(client: Client, application: number) {
+  await client.functions.invoke('recruit-ticket', { body: { application } }).catch(() => undefined);
 }
 
 export type Finished =
@@ -140,7 +151,10 @@ export type Finished =
 // The page Discord sends the applicant back to hands over its code, signed in
 // as them (#1540).
 export function useFinishDiscordJoin() {
-  return useSupabaseMutation<Finished, { state: string; code: string | null; error: string | null }>(
+  return useSupabaseMutation<
+    Finished,
+    { state: string; code: string | null; error: string | null; application: number | null }
+  >(
     async (client, v) => {
       const { data, error } = await client.functions.invoke('discord-join', {
         body: v.code
@@ -148,6 +162,9 @@ export function useFinishDiscordJoin() {
           : { action: 'finish', state: v.state, error: v.error ?? 'access_denied' }
       });
       if (error) return { data: null, error: await refusalOf(error as { message: string; context?: unknown }) };
+      // In the server now: the ticket can be made. A failed join asks too,
+      // and is answered "not in the server" until they use the invite.
+      if (v.application !== null) await openTicket(client, v.application);
       return { data: data as Finished, error: null };
     },
     { key: ['finish-discord-join'], refreshes: [['my-applications']] }
@@ -169,11 +186,11 @@ export type MyApplication = {
   closed_at: string | null;
   trial_starts_on: string | null;
   trial_ends_on: string | null;
-  // New with #1810: undefined until the database has them.
-  ticket_url?: string | null;
-  joined_discord?: boolean;
-  join_failed?: boolean;
-  add_to_server?: boolean;
+  // The ticket and the Discord step (#1810).
+  ticket_url: string | null;
+  joined_discord: boolean;
+  join_failed: boolean;
+  add_to_server: boolean;
 };
 
 export function useMyApplications(enabled: boolean) {

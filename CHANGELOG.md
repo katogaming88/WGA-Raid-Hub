@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.264.1] - 2026-11-12
+
+### Project
+
+- The new app has the application form (#1547) at `/g/<guild>/apply/<team>/form`. The applicant signs in with Battle.net and picks a character; its item level, Mythic+ score, best logs average and Mythic kills fill in on their own, each saying "Couldn't load" on its own if its source is down. A class the team isn't asking for, or an item level below the team's, gets a note but can still apply. Then the other specs they play, "Tell the team about yourself" with a counter, the team's questions (optional ones marked), "Who sent you?" already picked from a recruiter's link or a "Who's your friend?" box, and their linked Discord. A missing answer is named before anything is sent. After sending, Discord's consent screen adds them to the team's server, the bot opens their ticket, and the after-send page shows **Open my ticket in Discord** once the ticket exists ("Setting up your ticket..." until then, never an automatic redirect), or an invite link if Discord wouldn't add them, with a progress list below. **My applications**, under You in the sidebar once someone has applied, lists each application with its status and dates, its ticket button while open, and Withdraw. Help has a new guide, Apply to a raid team.
+
 ## [3.264.0] - 2026-11-12
 
 ### Backend

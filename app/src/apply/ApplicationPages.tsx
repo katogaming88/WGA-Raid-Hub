@@ -242,12 +242,13 @@ export function DiscordReturnPage() {
   const error = params.get('error');
   const done = useRef(false);
   const pending = pendingApplication();
+  const pendingId = pending?.id ?? null;
 
   useEffect(() => {
     if (done.current || !user || !state) return;
     done.current = true;
-    mutate({ state, code, error });
-  }, [user, state, code, error, mutate]);
+    mutate({ state, code, error, application: pendingId });
+  }, [user, state, code, error, mutate, pendingId]);
 
   const where = pending?.path ?? defaultGuildPath();
   const onward = (

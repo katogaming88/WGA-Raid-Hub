@@ -73,6 +73,21 @@ export const GUIDES: Guide[] = [
     ]
   },
   {
+    id: 'apply',
+    topic: 'start',
+    title: 'Apply to a raid team',
+    quick: 'Open Join us, pick a team, and send its short application. Your ticket with the officers opens in Discord.',
+    place: { label: 'Join us', to: (b) => `${b.guild}/apply` },
+    steps: [
+      'Open Join us in the sidebar. Each team shows when it raids in your own time zone, its progress and who it’s looking for. Pick what you play under I play to see which teams need you.',
+      'Choose Apply on a team that uses the form. A team that says Open a Discord ticket instead takes people in its Discord: open the ticket and chat with its officers there.',
+      'Sign in with Battle.net and pick the character you’d raid on. Its item level, Mythic+ score and logs fill in on their own; you don’t type them.',
+      'Answer the questions. Anything marked optional can be skipped. If a recruiter sent you a link, Who sent you? is already filled in.',
+      'Choose Send application. Discord then asks to “join servers for you”: that’s how you’re added to the team’s Discord, where your private ticket with the officers opens.',
+      'Choose Open my ticket in Discord and say hi. Your application is already posted there. You can check where it stands, or withdraw it, under My applications.'
+    ]
+  },
+  {
     id: 'create-guild',
     topic: 'start',
     title: 'Create your guild',
