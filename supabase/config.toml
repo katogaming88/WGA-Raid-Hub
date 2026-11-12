@@ -427,6 +427,9 @@ verify_jwt = false
 [functions.optional-rsvp-reminders]
 verify_jwt = false
 
+[functions.recruit-reminders]
+verify_jwt = false
+
 [analytics]
 # Disabled: the log-shipping vector container restart-loops on Docker Desktop for
 # Windows and the local Logs page is not needed for this project's workflow.

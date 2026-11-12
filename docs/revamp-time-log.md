@@ -18,17 +18,17 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live |  7 h 45 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live |  8 h 15 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **179 h 41 m** |             |
+| **All revamp work**                | **180 h 11 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Recruiting | Phase 2 | 6 h 40 m | ~9 h 50 m |
+| Recruiting | Phase 2 | 7 h 10 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 0 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
@@ -681,6 +681,13 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2:28-2:30 PM | PR #1800 (#1542 part 1): Kat's merge and cleanup; status comment | Phase 2: Before the new site goes live / Recruiting (#1542) | 5 m | ~5 m build | ~28,800 | |
 | 2:30-2:45 PM | #1542, PR 2 of 2: Find my ticket: `discord_find_ticket` (per Discord server, service role only), `discord-settings` find_ticket action (read, set, move, remove; asks Edit recruiting through `team_recruiting_settings()`; only while a team in the server uses tickets), the button's private answer in discord-interactions (the presser's own open tickets in the server, or the guild's apply page); Deno and RLS tests, generated docs, decision log, RLS.md, schema reference, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1542) | 15 m | ~15 m build | ~90,000 | CodeRabbit, the fresh-agent review and Kat's merge not yet counted. |
 | 2:45-3:05 PM | PR #1801 (#1542 part 2): CodeRabbit rate-limited, so Kat picked the fresh-agent review first; its review (changes needed: the backup doc) and the fixes: backup doc entries, a non-text channel says so, a posted-but-unsaved message logged, a note on the apply page's guild; Kat's two picks from it: only the guild that set the message changes it (`guild_id` on the table), and every set, move and removal writes an audit row; tests, generated docs, the docs | Phase 2: Before the new site goes live / Recruiting (#1542) | 20 m | ~15 m build, ~5 m Kat deciding | ~155,000 | Tokens include the fresh agent's 93,939. CodeRabbit and Kat's merge not yet counted. |
+| 3:05-3:40 PM | PR #1801 (#1542 part 2): Kat's merge without CodeRabbit (rate-limited), cleanup, #1487 updated (#1542 row off, #1543 next) | Phase 2: Before the new site goes live / Recruiting (#1542) | 5 m | ~5 m build | ~17,500 | Carried from the 2026-11-10 handoff |
+
+### 2026-11-11
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 8:23-8:50 PM | #1543: `recruit-reminders` Edge Function (reads each open ticket's newest messages for whose turn it is; the applicant's reply DM once per turn and the 2-day reminder with when it closes; the officers' 1-day ping and the 3-day one with the Team Owner; the trial heads-up with Joined / Extend trial / Not joining to the officer channel and the ticket; no DMs 1-9 AM their time; claimed once each, retried only when nothing went out), the 15-minute cron migration reusing the RSVP reminders' secret; Deno tests, RLS run, decision log, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1543) | 25 m | ~25 m build | ~TOKENS | CodeRabbit, the fresh-agent review and Kat's merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 
