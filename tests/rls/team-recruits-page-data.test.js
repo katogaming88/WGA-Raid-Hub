@@ -108,6 +108,12 @@ describe('team_recruits() for the Recruits page', () => {
       await claim('reply_reminder');
       expect(await row(asUser, OFFICER_T3, id)).toMatchObject({ status: 'waiting_on_applicant', reminded: true });
 
+      // Closed as No reply and reopened in the same turn: still reminded, since
+      // the sweep sends one reminder per turn and won't send this one again.
+      await asUser(OFFICER_T3, "select public.close_recruit($1, 'no_reply', null)", [id]);
+      await asUser(OFFICER_T3, 'select public.reopen_recruit($1)', [id]);
+      expect(await row(asUser, OFFICER_T3, id)).toMatchObject({ status: 'waiting_on_applicant', reminded: true });
+
       // They answer: the officers' turn, so not reminded.
       await q(
         "update public.recruit_applications set applicant_last_message_at = now() + interval '2 minutes' where id = $1",
