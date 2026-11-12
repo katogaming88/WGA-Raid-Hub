@@ -184,7 +184,7 @@ describe('other specs on an application', () => {
   });
 
   it.each([
-    [['Restoration'], 'other specs of your character'],
+    [['Frost'], 'other specs of your character'],
     [['Demonology'], 'other specs of your character'],
     [['Destruction', 'Destruction'], 'each other spec once'],
     [['Affliction', 'Destruction', 'Affliction', 'Destruction', 'Affliction'], 'up to 4']

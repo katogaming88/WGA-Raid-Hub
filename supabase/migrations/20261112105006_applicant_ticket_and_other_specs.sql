@@ -25,6 +25,9 @@
 -- the server: recruit-ticket makes it only for a member (not_in_server
 -- otherwise), which also covers someone who joined by the invite link after
 -- discord-join failed, so a failed join doesn't hide a ticket they can open.
+-- The server is the team's current one: a team that moves its Discord settings
+-- to another server while an application is open gives a link that misses
+-- (fresh-agent review). Rare, and the ticket's own DM still links it right.
 -- joined_discord / join_failed: the latest of discord-join's two history rows.
 -- add_to_server: the team's setting now, so the page knows whether to wait for
 -- the Discord step at all.
