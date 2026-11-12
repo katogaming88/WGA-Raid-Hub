@@ -59,6 +59,7 @@ function setup(rec: Partial<TicketRec> = {}, ticketMessages = 103) {
   let reopenBeforeDelete = false;
   const reopenedIds: number[] = [];
   const freshCalls: Call[] = [];
+  let freshAnswer = 'made';
   // Newest first, as Discord answers.
   const inTicket = Array.from({ length: ticketMessages }, (_, i) => message(i + 1)).reverse();
   const inThread = [message(500, '600000000000000001')];
@@ -73,7 +74,7 @@ function setup(rec: Partial<TicketRec> = {}, ticketMessages = 103) {
         path: req.url,
         body: { ...JSON.parse(text), secret: req.headers.get('x-cron-secret') }
       });
-      return json({ success: true, status: 'made' });
+      return json({ success: true, status: freshAnswer });
     }
     const path = req.url.slice(API.length);
     calls.push({ method: req.method, path, body: text ? JSON.parse(text) : null });
@@ -132,6 +133,7 @@ function setup(rec: Partial<TicketRec> = {}, ticketMessages = 103) {
     reopenMidway: () => (reopenBeforeDelete = true),
     reopenedIds,
     freshCalls,
+    freshAnswers: (a: string) => (freshAnswer = a),
     officerWrites: () => inTicket.unshift(message(900, '600000000000000001'))
   };
 }
@@ -347,4 +349,17 @@ Deno.test('a record reopened after its ticket was deleted asks recruit-ticket fo
       ['https://project.example/functions/v1/recruit-ticket', { application: 9, secret: 'cron' }]
     ]
   );
+});
+
+Deno.test('a fresh ticket the call does not make is not counted; no secret, no call', async () => {
+  const s = setup();
+  s.reopenedIds.push(7);
+  s.freshAnswers('not_in_server');
+  assertEquals((await s.run(T0, true)).fresh, 0);
+  assertEquals(s.freshCalls.length, 1);
+  // Without the project address and secret the sweep doesn't ask.
+  const none = setup();
+  none.reopenedIds.push(7);
+  await none.run(T0);
+  assertEquals(none.freshCalls.length, 0);
 });

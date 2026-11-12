@@ -110,13 +110,26 @@ function supabaseDb(): ReminderDb {
       const rows = await paged((from, to) =>
         db
           .from('recruit_applications')
-          .select('id')
+          .select('id, team_id')
           .is('closed_at', null)
           .not('ticket_deleted_at', 'is', null)
           .order('id')
           .range(from, to)
       );
-      return rows.map((r) => r.id);
+      if (!rows.length) return [];
+      // An archived team's records wait until it's back, as in openRecords().
+      const archived = new Set(
+        (
+          check(
+            await db
+              .from('teams')
+              .select('id')
+              .in('id', [...new Set(rows.map((r) => r.team_id))])
+              .not('archived_at', 'is', null)
+          ) as any[]
+        ).map((t) => t.id)
+      );
+      return rows.filter((r) => !archived.has(r.team_id)).map((r) => r.id);
     },
 
     async claimDelete(id, at) {

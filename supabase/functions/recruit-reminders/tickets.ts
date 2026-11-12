@@ -293,8 +293,10 @@ async function step(deps: Deps, token: string, t: TicketRec): Promise<string | n
 
 // A record reopened after its ticket was deleted gets a fresh one: the same
 // recruit-ticket an applicant's Send calls, with the cron secret in place of a
-// sign-in. Its answer saves the new ticket and clears the old steps; "off"
-// (the team stopped making tickets) or "not_in_server" leave it to try again.
+// sign-in. recruit-ticket claims the record first, so only one fresh ticket
+// is ever made; "off" (the team stopped making tickets) and "not_in_server"
+// (the officers are told) keep the claim, so the sweep stops asking, and only
+// a Discord failure with nothing made hands it back for the next sweep.
 export type Fresh = { url: string; secret: string };
 
 async function freshTickets(deps: Deps, fresh: Fresh) {
@@ -305,12 +307,13 @@ async function freshTickets(deps: Deps, fresh: Fresh) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-cron-secret': fresh.secret },
         body: JSON.stringify({ application: id }),
-        signal: AbortSignal.timeout(30_000)
+        // A ticket is up to about nine Discord calls at five seconds each.
+        signal: AbortSignal.timeout(90_000)
       });
       const answer = await res.json().catch(() => null);
       if (res.ok && answer?.status === 'made') made++;
-      else
-        console.error('recruit-reminders: fresh ticket for ' + id + ':', res.status, answer?.status ?? answer?.error);
+      // off, not_in_server and busy are answers, not failures.
+      else if (!res.ok) console.error('recruit-reminders: fresh ticket for ' + id + ':', res.status, answer?.error);
     } catch (e) {
       console.error('recruit-reminders: fresh ticket for ' + id + ' failed:', e instanceof Error ? e.message : e);
     }

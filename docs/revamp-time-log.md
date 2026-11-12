@@ -18,17 +18,17 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live |  9 h 40 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 10 h 5 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **181 h 36 m** |             |
+| **All revamp work**                | **182 h 1 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Recruiting | Phase 2 | 8 h 35 m | ~9 h 50 m |
+| Recruiting | Phase 2 | 9 h 0 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 0 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
@@ -697,6 +697,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:00-10:20 PM | PR #1805 (#1544 part 1): CodeRabbit's second round (a reopen after the delete claim answered: part 2's fresh ticket covers it; the no-Discord-id close noted) and the fresh-agent migration review (changes needed: the closing message could repeat each sweep when the thread lock failed) and its fixes at Kat's word: the close recorded before the message posts, an archived thread un-archived as it locks, an archived team's records left out of the sweep, a never-delete team's saved tickets left out, the card's embed saved as text instead of raw mentions; three more tests | Phase 2: Before the new site goes live / Recruiting (#1544) | 20 m | ~15 m build, ~5 m Kat deciding | ~165,000 | Tokens include the fresh agent's 123,436. Kat's merge not yet counted. |
 | 10:20-10:22 PM | PR #1805 (#1544 part 1): Kat's merge and cleanup; #1544 closed itself on the merge and was reopened for part 2; #1487's date line | Phase 2: Before the new site goes live / Recruiting (#1544) | 5 m | ~5 m build | ~8,500 | |
 | 10:22-10:35 PM | #1544, PR 2 of 2: a record reopened after its ticket was deleted gets a fresh one (the sweep calls `recruit-ticket` with the cron secret; `recruit-ticket` makes it despite the old ids, clears the closing steps, DMs "open again", and its JWT gate goes off like the cron-called functions); the card's Applied before and Reopened fields link the saved conversation; Deno tests, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1544) | 15 m | ~15 m build | ~70,000 | CodeRabbit and Kat's merge not yet counted. |
+| 10:35-11:00 PM | PR #1806 (#1544 part 2): CodeRabbit rate-limited, so Kat picked the fresh-agent review in its place (approve; seven nice-to-haves) and all seven at Kat's word: the fresh ticket claimed on the record first so it's made once, a Discord failure with nothing made handing the claim back, the sweep waiting long enough, the secret making only a reopened record's ticket, no actor on the sweep's history row, off and not-in-server stopping the retries (the officers told once), archived teams left out, a tiebreak on the earlier record; eight more tests | Phase 2: Before the new site goes live / Recruiting (#1544) | 25 m | ~20 m build, ~5 m Kat deciding | ~200,000 | Tokens include the fresh agent's 110,413. Kat's merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 

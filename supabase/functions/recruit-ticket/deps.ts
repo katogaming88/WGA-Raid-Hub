@@ -92,6 +92,7 @@ function supabaseDb(): TicketDb {
           .neq('id', app.id)
           .lt('applied_at', app.applied_at)
           .order('applied_at', { ascending: false })
+          .order('id', { ascending: false })
           .limit(1)
           .maybeSingle(),
         db()
@@ -174,6 +175,40 @@ function supabaseDb(): TicketDb {
         role_ids: r?.visible_to_role_ids ?? [],
         viewer_ids: viewers
       } satisfies Ticket;
+    },
+
+    async claimFresh(applicationId) {
+      const rows = check(
+        await db()
+          .from('recruit_applications')
+          .update({
+            ticket_deleted_at: null,
+            ticket_closed_at: null,
+            ticket_saved_at: null,
+            ticket_save_failures: 0,
+            discord_channel_id: null,
+            discord_thread_id: null,
+            discord_officer_message_id: null
+          })
+          .eq('id', applicationId)
+          .is('closed_at', null)
+          .not('ticket_deleted_at', 'is', null)
+          .select('id')
+      ) as any[];
+      return rows.length > 0;
+    },
+
+    async unclaimFresh(applicationId) {
+      check(
+        await db()
+          .from('recruit_applications')
+          .update({ ticket_deleted_at: new Date().toISOString() })
+          .eq('id', applicationId)
+          .is('closed_at', null)
+          .is('discord_channel_id', null)
+          .is('discord_thread_id', null)
+          .is('discord_officer_message_id', null)
+      );
     },
 
     async saveMade(applicationId, actor, made, detail) {

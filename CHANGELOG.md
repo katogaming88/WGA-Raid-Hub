@@ -16,7 +16,7 @@ answers to.
 
 ### Functions
 
-- **A fresh ticket after a reopen** (#1544, part 2 of 2). When an officer reopens a recruit whose ticket the bot already deleted, the next sweep, within 15 minutes, makes them a new ticket the same way as when they applied. The card says **Reopened** with a link to their earlier ticket's saved conversation on Raid Hub. The DM reads "Your application to Phoenix is open again. Your new ticket with the officers: ..." A reopen before the ticket is deleted still just unlocks the old one.
+- **A fresh ticket after a reopen** (#1544, part 2 of 2). When an officer reopens a recruit whose ticket the bot already deleted, the next sweep, within 15 minutes, makes them a new ticket the same way as when they applied. The card says **Reopened** with a link to their earlier ticket's saved conversation on Raid Hub. The DM reads "Your application to Phoenix is open again. Your new ticket with the officers: ..." A reopen before the ticket is deleted still just unlocks the old one. Only one fresh ticket is ever made, even if the sweep and the applicant ask at once. If the applicant has left the Discord server, the officer channel is told once instead ("Ask them to rejoin, then close and reopen their record"), and if the team has switched tickets off, nothing is made.
 - Someone applying to a team they applied to before gets **Applied before** on their card, now with a link to their earlier ticket's saved conversation, instead of a plain "Yes".
 - `recruit-ticket` is now deployed with Supabase's sign-in gate off, like the scheduled functions, so the sweep's call reaches it. It still checks a signed-in applicant's own token itself, and the sweep's call needs the scheduled jobs' secret.
 

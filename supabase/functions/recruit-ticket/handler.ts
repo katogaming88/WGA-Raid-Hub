@@ -129,7 +129,13 @@ export interface TicketDb {
   // (the sweep), the open application itself.
   ticket(authUserId: string | null, applicationId: number): Promise<Ticket | null>;
   // Writes what was made and the ticket_opened history row.
-  saveMade(applicationId: number, actor: number, made: Made, detail: string | null): Promise<void>;
+  saveMade(applicationId: number, actor: number | null, made: Made, detail: string | null): Promise<void>;
+  // A reopened record's claim on its fresh ticket: clears ticket_deleted_at
+  // (and the old ids and steps) only if it's still set and the record open;
+  // false when someone else got there first.
+  claimFresh(applicationId: number): Promise<boolean>;
+  // Nothing was made: sets ticket_deleted_at again so the sweep retries.
+  unclaimFresh(applicationId: number): Promise<void>;
 }
 
 export type Deps = { fetch: typeof fetch; db: TicketDb; env: Env };
@@ -163,6 +169,7 @@ export const DMS_CLOSED = "Their Discord DMs are closed, so the welcome message 
 // gives the same answer (50007) for that as for closed DMs.
 export const DMS_BLOCKED =
   "Discord wouldn't deliver the welcome message: their DMs are closed, or they aren't in the server.";
+export const NOT_REOPENED = 'That application has no deleted ticket to replace.';
 export const DM_NOT_SENT = "The welcome message wasn't sent.";
 export const DM_FAILED = "The welcome message couldn't be sent.";
 
@@ -420,9 +427,9 @@ class SaveFailed extends Error {}
 
 // Made in Discord but not on the record: the next call would make it again,
 // so the ids go in the function's log for an officer to clean up by hand.
-async function save(deps: Deps, t: Ticket, made: Made, detail: string | null) {
+async function save(deps: Deps, t: Ticket, actor: number | null, made: Made, detail: string | null) {
   try {
-    await deps.db.saveMade(t.id, t.person_id, made, detail);
+    await deps.db.saveMade(t.id, actor, made, detail);
   } catch {
     console.error('recruit-ticket: made in Discord but not recorded', JSON.stringify({ application: t.id, ...made }));
     throw new SaveFailed();
@@ -431,23 +438,33 @@ async function save(deps: Deps, t: Ticket, made: Made, detail: string | null) {
 
 export const PARTLY_MADE = 'Discord stopped answering partway; the card may be missing.';
 
-async function make(deps: Deps, token: string, siteUrl: string, t: Ticket): Promise<Response> {
+async function make(deps: Deps, token: string, siteUrl: string, t: Ticket, actor: number | null): Promise<Response> {
   const made: Made = { discord_channel_id: null, discord_thread_id: null, discord_officer_message_id: null };
   try {
-    return await makeInto(deps, token, siteUrl, t, made);
+    return await makeInto(deps, token, siteUrl, t, actor, made);
   } catch (e) {
+    const any = made.discord_channel_id || made.discord_thread_id || made.discord_officer_message_id;
     // Whatever exists is recorded, so a retry doesn't make a second one.
-    if (
-      !(e instanceof SaveFailed) &&
-      (made.discord_channel_id || made.discord_thread_id || made.discord_officer_message_id)
-    ) {
-      await save(deps, t, made, PARTLY_MADE);
-    }
+    if (!(e instanceof SaveFailed) && any) await save(deps, t, actor, made, PARTLY_MADE);
+    // Nothing made for a reopened record: hand the claim back so the next
+    // sweep tries again.
+    if (!any && t.reopened) await deps.db.unclaimFresh(t.id).catch(() => null);
     throw e;
   }
 }
 
-async function makeInto(deps: Deps, token: string, siteUrl: string, t: Ticket, made: Made): Promise<Response> {
+export const NOT_IN_SERVER_NOTICE = (name: string) =>
+  name +
+  "'s application was reopened, but they've left the Discord server, so no new ticket was made. Ask them to rejoin, then close and reopen their record on Raid Hub.";
+
+async function makeInto(
+  deps: Deps,
+  token: string,
+  siteUrl: string,
+  t: Ticket,
+  actor: number | null,
+  made: Made
+): Promise<Response> {
   const me = await must<{ id: string }>(await call(deps, token, 'GET', '/users/@me'));
 
   if (t.mode === 'ticket') {
@@ -458,8 +475,17 @@ async function makeInto(deps: Deps, token: string, siteUrl: string, t: Ticket, m
     // server (the bot was removed) is a failure, or they'd wait forever.
     if (!member.ok) {
       const code = (await member.json().catch(() => null))?.code;
-      if (member.status === 404 && code === UNKNOWN_MEMBER)
+      if (member.status === 404 && code === UNKNOWN_MEMBER) {
+        // A reopened record keeps its claim, so the sweep stops; the
+        // officers are told once why there's no new ticket.
+        if (t.reopened && t.officer_channel_id) {
+          await call(deps, token, 'POST', '/channels/' + t.officer_channel_id + '/messages', {
+            content: NOT_IN_SERVER_NOTICE(t.name_realm.split('-')[0]),
+            allowed_mentions: { parse: [] }
+          }).catch(() => null);
+        }
         return jsonResponse({ success: true, status: 'not_in_server' });
+      }
       throw new DiscordDown();
     }
     const channels = await must<Array<{ name: string }>>(
@@ -500,7 +526,7 @@ async function makeInto(deps: Deps, token: string, siteUrl: string, t: Ticket, m
 
   const ticketUrl = made.discord_channel_id ? jump(t.server_id!, made.discord_channel_id) : null;
   const dm = await welcome(deps, token, t, ticketUrl);
-  await save(deps, t, made, dm);
+  await save(deps, t, actor, made, dm);
   return jsonResponse(answerMade(t, made, dm));
 }
 
@@ -533,6 +559,8 @@ async function route(req: Request, deps: Deps): Promise<Response> {
   if (!sweep && !user) return refuse('Not signed in', 401);
   const t = await deps.db.ticket(user?.id ?? null, id);
   if (!t) return refuse(NOT_YOURS, 403);
+  // The secret makes only a reopened record's fresh ticket.
+  if (sweep && !t.reopened) return refuse(NOT_REOPENED, 409);
 
   // Nothing to make: the team chose nothing, or hasn't picked what it needs.
   const ready =
@@ -540,12 +568,17 @@ async function route(req: Request, deps: Deps): Promise<Response> {
     t.server_id &&
     t.discord_id &&
     (t.mode === 'ticket' ? t.ticket_category_id : t.officer_channel_id);
-  if (!ready) return jsonResponse({ success: true, status: 'off' });
+  if (!ready) {
+    // The team stopped making tickets: the reopened record's claim is taken so
+    // the sweep stops asking.
+    if (t.reopened) await deps.db.claimFresh(t.id);
+    return jsonResponse({ success: true, status: 'off' });
+  }
 
   // Made already: answer it again.
-  // ponytail: two calls at the same instant could both make one; the page
-  // calls once per send. A claim column on the record if that ever shows up.
-  // A reopened record's old ones are deleted, so it gets fresh ones.
+  // ponytail: two calls at the same instant could both make a first ticket;
+  // the page calls once per send. A reopened record's fresh one is claimed
+  // below, so it can't be made twice.
   if (!t.reopened && (t.discord_channel_id || t.discord_thread_id || t.discord_officer_message_id)) {
     // The DM's outcome is the one the record kept; a partly made one never sent it.
     const dm = t.opened_detail === PARTLY_MADE ? DM_NOT_SENT : t.opened_detail;
@@ -570,8 +603,18 @@ async function route(req: Request, deps: Deps): Promise<Response> {
     return jsonResponse({ success: true, status: 'local' });
   }
 
+  // A reopened record's old ones are deleted. Whoever clears ticket_deleted_at
+  // first makes the fresh one (the sweep or the applicant, two sweeps at
+  // once); anyone else is told it's already being made.
+  let fresh = t;
+  if (t.reopened) {
+    if (!(await deps.db.claimFresh(t.id))) return jsonResponse({ success: true, status: 'busy' });
+    fresh = { ...t, discord_channel_id: null, discord_thread_id: null, discord_officer_message_id: null };
+  }
+
   try {
-    return await make(deps, token!, siteUrl!, t);
+    // The sweep's call has no person behind it.
+    return await make(deps, token!, siteUrl!, fresh, sweep ? null : t.person_id);
   } catch (e) {
     if (e instanceof DiscordDown) return refuse(DISCORD_DOWN, 502);
     throw e;
