@@ -7,6 +7,9 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { pool, withTxn, SIGNUP_OWNER_T1, RAIDER_T1 } from './helpers.js';
 
+const count = async (q) =>
+  (await q('select count(*)::int as n from public.recruit_applications where team_id = 3')).rows[0].n;
+
 afterAll(() => pool.end());
 
 const APPLICANT = SIGNUP_OWNER_T1;
@@ -109,6 +112,22 @@ describe('the applicant’s ticket link and Discord step', () => {
     });
   });
 
+  it('gives no link while the team doesn’t add applicants to its server', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { char } = await setup(q);
+      const id = await send(asUser, char, []);
+      await q('update public.recruit_applications set discord_channel_id = $2 where id = $1', [id, CHANNEL]);
+      await q("update public.team_recruiting set add_to_server = false, discord_mode = 'none' where team_id = 3");
+      expect((await mine(asUser))[0].ticket_url).toBeNull();
+    });
+  });
+
+  it('refuses a signed-out caller', async () => {
+    await withTxn(async ({ asUser }) => {
+      await expect(asUser(null, 'select public.my_applications()')).rejects.toThrow('Not signed in');
+    });
+  });
+
   it('says when the team doesn’t add applicants to its server', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { char } = await setup(q);
@@ -144,6 +163,26 @@ describe('other specs on an application', () => {
     });
   });
 
+  it('refuses a signed-out caller and someone else’s character, and makes no application', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { char } = await setup(q);
+      const before = await count(q);
+      await expect(
+        asUser(null, "select public.send_application(3, $1, $2, null, null, 'America/New_York', '{}')", [
+          char,
+          JSON.stringify(REQUIRED)
+        ])
+      ).rejects.toThrow('Not signed in');
+      await expect(
+        asUser(RAIDER_T1, "select public.send_application(3, $1, $2, null, null, 'America/New_York', '{}')", [
+          char,
+          JSON.stringify(REQUIRED)
+        ])
+      ).rejects.toThrow(/not one of yours|Link your Discord/);
+      expect(await count(q)).toBe(before);
+    });
+  });
+
   it.each([
     [['Restoration'], 'other specs of your character'],
     [['Demonology'], 'other specs of your character'],
@@ -152,7 +191,9 @@ describe('other specs on an application', () => {
   ])('refuses %j', async (specs, message) => {
     await withTxn(async ({ q, asUser }) => {
       const { char } = await setup(q);
+      const before = await count(q);
       await expect(send(asUser, char, specs)).rejects.toThrow(message);
+      expect(await count(q)).toBe(before);
     });
   });
 });

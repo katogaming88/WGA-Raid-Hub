@@ -27,7 +27,7 @@ begin
              'trial_ends_on', a.trial_ends_on,
              'answers', a.answers,
              'ticket_url', case
-               when a.closed_at is null and a.ticket_deleted_at is null
+               when a.closed_at is null and a.ticket_deleted_at is null and coalesce(r.add_to_server, false)
                     and a.discord_channel_id is not null and c.guild_id ~ '^[0-9]{17,20}$'
                then 'https://discord.com/channels/' || c.guild_id || '/' || a.discord_channel_id
              end,
