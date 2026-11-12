@@ -25,10 +25,26 @@ begin
              'closed_at', a.closed_at,
              'trial_starts_on', a.trial_starts_on,
              'trial_ends_on', a.trial_ends_on,
-             'answers', a.answers) order by a.applied_at desc, a.id desc)
+             'answers', a.answers,
+             'ticket_url', case
+               when a.closed_at is null and a.ticket_deleted_at is null
+                    and a.discord_channel_id is not null and c.guild_id ~ '^[0-9]{17,20}$'
+               then 'https://discord.com/channels/' || c.guild_id || '/' || a.discord_channel_id
+             end,
+             'joined_discord', coalesce(d.kind = 'joined_discord', false),
+             'join_failed', coalesce(d.kind = 'discord_join_failed', false),
+             'add_to_server', coalesce(r.add_to_server, false)) order by a.applied_at desc, a.id desc)
       from recruit_applications a
       join teams t on t.id = a.team_id
       join guilds g on g.id = t.guild_id
+      left join team_recruiting r on r.team_id = a.team_id
+      left join team_discord_config c on c.team_id = a.team_id
+      left join lateral (
+        select e.kind
+          from recruit_events e
+         where e.application_id = a.id and e.kind in ('joined_discord', 'discord_join_failed')
+         order by e.created_at desc, e.id desc
+         limit 1) d on true
      where a.person_id = my_person_id()), '[]'::jsonb);
 end;
 $function$;

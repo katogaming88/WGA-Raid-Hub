@@ -17,6 +17,13 @@
 //   logs, Heroic + Mythic  Warcraft Logs zoneRankings on the season's raid
 //   Mythic bosses killed   the same Mythic zoneRankings: bosses with a kill
 //
+// POST { token, character, application } also keeps the numbers on that
+// application (#1810): the caller's own open one, sent with this character.
+// They are written with the service key, never taken from the browser, so an
+// applicant can't type their own score. Only empty columns are filled: a
+// number once saved is what officers saw on the ticket card and never moves,
+// and a source that was down can be filled by asking again.
+//
 // "The season's raid" is current_season()'s first raid zone that is not a mini
 // raid, the zone the Season tab's performance fetch reads. Bosses killed come
 // from logs, so a kill nobody logged does not count (Blizzard's encounter list
@@ -42,6 +49,30 @@ export interface StatsDb {
   battlenetAccountId(userId: string): Promise<string | null>;
   // The season's raid zone, or null when no season has a raid yet.
   seasonZone(): Promise<{ wcl_zone_id: number; name: string } | null>;
+  // Fills the application's empty number columns, if it is the user's own open
+  // application sent with this Blizzard character. False when it isn't.
+  saveToApplication(userId: string, applicationId: number, blizzardId: number, numbers: Numbers): Promise<boolean>;
+}
+
+// The application's copy (#1539's columns). One logs average fits there, so it
+// is Mythic's when the character has Mythic logs, else Heroic's.
+export type Numbers = {
+  mplus_score: number | null;
+  logs_best_average: number | null;
+  logs_median_average: number | null;
+  mythic_bosses_killed: number | null;
+};
+
+const oneDecimal = (n: number | null | undefined) => (typeof n === 'number' ? Math.round(n * 10) / 10 : null);
+
+export function numbersOf(stats: Stats): Numbers {
+  const logs = stats.mythic_logs?.best != null ? stats.mythic_logs : stats.heroic_logs;
+  return {
+    mplus_score: oneDecimal(stats.mplus_score),
+    logs_best_average: oneDecimal(logs?.best),
+    logs_median_average: oneDecimal(logs?.median),
+    mythic_bosses_killed: stats.mythic_bosses_killed?.killed ?? null
+  };
 }
 
 export type Cached = { at: number; stats: Stats };
@@ -105,6 +136,7 @@ export const NOT_CONNECTED = 'Connect Battle.net to your account first.';
 export const NOT_YOURS = 'That Battle.net login is not the one connected to your account.';
 export const NOT_YOUR_CHARACTER = 'That character is not on your Battle.net account.';
 export const BLIZZARD_DOWN = 'Battle.net did not answer. Try again in a minute.';
+export const NOT_YOUR_APPLICATION = 'That application is not yours, or is closed.';
 
 export function linksOf(c: AccountCharacter) {
   const path = 'us/' + encodeURIComponent(c.realm_slug) + '/' + encodeURIComponent(c.name.toLowerCase());
@@ -216,7 +248,7 @@ async function route(req: Request, deps: Deps): Promise<Response> {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) return refuse('Not signed in', 401);
 
-  let body: { token?: unknown; character?: unknown };
+  let body: { token?: unknown; character?: unknown; application?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -226,8 +258,12 @@ async function route(req: Request, deps: Deps): Promise<Response> {
   if (typeof body.character !== 'number' || !Number.isInteger(body.character)) {
     return refuse('Missing character', 400);
   }
+  if (body.application !== undefined && !(Number.isInteger(body.application) && (body.application as number) > 0)) {
+    return refuse('Bad application', 400);
+  }
   const token = body.token;
   const characterId = body.character;
+  const applicationId = body.application as number | undefined;
 
   const user = await deps.db.getUser(authHeader);
   if (!user) return refuse('Not signed in', 401);
@@ -250,11 +286,18 @@ async function route(req: Request, deps: Deps): Promise<Response> {
   const c = own.find((x) => x.blizzard_id === characterId);
   if (!c) return refuse(NOT_YOUR_CHARACTER, 403);
 
+  // The answer, after keeping the numbers on the application when asked.
+  const answer = async (stats: Stats, failed: string[]) => {
+    if (applicationId !== undefined) {
+      const saved = await deps.db.saveToApplication(user.id, applicationId, c.blizzard_id, numbersOf(stats));
+      if (!saved) return refuse(NOT_YOUR_APPLICATION, 403);
+    }
+    return jsonResponse({ success: true, failed, character: stats });
+  };
+
   const key = String(c.blizzard_id);
   const hit = deps.cache.get(key);
-  if (hit && deps.now() - hit.at < CACHE_MS) {
-    return jsonResponse({ success: true, failed: [], character: hit.stats });
-  }
+  if (hit && deps.now() - hit.at < CACHE_MS) return await answer(hit.stats, []);
 
   const [summary, keystone, zone] = await Promise.all([
     read((signal) => blizzardJson(deps, summaryPath(c), token, signal)),
@@ -299,5 +342,5 @@ async function route(req: Request, deps: Deps): Promise<Response> {
     ...(logs.ok ? [] : ['warcraft_logs'])
   ];
   if (failed.length === 0) deps.cache.set(key, { at: deps.now(), stats });
-  return jsonResponse({ success: true, failed, character: stats });
+  return await answer(stats, failed);
 }

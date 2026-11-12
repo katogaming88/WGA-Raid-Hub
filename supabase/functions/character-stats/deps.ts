@@ -47,6 +47,37 @@ function supabaseDb(): StatsDb {
         .maybeSingle();
       if (error) throw new Error(error.message);
       return (data as { wcl_zone_id: number; name: string } | null) ?? null;
+    },
+    async saveToApplication(userId, applicationId, blizzardId, numbers) {
+      const { data: person, error: personError } = await db()
+        .from('people')
+        .select('id')
+        .eq('auth_user_id', userId)
+        .maybeSingle();
+      if (personError) throw new Error(personError.message);
+      if (!person) return false;
+      const { data: app, error } = await db()
+        .from('recruit_applications')
+        .select(
+          'id, mplus_score, logs_best_average, logs_median_average, mythic_bosses_killed, characters!inner(blizzard_id)'
+        )
+        .eq('id', applicationId)
+        .eq('person_id', person.id)
+        .eq('characters.blizzard_id', blizzardId)
+        .is('closed_at', null)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!app) return false;
+      // Only the empty columns: a saved number never moves.
+      const patch = Object.fromEntries(
+        Object.entries(numbers).filter(([k, v]) => v !== null && (app as Record<string, unknown>)[k] === null)
+      );
+      if (Object.keys(patch).length === 0) return true;
+      let update = db().from('recruit_applications').update(patch).eq('id', applicationId).is('closed_at', null);
+      for (const k of Object.keys(patch)) update = update.is(k, null);
+      const { error: updateError } = await update;
+      if (updateError) throw new Error(updateError.message);
+      return true;
     }
   };
 }
