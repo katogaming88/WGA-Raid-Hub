@@ -1,5 +1,5 @@
 {
-  "version": "3.261.0",
+  "version": "3.262.0",
   "pieces": {
     "frontend": "3.233.0",
     "db": "3.261.0",
@@ -17,8 +17,8 @@
       "discord-join": "3.256.0",
       "discord-settings": "3.259.0",
       "optional-rsvp-reminders": "3.240.0",
-      "recruit-reminders": "3.261.0",
-      "recruit-ticket": "3.257.0",
+      "recruit-reminders": "3.262.0",
+      "recruit-ticket": "3.262.0",
       "twitch-live-check": "3.112.13",
       "upload-bio-photo": "3.112.13",
       "wcl-progression-sync": "3.227.0",

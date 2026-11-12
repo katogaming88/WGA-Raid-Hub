@@ -106,6 +106,19 @@ function supabaseDb(): ReminderDb {
       }));
     },
 
+    async reopenedAfterDelete() {
+      const rows = await paged((from, to) =>
+        db
+          .from('recruit_applications')
+          .select('id')
+          .is('closed_at', null)
+          .not('ticket_deleted_at', 'is', null)
+          .order('id')
+          .range(from, to)
+      );
+      return rows.map((r) => r.id);
+    },
+
     async claimDelete(id, at) {
       const rows = check(
         await db

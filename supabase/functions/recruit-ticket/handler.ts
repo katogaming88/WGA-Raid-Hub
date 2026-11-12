@@ -21,6 +21,13 @@
 // account, plus the extra roles the team picked. @everyone is denied. Someone
 // without a linked Discord can't be added (the settings page warns).
 //
+// The recruiting sweep (recruit-reminders) calls it too, with the cron secret
+// and no signed-in user, for a record reopened after its ticket was deleted:
+// that record gets a fresh ticket, its card links the saved conversation, and
+// the DM says the application is open again (#1544). Supabase's JWT gate is
+// off for this function so that call gets through; a signed-in call is still
+// checked against the caller's own token below.
+//
 // What was made goes on the record (discord_channel_id, discord_thread_id,
 // discord_officer_message_id), so calling again answers it and makes nothing.
 // A local stack makes nothing either: its server ids are the real servers
@@ -55,7 +62,12 @@ export type Ticket = {
   answers: Array<{ key?: string; answer?: unknown }>;
   sent_by: 'recruiter' | 'friend' | 'nobody';
   sent_by_name: string | null;
-  applied_before: boolean;
+  // Their latest earlier record with this team, whose saved conversation the
+  // card links to (#1544).
+  applied_before: number | null;
+  // Reopened after its ticket was deleted: this call makes a fresh one, and
+  // the card links to the record's own saved conversation (#1544).
+  reopened: boolean;
   // Already made, from the record.
   discord_channel_id: string | null;
   discord_thread_id: string | null;
@@ -113,8 +125,9 @@ export type Made = {
 
 export interface TicketDb {
   getUser(authHeader: string): Promise<{ id: string } | null>;
-  // The caller's own open application with this id, or null.
-  ticket(authUserId: string, applicationId: number): Promise<Ticket | null>;
+  // The caller's own open application with this id, or null. With no caller
+  // (the sweep), the open application itself.
+  ticket(authUserId: string | null, applicationId: number): Promise<Ticket | null>;
   // Writes what was made and the ticket_opened history row.
   saveMade(applicationId: number, actor: number, made: Made, detail: string | null): Promise<void>;
 }
@@ -265,8 +278,15 @@ export function card(t: Ticket, siteUrl: string) {
     ['Best logs average', t.logs_best_average === null ? null : String(t.logs_best_average)],
     ['Mythic bosses killed', t.mythic_bosses_killed === null ? null : String(t.mythic_bosses_killed)],
     ['Raid nights', answerOf(t, 'nights')],
-    ['Sent by', sentBy],
-    ['Applied before', t.applied_before ? 'Yes' : null]
+    ['Sent by', sentBy]
+  ];
+  // Links, written as Discord markdown, so not escaped like the rest.
+  const linked: Array<[string, string | null]> = [
+    [
+      'Applied before',
+      t.applied_before ? '[Yes: their earlier ticket](' + recordUrl(siteUrl, t.applied_before) + ')' : null
+    ],
+    ['Reopened', t.reopened ? '[Their earlier ticket is saved](' + recordUrl(siteUrl, t.id) + ')' : null]
   ];
   return {
     embeds: [
@@ -281,9 +301,12 @@ export function card(t: Ticket, siteUrl: string) {
           ') · [Armory](' +
           links.armory +
           ')',
-        fields: fields
-          .filter(([, v]) => v !== null)
-          .map(([name, value]) => ({ name, value: escape(truncate(value!, 1024)), inline: true }))
+        fields: [
+          ...fields
+            .filter(([, v]) => v !== null)
+            .map(([name, value]) => ({ name, value: escape(truncate(value!, 1024)), inline: true })),
+          ...linked.filter(([, v]) => v !== null).map(([name, value]) => ({ name, value: value!, inline: true }))
+        ]
       }
     ],
     components: [
@@ -354,14 +377,19 @@ async function welcome(deps: Deps, token: string, t: Ticket, ticketUrl: string |
       await call(deps, token, 'POST', '/users/@me/channels', { recipient_id: t.discord_id })
     );
     const res = await call(deps, token, 'POST', '/channels/' + dm.id + '/messages', {
-      content: ticketUrl
-        ? 'Welcome to ' +
-          t.guild_name +
-          '! Your private ticket with ' +
+      content: t.reopened
+        ? 'Your application to ' +
           t.team_name +
-          "'s officers is ready: " +
-          ticketUrl
-        : 'Your application to ' + t.team_name + ' is in. An officer will message you.',
+          ' is open again.' +
+          (ticketUrl ? ' Your new ticket with the officers: ' + ticketUrl : ' An officer will message you.')
+        : ticketUrl
+          ? 'Welcome to ' +
+            t.guild_name +
+            '! Your private ticket with ' +
+            t.team_name +
+            "'s officers is ready: " +
+            ticketUrl
+          : 'Your application to ' + t.team_name + ' is in. An officer will message you.',
       components: ticketUrl
         ? [{ type: 1, components: [{ type: 2, style: 5, label: 'Open your ticket', url: ticketUrl }] }]
         : []
@@ -480,8 +508,12 @@ async function route(req: Request, deps: Deps): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return refuse('Method not allowed', 405);
 
+  // The recruiting sweep, for a record reopened after its ticket was deleted
+  // (#1544), sends the cron secret instead of a signed-in applicant.
+  const secret = deps.env.get('OPTIONAL_RSVP_REMINDERS_SECRET');
+  const sweep = !!secret && req.headers.get('x-cron-secret') === secret;
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return refuse('Not signed in', 401);
+  if (!sweep && !authHeader) return refuse('Not signed in', 401);
 
   let body: Record<string, unknown>;
   try {
@@ -497,9 +529,9 @@ async function route(req: Request, deps: Deps): Promise<Response> {
   const dest = resolveBot(deps.env);
   if (dest.kind === 'bot' && (!token || !siteUrl)) return refuse(NOT_SET_UP, 503);
 
-  const user = await deps.db.getUser(authHeader);
-  if (!user) return refuse('Not signed in', 401);
-  const t = await deps.db.ticket(user.id, id);
+  const user = sweep ? null : await deps.db.getUser(authHeader!);
+  if (!sweep && !user) return refuse('Not signed in', 401);
+  const t = await deps.db.ticket(user?.id ?? null, id);
   if (!t) return refuse(NOT_YOURS, 403);
 
   // Nothing to make: the team chose nothing, or hasn't picked what it needs.
@@ -513,7 +545,8 @@ async function route(req: Request, deps: Deps): Promise<Response> {
   // Made already: answer it again.
   // ponytail: two calls at the same instant could both make one; the page
   // calls once per send. A claim column on the record if that ever shows up.
-  if (t.discord_channel_id || t.discord_thread_id || t.discord_officer_message_id) {
+  // A reopened record's old ones are deleted, so it gets fresh ones.
+  if (!t.reopened && (t.discord_channel_id || t.discord_thread_id || t.discord_officer_message_id)) {
     // The DM's outcome is the one the record kept; a partly made one never sent it.
     const dm = t.opened_detail === PARTLY_MADE ? DM_NOT_SENT : t.opened_detail;
     return jsonResponse(answerMade(t, t, dm));

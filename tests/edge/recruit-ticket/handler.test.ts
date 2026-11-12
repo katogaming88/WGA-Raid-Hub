@@ -60,7 +60,8 @@ const TICKET_APP: Ticket = {
   ],
   sent_by: 'recruiter',
   sent_by_name: 'Voxle',
-  applied_before: true,
+  applied_before: 3,
+  reopened: false,
   discord_channel_id: null,
   discord_thread_id: null,
   discord_officer_message_id: null,
@@ -117,7 +118,9 @@ function setup(
     fetch,
     db: {
       getUser: (h) => Promise.resolve(h === 'Bearer jwt' ? { id: 'u1' } : null),
-      ticket: (uid, id) => Promise.resolve(uid === 'u1' && ticket && id === ticket.id ? ticket : null),
+      // null is the sweep's call, with the cron secret.
+      ticket: (uid, id) =>
+        Promise.resolve((uid === 'u1' || uid === null) && ticket && id === ticket.id ? ticket : null),
       saveMade: (_id, _actor, made, detail) => {
         if (saveFails) return Promise.reject(new Error('db down'));
         saved.push({ made: { ...made }, detail });
@@ -210,7 +213,7 @@ Deno.test('ticket card: mentions only the applicant and officers, fields, links 
     'Mythic bosses killed': '6',
     'Raid nights': 'Every week',
     'Sent by': 'Voxle',
-    'Applied before': 'Yes'
+    'Applied before': '[Yes: their earlier ticket](https://raidhub.example/recruits/3)'
   });
   const buttons = msg.body.components[0].components;
   assertEquals(
@@ -434,4 +437,44 @@ Deno.test('made but the record not saved: the ids go in the log, and no second s
   } finally {
     console.error = original;
   }
+});
+
+Deno.test('the sweep makes a fresh ticket for a record reopened after its ticket was deleted (#1544)', async () => {
+  const env = { ...ENV, OPTIONAL_RSVP_REMINDERS_SECRET: 'cron' };
+  const { deps, calls, saved } = setup(
+    {},
+    { reopened: true, applied_before: null, discord_channel_id: '800000000000000099' },
+    env
+  );
+  const res = await handle(
+    new Request('http://edge.test/functions/v1/recruit-ticket', {
+      method: 'POST',
+      headers: { 'x-cron-secret': 'cron', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ application: 7 })
+    }),
+    deps
+  );
+  const body = await res.json();
+  assertEquals(body.status, 'made');
+  // A new channel, not the deleted one answered again.
+  assertEquals(find(calls, 'POST', '/guilds/' + SERVER + '/channels').length, 1);
+  assertEquals(saved[0].made.discord_channel_id, TICKET);
+  const [msg] = find(calls, 'POST', '/channels/' + TICKET + '/messages');
+  const fields = Object.fromEntries(msg.body.embeds[0].fields.map((f: any) => [f.name, f.value]));
+  assertEquals(fields['Reopened'], '[Their earlier ticket is saved](https://raidhub.example/recruits/7)');
+  assertEquals(fields['Applied before'], undefined);
+  const [dm] = find(calls, 'POST', '/channels/' + DM + '/messages');
+  assert(dm.body.content.startsWith('Your application to Phoenix is open again. Your new ticket with the officers: '));
+
+  // Without the secret or a sign-in, nothing.
+  const wrong = await handle(
+    new Request('http://edge.test/functions/v1/recruit-ticket', {
+      method: 'POST',
+      headers: { 'x-cron-secret': 'nope', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ application: 7 })
+    }),
+    deps
+  );
+  assertEquals(wrong.status, 401);
+  await wrong.body?.cancel();
 });

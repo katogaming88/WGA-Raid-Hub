@@ -18,17 +18,17 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live |  9 h 20 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live |  9 h 40 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **181 h 16 m** |             |
+| **All revamp work**                | **181 h 36 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Recruiting | Phase 2 | 8 h 15 m | ~9 h 50 m |
+| Recruiting | Phase 2 | 8 h 35 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 0 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
@@ -695,6 +695,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:21-9:40 PM | #1544, PR 1 of 2: closing recruit tickets in the 15-minute sweep: the No reply close (`bot_close_no_reply()`, held overnight, a last DM), then each closed ticket locked with its closing message by reason, saved 100 messages at a time with the officer thread marked (`in_officer_thread`), deleted after the team's delay and never before it saves, the officers told at the third failed save, a reopen before deletion unlocking it; migration (progress columns, `recruit_record()` with the thread flag and earlier applications' ids); Deno and RLS tests, generated docs, decision log, RLS.md, schema reference, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1544) | 20 m | ~20 m build | ~150,000 | A fresh ticket after a reopen of a deleted one, and the card's link to the saved conversation, are PR 2. CodeRabbit, the fresh-agent review and Kat's merge not yet counted. |
 | 9:50-10:00 PM | PR #1805 (#1544 part 1): CodeRabbit (No reply re-checks the team's time under the lock against the officers' last saved message or a reopen; saved again just before the delete; the delete claimed on the record only while still closed, and un-claimed if Discord refuses; a ticket deleted by hand no longer skips its officer thread; the failed notice logged; the re-read before closing answered); five more tests | Phase 2: Before the new site goes live / Recruiting (#1544) | 10 m | ~10 m build | ~60,000 | The fresh-agent review and Kat's merge not yet counted. |
 | 10:00-10:20 PM | PR #1805 (#1544 part 1): CodeRabbit's second round (a reopen after the delete claim answered: part 2's fresh ticket covers it; the no-Discord-id close noted) and the fresh-agent migration review (changes needed: the closing message could repeat each sweep when the thread lock failed) and its fixes at Kat's word: the close recorded before the message posts, an archived thread un-archived as it locks, an archived team's records left out of the sweep, a never-delete team's saved tickets left out, the card's embed saved as text instead of raw mentions; three more tests | Phase 2: Before the new site goes live / Recruiting (#1544) | 20 m | ~15 m build, ~5 m Kat deciding | ~165,000 | Tokens include the fresh agent's 123,436. Kat's merge not yet counted. |
+| 10:20-10:22 PM | PR #1805 (#1544 part 1): Kat's merge and cleanup; #1544 closed itself on the merge and was reopened for part 2; #1487's date line | Phase 2: Before the new site goes live / Recruiting (#1544) | 5 m | ~5 m build | ~8,500 | |
+| 10:22-10:35 PM | #1544, PR 2 of 2: a record reopened after its ticket was deleted gets a fresh one (the sweep calls `recruit-ticket` with the cron secret; `recruit-ticket` makes it despite the old ids, clears the closing steps, DMs "open again", and its JWT gate goes off like the cron-called functions); the card's Applied before and Reopened fields link the saved conversation; Deno tests, stamp, changelog; PR | Phase 2: Before the new site goes live / Recruiting (#1544) | 15 m | ~15 m build | ~70,000 | CodeRabbit and Kat's merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 

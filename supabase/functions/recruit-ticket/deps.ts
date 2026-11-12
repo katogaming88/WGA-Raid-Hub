@@ -37,9 +37,24 @@ function supabaseDb(): TicketDb {
     },
 
     async ticket(authUserId, applicationId) {
-      const person = check(
-        await db().from('people').select('id, discord_id').eq('auth_user_id', authUserId).maybeSingle()
-      );
+      // The applicant's own open record, or with no caller (the sweep's
+      // fresh ticket, #1544) the open record itself.
+      const person = authUserId
+        ? check(await db().from('people').select('id, discord_id').eq('auth_user_id', authUserId).maybeSingle())
+        : check(
+            await db()
+              .from('people')
+              .select('id, discord_id')
+              .eq(
+                'id',
+                (
+                  check(
+                    await db().from('recruit_applications').select('person_id').eq('id', applicationId).maybeSingle()
+                  ) as any
+                )?.person_id ?? -1
+              )
+              .maybeSingle()
+          );
       if (!person) return null;
       const app = check(
         await db()
@@ -47,7 +62,7 @@ function supabaseDb(): TicketDb {
           .select(
             'id, team_id, person_id, character_id, name_realm, class_name, spec_name, other_specs, item_level,' +
               ' mplus_score, logs_best_average, mythic_bosses_killed, answers, sent_by, sent_by_name,' +
-              ' discord_channel_id, discord_thread_id, discord_officer_message_id'
+              ' discord_channel_id, discord_thread_id, discord_officer_message_id, applied_at, ticket_deleted_at'
           )
           .eq('id', applicationId)
           .eq('person_id', person.id)
@@ -68,12 +83,17 @@ function supabaseDb(): TicketDb {
         app.character_id
           ? db().from('characters').select('name, realm_slug').eq('id', app.character_id).maybeSingle().then(check)
           : Promise.resolve(null),
+        // Their latest earlier record with this team, for the card's link.
         db()
           .from('recruit_applications')
-          .select('id', { count: 'exact', head: true })
+          .select('id')
           .eq('team_id', app.team_id)
           .eq('person_id', person.id)
-          .neq('id', app.id),
+          .neq('id', app.id)
+          .lt('applied_at', app.applied_at)
+          .order('applied_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
         db()
           .from('recruit_events')
           .select('detail')
@@ -140,7 +160,8 @@ function supabaseDb(): TicketDb {
         answers: Array.isArray(app.answers) ? app.answers : [],
         sent_by: app.sent_by,
         sent_by_name: app.sent_by_name,
-        applied_before: (before.count ?? 0) > 0,
+        applied_before: (before.data as any)?.id ?? null,
+        reopened: app.ticket_deleted_at !== null,
         discord_channel_id: app.discord_channel_id,
         discord_thread_id: app.discord_thread_id,
         discord_officer_message_id: app.discord_officer_message_id,
@@ -156,7 +177,19 @@ function supabaseDb(): TicketDb {
     },
 
     async saveMade(applicationId, actor, made, detail) {
-      check(await db().from('recruit_applications').update(made).eq('id', applicationId));
+      // A fresh ticket after a reopen starts the closing steps over (#1544).
+      check(
+        await db()
+          .from('recruit_applications')
+          .update({
+            ...made,
+            ticket_closed_at: null,
+            ticket_saved_at: null,
+            ticket_deleted_at: null,
+            ticket_save_failures: 0
+          })
+          .eq('id', applicationId)
+      );
       check(
         await db()
           .from('recruit_events')

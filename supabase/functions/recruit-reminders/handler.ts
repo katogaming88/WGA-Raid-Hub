@@ -418,7 +418,9 @@ export async function sweep(deps: Deps, token: string, siteUrl: string) {
     }
   }
   // Then the closed records' tickets, including any closed just now.
-  const tickets = await closeTickets(deps, token);
+  const url = deps.env.get('SUPABASE_URL');
+  const secret = deps.env.get('OPTIONAL_RSVP_REMINDERS_SECRET');
+  const tickets = await closeTickets(deps, token, url && secret ? { url, secret } : undefined);
   return { sent, failed, noReply, tickets };
 }
 
