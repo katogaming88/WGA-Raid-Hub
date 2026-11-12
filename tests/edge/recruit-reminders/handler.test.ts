@@ -349,12 +349,12 @@ Deno.test('a reminder held overnight says how long is really left', async () => 
 });
 
 Deno.test(
-  'with no Team Owner linked, the 3-day ping still goes and the history says nobody was mentioned',
+  'with no Team Owner linked, the 3-day ping still goes and the history says no owner was mentioned',
   async () => {
     const s = setup({ uses_ticket: false, ticket_channel_id: null, owner_discord_id: null });
     const r = await s.sweep(T0 + 72 * H + 60_000);
     assertEquals(r.body.sent, 1);
     assertEquals(s.posts[0].body.content, WAITING('Katorrí', '3 days'));
-    assertEquals(s.events, ['Reminded the Team Owner (no Team Owner with a linked Discord, so nobody was mentioned)']);
+    assertEquals(s.events, ['Reminded the officers again (no Team Owner with a linked Discord to mention)']);
   }
 );

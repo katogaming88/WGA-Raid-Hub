@@ -417,10 +417,9 @@ export async function sweep(deps: Deps, token: string, siteUrl: string) {
       const refused = !closed && (down !== null || out.some((s) => !s.ok));
       await deps.db.sent(
         r.id,
-        DETAIL[next.reminder] +
-          (next.reminder === 'owner_ping' && !r.owner_discord_id
-            ? ' (no Team Owner with a linked Discord, so nobody was mentioned)'
-            : '') +
+        (next.reminder === 'owner_ping' && !r.owner_discord_id
+          ? 'Reminded the officers again (no Team Owner with a linked Discord to mention)'
+          : DETAIL[next.reminder]) +
           (closed ? "; their DMs are closed, so the DM didn't arrive" : refused ? '; Discord refused part of it' : '')
       );
       sent++;

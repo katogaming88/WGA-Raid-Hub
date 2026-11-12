@@ -81,9 +81,18 @@ function supabaseDb(): ReminderDb {
       const personIds = [
         ...new Set([...apps.map((a) => a.person_id), ...(owners as any[]).map((o) => o.person_id)].filter(Boolean))
       ];
-      const people = personIds.length
-        ? (check(await db.from('people').select('id, discord_id').in('id', personIds)) as any[])
-        : [];
+      // In batches well under PostgREST's 1000-row answer and the address length.
+      const people: any[] = [];
+      for (let i = 0; i < personIds.length; i += 200) {
+        people.push(
+          ...(check(
+            await db
+              .from('people')
+              .select('id, discord_id')
+              .in('id', personIds.slice(i, i + 200))
+          ) as any[])
+        );
+      }
 
       const by = <T>(rows: T[], key: (r: T) => number) => new Map(rows.map((r) => [key(r), r]));
       const teamOf = by(teams as any[], (t) => t.id);
