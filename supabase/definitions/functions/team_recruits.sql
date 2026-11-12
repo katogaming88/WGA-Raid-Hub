@@ -20,6 +20,8 @@ begin
   end if;
   return jsonb_build_object(
     'access', v_access,
+    'min_item_level', (select r.min_item_level from team_recruiting r where r.team_id = p_team_id),
+    'needs', team_recruiting_spot_list(p_team_id),
     'recruits', coalesce((
       select jsonb_agg(jsonb_build_object(
                'id', a.id,
@@ -41,10 +43,20 @@ begin
                'applicant_last_message_at', a.applicant_last_message_at,
                'officers_last_message_at', a.officers_last_message_at,
                'trial_starts_on', a.trial_starts_on,
-               'trial_ends_on', a.trial_ends_on)
+               'trial_ends_on', a.trial_ends_on,
+               'reminded', a.status = 'waiting_on_applicant' and exists (
+                 select 1 from recruit_reminders_sent s
+                  where s.application_id = a.id and s.reminder = 'reply_reminder'
+                    and s.due_for = coalesce(a.applicant_last_message_at, a.applied_at)),
+               'ticket_url', case
+                 when a.ticket_deleted_at is null and a.discord_channel_id is not null
+                      and c.guild_id ~ '^[0-9]{17,20}$'
+                 then 'https://discord.com/channels/' || c.guild_id || '/' || a.discord_channel_id
+               end)
              order by a.closed_at is not null, a.applied_at desc, a.id desc)
         from recruit_applications a
         join teams t on t.id = a.team_id
+        left join team_discord_config c on c.team_id = a.team_id
        where a.team_id = p_team_id and a.person_id is distinct from my_person_id()), '[]'::jsonb));
 end;
 $function$;
