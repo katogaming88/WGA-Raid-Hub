@@ -4,7 +4,7 @@ import { useStatus } from '../components/Status';
 import { useAddress } from '../data/address';
 import { bothQueries } from '../data/query';
 import { errorMessage } from '../lib/errors';
-import { formatInstantDate } from '../lib/dates';
+import { formatInstantDate, localTimeZoneNote } from '../lib/dates';
 import { useRecruitingTeams } from '../apply/useApply';
 import { classColor } from '../roster/roster';
 import { NotFoundPage } from '../pages/NotFoundPage';
@@ -94,7 +94,9 @@ function People({ list }: { list: MyRecruit[] }) {
       <h2 id="rcs-people" className="section-title">
         People you sent
       </h2>
-      <p className="text-muted rcs-small">{summary(list)}</p>
+      <p className="text-muted rcs-small">
+        {summary(list)}. {localTimeZoneNote()}
+      </p>
       {list.length === 0 ? (
         <p className="text-muted">Nobody yet. Anyone who applies through one of your links will show up here.</p>
       ) : (

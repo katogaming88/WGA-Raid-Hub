@@ -176,11 +176,17 @@ describe('guild recruiters', () => {
   it('my_recruiter_code gives a recruiter their own code, and null once they are off or never were', async () => {
     await withTxn(async ({ q, asUser }) => {
       const raider = await personOf(q, RAIDER_T1);
-      const mine = async (uid) => (await asUser(uid, `select public.my_recruiter_code(${WGA}) as c`)).rows[0].c;
+      const mine = async (uid, guild = WGA) =>
+        (await asUser(uid, `select public.my_recruiter_code(${guild}) as c`)).rows[0].c;
       expect(await mine(RAIDER_T1)).toBeNull();
 
       const code = await setRecruiter(asUser, GUILD_OFFICER, raider, true);
       expect(await mine(RAIDER_T1)).toBe(code);
+      // Their code is for this guild only: another guild answers nothing.
+      const other = (
+        await q("insert into public.guilds (name, url_key) values ('Second Guild', 'second-guild') returning id")
+      ).rows[0].id;
+      expect(await mine(RAIDER_T1, other)).toBeNull();
       // Someone else's code never comes back to them.
       expect(await mine(OFFICER_T1)).toBeNull();
 
