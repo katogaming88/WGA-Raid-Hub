@@ -3,13 +3,16 @@ import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
 import { useAddress } from '../data/address';
+import { usePageCan } from '../auth/access';
 import { formatInstantDate, localTimeZoneNote } from '../lib/dates';
 import { errorMessage } from '../lib/errors';
 import {
   RANK_LABELS,
   TEAM_RANK_LABELS,
   useGuildMembers,
+  useGuildRecruiters,
   useSetGuildRank,
+  useSetRecruiter,
   useTransferOwnership,
   type GuildMember,
   type GuildRank
@@ -33,12 +36,19 @@ function counts(rows: GuildMember[]): string {
 // The Members tab of Guild settings (#1650): everyone in the guild as a table
 // with their guild rank, teams and last sign-in, searchable and filterable by
 // rank. Admins read it; the Owner also changes ranks and hands the guild over.
-// The Recruiter switch joins it with #1550.
+// The Recruiter column (#1550) is a separate switch beside the rank, since a
+// recruiter may hold any rank.
 export function MembersPanel() {
   const { guild } = useAddress();
   const members = useGuildMembers(guild.id);
   const { announce } = useStatus();
   const setRank = useSetGuildRank(guild.id);
+  // The Recruiter column (#1550) is for whoever holds manage_recruiters.
+  const canRecruit = usePageCan().can('manageRecruiters');
+  const recruiters = useGuildRecruiters(guild.id, canRecruit);
+  const setRecruiter = useSetRecruiter(guild.id);
+  // Off for anyone not in the list, and for a recruiter who has left the guild.
+  const isRecruiter = (id: number) => !!recruiters.data?.find((r) => r.person_id === id && r.active && r.in_guild);
   const [handing, setHanding] = useState<GuildMember | null>(null);
   const [search, setSearch] = useState('');
   const [rankFilter, setRankFilter] = useState<GuildRank | 'all'>('all');
@@ -112,6 +122,7 @@ export function MembersPanel() {
                     <tr>
                       <th scope="col">Member</th>
                       <th scope="col">Guild rank</th>
+                      {canRecruit && <th scope="col">Recruiter</th>}
                       <th scope="col">Teams and team rank</th>
                       <th scope="col">Last signed in</th>
                       <th scope="col">
@@ -156,6 +167,34 @@ export function MembersPanel() {
                             RANK_LABELS[m.rank]
                           )}
                         </td>
+                        {canRecruit && (
+                          <td>
+                            <select
+                              className="select members-rank"
+                              aria-label={`Recruiter for ${m.display_name}`}
+                              value={isRecruiter(m.person_id) ? 'on' : 'off'}
+                              disabled={!recruiters.isSuccess || setRecruiter.isPending}
+                              onChange={(e) => {
+                                const on = e.target.value === 'on';
+                                setRecruiter.mutate(
+                                  { personId: m.person_id, on },
+                                  {
+                                    onSuccess: () =>
+                                      announce(
+                                        'success',
+                                        `${m.display_name} is ${on ? 'now' : 'no longer'} a recruiter.`
+                                      ),
+                                    onError: (err) =>
+                                      announce('error', `Could not change ${m.display_name}: ${errorMessage(err)}`)
+                                  }
+                                );
+                              }}
+                            >
+                              <option value="off">Off</option>
+                              <option value="on">On</option>
+                            </select>
+                          </td>
+                        )}
                         <td>
                           {m.teams.length === 0 ? (
                             <span className="text-muted">No team</span>

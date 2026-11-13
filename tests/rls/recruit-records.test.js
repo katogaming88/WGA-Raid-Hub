@@ -178,7 +178,12 @@ describe('recruit records', () => {
       expect(r).toMatchObject({ access: 'recruiter', status: 'waiting_on_officers', team_name: 'Team Phoenix' });
       expect(r.notes.map((n) => n.body)).toEqual(['Good player, I raided with them']);
       expect(r).not.toHaveProperty('answers');
-      expect((await asUser(RAIDER_T1, 'select public.my_recruits() as m')).rows[0].m).toHaveLength(1);
+      // My recruits carries the class and spec and only the recruiter's own notes.
+      const mine = (await asUser(RAIDER_T1, 'select public.my_recruits() as m')).rows[0].m;
+      expect(mine).toHaveLength(1);
+      expect(mine[0].notes.map((n) => n.body)).toEqual(['Good player, I raided with them']);
+      expect(mine[0]).toHaveProperty('guild_id');
+      expect(mine[0]).toHaveProperty('class_name');
       await expect(recruits(asUser, RAIDER_T1)).rejects.toThrow('Not authorized');
 
       // Switched off: the link no longer credits anyone.

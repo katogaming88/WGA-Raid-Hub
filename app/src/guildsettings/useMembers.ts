@@ -61,3 +61,26 @@ export function useTransferOwnership(guildId: number) {
     { key: ['transfer-guild-ownership', guildId], refreshes: [membersKey(guildId), ['permissions']] }
   );
 }
+
+// The guild's recruiters, on or off (#1550), for the Members tab's Recruiter
+// column. Read only by someone with manage_recruiters; the Owner and Admins
+// hold it, so an Admin whose grid row was taken away just sees the column off.
+export type GuildRecruiter = { person_id: number; code: string; active: boolean; in_guild: boolean };
+
+export function useGuildRecruiters(guildId: number, enabled: boolean) {
+  return useSupabaseQuery<GuildRecruiter[]>(
+    ['guild-recruiters', guildId],
+    async (client) => {
+      const { data, error } = await client.rpc('guild_recruiter_list', { p_guild_id: guildId });
+      return { data: (data ?? []) as GuildRecruiter[], error };
+    },
+    { enabled }
+  );
+}
+
+export function useSetRecruiter(guildId: number) {
+  return useSupabaseMutation<unknown, { personId: number; on: boolean }>(
+    (client, v) => client.rpc('set_guild_recruiter', { p_guild_id: guildId, p_person_id: v.personId, p_on: v.on }),
+    { key: ['set-recruiter', guildId], refreshes: [['guild-recruiters', guildId], ['my-recruiter-code']] }
+  );
+}

@@ -171,4 +171,22 @@ describe('guild recruiters', () => {
       expect(await setRecruiter(asUser, OWNER, raider, true)).toMatch(/^[a-z0-9]{8}$/);
     });
   });
+
+  // #1550: a recruiter reads their own code without any permission, and only theirs.
+  it('my_recruiter_code gives a recruiter their own code, and null once they are off or never were', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const raider = await personOf(q, RAIDER_T1);
+      const mine = async (uid) => (await asUser(uid, `select public.my_recruiter_code(${WGA}) as c`)).rows[0].c;
+      expect(await mine(RAIDER_T1)).toBeNull();
+
+      const code = await setRecruiter(asUser, GUILD_OFFICER, raider, true);
+      expect(await mine(RAIDER_T1)).toBe(code);
+      // Someone else's code never comes back to them.
+      expect(await mine(OFFICER_T1)).toBeNull();
+
+      await setRecruiter(asUser, GUILD_OFFICER, raider, false);
+      expect(await mine(RAIDER_T1)).toBeNull();
+      await expect(asUser(null, `select public.my_recruiter_code(${WGA})`)).rejects.toThrow('Not signed in');
+    });
+  });
 });

@@ -122,6 +122,20 @@ export const GUIDES: Guide[] = [
     ]
   },
   {
+    id: 'my-recruits',
+    topic: 'start',
+    title: 'Recruit for the guild',
+    quick:
+      'If the guild made you a recruiter, My recruits under You gives you your own links to send, shows who applied through them and lets you leave a note for the officers.',
+    place: { label: 'My recruits', to: (b) => `${b.guild}/me/recruits` },
+    steps: [
+      'Open My recruits under You in the sidebar. It only shows for people the guild has made recruiters; an Owner or Admin switches that on in the Recruiter column of the Members tab.',
+      'Your links has one link for each team taking applications, and Not sure yet, which opens the guild page with every team. Choose Copy beside one and send it. Whoever applies through it is credited to you, whichever team they pick.',
+      'People you sent lists each person who applied through your link: their spec, team, when they applied and where it is at. Waiting on officers means the officers owe them a reply. The line above says how many applied this month and how many joined.',
+      'Choose Add a note under someone to tell their team’s officers what you learned, then Save note. It shows on their application and in their ticket card. The officers see your notes; the applicant never does.'
+    ]
+  },
+  {
     id: 'create-guild',
     topic: 'start',
     title: 'Create your guild',
@@ -170,7 +184,7 @@ export const GUIDES: Guide[] = [
     steps: [
       'Open Guild settings, under Guild in the sidebar, then the Members tab. The Owner and Admins can open it.',
       'Everyone in the guild is listed with their rank (Owner, Admin, Team Lead or Member), their teams and when they last signed in. Anyone on a team is a Member until the Owner promotes them. The first 25 show; choose Show all for the rest.',
-      'To find someone, type part of their name or a character name into Search, or pick a rank under Guild rank. The Owner changes a person’s rank with the box in their row. Admins help run the guild; Team Leads can start teams of their own. Admins see the list but cannot change ranks.',
+      'To find someone, type part of their name or a character name into Search, or pick a rank under Guild rank. The Owner changes a person’s rank with the box in their row. Admins help run the guild; Team Leads can start teams of their own. Admins see the list but cannot change ranks. Owners and Admins also have a Recruiter column: set it to On to make someone a recruiter, who then gets My recruits and their own links.',
       'To give the guild to someone else, the Owner chooses Hand over ownership beside them and types their name to confirm. They become the Owner and you become an Admin; only the new Owner can undo it.'
     ]
   },

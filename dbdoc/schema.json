@@ -16757,6 +16757,12 @@
       "return_type": "record",
       "arguments": "p_team_id integer",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_recruiter_code",
+      "return_type": "text",
+      "arguments": "p_guild_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

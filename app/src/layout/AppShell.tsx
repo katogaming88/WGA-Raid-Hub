@@ -28,6 +28,8 @@ import { TeamSwitcher } from './TeamSwitcher';
 import { StreamWidget } from '../streams/StreamWidget';
 import { hasUnread } from '../news/news';
 import { liveCount } from '../streams/directory';
+import { needsOfficers } from '../recruiting/myRecruits';
+import { useMyRecruiterCode, useMyRecruits } from '../recruiting/useMyRecruits';
 import { waitingOnOfficers } from '../recruiting/recruits';
 import { useTeamRecruits } from '../recruiting/useRecruits';
 import { useGuildStreamers } from '../streams/StreamWidget';
@@ -120,6 +122,9 @@ export function AppShell() {
   const council = useLootCouncil(navTeam?.id ?? 0);
   // My applications shows under You once the person has applied (#1547).
   const myApplications = useMyApplications(!!user);
+  // My recruits shows under You for a recruiter (#1550); the read answers null for anyone else.
+  const myRecruiterCode = useMyRecruiterCode(guildId, !!user);
+  const myRecruits = useMyRecruits(!!user && !!myRecruiterCode.data);
   const permissions = useCan(navTeam?.id, guildId);
   const { can, hasGuildRank } = permissions;
   // The Recruits page's own read, for the sidebar's count (#1549); only asked of
@@ -132,6 +137,8 @@ export function AppShell() {
     can,
     visitor: applyPage && visitor,
     applied: (myApplications.data?.length ?? 0) > 0,
+    recruiter: !!myRecruiterCode.data,
+    myRecruitsWaiting: (myRecruits.data ?? []).filter((r) => r.guild_id === guildId && needsOfficers(r)).length,
     guildSettings: (can('manageTeams') || can('manageMembers')) && !limited,
     hideBoe: limited,
     siteAdmin: can('adminSite'),
@@ -384,7 +391,13 @@ export function AppShell() {
                         end={item.end ?? false}
                         className="nav-item"
                         aria-label={
-                          item.mark ? `${item.label}, new` : item.live ? `${item.label}, ${item.live} live` : undefined
+                          item.mark
+                            ? `${item.label}, new`
+                            : item.live
+                              ? `${item.label}, ${item.live} live`
+                              : item.count
+                                ? `${item.label}, ${item.count} waiting`
+                                : undefined
                         }
                       >
                         <Icon name={item.icon} />
@@ -392,11 +405,11 @@ export function AppShell() {
                         {item.mark && <span className="nav-mark" aria-hidden="true" />}
                         {/* The space keeps "Streams" and the count apart for
                             voice control: the label has to contain them in order. */}
-                        {!!item.live && (
+                        {!!(item.live || item.count) && (
                           <>
                             {' '}
                             <span className="count-badge" aria-hidden="true">
-                              {item.live}
+                              {item.live || item.count}
                             </span>
                           </>
                         )}

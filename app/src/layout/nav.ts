@@ -46,6 +46,10 @@ export function navGroups(
     visitor?: boolean;
     // The person has sent an application (#1547): My applications, under You.
     applied?: boolean;
+    // The person is a recruiter in this guild (#1550): My recruits, under You.
+    recruiter?: boolean;
+    // Their people waiting on officers, the count beside it.
+    myRecruitsWaiting?: number;
   }
 ): NavGroup[] {
   const groups: NavGroup[] = [
@@ -68,7 +72,19 @@ export function navGroups(
       heading: 'You',
       items: [
         { label: 'My profile', icon: 'user', to: `${base.team}/me` },
-        ...(show.applied ? [{ label: 'My applications', icon: 'list' as const, to: `${base.guild}/applications` }] : [])
+        ...(show.applied
+          ? [{ label: 'My applications', icon: 'list' as const, to: `${base.guild}/applications` }]
+          : []),
+        ...(show.recruiter
+          ? [
+              {
+                label: 'My recruits',
+                icon: 'user' as const,
+                to: `${base.guild}/me/recruits`,
+                count: show.myRecruitsWaiting ?? 0
+              }
+            ]
+          : [])
       ]
     },
     {
@@ -298,6 +314,7 @@ export const TEAM_PAGES: Record<string, string> = {
 export const GUILD_PAGES: Record<string, string> = {
   apply: 'Join us',
   applications: 'My applications',
+  'me/recruits': 'My recruits',
   boe: 'BoE sales',
   streams: 'Streams',
   officers: 'Guild officers',

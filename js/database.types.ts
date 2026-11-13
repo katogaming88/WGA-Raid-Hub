@@ -5692,6 +5692,7 @@ export type Database = {
       }
       my_person_id: { Args: never; Returns: number }
       my_player_ids: { Args: never; Returns: number[] }
+      my_recruiter_code: { Args: { p_guild_id: number }; Returns: string }
       my_recruits: { Args: never; Returns: Json }
       my_team_role: { Args: { p_team_id: number }; Returns: string }
       my_wishlist_signup_ids: { Args: never; Returns: number[] }
