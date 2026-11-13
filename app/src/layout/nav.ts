@@ -181,7 +181,7 @@ const OFFICER_ABILITY: Record<string, Ability | readonly Ability[]> = {
   'officer/settings': ['manageTeam', 'editRoster', 'promoteAssistants'],
   'officer/settings/audit-log': 'viewAuditLog',
   'officer/settings/discord': 'manageDiscord',
-  'officer/recruiting': 'editRecruiting',
+  'officer/recruiting': 'seeRecruits',
   'officer/recruiting/settings': 'editRecruiting'
 };
 

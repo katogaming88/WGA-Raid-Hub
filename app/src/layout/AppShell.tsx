@@ -124,7 +124,7 @@ export function AppShell() {
   const { can, hasGuildRank } = permissions;
   // The Recruits page's own read, for the sidebar's count (#1549); only asked of
   // someone who may open it.
-  const recruits = useTeamRecruits(navTeam?.id ?? 0, !!navTeam && can('editRecruiting'));
+  const recruits = useTeamRecruits(navTeam?.id ?? 0, !!navTeam && can('seeRecruits'));
   // The apply pages (#1546) are open to anyone: no team or guild rank needed.
   const applyPage = /^\/g\/[^/]+\/(apply|applications)(\/|$)/.test(location.pathname);
   const visitor = !hasGuildRank && !teams.some((t) => onTeamIds.has(t.id));
