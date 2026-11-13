@@ -41,6 +41,8 @@
 
   --button: #f2703f;
   --button-text: #1c0b04;
+  /* The ember as text: a warning to read, not a button to press. */
+  --ember-text: #f2703f;
 
   --badge: #e6ebf2;
   --badge-text: #0b0e13;
@@ -92,6 +94,7 @@
 
   --button: #c24a14;
   --button-text: #ffffff;
+  --ember-text: #a63a0a;
 
   --badge: #161b22;
   --badge-text: #ffffff;

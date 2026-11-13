@@ -160,6 +160,9 @@ export type Ability =
   | 'manageDiscord'
   // Recruiting settings and the Recruits page (#1548): Edit recruiting.
   | 'editRecruiting'
+  // The Recruits page (#1549): Edit recruiting, or a guild rank (Owner/Admin
+  // looking in, or See every team). The database still decides per team.
+  | 'seeRecruits'
   // Saving team settings that are the Owner's alone (loot buttons, signups).
   | 'leadTeam'
   | 'adminSite'
@@ -248,6 +251,8 @@ export function can(
       return admin || team('change_discord_settings');
     case 'editRecruiting':
       return admin || team('edit_recruiting');
+    case 'seeRecruits':
+      return admin || team('edit_recruiting') || (perms?.guild.size ?? 0) > 0;
     case 'leadTeam':
       return admin || teamRole(access, teamId) === 'team_leader';
     case 'adminSite':

@@ -106,6 +106,22 @@ export const GUIDES: Guide[] = [
     ]
   },
   {
+    id: 'recruits',
+    topic: 'start',
+    title: 'Work with recruits',
+    officers: true,
+    quick:
+      'Recruits in the Officer menu lists everyone who applied or is trying out, where each one stands, and the buttons to move them along.',
+    place: { label: 'Recruits', to: (b) => `${b.team}/officer/recruiting` },
+    steps: [
+      'Open Recruiting under the Officer menu, then Recruits. The tabs are Open, On trial, Joined, Declined and No reply, each with a count. The Recruits item shows how many are waiting on officers.',
+      'Each row shows the character in its class colour, spec, item level (orange when under your minimum), best logs average and where it is at: Waiting on officers means they wrote last, Waiting on them means you did. A class your Who you are looking for list does not ask for is marked Not on your needs list.',
+      'Choose a name to open their record beside the list: their numbers, links to their ticket, Warcraft Logs, Raider.IO and the Armory, their answers, what has happened so far, and any earlier applications to the guild.',
+      'Officer notes are never shown to the applicant. Write one and choose Add note.',
+      'Start a trial puts them on your roster as a Trial. On trial, the row says which day it is and when it ends, with Joined, Extend trial (it asks why) and Not joining. Decline closes the record, with a reason if you like. The same buttons are on the card in their ticket.'
+    ]
+  },
+  {
     id: 'create-guild',
     topic: 'start',
     title: 'Create your guild',

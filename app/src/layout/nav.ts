@@ -8,7 +8,7 @@ import type { IconName } from '../components/Icon';
 // `pages`: the item is a group that opens to show these links (the Officer menu, #869).
 // `tabs`: the page is one of several reports shown as tabs on one page; the
 // item stays current on any of them.
-export type NavPage = { label: string; to: string; danger?: boolean; tabs?: NavPage[] };
+export type NavPage = { label: string; to: string; danger?: boolean; tabs?: NavPage[]; count?: number };
 export type NavItem = {
   label: string;
   icon: IconName;
@@ -16,6 +16,8 @@ export type NavItem = {
   end?: boolean;
   mark?: boolean;
   live?: number;
+  // A count behind a group, shown while it is shut (Recruiting's waiting).
+  count?: number;
   pages?: NavPage[];
 };
 export type NavGroup = { heading: string; items: NavItem[] };
@@ -37,6 +39,8 @@ export function navGroups(
     newsUnread?: boolean;
     liveCount?: number;
     council?: boolean;
+    // Recruits waiting on officers (#1549), on the Recruits page and its group.
+    recruitsWaiting?: number;
     // Someone with no team and no guild rank here (#1546): the apply pages
     // are all the guild offers them, so the rest of the menu is left out.
     visitor?: boolean;
@@ -80,7 +84,7 @@ export function navGroups(
     },
     {
       heading: 'Officer',
-      items: officerMenu(`${base.team}/officer`, show.council ?? false, show.can)
+      items: officerMenu(`${base.team}/officer`, show.council ?? false, show.can, show.recruitsWaiting ?? 0)
     },
     {
       heading: 'Site',
@@ -145,9 +149,14 @@ export const pageHolds = (page: NavPage, pathname: string) =>
 // The officer menu from the #869 decision: similar pages in one group, one
 // group open at a time. Anything that changes the team as a whole is a setting.
 // A Loot council team (#1563) has no Priority page.
-function officerMenu(o: string, council: boolean, can: (ability: Ability) => boolean): NavItem[] {
+function officerMenu(
+  o: string,
+  council: boolean,
+  can: (ability: Ability) => boolean,
+  recruitsWaiting: number
+): NavItem[] {
   const allowed = (page: NavPage) => canAny(can, officerAbility(page.to));
-  return allMenu(o, council)
+  return allMenu(o, council, recruitsWaiting)
     .map((item) => {
       const pages = (item.pages ?? []).filter(allowed);
       return { ...item, pages, to: pages[0]?.to ?? item.to };
@@ -172,7 +181,7 @@ const OFFICER_ABILITY: Record<string, Ability | readonly Ability[]> = {
   'officer/settings': ['manageTeam', 'editRoster', 'promoteAssistants'],
   'officer/settings/audit-log': 'viewAuditLog',
   'officer/settings/discord': 'manageDiscord',
-  'officer/recruiting': 'editRecruiting',
+  'officer/recruiting': 'seeRecruits',
   'officer/recruiting/settings': 'editRecruiting'
 };
 
@@ -185,7 +194,7 @@ export function officerAbility(path: string): Ability | readonly Ability[] {
 export const canAny = (can: (ability: Ability) => boolean, need: Ability | readonly Ability[]) =>
   typeof need === 'string' ? can(need) : need.some(can);
 
-function allMenu(o: string, council: boolean): (NavItem & { pages: NavPage[] })[] {
+function allMenu(o: string, council: boolean, recruitsWaiting: number): (NavItem & { pages: NavPage[] })[] {
   return [
     {
       label: 'Loot',
@@ -225,9 +234,9 @@ function allMenu(o: string, council: boolean): (NavItem & { pages: NavPage[] })[
       label: 'Recruiting',
       icon: 'mail',
       to: `${o}/recruiting/settings`,
+      count: recruitsWaiting,
       pages: [
-        // The Recruits page is #1549's, a placeholder until it is built.
-        { label: 'Recruits', to: `${o}/recruiting` },
+        { label: 'Recruits', to: `${o}/recruiting`, count: recruitsWaiting },
         { label: 'Settings', to: `${o}/recruiting/settings` }
       ]
     },

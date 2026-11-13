@@ -28,6 +28,8 @@ import { TeamSwitcher } from './TeamSwitcher';
 import { StreamWidget } from '../streams/StreamWidget';
 import { hasUnread } from '../news/news';
 import { liveCount } from '../streams/directory';
+import { waitingOnOfficers } from '../recruiting/recruits';
+import { useTeamRecruits } from '../recruiting/useRecruits';
 import { useGuildStreamers } from '../streams/StreamWidget';
 import { useNews, useNewsSeen } from '../news/useNews';
 import type { RouteHandle } from '../routes';
@@ -120,6 +122,9 @@ export function AppShell() {
   const myApplications = useMyApplications(!!user);
   const permissions = useCan(navTeam?.id, guildId);
   const { can, hasGuildRank } = permissions;
+  // The Recruits page's own read, for the sidebar's count (#1549); only asked of
+  // someone who may open it.
+  const recruits = useTeamRecruits(navTeam?.id ?? 0, !!navTeam && can('seeRecruits'));
   // The apply pages (#1546) are open to anyone: no team or guild rank needed.
   const applyPage = /^\/g\/[^/]+\/(apply|applications)(\/|$)/.test(location.pathname);
   const visitor = !hasGuildRank && !teams.some((t) => onTeamIds.has(t.id));
@@ -132,7 +137,8 @@ export function AppShell() {
     siteAdmin: can('adminSite'),
     newsUnread: news.isSuccess && hasUnread(news.data, newsSeen),
     liveCount: streamers.isSuccess ? liveCount(streamers.data) : 0,
-    council
+    council,
+    recruitsWaiting: recruits.data ? waitingOnOfficers(recruits.data.recruits) : 0
   });
 
   // Officer menu: one group open at a time. On a page change the group holding
@@ -515,6 +521,14 @@ function NavDisclosure({ item, open, onToggle }: { item: NavItem; open: boolean;
       >
         <Icon name={item.icon} />
         <span>{item.label}</span>
+        {!!item.count && !open && (
+          <>
+            {' '}
+            <span className="count-badge" aria-hidden="true">
+              {item.count}
+            </span>
+          </>
+        )}
         <Icon name="chevronRight" size={14} />
       </button>
       <ul id={panel} className="nav-sub" hidden={!open}>
@@ -524,8 +538,17 @@ function NavDisclosure({ item, open, onToggle }: { item: NavItem; open: boolean;
               to={page.to}
               className={page.danger ? 'nav-item nav-danger' : 'nav-item'}
               aria-current={pageHolds(page, pathname) ? 'page' : undefined}
+              aria-label={page.count ? `${page.label}, ${page.count} waiting` : undefined}
             >
               <span>{page.label}</span>
+              {!!page.count && (
+                <>
+                  {' '}
+                  <span className="count-badge" aria-hidden="true">
+                    {page.count}
+                  </span>
+                </>
+              )}
             </Link>
           </li>
         ))}
