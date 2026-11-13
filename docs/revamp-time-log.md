@@ -18,17 +18,17 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 14 h 10 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 14 h 46 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **186 h 6 m** |             |
+| **All revamp work**                | **186 h 42 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Recruiting | Phase 2 | 13 h 5 m | ~9 h 50 m |
+| Recruiting | Phase 2 | 13 h 41 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 0 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
@@ -716,6 +716,12 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 5:46-6:00 PM | #1549, planning: the Recruits page needs three things officers cannot read (min item level and needs for assistants and Admins, "reminded", the ticket link), so #1817 was filed and Kat chose the backend first; #1817: `team_recruits()` returns them, RLS tests, docs, decision log, stamp, changelog, PR | Phase 2: Before the new site goes live / Recruiting (#1817) | 15 m | build; CodeRabbit, the fresh-agent review and Kat's merge not yet counted | 284,300 | Added 2026-11-12. |
 | 5:54-6:14 PM | #1817 (PR #1818), after it opened: CodeRabbit's one finding (the raider and hidden-assistant refusals) and its fix, the fresh-agent migration review (approve) and its two nice-to-haves, follow-up #1819 filed, Kat's merge, cleanup, #1487 updated | Phase 2: Before the new site goes live / Recruiting (#1817) | 20 m | build; Kat's CodeRabbit trigger and merge, not split | 187,700 | Added 2026-11-12. Tokens include the fresh agent's 137,325. |
 | 6:14-6:40 PM | #1549: the Recruits page: tabs with counts, the list with its warnings and trial rows, one recruit's record beside it (answers, history, notes, saved conversation, earlier applications), Start a trial, Decline, Extend trial with a reason, Joined, Not joining, the sidebar's waiting count, a Help guide; unit and browser tests; stamp, changelog, this row; PR | Phase 2: Before the new site goes live / Recruiting (#1549) | 25 m | build; review and merge not yet counted | 352,400 | Added 2026-11-12. |
+
+### 2026-11-13
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 10:28-11:04 AM | #1550: My recruits page for recruiters and the Recruiter switch on the Members tab: `my_recruiter_code()` and a fuller `my_recruits()` (a recruiter's own code, class, spec, guild and notes), the page with Copy links, the people sent and notes, the sidebar item with its waiting count, the Recruiter column beside the guild rank, a Help guide, RLS and browser tests, decision log, stamp, changelog, screenshots; PR | Phase 2: Before the new site goes live / Recruiting (#1550) | 36 m | build; review and merge not yet counted | 257,859 | Added 2026-11-13. Tokens are input, cache-written and output from the session transcript. |
 
 ## Not counted (same sessions, not revamp)
 
