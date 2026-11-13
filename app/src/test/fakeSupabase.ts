@@ -98,7 +98,8 @@ const ADMIN_PERMISSIONS = [
   'pay_any_boe',
   'edit_boe_settings',
   'view_guild_audit_log',
-  'view_every_team'
+  'view_every_team',
+  'manage_recruiters'
 ];
 const EVERY_TEAM_READS = ['see_rsvps', 'view_reports', 'view_loot', 'view_team_audit_log'];
 

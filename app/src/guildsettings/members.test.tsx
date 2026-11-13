@@ -52,6 +52,10 @@ function signedIn(opts: { me: 1 | 2 | 3; refuse?: string }): FakeHandlers {
       if (name === 'guild_members') {
         return { data: MEMBERS.map((m) => ({ ...m, is_you: m.person_id === opts.me })) };
       }
+      if (name === 'guild_recruiter_list') {
+        return { data: [{ person_id: 2, display_name: 'Rex', code: 'r8t2r8t2', active: true, in_guild: true }] };
+      }
+      if (name === 'set_guild_recruiter') return { data: 'abcd1234' };
       if (name === 'set_guild_rank' || name === 'transfer_guild_ownership') {
         return opts.refuse ? { data: null, error: { message: opts.refuse } } : { data: null };
       }
@@ -82,6 +86,17 @@ describe('the Members tab', () => {
     await waitFor(() =>
       expect(client.rpcs).toContainEqual(['set_guild_rank', { p_guild_id: 1, p_person_id: 3, p_rank: 'team_lead' }])
     );
+  });
+
+  it('switches a recruiter on and off, beside the rank', async () => {
+    const { client } = renderApp('/g/wga/settings/members', signedIn({ me: 2 }));
+    const rex = await screen.findByLabelText('Recruiter for Rex');
+    await waitFor(() => expect(rex).toHaveValue('on'));
+    await userEvent.selectOptions(rex, 'Off');
+    await waitFor(() =>
+      expect(client.rpcs).toContainEqual(['set_guild_recruiter', { p_guild_id: 1, p_person_id: 2, p_on: false }])
+    );
+    expect(screen.getByLabelText('Recruiter for Mira')).toHaveValue('off');
   });
 
   it('searches by name or character, and filters by guild rank', async () => {

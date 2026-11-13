@@ -374,6 +374,7 @@
 | public.bot_close_no_reply | bool | p_application_id integer | FUNCTION |
 | public.send_application | int4 | p_team_id integer, p_character_id integer, p_answers jsonb, p_recruiter_code text, p_friend_name text, p_time_zone text, p_other_specs text[] DEFAULT '{}'::text[] | FUNCTION |
 | public.team_ticket_viewers | record | p_team_id integer | FUNCTION |
+| public.my_recruiter_code | text | p_guild_id integer | FUNCTION |
 
 ## Enums
 

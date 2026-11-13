@@ -36,6 +36,7 @@ import { JoinRoute } from './join/JoinRoute';
 import { GuildApplyPage, TeamApplyPage } from './apply/ApplyPages';
 import { RecruitingSettingsPage } from './recruiting/RecruitingSettingsPage';
 import { RecruitsPage } from './recruiting/RecruitsPage';
+import { MyRecruitsPage } from './recruiting/MyRecruitsPage';
 import { ApplyFormPage } from './apply/ApplyFormPage';
 import { ApplicationPage, DiscordReturnPage, MyApplicationsPage } from './apply/ApplicationPages';
 import { ImportLootPage } from './loot/ImportLootPage';
@@ -89,6 +90,7 @@ const BUILT_PAGES: Record<string, ReactElement> = {
 const BUILT_GUILD_PAGES: Record<string, ReactElement> = {
   apply: <GuildApplyPage />,
   applications: <MyApplicationsPage />,
+  'me/recruits': <MyRecruitsPage />,
   boe: <BoePage />,
   streams: <StreamsPage />,
   officers: <GuildOfficersPage />,

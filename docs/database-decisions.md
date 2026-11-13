@@ -3572,3 +3572,15 @@ Shipped: `20261112175011_team_recruits_page_data.sql`.
 **`ticket_url` while the channel exists.** Built as `my_applications()` builds the applicant's (#1810), from `team_discord_config.guild_id`, which officers can't read, and the record's ticket channel. Unlike the applicant's, a closed record keeps its link until the bot deletes the channel, so officers can read the locked ticket. Every access level gets it: a link is useless to anyone not in the server.
 
 [Full discussion -> #1817](https://github.com/katogaming88/WGA-Raid-Hub/issues/1817).
+
+## #1550 -- a recruiter reads their own code and notes
+
+Shipped: `20261113103247_my_recruiter_code.sql`.
+
+**Their own code, with no permission.** `guild_recruiter_list()` is the Members tab's read and needs `manage_recruiters`, which a recruiter who is not an Admin doesn't have, so the My recruits page had no way to show them their links. `my_recruiter_code(guild_id)` returns only the caller's own code, and only while they are switched on and still in the guild (the test the apply form uses to credit a link); otherwise null. The page reads null as "not a recruiter" and hides itself and its sidebar item, so one call answers both. It takes a guild id, never a table or column, and reads no one else's row.
+
+**My recruits is one read.** `my_recruits()` gains `guild_id`, `class_name`, `spec_name` and the caller's own notes on each person (`recruit_notes` where they are the author), so the page doesn't call `recruit_record()` once per person. It never returns an officer's note, as before. Notes stay append-only: a recruiter adds another note rather than editing one, as `add_recruit_note()` has always worked.
+
+**Recruiter is a switch, not a rank.** A person holds one guild rank, and a recruiter may be an Admin or a Member, so the Members tab shows Recruiter as its own On/Off column beside the rank, calling the existing `set_guild_recruiter()`. No schema change.
+
+[Full discussion -> #1550](https://github.com/katogaming88/WGA-Raid-Hub/issues/1550).

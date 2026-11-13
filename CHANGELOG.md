@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.268.0] - 2026-11-13
+
+### Backend
+
+- A recruiter can read their own link code (#1550): `my_recruiter_code()` gives the caller's code in a guild, or nothing when they are not a recruiter there, are switched off or have left. `my_recruits()` now also returns each person's class and spec, their guild, and the recruiter's own notes on them (never an officer's), so My recruits is one read. Nothing new is writable.
+
+### Project
+
+- The new app has My recruits (#1550), under You in the sidebar for the guild's recruiters, with a count of how many of their people are waiting on officers: `/g/<guild>/me/recruits`. Your links has one link per team taking applications, plus "Not sure yet" (the guild's page), each with Copy; they all carry the recruiter's code. People you sent says how many applied this month and how many joined, then shows each person's class colour, spec, team, when they applied and where it is at, with the recruiter's notes for the officers and Add a note, which shows on the application and in the ticket card. Anyone who is not a recruiter gets the not-found page.
+
+- The guild's Members tab has a Recruiter column beside the rank, On or Off, for whoever holds Manage recruiters (Owners and Admins by default). A recruiter can hold any rank.
+
+- The Help page has a guide, Recruit for the guild, and the Members guide mentions the Recruiter column; RLS tests for the new read and the changed one; a time log row for #1550.
+
 ## [3.267.0] - 2026-11-12
 
 ### Project
