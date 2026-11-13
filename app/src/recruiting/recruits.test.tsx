@@ -196,8 +196,7 @@ const WRITES = [
   'reopen_recruit',
   'mark_recruit_joined',
   'extend_recruit_trial',
-  'mark_recruit_not_joining',
-  'add_recruit'
+  'mark_recruit_not_joining'
 ];
 
 function handlers(
@@ -221,9 +220,7 @@ function handlers(
         default:
           if (WRITES.includes(name)) {
             world.rpcs.push([name, args]);
-            return over.failWith
-              ? { data: null, error: { message: over.failWith } }
-              : { data: name === 'add_recruit' ? 9 : null };
+            return over.failWith ? { data: null, error: { message: over.failWith } } : { data: null };
           }
           return base.rpc!(name, args);
       }
@@ -447,30 +444,12 @@ describe('the Recruits page', () => {
     expect((await screen.findAllByRole('alert')).map((a) => a.textContent).join(' ')).toMatch(/isn’t on trial/);
   });
 
-  it('adds a recruit by character', async () => {
-    const user = userEvent.setup();
-    const w = world();
-    renderApp(PATH, handlers(w));
-    await user.click(await screen.findByRole('button', { name: 'Add a recruit' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Add a recruit' });
-    const go = within(dialog).getByRole('button', { name: 'Add recruit' });
-    expect(go).toBeDisabled();
-    await user.type(within(dialog).getByLabelText('Character'), 'Nobody');
-    expect(within(dialog).getByText('Enter the character as Name-Realm.')).toBeInTheDocument();
-    expect(go).toBeDisabled();
-    await user.type(within(dialog).getByLabelText('Character'), '-Stormrage');
-    await user.click(go);
-    await expect.poll(() => w.rpcs.length).toBe(1);
-    expect(w.rpcs[0]).toEqual(['add_recruit', { p_team_id: 1, p_name_realm: 'Nobody-Stormrage', p_discord_id: null }]);
-  });
-
   it('lets an assistant add notes and nothing else', async () => {
     renderApp(PATH, handlers(world(), { list: { access: 'note' } }));
     const panel = await screen.findByRole('region', { name: "Katorrí-Stormrage's record" });
     expect(await within(panel).findByRole('button', { name: 'Add note' })).toBeInTheDocument();
     expect(within(panel).queryByRole('button', { name: 'Start a trial' })).not.toBeInTheDocument();
     expect(within(panel).queryByRole('button', { name: 'Decline' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add a recruit' })).not.toBeInTheDocument();
   });
 
   it('is read-only for someone who may only look', async () => {

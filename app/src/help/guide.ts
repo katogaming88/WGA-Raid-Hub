@@ -118,8 +118,7 @@ export const GUIDES: Guide[] = [
       'Each row shows the character in its class colour, spec, item level (orange when under your minimum), best logs average and where it is at: Waiting on officers means they wrote last, Waiting on them means you did. A class your Who you are looking for list does not ask for is marked Not on your needs list.',
       'Choose a name to open their record beside the list: their numbers, links to their ticket, Warcraft Logs, Raider.IO and the Armory, their answers, what has happened so far, and any earlier applications to the guild.',
       'Officer notes are never shown to the applicant. Write one and choose Add note.',
-      'Start a trial puts them on your roster as a Trial. On trial, the row says which day it is and when it ends, with Joined, Extend trial (it asks why) and Not joining. Decline closes the record, with a reason if you like. The same buttons are on the card in their ticket.',
-      'Someone who came in through a Discord ticket instead of the form: choose Add a recruit at the top and enter their character as Name-Realm, so they get a record too.'
+      'Start a trial puts them on your roster as a Trial. On trial, the row says which day it is and when it ends, with Joined, Extend trial (it asks why) and Not joining. Decline closes the record, with a reason if you like. The same buttons are on the card in their ticket.'
     ]
   },
   {

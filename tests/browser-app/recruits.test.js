@@ -140,8 +140,7 @@ const state = (path) => ({
     close_recruit: null,
     extend_recruit_trial: dayOffset(17),
     mark_recruit_joined: null,
-    mark_recruit_not_joining: null,
-    add_recruit: 9
+    mark_recruit_not_joining: null
   },
   tables: {
     classes_specs: [

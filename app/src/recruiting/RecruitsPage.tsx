@@ -1,16 +1,11 @@
-import { useId, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { DataState } from '../components/DataState';
-import { Dialog } from '../components/Dialog';
-import { useStatus } from '../components/Status';
-import { useAddress, useTeam } from '../data/address';
+import { useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
 import { easternToday } from '../lib/dates';
-import { errorMessage } from '../lib/errors';
 import { classColor } from '../roster/roster';
 import { Actions, RecruitPanel } from './RecruitPanel';
 import {
-  NAME_REALM,
   TABS,
   inTab,
   notOnNeeds,
@@ -26,7 +21,7 @@ import {
   type TabId
 } from './recruits';
 import type { SpecRow } from './recruiting';
-import { useAddRecruit, useTeamRecruits } from './useRecruits';
+import { useTeamRecruits } from './useRecruits';
 import { useSpecs } from './useRecruiting';
 import './recruits.css';
 
@@ -49,7 +44,6 @@ export function RecruitsPage() {
             <Link to="/help/recruits">Help guide</Link>
           </p>
         </div>
-        <AddRecruit teamId={team.id} />
       </div>
       <DataState query={loaded} label="recruits">
         {([data, allSpecs]) => <Body list={data} specs={allSpecs} />}
@@ -197,80 +191,5 @@ function List({
         </tbody>
       </table>
     </div>
-  );
-}
-
-// For a team that takes people through a Discord ticket instead of the form:
-// a record by character, so they get one too.
-function AddRecruit({ teamId }: { teamId: number }) {
-  const list = useTeamRecruits(teamId);
-  const [, setParams] = useSearchParams();
-  const add = useAddRecruit(teamId);
-  const { announce } = useStatus();
-  const { team } = useAddress();
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const id = useId();
-  if (list.data?.access !== 'manage') return null;
-  const value = name.trim();
-  const ok = NAME_REALM.test(value);
-  const close = () => {
-    setOpen(false);
-    setName('');
-    add.reset();
-  };
-  return (
-    <>
-      <button type="button" className="button" onClick={() => setOpen(true)}>
-        Add a recruit
-      </button>
-      {open && (
-        <Dialog title="Add a recruit" onClose={close} busy={add.isPending}>
-          <form
-            className="rcs-dialog"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!ok) return;
-              add.mutate(value, {
-                onSuccess: (newId) => {
-                  announce('success', `${value} added.`);
-                  close();
-                  setParams({ tab: 'open', recruit: String(newId) });
-                }
-              });
-            }}
-          >
-            <p className="text-muted">
-              For someone who came in through {team?.name ?? 'the team'}&rsquo;s Discord ticket instead of the form.
-            </p>
-            <label htmlFor={id} className="field-label">
-              Character
-            </label>
-            <input
-              id={id}
-              className="input"
-              value={name}
-              autoComplete="off"
-              placeholder="Name-Realm"
-              onChange={(e) => setName(e.target.value)}
-            />
-            {value && !ok && <p className="form-error">Enter the character as Name-Realm.</p>}
-            {add.isError && (
-              <p className="form-error" role="alert">
-                That did not go through: {errorMessage(add.error)}
-              </p>
-            )}
-            <div className="rcs-buttons">
-              <button type="button" className="button" disabled={add.isPending} onClick={close}>
-                Cancel
-              </button>
-              <button type="submit" className="button button-primary" disabled={!ok || add.isPending}>
-                {add.isPending ? 'Adding…' : 'Add recruit'}
-              </button>
-            </div>
-          </form>
-        </Dialog>
-      )}
-    </>
   );
 }

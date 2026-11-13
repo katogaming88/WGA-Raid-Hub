@@ -281,5 +281,3 @@ export const isLink = (text: string) => /^https?:\/\/\S+$/.test(text);
 // each but not by id, so an officer with the same name would read as theirs.
 export const recruiterNotes = (r: Recruit, notes: Note[]): Note[] =>
   r.sent_by === 'recruiter' && r.sent_by_name ? notes.filter((n) => n.author === r.sent_by_name) : [];
-
-export const NAME_REALM = /^[^\s-][^-]*-\S/;

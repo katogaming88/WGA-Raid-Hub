@@ -76,13 +76,3 @@ export function useRecruitAction() {
     { key: ['recruit-action'], refreshes }
   );
 }
-
-// An officer's record for someone who came in through a ticket instead of the
-// form, by character. Returns the new record's id.
-export function useAddRecruit(teamId: number) {
-  return useSupabaseMutation<number, string>(
-    (client, nameRealm) =>
-      client.rpc('add_recruit', { p_team_id: teamId, p_name_realm: nameRealm, p_discord_id: null as never }),
-    { key: ['add-recruit', teamId], refreshes }
-  );
-}
