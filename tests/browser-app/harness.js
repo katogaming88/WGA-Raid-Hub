@@ -130,7 +130,8 @@ const ADMIN_GRID = [
   'edit_all_bios',
   'record_boe',
   'pay_any_boe',
-  'view_every_team'
+  'view_every_team',
+  'manage_recruiters'
 ];
 
 function permissionsOf(person, teamId) {
@@ -349,6 +350,8 @@ export async function openApp(browser, port, state) {
       // Not a recruiter unless a state says so (#1550).
       if (rest === 'rpc/my_recruiter_code' && !state.rpc?.my_recruiter_code) return route.fulfill(json(null));
       if (rest === 'rpc/my_recruits' && !state.rpc?.my_recruits) return route.fulfill(json([]));
+      // The Members tab's Recruiter column: no recruiters unless a state says so.
+      if (rest === 'rpc/guild_recruiter_list' && !state.rpc?.guild_recruiter_list) return route.fulfill(json([]));
       // The sidebar counts the recruits waiting on officers for anyone who may
       // open the Recruits page (#1549): nobody, unless the state says otherwise.
       if (rest === 'rpc/team_recruits' && !state.rpc?.team_recruits) {

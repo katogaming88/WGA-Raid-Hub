@@ -401,3 +401,12 @@
   align-items: center;
   gap: var(--space-3);
 }
+
+.rcs-person .rcs-notes {
+  margin-bottom: var(--space-3);
+}
+
+.rcs-person .rcs-notes li {
+  padding: 0;
+  border-bottom: 0;
+}
