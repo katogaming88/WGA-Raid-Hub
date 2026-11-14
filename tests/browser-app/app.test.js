@@ -848,12 +848,12 @@ const SETTINGS_GENERAL_TABLES = {
   raid_zones: [{ season: 'MID1' }, { season: 'MID2' }],
   team_invite_links: [{ team_id: 1, code: 'phoenix-abc123', expires_at: null }]
 };
-// General holds the invite link and the ranks too (#1735).
+// General holds the invite link (#1735, #1824).
 const SETTINGS_GENERAL = {
   session: OFFICER,
   who: 'officer',
   path: '/g/wga/t/phoenix/officer/settings',
-  sentinel: 'main:has(.settings-cards) .ranks-sections',
+  sentinel: 'main:has(.settings-cards) .invite-link-section',
   tables: SETTINGS_GENERAL_TABLES,
   rpc: {
     team_member_ranks: [
@@ -1547,7 +1547,7 @@ const TEAM_OWNER_DIALOG = {
 };
 // Settings > General's Ranks (#1651, #1735): the viewer owns the team, so every other row gets a box.
 const RANKS_PAGE = {
-  path: '/g/wga/t/phoenix/officer/settings',
+  path: '/g/wga/t/phoenix/officer/settings/ranks',
   sentinel: 'main .ranks-select',
   session: OFFICER,
   who: 'officer',

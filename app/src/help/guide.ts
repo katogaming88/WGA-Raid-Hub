@@ -193,7 +193,8 @@ export const GUIDES: Guide[] = [
     topic: 'start',
     title: 'Set up your team',
     officers: true,
-    quick: 'Officer Settings › General holds your team’s Warcraft Logs guild, roster size targets and invite link.',
+    quick:
+      'Officer Settings › General holds your team’s Warcraft Logs guild, roster size targets and invite link. Ranks and Rank Permissions are tabs beside it.',
     place: { label: 'Settings', to: (b) => `${b.team}/officer/settings` },
     picture: 'The General settings page, with the Warcraft Logs guild address marked.',
     marked: [1, 2],

@@ -79,6 +79,8 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   'officer/recruiting': <RecruitsPage />,
   'officer/recruiting/settings': <RecruitingSettingsPage />,
   'officer/settings': <GeneralSettingsPage />,
+  'officer/settings/ranks': <GeneralSettingsPage />,
+  'officer/settings/rank-permissions': <GeneralSettingsPage />,
   'officer/settings/season': <SeasonSettingsPage />,
   'officer/settings/loot': <LootSettingsPage />,
   'officer/settings/discord': <DiscordSettingsPage />,
@@ -133,7 +135,6 @@ function ToSitePage({ path }: { path: string }) {
 // in Discord and the Help guides, landing on the section's new page.
 const MOVED_TEAM_PAGES: Record<string, string> = {
   'officer/invite': 'officer/settings#invite-link',
-  'officer/settings/ranks': 'officer/settings#ranks',
   'officer/settings/signups': 'officer/settings/season#signups'
 };
 

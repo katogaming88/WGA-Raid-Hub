@@ -195,6 +195,8 @@ const OFFICER_ABILITY: Record<string, Ability | readonly Ability[]> = {
   'officer/attendance/scores': 'viewAttendance',
   'officer/groups': 'viewGroups',
   'officer/settings': ['manageTeam', 'editRoster', 'promoteAssistants'],
+  'officer/settings/ranks': 'promoteAssistants',
+  'officer/settings/rank-permissions': 'promoteAssistants',
   'officer/settings/audit-log': 'viewAuditLog',
   'officer/settings/discord': 'manageDiscord',
   'officer/recruiting': 'seeRecruits',
@@ -263,7 +265,11 @@ function allMenu(o: string, council: boolean, recruitsWaiting: number): (NavItem
       pages: [
         // #1735: team setup on General (with the invite link and ranks), then
         // Discord and Loot, and everything about seasons on Season.
-        { label: 'General', to: `${o}/settings` },
+        {
+          label: 'General',
+          to: `${o}/settings`,
+          tabs: GENERAL_SETTINGS_TABS.map((t) => ({ label: t.label, to: `${o}/${t.to.replace(/^officer\//, '')}` }))
+        },
         { label: 'Discord', to: `${o}/settings/discord` },
         { label: 'Loot', to: `${o}/settings/loot` },
         { label: 'Season', to: `${o}/settings/season` },
@@ -302,6 +308,8 @@ export const TEAM_PAGES: Record<string, string> = {
   'officer/recruiting': 'Recruits',
   'officer/recruiting/settings': 'Recruiting settings',
   'officer/settings': 'General settings',
+  'officer/settings/ranks': 'Ranks',
+  'officer/settings/rank-permissions': 'Rank permissions',
   'officer/settings/season': 'Season settings',
   'officer/settings/loot': 'Loot settings',
   'officer/settings/discord': 'Discord settings',
@@ -322,6 +330,14 @@ export const GUILD_PAGES: Record<string, string> = {
   'settings/members': 'Guild settings',
   'settings/rank-permissions': 'Guild settings'
 };
+
+// The tabs of Settings > General (#1824), one address each (under officer/), shown to those who can open
+// them. The first tab opens for any of its abilities.
+export const GENERAL_SETTINGS_TABS: { label: string; to: string; abilities: readonly Ability[] }[] = [
+  { label: 'General', to: 'officer/settings', abilities: ['manageTeam', 'editRoster'] },
+  { label: 'Ranks', to: 'officer/settings/ranks', abilities: ['promoteAssistants'] },
+  { label: 'Rank Permissions', to: 'officer/settings/rank-permissions', abilities: ['promoteAssistants'] }
+];
 
 // The tabs of Guild settings (#1644), one address each, shown to those who can
 // open them: the guild grid can leave a rank with some and not others (#1652).

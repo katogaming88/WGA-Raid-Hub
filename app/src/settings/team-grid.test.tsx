@@ -5,7 +5,7 @@ import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers } from '../test/fakeSupabase';
 
 // The team's rank permissions grid on Settings > Ranks (#1653).
-const PATH = '/g/wga/t/phoenix/officer/settings';
+const PATH = '/g/wga/t/phoenix/officer/settings/rank-permissions';
 const DEFAULTS = [
   { permission: 'edit_own_wishlist', default_ranks: ['raider', 'assistant', 'officer'] },
   { permission: 'edit_roster', default_ranks: ['assistant', 'officer'] },
