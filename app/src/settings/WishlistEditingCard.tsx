@@ -94,14 +94,19 @@ function WishlistEditingCard({
     );
 
   return (
-    <div className="card settings-card">
+    <div className="card settings-card signup-settings-card">
       <h2>Wishlist editing</h2>
       <p className="text-muted">Raiders can edit their own wishlist while this is on.</p>
       <div className="field">
         <label className="field-label" htmlFor={`${id}-season`}>
           Wishlist season
         </label>
-        <select id={`${id}-season`} className="input" value={season.code} onChange={(e) => setPicked(e.target.value)}>
+        <select
+          id={`${id}-season`}
+          className="input signup-settings-select"
+          value={season.code}
+          onChange={(e) => setPicked(e.target.value)}
+        >
           {seasons.map((s) => (
             <option key={s.code} value={s.code}>
               {s.display_name}

@@ -397,6 +397,11 @@
   align-self: flex-start;
 }
 
+.signup-settings-card .signup-settings-select {
+  width: auto;
+  align-self: flex-start;
+}
+
 .signup-settings-row {
   display: flex;
   align-items: center;
