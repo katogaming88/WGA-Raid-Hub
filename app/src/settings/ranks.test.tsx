@@ -6,7 +6,7 @@ import { fakeSession, seededHandlers, type FakeHandlers } from '../test/fakeSupa
 import { rankChoices, rankLine } from './RanksSettingsPage';
 
 // Settings > Ranks (#1651). The viewer is the row with is_you.
-const PATH = '/g/wga/t/phoenix/officer/settings';
+const PATH = '/g/wga/t/phoenix/officer/settings/ranks';
 
 function ranksHandlers(
   mine: string,

@@ -79,9 +79,12 @@ describe('General settings', () => {
     expect((screen.getByLabelText('Weeks on roster') as HTMLInputElement).value).toBe('6');
     // Season View moved to Settings > Season (#1735).
     expect(screen.queryByRole('heading', { name: 'Season View' })).not.toBeInTheDocument();
-    // The invite link and the ranks are sections here now (#1735).
+    // The invite link is on General; the ranks and their grid have their own tabs (#1824).
     expect(await screen.findByRole('heading', { level: 2, name: 'Invite link' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2, name: 'Ranks' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 2, name: 'Ranks' })).not.toBeInTheDocument();
+    const tabs = within(screen.getByRole('navigation', { name: 'General settings' }));
+    expect(tabs.getAllByRole('link').map((a) => a.textContent)).toEqual(['General', 'Ranks', 'Rank Permissions']);
+    expect(tabs.getByRole('link', { name: 'General' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByDisplayValue('https://www.warcraftlogs.com/guild/id/12345')).toBeInTheDocument();
     // The signup sheet moved to Settings › Discord (#994).
     expect(screen.queryByRole('heading', { name: 'Discord Signup Sheet' })).not.toBeInTheDocument();
@@ -132,6 +135,34 @@ describe('General settings for roster editing only (#1735)', () => {
     expect(await screen.findByRole('heading', { level: 2, name: 'Invite link' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Trial Promotion Thresholds' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Ranks' })).not.toBeInTheDocument();
+    // An Assistant who can only edit the roster sees General and nothing else (#1824).
+    const tabs = within(screen.getByRole('navigation', { name: 'General settings' }));
+    expect(tabs.getAllByRole('link').map((a) => a.textContent)).toEqual(['General']);
+  });
+});
+
+describe('General settings tabs (#1824)', () => {
+  const promotes = (name: string) =>
+    name === 'my_permissions' ? { data: { team: ['promote_assistants'], guild: [] } } : undefined;
+
+  it('opens Ranks and Rank Permissions at their own addresses', async () => {
+    renderApp('/g/wga/t/phoenix/officer/settings/ranks', officerHandlers({ rpc: promotes }));
+    expect(await screen.findByRole('heading', { level: 2, name: 'Ranks' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Rank permissions' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('link', { name: 'Rank Permissions' }));
+    expect(await screen.findByRole('heading', { name: 'Rank permissions' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 2, name: 'Ranks' })).not.toBeInTheDocument();
+  });
+
+  it('closes the Ranks address to someone who cannot promote assistants', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/officer/settings/ranks',
+      officerHandlers({
+        rpc: (name) => (name === 'my_permissions' ? { data: { team: ['edit_roster'], guild: [] } } : undefined)
+      })
+    );
+    await screen.findByRole('heading', { level: 1 });
+    expect(screen.queryByRole('heading', { level: 2, name: 'Ranks' })).not.toBeInTheDocument();
   });
 });
 

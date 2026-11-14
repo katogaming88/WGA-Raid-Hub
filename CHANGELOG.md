@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.270.0] - 2026-11-14
+
+### Project
+
+- The new app's Settings > General has three tabs, General, Ranks and Rank Permissions (#1824), each at its own address (`/officer/settings`, `/officer/settings/ranks`, `/officer/settings/rank-permissions`), moved between like Guild settings. General keeps the team basics and the invite link; Ranks is who holds which rank; Rank Permissions is the grid of what each rank can do. A tab shows only to those who may use it and its address is closed to everyone else, so an Assistant who can only edit the roster sees General and nothing else. Nothing about what a section does or who may use it changed. The old `/officer/settings/ranks` address, which used to forward to General, now opens the Ranks tab.
+
 ## [3.269.0] - 2026-11-14
 
 ### Project

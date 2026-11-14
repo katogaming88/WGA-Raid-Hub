@@ -1,11 +1,13 @@
 import { useState } from 'react';
+import { Link, useLocation } from 'react-router';
 import { usePageCan } from '../auth/access';
-import { useTeam } from '../data/address';
+import { useAddress, useTeam } from '../data/address';
+import { GENERAL_SETTINGS_TABS, canAny } from '../layout/nav';
 import { DataState } from '../components/DataState';
 import { useStatus } from '../components/Status';
 import { errorMessage } from '../lib/errors';
 import { InviteLinkSection } from '../invite/InviteLinkPage';
-import { RanksSection } from './RanksSettingsPage';
+import { RankPermissionsSection, RanksSection } from './RanksSettingsPage';
 import { clampInt } from './settings';
 import {
   useGeneralSettings,
@@ -17,23 +19,48 @@ import {
 } from './useSettings';
 import './settings.css';
 
-// Settings > General (#1357, #1735): the team's setup on one page. The basics
+// Settings > General (#1357, #1735, #1824): the team's setup, one tab per area,
+// each with its own address like Guild settings. General holds the basics
 // (Warcraft Logs page, roster sizes, trial thresholds) for whoever can manage
-// the team, the invite link for whoever can edit the roster, and the ranks for
-// whoever can promote assistants; each section shows only to them. Season View
-// moved to Settings > Season (#1735), the Discord signup sheet to Discord (#994).
+// the team and the invite link for whoever can edit the roster; Ranks and Rank
+// Permissions are for whoever can promote assistants (who can also manage the team). A tab shows only to those
+// who can use it. Season View moved to Settings > Season (#1735), the Discord
+// signup sheet to Discord (#994).
 export function GeneralSettingsPage() {
   const team = useTeam();
+  const { guild } = useAddress();
+  const { pathname } = useLocation();
   const { can } = usePageCan();
+  const base = `/g/${guild.key}/t/${team.key}`;
+  const tabs = GENERAL_SETTINGS_TABS.filter((t) => canAny(can, t.abilities));
+  const ranks = pathname.endsWith('/settings/ranks');
+  const grid = pathname.endsWith('/settings/rank-permissions');
 
   return (
     <section className="page settings-page" aria-labelledby="page-title">
       <div className="page-header">
         <h1 id="page-title">General settings</h1>
       </div>
-      {can('manageTeam') && <TeamBasics teamId={team.id} />}
-      {can('editRoster') && <InviteLinkSection />}
-      {can('promoteAssistants') && <RanksSection />}
+      <nav className="report-tabs" aria-label="General settings">
+        {tabs.map((tab) => {
+          const to = `${base}/${tab.to}`;
+          return (
+            <Link key={tab.to} to={to} aria-current={pathname === to ? 'page' : undefined}>
+              {tab.label}
+            </Link>
+          );
+        })}
+      </nav>
+      {ranks ? (
+        <RanksSection />
+      ) : grid ? (
+        <RankPermissionsSection />
+      ) : (
+        <>
+          {can('manageTeam') && <TeamBasics teamId={team.id} />}
+          {can('editRoster') && <InviteLinkSection />}
+        </>
+      )}
     </section>
   );
 }

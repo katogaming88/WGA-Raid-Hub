@@ -84,9 +84,8 @@ export function rankChoices(rank: TeamRank, teamOwner: boolean, promotes: boolea
   return [];
 }
 
-// Settings > Ranks (#1651): who holds which rank on the team: a section per rank, highest first, with its people across the width in columns, then
-// the team's rank permissions grid (#1653).
-// A section of Settings > General since #1735, for whoever can promote assistants.
+// Settings > General > Ranks (#1651, #1824): who holds which rank on the team: a section per rank, highest first,
+// with its people across the width in columns. For whoever can promote assistants.
 export function RanksSection() {
   const team = useTeam();
   const ranks = useTeamMemberRanks(team.id);
@@ -225,7 +224,6 @@ function RanksTable({ teamId, rows }: { teamId: number; rows: TeamMemberRank[] }
           })}
         </div>
       )}
-      <TeamGridPanel teamId={teamId} isOwner={teamOwner} />
       {confirming && (
         <Dialog
           title={
@@ -266,5 +264,17 @@ function RanksTable({ teamId, rows }: { teamId: number; rows: TeamMemberRank[] }
         </Dialog>
       )}
     </>
+  );
+}
+
+// Settings > General > Rank Permissions (#1653, #1824): what each team rank can do. The Team Owner changes it;
+// the grid needs to know whether you are the Team Owner, so it reads the ranks too.
+export function RankPermissionsSection() {
+  const team = useTeam();
+  const ranks = useTeamMemberRanks(team.id);
+  return (
+    <DataState query={ranks} label="the team's ranks">
+      {(rows) => <TeamGridPanel teamId={team.id} isOwner={rows.some((m) => m.is_you && m.rank === 'owner')} />}
+    </DataState>
   );
 }
