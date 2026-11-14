@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.270.1] - 2026-11-14
+
+### Project
+
+- The revamp time log has the rows for #1823 and #1824 (2026-11-14), a Tester fixes area, and Phase 2's totals brought up to date.
+
 ## [3.270.0] - 2026-11-14
 
 ### Project
