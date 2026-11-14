@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.269.0] - 2026-11-14
+
+### Project
+
+- The new app's Settings > Season has a Wishlist editing card (#1823): the team leader picks a season and turns Wishlist editing on or off. While it is on, raiders can edit their own wishlist under My profile > Wishlist; off makes it read-only again. Signups are untouched by it, and an officer who cannot lead the team sees a note instead of the switch. The Help guide Set your wishlist says where to turn it on.
+
 ## [3.268.0] - 2026-11-13
 
 ### Backend

@@ -22,6 +22,7 @@ import {
 import { bothQueries } from '../data/query';
 import { SeasonViewCard } from './GeneralSettingsPage';
 import { SignupsSection } from './SignupSettingsPage';
+import { WishlistEditingSection } from './WishlistEditingCard';
 import './settings.css';
 
 // Settings > Season (#1357, #1735): everything about seasons on one page.
@@ -43,6 +44,7 @@ export function SeasonSettingsPage() {
           {([settings, options]) => <SeasonViewCard teamId={team.id} settings={settings} options={options} />}
         </DataState>
         <SignupsSection />
+        <WishlistEditingSection />
         <DataState query={query} label="season history">
           {(history) => <SeasonHistoryCard teamId={team.id} history={history} />}
         </DataState>
