@@ -149,6 +149,10 @@ describe('General settings tabs (#1824)', () => {
     renderApp('/g/wga/t/phoenix/officer/settings/ranks', officerHandlers({ rpc: promotes }));
     expect(await screen.findByRole('heading', { level: 2, name: 'Ranks' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Rank permissions' })).not.toBeInTheDocument();
+    // The sidebar's General item stands for all three tabs.
+    expect(
+      screen.getAllByRole('link', { name: 'General' }).some((a) => a.getAttribute('aria-current') === 'page')
+    ).toBe(true);
     await userEvent.click(screen.getByRole('link', { name: 'Rank Permissions' }));
     expect(await screen.findByRole('heading', { name: 'Rank permissions' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 2, name: 'Ranks' })).not.toBeInTheDocument();

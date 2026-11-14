@@ -268,7 +268,7 @@ function allMenu(o: string, council: boolean, recruitsWaiting: number): (NavItem
         {
           label: 'General',
           to: `${o}/settings`,
-          tabs: GENERAL_SETTINGS_TABS.map((t) => ({ label: t.label, to: `${o}/${t.to}` }))
+          tabs: GENERAL_SETTINGS_TABS.map((t) => ({ label: t.label, to: `${o}/${t.to.replace(/^officer\//, '')}` }))
         },
         { label: 'Discord', to: `${o}/settings/discord` },
         { label: 'Loot', to: `${o}/settings/loot` },
