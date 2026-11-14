@@ -260,7 +260,7 @@ export const GUIDES: Guide[] = [
     marked: [1, 2, 3],
     menu: 'my-profile',
     steps: [
-      'Open My profile, then the Wishlist tab.',
+      'Open My profile, then the Wishlist tab. If it says editing is closed, ask your team leader to turn on Wishlist editing in Settings, Season.',
       'Pick a gear slot, then mark one item BiS for it. Mark Pass on anything you would not take.',
       'Click a mark again to clear it. Only your BiS picks get a priority number.'
     ]
