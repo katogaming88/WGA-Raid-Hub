@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.273.0] - 2026-11-14
+
+### Backend
+
+- The roster audit's season settings, for Midnight Season 2: which slots take an enchant (weapons, head, shoulders, chest, legs, feet, both rings), the enchants and gems that count with their ranks and which gems are epic, and each Mistcrest's weekly cap (100 a week from August 11, lifted on October 20) and the statistic Blizzard counts it in. Old-expansion enchants and gems count as none. Nothing shows on the site yet (#1633).
+
 ## [3.272.0] - 2026-11-14
 
 ### Backend

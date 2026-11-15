@@ -13042,6 +13042,436 @@
           "def": "CREATE TRIGGER trg_discord_find_ticket_updated_at BEFORE UPDATE ON public.discord_find_ticket FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
+    },
+    {
+      "name": "public.season_enchant_slots",
+      "type": "BASE TABLE",
+      "comment": "The slots that take an enchant in a season (#1633), in player_equipped_gear's slot names. counts_from: the day a slot added mid-season starts counting (null: the whole season). OFF_HAND counts only when the item is a weapon. Added by migration.",
+      "columns": [
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "slot",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "counts_from",
+          "type": "date",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "season_enchant_slots_pkey",
+          "def": "CREATE UNIQUE INDEX season_enchant_slots_pkey ON public.season_enchant_slots USING btree (season, slot)",
+          "table": "public.season_enchant_slots",
+          "columns": [
+            "season",
+            "slot"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "season_enchant_slots_slot_check",
+          "type": "CHECK",
+          "def": "CHECK ((slot = ANY (ARRAY['MAIN_HAND'::text, 'OFF_HAND'::text, 'HEAD'::text, 'NECK'::text, 'SHOULDER'::text, 'BACK'::text, 'CHEST'::text, 'WRIST'::text, 'HANDS'::text, 'WAIST'::text, 'LEGS'::text, 'FEET'::text, 'FINGER_1'::text, 'FINGER_2'::text])))",
+          "table": "public.season_enchant_slots",
+          "referenced_table": "",
+          "columns": [
+            "slot"
+          ]
+        },
+        {
+          "name": "season_enchant_slots_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.season_enchant_slots",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "season_enchant_slots_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (season, slot)",
+          "table": "public.season_enchant_slots",
+          "referenced_table": "",
+          "columns": [
+            "season",
+            "slot"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.season_enchants",
+      "type": "BASE TABLE",
+      "comment": "The enchants that count in a season (#1633), by Blizzard's enchantment id. top_rank: the higher rank. tertiary: speed, leech or avoidance only, which the Lenient rule takes at any rank. An enchant not listed (an older expansion's) counts as none. Added by migration.",
+      "columns": [
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "enchantment_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "slot",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "top_rank",
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "tertiary",
+          "type": "boolean",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "season_enchants_pkey",
+          "def": "CREATE UNIQUE INDEX season_enchants_pkey ON public.season_enchants USING btree (season, enchantment_id)",
+          "table": "public.season_enchants",
+          "columns": [
+            "season",
+            "enchantment_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "season_enchants_enchantment_id_check",
+          "type": "CHECK",
+          "def": "CHECK ((enchantment_id \u003e 0))",
+          "table": "public.season_enchants",
+          "referenced_table": "",
+          "columns": [
+            "enchantment_id"
+          ]
+        },
+        {
+          "name": "season_enchants_name_check",
+          "type": "CHECK",
+          "def": "CHECK ((name ~ '\\S'::text))",
+          "table": "public.season_enchants",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "season_enchants_slot_check",
+          "type": "CHECK",
+          "def": "CHECK ((slot = ANY (ARRAY['WEAPON'::text, 'HEAD'::text, 'SHOULDER'::text, 'CHEST'::text, 'LEGS'::text, 'FEET'::text, 'FINGER'::text])))",
+          "table": "public.season_enchants",
+          "referenced_table": "",
+          "columns": [
+            "slot"
+          ]
+        },
+        {
+          "name": "season_enchants_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.season_enchants",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "season_enchants_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (season, enchantment_id)",
+          "table": "public.season_enchants",
+          "referenced_table": "",
+          "columns": [
+            "season",
+            "enchantment_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.season_gems",
+      "type": "BASE TABLE",
+      "comment": "The gems that count in a season (#1633), by Blizzard's item id (wow_item_id, not items.id). top_rank: the best there is, the higher crafting rank of a Flawless gem or an Eversong Diamond (never a Heliotrope, the weaker PvP gem). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration.",
+      "columns": [
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "wow_item_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "top_rank",
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "epic",
+          "type": "boolean",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "season_gems_pkey",
+          "def": "CREATE UNIQUE INDEX season_gems_pkey ON public.season_gems USING btree (season, wow_item_id)",
+          "table": "public.season_gems",
+          "columns": [
+            "season",
+            "wow_item_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "season_gems_name_check",
+          "type": "CHECK",
+          "def": "CHECK ((name ~ '\\S'::text))",
+          "table": "public.season_gems",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "season_gems_wow_item_id_check",
+          "type": "CHECK",
+          "def": "CHECK ((wow_item_id \u003e 0))",
+          "table": "public.season_gems",
+          "referenced_table": "",
+          "columns": [
+            "wow_item_id"
+          ]
+        },
+        {
+          "name": "season_gems_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.season_gems",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "season_gems_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (season, wow_item_id)",
+          "table": "public.season_gems",
+          "referenced_table": "",
+          "columns": [
+            "season",
+            "wow_item_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.season_crests",
+      "type": "BASE TABLE",
+      "comment": "Each upgrade crest in a season (#1633). A capped crest's cap grows by weekly_increase every week from first_week (a reset Tuesday), so a missed week carries over; uncapped_sources never count toward it; from caps_lifted_on (Blizzard usually lifts every cap in the x.x.5 patch) it has none. statistic_id: the character statistic Blizzard counts the season's earned crests in (the profile API has no currency read); currency_id: the in-game currency, for the addon. Read through season_crest_cap(). Added by migration.",
+      "columns": [
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "track",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "statistic_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "currency_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "capped",
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "first_week",
+          "type": "date",
+          "nullable": true
+        },
+        {
+          "name": "weekly_increase",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "uncapped_sources",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'::text[]"
+        },
+        {
+          "name": "caps_lifted_on",
+          "type": "date",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "season_crests_pkey",
+          "def": "CREATE UNIQUE INDEX season_crests_pkey ON public.season_crests USING btree (season, track)",
+          "table": "public.season_crests",
+          "columns": [
+            "season",
+            "track"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "season_crests_capped",
+          "type": "CHECK",
+          "def": "CHECK (((NOT capped) OR ((first_week IS NOT NULL) AND (weekly_increase IS NOT NULL))))",
+          "table": "public.season_crests",
+          "referenced_table": "",
+          "columns": [
+            "capped",
+            "first_week",
+            "weekly_increase"
+          ]
+        },
+        {
+          "name": "season_crests_currency_id_check",
+          "type": "CHECK",
+          "def": "CHECK ((currency_id \u003e 0))",
+          "table": "public.season_crests",
+          "referenced_table": "",
+          "columns": [
+            "currency_id"
+          ]
+        },
+        {
+          "name": "season_crests_lift_after_start",
+          "type": "CHECK",
+          "def": "CHECK (((caps_lifted_on IS NULL) OR (first_week IS NULL) OR (caps_lifted_on \u003e= first_week)))",
+          "table": "public.season_crests",
+          "referenced_table": "",
+          "columns": [
+            "caps_lifted_on",
+            "first_week"
+          ]
+        },
+        {
+          "name": "season_crests_name_check",
+          "type": "CHECK",
+          "def": "CHECK ((name ~ '\\S'::text))",
+          "table": "public.season_crests",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "season_crests_statistic_id_check",
+          "type": "CHECK",
+          "def": "CHECK ((statistic_id \u003e 0))",
+          "table": "public.season_crests",
+          "referenced_table": "",
+          "columns": [
+            "statistic_id"
+          ]
+        },
+        {
+          "name": "season_crests_track_check",
+          "type": "CHECK",
+          "def": "CHECK ((track = ANY (ARRAY['Adventurer'::text, 'Veteran'::text, 'Champion'::text, 'Hero'::text, 'Myth'::text])))",
+          "table": "public.season_crests",
+          "referenced_table": "",
+          "columns": [
+            "track"
+          ]
+        },
+        {
+          "name": "season_crests_weekly_increase_check",
+          "type": "CHECK",
+          "def": "CHECK ((weekly_increase \u003e 0))",
+          "table": "public.season_crests",
+          "referenced_table": "",
+          "columns": [
+            "weekly_increase"
+          ]
+        },
+        {
+          "name": "season_crests_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.season_crests",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "season_crests_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (season, track)",
+          "table": "public.season_crests",
+          "referenced_table": "",
+          "columns": [
+            "season",
+            "track"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -15175,6 +15605,58 @@
       ],
       "parent_cardinality": "zero_or_one",
       "def": "FOREIGN KEY (updated_by) REFERENCES people(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.season_enchant_slots",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
+      "table": "public.season_enchants",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
+      "table": "public.season_gems",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
+      "table": "public.season_crests",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
     }
   ],
   "functions": [
@@ -16778,6 +17260,18 @@
       "name": "public.my_recruiter_code",
       "return_type": "text",
       "arguments": "p_guild_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.season_enchant_slots_on",
+      "return_type": "text",
+      "arguments": "p_season text, p_day date",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.season_crest_cap",
+      "return_type": "int4",
+      "arguments": "p_season text, p_track text, p_week date",
       "type": "FUNCTION"
     }
   ],

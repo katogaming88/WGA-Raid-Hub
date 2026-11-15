@@ -103,6 +103,10 @@
 | [public.recruit_messages](public.recruit_messages.md) | 9 | A closed ticket's conversation (#1539), saved by the bot before the channel is deleted. attachments is a list of {name, content_type}: the files themselves are not kept, since Discord's links expire. | BASE TABLE |
 | [public.recruit_reminders_sent](public.recruit_reminders_sent.md) | 5 | Which recruiting reminders the bot sent (#1539, #1543), the shape of raid_rsvp_reminders_sent. due_for is the message time or trial end the reminder was for, so a new message starts a new round and a repeat sweep sends nothing twice. | BASE TABLE |
 | [public.discord_find_ticket](public.discord_find_ticket.md) | 6 | Find my ticket (#1542): per Discord server, the channel its message goes in and the message the bot posted, so the bot edits or removes that one. Read and written by the discord-settings Edge Function for whoever may edit recruiting for a team in the server. Service role only. | BASE TABLE |
+| [public.season_enchant_slots](public.season_enchant_slots.md) | 3 | The slots that take an enchant in a season (#1633), in player_equipped_gear's slot names. counts_from: the day a slot added mid-season starts counting (null: the whole season). OFF_HAND counts only when the item is a weapon. Added by migration. | BASE TABLE |
+| [public.season_enchants](public.season_enchants.md) | 6 | The enchants that count in a season (#1633), by Blizzard's enchantment id. top_rank: the higher rank. tertiary: speed, leech or avoidance only, which the Lenient rule takes at any rank. An enchant not listed (an older expansion's) counts as none. Added by migration. | BASE TABLE |
+| [public.season_gems](public.season_gems.md) | 5 | The gems that count in a season (#1633), by Blizzard's item id (wow_item_id, not items.id). top_rank: the best there is, the higher crafting rank of a Flawless gem or an Eversong Diamond (never a Heliotrope, the weaker PvP gem). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration. | BASE TABLE |
+| [public.season_crests](public.season_crests.md) | 10 | Each upgrade crest in a season (#1633). A capped crest's cap grows by weekly_increase every week from first_week (a reset Tuesday), so a missed week carries over; uncapped_sources never count toward it; from caps_lifted_on (Blizzard usually lifts every cap in the x.x.5 patch) it has none. statistic_id: the character statistic Blizzard counts the season's earned crests in (the profile API has no currency read); currency_id: the in-game currency, for the addon. Read through season_crest_cap(). Added by migration. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -375,6 +379,8 @@
 | public.send_application | int4 | p_team_id integer, p_character_id integer, p_answers jsonb, p_recruiter_code text, p_friend_name text, p_time_zone text, p_other_specs text[] DEFAULT '{}'::text[] | FUNCTION |
 | public.team_ticket_viewers | record | p_team_id integer | FUNCTION |
 | public.my_recruiter_code | text | p_guild_id integer | FUNCTION |
+| public.season_enchant_slots_on | text | p_season text, p_day date | FUNCTION |
+| public.season_crest_cap | int4 | p_season text, p_track text, p_week date | FUNCTION |
 
 ## Enums
 
@@ -562,6 +568,10 @@ erDiagram
 "public.recruit_reminders_sent" }o--|| "public.recruit_applications" : "FOREIGN KEY (application_id) REFERENCES recruit_applications(id) ON DELETE CASCADE"
 "public.discord_find_ticket" }o--|| "public.guilds" : "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE"
 "public.discord_find_ticket" }o--o| "public.people" : "FOREIGN KEY (updated_by) REFERENCES people(id) ON DELETE SET NULL"
+"public.season_enchant_slots" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_enchants" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_gems" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_crests" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 
 "public.attendance" {
   integer id
@@ -1601,6 +1611,38 @@ erDiagram
   integer guild_id FK
   integer updated_by FK
   timestamp_with_time_zone updated_at
+}
+"public.season_enchant_slots" {
+  text season FK
+  text slot
+  date counts_from
+}
+"public.season_enchants" {
+  text season FK
+  integer enchantment_id
+  text name
+  text slot
+  boolean top_rank
+  boolean tertiary
+}
+"public.season_gems" {
+  text season FK
+  integer wow_item_id
+  text name
+  boolean top_rank
+  boolean epic
+}
+"public.season_crests" {
+  text season FK
+  text track
+  text name
+  integer statistic_id
+  integer currency_id
+  boolean capped
+  date first_week
+  integer weekly_increase
+  text__ uncapped_sources
+  date caps_lifted_on
 }
 ```
 

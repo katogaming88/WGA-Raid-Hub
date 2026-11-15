@@ -8,7 +8,7 @@ One row per raid tier (#932). code is the short form every season column referen
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| code | text |  | false | [public.rclc_loot](public.rclc_loot.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.raid_zones](public.raid_zones.md) [public.item_preferences](public.item_preferences.md) [public.tier_token_map](public.tier_token_map.md) [public.boe_items](public.boe_items.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.track_bonus_ids](public.track_bonus_ids.md) [public.team_seasons](public.team_seasons.md) [public.item_seasons](public.item_seasons.md) [public.season_track_floors](public.season_track_floors.md) |  |  |
+| code | text |  | false | [public.rclc_loot](public.rclc_loot.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.raid_zones](public.raid_zones.md) [public.item_preferences](public.item_preferences.md) [public.tier_token_map](public.tier_token_map.md) [public.boe_items](public.boe_items.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.track_bonus_ids](public.track_bonus_ids.md) [public.team_seasons](public.team_seasons.md) [public.item_seasons](public.item_seasons.md) [public.season_track_floors](public.season_track_floors.md) [public.season_enchant_slots](public.season_enchant_slots.md) [public.season_enchants](public.season_enchants.md) [public.season_gems](public.season_gems.md) [public.season_crests](public.season_crests.md) |  |  |
 | display_name | text |  | false |  |  |  |
 | starts_at | date |  | true |  |  | The day the season launched. Empty until Blizzard dates it (#1717): an undated season is never current and matches no raid date. |
 | ends_at | date |  | true |  |  | Null while the season is open-ended, and always for an undated one; the migration that dates the next season sets it. Dated seasons do not overlap (seasons_no_overlap). |
@@ -55,6 +55,10 @@ erDiagram
 "public.team_seasons" }o--|| "public.seasons" : "FOREIGN KEY (season_code) REFERENCES seasons(code)"
 "public.item_seasons" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.season_track_floors" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_enchant_slots" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_enchants" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_gems" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_crests" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 
 "public.seasons" {
   text code
@@ -241,6 +245,38 @@ erDiagram
   text track
   integer item_level
   timestamp_with_time_zone created_at
+}
+"public.season_enchant_slots" {
+  text season FK
+  text slot
+  date counts_from
+}
+"public.season_enchants" {
+  text season FK
+  integer enchantment_id
+  text name
+  text slot
+  boolean top_rank
+  boolean tertiary
+}
+"public.season_gems" {
+  text season FK
+  integer wow_item_id
+  text name
+  boolean top_rank
+  boolean epic
+}
+"public.season_crests" {
+  text season FK
+  text track
+  text name
+  integer statistic_id
+  integer currency_id
+  boolean capped
+  date first_week
+  integer weekly_increase
+  text__ uncapped_sources
+  date caps_lifted_on
 }
 ```
 

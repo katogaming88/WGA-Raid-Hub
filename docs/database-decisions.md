@@ -3596,3 +3596,21 @@ Shipped: `20261114213909_reword_starter_questions.sql`.
 **Sent applications keep what was asked.** `send_application()` already copies each question's `prompt` from `team_application_question_list()` into the answers, so it now copies the team's wording; a later reword or Reset doesn't touch it. The list also returns `starter_prompt` for the settings page (Reworded, Reset); `team_application_form()` leaves it out.
 
 [Full discussion -> #1826](https://github.com/katogaming88/WGA-Raid-Hub/issues/1826).
+
+## #1633 -- the roster audit's season settings
+
+Shipped: `20261114230843_audit_season_settings.sql`.
+
+**Reference rows per season, like `tier_token_map` and `season_track_floors`.** Four tables, added to by the migration that adds a season and never edited by a team, so a past week is checked against what was true that week: `season_enchant_slots` (with `counts_from` for a slot added mid-season), `season_enchants`, `season_gems` and `season_crests`. Anyone reads them; nothing writes them but migrations (`revoke all`, then `select`).
+
+**Enchants by Blizzard's enchantment id, not the scroll's item id.** The profile API reports an applied enchant by `enchantment_id`, which is what #1634 will store, and each rank has its own. Midnight's come from the game's SpellItemEnchantment table (the "Quality-12" names, both ranks): permanent ones only, so oils, whetstones, tool enchants and Illusory Adornments are left out and count as none. `top_rank` marks the higher rank; `tertiary` marks speed, leech or avoidance only (stamina alongside allowed, a proc ignored), which the Lenient rule takes at any rank. Weapon enchants are never tertiary.
+
+**Gems by Blizzard's item id, `wow_item_id`.** Gems aren't in the `items` catalog, so the column is named for the id space, like `player_equipped_gear.wow_item_id`. Each gem comes in two crafting ranks, both listed (CodeRabbit caught the lower ones missing). `top_rank` is the best there is: the higher rank of a Flawless gem or an Eversong Diamond. A Heliotrope is epic but never top: it's the PvP gem, weaker than a Diamond (+23 primary against +32), so the Strict rule flags it. A non-Flawless gem is never top, at either rank. The Diamonds and Heliotropes are the epic gems.
+
+**Crests: a cap that adds up, and one lift date.** `season_crest_cap(season, track, week)` returns `weekly_increase` for each week from `first_week` through that reset Tuesday (so a missed week carries over, as in game), 0 before it, and null for an uncapped crest or any week from `caps_lifted_on`. The Mistcrests' 100 a week is the game's currency table and the lift (2026-10-20 hotfix) is from the season's notes. The first week is 2026-08-11, the season's start: Blizzard's posts say Season 2 began August 18, but a raider's real totals on 2026-10-04 (Veteran 720, Myth 750, #1261) only fit a cap that started a week earlier (the fresh-agent review's catch). `uncapped_sources` holds Azta'rec (the Nemesis delve boss) on the Hero Mistcrest, the one source shown not counting toward a cap (CodeRabbit's find); the caps were lifted on 2026-10-20 anyway. `statistic_id` (62912 to 62916) is the character statistic that counts each crest earned this season, which is where #1636 reads them: the profile API has no currency read. `currency_id` (3442 to 3446) is the in-game currency, for the addon. Both change every season. `uncapped_sources` is free text for now; working out the cap the way #1261 describes (the total less what a one-off quest gave) needs a structured shape (a quest or achievement id and its crests), which replaces it if uncapped rewards come off the backburner.
+
+**Midnight Season 2's rows, not Season 3's.** The issue named Season 3, but Season 3 is undated and its crests and any new enchants aren't known yet; Season 2 is the season being raided. Season 3 gets rows in the migration that dates it.
+
+**OFF_HAND is listed; the audit decides whether it counts.** It takes a weapon enchant only when the item there is a weapon, which only the item says.
+
+[Full discussion -> #1633](https://github.com/katogaming88/WGA-Raid-Hub/issues/1633).
