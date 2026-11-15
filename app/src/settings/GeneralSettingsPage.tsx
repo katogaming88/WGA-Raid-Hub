@@ -304,9 +304,9 @@ function AuditRulesCard({ teamId, settings }: { teamId: number; settings: Genera
       <fieldset className="audit-rules-fieldset">
         <legend className="field-label">Enchant and gem check</legend>
         <p className="text-muted">In all three, enchants and gems must be from the current expansion.</p>
-        <div className="loot-systems">
+        <div className="audit-checks">
           {ENCHANT_CHECKS.map((option) => (
-            <label key={option.id} className="loot-system audit-check">
+            <label key={option.id} className="audit-check">
               <input
                 type="radio"
                 name="enchant-check"
