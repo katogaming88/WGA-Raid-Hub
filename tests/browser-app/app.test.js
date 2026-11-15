@@ -2378,9 +2378,10 @@ describe('sidebar folding', () => {
   });
 
   it('folds only the top section when that is enough', async () => {
-    // 1040, not 1000: the Officer menu gained its Recruiting item (#1548), a
-    // row more to fit before a second section has to fold.
-    const { context, page, pageErrors } = await openApp(browser, server.port, at(1040));
+    // 1080, not 1000: the Officer menu gained its Recruiting item (#1548) and
+    // the Team menu its Audit item (#1639), a row each to fit before a second
+    // section has to fold.
+    const { context, page, pageErrors } = await openApp(browser, server.port, at(1080));
     try {
       await expect
         .poll(() => sidebarState(page))
@@ -2392,7 +2393,8 @@ describe('sidebar folding', () => {
   });
 
   it('folds more sections from the top as needed, and clicks through without looping', async () => {
-    const { context, page, pageErrors } = await openApp(browser, server.port, at(940));
+    // 980, not 940: the Team menu's Audit item (#1639) is a row more.
+    const { context, page, pageErrors } = await openApp(browser, server.port, at(980));
     try {
       const nav = page.locator('#sidebar nav');
       await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 3, open: ['Officer', 'Site'] });
