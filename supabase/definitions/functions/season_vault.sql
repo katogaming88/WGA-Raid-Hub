@@ -1,6 +1,6 @@
 -- Function public.season_vault: current definition, generated from the database.
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): anon, authenticated
+-- execute (site roles): none
 
 CREATE OR REPLACE FUNCTION public.season_vault(p_season text, p_raid_kills jsonb, p_mplus_runs jsonb, p_delves jsonb)
  RETURNS jsonb
@@ -39,10 +39,11 @@ AS $function$
     union all
     select 'world', w.track, w.rank
       from jsonb_each_text(coalesce(p_delves, '{}')) d(tier, n)
-      cross join generate_series(1, greatest(d.n::integer, 0))
+      -- Whole numbers only: anything else is skipped, never a failed write.
+      cross join generate_series(1, case when d.n ~ '^\d{1,6}$' and d.tier ~ '^\d{1,3}$' then d.n::integer else 0 end)
       cross join lateral (
         select w.track, w.rank from season_vault_rewards w
-         where w.season = p_season and w.vault_row = 'world' and w.from_level <= d.tier::integer
+         where w.season = p_season and w.vault_row = 'world' and w.from_level <= case when d.tier ~ '^\d{1,3}$' then d.tier::integer end
          order by w.from_level desc
          limit 1) w
   ),

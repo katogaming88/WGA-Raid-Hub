@@ -20,13 +20,16 @@
 -- * The Venomous Abyss and The Tidebound Grotto count (Kat);
 -- * World is delves only: Prey hunts and other world activities are not in
 --   Blizzard's API, and the addon (#1440) adds them. Heroic and Mythic 0
---   dungeons, which also fill Dungeon slots, are not in it either.
+--   dungeons, which also fill Dungeon slots, are not in it either, and the
+--   M+ profile lists only the best key per dungeon (#1636): the Dungeons row
+--   can show fewer slots than the game.
 --
 -- character_weeks works out its vault on every write (vault, vault_at). Delves
 -- are running totals, so a week's delves are its row less the week before's;
 -- unless both were read, the World row is unknown (null). A boss counts once
--- a week, at its best difficulty. The
--- addon's exact vault (#1440), when it arrives, wins over this one.
+-- a week, at its best difficulty. The addon's exact vault (#1440), when it
+-- arrives, wins over this one: it goes in a column of its own, since this
+-- trigger rewrites vault on every write.
 
 create table public.season_track_steps (
   season text not null references public.seasons (code),
@@ -154,10 +157,11 @@ as $$
     union all
     select 'world', w.track, w.rank
       from jsonb_each_text(coalesce(p_delves, '{}')) d(tier, n)
-      cross join generate_series(1, greatest(d.n::integer, 0))
+      -- Whole numbers only: anything else is skipped, never a failed write.
+      cross join generate_series(1, case when d.n ~ '^\d{1,6}$' and d.tier ~ '^\d{1,3}$' then d.n::integer else 0 end)
       cross join lateral (
         select w.track, w.rank from season_vault_rewards w
-         where w.season = p_season and w.vault_row = 'world' and w.from_level <= d.tier::integer
+         where w.season = p_season and w.vault_row = 'world' and w.from_level <= case when d.tier ~ '^\d{1,3}$' then d.tier::integer end
          order by w.from_level desc
          limit 1) w
   ),
@@ -191,8 +195,10 @@ $$;
 comment on function public.season_vault(text, jsonb, jsonb, jsonb) is
   'A week''s Great Vault (#1637) from its raid kills, M+ runs and delves this week by tier (null: unknown, World row null): per row, its slots in order, each {needs, done} plus the weakest counted reward {track, rank, item_level} when filled, or {left} when not.';
 
-revoke all on function public.season_vault(text, jsonb, jsonb, jsonb) from public;
-grant execute on function public.season_vault(text, jsonb, jsonb, jsonb) to anon, authenticated, service_role;
+-- Only the trigger calls it (as the syncs, service_role); the page reads the
+-- stored vault. Not open to the site: a huge delve count is a lot of rows.
+revoke all on function public.season_vault(text, jsonb, jsonb, jsonb) from public, anon, authenticated;
+grant execute on function public.season_vault(text, jsonb, jsonb, jsonb) to service_role;
 
 -- Every write to a weekly row works out its vault again, from the row and the
 -- week before's delves (only that week: a gap leaves the World row unknown
@@ -214,9 +220,11 @@ begin
    where w.name_realm_key = lower(replace(new.name_realm, ' ', '')) and w.week_of = new.week_of - 7
      and w.delves_at is not null;
   if found and new.delves_at is not null then
-    select coalesce(jsonb_object_agg(d.key, greatest(d.value::integer - coalesce((v_prev ->> d.key)::integer, 0), 0)), '{}')
+    select coalesce(jsonb_object_agg(d.key, greatest(case when d.value ~ '^\d{1,6}$' then d.value::integer end
+                                              - case when coalesce(v_prev ->> d.key, '0') ~ '^\d{1,6}$' then coalesce((v_prev ->> d.key)::integer, 0) end, 0)), '{}')
       into v_delves
-      from jsonb_each_text(new.delves) d;
+      from jsonb_each_text(new.delves) d
+     where d.value ~ '^\d{1,6}$' and coalesce(v_prev ->> d.key, '0') ~ '^\d{1,6}$';
   end if;
   new.vault := coalesce(season_vault(current_season(new.week_of), new.raid_kills, new.mplus_runs, v_delves), '{}');
   new.vault_at := now();

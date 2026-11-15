@@ -88,6 +88,20 @@ describe('season_vault', () => {
     });
   });
 
+  it('a delve count or tier that is not a whole number is skipped, not an error', async () => {
+    await withTxn(async ({ q }) => {
+      expect((await vault(q, [], [], { 8: 2, 11: 'x', T9: 3, 5: 1.5 })).world[0]).toEqual(filled(2, 2, 'Hero', 1, 305));
+    });
+  });
+
+  it('only the syncs call it, not the site', async () => {
+    await withTxn(async ({ asAnon, asUser }) => {
+      const call = "select public.season_vault('MID2', '[]', '[]', '{}')";
+      await expect(asAnon(call)).rejects.toMatchObject({ code: RLS_DENIED });
+      await expect(asUser(RAIDER_T1, call)).rejects.toMatchObject({ code: RLS_DENIED });
+    });
+  });
+
   it('unknown delves this week leave the World row unknown', async () => {
     await withTxn(async ({ q }) => {
       expect((await vault(q, [], [], null)).world).toBeNull();
@@ -114,7 +128,9 @@ describe('the weekly row works out its vault on every write', () => {
     ).rows[0];
 
   it("delves this week are this row's running totals less last week's", async () => {
-    await withTxn(async ({ q }) => {
+    await withTxn(async ({ asRole }) => {
+      // As the syncs write: service_role, through its own grants.
+      const q = asRole('service_role', null);
       await write(q, '2026-11-03', { 8: 10, 11: 5 });
       await write(q, '2026-11-10', { 8: 12, 11: 7 });
       const row = await read(q, '2026-11-10');
@@ -128,8 +144,29 @@ describe('the weekly row works out its vault on every write', () => {
     });
   });
 
+  it('a sync whose only good read was raids keeps World and Dungeons, and fills Raid', async () => {
+    await withTxn(async ({ asRole }) => {
+      const q = asRole('service_role', null);
+      await write(q, '2026-11-03', { 8: 10 });
+      await write(q, '2026-11-10', { 8: 12 });
+      // The columns PostgREST's upsert sends when only the raids read worked.
+      await q(
+        `insert into public.character_weeks (name_realm, week_of, raid_kills, raids_at)
+         values ('Katorrí-Stormrage', '2026-11-10', $1::jsonb, now())
+         on conflict (name_realm_key, week_of) do update set raid_kills = excluded.raid_kills, raids_at = excluded.raids_at`,
+        [JSON.stringify([kill(2888, 'heroic'), kill(2874, 'heroic')])]
+      );
+      const v = (await read(q, '2026-11-10')).vault;
+      expect(v.raid[0]).toEqual(filled(2, 2, 'Myth', 1, 318));
+      expect(v.world[0]).toEqual(filled(2, 2, 'Hero', 1, 305));
+      expect(v.dungeon[0]).toEqual(filled(1, 1, 'Myth', 1, 318));
+    });
+  });
+
   it('with no row for the week before, the World row is unknown', async () => {
-    await withTxn(async ({ q }) => {
+    await withTxn(async ({ asRole }) => {
+      // As the syncs write: service_role, through its own grants.
+      const q = asRole('service_role', null);
       await write(q, '2026-10-27', { 8: 10 });
       await write(q, '2026-11-10', { 8: 12 });
       expect((await read(q, '2026-11-10')).vault.world).toBeNull();
@@ -137,7 +174,9 @@ describe('the weekly row works out its vault on every write', () => {
   });
 
   it('a week whose delves were never read is no baseline, and is unknown itself', async () => {
-    await withTxn(async ({ q }) => {
+    await withTxn(async ({ asRole }) => {
+      // As the syncs write: service_role, through its own grants.
+      const q = asRole('service_role', null);
       // Last week's statistics read failed: its {} would count lifetime delves.
       await write(q, '2026-11-03', {}, false);
       await write(q, '2026-11-10', { 8: 12 });
