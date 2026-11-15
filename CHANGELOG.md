@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.272.0] - 2026-11-14
+
+### Backend
+
+- A team's starter application questions can carry the team's own wording, stored with its other starter changes; the application form and sent applications use it, and other teams keep the starter wording (#1826).
+
+### Project
+
+- (new app) Recruiting settings, Application questions: each starter question has Edit wording, a Reworded note and Reset to the starter wording, and keeps its place, group, answer type and switches. The "Turn it off and add your own" note is gone, and the Set up recruiting guide says to edit the wording (#1826).
+
 ## [3.271.0] - 2026-11-14
 
 ### Project

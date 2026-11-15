@@ -11378,7 +11378,7 @@
     {
       "name": "public.application_starter_questions",
       "type": "BASE TABLE",
-      "comment": "The starter application questions (#1536), site-wide and the same for every guild, seeded by migration. A team switches each on or off and marks it required (team_application_starters); it never edits one. {team} and {raid nights} in prompt are filled by the page.",
+      "comment": "The starter application questions (#1536), site-wide and the same for every guild, seeded by migration. A team switches each on or off, marks it required and can reword it (team_application_starters); answer type, choices and group stay as here. {team} and {raid nights} in prompt are filled by the page.",
       "columns": [
         {
           "name": "key",
@@ -11562,7 +11562,7 @@
     {
       "name": "public.team_application_starters",
       "type": "BASE TABLE",
-      "comment": "What a team changed about a starter question (#1536): a row only where is_on or required differs from the starter's default. No row: the default. Saved through save_team_application_questions().",
+      "comment": "What a team changed about a starter question (#1536, #1826): a row only where is_on, required or the wording differs from the starter's. No row: the default. Saved through save_team_application_questions().",
       "columns": [
         {
           "name": "team_id",
@@ -11583,6 +11583,12 @@
           "name": "required",
           "type": "boolean",
           "nullable": false
+        },
+        {
+          "name": "prompt",
+          "type": "text",
+          "nullable": true,
+          "comment": "The team's wording for this starter question (#1826), or null for the starter wording. {team} and {raid nights} are filled by the page."
         }
       ],
       "indexes": [
@@ -11597,6 +11603,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "team_application_starters_prompt",
+          "type": "CHECK",
+          "def": "CHECK (((char_length(prompt) \u003c= 300) AND (prompt ~ '\\S'::text) AND (prompt !~ '[\\r\\n]'::text)))",
+          "table": "public.team_application_starters",
+          "referenced_table": "",
+          "columns": [
+            "prompt"
+          ]
+        },
         {
           "name": "team_application_starters_required_on",
           "type": "CHECK",

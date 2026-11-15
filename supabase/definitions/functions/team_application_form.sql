@@ -26,7 +26,7 @@ begin
   v_list := team_application_question_list(p_team_id);
   return jsonb_build_object(
     'starters', coalesce((
-      select jsonb_agg(s - 'on' - 'label' order by o)
+      select jsonb_agg(s - 'on' - 'label' - 'starter_prompt' order by o)
         from jsonb_array_elements(v_list -> 'starters') with ordinality as e(s, o)
        where (s ->> 'on')::boolean), '[]'::jsonb),
     'questions', v_list -> 'questions');

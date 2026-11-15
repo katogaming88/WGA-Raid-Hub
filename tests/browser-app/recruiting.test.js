@@ -67,6 +67,7 @@ const STATE = {
           group: 'About them',
           label: 'A line about themselves',
           prompt: 'Tell the team about yourself.',
+          starter_prompt: 'Tell the team about yourself.',
           answer_type: 'short_text',
           max_length: 100,
           choices: [],
@@ -78,6 +79,7 @@ const STATE = {
           group: 'How they found you',
           label: 'Who sent them',
           prompt: 'Who sent you?',
+          starter_prompt: 'Who sent you?',
           answer_type: 'recruiter',
           max_length: null,
           choices: [],
@@ -249,7 +251,11 @@ describe('Recruiting settings, in use', () => {
         { role: 'ranged', class_spec_id: null, priority: 'low' },
         { role: 'tank', class_spec_id: 3, priority: 'high' }
       ]);
-      expect(byName.save_team_application_questions.p_starters.about).toEqual({ on: false, required: false });
+      expect(byName.save_team_application_questions.p_starters.about).toEqual({
+        on: false,
+        required: false,
+        prompt: 'Tell the team about yourself.'
+      });
     } finally {
       await context.close();
     }

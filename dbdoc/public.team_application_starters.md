@@ -2,7 +2,7 @@
 
 ## Description
 
-What a team changed about a starter question (#1536): a row only where is_on or required differs from the starter's default. No row: the default. Saved through save_team_application_questions().
+What a team changed about a starter question (#1536, #1826): a row only where is_on, required or the wording differs from the starter's. No row: the default. Saved through save_team_application_questions().
 
 ## Columns
 
@@ -12,11 +12,13 @@ What a team changed about a starter question (#1536): a row only where is_on or 
 | starter_key | text |  | false |  | [public.application_starter_questions](public.application_starter_questions.md) |  |
 | is_on | boolean |  | false |  |  |  |
 | required | boolean |  | false |  |  |  |
+| prompt | text |  | true |  |  | The team's wording for this starter question (#1826), or null for the starter wording. {team} and {raid nights} are filled by the page. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| team_application_starters_prompt | CHECK | CHECK (((char_length(prompt) <= 300) AND (prompt ~ '\S'::text) AND (prompt !~ '[\r\n]'::text))) |
 | team_application_starters_required_on | CHECK | CHECK ((is_on OR (NOT required))) |
 | team_application_starters_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES team_recruiting(team_id) ON DELETE CASCADE |
 | team_application_starters_starter_key_fkey | FOREIGN KEY | FOREIGN KEY (starter_key) REFERENCES application_starter_questions(key) ON DELETE CASCADE |
@@ -41,6 +43,7 @@ erDiagram
   text starter_key FK
   boolean is_on
   boolean required
+  text prompt
 }
 "public.team_recruiting" {
   integer team_id FK
