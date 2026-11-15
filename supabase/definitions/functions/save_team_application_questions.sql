@@ -70,7 +70,7 @@ begin
     end if;
     if v_val ? 'prompt' then
       v_prompt := btrim(v_val ->> 'prompt');
-      if v_prompt is not null and (v_prompt = '' or char_length(v_prompt) > 300 or v_prompt ~ '[\r\n]') then
+      if v_prompt is not null and (v_prompt !~ '\S' or char_length(v_prompt) > 300 or v_prompt ~ '[\r\n]') then
         raise exception 'A question''s wording is one line of 1 to 300 characters';
       end if;
     else

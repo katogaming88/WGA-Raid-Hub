@@ -307,7 +307,7 @@ export function problems(d: Draft): string[] {
   ) {
     found.push('The officer ping has to come before the Team Owner ping.');
   }
-  if (Object.values(d.starters).some((a) => !a.prompt.trim() || a.prompt.length > 300)) {
+  if (Object.values(d.starters).some((a) => !a.prompt.trim() || a.prompt.trim().length > 300)) {
     found.push('A starter question’s wording is 1 to 300 characters.');
   }
   found.push(...spotProblems(d.spots), ...questionProblems(d.questions));

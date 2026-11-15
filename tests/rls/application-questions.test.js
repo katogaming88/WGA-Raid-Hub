@@ -118,6 +118,10 @@ describe('application questions', () => {
     await withTxn(async ({ q, asUser }) => {
       const specs = 'What are your computer specs? (CPU, graphics card, internet)';
       await save(asUser, OFFICER_T1, { computer: { on: true, required: false, prompt: `  ${specs} ` } }, []);
+      await save(asUser, OFFICER_T1, { computer: { on: true, required: false, prompt: 'Your PC?' } }, []);
+      // A wording-only change is logged too.
+      expect(await audits(q)).toHaveLength(2);
+      await save(asUser, OFFICER_T1, { computer: { on: true, required: false, prompt: specs } }, []);
       let l = await list(asUser, OFFICER_T1);
       expect(starter(l, 'computer')).toMatchObject({
         prompt: specs,
@@ -170,6 +174,7 @@ describe('application questions', () => {
       const bad = (prompt, msg) =>
         expect(save(asUser, OFFICER_T1, { why: { on: true, required: false, prompt } }, [])).rejects.toThrow(msg);
       await bad('   ', 'one line of 1 to 300');
+      await bad('\t', 'one line of 1 to 300');
       await bad('x'.repeat(301), 'one line of 1 to 300');
       await bad('Two\nlines', 'one line of 1 to 300');
       await bad(7, 'its wording');
