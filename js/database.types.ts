@@ -492,6 +492,75 @@ export type Database = {
           },
         ]
       }
+      character_weeks: {
+        Row: {
+          crests: Json
+          crests_at: string | null
+          delves: Json
+          delves_at: string | null
+          embellishments: number | null
+          empty_sockets: number | null
+          epic_gem: boolean | null
+          gear_at: string | null
+          missing_enchants: number | null
+          mplus_at: string | null
+          mplus_rating: number | null
+          mplus_runs: Json
+          name_realm: string
+          name_realm_key: string
+          raid_kills: Json
+          raids_at: string | null
+          sparks_used: number | null
+          vault: Json
+          vault_at: string | null
+          week_of: string
+        }
+        Insert: {
+          crests?: Json
+          crests_at?: string | null
+          delves?: Json
+          delves_at?: string | null
+          embellishments?: number | null
+          empty_sockets?: number | null
+          epic_gem?: boolean | null
+          gear_at?: string | null
+          missing_enchants?: number | null
+          mplus_at?: string | null
+          mplus_rating?: number | null
+          mplus_runs?: Json
+          name_realm: string
+          name_realm_key?: string
+          raid_kills?: Json
+          raids_at?: string | null
+          sparks_used?: number | null
+          vault?: Json
+          vault_at?: string | null
+          week_of: string
+        }
+        Update: {
+          crests?: Json
+          crests_at?: string | null
+          delves?: Json
+          delves_at?: string | null
+          embellishments?: number | null
+          empty_sockets?: number | null
+          epic_gem?: boolean | null
+          gear_at?: string | null
+          missing_enchants?: number | null
+          mplus_at?: string | null
+          mplus_rating?: number | null
+          mplus_runs?: Json
+          name_realm?: string
+          name_realm_key?: string
+          raid_kills?: Json
+          raids_at?: string | null
+          sparks_used?: number | null
+          vault?: Json
+          vault_at?: string | null
+          week_of?: string
+        }
+        Relationships: []
+      }
       characters: {
         Row: {
           blizzard_id: number
@@ -5818,6 +5887,7 @@ export type Database = {
       }
       my_active_player_ids: { Args: never; Returns: number[] }
       my_applications: { Args: never; Returns: Json }
+      my_audit_character_keys: { Args: never; Returns: string[] }
       my_guild_officer_team_ids: { Args: never; Returns: number[] }
       my_guild_permission_team_ids: {
         Args: { p_permission: string }

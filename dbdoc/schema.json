@@ -13472,6 +13472,266 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.character_weeks",
+      "type": "BASE TABLE",
+      "comment": "The roster audit's weekly row (#1635, #1261): one per character (name_realm_key, as on players and characters) per week (week_of, the reset Tuesday). Each sync updates the current week's row; older weeks stay as last written. Each part carries when it was last written. Read by the character's teams and owner; written only by the syncs.",
+      "columns": [
+        {
+          "name": "name_realm",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "name_realm_key",
+          "type": "text",
+          "nullable": false,
+          "extra_def": "GENERATED ALWAYS AS lower(replace(name_realm, ' '::text, ''::text)) STORED"
+        },
+        {
+          "name": "week_of",
+          "type": "date",
+          "nullable": false,
+          "comment": "The reset Tuesday the week starts on."
+        },
+        {
+          "name": "raid_kills",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "raids_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "mplus_runs",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "mplus_rating",
+          "type": "numeric(6,1)",
+          "nullable": true
+        },
+        {
+          "name": "mplus_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "delves",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb"
+        },
+        {
+          "name": "delves_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "crests",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "comment": "Crests earned this season by track (season_crests.track), from the character statistics season_crests.statistic_id names."
+        },
+        {
+          "name": "crests_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "vault",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb"
+        },
+        {
+          "name": "vault_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "missing_enchants",
+          "type": "smallint",
+          "nullable": true,
+          "comment": "Gear counts at the week's last gear sync (#1634): enchantable slots without a current-expansion enchant, empty sockets, whether an epic gem is worn, embellishments and sparks used."
+        },
+        {
+          "name": "empty_sockets",
+          "type": "smallint",
+          "nullable": true
+        },
+        {
+          "name": "epic_gem",
+          "type": "boolean",
+          "nullable": true
+        },
+        {
+          "name": "embellishments",
+          "type": "smallint",
+          "nullable": true
+        },
+        {
+          "name": "sparks_used",
+          "type": "smallint",
+          "nullable": true
+        },
+        {
+          "name": "gear_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "character_weeks_pkey",
+          "def": "CREATE UNIQUE INDEX character_weeks_pkey ON public.character_weeks USING btree (name_realm_key, week_of)",
+          "table": "public.character_weeks",
+          "columns": [
+            "name_realm_key",
+            "week_of"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "character_weeks_crests_check",
+          "type": "CHECK",
+          "def": "CHECK ((jsonb_typeof(crests) = 'object'::text))",
+          "table": "public.character_weeks",
+          "referenced_table": "",
+          "columns": [
+            "crests"
+          ]
+        },
+        {
+          "name": "character_weeks_delves_check",
+          "type": "CHECK",
+          "def": "CHECK ((jsonb_typeof(delves) = 'object'::text))",
+          "table": "public.character_weeks",
+          "referenced_table": "",
+          "columns": [
+            "delves"
+          ]
+        },
+        {
+          "name": "character_weeks_embellishments_check",
+          "type": "CHECK",
+          "def": "CHECK ((embellishments \u003e= 0))",
+          "table": "public.character_weeks",
+          "referenced_table": "",
+          "columns": [
+            "embellishments"
+          ]
+        },
+        {
+          "name": "character_weeks_empty_sockets_check",
+          "type": "CHECK",
+          "def": "CHECK ((empty_sockets \u003e= 0))",
+          "table": "public.character_weeks",
+          "referenced_table": "",
+          "columns": [
+            "empty_sockets"
+          ]
+        },
+        {
+          "name": "character_weeks_missing_enchants_check",
+          "type": "CHECK",
+          "def": "CHECK ((missing_enchants \u003e= 0))",
+          "table": "public.character_weeks",
+          "referenced_table": "",
+          "columns": [
+            "missing_enchants"
+          ]
+        },
+        {
+          "name": "character_weeks_mplus_rating_check",
+          "type": "CHECK",
+          "def": "CHECK ((mplus_rating \u003e= (0)::numeric))",
+          "table": "public.character_weeks",
+          "referenced_table": "",
+          "columns": [
+            "mplus_rating"
+          ]
+        },
+        {
+          "name": "character_weeks_mplus_runs_check",
+          "type": "CHECK",
+          "def": "CHECK ((jsonb_typeof(mplus_runs) = 'array'::text))",
+          "table": "public.character_weeks",
+          "referenced_table": "",
+          "columns": [
+            "mplus_runs"
+          ]
+        },
+        {
+          "name": "character_weeks_name_realm_check",
+          "type": "CHECK",
+          "def": "CHECK ((name_realm ~ '\\S'::text))",
+          "table": "public.character_weeks",
+          "referenced_table": "",
+          "columns": [
+            "name_realm"
+          ]
+        },
+        {
+          "name": "character_weeks_raid_kills_check",
+          "type": "CHECK",
+          "def": "CHECK ((jsonb_typeof(raid_kills) = 'array'::text))",
+          "table": "public.character_weeks",
+          "referenced_table": "",
+          "columns": [
+            "raid_kills"
+          ]
+        },
+        {
+          "name": "character_weeks_sparks_used_check",
+          "type": "CHECK",
+          "def": "CHECK ((sparks_used \u003e= 0))",
+          "table": "public.character_weeks",
+          "referenced_table": "",
+          "columns": [
+            "sparks_used"
+          ]
+        },
+        {
+          "name": "character_weeks_vault_check",
+          "type": "CHECK",
+          "def": "CHECK ((jsonb_typeof(vault) = 'object'::text))",
+          "table": "public.character_weeks",
+          "referenced_table": "",
+          "columns": [
+            "vault"
+          ]
+        },
+        {
+          "name": "character_weeks_week_of_check",
+          "type": "CHECK",
+          "def": "CHECK ((EXTRACT(isodow FROM week_of) = (2)::numeric))",
+          "table": "public.character_weeks",
+          "referenced_table": "",
+          "columns": [
+            "week_of"
+          ]
+        },
+        {
+          "name": "character_weeks_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (name_realm_key, week_of)",
+          "table": "public.character_weeks",
+          "referenced_table": "",
+          "columns": [
+            "name_realm_key",
+            "week_of"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -17272,6 +17532,12 @@
       "name": "public.season_crest_cap",
       "return_type": "int4",
       "arguments": "p_season text, p_track text, p_week date",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_audit_character_keys",
+      "return_type": "_text",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],
