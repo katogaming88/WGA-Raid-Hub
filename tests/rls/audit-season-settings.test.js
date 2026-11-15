@@ -77,7 +77,7 @@ describe('audit season settings', () => {
     });
   });
 
-  it('marks Flawless gems top rank and the diamonds epic', async () => {
+  it('holds both crafting ranks of each gem; only the best is top, and the diamonds are epic', async () => {
     await withTxn(async ({ q }) => {
       const gem = async (id) =>
         (
@@ -87,7 +87,16 @@ describe('audit season settings', () => {
         ).rows[0];
       expect(await gem(240912)).toEqual({ name: 'Flawless Versatile Lapis', top_rank: true, epic: false });
       expect(await gem(240880)).toEqual({ name: 'Versatile Lapis', top_rank: false, epic: false });
+      expect(await gem(240911)).toEqual({ name: 'Flawless Versatile Lapis', top_rank: false, epic: false });
+      expect(await gem(240879)).toEqual({ name: 'Versatile Lapis', top_rank: false, epic: false });
       expect(await gem(240967)).toEqual({ name: 'Powerful Eversong Diamond', top_rank: true, epic: true });
+      expect(await gem(240966)).toEqual({ name: 'Powerful Eversong Diamond', top_rank: false, epic: true });
+      expect(await gem(241142)).toEqual({ name: 'Determined Heliotrope', top_rank: true, epic: true });
+      const counts = await q(
+        `select count(*)::int as n, count(*) filter (where top_rank)::int as top, count(*) filter (where epic)::int as epic
+           from public.season_gems where season = 'MID2'`
+      );
+      expect(counts.rows[0]).toEqual({ n: 75, top: 23, epic: 11 });
     });
   });
 
@@ -99,6 +108,10 @@ describe('audit season settings', () => {
       expect(await cap(q, 'Hero', '2026-10-13')).toBe(900);
       expect(await cap(q, 'Hero', '2026-10-20')).toBeNull();
       expect(await cap(q, 'Adventurer', '2026-11-17')).toBeNull();
+      const sources = await q(
+        "select track, uncapped_sources from public.season_crests where season = 'MID2' and uncapped_sources <> '{}'"
+      );
+      expect(sources.rows).toEqual([{ track: 'Hero', uncapped_sources: ["Azta'rec (Nemesis delve)"] }]);
       // An uncapped crest has none; a season with no rows answers nothing.
       await q("update public.season_crests set capped = false where season = 'MID2' and track = 'Veteran'");
       expect(await cap(q, 'Veteran', '2026-09-01')).toBeNull();
@@ -107,18 +120,28 @@ describe('audit season settings', () => {
   });
 
   it('anyone reads them, signed in or not; nobody writes them from the site', async () => {
-    await withTxn(async ({ asAnon, asUser }) => {
+    await withTxn(async ({ asAnon, asUser, asRole }) => {
       for (const t of ['season_enchant_slots', 'season_enchants', 'season_gems', 'season_crests']) {
         expect((await asAnon(`select count(*)::int as n from public.${t}`)).rows[0].n).toBeGreaterThan(0);
         expect((await asUser(RAIDER_T1, `select count(*)::int as n from public.${t}`)).rows[0].n).toBeGreaterThan(0);
       }
       expect(await cap(asAnon, 'Myth', '2026-08-18')).toBe(100);
-      await expect(
-        asUser(OFFICER_T1, "insert into public.season_enchant_slots (season, slot) values ('MID2', 'WRIST')")
-      ).rejects.toMatchObject({ code: RLS_DENIED });
-      await expect(
-        asUser(OFFICER_T1, "update public.season_crests set capped = false where season = 'MID2'")
-      ).rejects.toMatchObject({ code: RLS_DENIED });
+      const callers = [asAnon, (text) => asUser(OFFICER_T1, text), asRole('service_role', null)];
+      const writes = {
+        season_enchant_slots: "insert into public.season_enchant_slots (season, slot) values ('MID2', 'WRIST')",
+        season_enchants:
+          "insert into public.season_enchants (season, enchantment_id, name, slot, top_rank, tertiary) values ('MID2', 1, 'X', 'HEAD', true, false)",
+        season_gems:
+          "insert into public.season_gems (season, wow_item_id, name, top_rank, epic) values ('MID2', 1, 'X', true, false)",
+        season_crests: "update public.season_crests set capped = false where season = 'MID2'"
+      };
+      for (const [t, write] of Object.entries(writes)) {
+        for (const as of callers) {
+          for (const sql of [write, `delete from public.${t}`, `truncate public.${t}`]) {
+            await expect(as(sql)).rejects.toMatchObject({ code: RLS_DENIED });
+          }
+        }
+      }
     });
   });
 });

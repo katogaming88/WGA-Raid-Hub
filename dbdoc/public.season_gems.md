@@ -2,7 +2,7 @@
 
 ## Description
 
-The gems that count in a season (#1633), by Blizzard's item id (wow_item_id, not items.id). top_rank: the higher rank (Flawless; a gem with one rank is top). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration.
+The gems that count in a season (#1633), by Blizzard's item id (wow_item_id, not items.id). top_rank: the best there is, the higher crafting rank of a Flawless gem or an epic gem (a gem with one rank is top). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration.
 
 ## Columns
 

@@ -13,8 +13,10 @@
 --   (what the profile API returns). top_rank: the higher of its two ranks.
 --   tertiary: speed, leech or avoidance (with or without stamina), which the
 --   Lenient rule takes at any rank. An enchant not listed counts as none.
--- * season_gems: the gems that count, by Blizzard's item id, with top_rank (Flawless) and
---   epic (the Eversong Diamonds and Heliotropes).
+-- * season_gems: the gems that count, by Blizzard's item id, both crafting
+--   ranks of each, with top_rank (the higher rank of a Flawless gem or an
+--   Eversong Diamond; a Heliotrope has one rank) and epic (the Diamonds and
+--   Heliotropes).
 -- * season_crests: each crest type: capped or not, the first week its cap
 --   counts, how much the cap grows each week, sources that never count toward
 --   it, and the date Blizzard lifted the caps.
@@ -24,7 +26,7 @@
 -- Midnight Season 2's rows, the season being raided. Enchant ids and ranks
 -- come from Blizzard's SpellItemEnchantment table (the Midnight "Quality-12"
 -- enchants, permanent ones only: no oils, whetstones, tools or cosmetics);
--- gems from the game's item data; the Mistcrests' 100 a week and their
+-- gems (both crafting ranks) from the game's item data; the Mistcrests' 100 a week and their
 -- currency ids from the currency table; the season's first week (2026-08-18)
 -- and the caps' lifting with the 2026-10-20 hotfix from the season's notes.
 -- Midnight Season 3 gets its rows when it is dated.
@@ -63,7 +65,7 @@ create table public.season_gems (
 );
 
 comment on table public.season_gems is
-  'The gems that count in a season (#1633), by Blizzard''s item id (wow_item_id, not items.id). top_rank: the higher rank (Flawless; a gem with one rank is top). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration.';
+  'The gems that count in a season (#1633), by Blizzard''s item id (wow_item_id, not items.id). top_rank: the best there is, the higher crafting rank of a Flawless gem or an epic gem (a gem with one rank is top). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration.';
 
 create table public.season_crests (
   season text not null references public.seasons (code),
@@ -304,12 +306,51 @@ insert into public.season_gems (season, wow_item_id, name, top_rank, epic) value
   ('MID2', 240864, 'Masterful Amethyst', false, false),
   ('MID2', 240870, 'Versatile Amethyst', false, false),
   ('MID2', 240868, 'Quick Amethyst', false, false),
-  ('MID2', 240866, 'Deadly Amethyst', false, false);
+  ('MID2', 240866, 'Deadly Amethyst', false, false),
+  -- The lower crafting rank of each.
+  ('MID2', 240966, 'Powerful Eversong Diamond', false, true),
+  ('MID2', 240968, 'Telluric Eversong Diamond', false, true),
+  ('MID2', 240970, 'Stoic Eversong Diamond', false, true),
+  ('MID2', 240982, 'Indecipherable Eversong Diamond', false, true),
+  ('MID2', 240855, 'Quick Peridot', false, false),
+  ('MID2', 240857, 'Deadly Peridot', false, false),
+  ('MID2', 240859, 'Masterful Peridot', false, false),
+  ('MID2', 240861, 'Versatile Peridot', false, false),
+  ('MID2', 240863, 'Masterful Amethyst', false, false),
+  ('MID2', 240865, 'Deadly Amethyst', false, false),
+  ('MID2', 240867, 'Quick Amethyst', false, false),
+  ('MID2', 240869, 'Versatile Amethyst', false, false),
+  ('MID2', 240871, 'Deadly Garnet', false, false),
+  ('MID2', 240873, 'Quick Garnet', false, false),
+  ('MID2', 240875, 'Masterful Garnet', false, false),
+  ('MID2', 240877, 'Versatile Garnet', false, false),
+  ('MID2', 240879, 'Versatile Lapis', false, false),
+  ('MID2', 240881, 'Deadly Lapis', false, false),
+  ('MID2', 240883, 'Quick Lapis', false, false),
+  ('MID2', 240885, 'Masterful Lapis', false, false),
+  ('MID2', 240887, 'Flawless Quick Peridot', false, false),
+  ('MID2', 240889, 'Flawless Deadly Peridot', false, false),
+  ('MID2', 240891, 'Flawless Masterful Peridot', false, false),
+  ('MID2', 240893, 'Flawless Versatile Peridot', false, false),
+  ('MID2', 240895, 'Flawless Masterful Amethyst', false, false),
+  ('MID2', 240897, 'Flawless Deadly Amethyst', false, false),
+  ('MID2', 240899, 'Flawless Quick Amethyst', false, false),
+  ('MID2', 240901, 'Flawless Versatile Amethyst', false, false),
+  ('MID2', 240903, 'Flawless Deadly Garnet', false, false),
+  ('MID2', 240905, 'Flawless Quick Garnet', false, false),
+  ('MID2', 240907, 'Flawless Masterful Garnet', false, false),
+  ('MID2', 240909, 'Flawless Versatile Garnet', false, false),
+  ('MID2', 240911, 'Flawless Versatile Lapis', false, false),
+  ('MID2', 240913, 'Flawless Deadly Lapis', false, false),
+  ('MID2', 240915, 'Flawless Quick Lapis', false, false),
+  ('MID2', 240917, 'Flawless Masterful Lapis', false, false);
 
+-- Azta'rec, the season's Nemesis delve boss, gives Hero Mistcrests that don't
+-- count toward the cap.
 insert into public.season_crests
-  (season, track, name, currency_id, capped, first_week, weekly_increase, caps_lifted_on) values
-  ('MID2', 'Adventurer', 'Adventurer Mistcrest', 3442, true, '2026-08-18', 100, '2026-10-20'),
-  ('MID2', 'Veteran', 'Veteran Mistcrest', 3443, true, '2026-08-18', 100, '2026-10-20'),
-  ('MID2', 'Champion', 'Champion Mistcrest', 3444, true, '2026-08-18', 100, '2026-10-20'),
-  ('MID2', 'Hero', 'Hero Mistcrest', 3445, true, '2026-08-18', 100, '2026-10-20'),
-  ('MID2', 'Myth', 'Myth Mistcrest', 3446, true, '2026-08-18', 100, '2026-10-20');
+  (season, track, name, currency_id, capped, first_week, weekly_increase, uncapped_sources, caps_lifted_on) values
+  ('MID2', 'Adventurer', 'Adventurer Mistcrest', 3442, true, '2026-08-18', 100, '{}', '2026-10-20'),
+  ('MID2', 'Veteran', 'Veteran Mistcrest', 3443, true, '2026-08-18', 100, '{}', '2026-10-20'),
+  ('MID2', 'Champion', 'Champion Mistcrest', 3444, true, '2026-08-18', 100, '{}', '2026-10-20'),
+  ('MID2', 'Hero', 'Hero Mistcrest', 3445, true, '2026-08-18', 100, '{"Azta''rec (Nemesis delve)"}', '2026-10-20'),
+  ('MID2', 'Myth', 'Myth Mistcrest', 3446, true, '2026-08-18', 100, '{}', '2026-10-20');
