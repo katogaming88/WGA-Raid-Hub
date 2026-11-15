@@ -73,6 +73,7 @@ const QUESTIONS: QuestionList = {
       group: 'About them',
       label: 'A line about themselves',
       prompt: 'Tell the team about yourself.',
+      starter_prompt: 'Tell the team about yourself.',
       answer_type: 'short_text',
       max_length: 100,
       choices: [],
@@ -84,6 +85,7 @@ const QUESTIONS: QuestionList = {
       group: 'About them',
       label: 'Why this team',
       prompt: 'Why {team}?',
+      starter_prompt: 'Why {team}?',
       answer_type: 'paragraph',
       max_length: 1000,
       choices: [],
@@ -95,6 +97,7 @@ const QUESTIONS: QuestionList = {
       group: 'How they found you',
       label: 'Who sent them',
       prompt: 'Who sent you?',
+      starter_prompt: 'Who sent you?',
       answer_type: 'recruiter',
       max_length: null,
       choices: [],
@@ -496,9 +499,9 @@ describe('the Recruiting settings page', () => {
       {
         p_team_id: 1,
         p_starters: {
-          about: { on: false, required: false },
-          why: { on: true, required: true },
-          sent_by: { on: true, required: false }
+          about: { on: false, required: false, prompt: 'Tell the team about yourself.' },
+          why: { on: true, required: true, prompt: 'Why {team}?' },
+          sent_by: { on: true, required: false, prompt: 'Who sent you?' }
         },
         // The team's own question rides along, so it isn't deleted.
         p_questions: [
@@ -506,6 +509,37 @@ describe('the Recruiting settings page', () => {
         ]
       }
     ]);
+  });
+
+  it('rewords a starter question in place, and Reset puts the starter wording back (#1826)', async () => {
+    const user = userEvent.setup();
+    const w = world();
+    renderApp(PATH, handlers(w));
+    await open(/^Application questions/);
+    const why = screen.getByText('Why this team').closest('.rec-question') as HTMLElement;
+    await user.click(within(why).getByRole('button', { name: 'Edit wording: Why this team' }));
+    const box = within(why).getByLabelText('What applicants see');
+    await user.clear(box);
+    await user.type(box, 'Why raid with {{team}?');
+    await user.click(screen.getByRole('button', { name: 'Done editing Why this team' }));
+    expect(within(why).getByText('Reworded')).toBeInTheDocument();
+    expect(within(why).getByText(/Why raid with \{team\}\?/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Reset to the starter wording: Why this team' }));
+    expect(within(why).queryByText('Reworded')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save settings' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'Edit wording: Why this team' }));
+    await user.clear(within(why).getByLabelText('What applicants see'));
+    expect(screen.getByText('A starter question’s wording is 1 to 300 characters.')).toBeInTheDocument();
+    await user.type(within(why).getByLabelText('What applicants see'), 'Why us?');
+    await user.click(screen.getByRole('button', { name: 'Save settings' }));
+    await expect.poll(() => w.rpcs.length).toBe(1);
+    expect((w.rpcs[0]![1]['p_starters'] as Record<string, unknown>)['why']).toEqual({
+      on: true,
+      required: false,
+      prompt: 'Why us?'
+    });
   });
 
   it('adds a question of the team’s own, with its choices', async () => {

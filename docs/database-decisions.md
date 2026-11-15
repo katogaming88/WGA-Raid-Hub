@@ -102,7 +102,7 @@ Shipped: 20261109145938_recruit_records.sql
 
 Shipped: 20261109100209_application_questions.sql
 
-- **Starter questions are site-wide rows; a team stores only what it changed.** `application_starter_questions` is seeded by the migration with the issue's 12 questions, each with a fixed key, a group, a short name for the settings page (the mockup's), the wording, the answer type and its default on and required. `team_application_starters` holds a row only where a team's on or required differs from the default, so a team with no rows gets the defaults, and a starter question added or re-defaulted later reaches every team that never touched it, without a backfill. Teams never edit a starter's wording; they switch it off and write their own.
+- **Starter questions are site-wide rows; a team stores only what it changed.** `application_starter_questions` is seeded by the migration with the issue's 12 questions, each with a fixed key, a group, a short name for the settings page (the mockup's), the wording, the answer type and its default on and required. `team_application_starters` holds a row only where a team's on or required differs from the default, so a team with no rows gets the defaults, and a starter question added or re-defaulted later reaches every team that never touched it, without a backfill. Teams never edit a starter's wording; they switch it off and write their own. (Reversed by #1826: a team rewords a starter in place.)
 - **A team's own questions are their own list, after the starters**, as the mockup's settings page shows them. Starter questions keep the site's order; the team orders its own. Up to 20, label up to 40 characters, wording up to 300, one line each. Answer types: short text (a limit up to 200), paragraph (up to 4,000), link, choice (2 to 10 options), yes/no, picture. `recruiter` (Who sent you?) is a starter-only type.
 - **Own questions keep their ids across saves.** `save_team_application_questions()` takes the whole list: an id changes that question in place, no id adds one, and one left out is deleted, so answers (#1539) can point at a question. Answers keep their own copy of the wording (#1539), so a later edit doesn't rewrite an old application.
 - **`{team}` and `{raid nights}` are left in the wording for the page to fill.** The nights come from `raid_schedule` through `team_recruiting_page()`, and the page shows them in the applicant's own time zone, which SQL can't know. #1539 decides what wording an answer keeps.
@@ -3584,3 +3584,15 @@ Shipped: `20261113103247_my_recruiter_code.sql`.
 **Recruiter is a switch, not a rank.** A person holds one guild rank, and a recruiter may be an Admin or a Member, so the Members tab shows Recruiter as its own On/Off column beside the rank, calling the existing `set_guild_recruiter()`. No schema change.
 
 [Full discussion -> #1550](https://github.com/katogaming88/WGA-Raid-Hub/issues/1550).
+
+## #1826 -- officers reword a starter question in place
+
+Shipped: `20261114213909_reword_starter_questions.sql`.
+
+**Reverses #1536's "switch it off and write your own".** Rebuilding a starter as a team question lost its place, its group and, for Raid nights and Who sent you?, its choices and recruiter picker. `team_application_starters` gains `prompt`, the team's wording or null for the starter's. Only the wording: answer type, choices, group and place stay the starter's, so a reworded choice question keeps Every week / Most weeks / Not really. Same limits as a team's own question (one line, 1 to 300 characters).
+
+**Still only what differs is stored.** A row stays when on, required or the wording differs from the starter. The save trims the wording and stores the starter wording itself as null, so Reset (sending the starter wording, or null) leaves no row and a later change to the starter's wording reaches the team. A starter in `p_starters` without `prompt` keeps the team's current wording, so a caller that only flips on or required doesn't wipe it.
+
+**Sent applications keep what was asked.** `send_application()` already copies each question's `prompt` from `team_application_question_list()` into the answers, so it now copies the team's wording; a later reword or Reset doesn't touch it. The list also returns `starter_prompt` for the settings page (Reworded, Reset); `team_application_form()` leaves it out.
+
+[Full discussion -> #1826](https://github.com/katogaming88/WGA-Raid-Hub/issues/1826).

@@ -365,7 +365,7 @@ The starter application questions, site-wide and the same for every guild ([#153
 
 ## `team_application_starters`
 
-What a team changed about a starter question ([#1536](https://github.com/katogaming88/WGA-Raid-Hub/issues/1536)): `team_id`, `starter_key`, `is_on`, `required`. A row only where it differs from the default; no row means the default.
+What a team changed about a starter question ([#1536](https://github.com/katogaming88/WGA-Raid-Hub/issues/1536)): `team_id`, `starter_key`, `is_on`, `required`, `prompt` (the team's wording, 300, one line; null is the starter wording, [#1826](https://github.com/katogaming88/WGA-Raid-Hub/issues/1826)). A row only where it differs from the default; no row means the default.
 
 ---
 

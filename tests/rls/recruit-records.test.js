@@ -110,6 +110,22 @@ describe('recruit records', () => {
     });
   });
 
+  it('an application keeps the team’s wording as answered, after the team rewords it again (#1826)', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { char } = await setup(q);
+      const save = (prompt) =>
+        asUser(OFFICER_T1, 'select public.save_team_application_questions(1, $1, $2)', [
+          JSON.stringify({ about: { on: true, required: true, prompt } }),
+          '[]'
+        ]);
+      await save('Who are you, in a line?');
+      const id = await send(asUser, APPLICANT, char, REQUIRED);
+      await save(null);
+      const a = (await q('select answers from public.recruit_applications where id = $1', [id])).rows[0];
+      expect(a.answers[0]).toMatchObject({ key: 'about', prompt: 'Who are you, in a line?' });
+    });
+  });
+
   it('refuses a send the team, the character or the answers don’t allow', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { char } = await setup(q);

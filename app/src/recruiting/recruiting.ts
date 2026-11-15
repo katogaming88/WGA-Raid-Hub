@@ -103,7 +103,8 @@ export const SPOT_GROUPS: { id: string; label: string; roles: Role[] }[] = [
 const ROLE_OF: Record<string, Role> = { Tank: 'tank', Heal: 'healer', Melee: 'melee', Ranged: 'ranged' };
 export const roleOfSpec = (spec: SpecRow): Role | null => ROLE_OF[spec.role ?? ''] ?? null;
 
-export type StarterAnswer = { on: boolean; required: boolean };
+// prompt is the team's wording; the starter wording itself means none (#1826).
+export type StarterAnswer = { on: boolean; required: boolean; prompt: string };
 
 // What team_application_questions() returns.
 export type Starter = {
@@ -111,6 +112,7 @@ export type Starter = {
   group: string;
   label: string;
   prompt: string;
+  starter_prompt: string;
   answer_type: string;
   max_length: number | null;
   choices: string[] | null;
@@ -171,7 +173,7 @@ let nextKey = 1;
 export const newKey = () => nextKey++;
 
 export function startersOf(list: Starter[]): Record<string, StarterAnswer> {
-  return Object.fromEntries(list.map((s) => [s.key, { on: s.on, required: s.required }]));
+  return Object.fromEntries(list.map((s) => [s.key, { on: s.on, required: s.required, prompt: s.prompt }]));
 }
 
 export function ownDraftOf(q: OwnQuestion): OwnDraft {
@@ -304,6 +306,9 @@ export function problems(d: Draft): string[] {
     s.ping_officers_after_hours >= s.ping_owner_after_hours
   ) {
     found.push('The officer ping has to come before the Team Owner ping.');
+  }
+  if (Object.values(d.starters).some((a) => !a.prompt.trim() || a.prompt.length > 300)) {
+    found.push('A starter question’s wording is 1 to 300 characters.');
   }
   found.push(...spotProblems(d.spots), ...questionProblems(d.questions));
   return found;

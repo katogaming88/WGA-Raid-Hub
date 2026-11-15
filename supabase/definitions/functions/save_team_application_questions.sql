@@ -16,6 +16,7 @@ declare
   v_val jsonb;
   v_on boolean;
   v_required boolean;
+  v_prompt text;
   v_q jsonb;
   v_n integer := 0;
   v_id integer;
@@ -58,22 +59,34 @@ begin
     if jsonb_typeof(v_val) is distinct from 'object'
        or jsonb_typeof(v_val -> 'on') is distinct from 'boolean'
        or jsonb_typeof(v_val -> 'required') is distinct from 'boolean'
-       or exists (select 1 from jsonb_object_keys(v_val) as k where k not in ('on', 'required')) then
-      raise exception 'A starter question takes on and required, both true or false';
+       or (v_val ? 'prompt' and jsonb_typeof(v_val -> 'prompt') not in ('string', 'null'))
+       or exists (select 1 from jsonb_object_keys(v_val) as k where k not in ('on', 'required', 'prompt')) then
+      raise exception 'A starter question takes on and required, both true or false, and its wording';
     end if;
     v_on := (v_val ->> 'on')::boolean;
     v_required := (v_val ->> 'required')::boolean;
     if v_required and not v_on then
       raise exception 'A question that is off can''t be required';
     end if;
+    if v_val ? 'prompt' then
+      v_prompt := btrim(v_val ->> 'prompt');
+      if v_prompt is not null and (v_prompt = '' or char_length(v_prompt) > 300 or v_prompt ~ '[\r\n]') then
+        raise exception 'A question''s wording is one line of 1 to 300 characters';
+      end if;
+    else
+      select t.prompt into v_prompt
+        from team_application_starters t
+       where t.team_id = p_team_id and t.starter_key = v_key;
+    end if;
 
     delete from team_application_starters where team_id = p_team_id and starter_key = v_key;
     -- Only a change from the default is kept, so a later change to a default
     -- reaches every team that never touched it.
-    insert into team_application_starters (team_id, starter_key, is_on, required)
-    select p_team_id, s.key, v_on, v_required
+    insert into team_application_starters (team_id, starter_key, is_on, required, prompt)
+    select p_team_id, s.key, v_on, v_required, nullif(v_prompt, s.prompt)
       from application_starter_questions s
-     where s.key = v_key and (s.default_on <> v_on or s.default_required <> v_required);
+     where s.key = v_key
+       and (s.default_on <> v_on or s.default_required <> v_required or nullif(v_prompt, s.prompt) is not null);
   end loop;
 
   for v_q in select value from jsonb_array_elements(p_questions)

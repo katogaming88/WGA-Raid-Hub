@@ -46,6 +46,7 @@ export function QuestionsSection({
   joinsByForm: boolean;
 }) {
   const groups = [...new Set(starters.map((s) => s.group))];
+  const [editing, setEditing] = useState<string[]>([]);
   const change = (key: number, patch: Partial<OwnDraft>) =>
     onOwn(own.map((q) => (q.key === key ? { ...q, ...patch } : q)));
   const move = (index: number, by: -1 | 1) => {
@@ -72,7 +73,9 @@ export function QuestionsSection({
           {starters
             .filter((s) => s.group === group)
             .map((s) => {
-              const a = answers[s.key] ?? { on: s.on, required: s.required };
+              const a = answers[s.key] ?? { on: s.on, required: s.required, prompt: s.prompt };
+              const reworded = a.prompt.trim() !== s.starter_prompt;
+              const open = editing.includes(s.key);
               return (
                 <div key={s.key} className="rec-question">
                   <div className="rec-question-head">
@@ -81,7 +84,7 @@ export function QuestionsSection({
                         type="checkbox"
                         checked={a.on}
                         onChange={(e) =>
-                          onStarter(s.key, { on: e.target.checked, required: e.target.checked && a.required })
+                          onStarter(s.key, { ...a, on: e.target.checked, required: e.target.checked && a.required })
                         }
                       />{' '}
                       <b>{s.label}</b>
@@ -92,12 +95,56 @@ export function QuestionsSection({
                         type="checkbox"
                         checked={a.required}
                         disabled={!a.on}
-                        onChange={(e) => onStarter(s.key, { on: a.on, required: e.target.checked })}
+                        onChange={(e) => onStarter(s.key, { ...a, required: e.target.checked })}
                       />{' '}
                       Required
                     </label>
                   </div>
-                  <p className="text-dim rec-prompt">{s.prompt}</p>
+                  {open ? (
+                    <div className="field rec-reword">
+                      <label className="field-label" htmlFor={`starter-prompt-${s.key}`}>
+                        What applicants see
+                      </label>
+                      <textarea
+                        id={`starter-prompt-${s.key}`}
+                        className="textarea"
+                        rows={2}
+                        maxLength={300}
+                        value={a.prompt}
+                        onChange={(e) => onStarter(s.key, { ...a, prompt: e.target.value.replace(/[\r\n]+/g, ' ') })}
+                      />
+                      <span className="field-hint">
+                        {'{team}'} and {'{raid nights}'} fill in themselves.
+                        {reworded && ` Starter wording: "${s.starter_prompt}"`}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-dim rec-prompt">
+                      {a.prompt}
+                      {reworded && <span className="rec-reworded"> Reworded</span>}
+                    </p>
+                  )}
+                  <div className="rec-own-actions">
+                    <button
+                      type="button"
+                      className="link-button"
+                      aria-expanded={open}
+                      aria-label={open ? `Done editing ${s.label}` : `Edit wording: ${s.label}`}
+                      onClick={() => setEditing(open ? editing.filter((k) => k !== s.key) : [...editing, s.key])}
+                    >
+                      {open ? 'Done' : 'Edit wording'}
+                    </button>
+                    {reworded && (
+                      <button
+                        type="button"
+                        className="link-button"
+                        aria-label={`Reset to the starter wording: ${s.label}`}
+                        onClick={() => onStarter(s.key, { ...a, prompt: s.starter_prompt })}
+                      >
+                        Reset to the starter wording
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -231,7 +278,6 @@ export function QuestionsSection({
           + Add a question
         </button>
       </div>
-      <p className="text-dim rec-note">Want different wording on a starter question? Turn it off and add your own.</p>
     </>
   );
 }

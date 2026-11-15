@@ -156,6 +156,7 @@ erDiagram
   text starter_key FK
   boolean is_on
   boolean required
+  text prompt
 }
 "public.team_application_questions" {
   integer id

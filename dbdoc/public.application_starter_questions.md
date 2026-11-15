@@ -2,7 +2,7 @@
 
 ## Description
 
-The starter application questions (#1536), site-wide and the same for every guild, seeded by migration. A team switches each on or off and marks it required (team_application_starters); it never edits one. {team} and {raid nights} in prompt are filled by the page.
+The starter application questions (#1536), site-wide and the same for every guild, seeded by migration. A team switches each on or off, marks it required and can reword it (team_application_starters); answer type, choices and group stay as here. {team} and {raid nights} in prompt are filled by the page.
 
 ## Columns
 
@@ -65,6 +65,7 @@ erDiagram
   text starter_key FK
   boolean is_on
   boolean required
+  text prompt
 }
 ```
 

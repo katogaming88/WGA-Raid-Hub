@@ -114,6 +114,68 @@ describe('application questions', () => {
     });
   });
 
+  it('an Officer rewords a starter in place; Reset puts it back; other teams keep the starter wording', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const specs = 'What are your computer specs? (CPU, graphics card, internet)';
+      await save(asUser, OFFICER_T1, { computer: { on: true, required: false, prompt: `  ${specs} ` } }, []);
+      let l = await list(asUser, OFFICER_T1);
+      expect(starter(l, 'computer')).toMatchObject({
+        prompt: specs,
+        starter_prompt: 'Any computer or connection trouble we should know about?',
+        answer_type: 'paragraph',
+        group: 'Fitting the team',
+        on: true
+      });
+      expect(starter(await list(asUser, OFFICER_T2, 2), 'computer').prompt).toBe(
+        'Any computer or connection trouble we should know about?'
+      );
+
+      // Left out keeps the wording; a choice question keeps its choices.
+      await save(
+        asUser,
+        OFFICER_T1,
+        {
+          computer: { on: false, required: false },
+          nights: { on: true, required: true, prompt: 'Free {raid nights}?' }
+        },
+        []
+      );
+      l = await list(asUser, OFFICER_T1);
+      expect(starter(l, 'computer')).toMatchObject({ prompt: specs, on: false });
+      expect(starter(l, 'nights')).toMatchObject({
+        prompt: 'Free {raid nights}?',
+        choices: ['Every week', 'Most weeks', 'Not really']
+      });
+      await openTeam(asUser);
+      const nights = (await form(asUser, OFFICER_T2)).starters.find((s) => s.key === 'nights');
+      expect(nights.prompt).toBe('Free {raid nights}?');
+      expect(nights).not.toHaveProperty('starter_prompt');
+
+      // Reset (null) or the starter wording itself keeps no row.
+      await save(
+        asUser,
+        OFFICER_T1,
+        {
+          computer: { on: false, required: false, prompt: null },
+          nights: { on: true, required: true, prompt: 'Can you make {raid nights}?' }
+        },
+        []
+      );
+      l = await list(asUser, OFFICER_T1);
+      expect(starter(l, 'computer').prompt).toBe('Any computer or connection trouble we should know about?');
+      expect(
+        (await q('select count(*)::int as n from public.team_application_starters where team_id = 1')).rows[0].n
+      ).toBe(0);
+
+      const bad = (prompt, msg) =>
+        expect(save(asUser, OFFICER_T1, { why: { on: true, required: false, prompt } }, [])).rejects.toThrow(msg);
+      await bad('   ', 'one line of 1 to 300');
+      await bad('x'.repeat(301), 'one line of 1 to 300');
+      await bad('Two\nlines', 'one line of 1 to 300');
+      await bad(7, 'its wording');
+    });
+  });
+
   it('only the team’s officers read or save its questions', async () => {
     await withTxn(async ({ asUser, asAnon }) => {
       await expect(list(asUser, RAIDER_T1)).rejects.toThrow('Not authorized');

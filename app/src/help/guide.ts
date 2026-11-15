@@ -99,7 +99,7 @@ export const GUIDES: Guide[] = [
       'Open Recruiting under the Officer menu, then Settings. Seven sections open one at a time; a tick on a heading means it is done.',
       'Recruiting: turn on Taking applications, and pick whether people fill in the form on Raid Hub or open a ticket in your Discord. Add the ticket link if it is a ticket.',
       'About the team, How you raid and What you ask for fill in your public apply page. Raid nights come from your schedule, so they never go out of date.',
-      'Application questions: turn starter questions on or off and mark them Required, and add your own. Grey text is exactly what applicants see.',
+      'Application questions: turn starter questions on or off, mark them Required, or choose Edit wording to say it your way (Reset to the starter wording puts it back), and add your own. Grey text is exactly what applicants see.',
       'Who you are looking for: add the specs you need and how much. High shows first and gets a Needs you tag when an applicant picks that role.',
       'Discord: pick what the bot does when someone applies. For a private ticket, pick the category tickets are made in, and give the WGA Raid Hub role Manage Channels, Send Messages, Embed Links, Attach Files and Read Message History on that category, plus Manage Roles on the role itself. Pick who can see tickets, and the timings.',
       'Choose Save settings. The bar stays at the bottom, greyed until something changes. See your apply page shows what applicants see.'

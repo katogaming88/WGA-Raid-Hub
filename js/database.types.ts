@@ -3602,18 +3602,21 @@ export type Database = {
       team_application_starters: {
         Row: {
           is_on: boolean
+          prompt: string | null
           required: boolean
           starter_key: string
           team_id: number
         }
         Insert: {
           is_on: boolean
+          prompt?: string | null
           required: boolean
           starter_key: string
           team_id: number
         }
         Update: {
           is_on?: boolean
+          prompt?: string | null
           required?: boolean
           starter_key?: string
           team_id?: number
