@@ -378,6 +378,12 @@ erDiagram
   timestamp_with_time_zone synced_at
   integer__ bonus_list
   integer team_id FK
+  integer enchantment_id
+  integer__ gem_wow_item_ids
+  boolean embellished
+  boolean crafted
+  smallint upgrade_rank
+  smallint upgrade_max
 }
 "public.priority_order_confirmed_empty" {
   integer team_id FK

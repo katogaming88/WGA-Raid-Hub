@@ -60,7 +60,7 @@ import {
   type Tally,
   type Trigger
 } from './outcome.ts';
-import { buildRows } from './rows.ts';
+import { bonusStepsFromRows, buildRows, type BonusStep } from './rows.ts';
 import { saveGear } from './save.ts';
 import { loadTierFloors } from './floors.ts';
 
@@ -86,10 +86,10 @@ function jsonResponse(body: unknown, status = 200) {
 // the item-level guess in rows.ts scored when measured against the live roster.
 // A failed read stops the run before it writes: guessed tracks are worse than
 // no write, since the previous run's tracks are still right.
-async function loadBonusTrackMap(supabase: SupabaseClient<any>): Promise<Map<number, string>> {
-  const { data, error } = await supabase.from('track_bonus_ids').select('bonus_id, track');
+async function loadBonusTrackMap(supabase: SupabaseClient<any>): Promise<Map<number, BonusStep>> {
+  const { data, error } = await supabase.from('track_bonus_ids').select('bonus_id, track, rank, season');
   if (error) throw new Error('Failed to load track_bonus_ids: ' + error.message);
-  return new Map((data || []).map((r: any) => [r.bonus_id as number, r.track as string]));
+  return bonusStepsFromRows(data || []);
 }
 
 // Same realm-slug conversion as wcl-sync's realmToServerSlug (ported from
@@ -144,7 +144,7 @@ async function syncRoster(
   players: Array<{ id: number; name_realm: string }>,
   thresholds: Record<string, number> | null,
   token: string,
-  bonusTracks: Map<number, string>,
+  bonusTracks: Map<number, BonusStep>,
   tally: Tally
 ): Promise<void> {
   tally.players += players.length;

@@ -4949,6 +4949,45 @@
           "name": "team_id",
           "type": "integer",
           "nullable": false
+        },
+        {
+          "name": "enchantment_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The permanent enchant's Blizzard enchantment id (season_enchants.enchantment_id), null when there is none. Temporary ones (oils, whetstones, Illusory Adornments) are never stored. Synced by blizzard-gear-sync (#1634)."
+        },
+        {
+          "name": "gem_wow_item_ids",
+          "type": "integer[]",
+          "nullable": false,
+          "default": "'{}'::integer[]",
+          "comment": "One entry per socket the item has, in order: the gem's Blizzard item id (season_gems.wow_item_id), or null for an empty socket. Empty array when the item has no sockets. Synced by blizzard-gear-sync (#1634)."
+        },
+        {
+          "name": "embellished",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "The item carries an embellishment (its equip limit is \"Embellished\"). Synced by blizzard-gear-sync (#1634)."
+        },
+        {
+          "name": "crafted",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "The item was crafted. Synced by blizzard-gear-sync (#1634)."
+        },
+        {
+          "name": "upgrade_rank",
+          "type": "smallint",
+          "nullable": true,
+          "comment": "The item's step on its track (the 4 of Hero 4/6), from its track bonus id in track_bonus_ids. Null when none matched. Synced by blizzard-gear-sync (#1634)."
+        },
+        {
+          "name": "upgrade_max",
+          "type": "smallint",
+          "nullable": true,
+          "comment": "The top step of the item's track that season (the 6 of Hero 4/6): the end of the track's unbroken steps from 1, so the Mythic bosses' special drop reads 9 of 6, as in game. Null exactly when upgrade_rank is. Synced by blizzard-gear-sync (#1634)."
         }
       ],
       "indexes": [
@@ -4971,6 +5010,47 @@
         }
       ],
       "constraints": [
+        {
+          "name": "player_equipped_gear_enchantment_id_check",
+          "type": "CHECK",
+          "def": "CHECK ((enchantment_id \u003e 0))",
+          "table": "public.player_equipped_gear",
+          "referenced_table": "",
+          "columns": [
+            "enchantment_id"
+          ]
+        },
+        {
+          "name": "player_equipped_gear_upgrade_max_check",
+          "type": "CHECK",
+          "def": "CHECK ((upgrade_max \u003e 0))",
+          "table": "public.player_equipped_gear",
+          "referenced_table": "",
+          "columns": [
+            "upgrade_max"
+          ]
+        },
+        {
+          "name": "player_equipped_gear_upgrade_rank_check",
+          "type": "CHECK",
+          "def": "CHECK ((upgrade_rank \u003e 0))",
+          "table": "public.player_equipped_gear",
+          "referenced_table": "",
+          "columns": [
+            "upgrade_rank"
+          ]
+        },
+        {
+          "name": "player_equipped_gear_upgrade_step_check",
+          "type": "CHECK",
+          "def": "CHECK (((upgrade_rank IS NULL) = (upgrade_max IS NULL)))",
+          "table": "public.player_equipped_gear",
+          "referenced_table": "",
+          "columns": [
+            "upgrade_rank",
+            "upgrade_max"
+          ]
+        },
         {
           "name": "player_equipped_gear_player_id_fkey",
           "type": "FOREIGN KEY",

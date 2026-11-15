@@ -12,7 +12,50 @@ export type EquippedRow = {
   item_level: number | null;
   track: string | null;
   bonus_list: number[];
+  enchantment_id: number | null;
+  gem_wow_item_ids: Array<number | null>;
+  embellished: boolean;
+  crafted: boolean;
+  upgrade_rank: number | null;
+  upgrade_max: number | null;
 };
+
+// A track bonus id's meaning (track_bonus_ids): its track, its step on that
+// track, and the track's top step that season (Hero 4 of 6).
+export type BonusStep = { track: string; rank: number; max: number };
+
+// track_bonus_ids rows as the lookup buildRows() reads. A track's top step,
+// per season, is the end of its unbroken run of steps from 1: Midnight Season
+// 2's Myth has 1 to 6 plus a lone 9 (13848, the last two Mythic bosses'
+// special drops, which the game shows as 9/6), so Myth tops out at 6 and that
+// drop reads 9 of 6, as in game.
+export function bonusStepsFromRows(
+  rows: Array<{ bonus_id: number; track: string; rank: number; season: string }>
+): Map<number, BonusStep> {
+  const ranks = new Map<string, Set<number>>();
+  for (const r of rows) {
+    const key = r.season + '|' + r.track;
+    if (!ranks.has(key)) ranks.set(key, new Set());
+    ranks.get(key)!.add(r.rank);
+  }
+  const top = (key: string) => {
+    const have = ranks.get(key)!;
+    let n = 0;
+    while (have.has(n + 1)) n++;
+    // A season seeded without a step 1 falls back to its highest step, never
+    // 0, which the table refuses and would fail the raider's whole save.
+    return n > 0 ? n : Math.max(...have);
+  };
+  return new Map(rows.map((r) => [r.bonus_id, { track: r.track, rank: r.rank, max: top(r.season + '|' + r.track) }]));
+}
+
+function stepFor(bonusList: number[], bonusTracks: Map<number, BonusStep>): BonusStep | null {
+  for (const bonusId of bonusList) {
+    const step = bonusTracks.get(bonusId);
+    if (step) return step;
+  }
+  return null;
+}
 
 const TRACKS_HIGH_TO_LOW = ['Myth', 'Hero', 'Champion', 'Veteran', 'Adventurer', 'Explorer'] as const;
 
@@ -25,12 +68,10 @@ export function deriveTrack(
   itemLevel: number | null,
   thresholds: Record<string, number> | null,
   bonusList: number[],
-  bonusTracks: Map<number, string>
+  bonusTracks: Map<number, BonusStep>
 ): string | null {
-  for (const bonusId of bonusList) {
-    const track = bonusTracks.get(bonusId);
-    if (track) return track;
-  }
+  const step = stepFor(bonusList, bonusTracks);
+  if (step) return step.track;
   if (itemLevel == null || !thresholds) return null;
   for (const track of TRACKS_HIGH_TO_LOW) {
     const floor = thresholds[track];
@@ -44,7 +85,7 @@ export function buildRows(
   teamId: number,
   equippedItems: any[],
   thresholds: Record<string, number> | null,
-  bonusTracks: Map<number, string>
+  bonusTracks: Map<number, BonusStep>
 ): EquippedRow[] {
   const rows: EquippedRow[] = [];
   for (const it of equippedItems) {
@@ -53,6 +94,24 @@ export function buildRows(
     if (!slot || itemId == null) continue;
     const itemLevel = typeof it?.level?.value === 'number' ? it.level.value : null;
     const bonusList = Array.isArray(it?.bonus_list) ? it.bonus_list.filter((b: unknown) => typeof b === 'number') : [];
+    const step = stepFor(bonusList, bonusTracks);
+    // Only the permanent enchant (#1634): oils, whetstones and Illusory
+    // Adornments sit in a TEMPORARY slot and are not enchants.
+    const permanent = (Array.isArray(it?.enchantments) ? it.enchantments : []).find(
+      (e: any) => e?.enchantment_slot?.type === 'PERMANENT' && typeof e?.enchantment_id === 'number'
+    );
+    // One entry per socket the item has, null for an empty one. Sockets are
+    // read from the item, never assumed from the slot.
+    const gems = (Array.isArray(it?.sockets) ? it.sockets : []).map((s: any) =>
+      typeof s?.item?.id === 'number' ? s.item.id : null
+    );
+    // No flag for either in the reply: an embellishment shows as the
+    // "Unique-Equipped: Embellished (2)" limit, and crafted gear carries the
+    // stats its crafter picked or a "... Crafted" label.
+    const embellished = /embellished/i.test(String(it?.limit_category ?? ''));
+    const crafted =
+      (Array.isArray(it?.modified_crafting_stat) && it.modified_crafting_stat.length > 0) ||
+      /crafted/i.test(String(it?.name_description?.display_string ?? ''));
     rows.push({
       player_id: playerId,
       team_id: teamId,
@@ -60,7 +119,13 @@ export function buildRows(
       wow_item_id: itemId,
       item_level: itemLevel,
       track: deriveTrack(itemLevel, thresholds, bonusList, bonusTracks),
-      bonus_list: bonusList
+      bonus_list: bonusList,
+      enchantment_id: permanent ? permanent.enchantment_id : null,
+      gem_wow_item_ids: gems,
+      embellished,
+      crafted,
+      upgrade_rank: step ? step.rank : null,
+      upgrade_max: step ? step.max : null
     });
   }
   return rows;

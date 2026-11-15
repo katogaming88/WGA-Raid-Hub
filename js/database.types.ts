@@ -1474,35 +1474,53 @@ export type Database = {
       player_equipped_gear: {
         Row: {
           bonus_list: number[] | null
+          crafted: boolean
+          embellished: boolean
+          enchantment_id: number | null
           equipment_slot: string
+          gem_wow_item_ids: number[]
           id: number
           item_level: number | null
           player_id: number
           synced_at: string
           team_id: number
           track: string | null
+          upgrade_max: number | null
+          upgrade_rank: number | null
           wow_item_id: number | null
         }
         Insert: {
           bonus_list?: number[] | null
+          crafted?: boolean
+          embellished?: boolean
+          enchantment_id?: number | null
           equipment_slot: string
+          gem_wow_item_ids?: number[]
           id?: number
           item_level?: number | null
           player_id: number
           synced_at?: string
           team_id: number
           track?: string | null
+          upgrade_max?: number | null
+          upgrade_rank?: number | null
           wow_item_id?: number | null
         }
         Update: {
           bonus_list?: number[] | null
+          crafted?: boolean
+          embellished?: boolean
+          enchantment_id?: number | null
           equipment_slot?: string
+          gem_wow_item_ids?: number[]
           id?: number
           item_level?: number | null
           player_id?: number
           synced_at?: string
           team_id?: number
           track?: string | null
+          upgrade_max?: number | null
+          upgrade_rank?: number | null
           wow_item_id?: number | null
         }
         Relationships: [
