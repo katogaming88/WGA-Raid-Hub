@@ -90,5 +90,21 @@ export function benchFairness(
   });
 }
 
+// Boss slots each raider was planned out of, from the season's boss lineups
+// (#1247), with the bosses they sat out most. `shortOf` names a boss.
+export function slotsSatOut(
+  groups: RoleGroup[],
+  raiders: { playerId: number; satOut: number; slots: number; satOutOn: { bossId: number; count: number }[] }[],
+  shortOf: (bossId: number) => string
+): Fairness {
+  const byPlayer = new Map(raiders.map((r) => [r.playerId, r]));
+  return grouped(groups, (id) => {
+    const r = byPlayer.get(id);
+    if (!r) return { value: 0 };
+    const top = r.satOutOn.slice(0, 2).map((b) => shortOf(b.bossId));
+    return { value: r.satOut, note: `of ${r.slots}${top.length ? `, mostly ${top.join(', ')}` : ''}` };
+  });
+}
+
 // Kept so the average reads like the current site's ("4.6 items").
 export const oneDecimal = (n: number) => (Math.round(n * 10) / 10).toString();

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { shortBossName } from '../calendar/lineup';
+import { useEncounters } from '../calendar/useCalendar';
 import { earlierOwners } from '../characters/characters';
 import { useEarlierLoot } from '../characters/useCharacters';
 import { DataState } from '../components/DataState';
@@ -9,7 +11,10 @@ import { useCurrentSeason } from '../profile/useProfile';
 import { classColor, toRoster, type PlayerRow } from '../roster/roster';
 import { useNames } from '../roster/useNames';
 import { useRosterOfficerData, useRosterPlayers } from '../roster/useRoster';
-import { benchFairness, lootFairness, oneDecimal, type Fairness } from './fairness';
+import { easternToday } from '../lib/dates';
+import { benchFairness, lootFairness, oneDecimal, slotsSatOut, type Fairness } from './fairness';
+import { raiderLineups, slotsOf } from './lineups';
+import { useLineupReport } from './useReports';
 import { ReportPage } from './ReportPage';
 
 // Reports under the officer menu (#1359), one page each.
@@ -35,7 +40,7 @@ export function BenchFairnessPage() {
   return (
     <ReportPage
       title="Bench fairness"
-      intro="Nights each raider has sat on the bench this season, by role, most first, with their bench rate: the share of their raid nights spent benched. The line is the raid average."
+      intro="Who has sat out the most this season, by role, most first. Once boss lineups are planned in the Calendar it counts boss fights sat out and the bosses they sat most; until then it counts nights benched, with the share of their raid nights. The line is the raid average."
     >
       <DataState query={data} label="the roster">
         {([players, season]) => <BenchFairness teamId={team.id} players={players} season={season} />}
@@ -96,15 +101,32 @@ function LootFairness({ teamId, players, season }: Props) {
 function BenchFairness({ teamId, players, season }: Props) {
   const names = useNames(teamId);
   const nights = useRosterOfficerData(teamId, season, true);
+  const today = easternToday();
+  const end = season.end && season.end < today ? season.end : today;
+  const lineups = bothQueries(useLineupReport(teamId, season.start ?? today, end), useEncounters());
   return (
-    <DataState query={nights} label="this season's attendance">
-      {({ attendance }) => {
-        const report = benchFairness(toRoster(players, [], names.data ?? []), attendance, season);
-        return (
+    <DataState query={bothQueries(nights, lineups)} label="this season's attendance">
+      {([{ attendance }, [lineup, encounters]]) => {
+        const groups = toRoster(players, [], names.data ?? []);
+        const report = benchFairness(groups, attendance, season);
+        const label = season.name ? `${season.name}: ` : '';
+        const planned = lineup.nightBosses.length > 0;
+        const short = new Map(encounters.map((e) => [e.id, shortBossName(e.name)]));
+        const bySlot = planned
+          ? slotsSatOut(groups, raiderLineups(slotsOf(lineup, today), groups), (id) => short.get(id) ?? 'Unknown boss')
+          : null;
+        // Once boss lineups are planned the boss chart replaces the nights one (#1247).
+        return bySlot ? (
+          <FairnessChart
+            report={bySlot}
+            caption="Boss slots sat out"
+            average={`${label}average ${oneDecimal(bySlot.average)} boss slots sat out`}
+          />
+        ) : (
           <FairnessChart
             report={report}
             caption="Nights benched"
-            average={`${season.name ? `${season.name}: ` : ''}average ${oneDecimal(report.average)} nights benched`}
+            average={`${label}average ${oneDecimal(report.average)} nights benched`}
           />
         );
       }}

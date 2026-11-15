@@ -102,6 +102,8 @@ export type RaiderLineup = {
   neverIn: number[];
   // Bosses killed with them in the fight.
   kills: number[];
+  // The bosses they sat out, most slots first (#1247).
+  satOutOn: { bossId: number; count: number }[];
   // Their bonus roll boss, and how many of its slots they were in for.
   bonusRoll: { bossId: number; inFor: number; slots: number } | null;
 };
@@ -123,6 +125,7 @@ export function raiderLineups(
         let swappedIn = 0;
         let run = 0;
         let longestSitOut = 0;
+        const satOutBy = new Map<number, number>();
         const inBosses = new Set<number>();
         const kills = new Set<number>();
         for (const s of slots) {
@@ -132,6 +135,7 @@ export function raiderLineups(
             run = 0;
           } else {
             run++;
+            satOutBy.set(s.bossId, (satOutBy.get(s.bossId) ?? 0) + 1);
             longestSitOut = Math.max(longestSitOut, run);
           }
           if (inFor(s).has(id)) inBosses.add(s.bossId);
@@ -158,6 +162,9 @@ export function raiderLineups(
           swappedIn,
           neverIn: bosses.filter((b) => !inBosses.has(b)),
           kills: [...kills],
+          satOutOn: [...satOutBy]
+            .map(([bossId, count]) => ({ bossId, count }))
+            .sort((a, b) => b.count - a.count || a.bossId - b.bossId),
           bonusRoll:
             bonusId === null
               ? null

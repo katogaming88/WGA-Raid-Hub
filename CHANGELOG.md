@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.271.0] - 2026-11-14
+
+### Project
+
+- (new app) Bench fairness counts boss slots sat out, with the bosses each raider sat most, once a team has planned boss lineups; until then it still counts nights benched (#1247).
+
 ## [3.270.2] - 2026-11-14
 
 ### Project
