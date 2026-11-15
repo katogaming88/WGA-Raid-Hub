@@ -85,7 +85,19 @@ function Timing({
   );
 }
 
-export function DiscordSection({ teamId, s, set, base }: { teamId: number; s: Settings; set: Set; base: string }) {
+export function DiscordSection({
+  teamId,
+  s,
+  set,
+  base,
+  savedMode
+}: {
+  teamId: number;
+  s: Settings;
+  set: Set;
+  base: string;
+  savedMode: Settings['discord_mode'];
+}) {
   const server = useDiscordServer(teamId);
   const saved = useDiscordSettings(teamId);
   const viewers = useTicketViewers(teamId);
@@ -107,7 +119,10 @@ export function DiscordSection({ teamId, s, set, base }: { teamId: number; s: Se
               type="radio"
               name="mode"
               checked={s.discord_mode === m.id}
-              onChange={() => set('discord_mode', m.id)}
+              onChange={() => {
+                set('discord_mode', m.id);
+                if (m.id === 'ticket') set('add_to_server', true);
+              }}
             />{' '}
             <b>{m.title}</b>
             <span className="text-dim rec-note"> {m.note}</span>
@@ -148,6 +163,7 @@ export function DiscordSection({ teamId, s, set, base }: { teamId: number; s: Se
             serverId={saved.data?.server_id ?? null}
             settingsLink={settingsLink}
             ticketTeam={ticketTeam}
+            savedTicket={savedMode === 'ticket'}
             needsChannel={needsChannel}
             officerChannelId={officerChannelId}
           />
@@ -243,6 +259,7 @@ function ServerPart({
   serverId,
   settingsLink,
   ticketTeam,
+  savedTicket,
   needsChannel,
   officerChannelId
 }: {
@@ -253,6 +270,7 @@ function ServerPart({
   serverId: string | null;
   settingsLink: string;
   ticketTeam: boolean;
+  savedTicket: boolean;
   needsChannel: boolean;
   officerChannelId: string | null;
 }) {
@@ -314,7 +332,7 @@ function ServerPart({
           </p>
         </div>
       )}
-      {ticketTeam && <FindTicket teamId={teamId} server={server} settingsLink={settingsLink} />}
+      {ticketTeam && <FindTicket teamId={teamId} server={server} settingsLink={settingsLink} saved={savedTicket} />}
       {needsChannel && (
         <div className="field">
           <span className="field-label">Officer channel</span>
@@ -333,8 +351,18 @@ function ServerPart({
 // Find my ticket (#1542): one message per server, with a button that shows
 // each applicant a link to their own open tickets. Posted at once, so it is its
 // own control and not part of Save.
-function FindTicket({ teamId, server, settingsLink }: { teamId: number; server: DiscordServer; settingsLink: string }) {
-  const current = useFindTicketChannel(teamId, true);
+function FindTicket({
+  teamId,
+  server,
+  settingsLink,
+  saved
+}: {
+  teamId: number;
+  server: DiscordServer;
+  settingsLink: string;
+  saved: boolean;
+}) {
+  const current = useFindTicketChannel(teamId, saved);
   const set = useSetFindTicketChannel(teamId);
   const { announce } = useStatus();
   const pick = (channelId: string | null) =>
@@ -347,24 +375,31 @@ function FindTicket({ teamId, server, settingsLink }: { teamId: number; server: 
       <label className="field-label" htmlFor="rec-find">
         Find my ticket channel
       </label>
-      <DataState query={current} label="Find my ticket">
-        {(value) => (
-          <select
-            id="rec-find"
-            className="select"
-            value={value.channelId ?? ''}
-            disabled={set.isPending}
-            onChange={(e) => pick(e.target.value || null)}
-          >
-            <option value="">Not posted</option>
-            {server.channels.map((c) => (
-              <option key={c.id} value={c.id}>
-                #{c.name}
-              </option>
-            ))}
-          </select>
-        )}
-      </DataState>
+      {!saved && <p className="text-dim rec-note">Save settings first, then pick the channel.</p>}
+      {saved ? (
+        <DataState query={current} label="Find my ticket">
+          {(value) => (
+            <select
+              id="rec-find"
+              className="select"
+              value={value.channelId ?? ''}
+              disabled={set.isPending}
+              onChange={(e) => pick(e.target.value || null)}
+            >
+              <option value="">Not posted</option>
+              {server.channels.map((c) => (
+                <option key={c.id} value={c.id}>
+                  #{c.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </DataState>
+      ) : (
+        <select id="rec-find" className="select" disabled>
+          <option>Not posted</option>
+        </select>
+      )}
       <p className="text-dim rec-note">
         The bot posts one message with a Find my ticket button, so an applicant who loses their ticket can find it
         again. One per Discord server, shared by its teams. Pick a channel everyone can read.{' '}

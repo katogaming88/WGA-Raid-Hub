@@ -12,6 +12,13 @@ answers to.
 
 ---
 
+## [3.270.2] - 2026-11-14
+
+### Project
+
+- (new app) Recruiting settings, Discord: picking Private ticket now also turns on "Add them to the Discord server", so it saves without the red message (#1827).
+- (new app) The Find my ticket channel picker is greyed out, with "Save settings first, then pick the channel", until Private ticket is saved; a refusal from the server is shown but no longer reported to Sentry as an error (#1827).
+
 ## [3.270.1] - 2026-11-14
 
 ### Project

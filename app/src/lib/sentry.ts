@@ -1,3 +1,4 @@
+import { refusalStatus } from '../characters/useCharacters';
 import * as Sentry from '@sentry/browser';
 import { errorMessage, setErrorReporter } from './errors';
 
@@ -57,6 +58,9 @@ export function initSentry(dsn: unknown, environment: string): boolean {
   });
   setErrorReporter((error, context) => {
     console.error(`[${context.where}]`, error, context.key ?? '');
+    // A function's own 4xx is an expected "no" the page already shows, not a crash.
+    const refused = refusalStatus(error);
+    if (refused !== null && refused < 500) return;
     // A failed read is often a plain object, which Sentry cannot give a stack.
     const err = error instanceof Error ? error : new Error(errorMessage(error));
     Sentry.captureException(err, {
