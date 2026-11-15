@@ -3106,6 +3106,143 @@ export type Database = {
           },
         ]
       }
+      season_crests: {
+        Row: {
+          capped: boolean
+          caps_lifted_on: string | null
+          currency_id: number | null
+          first_week: string | null
+          name: string
+          season: string
+          track: string
+          uncapped_sources: string[]
+          weekly_increase: number | null
+        }
+        Insert: {
+          capped: boolean
+          caps_lifted_on?: string | null
+          currency_id?: number | null
+          first_week?: string | null
+          name: string
+          season: string
+          track: string
+          uncapped_sources?: string[]
+          weekly_increase?: number | null
+        }
+        Update: {
+          capped?: boolean
+          caps_lifted_on?: string | null
+          currency_id?: number | null
+          first_week?: string | null
+          name?: string
+          season?: string
+          track?: string
+          uncapped_sources?: string[]
+          weekly_increase?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_crests_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      season_enchant_slots: {
+        Row: {
+          counts_from: string | null
+          season: string
+          slot: string
+        }
+        Insert: {
+          counts_from?: string | null
+          season: string
+          slot: string
+        }
+        Update: {
+          counts_from?: string | null
+          season?: string
+          slot?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_enchant_slots_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      season_enchants: {
+        Row: {
+          enchantment_id: number
+          name: string
+          season: string
+          slot: string
+          tertiary: boolean
+          top_rank: boolean
+        }
+        Insert: {
+          enchantment_id: number
+          name: string
+          season: string
+          slot: string
+          tertiary: boolean
+          top_rank: boolean
+        }
+        Update: {
+          enchantment_id?: number
+          name?: string
+          season?: string
+          slot?: string
+          tertiary?: boolean
+          top_rank?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_enchants_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      season_gems: {
+        Row: {
+          epic: boolean
+          item_id: number
+          name: string
+          season: string
+          top_rank: boolean
+        }
+        Insert: {
+          epic: boolean
+          item_id: number
+          name: string
+          season: string
+          top_rank: boolean
+        }
+        Update: {
+          epic?: boolean
+          item_id?: number
+          name?: string
+          season?: string
+          top_rank?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_gems_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       season_signups: {
         Row: {
           approved_player_id: number | null
@@ -6006,6 +6143,14 @@ export type Database = {
       save_team_recruiting: {
         Args: { p_changes: Json; p_team_id: number }
         Returns: undefined
+      }
+      season_crest_cap: {
+        Args: { p_season: string; p_track: string; p_week: string }
+        Returns: number
+      }
+      season_enchant_slots_on: {
+        Args: { p_day: string; p_season: string }
+        Returns: string[]
       }
       send_application: {
         Args: {

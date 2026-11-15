@@ -164,6 +164,14 @@ scoring,Officers write scoring,public,ALL,PERMISSIVE,"((( SELECT players.team_id
    FROM players
   WHERE (players.id = scoring.player_id)) = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))"
 scoring,Public read scoring,public,SELECT,PERMISSIVE,true,
+season_crests,Claude readers read season_crests,claude_readers,SELECT,PERMISSIVE,true,
+season_crests,Public read season_crests,public,SELECT,PERMISSIVE,true,
+season_enchant_slots,Claude readers read season_enchant_slots,claude_readers,SELECT,PERMISSIVE,true,
+season_enchant_slots,Public read season_enchant_slots,public,SELECT,PERMISSIVE,true,
+season_enchants,Claude readers read season_enchants,claude_readers,SELECT,PERMISSIVE,true,
+season_enchants,Public read season_enchants,public,SELECT,PERMISSIVE,true,
+season_gems,Claude readers read season_gems,claude_readers,SELECT,PERMISSIVE,true,
+season_gems,Public read season_gems,public,SELECT,PERMISSIVE,true,
 season_signups,Claude readers read season_signups,claude_readers,SELECT,PERMISSIVE,true,
 season_signups,Officers read signups,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_signups'::text) AS my_permission_team_ids)::integer[])) OR (team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 season_signups,Officers update signups,public,UPDATE,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_signups'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('manage_signups'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))

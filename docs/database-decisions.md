@@ -3596,3 +3596,21 @@ Shipped: `20261114213909_reword_starter_questions.sql`.
 **Sent applications keep what was asked.** `send_application()` already copies each question's `prompt` from `team_application_question_list()` into the answers, so it now copies the team's wording; a later reword or Reset doesn't touch it. The list also returns `starter_prompt` for the settings page (Reworded, Reset); `team_application_form()` leaves it out.
 
 [Full discussion -> #1826](https://github.com/katogaming88/WGA-Raid-Hub/issues/1826).
+
+## #1633 -- the roster audit's season settings
+
+Shipped: `20261114230843_audit_season_settings.sql`.
+
+**Reference rows per season, like `tier_token_map` and `season_track_floors`.** Four tables, added to by the migration that adds a season and never edited by a team, so a past week is checked against what was true that week: `season_enchant_slots` (with `counts_from` for a slot added mid-season), `season_enchants`, `season_gems` and `season_crests`. Anyone reads them; nothing writes them but migrations (`revoke all`, then `select`).
+
+**Enchants by Blizzard's enchantment id, not the scroll's item id.** The profile API reports an applied enchant by `enchantment_id`, which is what #1634 will store, and each rank has its own. Midnight's come from the game's SpellItemEnchantment table (the "Quality-12" names, both ranks): permanent ones only, so oils, whetstones, tool enchants and Illusory Adornments are left out and count as none. `top_rank` marks the higher rank; `tertiary` marks speed, leech or avoidance only (stamina alongside allowed, a proc ignored), which the Lenient rule takes at any rank. Weapon enchants are never tertiary.
+
+**Gems by item id.** Flawless is the top rank; an Eversong Diamond or Heliotrope has one rank, which is top, and is the epic gem.
+
+**Crests: a cap that adds up, and one lift date.** `season_crest_cap(season, track, week)` returns `weekly_increase` for each week from `first_week` through that reset Tuesday (so a missed week carries over, as in game), 0 before it, and null for an uncapped crest or any week from `caps_lifted_on`. The Mistcrests' 100 a week is the game's currency table; the first week (2026-08-18) and the lift (2026-10-20 hotfix) are from the season's notes. `uncapped_sources` stays empty for Midnight Season 2: the caps were lifted before the audit can read them. `currency_id` is the capped currency (3442 to 3446), for whatever reads crest counts later.
+
+**Midnight Season 2's rows, not Season 3's.** The issue named Season 3, but Season 3 is undated and its crests and any new enchants aren't known yet; Season 2 is the season being raided. Season 3 gets rows in the migration that dates it.
+
+**OFF_HAND is listed; the audit decides whether it counts.** It takes a weapon enchant only when the item there is a weapon, which only the item says.
+
+[Full discussion -> #1633](https://github.com/katogaming88/WGA-Raid-Hub/issues/1633).

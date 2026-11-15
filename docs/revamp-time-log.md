@@ -18,19 +18,19 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 17 h 16 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 18 h 41 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **189 h 12 m** |             |
+| **All revamp work**                | **190 h 37 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
 | Tester fixes | Phase 2 | 2 h 15 m | ~2 h |
-| Recruiting | Phase 2 | 13 h 56 m | ~9 h 50 m |
-| The roster audit and reports | Phase 2 | 0 m | ~9 h 50 m |
+| Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
+| The roster audit and reports | Phase 2 | 25 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
@@ -731,6 +731,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 3:35-5:10 PM | #1823: Wishlist editing card on Settings > Season (a leader-only switch per season through `set_team_season()` with only the wishlist flag, so signups stay as they are; officers without the leader permission see a note), a Help line, unit tests, stamp, changelog, screenshots at desktop dark and light and phone width; PR #1828, one failing browser check (a fourth Help step broke the guide's picture-marker count; folded into step 1), Kat's merge and cleanup | Phase 2: Before the new site goes live / Tester fixes (#1823) | 1 h 35 m | ~35 m build, ~1 h Kat (design review, reporting the failing check, merge) | 182,600 | Time log row left for this PR |
 | 5:10-5:48 PM | #1824: Settings > General split into General, Ranks and Rank Permissions tabs at their own addresses, like Guild settings (grid moved out of Ranks, tab links shown by permission, Ranks address closed to anyone who cannot promote assistants, sidebar keeps General lit on all three), tests and browser tests moved to the new addresses, stamp, changelog, preflight, screenshots; PR #1829; Kat's merge and cleanup | Phase 2: Before the new site goes live / Tester fixes (#1824) | 40 m | ~25 m build, ~15 m Kat (design review, merge) | 105,400 | The sidebar's doubled `officer/officer` tab address was caught from the screenshots, not the tests; a test now covers it |
 | 9:38-9:55 PM | #1826: officers reword a starter application question in place: `team_application_starters.prompt` (one line, 1 to 300, the starter wording stored as none), the list, save and form functions carry it, sent applications keep the wording asked; Edit wording, Reworded and Reset to the starter wording on Recruiting settings, the old "Turn it off and add your own" note gone, Help line; RLS, unit and browser tests, generated docs, decision log, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / Recruiting (#1826) | 15 m | build; CodeRabbit, the fresh-agent review and merge not yet counted | 155,100 | Added 2026-11-14. Tokens are input, cache-written and output from the session transcript. |
+| 9:55-10:56 PM | PR #1834 (#1826): screenshots at desktop dark and light and phone width, CodeRabbit (nothing to act on), the fresh-agent migration review (approve, three nice-to-haves: a tab-only wording got a raw error, the page's length check before trimming, no test for a wording-only save's log row), all three fixed and tested; Kat's merge, cleanup, #1487 updated | Phase 2: Before the new site goes live / Recruiting (#1826) | 1 h | build; Kat's CodeRabbit trigger, design review and merge, not split | 117,600 | Added 2026-11-14. Tokens include the fresh agent's 85,940. |
+| 10:56-11:05 PM | #1833 talked through (the priority list narrowed to raiders planned in for the boss): the lineup and per-fight data checked, the choice explained; Kat: no filter, the item goes to the next person; closed as not planned, #1487 updated | Phase 2: Before the new site goes live / The roster audit and reports (#1833) | 10 m | ~5 m build, ~5 m Kat deciding | 23,800 | Added 2026-11-14. |
+| 11:05-11:20 PM | #1633: the audit's season settings: four reference tables (enchant slots with a start date, enchants by Blizzard enchantment id with top rank and tertiary, gems with top rank and epic, crests with cap rules and a lift date), `season_enchant_slots_on()` and `season_crest_cap()`, Midnight Season 2's rows from the game's own tables (92 enchants, 39 gems, five Mistcrests); RLS tests, generated docs, decision log, RLS.md, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / The roster audit and reports (#1633) | 15 m | build; CodeRabbit, the fresh-agent review and merge not yet counted | 125,000 | Added 2026-11-14. Seeded Season 2, not the issue's Season 3: Season 3 is undated. |
 
 ## Not counted (same sessions, not revamp)
 
