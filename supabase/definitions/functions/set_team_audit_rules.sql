@@ -31,7 +31,7 @@ begin
     end if;
     v_rule := '{}'::jsonb;
     foreach v_row in array array['raid', 'dungeon', 'world'] loop
-      v_slots := coalesce(p_vault_rule -> v_row, '0'::jsonb);
+      v_slots := coalesce(nullif(p_vault_rule -> v_row, 'null'::jsonb), '0'::jsonb);
       if jsonb_typeof(v_slots) <> 'number' or v_slots::numeric not in (0, 1, 2, 3) then
         raise exception 'Vault % slots must be 0 to 3.', v_row;
       end if;

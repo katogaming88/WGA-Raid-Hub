@@ -65,7 +65,7 @@ describe('set_team_audit_rules: what it accepts', () => {
     });
   });
   it('no vault rule, or every row at 0, is stored as no rule', async () => {
-    for (const rule of [undefined, null, { raid: 0, dungeon: 0, world: 0 }, {}]) {
+    for (const rule of [undefined, null, { raid: 0, dungeon: 0, world: 0 }, {}, { raid: null }]) {
       const res = await queryAs('authenticated', OFFICER_T1, ...save('lenient', rule));
       expect(res.rows[0].config.vaultRule).toBeNull();
     }
