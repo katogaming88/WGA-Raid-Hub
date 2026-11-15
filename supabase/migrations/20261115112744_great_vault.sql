@@ -24,7 +24,8 @@
 --
 -- character_weeks works out its vault on every write (vault, vault_at). Delves
 -- are running totals, so a week's delves are its row less the week before's;
--- with no row for the week before, the World row is unknown (null). The
+-- unless both were read, the World row is unknown (null). A boss counts once
+-- a week, at its best difficulty. The
 -- addon's exact vault (#1440), when it arrives, wins over this one.
 
 create table public.season_track_steps (
@@ -122,9 +123,14 @@ language sql
 stable
 set search_path = public
 as $$
-  with offers as (
-    select 'raid' as vault_row, w.track, w.rank
-      from jsonb_to_recordset(coalesce(p_raid_kills, '[]')) k(encounter_id integer, instance_id integer, difficulty text)
+  with kills as (
+    select k.* from jsonb_to_recordset(coalesce(p_raid_kills, '[]')) k(encounter_id integer, instance_id integer, difficulty text)
+  ),
+  -- A boss counts once a week, at its best reward, however many difficulties
+  -- it was killed on.
+  raid_offers as (
+    select distinct on (k.encounter_id) w.track, w.rank
+      from kills k
       join season_vault_raids r on r.season = p_season and r.instance_id = k.instance_id
       cross join lateral (
         select w.track, w.rank from season_vault_rewards w
@@ -132,6 +138,11 @@ as $$
            and (w.encounter_id is null or w.encounter_id = k.encounter_id)
          order by w.encounter_id nulls last
          limit 1) w
+      join season_track_steps t on t.season = p_season and t.track = w.track and t.rank = w.rank
+     order by k.encounter_id, t.item_level desc
+  ),
+  offers as (
+    select 'raid' as vault_row, track, rank from raid_offers
     union all
     select 'dungeon', w.track, w.rank
       from jsonb_to_recordset(coalesce(p_mplus_runs, '[]')) m(level integer)
@@ -168,7 +179,12 @@ as $$
       left join ranked r on r.vault_row = s.vault_row and r.pos = s.needs
      where s.season = p_season
   )
-  select coalesce(jsonb_object_agg(vault_row, case when vault_row = 'world' and p_delves is null then null else list end), '{}')
+  -- Unknown rows are null: World without this week's delves, Raid while any
+  -- kill lacks its raid (saved before #1637; the next raids read adds it).
+  select coalesce(jsonb_object_agg(vault_row, case
+           when vault_row = 'world' and p_delves is null then null
+           when vault_row = 'raid' and exists (select 1 from kills where instance_id is null) then null
+           else list end), '{}')
     from (select vault_row, jsonb_agg(slot_json order by slot) as list from slots group by vault_row) g;
 $$;
 
@@ -180,7 +196,10 @@ grant execute on function public.season_vault(text, jsonb, jsonb, jsonb) to anon
 
 -- Every write to a weekly row works out its vault again, from the row and the
 -- week before's delves (only that week: a gap leaves the World row unknown
--- rather than counting two weeks' delves as one).
+-- rather than counting two weeks' delves as one). Delves count only once
+-- read (delves_at set), this week's and the week before's: an unread {} less
+-- last week's is not zero delves, and an unread {} as last week's would count
+-- every delve the character ever did.
 create function public.character_weeks_fill_vault()
 returns trigger
 language plpgsql
@@ -192,8 +211,9 @@ declare
 begin
   select w.delves into v_prev
     from character_weeks w
-   where w.name_realm_key = lower(replace(new.name_realm, ' ', '')) and w.week_of = new.week_of - 7;
-  if found then
+   where w.name_realm_key = lower(replace(new.name_realm, ' ', '')) and w.week_of = new.week_of - 7
+     and w.delves_at is not null;
+  if found and new.delves_at is not null then
     select coalesce(jsonb_object_agg(d.key, greatest(d.value::integer - coalesce((v_prev ->> d.key)::integer, 0), 0)), '{}')
       into v_delves
       from jsonb_each_text(new.delves) d;
@@ -216,7 +236,7 @@ create trigger character_weeks_fill_vault
 comment on column public.character_weeks.raid_kills is
   'Bosses killed this week: [{"encounter_id": 2888, "instance_id": 1320, "difficulty": "mythic"}, ...], Blizzard journal ids. instance_id from #1637 on.';
 comment on column public.character_weeks.vault is
-  'The Great Vault worked out from this row (#1637, season_vault()): per row (raid, dungeon, world) its three slots. World is null when the week before has no row.';
+  'The Great Vault worked out from this row (#1637, season_vault()): per row (raid, dungeon, world) its three slots. World is null unless both this week''s and the week before''s delves were read; Raid is null while a kill lacks its instance_id.';
 
 -- Midnight Season 2. Each track: +3, +3, +4, +3, +3 from its first step;
 -- Myth 9 is the last Mythic bosses' 344.

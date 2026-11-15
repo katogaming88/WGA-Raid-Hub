@@ -35,7 +35,8 @@ describe('season_vault', () => {
         ...ABYSS_BOSSES.map((id) => kill(id, 'heroic'))
       ];
       expect(await vault(q, kills, runs(12, 12, 11, 10, 10, 9), { 11: 2, 8: 2 })).toEqual({
-        raid: [filled(2, 11, 'Myth', 6, 334), filled(4, 11, 'Myth', 1, 318), filled(6, 11, 'Myth', 1, 318)],
+        // Three of the eight Heroic bosses were killed on Mythic too: 8 bosses.
+        raid: [filled(2, 8, 'Myth', 6, 334), filled(4, 8, 'Myth', 1, 318), filled(6, 8, 'Myth', 1, 318)],
         dungeon: [filled(1, 6, 'Myth', 1, 318), filled(4, 6, 'Myth', 1, 318), empty(8, 6)],
         world: [filled(2, 4, 'Hero', 1, 305), filled(4, 4, 'Hero', 1, 305), empty(8, 4)]
       });
@@ -72,6 +73,21 @@ describe('season_vault', () => {
     });
   });
 
+  it('a boss killed on two difficulties counts once, at the higher one', async () => {
+    await withTxn(async ({ q }) => {
+      const v = await vault(q, [kill(2888, 'heroic'), kill(2888, 'mythic'), kill(2874, 'normal')], [], {});
+      expect(v.raid).toEqual([filled(2, 2, 'Hero', 1, 305), empty(4, 2), empty(6, 2)]);
+      expect((await vault(q, [kill(2888, 'heroic'), kill(2888, 'mythic')], [], {})).raid[0]).toEqual(empty(2, 1));
+    });
+  });
+
+  it('kills saved without their raid (before #1637) leave the Raid row unknown', async () => {
+    await withTxn(async ({ q }) => {
+      const v = await vault(q, [kill(2888, 'mythic'), { encounter_id: 2874, difficulty: 'mythic' }], [], {});
+      expect(v.raid).toBeNull();
+    });
+  });
+
   it('unknown delves this week leave the World row unknown', async () => {
     await withTxn(async ({ q }) => {
       expect((await vault(q, [], [], null)).world).toBeNull();
@@ -80,12 +96,14 @@ describe('season_vault', () => {
 });
 
 describe('the weekly row works out its vault on every write', () => {
-  const write = (q, week, delves) =>
+  // read = false is a sync whose statistics read failed: delves keep their
+  // default and delves_at stays null.
+  const write = (q, week, delves, read = true) =>
     q(
-      `insert into public.character_weeks (name_realm, week_of, mplus_runs, delves)
-       values ('Katorrí-Stormrage', $1, $2::jsonb, $3::jsonb)
-       on conflict (name_realm_key, week_of) do update set delves = excluded.delves`,
-      [week, JSON.stringify(runs(10)), JSON.stringify(delves)]
+      `insert into public.character_weeks (name_realm, week_of, mplus_runs, delves, delves_at)
+       values ('Katorrí-Stormrage', $1, $2::jsonb, $3::jsonb, case when $4 then now() end)
+       on conflict (name_realm_key, week_of) do update set delves = excluded.delves, delves_at = excluded.delves_at`,
+      [week, JSON.stringify(runs(10)), JSON.stringify(read ? delves : {}), read]
     );
   const read = async (q, week) =>
     (
@@ -114,6 +132,20 @@ describe('the weekly row works out its vault on every write', () => {
     await withTxn(async ({ q }) => {
       await write(q, '2026-10-27', { 8: 10 });
       await write(q, '2026-11-10', { 8: 12 });
+      expect((await read(q, '2026-11-10')).vault.world).toBeNull();
+    });
+  });
+
+  it('a week whose delves were never read is no baseline, and is unknown itself', async () => {
+    await withTxn(async ({ q }) => {
+      // Last week's statistics read failed: its {} would count lifetime delves.
+      await write(q, '2026-11-03', {}, false);
+      await write(q, '2026-11-10', { 8: 12 });
+      expect((await read(q, '2026-11-10')).vault.world).toBeNull();
+
+      // This week's read failed: {} less last week's is not zero delves.
+      await write(q, '2026-11-03', { 8: 10 });
+      await write(q, '2026-11-10', {}, false);
       expect((await read(q, '2026-11-10')).vault.world).toBeNull();
     });
   });

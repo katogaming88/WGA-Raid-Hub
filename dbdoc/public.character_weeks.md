@@ -20,7 +20,7 @@ The roster audit's weekly row (#1635, #1261): one per character (name_realm_key,
 | delves_at | timestamp with time zone |  | true |  |  |  |  |
 | crests | jsonb | '{}'::jsonb | false |  |  |  | Crests earned this season by track (season_crests.track), from the character statistics season_crests.statistic_id names. |
 | crests_at | timestamp with time zone |  | true |  |  |  |  |
-| vault | jsonb | '{}'::jsonb | false |  |  |  | The Great Vault worked out from this row (#1637, season_vault()): per row (raid, dungeon, world) its three slots. World is null when the week before has no row. |
+| vault | jsonb | '{}'::jsonb | false |  |  |  | The Great Vault worked out from this row (#1637, season_vault()): per row (raid, dungeon, world) its three slots. World is null unless both this week's and the week before's delves were read; Raid is null while a kill lacks its instance_id. |
 | vault_at | timestamp with time zone |  | true |  |  |  |  |
 | missing_enchants | smallint |  | true |  |  |  | Gear counts at the week's last gear sync (#1634): enchantable slots without a current-expansion enchant, empty sockets, whether an epic gem is worn, embellishments and sparks used. |
 | empty_sockets | smallint |  | true |  |  |  |  |

@@ -3661,6 +3661,8 @@ Shipped: `20261115112744_great_vault.sql`.
 
 **World is delves only.** Prey hunts and other world activities aren't in Blizzard's API; the addon adds them (Kat). Heroic and Mythic 0 dungeons, which also fill Dungeon slots, aren't in it either, and the M+ profile lists only the best key per dungeon, so a row can show fewer slots than the game.
 
-**A week's delves are the row less exactly the week before's.** With no row for the week before (a character's first synced week, or a skipped week), the World row is null (unknown), not two weeks' delves counted as one. Delves done after the last sync before the reset count in the next week.
+**A week's delves are the row less exactly the week before's, both read.** With no row for the week before (a character's first synced week, or a skipped week), or when either week's statistics read never worked (`delves_at` null, so `delves` is the empty default), the World row is null (unknown): not two weeks' delves counted as one, nor every delve the character ever did (CodeRabbit's catch). Delves done after the last sync before the reset count in the next week.
+
+**A boss counts once a week**, at its best reward, however many difficulties it was killed on, as the game counts it (CodeRabbit's catch). And while any saved kill lacks its `instance_id` (saved before this migration), the Raid row is null rather than empty; the next raids read adds it.
 
 [Full discussion -> #1637](https://github.com/katogaming88/WGA-Raid-Hub/issues/1637).

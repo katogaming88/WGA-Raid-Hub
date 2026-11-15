@@ -13631,7 +13631,7 @@
           "type": "jsonb",
           "nullable": false,
           "default": "'{}'::jsonb",
-          "comment": "The Great Vault worked out from this row (#1637, season_vault()): per row (raid, dungeon, world) its three slots. World is null when the week before has no row."
+          "comment": "The Great Vault worked out from this row (#1637, season_vault()): per row (raid, dungeon, world) its three slots. World is null unless both this week's and the week before's delves were read; Raid is null while a kill lacks its instance_id."
         },
         {
           "name": "vault_at",

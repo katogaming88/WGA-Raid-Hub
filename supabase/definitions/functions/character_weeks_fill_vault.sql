@@ -13,8 +13,9 @@ declare
 begin
   select w.delves into v_prev
     from character_weeks w
-   where w.name_realm_key = lower(replace(new.name_realm, ' ', '')) and w.week_of = new.week_of - 7;
-  if found then
+   where w.name_realm_key = lower(replace(new.name_realm, ' ', '')) and w.week_of = new.week_of - 7
+     and w.delves_at is not null;
+  if found and new.delves_at is not null then
     select coalesce(jsonb_object_agg(d.key, greatest(d.value::integer - coalesce((v_prev ->> d.key)::integer, 0), 0)), '{}')
       into v_delves
       from jsonb_each_text(new.delves) d;
