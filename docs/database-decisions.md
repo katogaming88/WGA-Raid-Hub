@@ -3648,3 +3648,19 @@ Shipped: `20261115095516_equipped_gear_enchants_gems.sql`.
 **The upgrade step comes from the track bonus id.** The reply has no upgrade field; `track_bonus_ids.rank` already says which step a bonus id is. `upgrade_max` is the end of the track's unbroken run of ranks from 1 in that bonus id's season, stored beside the rank so the page shows "4/6" without a lookup. Not simply the highest rank: Season 2's Myth has a lone rank 9 (13848, the last two Mythic bosses' special drop), which would have made every Myth item read x/9 (CodeRabbit's catch). That drop reads 9 of 6, as the game shows it, so the table checks only that both are set or both are null, not that the rank is at most the top. Both null when no track bonus id matched, including the item-level fallback, which can guess a track but not a step.
 
 [Full discussion -> #1634](https://github.com/katogaming88/WGA-Raid-Hub/issues/1634).
+
+## #1637 -- the Great Vault, worked out from the weekly row
+
+Shipped: `20261115112744_great_vault.sql`.
+
+**Worked out in the database, on every write.** A trigger on `character_weeks` fills `vault` and `vault_at` from the row whenever the sync writes it, through `season_vault(season, raid_kills, mplus_runs, delves)`. Each row (raid, dungeon, world) is a list of its three slots: `{needs, done}` plus the weakest reward among the runs the slot counts (`{track, rank, item_level}`), or `{left}` when it isn't filled. The page reads the stored row; the addon's exact vault (#1440) wins over it when it arrives.
+
+**Season settings, not code.** Four reference tables, added per season by migration like `season_crests`: `season_track_steps` (each step's item level, e.g. Hero 4/6 = 315), `season_vault_slots` (2/4/6 bosses, 1/4/8 keys, 2/4/8 delves), `season_vault_rewards` (a raid kill by difficulty, a key from a level up, a delve from a tier up) and `season_vault_raids` (the raids whose kills count). Season 2's rows come from Kat's in-game chart (2026-11-15). Guides disagreed: Method had Hero 3/6 and 4/6 both at 311; the chart has 4/6 at 315.
+
+**Raid kills by Blizzard journal id.** The profile API's ids aren't the WCL ids in `raid_encounters`, so the vault names its raids by journal instance id, and the sync now saves each kill's `instance_id` (#1636's rows from before it have none and count no raid slots). Both The Venomous Abyss and The Tidebound Grotto count (Kat). A boss with its own reward has a row with its `encounter_id`: Mythic kills of The Coiled Altar and Ula'tek offer Myth 9/6 (344) where other Mythic kills offer Myth 6/6 (334) (Kat: count it). A slot offers 344 only when every kill it counts is one of them.
+
+**World is delves only.** Prey hunts and other world activities aren't in Blizzard's API; the addon adds them (Kat). Heroic and Mythic 0 dungeons, which also fill Dungeon slots, aren't in it either, and the M+ profile lists only the best key per dungeon, so a row can show fewer slots than the game.
+
+**A week's delves are the row less exactly the week before's.** With no row for the week before (a character's first synced week, or a skipped week), the World row is null (unknown), not two weeks' delves counted as one. Delves done after the last sync before the reset count in the next week.
+
+[Full discussion -> #1637](https://github.com/katogaming88/WGA-Raid-Hub/issues/1637).

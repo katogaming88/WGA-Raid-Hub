@@ -8,7 +8,7 @@ One row per raid tier (#932). code is the short form every season column referen
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| code | text |  | false | [public.rclc_loot](public.rclc_loot.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.raid_zones](public.raid_zones.md) [public.item_preferences](public.item_preferences.md) [public.tier_token_map](public.tier_token_map.md) [public.boe_items](public.boe_items.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.track_bonus_ids](public.track_bonus_ids.md) [public.team_seasons](public.team_seasons.md) [public.item_seasons](public.item_seasons.md) [public.season_track_floors](public.season_track_floors.md) [public.season_enchant_slots](public.season_enchant_slots.md) [public.season_enchants](public.season_enchants.md) [public.season_gems](public.season_gems.md) [public.season_crests](public.season_crests.md) |  |  |
+| code | text |  | false | [public.rclc_loot](public.rclc_loot.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.raid_zones](public.raid_zones.md) [public.item_preferences](public.item_preferences.md) [public.tier_token_map](public.tier_token_map.md) [public.boe_items](public.boe_items.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.track_bonus_ids](public.track_bonus_ids.md) [public.team_seasons](public.team_seasons.md) [public.item_seasons](public.item_seasons.md) [public.season_track_floors](public.season_track_floors.md) [public.season_enchant_slots](public.season_enchant_slots.md) [public.season_enchants](public.season_enchants.md) [public.season_gems](public.season_gems.md) [public.season_crests](public.season_crests.md) [public.season_track_steps](public.season_track_steps.md) [public.season_vault_slots](public.season_vault_slots.md) [public.season_vault_rewards](public.season_vault_rewards.md) [public.season_vault_raids](public.season_vault_raids.md) |  |  |
 | display_name | text |  | false |  |  |  |
 | starts_at | date |  | true |  |  | The day the season launched. Empty until Blizzard dates it (#1717): an undated season is never current and matches no raid date. |
 | ends_at | date |  | true |  |  | Null while the season is open-ended, and always for an undated one; the migration that dates the next season sets it. Dated seasons do not overlap (seasons_no_overlap). |
@@ -59,6 +59,10 @@ erDiagram
 "public.season_enchants" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.season_gems" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.season_crests" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_track_steps" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_vault_slots" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_vault_rewards" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_vault_raids" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 
 "public.seasons" {
   text code
@@ -277,6 +281,32 @@ erDiagram
   integer weekly_increase
   text__ uncapped_sources
   date caps_lifted_on
+}
+"public.season_track_steps" {
+  text season FK
+  text track
+  smallint rank
+  smallint item_level
+}
+"public.season_vault_slots" {
+  text season FK
+  text vault_row
+  smallint slot
+  smallint needs
+}
+"public.season_vault_rewards" {
+  text season FK
+  text vault_row
+  text difficulty
+  integer encounter_id
+  smallint from_level
+  text track FK
+  smallint rank FK
+}
+"public.season_vault_raids" {
+  text season FK
+  integer instance_id
+  text name
 }
 ```
 

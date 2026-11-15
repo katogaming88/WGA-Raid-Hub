@@ -60,6 +60,7 @@ const RAIDS = {
     {
       instances: [
         {
+          instance: { id: 1320 },
           modes: [
             {
               difficulty: { type: 'HEROIC' },
@@ -118,10 +119,10 @@ Deno.test('M+: only runs since the reset, highest key first, rating to one place
   assertEquals(mplusFrom({}, SINCE), { runs: [], rating: null });
 });
 
-Deno.test('raid kills: each boss and difficulty killed since the reset', () => {
+Deno.test('raid kills: each boss, its raid and difficulty killed since the reset', () => {
   assertEquals(raidKillsFrom(RAIDS, SINCE), [
-    { encounter_id: 3176, difficulty: 'heroic' },
-    { encounter_id: 3176, difficulty: 'mythic' }
+    { encounter_id: 3176, instance_id: 1320, difficulty: 'heroic' },
+    { encounter_id: 3176, instance_id: 1320, difficulty: 'mythic' }
   ]);
 });
 

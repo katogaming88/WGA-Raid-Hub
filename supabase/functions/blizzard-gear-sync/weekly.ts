@@ -33,10 +33,11 @@ export function weekStartMs(week: string): number {
   return Date.parse(week + 'T00:00:00Z') + RESET_HOUR_MS;
 }
 
-export type RaidKill = { encounter_id: number; difficulty: string };
+export type RaidKill = { encounter_id: number; instance_id: number | null; difficulty: string };
 export type MplusRun = { dungeon_id: number; level: number; timed: boolean };
 
-// Every boss killed since the reset, per difficulty, from
+// Every boss killed since the reset, with its raid (the vault counts only the
+// season's raids, #1637) and difficulty, from
 // /encounters/raids's expansions -> instances -> modes -> encounters.
 export function raidKillsFrom(data: any, sinceMs: number): RaidKill[] {
   const kills: RaidKill[] = [];
@@ -46,7 +47,7 @@ export function raidKillsFrom(data: any, sinceMs: number): RaidKill[] {
         const difficulty = String(mode?.difficulty?.type || '').toLowerCase();
         for (const e of mode?.progress?.encounters || []) {
           if (e?.encounter?.id && difficulty && e.last_kill_timestamp >= sinceMs) {
-            kills.push({ encounter_id: e.encounter.id, difficulty });
+            kills.push({ encounter_id: e.encounter.id, instance_id: instance?.instance?.id ?? null, difficulty });
           }
         }
       }

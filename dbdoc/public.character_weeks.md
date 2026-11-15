@@ -11,7 +11,7 @@ The roster audit's weekly row (#1635, #1261): one per character (name_realm_key,
 | name_realm | text |  | false |  |  |  |  |
 | name_realm_key | text |  | false | GENERATED ALWAYS AS lower(replace(name_realm, ' '::text, ''::text)) STORED |  |  |  |
 | week_of | date |  | false |  |  |  | The reset Tuesday the week starts on. |
-| raid_kills | jsonb | '[]'::jsonb | false |  |  |  |  |
+| raid_kills | jsonb | '[]'::jsonb | false |  |  |  | Bosses killed this week: [{"encounter_id": 2888, "instance_id": 1320, "difficulty": "mythic"}, ...], Blizzard journal ids. instance_id from #1637 on. |
 | raids_at | timestamp with time zone |  | true |  |  |  |  |
 | mplus_runs | jsonb | '[]'::jsonb | false |  |  |  |  |
 | mplus_rating | numeric(6,1) |  | true |  |  |  |  |
@@ -20,7 +20,7 @@ The roster audit's weekly row (#1635, #1261): one per character (name_realm_key,
 | delves_at | timestamp with time zone |  | true |  |  |  |  |
 | crests | jsonb | '{}'::jsonb | false |  |  |  | Crests earned this season by track (season_crests.track), from the character statistics season_crests.statistic_id names. |
 | crests_at | timestamp with time zone |  | true |  |  |  |  |
-| vault | jsonb | '{}'::jsonb | false |  |  |  |  |
+| vault | jsonb | '{}'::jsonb | false |  |  |  | The Great Vault worked out from this row (#1637, season_vault()): per row (raid, dungeon, world) its three slots. World is null when the week before has no row. |
 | vault_at | timestamp with time zone |  | true |  |  |  |  |
 | missing_enchants | smallint |  | true |  |  |  | Gear counts at the week's last gear sync (#1634): enchantable slots without a current-expansion enchant, empty sockets, whether an epic gem is worn, embellishments and sparks used. |
 | empty_sockets | smallint |  | true |  |  |  |  |
@@ -52,6 +52,12 @@ The roster audit's weekly row (#1635, #1261): one per character (name_realm_key,
 | Name | Definition |
 | ---- | ---------- |
 | character_weeks_pkey | CREATE UNIQUE INDEX character_weeks_pkey ON public.character_weeks USING btree (name_realm_key, week_of) |
+
+## Triggers
+
+| Name | Definition |
+| ---- | ---------- |
+| character_weeks_fill_vault | CREATE TRIGGER character_weeks_fill_vault BEFORE INSERT OR UPDATE ON public.character_weeks FOR EACH ROW EXECUTE FUNCTION character_weeks_fill_vault() |
 
 ## Relations
 
