@@ -24,19 +24,27 @@ export type EquippedRow = {
 // track, and the track's top step that season (Hero 4 of 6).
 export type BonusStep = { track: string; rank: number; max: number };
 
-// track_bonus_ids rows as the lookup buildRows() reads. The top step is
-// counted per season and track, since a season could give a track more steps.
+// track_bonus_ids rows as the lookup buildRows() reads. A track's top step,
+// per season, is the end of its unbroken run of steps from 1: Midnight Season
+// 2's Myth has 1 to 6 plus a lone 9 (13848, the last two Mythic bosses'
+// special drops, which the game shows as 9/6), so Myth tops out at 6 and that
+// drop reads 9 of 6, as in game.
 export function bonusStepsFromRows(
   rows: Array<{ bonus_id: number; track: string; rank: number; season: string }>
 ): Map<number, BonusStep> {
-  const top = new Map<string, number>();
+  const ranks = new Map<string, Set<number>>();
   for (const r of rows) {
     const key = r.season + '|' + r.track;
-    top.set(key, Math.max(top.get(key) ?? 0, r.rank));
+    if (!ranks.has(key)) ranks.set(key, new Set());
+    ranks.get(key)!.add(r.rank);
   }
-  return new Map(
-    rows.map((r) => [r.bonus_id, { track: r.track, rank: r.rank, max: top.get(r.season + '|' + r.track)! }])
-  );
+  const top = (key: string) => {
+    const have = ranks.get(key)!;
+    let n = 0;
+    while (have.has(n + 1)) n++;
+    return n;
+  };
+  return new Map(rows.map((r) => [r.bonus_id, { track: r.track, rank: r.rank, max: top(r.season + '|' + r.track) }]));
 }
 
 function stepFor(bonusList: number[], bonusTracks: Map<number, BonusStep>): BonusStep | null {

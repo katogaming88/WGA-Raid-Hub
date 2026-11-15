@@ -4987,7 +4987,7 @@
           "name": "upgrade_max",
           "type": "smallint",
           "nullable": true,
-          "comment": "The top step of the item's track that season (the 6 of Hero 4/6). Null exactly when upgrade_rank is. Synced by blizzard-gear-sync (#1634)."
+          "comment": "The top step of the item's track that season (the 6 of Hero 4/6): the end of the track's unbroken steps from 1, so the Mythic bosses' special drop reads 9 of 6, as in game. Null exactly when upgrade_rank is. Synced by blizzard-gear-sync (#1634)."
         }
       ],
       "indexes": [
@@ -5043,7 +5043,7 @@
         {
           "name": "player_equipped_gear_upgrade_step_check",
           "type": "CHECK",
-          "def": "CHECK ((((upgrade_rank IS NULL) = (upgrade_max IS NULL)) AND (upgrade_rank \u003c= upgrade_max)))",
+          "def": "CHECK (((upgrade_rank IS NULL) = (upgrade_max IS NULL)))",
           "table": "public.player_equipped_gear",
           "referenced_table": "",
           "columns": [

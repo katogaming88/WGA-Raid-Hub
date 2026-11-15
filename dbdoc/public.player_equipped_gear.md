@@ -22,7 +22,7 @@ One row per player per physical gear slot (Blizzard API slot keys: HEAD, FINGER_
 | embellished | boolean | false | false |  |  | The item carries an embellishment (its equip limit is "Embellished"). Synced by blizzard-gear-sync (#1634). |
 | crafted | boolean | false | false |  |  | The item was crafted. Synced by blizzard-gear-sync (#1634). |
 | upgrade_rank | smallint |  | true |  |  | The item's step on its track (the 4 of Hero 4/6), from its track bonus id in track_bonus_ids. Null when none matched. Synced by blizzard-gear-sync (#1634). |
-| upgrade_max | smallint |  | true |  |  | The top step of the item's track that season (the 6 of Hero 4/6). Null exactly when upgrade_rank is. Synced by blizzard-gear-sync (#1634). |
+| upgrade_max | smallint |  | true |  |  | The top step of the item's track that season (the 6 of Hero 4/6): the end of the track's unbroken steps from 1, so the Mythic bosses' special drop reads 9 of 6, as in game. Null exactly when upgrade_rank is. Synced by blizzard-gear-sync (#1634). |
 
 ## Constraints
 
@@ -31,7 +31,7 @@ One row per player per physical gear slot (Blizzard API slot keys: HEAD, FINGER_
 | player_equipped_gear_enchantment_id_check | CHECK | CHECK ((enchantment_id > 0)) |
 | player_equipped_gear_upgrade_max_check | CHECK | CHECK ((upgrade_max > 0)) |
 | player_equipped_gear_upgrade_rank_check | CHECK | CHECK ((upgrade_rank > 0)) |
-| player_equipped_gear_upgrade_step_check | CHECK | CHECK ((((upgrade_rank IS NULL) = (upgrade_max IS NULL)) AND (upgrade_rank <= upgrade_max))) |
+| player_equipped_gear_upgrade_step_check | CHECK | CHECK (((upgrade_rank IS NULL) = (upgrade_max IS NULL))) |
 | player_equipped_gear_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
 | player_equipped_gear_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | player_equipped_gear_pkey | PRIMARY KEY | PRIMARY KEY (id) |

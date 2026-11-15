@@ -107,10 +107,12 @@ Deno.test("a track bonus id outranks the tier's floors", () => {
 // #1634: what the audit reads off each slot. Shapes copied from a live
 // Character Equipment Summary reply (Katorri-Stormrage, 2026-11-15).
 const MID2_STEPS = bonusStepsFromRows([
-  { bonus_id: 12841, track: 'Hero', rank: 1, season: 'MID2' },
-  { bonus_id: 12844, track: 'Hero', rank: 4, season: 'MID2' },
-  { bonus_id: 12846, track: 'Hero', rank: 6, season: 'MID2' },
-  { bonus_id: 12854, track: 'Myth', rank: 6, season: 'MID2' }
+  ...[12841, 12842, 12843, 12844, 12845, 12846].map((bonus_id, i) => ({
+    bonus_id,
+    track: 'Hero',
+    rank: i + 1,
+    season: 'MID2'
+  }))
 ]);
 
 function oneRow(item: Record<string, unknown>) {
@@ -169,12 +171,33 @@ Deno.test('gear with no track bonus id has no upgrade step', () => {
   assertEquals([row.upgrade_rank, row.upgrade_max], [null, null]);
 });
 
+// Every Myth step from 1, as the table has them, plus the special drop.
+const MYTH_STEPS = bonusStepsFromRows([
+  ...[12849, 12850, 12851, 12852, 12853, 12854].map((bonus_id, i) => ({
+    bonus_id,
+    track: 'Myth',
+    rank: i + 1,
+    season: 'MID2'
+  })),
+  { bonus_id: 13848, track: 'Myth', rank: 9, season: 'MID2' }
+]);
+
+Deno.test("a fully upgraded Myth item is 6 of 6: the bosses' special drop doesn't raise the top step", () => {
+  const rows = buildRows(PLAYER, TEAM, [{ ...equipped('HEAD', 1, 334), bonus_list: [12854] }], null, MYTH_STEPS);
+  assertEquals([rows[0].upgrade_rank, rows[0].upgrade_max], [6, 6]);
+});
+
+Deno.test('the special drop reads 9 of 6, as in game', () => {
+  const rows = buildRows(PLAYER, TEAM, [{ ...equipped('HEAD', 1, 343), bonus_list: [13848] }], null, MYTH_STEPS);
+  assertEquals([rows[0].track, rows[0].upgrade_rank, rows[0].upgrade_max], ['Myth', 9, 6]);
+});
+
 Deno.test("a track's top step is counted per season", () => {
   const steps = bonusStepsFromRows([
     { bonus_id: 1, track: 'Hero', rank: 1, season: 'OLD' },
-    { bonus_id: 2, track: 'Hero', rank: 8, season: 'OLD' },
-    { bonus_id: 3, track: 'Hero', rank: 6, season: 'NEW' }
+    { bonus_id: 2, track: 'Hero', rank: 2, season: 'OLD' },
+    { bonus_id: 3, track: 'Hero', rank: 1, season: 'NEW' }
   ]);
-  assertEquals(steps.get(3), { track: 'Hero', rank: 6, max: 6 });
-  assertEquals(steps.get(1), { track: 'Hero', rank: 1, max: 8 });
+  assertEquals(steps.get(3), { track: 'Hero', rank: 1, max: 1 });
+  assertEquals(steps.get(1), { track: 'Hero', rank: 1, max: 2 });
 });

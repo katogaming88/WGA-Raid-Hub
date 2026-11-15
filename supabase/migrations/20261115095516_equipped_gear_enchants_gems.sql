@@ -15,7 +15,10 @@
 --   "Crafted" label.
 -- * upgrade_rank, upgrade_max: the step on its track (Hero 4 of 6), from the
 --   same track bonus id that gives track. Null when no track bonus id matched
---   (crafted gear, or the item-level fallback).
+--   (crafted gear, or the item-level fallback). The top step is the end of
+--   the track's unbroken run of steps from 1, so the last two Mythic bosses'
+--   special drop (Myth rank 9, bonus 13848) reads 9 of 6, as the game shows
+--   it, and is the one case where the step passes the top.
 --
 -- Rows already on file get the defaults and fill in on the next sync.
 
@@ -27,7 +30,7 @@ alter table public.player_equipped_gear
   add column upgrade_rank smallint check (upgrade_rank > 0),
   add column upgrade_max smallint check (upgrade_max > 0),
   add constraint player_equipped_gear_upgrade_step_check check (
-    (upgrade_rank is null) = (upgrade_max is null) and upgrade_rank <= upgrade_max
+    (upgrade_rank is null) = (upgrade_max is null)
   );
 
 comment on column public.player_equipped_gear.enchantment_id is
@@ -41,4 +44,4 @@ comment on column public.player_equipped_gear.crafted is
 comment on column public.player_equipped_gear.upgrade_rank is
   'The item''s step on its track (the 4 of Hero 4/6), from its track bonus id in track_bonus_ids. Null when none matched. Synced by blizzard-gear-sync (#1634).';
 comment on column public.player_equipped_gear.upgrade_max is
-  'The top step of the item''s track that season (the 6 of Hero 4/6). Null exactly when upgrade_rank is. Synced by blizzard-gear-sync (#1634).';
+  'The top step of the item''s track that season (the 6 of Hero 4/6): the end of the track''s unbroken steps from 1, so the Mythic bosses'' special drop reads 9 of 6, as in game. Null exactly when upgrade_rank is. Synced by blizzard-gear-sync (#1634).';
