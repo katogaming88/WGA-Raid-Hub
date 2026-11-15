@@ -242,7 +242,11 @@ function received(item: CatalogItem, slot: string, loot: ReceivedLoot[], self: S
   // slot for a crafted or M+ pick. One saved without a slot still counts when
   // it is the only receipt for the item, as on the current site
   // (selfReceivedEntryForRow()).
-  const matches = self.filter((s) => s.items && norm(s.items.name) === name);
+  // Several can share a row (a Heroic copy, then a Mythic one): the best track
+  // wins, not the first, or the Mythic never shows.
+  const matches = self
+    .filter((s) => s.items && norm(s.items.name) === name)
+    .sort((a, b) => (TRACK_ORDER[trackName(b.track) ?? ''] ?? 0) - (TRACK_ORDER[trackName(a.track) ?? ''] ?? 0));
   const receipt =
     matches.find((m) => m.slot && m.slot === slot) ??
     (!slot ? matches.find((m) => !m.slot) : matches.length === 1 && !matches[0]!.slot ? matches[0] : undefined);
