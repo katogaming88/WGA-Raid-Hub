@@ -44,9 +44,10 @@ describe('set_team_audit_rules: who can save', () => {
   it('the team reads it back: team_settings is public to read', async () => {
     await withTxn(async ({ asRole }) => {
       await asRole('authenticated', OFFICER_T1)(...save('casual', { raid: 2 }));
-      const res = await asRole('authenticated', RAIDER_T1)(
-        `select config -> 'enchantCheck' as c, config -> 'vaultRule' as v from team_settings where team_id = 1`
-      );
+      const res = await asRole(
+        'authenticated',
+        RAIDER_T1
+      )(`select config -> 'enchantCheck' as c, config -> 'vaultRule' as v from team_settings where team_id = 1`);
       expect(res.rows[0]).toEqual({ c: 'casual', v: { raid: 2, dungeon: 0, world: 0 } });
     });
   });
