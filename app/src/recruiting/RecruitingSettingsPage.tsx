@@ -201,7 +201,7 @@ function Editor({
         title="Discord"
         help="What the bot does in your Discord when someone applies. Their application, notes and history are on Raid Hub whichever you pick."
       >
-        <DiscordSection teamId={teamId} s={s} set={set} base={base.team} />
+        <DiscordSection teamId={teamId} s={s} set={set} base={base.team} savedMode={saved.settings.discord_mode} />
       </Section>
 
       {/* Always mounted, with its buttons greyed until something changes, so

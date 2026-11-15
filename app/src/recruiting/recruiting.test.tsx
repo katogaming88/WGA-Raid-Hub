@@ -616,6 +616,27 @@ describe('the Recruiting settings page', () => {
     expect(screen.getByText(/anyone with Manage Threads there sees every private thread/i)).toBeInTheDocument();
   });
 
+  it('picking Private ticket turns the add-to-server box on, so it can be saved (#1827)', async () => {
+    const user = userEvent.setup();
+    const w = world();
+    renderApp(PATH, handlers(w, { settings: { ...SETTINGS, discord_mode: 'officer_post', add_to_server: false } }));
+    await open(/^Discord/);
+    await user.click(await screen.findByRole('radio', { name: /Private ticket/ }));
+    expect(screen.getByRole('checkbox', { name: /Add them to the Discord server/ })).toBeChecked();
+    expect(screen.queryByText(/needs "Add them to the Discord server"/)).toBeNull();
+  });
+
+  it('greys the Find my ticket picker until Private ticket is saved (#1827)', async () => {
+    const user = userEvent.setup();
+    const w = world();
+    renderApp(PATH, handlers(w, { settings: { ...SETTINGS, discord_mode: 'officer_post' } }));
+    await open(/^Discord/);
+    await user.click(await screen.findByRole('radio', { name: /Private ticket/ }));
+    expect(await screen.findByLabelText('Find my ticket channel')).toBeDisabled();
+    expect(screen.getByText('Save settings first, then pick the channel.')).toBeInTheDocument();
+    expect(w.invokes.some((b) => b['action'] === 'find_ticket')).toBe(false);
+  });
+
   it('posts Find my ticket at once, not with Save', async () => {
     const user = userEvent.setup();
     const w = world();
