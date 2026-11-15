@@ -122,6 +122,14 @@ describe('raiderLineups', () => {
     expect(solo[0]!.longestSitOut).toBe(6);
   });
 
+  it('lists the bosses they sat out, most slots first', () => {
+    expect(of(2).satOutOn).toEqual([
+      { bossId: 10, count: 2 },
+      { bossId: 20, count: 1 }
+    ]);
+    expect(of(3).satOutOn).toEqual([{ bossId: 10, count: 1 }]);
+  });
+
   it('gives each role’s sit-out spread', () => {
     expect(roleLoad(raiders, GROUPS)).toEqual([
       { role: 'Tank', label: 'Tanks', fewest: 1, most: 1, average: 1 },
@@ -270,5 +278,23 @@ describe('Boss lineups page', () => {
   it('says so when the season has no lineups yet', async () => {
     renderApp('/g/wga/t/phoenix/officer/reports/boss-lineups', handlers({ ...TABLES, raid_night_bosses: [] }));
     expect(await screen.findByText(/No boss lineups planned for Midnight Season 2 yet/)).toBeInTheDocument();
+  });
+});
+
+describe('Bench fairness page, with boss lineups (#1247)', () => {
+  const BENCH = '/g/wga/t/phoenix/officer/reports/bench-fairness';
+
+  it('counts boss slots sat out, and the bosses they sat most, in place of nights benched', async () => {
+    renderApp(BENCH, handlers({ ...TABLES, attendance: [] }));
+    const melee = await screen.findByRole('region', { name: 'Melee' });
+    const zuggz = within(melee).getByText('Zuggz').closest('li')!;
+    expect(zuggz).toHaveTextContent('Boss slots sat out: 3 (of 5, mostly Imperator Averzian, Vorasius)');
+    expect(screen.queryByText(/nights benched/i, { selector: '.fairness-legend' })).toBeNull();
+  });
+
+  it('falls back to nights benched until boss lineups are planned', async () => {
+    renderApp(BENCH, handlers({ ...TABLES, attendance: [], raid_night_bosses: [] }));
+    const melee = await screen.findByRole('region', { name: 'Melee' });
+    expect(within(melee).getByText('Zuggz').closest('li')).toHaveTextContent('Nights benched');
   });
 });
