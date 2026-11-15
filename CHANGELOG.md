@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.276.0] - 2026-11-15
+
+### Functions
+
+- The gear sync now also saves each raider's week for the roster audit: M+ runs since the reset and their rating, raid bosses killed per difficulty, crests earned per type and delves done per tier, each with when it was last updated. A raider on two teams is read once. If one of Blizzard's replies fails, that part keeps what it last had instead of going blank. Nothing shows on the site yet (#1636).
+
+### Project
+
+- Revamp time log: #1636.
+
 ## [3.275.1] - 2026-11-15
 
 ### Project

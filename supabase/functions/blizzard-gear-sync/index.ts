@@ -63,6 +63,7 @@ import {
 import { bonusStepsFromRows, buildRows, type BonusStep } from './rows.ts';
 import { saveGear } from './save.ts';
 import { loadTierFloors } from './floors.ts';
+import { loadCrestStats, syncWeek, type ProfileAnswer } from './weekly.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -125,17 +126,53 @@ async function getBlizzardToken(clientId: string, clientSecret: string): Promise
 
 type EquipmentAnswer = { status: number; items: any[] | null };
 
-async function fetchEquipment(firstName: string, realm: string, token: string): Promise<EquipmentAnswer> {
+// One character profile endpoint ('equipment', 'encounters/raids', ...).
+async function fetchProfile(firstName: string, realm: string, endpoint: string, token: string): Promise<ProfileAnswer> {
   const url =
     'https://us.api.blizzard.com/profile/wow/character/' +
     encodeURIComponent(realmSlug(realm)) +
     '/' +
     encodeURIComponent(firstName.toLowerCase()) +
-    '/equipment?namespace=profile-us&locale=en_US';
+    '/' +
+    endpoint +
+    '?namespace=profile-us&locale=en_US';
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (!res.ok) return { status: res.status, items: null };
-  const data = await res.json();
-  return { status: res.status, items: data?.equipped_items || null };
+  return { status: res.status, data: res.ok ? await res.json() : null };
+}
+
+async function fetchEquipment(firstName: string, realm: string, token: string): Promise<EquipmentAnswer> {
+  const { status, data } = await fetchProfile(firstName, realm, 'equipment', token);
+  return { status, items: data?.equipped_items || null };
+}
+
+// What syncRoster needs for the weekly row (#1636): the service-role client
+// (only the syncs write character_weeks), the season's crest ids, and the
+// characters already done this run, so a raider on two teams is read once.
+type WeekContext = { db: SupabaseClient<any>; crestStats: Map<number, string>; done: Set<string> };
+
+async function syncCharacterWeek(
+  firstName: string,
+  realm: string,
+  nameRealm: string,
+  token: string,
+  week: WeekContext,
+  tally: Tally
+) {
+  const key = nameRealm.replace(/ /g, '').toLowerCase();
+  if (week.done.has(key)) return;
+  week.done.add(key);
+  const result = await syncWeek(
+    (endpoint) => fetchProfile(firstName, realm, endpoint, token),
+    week.db,
+    nameRealm,
+    week.crestStats,
+    new Date()
+  );
+  for (const r of result.refused) noteEquipmentStatus(tally, r.status, nameRealm + ' (' + r.endpoint + ')');
+  if (result.saveError) {
+    console.error('blizzard-gear-sync: weekly row save failed for', nameRealm, result.saveError);
+    noteError(tally, result.saveError);
+  }
 }
 
 async function syncRoster(
@@ -145,6 +182,7 @@ async function syncRoster(
   thresholds: Record<string, number> | null,
   token: string,
   bonusTracks: Map<number, BonusStep>,
+  week: WeekContext,
   tally: Tally
 ): Promise<void> {
   tally.players += players.length;
@@ -158,7 +196,11 @@ async function syncRoster(
       continue;
     }
 
-    const answer = await fetchEquipment(firstName, realm, token);
+    // The weekly row is read alongside the gear, so the run takes no longer.
+    const [answer] = await Promise.all([
+      fetchEquipment(firstName, realm, token),
+      syncCharacterWeek(firstName, realm, player.name_realm, token, week, tally)
+    ]);
     if (!answer.items) {
       if (answer.status >= 400) noteEquipmentStatus(tally, answer.status, player.name_realm);
       tally.skipped++;
@@ -232,6 +274,7 @@ Deno.serve(async (req) => {
       // data, the same for every team.
       const bonusTracks = await loadBonusTrackMap(supabase);
       const thresholds = await loadTierFloors(supabase);
+      const week: WeekContext = { db: supabase, crestStats: await loadCrestStats(supabase), done: new Set() };
       for (const team of teams || []) {
         tally.teams++;
         const { data: players, error: playersError } = await supabase
@@ -244,7 +287,7 @@ Deno.serve(async (req) => {
           noteError(tally, playersError.message);
           continue;
         }
-        await syncRoster(supabase, team.team_id, players || [], thresholds, token, bonusTracks, tally);
+        await syncRoster(supabase, team.team_id, players || [], thresholds, token, bonusTracks, week, tally);
       }
       return jsonResponse({ success: true, synced: tally.synced, skipped: tally.skipped });
     } catch (err) {
@@ -292,7 +335,8 @@ Deno.serve(async (req) => {
 
       const bonusTracks = await loadBonusTrackMap(supabase);
       const thresholds = await loadTierFloors(supabase);
-      await syncRoster(supabase, teamId, players || [], thresholds, token, bonusTracks, tally);
+      const week: WeekContext = { db: serviceClient(), crestStats: await loadCrestStats(supabase), done: new Set() };
+      await syncRoster(supabase, teamId, players || [], thresholds, token, bonusTracks, week, tally);
       return jsonResponse({ success: true, synced: tally.synced, skipped: tally.skipped });
     } catch (err) {
       noteError(tally, err);
