@@ -16,6 +16,7 @@ import { GeneralSettingsPage } from './settings/GeneralSettingsPage';
 import { SeasonSettingsPage } from './settings/SeasonSettingsPage';
 import { LootSettingsPage } from './settings/LootSettingsPage';
 import { DiscordSettingsPage } from './settings/DiscordSettingsPage';
+import { AuditPage } from './audit/AuditPage';
 import { AuditLogPage } from './settings/AuditLogPage';
 import { DangerZonePage } from './settings/DangerZonePage';
 import { GuildHomePage } from './guild/GuildHomePage';
@@ -54,6 +55,7 @@ export type RouteHandle = { title: string };
 // placeholder.
 const BUILT_PAGES: Record<string, ReactElement> = {
   roster: <RosterPage />,
+  audit: <AuditPage />,
   calendar: <CalendarPage />,
   me: <MyProfilePage />,
   'officer/priority': <PriorityPage />,

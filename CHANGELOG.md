@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.279.0] - 2026-11-15
+
+### Backend
+
+- Each raider's weekly row keeps their equipped item level and the highest item level they have ever had. The highest never goes down, so someone who logs out in PvP gear is not shown low (#1639).
+
+### Functions
+
+- The gear sync also reads each character's summary and saves their equipped item level on the weekly row (#1639).
+
+### Project
+
+- The new app has an Audit page in the Team menu that everyone on the team can open. It lists every raider by role (or armor, class, or no groups), with each group's average item level and how many need a look. Needs attention across the top names who has missing enchants, empty sockets, no epic gem, is below the team's Great Vault rule (only when one is set) or has not updated today. Each raider's row shows issues, item level (highest ever, with a switch to what they wear now), M+ rating, sparks, tier pieces by track, enchants and gems as counts, the Great Vault as a bar per slot, this week's M+ runs and bosses, and when they were last updated. A This week / Last week switch changes the vault, M+ and raid columns. Embellishments are information only, and low-quality gems are not flagged (#1639).
+- Opening a raider on the Audit page shows what to fix by slot, the Great Vault drawn as in game ("7 of 9 slots filled"), crests earned against their cap, and M+ runs with a This week / Last week switch (#1639).
+- My profile has a Your week card, phone-friendly: what to fix before raid, item level, M+, raid, crests and the Great Vault (#1639).
+
 ## [3.278.0] - 2026-11-15
 
 ### Backend

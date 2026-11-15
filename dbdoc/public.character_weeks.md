@@ -28,15 +28,19 @@ The roster audit's weekly row (#1635, #1261): one per character (name_realm_key,
 | embellishments | smallint |  | true |  |  |  |  |
 | sparks_used | smallint |  | true |  |  |  |  |
 | gear_at | timestamp with time zone |  | true |  |  |  |  |
+| item_level | smallint |  | true |  |  |  | The equipped item level at the week's last read (#1639). |
+| best_item_level | smallint |  | true |  |  |  | The highest item_level the character has had in any week (#1639), kept by character_weeks_keep_best_item_level() on every write; never goes down. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| character_weeks_best_item_level_check | CHECK | CHECK ((best_item_level > 0)) |
 | character_weeks_crests_check | CHECK | CHECK ((jsonb_typeof(crests) = 'object'::text)) |
 | character_weeks_delves_check | CHECK | CHECK ((jsonb_typeof(delves) = 'object'::text)) |
 | character_weeks_embellishments_check | CHECK | CHECK ((embellishments >= 0)) |
 | character_weeks_empty_sockets_check | CHECK | CHECK ((empty_sockets >= 0)) |
+| character_weeks_item_level_check | CHECK | CHECK ((item_level > 0)) |
 | character_weeks_missing_enchants_check | CHECK | CHECK ((missing_enchants >= 0)) |
 | character_weeks_mplus_rating_check | CHECK | CHECK ((mplus_rating >= (0)::numeric)) |
 | character_weeks_mplus_runs_check | CHECK | CHECK ((jsonb_typeof(mplus_runs) = 'array'::text)) |
@@ -58,6 +62,7 @@ The roster audit's weekly row (#1635, #1261): one per character (name_realm_key,
 | Name | Definition |
 | ---- | ---------- |
 | character_weeks_fill_vault | CREATE TRIGGER character_weeks_fill_vault BEFORE INSERT OR UPDATE ON public.character_weeks FOR EACH ROW EXECUTE FUNCTION character_weeks_fill_vault() |
+| character_weeks_keep_best_item_level | CREATE TRIGGER character_weeks_keep_best_item_level BEFORE INSERT OR UPDATE ON public.character_weeks FOR EACH ROW EXECUTE FUNCTION character_weeks_keep_best_item_level() |
 
 ## Relations
 
@@ -86,6 +91,8 @@ erDiagram
   smallint embellishments
   smallint sparks_used
   timestamp_with_time_zone gear_at
+  smallint item_level
+  smallint best_item_level
 }
 ```
 

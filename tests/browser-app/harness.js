@@ -278,6 +278,11 @@ export async function openApp(browser, port, state) {
     // performance-baseline count, empty unless a state lists them.
     raid_zones: [],
     player_wcl_season_perf: [],
+    // The audit page and My profile's week card (#1639): empty unless a state lists them.
+    character_weeks: [],
+    season_enchant_slots: [],
+    season_enchants: [],
+    season_gems: [],
     ...state.tables
   };
 

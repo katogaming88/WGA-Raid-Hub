@@ -92,6 +92,7 @@ export function navGroups(
       items: [
         { label: 'Home', icon: 'home', to: base.team, end: true },
         { label: 'Roster', icon: 'roster', to: `${base.team}/roster` },
+        { label: 'Audit', icon: 'chart', to: `${base.team}/audit` },
         { label: 'Calendar', icon: 'calendar', to: `${base.team}/calendar` },
         { label: 'Loot history', icon: 'loot', to: `${base.team}/loot` },
         { label: 'History', icon: 'clock', to: `${base.team}/history` },
@@ -284,6 +285,7 @@ function allMenu(o: string, council: boolean, recruitsWaiting: number): (NavItem
 // the page titles come from one list.
 export const TEAM_PAGES: Record<string, string> = {
   roster: 'Roster',
+  audit: 'Audit',
   calendar: 'Calendar',
   loot: 'Loot history',
   me: 'My profile',

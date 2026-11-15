@@ -134,6 +134,7 @@ Deno.test('every read working writes every part, with its time, into this week',
   const { db, upserts } = fakeDb();
   const result = await syncWeek(
     reader({
+      summary: { status: 200, data: { equipped_item_level: 721.4 } },
       'mythic-keystone-profile': { status: 200, data: MPLUS },
       'encounters/raids': { status: 200, data: RAIDS },
       'achievements/statistics': { status: 200, data: STATS }
@@ -151,6 +152,24 @@ Deno.test('every read working writes every part, with its time, into this week',
   assertEquals(row.name_realm, 'Katorri-Stormrage');
   for (const k of ['mplus_at', 'raids_at', 'crests_at', 'delves_at']) assertEquals(row[k], NOW.toISOString());
   assertEquals(row.crests, { Hero: 0, Myth: 750 });
+  // The equipped level is saved; the highest ever is the database's to keep.
+  assertEquals(row.item_level, 721);
+  assertEquals('best_item_level' in row, false);
+});
+
+Deno.test('a summary with no usable item level leaves it out of the write', async () => {
+  const { db, upserts } = fakeDb();
+  await syncWeek(
+    reader({
+      summary: { status: 200, data: { equipped_item_level: 0 } },
+      'encounters/raids': { status: 200, data: RAIDS }
+    }),
+    db,
+    'Katorri-Stormrage',
+    CRESTS,
+    NOW
+  );
+  assertEquals('item_level' in upserts[0].row, false);
 });
 
 Deno.test('a failed read leaves that part out of the write and records the refusal', async () => {

@@ -133,8 +133,8 @@ async function fetchProfile(firstName: string, realm: string, endpoint: string, 
     encodeURIComponent(realmSlug(realm)) +
     '/' +
     encodeURIComponent(firstName.toLowerCase()) +
-    '/' +
-    endpoint +
+    // 'summary' is the character's own address, with no endpoint after it.
+    (endpoint === 'summary' ? '' : '/' + endpoint) +
     '?namespace=profile-us&locale=en_US';
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   return { status: res.status, data: res.ok ? await res.json() : null };

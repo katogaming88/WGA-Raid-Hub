@@ -494,6 +494,7 @@ export type Database = {
       }
       character_weeks: {
         Row: {
+          best_item_level: number | null
           crests: Json
           crests_at: string | null
           delves: Json
@@ -502,6 +503,7 @@ export type Database = {
           empty_sockets: number | null
           epic_gem: boolean | null
           gear_at: string | null
+          item_level: number | null
           missing_enchants: number | null
           mplus_at: string | null
           mplus_rating: number | null
@@ -516,6 +518,7 @@ export type Database = {
           week_of: string
         }
         Insert: {
+          best_item_level?: number | null
           crests?: Json
           crests_at?: string | null
           delves?: Json
@@ -524,6 +527,7 @@ export type Database = {
           empty_sockets?: number | null
           epic_gem?: boolean | null
           gear_at?: string | null
+          item_level?: number | null
           missing_enchants?: number | null
           mplus_at?: string | null
           mplus_rating?: number | null
@@ -538,6 +542,7 @@ export type Database = {
           week_of: string
         }
         Update: {
+          best_item_level?: number | null
           crests?: Json
           crests_at?: string | null
           delves?: Json
@@ -546,6 +551,7 @@ export type Database = {
           empty_sockets?: number | null
           epic_gem?: boolean | null
           gear_at?: string | null
+          item_level?: number | null
           missing_enchants?: number | null
           mplus_at?: string | null
           mplus_rating?: number | null

@@ -2,8 +2,9 @@
 // M+ runs and rating, crests and delves for the current week, written to
 // public.character_weeks by the gear sync's own run, with its Blizzard login.
 //
-// * Three reads per character, run alongside the gear read: the M+ profile,
-//   the raid encounters, and the achievement statistics (crests and delves).
+// * Four reads per character, run alongside the gear read: the character
+//   summary (equipped item level, #1639), the M+ profile, the raid encounters,
+//   and the achievement statistics (crests and delves).
 // * Each part is written only when its own read worked, with its own *_at, so
 //   a failed read leaves that part of the row as it was and never blanks it.
 // * Crest statistic ids change every season and come from season_crests.
@@ -129,8 +130,8 @@ export async function syncWeek(
   const week = weekOf(now);
   const since = weekStartMs(week);
   const at = now.toISOString();
-  const [mplus, raids, stats] = await Promise.all(
-    ['mythic-keystone-profile', 'encounters/raids', 'achievements/statistics'].map((e) =>
+  const [summary, mplus, raids, stats] = await Promise.all(
+    ['summary', 'mythic-keystone-profile', 'encounters/raids', 'achievements/statistics'].map((e) =>
       read(e).catch(() => ({ status: 0, data: null }))
     )
   );
@@ -143,6 +144,12 @@ export async function syncWeek(
   };
 
   const row: Record<string, unknown> = { name_realm: nameRealm, week_of: week };
+  // The equipped item level; best_item_level (the highest ever) is the
+  // database's to keep, so a PvP-gear log-out never lowers it.
+  if (ok('summary', summary)) {
+    const level = Math.round(Number(summary.data.equipped_item_level));
+    if (level > 0 && level < 32000) row.item_level = level;
+  }
   if (ok('mythic-keystone-profile', mplus)) {
     const m = mplusFrom(mplus.data, since);
     Object.assign(row, { mplus_runs: m.runs, mplus_rating: m.rating, mplus_at: at });
