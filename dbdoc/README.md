@@ -389,6 +389,7 @@
 | public.my_audit_character_keys | _text |  | FUNCTION |
 | public.season_vault | jsonb | p_season text, p_raid_kills jsonb, p_mplus_runs jsonb, p_delves jsonb | FUNCTION |
 | public.character_weeks_fill_vault | trigger |  | FUNCTION |
+| public.set_team_audit_rules | jsonb | p_team_id integer, p_enchant_check text, p_vault_rule jsonb | FUNCTION |
 
 ## Enums
 

@@ -18134,6 +18134,12 @@
       "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_audit_rules",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer, p_enchant_check text, p_vault_rule jsonb",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

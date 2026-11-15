@@ -8,9 +8,10 @@ import { useStatus } from '../components/Status';
 import { errorMessage } from '../lib/errors';
 import { InviteLinkSection } from '../invite/InviteLinkPage';
 import { RankPermissionsSection, RanksSection } from './RanksSettingsPage';
-import { clampInt } from './settings';
+import { clampInt, ENCHANT_CHECKS, VAULT_ROWS, type EnchantCheck, type VaultRule } from './settings';
 import {
   useGeneralSettings,
+  useSaveAuditRules,
   useSaveRosterTargets,
   useSaveSeasonView,
   useSaveTrialThresholds,
@@ -21,7 +22,7 @@ import './settings.css';
 
 // Settings > General (#1357, #1735, #1824): the team's setup, one tab per area,
 // each with its own address like Guild settings. General holds the basics
-// (Warcraft Logs page, roster sizes, trial thresholds) for whoever can manage
+// (Warcraft Logs page, roster sizes, trial thresholds, roster audit rules) for whoever can manage
 // the team and the invite link for whoever can edit the roster; Ranks and Rank
 // Permissions are for whoever can promote assistants (who can also manage the team). A tab shows only to those
 // who can use it. Season View moved to Settings > Season (#1735), the Discord
@@ -74,6 +75,7 @@ function TeamBasics({ teamId }: { teamId: number }) {
           <WclUrlCard teamId={teamId} settings={settings} />
           <RosterTargetsCard teamId={teamId} settings={settings} />
           <TrialThresholdsCard teamId={teamId} settings={settings} />
+          <AuditRulesCard teamId={teamId} settings={settings} />
         </div>
       )}
     </DataState>
@@ -270,6 +272,79 @@ function WclUrlCard({ teamId, settings }: { teamId: number; settings: GeneralSet
           value={url}
           onChange={(e) => setUrl(e.target.value)}
         />
+        <button type="button" className="button button-primary" onClick={onSave} disabled={save.isPending}>
+          {save.isPending ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const NO_RULE: VaultRule = { raid: 0, dungeon: 0, world: 0 };
+
+// The roster audit's rules (#1638): how strict the enchant and gem check is,
+// and an optional weekly vault minimum. Everyone on the team sees the rule in
+// force on the audit's Enchants & gems tab.
+function AuditRulesCard({ teamId, settings }: { teamId: number; settings: GeneralSettings }) {
+  const { announce } = useStatus();
+  const [check, setCheck] = useState<EnchantCheck>(settings.enchantCheck);
+  const [vault, setVault] = useState<VaultRule>(settings.vaultRule ?? NO_RULE);
+  const save = useSaveAuditRules(teamId);
+  const none = !vault.raid && !vault.dungeon && !vault.world;
+
+  const onSave = () =>
+    save.mutate(
+      { enchantCheck: check, vaultRule: none ? null : vault },
+      { onSuccess: () => announce('success', 'Saved!'), onError: (error) => announce('error', errorMessage(error)) }
+    );
+
+  return (
+    <div className="card settings-card">
+      <h2>Roster audit</h2>
+      <fieldset className="audit-rules-fieldset">
+        <legend className="field-label">Enchant and gem check</legend>
+        <p className="text-muted">In all three, enchants and gems must be from the current expansion.</p>
+        <div className="audit-checks">
+          {ENCHANT_CHECKS.map((option) => (
+            <label key={option.id} className="audit-check">
+              <input
+                type="radio"
+                name="enchant-check"
+                value={option.id}
+                checked={check === option.id}
+                onChange={() => setCheck(option.id)}
+              />
+              <strong>{option.name}</strong>
+              <span className="text-muted">{option.description}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset className="audit-rules-fieldset">
+        <legend className="field-label">Vault rule</legend>
+        <p className="text-muted">
+          The fewest Great Vault slots each raider should fill every week. The audit shows and counts it only once one
+          is set.
+        </p>
+        <div className="settings-row">
+          {VAULT_ROWS.map((row) => (
+            <label key={row.id} className="settings-row">
+              <span className="text-muted">{row.name}</span>
+              <select
+                className="select"
+                value={vault[row.id]}
+                onChange={(e) => setVault({ ...vault, [row.id]: Number(e.target.value) })}
+              >
+                <option value={0}>No minimum</option>
+                <option value={1}>1 slot</option>
+                <option value={2}>2 slots</option>
+                <option value={3}>3 slots</option>
+              </select>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <div className="settings-row">
         <button type="button" className="button button-primary" onClick={onSave} disabled={save.isPending}>
           {save.isPending ? 'Saving…' : 'Save'}
         </button>

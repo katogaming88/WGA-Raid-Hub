@@ -124,6 +124,61 @@ describe('General settings', () => {
   });
 });
 
+describe('Roster audit rules (#1638)', () => {
+  const generalWith = (config: Record<string, unknown>) =>
+    officerHandlers({
+      from: (read) =>
+        read.table === 'team_settings' ? { data: config } : read.table === 'raid_zones' ? { data: [] } : undefined,
+      rpc: (name, args) => {
+        if (name === 'set_team_audit_rules') {
+          calls.push(args);
+          return { data: {} };
+        }
+        return undefined;
+      }
+    });
+  let calls: unknown[] = [];
+
+  it('a team that never saved is Lenient with no vault rule', async () => {
+    calls = [];
+    renderApp('/g/wga/t/phoenix/officer/settings', generalWith({}));
+    await screen.findByRole('heading', { name: 'Roster audit' });
+    expect(screen.getByRole('radio', { name: /Lenient/ })).toBeChecked();
+    for (const row of ['Raid', 'Dungeons', 'World']) {
+      expect(screen.getByRole('combobox', { name: row })).toHaveValue('0');
+    }
+  });
+
+  it('shows the saved rules and saves a change', async () => {
+    calls = [];
+    renderApp('/g/wga/t/phoenix/officer/settings', generalWith({ enchantCheck: 'casual', vaultRule: { dungeon: 1 } }));
+    await screen.findByRole('heading', { name: 'Roster audit' });
+    expect(screen.getByRole('radio', { name: /Casual/ })).toBeChecked();
+    expect(screen.getByRole('combobox', { name: 'Dungeons' })).toHaveValue('1');
+    await userEvent.click(screen.getByRole('radio', { name: /Strict/ }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Raid' }), '2');
+    const card = screen.getByRole('heading', { name: 'Roster audit' }).closest('.settings-card')!;
+    await userEvent.click(within(card as HTMLElement).getByRole('button', { name: 'Save' }));
+    await expect.poll(() => calls.length).toBe(1);
+    expect(calls[0]).toEqual({
+      p_team_id: 1,
+      p_enchant_check: 'strict',
+      p_vault_rule: { raid: 2, dungeon: 1, world: 0 }
+    });
+  });
+
+  it('every row back at No minimum saves no rule', async () => {
+    calls = [];
+    renderApp('/g/wga/t/phoenix/officer/settings', generalWith({ vaultRule: { world: 3 } }));
+    await screen.findByRole('heading', { name: 'Roster audit' });
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'World' }), '0');
+    const card = screen.getByRole('heading', { name: 'Roster audit' }).closest('.settings-card')!;
+    await userEvent.click(within(card as HTMLElement).getByRole('button', { name: 'Save' }));
+    await expect.poll(() => calls.length).toBe(1);
+    expect(calls[0]).toMatchObject({ p_enchant_check: 'lenient', p_vault_rule: null });
+  });
+});
+
 describe('General settings for roster editing only (#1735)', () => {
   it('shows just the Invite link section', async () => {
     renderApp(

@@ -3670,3 +3670,17 @@ Shipped: `20261115112744_great_vault.sql`.
 **The addon's vault (#1440) needs its own column.** This trigger rewrites `vault` on every write, so "the addon's exact vault wins" means a separate column the page prefers.
 
 [Full discussion -> #1637](https://github.com/katogaming88/WGA-Raid-Hub/issues/1637).
+
+## #1638 -- team audit rules: how strict the enchant and gem check is, and an optional vault rule
+
+Shipped: `20261115124701_set_team_audit_rules.sql`.
+
+**On `team_settings.config`, not a table.** `enchantCheck` is `strict`, `lenient` or `casual`; `vaultRule` is the fewest slots each Great Vault row must have filled that week, `{raid, dungeon, world}` with 0 to 3 each, or null for no rule. One value per team, read like every other team setting (public read), so everyone on the team sees the rule in force.
+
+**A team that never saved is Lenient with no vault rule.** Readers default it; nothing is backfilled. All three rows at 0 is stored as null, so the audit shows and counts a vault rule only once one is set.
+
+**Officers, not only the Team Owner.** `set_team_setting()` follows `team_settings`' write rule (Team Owner), so the audit rules get their own SECURITY DEFINER function, `set_team_audit_rules()`, like `set_loot_responses()`. It asks `promote_assistants`, the permission that opens Settings in the new app (Officer by default). The issue also named the guild's officers; since #1647 (Kat, 2026-10-28) a guild officer reads every team but writes only on a team they hold a rank on, so this follows that.
+
+**Per team only.** #1261 called the vault rule "a team or guild setting". There is no guild-wide default yet; a guild that wants one rule sets it on each team.
+
+[Full discussion -> #1638](https://github.com/katogaming88/WGA-Raid-Hub/issues/1638).
