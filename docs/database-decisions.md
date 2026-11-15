@@ -3619,11 +3619,15 @@ Shipped: `20261114230843_audit_season_settings.sql`.
 
 Shipped: `20261114234825_character_weeks.sql`.
 
-**One row per character per week, as #1261 decided (2026-10-24).** `character_weeks` is keyed on `name_realm_key`, the generated key `players` and `characters` already share, so a raider on two teams is one row and a roster character whose person never imported is still covered; and on `week_of`, the reset Tuesday (a check refuses any other day). The syncs update the current week's row; last week's stays as last written.
+**One row per character per week, as #1261 decided (2026-10-24).** `character_weeks` is keyed on `name_realm_key`, generated from `name_realm` by the same formula `players` and `characters` use (so a sync can't save a key that matches no character, the fresh-agent review's catch), so a raider on two teams is one row and a roster character whose person never imported is still covered; and on `week_of`, the reset Tuesday (a check refuses any other day). The syncs update the current week's row; last week's stays as last written.
 
-**Lists as jsonb, counts as columns.** Raid kills, M+ runs, delves by tier, crests by track and the vault are jsonb (each checked to be an array or an object), since their shape follows the season and #1636 and #1637 fill them; the gear counts (missing enchants, empty sockets, epic gem, embellishments, sparks) are plain columns the Summary sorts and totals. Each part has its own `*_at`, so the page can say how fresh it is and a part never synced reads null rather than zero.
+**Lists as jsonb, counts as columns.** Raid kills, M+ runs, delves by tier, crests by track and the vault are jsonb (each checked to be an array or an object), since their shape follows the season and #1636 and #1637 fill them; the gear counts (missing enchants, empty sockets, epic gem, embellishments, sparks) are plain columns the Summary sorts and totals. Each part has its own `*_at`, so the page can say how fresh it is and a part never synced reads null rather than zero. Delves, like crests, are season running totals from the character statistics; a week's count is that row less the week before.
 
 **Who reads it.** `my_audit_character_keys()` (security definer, empty when signed out) lists the keys of active roster characters on any team the caller is an active member of, on any team their guild rank sees (`view_every_team`), and of their own characters, imported from Battle.net or a roster row of theirs. The rule is that list or a site admin. A character that leaves the roster drops out of its old team's audit; its owner still sees it. Membership comes from `team_members`, not the caller's own roster rows, so an officer with no character on the team still reads it.
+
+**US only, for now.** The Tuesday check and a key with no region fit a US guild; an EU guild (Wednesday reset, and realms like Stormrage in both regions) needs both changed.
+
+**Older weeks behind the team plan (#1642) are the page's job for now.** The rule lets anyone who reads a character read all its weeks. If #1642 wants the line held in the database, it adds it here, and a character on one team with the plan and one without needs a decision then.
 
 **Only the syncs write it.** `revoke all`, then `select` to authenticated and `select, insert, update` to service_role; no delete for anyone. Signed-out callers have no grant at all.
 

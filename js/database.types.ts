@@ -529,7 +529,7 @@ export type Database = {
           mplus_rating?: number | null
           mplus_runs?: Json
           name_realm: string
-          name_realm_key: string
+          name_realm_key?: string
           raid_kills?: Json
           raids_at?: string | null
           sparks_used?: number | null

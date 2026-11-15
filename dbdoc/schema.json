@@ -13479,20 +13479,21 @@
       "comment": "The roster audit's weekly row (#1635, #1261): one per character (name_realm_key, as on players and characters) per week (week_of, the reset Tuesday). Each sync updates the current week's row; older weeks stay as last written. Each part carries when it was last written. Read by the character's teams and owner; written only by the syncs.",
       "columns": [
         {
-          "name": "name_realm_key",
+          "name": "name_realm",
           "type": "text",
           "nullable": false
+        },
+        {
+          "name": "name_realm_key",
+          "type": "text",
+          "nullable": false,
+          "extra_def": "GENERATED ALWAYS AS lower(replace(name_realm, ' '::text, ''::text)) STORED"
         },
         {
           "name": "week_of",
           "type": "date",
           "nullable": false,
           "comment": "The reset Tuesday the week starts on."
-        },
-        {
-          "name": "name_realm",
-          "type": "text",
-          "nullable": false
         },
         {
           "name": "raid_kills",
@@ -13677,16 +13678,6 @@
           "referenced_table": "",
           "columns": [
             "name_realm"
-          ]
-        },
-        {
-          "name": "character_weeks_name_realm_key_check",
-          "type": "CHECK",
-          "def": "CHECK (((name_realm_key ~ '\\S'::text) AND (name_realm_key = lower(replace(name_realm_key, ' '::text, ''::text)))))",
-          "table": "public.character_weeks",
-          "referenced_table": "",
-          "columns": [
-            "name_realm_key"
           ]
         },
         {

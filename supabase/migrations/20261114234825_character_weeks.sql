@@ -5,7 +5,8 @@
 --   generated key), so a raider on two teams is stored once and a roster
 --   character whose person never imported from Battle.net is covered.
 -- * A week is named by its reset date, the Tuesday it starts (week_of).
---   Blizzard's weekly period number is worked out from it where needed.
+--   Blizzard's weekly period number is worked out from it where needed. US
+--   only for now: an EU guild resets on Wednesday, and the key has no region.
 -- * Each sync updates the current week's row; after the reset a new row
 --   starts and last week's stays as last written.
 -- * It holds raid kills, M+ runs and rating, delves by tier, crests earned per
@@ -18,9 +19,11 @@
 -- that team, and site admins. Only the syncs write it (service_role).
 
 create table public.character_weeks (
-  name_realm_key text not null check (name_realm_key ~ '\S' and name_realm_key = lower(replace(name_realm_key, ' ', ''))),
-  week_of date not null check (extract(isodow from week_of) = 2),
   name_realm text not null check (name_realm ~ '\S'),
+  -- Built from name_realm exactly as players and characters build theirs, so
+  -- a sync can't save a key that matches no character.
+  name_realm_key text generated always as (lower(replace(name_realm, ' ', ''))) stored,
+  week_of date not null check (extract(isodow from week_of) = 2),
   -- [{"encounter_id": 3176, "difficulty": "mythic"}, ...]
   raid_kills jsonb not null default '[]' check (jsonb_typeof(raid_kills) = 'array'),
   raids_at timestamp with time zone,
@@ -28,7 +31,8 @@ create table public.character_weeks (
   mplus_runs jsonb not null default '[]' check (jsonb_typeof(mplus_runs) = 'array'),
   mplus_rating numeric(6, 1) check (mplus_rating >= 0),
   mplus_at timestamp with time zone,
-  -- {"8": 4, "11": 2}: delves done this week by tier
+  -- {"8": 40, "11": 12}: delves done this season by tier, a running total
+  -- like crests; this week's is this row less last week's
   delves jsonb not null default '{}' check (jsonb_typeof(delves) = 'object'),
   delves_at timestamp with time zone,
   -- {"Myth": 180, "Hero": 90}: crests earned this season, by season_crests.track

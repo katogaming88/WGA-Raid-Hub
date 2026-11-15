@@ -1647,9 +1647,9 @@ erDiagram
   date caps_lifted_on
 }
 "public.character_weeks" {
+  text name_realm
   text name_realm_key
   date week_of
-  text name_realm
   jsonb raid_kills
   timestamp_with_time_zone raids_at
   jsonb mplus_runs

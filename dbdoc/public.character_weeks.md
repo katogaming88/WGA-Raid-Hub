@@ -6,28 +6,28 @@ The roster audit's weekly row (#1635, #1261): one per character (name_realm_key,
 
 ## Columns
 
-| Name | Type | Default | Nullable | Children | Parents | Comment |
-| ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| name_realm_key | text |  | false |  |  |  |
-| week_of | date |  | false |  |  | The reset Tuesday the week starts on. |
-| name_realm | text |  | false |  |  |  |
-| raid_kills | jsonb | '[]'::jsonb | false |  |  |  |
-| raids_at | timestamp with time zone |  | true |  |  |  |
-| mplus_runs | jsonb | '[]'::jsonb | false |  |  |  |
-| mplus_rating | numeric(6,1) |  | true |  |  |  |
-| mplus_at | timestamp with time zone |  | true |  |  |  |
-| delves | jsonb | '{}'::jsonb | false |  |  |  |
-| delves_at | timestamp with time zone |  | true |  |  |  |
-| crests | jsonb | '{}'::jsonb | false |  |  | Crests earned this season by track (season_crests.track), from the character statistics season_crests.statistic_id names. |
-| crests_at | timestamp with time zone |  | true |  |  |  |
-| vault | jsonb | '{}'::jsonb | false |  |  |  |
-| vault_at | timestamp with time zone |  | true |  |  |  |
-| missing_enchants | smallint |  | true |  |  | Gear counts at the week's last gear sync (#1634): enchantable slots without a current-expansion enchant, empty sockets, whether an epic gem is worn, embellishments and sparks used. |
-| empty_sockets | smallint |  | true |  |  |  |
-| epic_gem | boolean |  | true |  |  |  |
-| embellishments | smallint |  | true |  |  |  |
-| sparks_used | smallint |  | true |  |  |  |
-| gear_at | timestamp with time zone |  | true |  |  |  |
+| Name | Type | Default | Nullable | Extra Definition | Children | Parents | Comment |
+| ---- | ---- | ------- | -------- | ---------------- | -------- | ------- | ------- |
+| name_realm | text |  | false |  |  |  |  |
+| name_realm_key | text |  | false | GENERATED ALWAYS AS lower(replace(name_realm, ' '::text, ''::text)) STORED |  |  |  |
+| week_of | date |  | false |  |  |  | The reset Tuesday the week starts on. |
+| raid_kills | jsonb | '[]'::jsonb | false |  |  |  |  |
+| raids_at | timestamp with time zone |  | true |  |  |  |  |
+| mplus_runs | jsonb | '[]'::jsonb | false |  |  |  |  |
+| mplus_rating | numeric(6,1) |  | true |  |  |  |  |
+| mplus_at | timestamp with time zone |  | true |  |  |  |  |
+| delves | jsonb | '{}'::jsonb | false |  |  |  |  |
+| delves_at | timestamp with time zone |  | true |  |  |  |  |
+| crests | jsonb | '{}'::jsonb | false |  |  |  | Crests earned this season by track (season_crests.track), from the character statistics season_crests.statistic_id names. |
+| crests_at | timestamp with time zone |  | true |  |  |  |  |
+| vault | jsonb | '{}'::jsonb | false |  |  |  |  |
+| vault_at | timestamp with time zone |  | true |  |  |  |  |
+| missing_enchants | smallint |  | true |  |  |  | Gear counts at the week's last gear sync (#1634): enchantable slots without a current-expansion enchant, empty sockets, whether an epic gem is worn, embellishments and sparks used. |
+| empty_sockets | smallint |  | true |  |  |  |  |
+| epic_gem | boolean |  | true |  |  |  |  |
+| embellishments | smallint |  | true |  |  |  |  |
+| sparks_used | smallint |  | true |  |  |  |  |
+| gear_at | timestamp with time zone |  | true |  |  |  |  |
 
 ## Constraints
 
@@ -41,7 +41,6 @@ The roster audit's weekly row (#1635, #1261): one per character (name_realm_key,
 | character_weeks_mplus_rating_check | CHECK | CHECK ((mplus_rating >= (0)::numeric)) |
 | character_weeks_mplus_runs_check | CHECK | CHECK ((jsonb_typeof(mplus_runs) = 'array'::text)) |
 | character_weeks_name_realm_check | CHECK | CHECK ((name_realm ~ '\S'::text)) |
-| character_weeks_name_realm_key_check | CHECK | CHECK (((name_realm_key ~ '\S'::text) AND (name_realm_key = lower(replace(name_realm_key, ' '::text, ''::text))))) |
 | character_weeks_raid_kills_check | CHECK | CHECK ((jsonb_typeof(raid_kills) = 'array'::text)) |
 | character_weeks_sparks_used_check | CHECK | CHECK ((sparks_used >= 0)) |
 | character_weeks_vault_check | CHECK | CHECK ((jsonb_typeof(vault) = 'object'::text)) |
@@ -61,9 +60,9 @@ erDiagram
 
 
 "public.character_weeks" {
+  text name_realm
   text name_realm_key
   date week_of
-  text name_realm
   jsonb raid_kills
   timestamp_with_time_zone raids_at
   jsonb mplus_runs
