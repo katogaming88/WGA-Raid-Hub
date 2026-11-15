@@ -1,12 +1,12 @@
 {
-  "version": "3.276.0",
+  "version": "3.277.0",
   "pieces": {
     "frontend": "3.233.0",
-    "db": "3.275.0",
+    "db": "3.277.0",
     "bot": "3.225.0",
     "functions": {
       "battlenet-characters": "3.255.0",
-      "blizzard-gear-sync": "3.276.0",
+      "blizzard-gear-sync": "3.277.0",
       "boe-sold-webhook": "3.229.0",
       "boe-webhook": "3.237.0",
       "character-stats": "3.264.0",

@@ -3511,6 +3511,135 @@ export type Database = {
           },
         ]
       }
+      season_track_steps: {
+        Row: {
+          item_level: number
+          rank: number
+          season: string
+          track: string
+        }
+        Insert: {
+          item_level: number
+          rank: number
+          season: string
+          track: string
+        }
+        Update: {
+          item_level?: number
+          rank?: number
+          season?: string
+          track?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_track_steps_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      season_vault_raids: {
+        Row: {
+          instance_id: number
+          name: string
+          season: string
+        }
+        Insert: {
+          instance_id: number
+          name: string
+          season: string
+        }
+        Update: {
+          instance_id?: number
+          name?: string
+          season?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_vault_raids_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      season_vault_rewards: {
+        Row: {
+          difficulty: string | null
+          encounter_id: number | null
+          from_level: number | null
+          rank: number
+          season: string
+          track: string
+          vault_row: string
+        }
+        Insert: {
+          difficulty?: string | null
+          encounter_id?: number | null
+          from_level?: number | null
+          rank: number
+          season: string
+          track: string
+          vault_row: string
+        }
+        Update: {
+          difficulty?: string | null
+          encounter_id?: number | null
+          from_level?: number | null
+          rank?: number
+          season?: string
+          track?: string
+          vault_row?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_vault_rewards_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "season_vault_rewards_season_track_rank_fkey"
+            columns: ["season", "track", "rank"]
+            isOneToOne: false
+            referencedRelation: "season_track_steps"
+            referencedColumns: ["season", "track", "rank"]
+          },
+        ]
+      }
+      season_vault_slots: {
+        Row: {
+          needs: number
+          season: string
+          slot: number
+          vault_row: string
+        }
+        Insert: {
+          needs: number
+          season: string
+          slot: number
+          vault_row: string
+        }
+        Update: {
+          needs?: number
+          season?: string
+          slot?: number
+          vault_row?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_vault_slots_season_fkey"
+            columns: ["season"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       seasons: {
         Row: {
           code: string
@@ -6242,6 +6371,15 @@ export type Database = {
       season_enchant_slots_on: {
         Args: { p_day: string; p_season: string }
         Returns: string[]
+      }
+      season_vault: {
+        Args: {
+          p_delves: Json
+          p_mplus_runs: Json
+          p_raid_kills: Json
+          p_season: string
+        }
+        Returns: Json
       }
       send_application: {
         Args: {

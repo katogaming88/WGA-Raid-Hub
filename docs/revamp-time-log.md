@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 21 h 1 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 21 h 57 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **192 h 57 m** |             |
+| **All revamp work**                | **193 h 53 m** |             |
 
 ### By area
 
@@ -30,7 +30,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | --- | --- | ---: | ---: |
 | Tester fixes | Phase 2 | 2 h 30 m | ~2 h |
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
-| The roster audit and reports | Phase 2 | 2 h 30 m | ~9 h 50 m |
+| The roster audit and reports | Phase 2 | 3 h 26 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
@@ -746,6 +746,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:05-10:30 AM | PR #1837 (#1634) after it opened: CodeRabbit's one finding (Myth's lone rank 9, the Mythic bosses' special drop, made every Myth item read x/9) fixed by taking the unbroken run of steps from 1, the special drop kept as 9/6 and the migration's check loosened to match; the fresh-agent migration review (approve, two nice-to-haves: a season without a step 1 falls back to its highest step, the PR's test count) both done; the local backup restored twice | Phase 2: Before the new site goes live / The roster audit and reports (#1634) | 25 m | build; Kat's CodeRabbit trigger, merge not yet counted | 194,000 | Added 2026-11-15. Tokens include the fresh agent's 81,796. |
 | 10:40-10:55 AM | #1840 and #1841 from a tester: the BiS List card showed the first self-reported copy, not the best (a Heroic mark then a Mythic one still read Heroic, and the button refused the Mythic again); fixed to match the current site, test red first; raiders can't undo a mark, Kat chose to let them (#1841, not started); both issues filed, stamp, changelog, this row, preflight; PR | Phase 2: Before the new site goes live / Tester fixes (#1840) | 15 m | build; Kat's answer, review and merge not yet counted | 105,000 | Added 2026-11-15. |
 | 10:58-11:13 AM | #1636: the gear sync also writes each character's weekly row: M+ runs since the reset and rating, raid kills per boss and difficulty, crests by the season's statistic ids and delves by tier, each part only when its own read worked and with its own time; three reads alongside the gear read so the run takes no longer, a raider on two teams read once; Edge Function tests (week rollover, failed read); parsers checked against live Blizzard replies; stamp, changelog, this row; PR | Phase 2: Before the new site goes live / The roster audit and reports (#1636) | 15 m | build; review and merge not yet counted | 110,000 | Added 2026-11-15. |
+| 11:16-11:35 AM | #1636's merge, cleanup and #1487; #1637: the Great Vault worked out from the weekly row: Season 2's vault rewards researched (guides disagreed; Kat's in-game chart settled it, Hero 4/6 = 315), Blizzard's raid ids found to be journal ids not WCL's, Kat's answers (Myth 9/6 counts, both raids, World is delves only); four season tables, `season_vault()` and a trigger on `character_weeks`, the sync saves each kill's raid; database tests red first, generated docs, RLS.md, decision log, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / The roster audit and reports (#1637) | 19 m | build; Kat's in-game check not split | 150,000 | Added 2026-11-15. |
+| 11:40 AM-12:17 PM | PR #1844 (#1637) after it opened: CodeRabbit's four findings (a boss counts once at its best difficulty, unread delves are no baseline either week, kills saved without their raid leave Raid unknown; best-run-per-dungeon answered as the known limit); the fresh-agent migration review (changes needed: the backup doc's tables, count and trigger; nice-to-haves all done: `season_vault()` for service_role only, non-whole delves skipped, trigger tests as service_role with a raids-only upsert, doc wording, the addon's vault in its own column); tests red first for each, local migration re-applied | Phase 2: Before the new site goes live / The roster audit and reports (#1637) | 37 m | build; Kat's CodeRabbit trigger and merge not split | 245,000 | Added 2026-11-15. Tokens include the fresh agent's 125,059. |
 
 ## Not counted (same sessions, not revamp)
 

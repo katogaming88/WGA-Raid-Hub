@@ -13579,7 +13579,8 @@
           "name": "raid_kills",
           "type": "jsonb",
           "nullable": false,
-          "default": "'[]'::jsonb"
+          "default": "'[]'::jsonb",
+          "comment": "Bosses killed this week: [{\"encounter_id\": 2888, \"instance_id\": 1320, \"difficulty\": \"mythic\"}, ...], Blizzard journal ids. instance_id from #1637 on."
         },
         {
           "name": "raids_at",
@@ -13629,7 +13630,8 @@
           "name": "vault",
           "type": "jsonb",
           "nullable": false,
-          "default": "'{}'::jsonb"
+          "default": "'{}'::jsonb",
+          "comment": "The Great Vault worked out from this row (#1637, season_vault()): per row (raid, dungeon, world) its three slots. World is null unless both this week's and the week before's delves were read; Raid is null while a kill lacks its instance_id."
         },
         {
           "name": "vault_at",
@@ -13809,6 +13811,438 @@
           "columns": [
             "name_realm_key",
             "week_of"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "character_weeks_fill_vault",
+          "def": "CREATE TRIGGER character_weeks_fill_vault BEFORE INSERT OR UPDATE ON public.character_weeks FOR EACH ROW EXECUTE FUNCTION character_weeks_fill_vault()"
+        }
+      ]
+    },
+    {
+      "name": "public.season_track_steps",
+      "type": "BASE TABLE",
+      "comment": "Each upgrade step's item level in a season (#1637), e.g. MID2 Hero 4 = 315. Myth 9 is the special step the last Mythic bosses drop. Added by migration.",
+      "columns": [
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "track",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "rank",
+          "type": "smallint",
+          "nullable": false
+        },
+        {
+          "name": "item_level",
+          "type": "smallint",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "season_track_steps_pkey",
+          "def": "CREATE UNIQUE INDEX season_track_steps_pkey ON public.season_track_steps USING btree (season, track, rank)",
+          "table": "public.season_track_steps",
+          "columns": [
+            "season",
+            "track",
+            "rank"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "season_track_steps_item_level_check",
+          "type": "CHECK",
+          "def": "CHECK ((item_level \u003e 0))",
+          "table": "public.season_track_steps",
+          "referenced_table": "",
+          "columns": [
+            "item_level"
+          ]
+        },
+        {
+          "name": "season_track_steps_rank_check",
+          "type": "CHECK",
+          "def": "CHECK ((rank \u003e 0))",
+          "table": "public.season_track_steps",
+          "referenced_table": "",
+          "columns": [
+            "rank"
+          ]
+        },
+        {
+          "name": "season_track_steps_track_check",
+          "type": "CHECK",
+          "def": "CHECK ((track = ANY (ARRAY['Adventurer'::text, 'Veteran'::text, 'Champion'::text, 'Hero'::text, 'Myth'::text])))",
+          "table": "public.season_track_steps",
+          "referenced_table": "",
+          "columns": [
+            "track"
+          ]
+        },
+        {
+          "name": "season_track_steps_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.season_track_steps",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "season_track_steps_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (season, track, rank)",
+          "table": "public.season_track_steps",
+          "referenced_table": "",
+          "columns": [
+            "season",
+            "track",
+            "rank"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.season_vault_slots",
+      "type": "BASE TABLE",
+      "comment": "How many runs fill each Great Vault slot in a season (#1637): raid bosses, keys, or delves. Added by migration.",
+      "columns": [
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "vault_row",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "slot",
+          "type": "smallint",
+          "nullable": false
+        },
+        {
+          "name": "needs",
+          "type": "smallint",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "season_vault_slots_pkey",
+          "def": "CREATE UNIQUE INDEX season_vault_slots_pkey ON public.season_vault_slots USING btree (season, vault_row, slot)",
+          "table": "public.season_vault_slots",
+          "columns": [
+            "season",
+            "vault_row",
+            "slot"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "season_vault_slots_needs_check",
+          "type": "CHECK",
+          "def": "CHECK ((needs \u003e 0))",
+          "table": "public.season_vault_slots",
+          "referenced_table": "",
+          "columns": [
+            "needs"
+          ]
+        },
+        {
+          "name": "season_vault_slots_slot_check",
+          "type": "CHECK",
+          "def": "CHECK (((slot \u003e= 1) AND (slot \u003c= 3)))",
+          "table": "public.season_vault_slots",
+          "referenced_table": "",
+          "columns": [
+            "slot"
+          ]
+        },
+        {
+          "name": "season_vault_slots_vault_row_check",
+          "type": "CHECK",
+          "def": "CHECK ((vault_row = ANY (ARRAY['raid'::text, 'dungeon'::text, 'world'::text])))",
+          "table": "public.season_vault_slots",
+          "referenced_table": "",
+          "columns": [
+            "vault_row"
+          ]
+        },
+        {
+          "name": "season_vault_slots_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.season_vault_slots",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "season_vault_slots_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (season, vault_row, slot)",
+          "table": "public.season_vault_slots",
+          "referenced_table": "",
+          "columns": [
+            "season",
+            "vault_row",
+            "slot"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.season_vault_rewards",
+      "type": "BASE TABLE",
+      "comment": "What a run offers in the Great Vault in a season (#1637). Raid: by kill difficulty, and encounter_id (Blizzard journal id) for a boss with its own reward. Dungeon: a key from from_level up. World: a delve from tier from_level up. Added by migration.",
+      "columns": [
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "vault_row",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "difficulty",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "encounter_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "from_level",
+          "type": "smallint",
+          "nullable": true
+        },
+        {
+          "name": "track",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "rank",
+          "type": "smallint",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "season_vault_rewards_unique",
+          "def": "CREATE UNIQUE INDEX season_vault_rewards_unique ON public.season_vault_rewards USING btree (season, vault_row, difficulty, encounter_id, from_level) NULLS NOT DISTINCT",
+          "table": "public.season_vault_rewards",
+          "columns": [
+            "season",
+            "vault_row",
+            "difficulty",
+            "encounter_id",
+            "from_level"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "season_vault_rewards_difficulty_check",
+          "type": "CHECK",
+          "def": "CHECK ((difficulty = ANY (ARRAY['lfr'::text, 'normal'::text, 'heroic'::text, 'mythic'::text])))",
+          "table": "public.season_vault_rewards",
+          "referenced_table": "",
+          "columns": [
+            "difficulty"
+          ]
+        },
+        {
+          "name": "season_vault_rewards_encounter_id_check",
+          "type": "CHECK",
+          "def": "CHECK ((encounter_id \u003e 0))",
+          "table": "public.season_vault_rewards",
+          "referenced_table": "",
+          "columns": [
+            "encounter_id"
+          ]
+        },
+        {
+          "name": "season_vault_rewards_from_level_check",
+          "type": "CHECK",
+          "def": "CHECK ((from_level \u003e 0))",
+          "table": "public.season_vault_rewards",
+          "referenced_table": "",
+          "columns": [
+            "from_level"
+          ]
+        },
+        {
+          "name": "season_vault_rewards_key",
+          "type": "CHECK",
+          "def": "CHECK (\nCASE vault_row\n    WHEN 'raid'::text THEN ((difficulty IS NOT NULL) AND (from_level IS NULL))\n    ELSE ((difficulty IS NULL) AND (encounter_id IS NULL) AND (from_level IS NOT NULL))\nEND)",
+          "table": "public.season_vault_rewards",
+          "referenced_table": "",
+          "columns": [
+            "vault_row",
+            "difficulty",
+            "from_level",
+            "encounter_id"
+          ]
+        },
+        {
+          "name": "season_vault_rewards_vault_row_check",
+          "type": "CHECK",
+          "def": "CHECK ((vault_row = ANY (ARRAY['raid'::text, 'dungeon'::text, 'world'::text])))",
+          "table": "public.season_vault_rewards",
+          "referenced_table": "",
+          "columns": [
+            "vault_row"
+          ]
+        },
+        {
+          "name": "season_vault_rewards_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.season_vault_rewards",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "season_vault_rewards_season_track_rank_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season, track, rank) REFERENCES season_track_steps(season, track, rank)",
+          "table": "public.season_vault_rewards",
+          "referenced_table": "public.season_track_steps",
+          "columns": [
+            "season",
+            "track",
+            "rank"
+          ],
+          "referenced_columns": [
+            "season",
+            "track",
+            "rank"
+          ]
+        },
+        {
+          "name": "season_vault_rewards_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE NULLS NOT DISTINCT (season, vault_row, difficulty, encounter_id, from_level)",
+          "table": "public.season_vault_rewards",
+          "referenced_table": "",
+          "columns": [
+            "season",
+            "vault_row",
+            "difficulty",
+            "encounter_id",
+            "from_level"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.season_vault_raids",
+      "type": "BASE TABLE",
+      "comment": "The raids whose kills fill Raid vault slots in a season (#1637), by Blizzard journal instance id. Added by migration.",
+      "columns": [
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "instance_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "season_vault_raids_pkey",
+          "def": "CREATE UNIQUE INDEX season_vault_raids_pkey ON public.season_vault_raids USING btree (season, instance_id)",
+          "table": "public.season_vault_raids",
+          "columns": [
+            "season",
+            "instance_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "season_vault_raids_instance_id_check",
+          "type": "CHECK",
+          "def": "CHECK ((instance_id \u003e 0))",
+          "table": "public.season_vault_raids",
+          "referenced_table": "",
+          "columns": [
+            "instance_id"
+          ]
+        },
+        {
+          "name": "season_vault_raids_name_check",
+          "type": "CHECK",
+          "def": "CHECK ((name ~ '\\S'::text))",
+          "table": "public.season_vault_raids",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "season_vault_raids_season_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season) REFERENCES seasons(code)",
+          "table": "public.season_vault_raids",
+          "referenced_table": "public.seasons",
+          "columns": [
+            "season"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "season_vault_raids_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (season, instance_id)",
+          "table": "public.season_vault_raids",
+          "referenced_table": "",
+          "columns": [
+            "season",
+            "instance_id"
           ]
         }
       ]
@@ -15997,6 +16431,75 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
+      "table": "public.season_track_steps",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
+      "table": "public.season_vault_slots",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
+      "table": "public.season_vault_rewards",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
+      "table": "public.season_vault_rewards",
+      "columns": [
+        "season",
+        "track",
+        "rank"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.season_track_steps",
+      "parent_columns": [
+        "season",
+        "track",
+        "rank"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season, track, rank) REFERENCES season_track_steps(season, track, rank)"
+    },
+    {
+      "table": "public.season_vault_raids",
+      "columns": [
+        "season"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.seasons",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
     }
   ],
   "functions": [
@@ -17617,6 +18120,18 @@
     {
       "name": "public.my_audit_character_keys",
       "return_type": "_text",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.season_vault",
+      "return_type": "jsonb",
+      "arguments": "p_season text, p_raid_kills jsonb, p_mplus_runs jsonb, p_delves jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.character_weeks_fill_vault",
+      "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"
     }

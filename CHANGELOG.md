@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.277.0] - 2026-11-15
+
+### Backend
+
+- Each raider's weekly row now works out their Great Vault: Raid (2, 4 and 6 bosses), Dungeons (1, 4 and 8 keys) and World (2, 4 and 8 delves). A filled slot shows the item level and track it offers, from the weakest run it counts; an empty one shows how many runs are left. Season 2's rewards are stored as season settings: Heroic kills offer Myth 1/6 (318), Mythic 334, and the last two Mythic bosses 344; a +10 key offers 318; Tier 8 delves and up offer 305. World counts delves only for now. Nothing shows on the site yet (#1637).
+
+### Functions
+
+- The gear sync saves which raid each boss kill was in, so the vault counts only this season's raids (#1637).
+
+### Project
+
+- Revamp time log: #1637.
+
 ## [3.276.0] - 2026-11-15
 
 ### Functions

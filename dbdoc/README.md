@@ -108,6 +108,10 @@
 | [public.season_gems](public.season_gems.md) | 5 | The gems that count in a season (#1633), by Blizzard's item id (wow_item_id, not items.id). top_rank: the best there is, the higher crafting rank of a Flawless gem or an Eversong Diamond (never a Heliotrope, the weaker PvP gem). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration. | BASE TABLE |
 | [public.season_crests](public.season_crests.md) | 10 | Each upgrade crest in a season (#1633). A capped crest's cap grows by weekly_increase every week from first_week (a reset Tuesday), so a missed week carries over; uncapped_sources never count toward it; from caps_lifted_on (Blizzard usually lifts every cap in the x.x.5 patch) it has none. statistic_id: the character statistic Blizzard counts the season's earned crests in (the profile API has no currency read); currency_id: the in-game currency, for the addon. Read through season_crest_cap(). Added by migration. | BASE TABLE |
 | [public.character_weeks](public.character_weeks.md) | 20 | The roster audit's weekly row (#1635, #1261): one per character (name_realm_key, as on players and characters) per week (week_of, the reset Tuesday). Each sync updates the current week's row; older weeks stay as last written. Each part carries when it was last written. Read by the character's teams and owner; written only by the syncs. | BASE TABLE |
+| [public.season_track_steps](public.season_track_steps.md) | 4 | Each upgrade step's item level in a season (#1637), e.g. MID2 Hero 4 = 315. Myth 9 is the special step the last Mythic bosses drop. Added by migration. | BASE TABLE |
+| [public.season_vault_slots](public.season_vault_slots.md) | 4 | How many runs fill each Great Vault slot in a season (#1637): raid bosses, keys, or delves. Added by migration. | BASE TABLE |
+| [public.season_vault_rewards](public.season_vault_rewards.md) | 7 | What a run offers in the Great Vault in a season (#1637). Raid: by kill difficulty, and encounter_id (Blizzard journal id) for a boss with its own reward. Dungeon: a key from from_level up. World: a delve from tier from_level up. Added by migration. | BASE TABLE |
+| [public.season_vault_raids](public.season_vault_raids.md) | 3 | The raids whose kills fill Raid vault slots in a season (#1637), by Blizzard journal instance id. Added by migration. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -383,6 +387,8 @@
 | public.season_enchant_slots_on | text | p_season text, p_day date | FUNCTION |
 | public.season_crest_cap | int4 | p_season text, p_track text, p_week date | FUNCTION |
 | public.my_audit_character_keys | _text |  | FUNCTION |
+| public.season_vault | jsonb | p_season text, p_raid_kills jsonb, p_mplus_runs jsonb, p_delves jsonb | FUNCTION |
+| public.character_weeks_fill_vault | trigger |  | FUNCTION |
 
 ## Enums
 
@@ -574,6 +580,11 @@ erDiagram
 "public.season_enchants" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.season_gems" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.season_crests" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_track_steps" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_vault_slots" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_vault_rewards" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_vault_rewards" }o--|| "public.season_track_steps" : "FOREIGN KEY (season, track, rank) REFERENCES season_track_steps(season, track, rank)"
+"public.season_vault_raids" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 
 "public.attendance" {
   integer id
@@ -1673,6 +1684,32 @@ erDiagram
   smallint embellishments
   smallint sparks_used
   timestamp_with_time_zone gear_at
+}
+"public.season_track_steps" {
+  text season FK
+  text track
+  smallint rank
+  smallint item_level
+}
+"public.season_vault_slots" {
+  text season FK
+  text vault_row
+  smallint slot
+  smallint needs
+}
+"public.season_vault_rewards" {
+  text season FK
+  text vault_row
+  text difficulty
+  integer encounter_id
+  smallint from_level
+  text track FK
+  smallint rank FK
+}
+"public.season_vault_raids" {
+  text season FK
+  integer instance_id
+  text name
 }
 ```
 
