@@ -107,6 +107,7 @@
 | [public.season_enchants](public.season_enchants.md) | 6 | The enchants that count in a season (#1633), by Blizzard's enchantment id. top_rank: the higher rank. tertiary: speed, leech or avoidance only, which the Lenient rule takes at any rank. An enchant not listed (an older expansion's) counts as none. Added by migration. | BASE TABLE |
 | [public.season_gems](public.season_gems.md) | 5 | The gems that count in a season (#1633), by Blizzard's item id (wow_item_id, not items.id). top_rank: the best there is, the higher crafting rank of a Flawless gem or an Eversong Diamond (never a Heliotrope, the weaker PvP gem). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration. | BASE TABLE |
 | [public.season_crests](public.season_crests.md) | 10 | Each upgrade crest in a season (#1633). A capped crest's cap grows by weekly_increase every week from first_week (a reset Tuesday), so a missed week carries over; uncapped_sources never count toward it; from caps_lifted_on (Blizzard usually lifts every cap in the x.x.5 patch) it has none. statistic_id: the character statistic Blizzard counts the season's earned crests in (the profile API has no currency read); currency_id: the in-game currency, for the addon. Read through season_crest_cap(). Added by migration. | BASE TABLE |
+| [public.character_weeks](public.character_weeks.md) | 20 | The roster audit's weekly row (#1635, #1261): one per character (name_realm_key, as on players and characters) per week (week_of, the reset Tuesday). Each sync updates the current week's row; older weeks stay as last written. Each part carries when it was last written. Read by the character's teams and owner; written only by the syncs. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -381,6 +382,7 @@
 | public.my_recruiter_code | text | p_guild_id integer | FUNCTION |
 | public.season_enchant_slots_on | text | p_season text, p_day date | FUNCTION |
 | public.season_crest_cap | int4 | p_season text, p_track text, p_week date | FUNCTION |
+| public.my_audit_character_keys | _text |  | FUNCTION |
 
 ## Enums
 
@@ -1643,6 +1645,28 @@ erDiagram
   integer weekly_increase
   text__ uncapped_sources
   date caps_lifted_on
+}
+"public.character_weeks" {
+  text name_realm_key
+  date week_of
+  text name_realm
+  jsonb raid_kills
+  timestamp_with_time_zone raids_at
+  jsonb mplus_runs
+  numeric_6_1_ mplus_rating
+  timestamp_with_time_zone mplus_at
+  jsonb delves
+  timestamp_with_time_zone delves_at
+  jsonb crests
+  timestamp_with_time_zone crests_at
+  jsonb vault
+  timestamp_with_time_zone vault_at
+  smallint missing_enchants
+  smallint empty_sockets
+  boolean epic_gem
+  smallint embellishments
+  smallint sparks_used
+  timestamp_with_time_zone gear_at
 }
 ```
 

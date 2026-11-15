@@ -3614,3 +3614,17 @@ Shipped: `20261114230843_audit_season_settings.sql`.
 **OFF_HAND is listed; the audit decides whether it counts.** It takes a weapon enchant only when the item there is a weapon, which only the item says.
 
 [Full discussion -> #1633](https://github.com/katogaming88/WGA-Raid-Hub/issues/1633).
+
+## #1635 -- the roster audit's weekly row
+
+Shipped: `20261114234825_character_weeks.sql`.
+
+**One row per character per week, as #1261 decided (2026-10-24).** `character_weeks` is keyed on `name_realm_key`, the generated key `players` and `characters` already share, so a raider on two teams is one row and a roster character whose person never imported is still covered; and on `week_of`, the reset Tuesday (a check refuses any other day). The syncs update the current week's row; last week's stays as last written.
+
+**Lists as jsonb, counts as columns.** Raid kills, M+ runs, delves by tier, crests by track and the vault are jsonb (each checked to be an array or an object), since their shape follows the season and #1636 and #1637 fill them; the gear counts (missing enchants, empty sockets, epic gem, embellishments, sparks) are plain columns the Summary sorts and totals. Each part has its own `*_at`, so the page can say how fresh it is and a part never synced reads null rather than zero.
+
+**Who reads it.** `my_audit_character_keys()` (security definer, empty when signed out) lists the keys of active roster characters on any team the caller is an active member of, on any team their guild rank sees (`view_every_team`), and of their own characters, imported from Battle.net or a roster row of theirs. The rule is that list or a site admin. A character that leaves the roster drops out of its old team's audit; its owner still sees it. Membership comes from `team_members`, not the caller's own roster rows, so an officer with no character on the team still reads it.
+
+**Only the syncs write it.** `revoke all`, then `select` to authenticated and `select, insert, update` to service_role; no delete for anyone. Signed-out callers have no grant at all.
+
+[Full discussion -> #1635](https://github.com/katogaming88/WGA-Raid-Hub/issues/1635).

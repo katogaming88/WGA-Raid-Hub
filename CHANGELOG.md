@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.274.0] - 2026-11-14
+
+### Backend
+
+- The roster audit's weekly row: one per character per week (named by the reset Tuesday), holding raid kills, M+ runs and rating, delves, crests, the Great Vault and the gear counts, each with when it was last synced. A character's teams and its owner can read it; only the syncs write it. Nothing fills it or shows it yet (#1635).
+
 ## [3.273.0] - 2026-11-14
 
 ### Backend

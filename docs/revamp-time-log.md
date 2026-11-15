@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 18 h 41 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 19 h 16 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **190 h 37 m** |             |
+| **All revamp work**                | **191 h 12 m** |             |
 
 ### By area
 
@@ -30,7 +30,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | --- | --- | ---: | ---: |
 | Tester fixes | Phase 2 | 2 h 15 m | ~2 h |
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
-| The roster audit and reports | Phase 2 | 25 m | ~9 h 50 m |
+| The roster audit and reports | Phase 2 | 1 h | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
@@ -734,6 +734,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:55-10:56 PM | PR #1834 (#1826): screenshots at desktop dark and light and phone width, CodeRabbit (nothing to act on), the fresh-agent migration review (approve, three nice-to-haves: a tab-only wording got a raw error, the page's length check before trimming, no test for a wording-only save's log row), all three fixed and tested; Kat's merge, cleanup, #1487 updated | Phase 2: Before the new site goes live / Recruiting (#1826) | 1 h | build; Kat's CodeRabbit trigger, design review and merge, not split | 117,600 | Added 2026-11-14. Tokens include the fresh agent's 85,940. |
 | 10:56-11:05 PM | #1833 talked through (the priority list narrowed to raiders planned in for the boss): the lineup and per-fight data checked, the choice explained; Kat: no filter, the item goes to the next person; closed as not planned, #1487 updated | Phase 2: Before the new site goes live / The roster audit and reports (#1833) | 10 m | ~5 m build, ~5 m Kat deciding | 23,800 | Added 2026-11-14. |
 | 11:05-11:20 PM | #1633: the audit's season settings: four reference tables (enchant slots with a start date, enchants by Blizzard enchantment id with top rank and tertiary, gems with top rank and epic, crests with cap rules and a lift date), `season_enchant_slots_on()` and `season_crest_cap()`, Midnight Season 2's rows from the game's own tables (92 enchants, 39 gems, five Mistcrests); RLS tests, generated docs, decision log, RLS.md, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / The roster audit and reports (#1633) | 15 m | build; CodeRabbit, the fresh-agent review and merge not yet counted | 125,000 | Added 2026-11-14. Seeded Season 2, not the issue's Season 3: Season 3 is undated. |
+| 11:20-11:47 PM | PR #1835 (#1633): oils and cosmetic enchants explained (ignored, never flagged) and the permanent-only rule noted on #1634; CodeRabbit (the lower crafting rank of every gem, Azta'rec's uncapped Hero crests, refused writes on every table and role, then insert and update both); the fresh-agent review (changes needed: crest statistic ids for #1636, first week 2026-08-11 to fit a raider's real totals, Heliotropes never top rank, a lift-after-start check, RLS.md); all fixed and tested; Kat chose Heliotropes never count as best under Strict; merge, cleanup, #1487 updated | Phase 2: Before the new site goes live / The roster audit and reports (#1633) | 25 m | build; Kat's CodeRabbit trigger, answers and merge, not split | 226,700 | Added 2026-11-14. Tokens include the fresh agent's 142,032. |
+| 11:47-11:58 PM | #1635: the audit's weekly row: `character_weeks` (per name_realm_key and reset Tuesday; kills, M+, delves, crests and vault as jsonb, gear counts as columns, a time per part), `my_audit_character_keys()` for who reads it (the character's teams, its owner, a guild rank that sees every team, site admins), syncs-only writes; RLS tests, generated docs, RLS.md, backup doc, decision log, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / The roster audit and reports (#1635) | 10 m | build; CodeRabbit, the fresh-agent review and merge not yet counted | 50,000 | Added 2026-11-14. |
 
 ## Not counted (same sessions, not revamp)
 
