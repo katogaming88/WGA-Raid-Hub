@@ -3605,7 +3605,7 @@ Shipped: `20261114230843_audit_season_settings.sql`.
 
 **Enchants by Blizzard's enchantment id, not the scroll's item id.** The profile API reports an applied enchant by `enchantment_id`, which is what #1634 will store, and each rank has its own. Midnight's come from the game's SpellItemEnchantment table (the "Quality-12" names, both ranks): permanent ones only, so oils, whetstones, tool enchants and Illusory Adornments are left out and count as none. `top_rank` marks the higher rank; `tertiary` marks speed, leech or avoidance only (stamina alongside allowed, a proc ignored), which the Lenient rule takes at any rank. Weapon enchants are never tertiary.
 
-**Gems by item id.** Flawless is the top rank; an Eversong Diamond or Heliotrope has one rank, which is top, and is the epic gem.
+**Gems by Blizzard's item id, `wow_item_id`.** Gems aren't in the `items` catalog, so the column is named for the id space, like `player_equipped_gear.wow_item_id`. Flawless is the top rank; an Eversong Diamond or Heliotrope has one rank, which is top, and is the epic gem.
 
 **Crests: a cap that adds up, and one lift date.** `season_crest_cap(season, track, week)` returns `weekly_increase` for each week from `first_week` through that reset Tuesday (so a missed week carries over, as in game), 0 before it, and null for an uncapped crest or any week from `caps_lifted_on`. The Mistcrests' 100 a week is the game's currency table; the first week (2026-08-18) and the lift (2026-10-20 hotfix) are from the season's notes. `uncapped_sources` stays empty for Midnight Season 2: the caps were lifted before the audit can read them. `currency_id` is the capped currency (3442 to 3446), for whatever reads crest counts later.
 

@@ -13219,7 +13219,7 @@
     {
       "name": "public.season_gems",
       "type": "BASE TABLE",
-      "comment": "The gems that count in a season (#1633), by item id. top_rank: the higher rank (Flawless; a gem with one rank is top). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration.",
+      "comment": "The gems that count in a season (#1633), by Blizzard's item id (wow_item_id, not items.id). top_rank: the higher rank (Flawless; a gem with one rank is top). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration.",
       "columns": [
         {
           "name": "season",
@@ -13227,7 +13227,7 @@
           "nullable": false
         },
         {
-          "name": "item_id",
+          "name": "wow_item_id",
           "type": "integer",
           "nullable": false
         },
@@ -13250,25 +13250,15 @@
       "indexes": [
         {
           "name": "season_gems_pkey",
-          "def": "CREATE UNIQUE INDEX season_gems_pkey ON public.season_gems USING btree (season, item_id)",
+          "def": "CREATE UNIQUE INDEX season_gems_pkey ON public.season_gems USING btree (season, wow_item_id)",
           "table": "public.season_gems",
           "columns": [
             "season",
-            "item_id"
+            "wow_item_id"
           ]
         }
       ],
       "constraints": [
-        {
-          "name": "season_gems_item_id_check",
-          "type": "CHECK",
-          "def": "CHECK ((item_id \u003e 0))",
-          "table": "public.season_gems",
-          "referenced_table": "",
-          "columns": [
-            "item_id"
-          ]
-        },
         {
           "name": "season_gems_name_check",
           "type": "CHECK",
@@ -13277,6 +13267,16 @@
           "referenced_table": "",
           "columns": [
             "name"
+          ]
+        },
+        {
+          "name": "season_gems_wow_item_id_check",
+          "type": "CHECK",
+          "def": "CHECK ((wow_item_id \u003e 0))",
+          "table": "public.season_gems",
+          "referenced_table": "",
+          "columns": [
+            "wow_item_id"
           ]
         },
         {
@@ -13295,12 +13295,12 @@
         {
           "name": "season_gems_pkey",
           "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (season, item_id)",
+          "def": "PRIMARY KEY (season, wow_item_id)",
           "table": "public.season_gems",
           "referenced_table": "",
           "columns": [
             "season",
-            "item_id"
+            "wow_item_id"
           ]
         }
       ]

@@ -261,7 +261,7 @@ erDiagram
 }
 "public.season_gems" {
   text season FK
-  integer item_id
+  integer wow_item_id
   text name
   boolean top_rank
   boolean epic

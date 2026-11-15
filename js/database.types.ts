@@ -3214,24 +3214,24 @@ export type Database = {
       season_gems: {
         Row: {
           epic: boolean
-          item_id: number
           name: string
           season: string
           top_rank: boolean
+          wow_item_id: number
         }
         Insert: {
           epic: boolean
-          item_id: number
           name: string
           season: string
           top_rank: boolean
+          wow_item_id: number
         }
         Update: {
           epic?: boolean
-          item_id?: number
           name?: string
           season?: string
           top_rank?: boolean
+          wow_item_id?: number
         }
         Relationships: [
           {

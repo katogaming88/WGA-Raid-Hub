@@ -2,14 +2,14 @@
 
 ## Description
 
-The gems that count in a season (#1633), by item id. top_rank: the higher rank (Flawless; a gem with one rank is top). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration.
+The gems that count in a season (#1633), by Blizzard's item id (wow_item_id, not items.id). top_rank: the higher rank (Flawless; a gem with one rank is top). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration.
 
 ## Columns
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | season | text |  | false |  | [public.seasons](public.seasons.md) |  |
-| item_id | integer |  | false |  |  |  |
+| wow_item_id | integer |  | false |  |  |  |
 | name | text |  | false |  |  |  |
 | top_rank | boolean |  | false |  |  |  |
 | epic | boolean |  | false |  |  |  |
@@ -18,16 +18,16 @@ The gems that count in a season (#1633), by item id. top_rank: the higher rank (
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| season_gems_item_id_check | CHECK | CHECK ((item_id > 0)) |
 | season_gems_name_check | CHECK | CHECK ((name ~ '\S'::text)) |
+| season_gems_wow_item_id_check | CHECK | CHECK ((wow_item_id > 0)) |
 | season_gems_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(code) |
-| season_gems_pkey | PRIMARY KEY | PRIMARY KEY (season, item_id) |
+| season_gems_pkey | PRIMARY KEY | PRIMARY KEY (season, wow_item_id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| season_gems_pkey | CREATE UNIQUE INDEX season_gems_pkey ON public.season_gems USING btree (season, item_id) |
+| season_gems_pkey | CREATE UNIQUE INDEX season_gems_pkey ON public.season_gems USING btree (season, wow_item_id) |
 
 ## Relations
 
@@ -38,7 +38,7 @@ erDiagram
 
 "public.season_gems" {
   text season FK
-  integer item_id
+  integer wow_item_id
   text name
   boolean top_rank
   boolean epic

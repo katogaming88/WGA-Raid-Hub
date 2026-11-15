@@ -13,7 +13,7 @@
 --   (what the profile API returns). top_rank: the higher of its two ranks.
 --   tertiary: speed, leech or avoidance (with or without stamina), which the
 --   Lenient rule takes at any rank. An enchant not listed counts as none.
--- * season_gems: the gems that count, by item id, with top_rank (Flawless) and
+-- * season_gems: the gems that count, by Blizzard's item id, with top_rank (Flawless) and
 --   epic (the Eversong Diamonds and Heliotropes).
 -- * season_crests: each crest type: capped or not, the first week its cap
 --   counts, how much the cap grows each week, sources that never count toward
@@ -55,15 +55,15 @@ comment on table public.season_enchants is
 
 create table public.season_gems (
   season text not null references public.seasons (code),
-  item_id integer not null check (item_id > 0),
+  wow_item_id integer not null check (wow_item_id > 0),
   name text not null check (name ~ '\S'),
   top_rank boolean not null,
   epic boolean not null,
-  primary key (season, item_id)
+  primary key (season, wow_item_id)
 );
 
 comment on table public.season_gems is
-  'The gems that count in a season (#1633), by item id. top_rank: the higher rank (Flawless; a gem with one rank is top). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration.';
+  'The gems that count in a season (#1633), by Blizzard''s item id (wow_item_id, not items.id). top_rank: the higher rank (Flawless; a gem with one rank is top). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration.';
 
 create table public.season_crests (
   season text not null references public.seasons (code),
@@ -265,7 +265,7 @@ insert into public.season_enchants (season, enchantment_id, name, slot, top_rank
   ('MID2', 8688, 'Rite of the Hash''ey', 'WEAPON', false, false),
   ('MID2', 8689, 'Rite of the Hash''ey', 'WEAPON', true, false);
 
-insert into public.season_gems (season, item_id, name, top_rank, epic) values
+insert into public.season_gems (season, wow_item_id, name, top_rank, epic) values
   ('MID2', 240983, 'Indecipherable Eversong Diamond', true, true),
   ('MID2', 240967, 'Powerful Eversong Diamond', true, true),
   ('MID2', 240971, 'Stoic Eversong Diamond', true, true),

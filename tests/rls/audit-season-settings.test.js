@@ -80,8 +80,11 @@ describe('audit season settings', () => {
   it('marks Flawless gems top rank and the diamonds epic', async () => {
     await withTxn(async ({ q }) => {
       const gem = async (id) =>
-        (await q("select name, top_rank, epic from public.season_gems where season = 'MID2' and item_id = $1", [id]))
-          .rows[0];
+        (
+          await q("select name, top_rank, epic from public.season_gems where season = 'MID2' and wow_item_id = $1", [
+            id
+          ])
+        ).rows[0];
       expect(await gem(240912)).toEqual({ name: 'Flawless Versatile Lapis', top_rank: true, epic: false });
       expect(await gem(240880)).toEqual({ name: 'Versatile Lapis', top_rank: false, epic: false });
       expect(await gem(240967)).toEqual({ name: 'Powerful Eversong Diamond', top_rank: true, epic: true });
