@@ -624,7 +624,12 @@ describe('lootPriority', () => {
     });
     expect(row!.received).toEqual({ track: 'Mythic', detail: 'Bonus Roll' });
     // A Heroic mark, then a Mythic one: the Mythic shows, not the first saved.
-    const ring = { source: 'Bonus Roll', slot: 'Finger', updated_at: null, items: { name: 'Band of the Hollow Choir' } };
+    const ring = {
+      source: 'Bonus Roll',
+      slot: 'Finger',
+      updated_at: null,
+      items: { name: 'Band of the Hollow Choir' }
+    };
     const [both] = lootPriority({
       ...base,
       loot: [],
