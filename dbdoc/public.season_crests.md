@@ -2,7 +2,7 @@
 
 ## Description
 
-Each upgrade crest in a season (#1633). A capped crest's cap grows by weekly_increase every week from first_week (a reset Tuesday), so a missed week carries over; uncapped_sources never count toward it; from caps_lifted_on (Blizzard usually lifts every cap in the x.x.5 patch) it has none. Read through season_crest_cap(). Added by migration.
+Each upgrade crest in a season (#1633). A capped crest's cap grows by weekly_increase every week from first_week (a reset Tuesday), so a missed week carries over; uncapped_sources never count toward it; from caps_lifted_on (Blizzard usually lifts every cap in the x.x.5 patch) it has none. statistic_id: the character statistic Blizzard counts the season's earned crests in (the profile API has no currency read); currency_id: the in-game currency, for the addon. Read through season_crest_cap(). Added by migration.
 
 ## Columns
 
@@ -11,6 +11,7 @@ Each upgrade crest in a season (#1633). A capped crest's cap grows by weekly_inc
 | season | text |  | false |  | [public.seasons](public.seasons.md) |  |
 | track | text |  | false |  |  |  |
 | name | text |  | false |  |  |  |
+| statistic_id | integer |  | true |  |  |  |
 | currency_id | integer |  | true |  |  |  |
 | capped | boolean |  | false |  |  |  |
 | first_week | date |  | true |  |  |  |
@@ -24,7 +25,9 @@ Each upgrade crest in a season (#1633). A capped crest's cap grows by weekly_inc
 | ---- | ---- | ---------- |
 | season_crests_capped | CHECK | CHECK (((NOT capped) OR ((first_week IS NOT NULL) AND (weekly_increase IS NOT NULL)))) |
 | season_crests_currency_id_check | CHECK | CHECK ((currency_id > 0)) |
+| season_crests_lift_after_start | CHECK | CHECK (((caps_lifted_on IS NULL) OR (first_week IS NULL) OR (caps_lifted_on >= first_week))) |
 | season_crests_name_check | CHECK | CHECK ((name ~ '\S'::text)) |
+| season_crests_statistic_id_check | CHECK | CHECK ((statistic_id > 0)) |
 | season_crests_track_check | CHECK | CHECK ((track = ANY (ARRAY['Adventurer'::text, 'Veteran'::text, 'Champion'::text, 'Hero'::text, 'Myth'::text]))) |
 | season_crests_weekly_increase_check | CHECK | CHECK ((weekly_increase > 0)) |
 | season_crests_season_fkey | FOREIGN KEY | FOREIGN KEY (season) REFERENCES seasons(code) |
@@ -47,6 +50,7 @@ erDiagram
   text season FK
   text track
   text name
+  integer statistic_id
   integer currency_id
   boolean capped
   date first_week

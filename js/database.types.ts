@@ -3114,6 +3114,7 @@ export type Database = {
           first_week: string | null
           name: string
           season: string
+          statistic_id: number | null
           track: string
           uncapped_sources: string[]
           weekly_increase: number | null
@@ -3125,6 +3126,7 @@ export type Database = {
           first_week?: string | null
           name: string
           season: string
+          statistic_id?: number | null
           track: string
           uncapped_sources?: string[]
           weekly_increase?: number | null
@@ -3136,6 +3138,7 @@ export type Database = {
           first_week?: string | null
           name?: string
           season?: string
+          statistic_id?: number | null
           track?: string
           uncapped_sources?: string[]
           weekly_increase?: number | null

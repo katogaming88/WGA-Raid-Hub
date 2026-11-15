@@ -270,6 +270,7 @@ erDiagram
   text season FK
   text track
   text name
+  integer statistic_id
   integer currency_id
   boolean capped
   date first_week

@@ -15,8 +15,8 @@
 --   Lenient rule takes at any rank. An enchant not listed counts as none.
 -- * season_gems: the gems that count, by Blizzard's item id, both crafting
 --   ranks of each, with top_rank (the higher rank of a Flawless gem or an
---   Eversong Diamond; a Heliotrope has one rank) and epic (the Diamonds and
---   Heliotropes).
+--   Eversong Diamond; never a Heliotrope, the weaker PvP gem) and epic (the
+--   Diamonds and Heliotropes).
 -- * season_crests: each crest type: capped or not, the first week its cap
 --   counts, how much the cap grows each week, sources that never count toward
 --   it, and the date Blizzard lifted the caps.
@@ -27,8 +27,10 @@
 -- come from Blizzard's SpellItemEnchantment table (the Midnight "Quality-12"
 -- enchants, permanent ones only: no oils, whetstones, tools or cosmetics);
 -- gems (both crafting ranks) from the game's item data; the Mistcrests' 100 a week and their
--- currency ids from the currency table; the season's first week (2026-08-18)
--- and the caps' lifting with the 2026-10-20 hotfix from the season's notes.
+-- currency ids from the currency table; their statistic ids (62912 to 62916)
+-- and the first week, 2026-08-11 (the season's start), from a raider's real
+-- totals checked against wowaudit (#1261); the caps' lifting with the
+-- 2026-10-20 hotfix from the season's notes.
 -- Midnight Season 3 gets its rows when it is dated.
 
 create table public.season_enchant_slots (
@@ -65,12 +67,13 @@ create table public.season_gems (
 );
 
 comment on table public.season_gems is
-  'The gems that count in a season (#1633), by Blizzard''s item id (wow_item_id, not items.id). top_rank: the best there is, the higher crafting rank of a Flawless gem or an epic gem (a gem with one rank is top). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration.';
+  'The gems that count in a season (#1633), by Blizzard''s item id (wow_item_id, not items.id). top_rank: the best there is, the higher crafting rank of a Flawless gem or an Eversong Diamond (never a Heliotrope, the weaker PvP gem). epic: an epic gem, which the audit checks for. A gem not listed counts as none. Added by migration.';
 
 create table public.season_crests (
   season text not null references public.seasons (code),
   track text not null check (track in ('Adventurer', 'Veteran', 'Champion', 'Hero', 'Myth')),
   name text not null check (name ~ '\S'),
+  statistic_id integer check (statistic_id > 0),
   currency_id integer check (currency_id > 0),
   capped boolean not null,
   first_week date,
@@ -78,11 +81,12 @@ create table public.season_crests (
   uncapped_sources text[] not null default '{}',
   caps_lifted_on date,
   primary key (season, track),
-  constraint season_crests_capped check (not capped or (first_week is not null and weekly_increase is not null))
+  constraint season_crests_capped check (not capped or (first_week is not null and weekly_increase is not null)),
+  constraint season_crests_lift_after_start check (caps_lifted_on is null or first_week is null or caps_lifted_on >= first_week)
 );
 
 comment on table public.season_crests is
-  'Each upgrade crest in a season (#1633). A capped crest''s cap grows by weekly_increase every week from first_week (a reset Tuesday), so a missed week carries over; uncapped_sources never count toward it; from caps_lifted_on (Blizzard usually lifts every cap in the x.x.5 patch) it has none. Read through season_crest_cap(). Added by migration.';
+  'Each upgrade crest in a season (#1633). A capped crest''s cap grows by weekly_increase every week from first_week (a reset Tuesday), so a missed week carries over; uncapped_sources never count toward it; from caps_lifted_on (Blizzard usually lifts every cap in the x.x.5 patch) it has none. statistic_id: the character statistic Blizzard counts the season''s earned crests in (the profile API has no currency read); currency_id: the in-game currency, for the addon. Read through season_crest_cap(). Added by migration.';
 
 alter table public.season_enchant_slots owner to postgres;
 alter table public.season_enchant_slots enable row level security;
@@ -272,9 +276,9 @@ insert into public.season_gems (season, wow_item_id, name, top_rank, epic) value
   ('MID2', 240967, 'Powerful Eversong Diamond', true, true),
   ('MID2', 240971, 'Stoic Eversong Diamond', true, true),
   ('MID2', 240969, 'Telluric Eversong Diamond', true, true),
-  ('MID2', 241142, 'Determined Heliotrope', true, true),
-  ('MID2', 241143, 'Cognitive Heliotrope', true, true),
-  ('MID2', 241144, 'Enduring Heliotrope', true, true),
+  ('MID2', 241142, 'Determined Heliotrope', false, true),
+  ('MID2', 241143, 'Cognitive Heliotrope', false, true),
+  ('MID2', 241144, 'Enduring Heliotrope', false, true),
   ('MID2', 240912, 'Flawless Versatile Lapis', true, false),
   ('MID2', 240916, 'Flawless Quick Lapis', true, false),
   ('MID2', 240914, 'Flawless Deadly Lapis', true, false),
@@ -348,9 +352,9 @@ insert into public.season_gems (season, wow_item_id, name, top_rank, epic) value
 -- Azta'rec, the season's Nemesis delve boss, gives Hero Mistcrests that don't
 -- count toward the cap.
 insert into public.season_crests
-  (season, track, name, currency_id, capped, first_week, weekly_increase, uncapped_sources, caps_lifted_on) values
-  ('MID2', 'Adventurer', 'Adventurer Mistcrest', 3442, true, '2026-08-18', 100, '{}', '2026-10-20'),
-  ('MID2', 'Veteran', 'Veteran Mistcrest', 3443, true, '2026-08-18', 100, '{}', '2026-10-20'),
-  ('MID2', 'Champion', 'Champion Mistcrest', 3444, true, '2026-08-18', 100, '{}', '2026-10-20'),
-  ('MID2', 'Hero', 'Hero Mistcrest', 3445, true, '2026-08-18', 100, '{"Azta''rec (Nemesis delve)"}', '2026-10-20'),
-  ('MID2', 'Myth', 'Myth Mistcrest', 3446, true, '2026-08-18', 100, '{}', '2026-10-20');
+  (season, track, name, statistic_id, currency_id, capped, first_week, weekly_increase, uncapped_sources, caps_lifted_on) values
+  ('MID2', 'Adventurer', 'Adventurer Mistcrest', 62912, 3442, true, '2026-08-11', 100, '{}', '2026-10-20'),
+  ('MID2', 'Veteran', 'Veteran Mistcrest', 62913, 3443, true, '2026-08-11', 100, '{}', '2026-10-20'),
+  ('MID2', 'Champion', 'Champion Mistcrest', 62914, 3444, true, '2026-08-11', 100, '{}', '2026-10-20'),
+  ('MID2', 'Hero', 'Hero Mistcrest', 62915, 3445, true, '2026-08-11', 100, '{"Azta''rec (Nemesis delve)"}', '2026-10-20'),
+  ('MID2', 'Myth', 'Myth Mistcrest', 62916, 3446, true, '2026-08-11', 100, '{}', '2026-10-20');
