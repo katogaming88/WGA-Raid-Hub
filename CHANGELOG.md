@@ -12,6 +12,13 @@ answers to.
 
 ---
 
+## [3.275.1] - 2026-11-15
+
+### Project
+
+- The new app's BiS List & Loot priority card shows the best copy a raider marked received, not the first (#1840). A raider who marked an item Heroic and then Mythic now sees "Received Mythic" with no Mark received button; before, it kept saying Heroic and the button refused a second Mythic mark. The current site already did this.
+- Revamp time log: #1840.
+
 ## [3.275.0] - 2026-11-15
 
 ### Backend

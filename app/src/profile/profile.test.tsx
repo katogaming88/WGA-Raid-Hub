@@ -623,6 +623,23 @@ describe('lootPriority', () => {
       ]
     });
     expect(row!.received).toEqual({ track: 'Mythic', detail: 'Bonus Roll' });
+    // A Heroic mark, then a Mythic one: the Mythic shows, not the first saved.
+    const ring = {
+      source: 'Bonus Roll',
+      slot: 'Finger',
+      updated_at: null,
+      items: { name: 'Band of the Hollow Choir' }
+    };
+    const [both] = lootPriority({
+      ...base,
+      loot: [],
+      wishlist: [pick(2, 'Finger 1')],
+      selfReceived: [
+        { ...ring, track: 'Hero' },
+        { ...ring, track: 'Myth' }
+      ]
+    });
+    expect(both!.received).toEqual({ track: 'Mythic', detail: 'Bonus Roll' });
     // The report names the catalog item, not the class piece a token shows as.
     const [token] = lootPriority({ ...base, wishlist: [pick(1, 'Hands')] });
     expect([token!.item, token!.itemName]).toEqual(['Grave-Knight Deathgrips', 'Venomforged Idol']);
