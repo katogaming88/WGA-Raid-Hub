@@ -6470,6 +6470,10 @@ export type Database = {
         Args: { p_archived: boolean; p_team_id: number }
         Returns: undefined
       }
+      set_team_audit_rules: {
+        Args: { p_enchant_check: string; p_team_id: number; p_vault_rule: Json }
+        Returns: Json
+      }
       set_team_discord_post: {
         Args: {
           p_channel_id: string

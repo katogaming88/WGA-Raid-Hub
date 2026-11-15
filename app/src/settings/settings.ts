@@ -280,3 +280,40 @@ export const LOOT_SYSTEMS: { id: LootSystem | 'sims'; name: string; description:
 export function asLootSystem(value: unknown): LootSystem {
   return value === 'council' || value === 'wishlist' ? value : 'priority';
 }
+
+// -- Roster audit rules (#1638) ---------------------------------------------
+
+// How strict the audit's enchant and gem check is, and the optional weekly
+// vault minimum, saved as team_settings.config.enchantCheck and .vaultRule by
+// set_team_audit_rules(). A team that never saved is Lenient with no rule.
+export type EnchantCheck = 'strict' | 'lenient' | 'casual';
+export type VaultRule = { raid: number; dungeon: number; world: number };
+
+export const ENCHANT_CHECKS: { id: EnchantCheck; name: string; description: string }[] = [
+  { id: 'strict', name: 'Strict', description: 'Every enchant and gem must be the highest rank.' },
+  {
+    id: 'lenient',
+    name: 'Lenient',
+    description:
+      'Highest rank on enchants and gems that give primary or secondary stats; Leech, Avoidance, Speed and the like can be any rank.'
+  },
+  { id: 'casual', name: 'Casual', description: 'Any rank is fine.' }
+];
+
+export const VAULT_ROWS: { id: keyof VaultRule; name: string }[] = [
+  { id: 'raid', name: 'Raid' },
+  { id: 'dungeon', name: 'Dungeons' },
+  { id: 'world', name: 'World' }
+];
+
+export function asEnchantCheck(value: unknown): EnchantCheck {
+  return value === 'strict' || value === 'casual' ? value : 'lenient';
+}
+
+export function asVaultRule(value: unknown): VaultRule | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Partial<Record<keyof VaultRule, unknown>>;
+  const slots = (n: unknown) => (typeof n === 'number' && n >= 0 && n <= 3 ? Math.floor(n) : 0);
+  const rule = { raid: slots(v.raid), dungeon: slots(v.dungeon), world: slots(v.world) };
+  return rule.raid || rule.dungeon || rule.world ? rule : null;
+}

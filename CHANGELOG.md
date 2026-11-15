@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.278.0] - 2026-11-15
+
+### Backend
+
+- The team's roster audit rules are saved with its other settings, by the team's officers as well as its owner; everyone on the team can read them. A vault rule with every row at No minimum is saved as no rule (#1638).
+
+### Project
+
+- The new app's Settings > General has a new Roster audit card. Officers pick how strict the audit's enchant and gem check is: Strict (every enchant and gem the highest rank), Lenient (highest rank only where it gives primary or secondary stats; Leech, Avoidance, Speed and the like any rank) or Casual (any rank). They can also set a weekly vault rule, such as "at least 1 Dungeons slot". A team starts on Lenient with no vault rule. The audit page that uses them comes next (#1638).
+- Revamp time log: #1638.
+
 ## [3.277.0] - 2026-11-15
 
 ### Backend

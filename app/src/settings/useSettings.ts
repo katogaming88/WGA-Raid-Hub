@@ -5,13 +5,17 @@ import type { Json } from '../../../js/database.types';
 import type { FullAttendanceRow } from '../attendance/attendance';
 import type { PlayerRow } from '../roster/roster';
 import {
+  asEnchantCheck,
   asLootSystem,
+  asVaultRule,
   LOOT_SYSTEMS,
   normalizeRaids,
   rosterSnapshot,
+  type EnchantCheck,
   type LootSystem,
   type Raid,
-  type SettingsHistoryEntry
+  type SettingsHistoryEntry,
+  type VaultRule
 } from './settings';
 
 // Officer Settings (#1357, #1103 row 1), ported from js/tabs/tab-season.js
@@ -47,6 +51,8 @@ export type GeneralSettings = {
   targetTankCount: number | null;
   targetHealCount: number | null;
   warcraftLogsUrl: string;
+  enchantCheck: EnchantCheck;
+  vaultRule: VaultRule | null;
 };
 
 const generalKey = (teamId: number) => ['general-settings', teamId] as const;
@@ -56,12 +62,15 @@ export function useGeneralSettings(teamId: number) {
     const result = await client
       .from('team_settings')
       .select(
-        'seasonView:config->>seasonView, trialWeeks:config->trialWeeks, trialAttend:config->trialAttend, targetTankCount:config->targetTankCount, targetHealCount:config->targetHealCount, warcraftLogsUrl:config->externalLinks->>warcraftLogsUrl'
+        'seasonView:config->>seasonView, trialWeeks:config->trialWeeks, trialAttend:config->trialAttend, targetTankCount:config->targetTankCount, targetHealCount:config->targetHealCount, warcraftLogsUrl:config->externalLinks->>warcraftLogsUrl, enchantCheck:config->>enchantCheck, vaultRule:config->vaultRule'
       )
       .eq('team_id', teamId)
       .maybeSingle();
     if (result.error) return { data: null, error: result.error };
-    const row = (result.data ?? {}) as Partial<GeneralSettings>;
+    const row = (result.data ?? {}) as Partial<Omit<GeneralSettings, 'enchantCheck' | 'vaultRule'>> & {
+      enchantCheck?: unknown;
+      vaultRule?: unknown;
+    };
     return {
       data: {
         seasonView: row.seasonView ?? null,
@@ -69,7 +78,9 @@ export function useGeneralSettings(teamId: number) {
         trialAttend: row.trialAttend ?? 75,
         targetTankCount: row.targetTankCount ?? null,
         targetHealCount: row.targetHealCount ?? null,
-        warcraftLogsUrl: row.warcraftLogsUrl ?? ''
+        warcraftLogsUrl: row.warcraftLogsUrl ?? '',
+        enchantCheck: asEnchantCheck(row.enchantCheck),
+        vaultRule: asVaultRule(row.vaultRule)
       },
       error: null
     };
@@ -142,6 +153,23 @@ export function useSaveWclUrl(teamId: number) {
       return { data: null, error: null };
     },
     { key: ['save-wcl-url', teamId], refreshes: [generalKey(teamId)] }
+  );
+}
+
+// Roster audit rules (#1638): set_team_audit_rules() admits the team's
+// officers, not only its leader as set_team_setting does, and writes its own
+// audit entry. A rule of all zeros is saved as no rule.
+export function useSaveAuditRules(teamId: number) {
+  return useSupabaseMutation<null, { enchantCheck: EnchantCheck; vaultRule: VaultRule | null }>(
+    async (client, { enchantCheck, vaultRule }) => {
+      const result = await client.rpc('set_team_audit_rules', {
+        p_team_id: teamId,
+        p_enchant_check: enchantCheck,
+        p_vault_rule: vaultRule as unknown as Json
+      });
+      return { data: null, error: result.error };
+    },
+    { key: ['save-audit-rules', teamId], refreshes: [generalKey(teamId)] }
   );
 }
 

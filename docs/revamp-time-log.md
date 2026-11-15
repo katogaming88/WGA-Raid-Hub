@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 21 h 57 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 22 h 17 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **193 h 53 m** |             |
+| **All revamp work**                | **194 h 13 m** |             |
 
 ### By area
 
@@ -30,7 +30,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | --- | --- | ---: | ---: |
 | Tester fixes | Phase 2 | 2 h 30 m | ~2 h |
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
-| The roster audit and reports | Phase 2 | 3 h 26 m | ~9 h 50 m |
+| The roster audit and reports | Phase 2 | 3 h 46 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
@@ -748,6 +748,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:58-11:13 AM | #1636: the gear sync also writes each character's weekly row: M+ runs since the reset and rating, raid kills per boss and difficulty, crests by the season's statistic ids and delves by tier, each part only when its own read worked and with its own time; three reads alongside the gear read so the run takes no longer, a raider on two teams read once; Edge Function tests (week rollover, failed read); parsers checked against live Blizzard replies; stamp, changelog, this row; PR | Phase 2: Before the new site goes live / The roster audit and reports (#1636) | 15 m | build; review and merge not yet counted | 110,000 | Added 2026-11-15. |
 | 11:16-11:35 AM | #1636's merge, cleanup and #1487; #1637: the Great Vault worked out from the weekly row: Season 2's vault rewards researched (guides disagreed; Kat's in-game chart settled it, Hero 4/6 = 315), Blizzard's raid ids found to be journal ids not WCL's, Kat's answers (Myth 9/6 counts, both raids, World is delves only); four season tables, `season_vault()` and a trigger on `character_weeks`, the sync saves each kill's raid; database tests red first, generated docs, RLS.md, decision log, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / The roster audit and reports (#1637) | 19 m | build; Kat's in-game check not split | 150,000 | Added 2026-11-15. |
 | 11:40 AM-12:17 PM | PR #1844 (#1637) after it opened: CodeRabbit's four findings (a boss counts once at its best difficulty, unread delves are no baseline either week, kills saved without their raid leave Raid unknown; best-run-per-dungeon answered as the known limit); the fresh-agent migration review (changes needed: the backup doc's tables, count and trigger; nice-to-haves all done: `season_vault()` for service_role only, non-whole delves skipped, trigger tests as service_role with a raids-only upsert, doc wording, the addon's vault in its own column); tests red first for each, local migration re-applied | Phase 2: Before the new site goes live / The roster audit and reports (#1637) | 37 m | build; Kat's CodeRabbit trigger and merge not split | 245,000 | Added 2026-11-15. Tokens include the fresh agent's 125,059. |
+| 12:38-12:58 PM | #1638: the team's roster audit rules: `set_team_audit_rules()` saves the enchant and gem check (Strict, Lenient, Casual; Lenient by default) and an optional vault minimum per row onto team settings, for the team's officers; a Roster audit card on Settings > General; database tests, page tests, generated docs, RLS.md, decision log, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / The roster audit and reports (#1638) | 20 m | build; review and merge not yet counted | 140,000 | Added 2026-11-15. |
 
 ## Not counted (same sessions, not revamp)
 
