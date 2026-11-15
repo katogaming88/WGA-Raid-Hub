@@ -42,7 +42,9 @@ export function bonusStepsFromRows(
     const have = ranks.get(key)!;
     let n = 0;
     while (have.has(n + 1)) n++;
-    return n;
+    // A season seeded without a step 1 falls back to its highest step, never
+    // 0, which the table refuses and would fail the raider's whole save.
+    return n > 0 ? n : Math.max(...have);
   };
   return new Map(rows.map((r) => [r.bonus_id, { track: r.track, rank: r.rank, max: top(r.season + '|' + r.track) }]));
 }

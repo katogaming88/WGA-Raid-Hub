@@ -201,3 +201,11 @@ Deno.test("a track's top step is counted per season", () => {
   assertEquals(steps.get(3), { track: 'Hero', rank: 1, max: 1 });
   assertEquals(steps.get(1), { track: 'Hero', rank: 1, max: 2 });
 });
+
+Deno.test('a track seeded without a step 1 tops out at its highest step, never 0', () => {
+  const steps = bonusStepsFromRows([
+    { bonus_id: 1, track: 'Hero', rank: 2, season: 'NEXT' },
+    { bonus_id: 2, track: 'Hero', rank: 3, season: 'NEXT' }
+  ]);
+  assertEquals(steps.get(1), { track: 'Hero', rank: 2, max: 3 });
+});

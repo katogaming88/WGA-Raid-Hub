@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 20 h 6 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 20 h 31 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **192 h 2 m** |             |
+| **All revamp work**                | **192 h 27 m** |             |
 
 ### By area
 
@@ -30,7 +30,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | --- | --- | ---: | ---: |
 | Tester fixes | Phase 2 | 2 h 15 m | ~2 h |
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
-| The roster audit and reports | Phase 2 | 1 h 50 m | ~9 h 50 m |
+| The roster audit and reports | Phase 2 | 2 h 15 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
@@ -743,6 +743,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 11:58 PM-12:34 AM | #1635 after the PR: CodeRabbit rate limited so skipped (Kat's new rule), fresh-agent review (changes needed: owner-via-roster and left-member tests, key generated from name_realm, delves as running totals, US-only and #1642 paywall notes, backup count), CI rls fix (helper on the once-per-query list), merge, cleanup, #1487 | Phase 2: Before the new site goes live / The roster audit and reports (#1635) | 35 m | build; Kat's merge | 158,100 | Added 2026-11-15. Started 2026-11-14. Tokens include the fresh agent's 124,805. |
 | 9:52-10:05 AM | #1634: the gear sync keeps each slot's permanent enchant, gems per socket (null for empty), embellished, crafted and upgrade step (from the track bonus id's rank, top step per season); field names checked against a live Blizzard reply; Edge Function tests red first, generated docs, decision log, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / The roster audit and reports (#1634) | 15 m | build; CodeRabbit, the fresh-agent review and merge not yet counted | 180,000 | Added 2026-11-15. Tokens include the /resume check. |
+| 10:05-10:30 AM | PR #1837 (#1634) after it opened: CodeRabbit's one finding (Myth's lone rank 9, the Mythic bosses' special drop, made every Myth item read x/9) fixed by taking the unbroken run of steps from 1, the special drop kept as 9/6 and the migration's check loosened to match; the fresh-agent migration review (approve, two nice-to-haves: a season without a step 1 falls back to its highest step, the PR's test count) both done; the local backup restored twice | Phase 2: Before the new site goes live / The roster audit and reports (#1634) | 25 m | build; Kat's CodeRabbit trigger, merge not yet counted | 194,000 | Added 2026-11-15. Tokens include the fresh agent's 81,796. |
 
 ## Not counted (same sessions, not revamp)
 
