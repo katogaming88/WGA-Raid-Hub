@@ -3632,3 +3632,19 @@ Shipped: `20261114234825_character_weeks.sql`.
 **Only the syncs write it.** `revoke all`, then `select` to authenticated and `select, insert, update` to service_role; no delete for anyone. Signed-out callers have no grant at all.
 
 [Full discussion -> #1635](https://github.com/katogaming88/WGA-Raid-Hub/issues/1635).
+
+## #1634 -- the gear sync keeps each slot's enchant, gems, embellishment and upgrade step
+
+Shipped: `20261115095516_equipped_gear_enchants_gems.sql`.
+
+**New columns on `player_equipped_gear`, current gear only.** `enchantment_id`, `gem_wow_item_ids`, `embellished`, `crafted`, `upgrade_rank` and `upgrade_max`, filled by `blizzard-gear-sync` from the same Character Equipment Summary reply it already read. Past weeks keep counts on `character_weeks` (#1261's decision), not each slot's history. Rows on file take the defaults until the next sync.
+
+**Only the permanent enchant.** The reply lists every enchant with its slot; the sync keeps the one in the PERMANENT slot, the key of `season_enchants`. Oils, whetstones and Illusory Adornments sit in a temporary slot and are dropped, so a weapon with only an oil reads as no enchant.
+
+**Sockets as an array, read from the item.** One entry per socket the item has, in order, null for an empty one, `[]` for none. A head, wrist or waist socket exists only when the item has one, so a raider who hasn't added a socket is never counted against. Named `gem_wow_item_ids` for its id space (`season_gems.wow_item_id`), outside `tests/ci/item-id-space.test.js`'s `item_id` rule.
+
+**Embellished and crafted are read from text.** The reply has no flag for either (checked live, 2026-11-15): an embellished item shows the equip limit "Unique-Equipped: Embellished (2)", and a crafted one carries the stats its crafter picked (`modified_crafting_stat`) or a "... Crafted" label.
+
+**The upgrade step comes from the track bonus id.** The reply has no upgrade field; `track_bonus_ids.rank` already says which step a bonus id is. `upgrade_max` is the track's top rank in that bonus id's season, stored beside the rank so the page shows "4/6" without a lookup. Both null when no track bonus id matched, including the item-level fallback, which can guess a track but not a step.
+
+[Full discussion -> #1634](https://github.com/katogaming88/WGA-Raid-Hub/issues/1634).

@@ -41,7 +41,13 @@ function row(slot: string): EquippedRow {
     wow_item_id: 1,
     item_level: 300,
     track: null,
-    bonus_list: []
+    bonus_list: [],
+    enchantment_id: null,
+    gem_wow_item_ids: [],
+    embellished: false,
+    crafted: false,
+    upgrade_rank: null,
+    upgrade_max: null
   };
 }
 

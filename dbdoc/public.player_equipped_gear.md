@@ -17,11 +17,21 @@ One row per player per physical gear slot (Blizzard API slot keys: HEAD, FINGER_
 | synced_at | timestamp with time zone | now() | false |  |  |  |
 | bonus_list | integer[] |  | true |  |  | The item's bonus IDs exactly as the Blizzard Character Equipment Summary returned them. track is derived from these via track_bonus_ids; kept raw so it can be re-derived without a re-sync. |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
+| enchantment_id | integer |  | true |  |  | The permanent enchant's Blizzard enchantment id (season_enchants.enchantment_id), null when there is none. Temporary ones (oils, whetstones, Illusory Adornments) are never stored. Synced by blizzard-gear-sync (#1634). |
+| gem_wow_item_ids | integer[] | '{}'::integer[] | false |  |  | One entry per socket the item has, in order: the gem's Blizzard item id (season_gems.wow_item_id), or null for an empty socket. Empty array when the item has no sockets. Synced by blizzard-gear-sync (#1634). |
+| embellished | boolean | false | false |  |  | The item carries an embellishment (its equip limit is "Embellished"). Synced by blizzard-gear-sync (#1634). |
+| crafted | boolean | false | false |  |  | The item was crafted. Synced by blizzard-gear-sync (#1634). |
+| upgrade_rank | smallint |  | true |  |  | The item's step on its track (the 4 of Hero 4/6), from its track bonus id in track_bonus_ids. Null when none matched. Synced by blizzard-gear-sync (#1634). |
+| upgrade_max | smallint |  | true |  |  | The top step of the item's track that season (the 6 of Hero 4/6). Null exactly when upgrade_rank is. Synced by blizzard-gear-sync (#1634). |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| player_equipped_gear_enchantment_id_check | CHECK | CHECK ((enchantment_id > 0)) |
+| player_equipped_gear_upgrade_max_check | CHECK | CHECK ((upgrade_max > 0)) |
+| player_equipped_gear_upgrade_rank_check | CHECK | CHECK ((upgrade_rank > 0)) |
+| player_equipped_gear_upgrade_step_check | CHECK | CHECK ((((upgrade_rank IS NULL) = (upgrade_max IS NULL)) AND (upgrade_rank <= upgrade_max))) |
 | player_equipped_gear_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
 | player_equipped_gear_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | player_equipped_gear_pkey | PRIMARY KEY | PRIMARY KEY (id) |
@@ -58,6 +68,12 @@ erDiagram
   timestamp_with_time_zone synced_at
   integer__ bonus_list
   integer team_id FK
+  integer enchantment_id
+  integer__ gem_wow_item_ids
+  boolean embellished
+  boolean crafted
+  smallint upgrade_rank
+  smallint upgrade_max
 }
 "public.players" {
   integer id

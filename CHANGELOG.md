@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.275.0] - 2026-11-15
+
+### Backend
+
+- Each raider's saved gear now keeps, per slot, the permanent enchant, the gem in each socket (an empty socket kept as empty), whether the piece is embellished or crafted, and its upgrade step on its track (for example Hero 4/6). Oils and whetstones don't count as enchants. Nothing shows on the site yet (#1634).
+
+### Functions
+
+- The gear sync fills those in from the Blizzard reply it already reads, reading sockets from the item rather than assuming them from the slot (#1634).
+
+### Project
+
+- Revamp time log: #1635's review and merge, and #1634.
+
 ## [3.274.0] - 2026-11-14
 
 ### Backend

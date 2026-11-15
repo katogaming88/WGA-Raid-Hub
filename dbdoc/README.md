@@ -43,7 +43,7 @@
 | [public.boe_items](public.boe_items.md) | 26 |  | BASE TABLE |
 | [public.boe_listings](public.boe_listings.md) | 8 |  | BASE TABLE |
 | [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) | 8 | Officer-acknowledged Priority List same-boss conflicts (a player holding #1 on 2+ items behind one boss+track kill), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one. | BASE TABLE |
-| [public.player_equipped_gear](public.player_equipped_gear.md) | 9 | One row per player per physical gear slot (Blizzard API slot keys: HEAD, FINGER_1, FINGER_2, ...), synced from the Blizzard Character Equipment Summary endpoint. Feeds generate_priority_order()'s equipped-item-level fairness factor. | BASE TABLE |
+| [public.player_equipped_gear](public.player_equipped_gear.md) | 15 | One row per player per physical gear slot (Blizzard API slot keys: HEAD, FINGER_1, FINGER_2, ...), synced from the Blizzard Character Equipment Summary endpoint. Feeds generate_priority_order()'s equipped-item-level fairness factor. | BASE TABLE |
 | [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) | 5 | Marks a team/season/item/track priority list as deliberately saved empty (no one wants the item) -- keeps it out of the Unmanaged Items list without a placeholder priority_order row. Cleared automatically the next time that item/track is saved with a non-empty roster. | BASE TABLE |
 | [public.priority_stale_dismissals](public.priority_stale_dismissals.md) | 7 | Officer-acknowledged "stale-after-Heroic" Priority List conflicts (a Mythic #1 who already has the Heroic version of the same item), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one. Sibling to priority_conflict_dismissals, kept separate since this is keyed by player+item rather than player+boss+track. | BASE TABLE |
 | [public.raid_schedule](public.raid_schedule.md) | 10 | The raid calendar's officer-owned recurring weekly rule (#892, part of #640): one row per weekday/time this team normally raids. is_optional flags a night with no automatic default-Present (#895) -- every non-bench roster player must explicitly RSVP. Raid nights are computed on the fly from this table plus raid_schedule_exceptions (js/calendar.js, computeRaidNights()), not materialized as rows. | BASE TABLE |
@@ -1031,6 +1031,12 @@ erDiagram
   timestamp_with_time_zone synced_at
   integer__ bonus_list
   integer team_id FK
+  integer enchantment_id
+  integer__ gem_wow_item_ids
+  boolean embellished
+  boolean crafted
+  smallint upgrade_rank
+  smallint upgrade_max
 }
 "public.priority_order_confirmed_empty" {
   integer team_id FK

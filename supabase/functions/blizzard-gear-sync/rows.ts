@@ -12,7 +12,40 @@ export type EquippedRow = {
   item_level: number | null;
   track: string | null;
   bonus_list: number[];
+  enchantment_id: number | null;
+  gem_wow_item_ids: Array<number | null>;
+  embellished: boolean;
+  crafted: boolean;
+  upgrade_rank: number | null;
+  upgrade_max: number | null;
 };
+
+// A track bonus id's meaning (track_bonus_ids): its track, its step on that
+// track, and the track's top step that season (Hero 4 of 6).
+export type BonusStep = { track: string; rank: number; max: number };
+
+// track_bonus_ids rows as the lookup buildRows() reads. The top step is
+// counted per season and track, since a season could give a track more steps.
+export function bonusStepsFromRows(
+  rows: Array<{ bonus_id: number; track: string; rank: number; season: string }>
+): Map<number, BonusStep> {
+  const top = new Map<string, number>();
+  for (const r of rows) {
+    const key = r.season + '|' + r.track;
+    top.set(key, Math.max(top.get(key) ?? 0, r.rank));
+  }
+  return new Map(
+    rows.map((r) => [r.bonus_id, { track: r.track, rank: r.rank, max: top.get(r.season + '|' + r.track)! }])
+  );
+}
+
+function stepFor(bonusList: number[], bonusTracks: Map<number, BonusStep>): BonusStep | null {
+  for (const bonusId of bonusList) {
+    const step = bonusTracks.get(bonusId);
+    if (step) return step;
+  }
+  return null;
+}
 
 const TRACKS_HIGH_TO_LOW = ['Myth', 'Hero', 'Champion', 'Veteran', 'Adventurer', 'Explorer'] as const;
 
@@ -25,12 +58,10 @@ export function deriveTrack(
   itemLevel: number | null,
   thresholds: Record<string, number> | null,
   bonusList: number[],
-  bonusTracks: Map<number, string>
+  bonusTracks: Map<number, BonusStep>
 ): string | null {
-  for (const bonusId of bonusList) {
-    const track = bonusTracks.get(bonusId);
-    if (track) return track;
-  }
+  const step = stepFor(bonusList, bonusTracks);
+  if (step) return step.track;
   if (itemLevel == null || !thresholds) return null;
   for (const track of TRACKS_HIGH_TO_LOW) {
     const floor = thresholds[track];
@@ -44,7 +75,7 @@ export function buildRows(
   teamId: number,
   equippedItems: any[],
   thresholds: Record<string, number> | null,
-  bonusTracks: Map<number, string>
+  bonusTracks: Map<number, BonusStep>
 ): EquippedRow[] {
   const rows: EquippedRow[] = [];
   for (const it of equippedItems) {
@@ -53,6 +84,24 @@ export function buildRows(
     if (!slot || itemId == null) continue;
     const itemLevel = typeof it?.level?.value === 'number' ? it.level.value : null;
     const bonusList = Array.isArray(it?.bonus_list) ? it.bonus_list.filter((b: unknown) => typeof b === 'number') : [];
+    const step = stepFor(bonusList, bonusTracks);
+    // Only the permanent enchant (#1634): oils, whetstones and Illusory
+    // Adornments sit in a TEMPORARY slot and are not enchants.
+    const permanent = (Array.isArray(it?.enchantments) ? it.enchantments : []).find(
+      (e: any) => e?.enchantment_slot?.type === 'PERMANENT' && typeof e?.enchantment_id === 'number'
+    );
+    // One entry per socket the item has, null for an empty one. Sockets are
+    // read from the item, never assumed from the slot.
+    const gems = (Array.isArray(it?.sockets) ? it.sockets : []).map((s: any) =>
+      typeof s?.item?.id === 'number' ? s.item.id : null
+    );
+    // No flag for either in the reply: an embellishment shows as the
+    // "Unique-Equipped: Embellished (2)" limit, and crafted gear carries the
+    // stats its crafter picked or a "... Crafted" label.
+    const embellished = /embellished/i.test(String(it?.limit_category ?? ''));
+    const crafted =
+      (Array.isArray(it?.modified_crafting_stat) && it.modified_crafting_stat.length > 0) ||
+      /crafted/i.test(String(it?.name_description?.display_string ?? ''));
     rows.push({
       player_id: playerId,
       team_id: teamId,
@@ -60,7 +109,13 @@ export function buildRows(
       wow_item_id: itemId,
       item_level: itemLevel,
       track: deriveTrack(itemLevel, thresholds, bonusList, bonusTracks),
-      bonus_list: bonusList
+      bonus_list: bonusList,
+      enchantment_id: permanent ? permanent.enchantment_id : null,
+      gem_wow_item_ids: gems,
+      embellished,
+      crafted,
+      upgrade_rank: step ? step.rank : null,
+      upgrade_max: step ? step.max : null
     });
   }
   return rows;

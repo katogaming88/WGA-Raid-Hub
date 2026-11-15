@@ -2,13 +2,18 @@
 // now, checked against the player's team by a trigger, so every row the
 // function upserts has to name the team the roster was read for.
 import { assertEquals } from 'jsr:@std/assert@1';
-import { buildRows, deriveTrack } from '../../../supabase/functions/blizzard-gear-sync/rows.ts';
+import {
+  bonusStepsFromRows,
+  buildRows,
+  deriveTrack,
+  type BonusStep
+} from '../../../supabase/functions/blizzard-gear-sync/rows.ts';
 import { floorsFromRows } from '../../../supabase/functions/blizzard-gear-sync/floors.ts';
 
 const PLAYER = 12;
 const TEAM = 3;
 const NO_THRESHOLDS = null;
-const NO_BONUS_TRACKS = new Map<number, string>();
+const NO_BONUS_TRACKS = new Map<number, BonusStep>();
 
 // One equipped item in the shape the Character Equipment Summary endpoint
 // answers with; an item id of null is a slot the answer names but holds
@@ -35,7 +40,13 @@ Deno.test('every row carries the team id given', () => {
     wow_item_id: 101,
     item_level: 300,
     track: null,
-    bonus_list: []
+    bonus_list: [],
+    enchantment_id: null,
+    gem_wow_item_ids: [],
+    embellished: false,
+    crafted: false,
+    upgrade_rank: null,
+    upgrade_max: null
   });
 });
 
@@ -90,5 +101,80 @@ Deno.test("gear with no track bonus id is graded by the tier's floors", () => {
 
 Deno.test("a track bonus id outranks the tier's floors", () => {
   const floors = floorsFromRows(MID2_FLOORS);
-  assertEquals(deriveTrack(330, floors, [12841], new Map([[12841, 'Hero']])), 'Hero');
+  assertEquals(deriveTrack(330, floors, [12841], new Map([[12841, { track: 'Hero', rank: 1, max: 6 }]])), 'Hero');
+});
+
+// #1634: what the audit reads off each slot. Shapes copied from a live
+// Character Equipment Summary reply (Katorri-Stormrage, 2026-11-15).
+const MID2_STEPS = bonusStepsFromRows([
+  { bonus_id: 12841, track: 'Hero', rank: 1, season: 'MID2' },
+  { bonus_id: 12844, track: 'Hero', rank: 4, season: 'MID2' },
+  { bonus_id: 12846, track: 'Hero', rank: 6, season: 'MID2' },
+  { bonus_id: 12854, track: 'Myth', rank: 6, season: 'MID2' }
+]);
+
+function oneRow(item: Record<string, unknown>) {
+  const rows = buildRows(PLAYER, TEAM, [{ ...equipped('NECK', 201, 321), ...item }], NO_THRESHOLDS, MID2_STEPS);
+  return rows[0];
+}
+
+const gem = (id: number) => ({ socket_type: { type: 'PRISMATIC' }, item: { id } });
+const emptySocket = { socket_type: { type: 'PRISMATIC' } };
+
+Deno.test('a two-socket neck keeps both gems, in socket order', () => {
+  assertEquals(oneRow({ sockets: [gem(240983), gem(240890)] }).gem_wow_item_ids, [240983, 240890]);
+});
+
+Deno.test('an empty socket is kept as null, so it counts as a socket with no gem', () => {
+  assertEquals(oneRow({ sockets: [gem(240890), emptySocket] }).gem_wow_item_ids, [240890, null]);
+});
+
+Deno.test('an item with no sockets has none, never an assumed one', () => {
+  assertEquals(oneRow({}).gem_wow_item_ids, []);
+});
+
+Deno.test('only the permanent enchant is kept; an oil is not an enchant', () => {
+  const oilOnly = { enchantments: [{ enchantment_id: 7500, enchantment_slot: { id: 2, type: 'TEMPORARY' } }] };
+  assertEquals(oneRow(oilOnly).enchantment_id, null);
+  const both = {
+    enchantments: [
+      { enchantment_id: 7500, enchantment_slot: { id: 2, type: 'TEMPORARY' } },
+      { enchantment_id: 8689, enchantment_slot: { id: 0, type: 'PERMANENT' } }
+    ]
+  };
+  assertEquals(oneRow(both).enchantment_id, 8689);
+});
+
+Deno.test('an embellished crafted piece reads as both', () => {
+  const row = oneRow({
+    limit_category: 'Unique-Equipped: Embellished (2)',
+    name_description: { display_string: 'Tidal Crafted' },
+    modified_crafting_stat: [{ id: 49, type: 'MASTERY_RATING' }]
+  });
+  assertEquals([row.embellished, row.crafted], [true, true]);
+});
+
+Deno.test('a raid drop is neither embellished nor crafted', () => {
+  const row = oneRow({ name_description: { display_string: 'Heroic' } });
+  assertEquals([row.embellished, row.crafted], [false, false]);
+});
+
+Deno.test('a 4/6 Hero item has upgrade step 4 of 6', () => {
+  const row = oneRow({ bonus_list: [6652, 13334, 12844] });
+  assertEquals([row.track, row.upgrade_rank, row.upgrade_max], ['Hero', 4, 6]);
+});
+
+Deno.test('gear with no track bonus id has no upgrade step', () => {
+  const row = oneRow({ bonus_list: [12214, 13695] });
+  assertEquals([row.upgrade_rank, row.upgrade_max], [null, null]);
+});
+
+Deno.test("a track's top step is counted per season", () => {
+  const steps = bonusStepsFromRows([
+    { bonus_id: 1, track: 'Hero', rank: 1, season: 'OLD' },
+    { bonus_id: 2, track: 'Hero', rank: 8, season: 'OLD' },
+    { bonus_id: 3, track: 'Hero', rank: 6, season: 'NEW' }
+  ]);
+  assertEquals(steps.get(3), { track: 'Hero', rank: 6, max: 6 });
+  assertEquals(steps.get(1), { track: 'Hero', rank: 1, max: 8 });
 });
