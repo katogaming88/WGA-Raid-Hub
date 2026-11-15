@@ -96,8 +96,13 @@ export function GearToFix({ raider }: { raider: AuditRaider }) {
 }
 
 export function CrestsRow({ week, seasonCode }: { week: WeekRow | null; seasonCode: string | null }) {
-  const caps = useCrestCaps(seasonCode, weekOf(new Date()));
   if (!week || !week.crests_at) return <p className="text-muted">Crests not read yet.</p>;
+  return <CrestList week={week} seasonCode={seasonCode} />;
+}
+
+// Reads the caps only once there are crests to set against them.
+function CrestList({ week, seasonCode }: { week: WeekRow; seasonCode: string | null }) {
+  const caps = useCrestCaps(seasonCode, weekOf(new Date()));
   return (
     <DataState query={caps} label="the crest caps">
       {(rows) => (

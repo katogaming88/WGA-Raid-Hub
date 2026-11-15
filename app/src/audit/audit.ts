@@ -171,7 +171,7 @@ export function gearCheck(
         });
       } else enchanted++;
     }
-    for (const gem of item.gem_wow_item_ids) {
+    for (const gem of item.gem_wow_item_ids ?? []) {
       sockets++;
       if (gem == null) {
         problems.push({ kind: 'socket', slot, item: item.wow_item_id, problem: 'Empty socket', issue: true });
