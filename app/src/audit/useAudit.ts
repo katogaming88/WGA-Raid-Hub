@@ -1,6 +1,14 @@
 import { readAll, useSupabaseQuery } from '../data/query';
 import { asEnchantCheck, asVaultRule } from '../settings/settings';
-import { weekBefore, weekOf, type AuditData, type AuditPlayer, type GearItem, type WeekRow } from './audit';
+import {
+  weekBefore,
+  weekOf,
+  type AuditData,
+  type AuditPlayer,
+  type GearItem,
+  type SeasonWeek,
+  type WeekRow
+} from './audit';
 
 const GEAR_COLUMNS =
   'player_id, equipment_slot, item_level, wow_item_id, track, enchantment_id, gem_wow_item_ids, embellished, crafted, upgrade_rank, upgrade_max, synced_at';
@@ -173,4 +181,57 @@ export function useCrestCaps(seasonCode: string | null, week: string) {
     },
     { enabled: seasonCode !== null }
   );
+}
+
+export type RaidBoss = { instance_id: number; encounter_id: number; name: string; sort_order: number };
+
+// The season's counted raids' bosses, in the game's order (the Raids tab's columns).
+export function useRaidBosses(seasonCode: string | null) {
+  return useSupabaseQuery<RaidBoss[]>(
+    ['audit-raid-bosses', seasonCode],
+    (client) =>
+      // team-read-guard: a season's raid bosses, a dozen at most
+      client
+        .from('season_raid_bosses')
+        .select('instance_id, encounter_id, name, sort_order')
+        .eq('season', seasonCode ?? '')
+        .order('sort_order'),
+    { enabled: seasonCode !== null }
+  );
+}
+
+// Dungeon names by the id a run carries.
+export function useDungeonNames() {
+  return useSupabaseQuery<Map<number, string>>(['audit-dungeon-names'], async (client) => {
+    const { data, error } = await readAll<{ dungeon_id: number; name: string }>((from, to) =>
+      client.from('mplus_dungeons').select('dungeon_id, name').order('dungeon_id').range(from, to)
+    );
+    if (error) return { data: null, error };
+    return { data: new Map((data ?? []).map((d) => [d.dungeon_id, d.name])), error: null };
+  });
+}
+
+// Every week of the season for these characters: the Raids tab's Whole season
+// and the Dungeons tab's best key per dungeon. Weeks are stored by their reset
+// Tuesday, so the read starts at the week the season (or the team's first raid
+// night in it) falls in, never the day itself, or that first week is lost. With
+// no start date there is no season to read, so it is empty rather than every
+// week since 2000 (last season's keys read as this season's).
+export function useSeasonWeeks(keys: string[], seasonStart: string | null) {
+  return useSupabaseQuery<SeasonWeek[]>(['audit-season-weeks', keys, seasonStart], async (client) => {
+    if (!seasonStart || keys.length === 0) return { data: [], error: null };
+    const from = weekOf(new Date(`${seasonStart.slice(0, 10)}T12:00:00Z`));
+    return readAll<SeasonWeek>(
+      (start, end) =>
+        // The json columns come back as Json; their shapes are SeasonWeek's.
+        client
+          .from('character_weeks')
+          .select('name_realm_key, week_of, raid_kills, mplus_runs')
+          .in('name_realm_key', keys)
+          .gte('week_of', from)
+          .order('name_realm_key')
+          .order('week_of')
+          .range(start, end) as unknown as ReturnType<Parameters<typeof readAll<SeasonWeek>>[0]>
+    );
+  });
 }

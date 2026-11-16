@@ -8,8 +8,8 @@ The raids whose kills fill Raid vault slots in a season (#1637), by Blizzard jou
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| season | text |  | false |  | [public.seasons](public.seasons.md) |  |
-| instance_id | integer |  | false |  |  |  |
+| season | text |  | false | [public.season_raid_bosses](public.season_raid_bosses.md) | [public.seasons](public.seasons.md) |  |
+| instance_id | integer |  | false | [public.season_raid_bosses](public.season_raid_bosses.md) |  |  |
 | name | text |  | false |  |  |  |
 
 ## Constraints
@@ -33,6 +33,7 @@ The raids whose kills fill Raid vault slots in a season (#1637), by Blizzard jou
 erDiagram
 
 "public.season_vault_raids" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_raid_bosses" }o--|| "public.season_vault_raids" : "FOREIGN KEY (season, instance_id) REFERENCES season_vault_raids(season, instance_id)"
 
 "public.season_vault_raids" {
   text season FK
@@ -46,6 +47,13 @@ erDiagram
   date ends_at
   timestamp_with_time_zone created_at
   integer position
+}
+"public.season_raid_bosses" {
+  text season FK
+  integer instance_id FK
+  integer encounter_id
+  text name
+  smallint sort_order
 }
 ```
 

@@ -14282,6 +14282,196 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.season_raid_bosses",
+      "type": "BASE TABLE",
+      "comment": "The bosses of each season's counted raids (#1641), by Blizzard journal encounter id, in the game's order. Added by migration per season.",
+      "columns": [
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "instance_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "encounter_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "sort_order",
+          "type": "smallint",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "season_raid_bosses_pkey",
+          "def": "CREATE UNIQUE INDEX season_raid_bosses_pkey ON public.season_raid_bosses USING btree (season, encounter_id)",
+          "table": "public.season_raid_bosses",
+          "columns": [
+            "season",
+            "encounter_id"
+          ]
+        },
+        {
+          "name": "season_raid_bosses_order",
+          "def": "CREATE UNIQUE INDEX season_raid_bosses_order ON public.season_raid_bosses USING btree (season, sort_order)",
+          "table": "public.season_raid_bosses",
+          "columns": [
+            "season",
+            "sort_order"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "season_raid_bosses_encounter_id_check",
+          "type": "CHECK",
+          "def": "CHECK ((encounter_id \u003e 0))",
+          "table": "public.season_raid_bosses",
+          "referenced_table": "",
+          "columns": [
+            "encounter_id"
+          ]
+        },
+        {
+          "name": "season_raid_bosses_instance_id_check",
+          "type": "CHECK",
+          "def": "CHECK ((instance_id \u003e 0))",
+          "table": "public.season_raid_bosses",
+          "referenced_table": "",
+          "columns": [
+            "instance_id"
+          ]
+        },
+        {
+          "name": "season_raid_bosses_name_check",
+          "type": "CHECK",
+          "def": "CHECK ((name ~ '\\S'::text))",
+          "table": "public.season_raid_bosses",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "season_raid_bosses_sort_order_check",
+          "type": "CHECK",
+          "def": "CHECK ((sort_order \u003e 0))",
+          "table": "public.season_raid_bosses",
+          "referenced_table": "",
+          "columns": [
+            "sort_order"
+          ]
+        },
+        {
+          "name": "season_raid_bosses_season_instance_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (season, instance_id) REFERENCES season_vault_raids(season, instance_id)",
+          "table": "public.season_raid_bosses",
+          "referenced_table": "public.season_vault_raids",
+          "columns": [
+            "season",
+            "instance_id"
+          ],
+          "referenced_columns": [
+            "season",
+            "instance_id"
+          ]
+        },
+        {
+          "name": "season_raid_bosses_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (season, encounter_id)",
+          "table": "public.season_raid_bosses",
+          "referenced_table": "",
+          "columns": [
+            "season",
+            "encounter_id"
+          ]
+        },
+        {
+          "name": "season_raid_bosses_order",
+          "type": "UNIQUE",
+          "def": "UNIQUE (season, sort_order)",
+          "table": "public.season_raid_bosses",
+          "referenced_table": "",
+          "columns": [
+            "season",
+            "sort_order"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.mplus_dungeons",
+      "type": "BASE TABLE",
+      "comment": "Mythic+ dungeon names by the dungeon id the profile API uses, Blizzard's MapChallengeMode id (#1641). Every dungeon, not a season's pool.",
+      "columns": [
+        {
+          "name": "dungeon_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "mplus_dungeons_pkey",
+          "def": "CREATE UNIQUE INDEX mplus_dungeons_pkey ON public.mplus_dungeons USING btree (dungeon_id)",
+          "table": "public.mplus_dungeons",
+          "columns": [
+            "dungeon_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "mplus_dungeons_dungeon_id_check",
+          "type": "CHECK",
+          "def": "CHECK ((dungeon_id \u003e 0))",
+          "table": "public.mplus_dungeons",
+          "referenced_table": "",
+          "columns": [
+            "dungeon_id"
+          ]
+        },
+        {
+          "name": "mplus_dungeons_name_check",
+          "type": "CHECK",
+          "def": "CHECK ((name ~ '\\S'::text))",
+          "table": "public.mplus_dungeons",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "mplus_dungeons_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (dungeon_id)",
+          "table": "public.mplus_dungeons",
+          "referenced_table": "",
+          "columns": [
+            "dungeon_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -16536,6 +16726,21 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (season) REFERENCES seasons(code)"
+    },
+    {
+      "table": "public.season_raid_bosses",
+      "columns": [
+        "season",
+        "instance_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.season_vault_raids",
+      "parent_columns": [
+        "season",
+        "instance_id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (season, instance_id) REFERENCES season_vault_raids(season, instance_id)"
     }
   ],
   "functions": [

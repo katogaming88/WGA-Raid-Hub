@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 28 h 2 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 28 h 22 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **199 h 58 m** |             |
+| **All revamp work**                | **200 h 18 m** |             |
 
 ### By area
 
@@ -30,7 +30,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | --- | --- | ---: | ---: |
 | Tester fixes | Phase 2 | 2 h 30 m | ~2 h |
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
-| The roster audit and reports | Phase 2 | 9 h 31 m | ~9 h 50 m |
+| The roster audit and reports | Phase 2 | 9 h 51 m | ~9 h 50 m |
 | Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
@@ -753,6 +753,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 5:41-6:15 PM | #1639: the audit page: Team > Audit with Needs attention, raiders grouped by role, armor, class or none (each group's average item level and how many need a look), item level highest ever with a switch to worn, M+ rating, sparks, tier by track, enchant and gem counts from the season's reference rows and the team's rule, the Great Vault as bars, M+ runs and bosses, a This week / Last week switch; a raider opened (gear to fix, vault, crests against their cap, M+ runs); My profile's Your week card; a migration keeping each character's highest item level (trigger) and the gear sync reading the character summary; Kat's answers (add the migration; the `/officer audit` command left out for now); unit, page, database, Edge Function and browser tests (accessibility, phone width, light mode), screenshots, generated docs, decision log, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / The roster audit and reports (#1639) | 35 m | build; Kat's design review not yet counted | 448,100 | Added 2026-11-15. |
 | 6:16-10:49 PM | PR #1849 (#1639) after it opened: preflight run twice (the gem loop crashed the profile page on gear rows without gem data, crest caps read before there were crests, sidebar heights for the new Audit row), Kat's design rounds (skinned dropdown, enchants all missing before the gear sync had filled the new columns so gear not read yet shows a dash, the table fits the page with sticky headings and no inner scroll, bigger headings, padded cards, group average under Ilvl, tier columns H S C G L with section headings and dividers), CodeRabbit (no findings), the fresh-agent migration review (approve; nice-to-haves done: the highest item level starts over each season, a name-matching test, the backup doc), docs regenerated, merge, cleanup, #1487 | Phase 2: Before the new site goes live / The roster audit and reports (#1639) | 4 h 35 m | build; Kat's design rounds and merge not split | 576,300 | Added 2026-11-15. Tokens include the fresh agent's 102,343. |
 | 10:51-11:03 PM | #1640: the audit's Gear, Upgrades and Enchants & gems tabs, each at its own address: item level per slot colored by track with marks (no enchant, empty socket, embellished); upgrade steps per slot, items per track, steps left; enchant name and rank per season slot (from the season settings), gem chips per socket, Empty, Low quality and Epic gem, under the team's rule; dashes before the gear is read; unit, page and browser tests (accessibility, phone width, light mode), screenshots, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / The roster audit and reports (#1640) | 15 m | build; review and merge not yet counted | 91,300 | Added 2026-11-15. |
+| 11:14-11:33 PM | #1640's merge, cleanup and #1487; #1641: the audit's Great Vault, Raids, Dungeons and Crests tabs: nine vault slots per raider with item level, what is left and a Filled count; the highest difficulty per boss (this week, last week, whole season) with counts per difficulty; this week's or last week's rating, runs and best key, then the best key in each dungeon this season; each crest type against this week's cap from `season_crest_cap()`; a migration for two small reference tables, `season_raid_bosses` and `mplus_dungeons`, with names looked up in Blizzard's journal and challenge mode tables (the weekly row stores ids only); database, unit, page and browser tests (accessibility, phone width, light mode), screenshots, generated docs, RLS.md, decision log, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / The roster audit and reports (#1641) | 20 m | build; review and merge not yet counted | 136,200 | Added 2026-11-15. |
 
 ## Not counted (same sessions, not revamp)
 

@@ -283,6 +283,8 @@ export async function openApp(browser, port, state) {
     season_enchant_slots: [],
     season_enchants: [],
     season_gems: [],
+    season_raid_bosses: [],
+    mplus_dungeons: [],
     ...state.tables
   };
 

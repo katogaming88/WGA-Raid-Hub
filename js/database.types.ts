@@ -1293,6 +1293,21 @@ export type Database = {
           },
         ]
       }
+      mplus_dungeons: {
+        Row: {
+          dungeon_id: number
+          name: string
+        }
+        Insert: {
+          dungeon_id: number
+          name: string
+        }
+        Update: {
+          dungeon_id?: number
+          name?: string
+        }
+        Relationships: []
+      }
       mplus_exclusion_requests: {
         Row: {
           id: number
@@ -3336,6 +3351,38 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "seasons"
             referencedColumns: ["code"]
+          },
+        ]
+      }
+      season_raid_bosses: {
+        Row: {
+          encounter_id: number
+          instance_id: number
+          name: string
+          season: string
+          sort_order: number
+        }
+        Insert: {
+          encounter_id: number
+          instance_id: number
+          name: string
+          season: string
+          sort_order: number
+        }
+        Update: {
+          encounter_id?: number
+          instance_id?: number
+          name?: string
+          season?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_raid_bosses_season_instance_id_fkey"
+            columns: ["season", "instance_id"]
+            isOneToOne: false
+            referencedRelation: "season_vault_raids"
+            referencedColumns: ["season", "instance_id"]
           },
         ]
       }

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   auditRaider,
+  bestKills,
+  crestProgress,
+  killCounts,
+  seasonBestKeys,
   enchantCell,
   enchantColumns,
   gemChips,
@@ -326,5 +330,53 @@ describe('the Gear, Upgrades and Enchants & gems tabs', () => {
       gear: [piece('NECK', { gem_wow_item_ids: [1, 2, null] }), piece('FINGER_1', { gem_wow_item_ids: [77] })]
     });
     expect(lowGemCount(r, REFS)).toBe(2);
+  });
+});
+
+describe('the Raids, Dungeons and Crests tabs', () => {
+  const kill = (encounter_id: number, difficulty: string) => ({ encounter_id, difficulty });
+
+  it('keeps the highest of Normal, Heroic and Mythic per boss across weeks, and leaves Raid Finder out', () => {
+    const best = bestKills([
+      { raid_kills: [kill(1, 'heroic'), kill(2, 'lfr'), kill(3, 'normal')] },
+      { raid_kills: [kill(1, 'mythic'), kill(3, 'heroic')] }
+    ]);
+    expect([...best.entries()]).toEqual([
+      [1, 'mythic'],
+      [3, 'heroic']
+    ]);
+  });
+
+  it('counts bosses killed on each difficulty, a Mythic kill never counting as a Heroic one', () => {
+    const weeks = [
+      { raid_kills: [kill(1, 'mythic'), kill(2, 'heroic'), kill(3, 'normal'), kill(9, 'heroic')] },
+      { raid_kills: [kill(2, 'heroic'), kill(1, 'heroic')] }
+    ];
+    // Boss 9 is not one of the season's bosses; boss 2's second Heroic kill counts once.
+    expect(killCounts(weeks, [1, 2, 3, 4])).toEqual({ normal: 1, heroic: 2, mythic: 1 });
+  });
+
+  it('the best key in each dungeon across the season, preferring one in time at the same level', () => {
+    const run = (dungeon_id: number, level: number, timed: boolean) => ({ dungeon_id, level, timed });
+    const week = (runs: ReturnType<typeof run>[]) => ({
+      name_realm_key: 'k',
+      week_of: '2026-11-03',
+      raid_kills: [],
+      mplus_runs: runs
+    });
+    const best = seasonBestKeys([
+      week([run(1, 12, false), run(2, 9, true)]),
+      week([run(1, 12, true), run(1, 11, true)])
+    ]);
+    expect(best.get(1)).toEqual({ level: 12, timed: true });
+    expect(best.get(2)).toEqual({ level: 9, timed: true });
+    expect(best.get(3)).toBeUndefined();
+  });
+
+  it('crest progress: a count against the cap, Capped when full, the total when uncapped', () => {
+    expect(crestProgress(640, 800)).toEqual({ kind: 'open', earned: 640, pct: 80 });
+    expect(crestProgress(800, 800).kind).toBe('capped');
+    expect(crestProgress(900, 800).kind).toBe('capped');
+    expect(crestProgress(564, null)).toEqual({ kind: 'uncapped', earned: 564, pct: 0 });
   });
 });

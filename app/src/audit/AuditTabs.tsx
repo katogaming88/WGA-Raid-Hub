@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { usePageCan } from '../auth/access';
 import { useAddress } from '../data/address';
+import { CrestsTab, DungeonsTab, RaidsTab, VaultTab } from './AuditSeasonTabs';
 import { classColor } from '../roster/roster';
 import { ENCHANT_CHECKS } from '../settings/settings';
 import {
@@ -21,12 +22,24 @@ import {
   type GearItem
 } from './audit';
 
-export type AuditTab = 'summary' | 'gear' | 'upgrades' | 'enchants';
+export type AuditTab = 'summary' | 'gear' | 'upgrades' | 'enchants' | 'vault' | 'raids' | 'dungeons' | 'crests';
 
 // The audit's other views (#1640, #1261): the same raiders as the Summary,
 // each as a table of what the gear sync saved for every slot. They show the
 // gear as of the last sync, so there is no week switch.
-export function AuditTabView({ tab, audit, now }: { tab: Exclude<AuditTab, 'summary'>; audit: AuditData; now: Date }) {
+export function AuditTabView({
+  tab,
+  audit,
+  now,
+  seasonCode,
+  seasonStart
+}: {
+  tab: Exclude<AuditTab, 'summary'>;
+  audit: AuditData;
+  now: Date;
+  seasonCode: string | null;
+  seasonStart: string | null;
+}) {
   const raiders = inTabOrder(buildAudit(audit, 'this', now));
   const today = now.toISOString().slice(0, 10);
   return (
@@ -34,13 +47,17 @@ export function AuditTabView({ tab, audit, now }: { tab: Exclude<AuditTab, 'summ
       {tab === 'gear' && <GearTab raiders={raiders} audit={audit} today={today} />}
       {tab === 'upgrades' && <UpgradesTab raiders={raiders} />}
       {tab === 'enchants' && <EnchantsTab raiders={raiders} audit={audit} today={today} />}
+      {tab === 'vault' && <VaultTab raiders={raiders} />}
+      {tab === 'raids' && <RaidsTab raiders={raiders} seasonCode={seasonCode} seasonStart={seasonStart} />}
+      {tab === 'dungeons' && <DungeonsTab raiders={raiders} seasonStart={seasonStart} />}
+      {tab === 'crests' && <CrestsTab raiders={raiders} seasonCode={seasonCode} />}
     </>
   );
 }
 
-const trackClass = (track: string | null) => (track ? `ilvl-${track}` : '');
+export const trackClass = (track: string | null) => (track ? `ilvl-${track}` : '');
 
-function Name({ r }: { r: AuditRaider }) {
+export function Name({ r }: { r: AuditRaider }) {
   return (
     <th scope="row" className="audit-name">
       <span style={{ color: classColor(r.className) }}>{r.name}</span>
@@ -52,7 +69,7 @@ function Name({ r }: { r: AuditRaider }) {
 }
 
 // A wide table in a region that scrolls sideways only when it has to.
-function Scroller({ label, children }: { label: string; children: React.ReactNode }) {
+export function Scroller({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
     <div className="card audit-table-wrap audit-tab-table" tabIndex={0} role="region" aria-label={label}>
