@@ -222,7 +222,7 @@ export function WishlistSummaryCard({
           const summary = wishlistSummary(w, c, z, code);
           const progress = wishlistProgress(w, c, z, code);
           return (
-            <>
+            <div className="wishlist-block">
               <p className="wishlist-summary">
                 {code && <>{name}: </>}
                 <span className="num wishlist-bis">{summary.bis}</span> of {summary.total} slots have a BiS pick
@@ -238,10 +238,10 @@ export function WishlistSummaryCard({
                 {progress.state === 'not-started'
                   ? 'Not started: pick a BiS item or a Pass for each slot.'
                   : progress.state === 'done'
-                    ? `Done: all ${progress.total} slots have a BiS pick or a Pass.`
-                    : `Partly done: ${progress.done} of ${progress.total} slots have a BiS pick or a Pass.`}
+                    ? 'Done: every slot has a BiS pick or a Pass.'
+                    : `Partly done: ${progress.done} of ${progress.total} slots, counting Passes.`}
               </p>
-            </>
+            </div>
           );
         }}
       </DataState>
