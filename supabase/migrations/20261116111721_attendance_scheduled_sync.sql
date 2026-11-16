@@ -97,6 +97,9 @@ comment on function public.attendance_items_waiting(integer) is
 
 revoke all on function public.attendance_items_waiting(integer) from public, anon;
 grant execute on function public.attendance_items_waiting(integer) to authenticated, service_role;
+-- The count reads the season start through team_season_start(), which the
+-- service role (the hourly run) could not run until now (fresh review).
+grant execute on function public.team_season_start(integer, text) to service_role;
 
 -- 4.
 create or replace function public.commit_attendance_scores(p_team_id integer)
@@ -128,6 +131,8 @@ begin
     from public.attendance a
     where a.team_id = p_team_id
       and a.report_excluded = false
+      -- A deleted player's rows keep no player; scoring would refuse them.
+      and a.player_id is not null
   ), ratios as (
     select player_id, avg(weight) as ratio
     from weighted

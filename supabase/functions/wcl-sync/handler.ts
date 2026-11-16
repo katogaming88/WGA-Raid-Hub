@@ -747,6 +747,22 @@ async function getNightLineup(
   return { bosses, lineupPlayerIds };
 }
 
+// PostgREST stops a read at 1000 rows and still answers 200 with no error,
+// so a short read looks complete. Every team-wide read here pages by id
+// (fresh review on PR #1858: team 1 already had 1785 attendance rows).
+const PAGE = 1000;
+async function readAllRows(
+  page: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: { message: string } | null }>
+): Promise<any[]> {
+  const rows: any[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await page(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    rows.push(...(data || []));
+    if (!data || data.length < PAGE) return rows;
+  }
+}
+
 async function refreshAttendance(token: Wcl, guildId: number, teamId: number, supabase: SupabaseClient<any>) {
   const { data: settingsRow } = await supabase
     .from('team_settings')
@@ -791,13 +807,16 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
   // participant re-fetch. Excluded reports never get attendance rows, so
   // they're re-classified every refresh; that's a cheap single zone-fetch
   // each, not the 3x-per-report cost stage 2 had to solve for.
-  const { data: existingReportRows, error: existingReportsError } = await supabase
-    .from('attendance')
-    .select('report_id')
-    .eq('team_id', teamId)
-    .not('report_id', 'is', null);
-  if (existingReportsError) throw new Error(existingReportsError.message);
-  const cachedReportIds = new Set((existingReportRows || []).map((r: any) => r.report_id));
+  const existingReportRows = await readAllRows((from, to) =>
+    supabase
+      .from('attendance')
+      .select('id, report_id')
+      .eq('team_id', teamId)
+      .not('report_id', 'is', null)
+      .order('id')
+      .range(from, to)
+  );
+  const cachedReportIds = new Set(existingReportRows.map((r: any) => r.report_id));
 
   const { data: players, error: playersError } = await supabase
     .from('players')
@@ -818,15 +837,16 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
   // Rows already set by an officer are never touched by a refresh -- same
   // "Auto sources are always recomputed, Officer sources are sticky" rule
   // gs/Attendance.gs's readExistingAttendance enforced via the sheet.
-  const { data: existingStatusRows, error: existingStatusError } = await supabase
-    .from('attendance')
-    .select('player_id, raid_date, source, report_excluded')
-    .eq('team_id', teamId);
-  if (existingStatusError) throw new Error(existingStatusError.message);
+  const existingStatusRows = await readAllRows((from, to) =>
+    supabase
+      .from('attendance')
+      .select('id, player_id, raid_date, source, report_excluded')
+      .eq('team_id', teamId)
+      .order('id')
+      .range(from, to)
+  );
   const officerLocked = new Set(
-    (existingStatusRows || [])
-      .filter((r: any) => r.source === 'Officer')
-      .map((r: any) => `${r.raid_date}|${r.player_id}`)
+    existingStatusRows.filter((r: any) => r.source === 'Officer').map((r: any) => `${r.raid_date}|${r.player_id}`)
   );
   // toggleReportExcluded marks a whole raid_date excluded team-wide, but a
   // later sync run (e.g. a player added to the roster after the toggle, or
@@ -836,9 +856,7 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
   // _teamRaidNightsByMonth() (js/common.js) still count the whole night.
   // Any existing row with the flag set means an officer excluded this date,
   // so new rows for that date must preserve it rather than default to false.
-  const excludedDates = new Set(
-    (existingStatusRows || []).filter((r: any) => r.report_excluded).map((r: any) => r.raid_date)
-  );
+  const excludedDates = new Set(existingStatusRows.filter((r: any) => r.report_excluded).map((r: any) => r.raid_date));
 
   let mainNights = 0;
   let excluded = 0;
@@ -887,12 +905,10 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
   // caught up. Re-deriving this for every cached report on every run would
   // re-fetch a full season's WCL data for nothing the cache below already
   // exists to avoid -- this bounds the catch-up to once per date.
-  const { data: participationDateRows, error: participationDatesError } = await supabase
-    .from('raid_night_participation')
-    .select('raid_date')
-    .eq('team_id', teamId);
-  if (participationDatesError) throw new Error(participationDatesError.message);
-  const datesWithParticipation = new Set((participationDateRows || []).map((r: any) => r.raid_date));
+  const participationDateRows = await readAllRows((from, to) =>
+    supabase.from('raid_night_participation').select('id, raid_date').eq('team_id', teamId).order('id').range(from, to)
+  );
+  const datesWithParticipation = new Set(participationDateRows.map((r: any) => r.raid_date));
 
   const sorted = [...reports].sort((a: any, b: any) => b.startTime - a.startTime);
 
@@ -1261,6 +1277,7 @@ export async function runScheduled(supabase: SupabaseClient<any>, io: Io): Promi
     .from('teams')
     .select('id, wcl_guild_id')
     .not('wcl_guild_id', 'is', null)
+    .is('archived_at', null)
     .order('id');
   if (teamsError) throw new Error(teamsError.message);
 

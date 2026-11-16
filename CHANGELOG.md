@@ -17,6 +17,7 @@ answers to.
 ### Frontend
 
 - Commit Attendance Scores on the Attendance tab now asks the database to work the scores out, the same calculation the hourly run uses, instead of doing the math in the browser. The numbers are the same (#1845).
+- A status set from a raider's profile card now counts as the officer's, like one set on the grid, so the hourly run never changes it (#1845).
 
 ### Backend
 

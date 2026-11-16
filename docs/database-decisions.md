@@ -3733,6 +3733,8 @@ Shipped: `20261116111721_attendance_scheduled_sync.sql`.
 
 **A run that can't read a report writes nothing for it.** If Warcraft Logs' list of who was in a report fails, the run stops before any attendance row, so the report stays new and the next hour tries again, rather than marking the whole roster Absent? and never reading it again. The not-on-roster names are saved before the attendance rows for the same reason.
 
+**What the fresh review caught.** The service role could not run `team_season_start()`, which the waiting count reads, so every hourly run would have recorded "permission denied" and never committed; the migration grants it. The refresh's reads of the team's saved reports, statuses and per-boss nights now page by id: unpaged they stopped at 1000 rows (team 1 already had 1785 attendance rows), and once the saved reports passed 1000 an old report would look new every hour. The commit skips rows whose player was deleted (`scoring` would refuse them and fail the whole commit), archived teams are not synced, and the current site's profile-page status edits now save source `Officer` like the grid, so the trigger protects them too.
+
 **`record_raid_night_participation()` admits the service role**, which is who the hourly run is (`auth.role() = 'service_role'` skips the signed-in and permission checks; the raider checks still run). EXECUTE granted to `service_role` alongside `authenticated`.
 
 [Full discussion -> #1845](https://github.com/katogaming88/WGA-Raid-Hub/issues/1845).

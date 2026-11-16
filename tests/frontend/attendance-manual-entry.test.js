@@ -302,7 +302,9 @@ describe('addAttendanceNight (#241)', () => {
       team_id: 1,
       player_id: 5,
       raid_date: '2026-07-08',
-      status: 'Present'
+      status: 'Present',
+      // #1845: an officer's entry, which the hourly sync never overwrites.
+      source: 'Officer'
     });
     expect(calls.upserts[0].opts).toEqual({ onConflict: 'team_id,player_id,raid_date' });
   });

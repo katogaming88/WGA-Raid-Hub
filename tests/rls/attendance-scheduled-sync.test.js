@@ -62,6 +62,18 @@ describe('commit_attendance_scores()', () => {
     });
   });
 
+  it("skips a deleted player's rows rather than failing the whole commit", async () => {
+    await withTxn(async ({ q, asRole }) => {
+      await fresh(q);
+      const a = await seedPlayer(q, { teamId: 1 });
+      const gone = await seedPlayer(q, { teamId: 1 });
+      await att(q, a, '2026-09-01', 'Present');
+      await att(q, gone, '2026-09-01', 'Present');
+      await q('delete from public.players where id = $1', [gone]);
+      expect((await commit(asRole('service_role', null))).rows[0].r).toEqual({ committed: 1, totalNights: 1 });
+    });
+  });
+
   it('overwrites the last commit rather than adding a second row', async () => {
     await withTxn(async ({ q, asUser }) => {
       const a = await seedPlayer(q, { teamId: 1 });
@@ -114,6 +126,15 @@ describe('attendance_items_waiting()', () => {
         [b]
       );
       expect(await waiting(q)).toBe(1);
+    });
+  });
+
+  it('runs as the hourly job (service role)', async () => {
+    await withTxn(async ({ q, asRole }) => {
+      await fresh(q);
+      const a = await seedPlayer(q, { teamId: 1 });
+      await att(q, a, '2026-09-02', null, { source: 'WCL (Late?)' });
+      expect(await waiting(asRole('service_role', null))).toBe(1);
     });
   });
 

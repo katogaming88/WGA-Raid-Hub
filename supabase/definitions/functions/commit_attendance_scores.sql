@@ -31,6 +31,8 @@ begin
     from public.attendance a
     where a.team_id = p_team_id
       and a.report_excluded = false
+      -- A deleted player's rows keep no player; scoring would refuse them.
+      and a.player_id is not null
   ), ratios as (
     select player_id, avg(weight) as ratio
     from weighted

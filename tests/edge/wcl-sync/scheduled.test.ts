@@ -34,6 +34,7 @@ function fakeDb(tables: Tables, failWrites: string[] = []) {
     const filters: Array<(r: Row) => boolean> = [];
     let write: { kind: 'upsert'; rows: Row[]; keys: string[]; ignore: boolean } | { kind: 'update'; set: Row } | null =
       null;
+    let slice: [number, number] | null = null;
     const rows = () => (tables[table] ??= []);
     const run = () => {
       if (write && failWrites.includes(table)) return { data: null, error: { message: table + ' write failed' } };
@@ -50,11 +51,14 @@ function fakeDb(tables: Tables, failWrites: string[] = []) {
         for (const r of rows().filter((r) => filters.every((f) => f(r)))) Object.assign(r, write.set);
         return { data: null, error: null };
       }
-      return { data: rows().filter((r) => filters.every((f) => f(r))), error: null };
+      // PostgREST's cap: an unpaged read stops at 1000 rows, no error.
+      const found = rows().filter((r) => filters.every((f) => f(r)));
+      return { data: found.slice(...(slice ?? [0, 1000])), error: null };
     };
     const builder: any = {
       select: () => builder,
       order: () => builder,
+      range: (from: number, to: number) => ((slice = [from, to + 1]), builder),
       eq: (col: string, value: unknown) => (filters.push((r) => r[col] === value), builder),
       is: (col: string, value: null) => (filters.push((r) => (r[col] ?? null) === value), builder),
       not: (col: string, _op: 'is', value: null) => (filters.push((r) => (r[col] ?? null) !== value), builder),
@@ -306,4 +310,33 @@ Deno.test('a sign-in that throws is still recorded on every team', async () => {
   assertEquals(res.status, 200);
   const run = db.tables.team_settings[0].attendance_sync_last_run;
   assertEquals(run.error, 'Failed to get WCL access token. Check WCL_CLIENT_ID/WCL_CLIENT_SECRET.');
+});
+
+// Fresh review on PR #1858: PostgREST answers 1000 rows at most, so a short
+// read of the saved reports would make an old report look new every hour.
+Deno.test('a report saved past the first 1000 rows is still known, and not read again', async () => {
+  const old = Array.from({ length: 1000 }, (_, i) => ({
+    team_id: 1,
+    player_id: 101,
+    raid_date: `2026-08-${String((i % 28) + 1).padStart(2, '0')}`,
+    status: 'Present',
+    source: 'WCL',
+    report_id: 'old' + i,
+    report_excluded: false
+  }));
+  const saved = { ...old[0], raid_date: NIGHT, report_id: 'R11' };
+  const { deps, w } = setup(team1(ROSTER, [...old, saved]), [{ guildId: 11, inLog: ['Alpha'] }]);
+  await handle(cronRequest(), deps);
+  assertEquals(
+    w.queries.filter((q) => q.includes('zone { id }')),
+    []
+  );
+});
+
+Deno.test('an archived team is skipped', async () => {
+  const tables = team1(ROSTER);
+  tables.teams.push({ id: 2, wcl_guild_id: 22, archived_at: '2026-10-01' });
+  const { deps } = setup(tables, [{ guildId: 11, inLog: ['Alpha', 'Bravo'] }]);
+  const body = await (await handle(cronRequest(), deps)).json();
+  assertEquals(Object.keys(body.teams), ['1']);
 });
