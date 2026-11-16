@@ -13668,6 +13668,18 @@
           "name": "gear_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "item_level",
+          "type": "smallint",
+          "nullable": true,
+          "comment": "The equipped item level at the week's last read (#1639)."
+        },
+        {
+          "name": "best_item_level",
+          "type": "smallint",
+          "nullable": true,
+          "comment": "The highest item_level the character has had in any week (#1639), kept by character_weeks_keep_best_item_level() on every write; never goes down within a season and starts over with the next."
         }
       ],
       "indexes": [
@@ -13682,6 +13694,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "character_weeks_best_item_level_check",
+          "type": "CHECK",
+          "def": "CHECK ((best_item_level \u003e 0))",
+          "table": "public.character_weeks",
+          "referenced_table": "",
+          "columns": [
+            "best_item_level"
+          ]
+        },
         {
           "name": "character_weeks_crests_check",
           "type": "CHECK",
@@ -13720,6 +13742,16 @@
           "referenced_table": "",
           "columns": [
             "empty_sockets"
+          ]
+        },
+        {
+          "name": "character_weeks_item_level_check",
+          "type": "CHECK",
+          "def": "CHECK ((item_level \u003e 0))",
+          "table": "public.character_weeks",
+          "referenced_table": "",
+          "columns": [
+            "item_level"
           ]
         },
         {
@@ -13818,6 +13850,10 @@
         {
           "name": "character_weeks_fill_vault",
           "def": "CREATE TRIGGER character_weeks_fill_vault BEFORE INSERT OR UPDATE ON public.character_weeks FOR EACH ROW EXECUTE FUNCTION character_weeks_fill_vault()"
+        },
+        {
+          "name": "character_weeks_keep_best_item_level",
+          "def": "CREATE TRIGGER character_weeks_keep_best_item_level BEFORE INSERT OR UPDATE ON public.character_weeks FOR EACH ROW EXECUTE FUNCTION character_weeks_keep_best_item_level()"
         }
       ]
     },
@@ -18139,6 +18175,12 @@
       "name": "public.set_team_audit_rules",
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_enchant_check text, p_vault_rule jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.character_weeks_keep_best_item_level",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],

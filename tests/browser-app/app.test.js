@@ -21,6 +21,7 @@ import {
   WISHLIST
 } from '../behavior/profile.js';
 import * as WISHLIST_EDITOR from '../behavior/wishlist.js';
+import * as AUDIT from '../behavior/audit.js';
 import {
   PLAYERS as CAL_PLAYERS,
   SCHEDULE as CAL_SCHEDULE,
@@ -1602,7 +1603,57 @@ const PROFILE_NO_CHARACTER = {
   }
 };
 
+// The audit page (#1639): everyone on the team, and one raider opened; and
+// My profile's own week, for Torbjorn with Katorri's numbers.
+const AUDIT_PAGE = {
+  path: '/g/wga/t/phoenix/audit',
+  sentinel: 'table.audit-table',
+  clock: AUDIT.CLOCK,
+  rpc: AUDIT.CREST_CAPS,
+  tables: {
+    ...AUDIT.REFERENCE,
+    players: AUDIT.PLAYERS,
+    player_equipped_gear: AUDIT.GEAR,
+    character_weeks: AUDIT.WEEKS
+  }
+};
+const AUDIT_OPENED = {
+  ...AUDIT_PAGE,
+  click: 'role=button[name="Open Katorri"]',
+  afterClick: '.audit-opened .audit-crests'
+};
+const OWN_AUDIT = (() => {
+  const me = VIEWERS.torbjorn.player;
+  const base = profileState('', 'torbjorn', 'torbjorn');
+  const key = me.name_realm.toLowerCase();
+  return {
+    ...base,
+    sentinel: '.audit-own .audit-vault',
+    clock: AUDIT.CLOCK,
+    rpc: AUDIT.CREST_CAPS,
+    tables: {
+      ...base.tables,
+      ...AUDIT.REFERENCE,
+      players: [{ ...me, name_realm_key: key }],
+      player_equipped_gear: AUDIT.GEAR.filter((g) => g.player_id === 1).map((g) => ({ ...g, player_id: me.id })),
+      character_weeks: AUDIT.WEEKS.filter((w) => w.name_realm_key === 'katorri-stormrage').map((w) => ({
+        ...w,
+        name_realm_key: key
+      }))
+    }
+  };
+})();
+
 const STATES = [
+  { label: 'audit', ...AUDIT_PAGE },
+  { label: 'audit, light', ...AUDIT_PAGE, colorScheme: 'light' },
+  { label: 'audit, on a phone', ...AUDIT_PAGE, viewport: NARROW },
+  { label: 'audit, a raider opened', ...AUDIT_OPENED },
+  { label: 'audit, a raider opened, light', ...AUDIT_OPENED, colorScheme: 'light' },
+  { label: 'audit, a raider opened, on a phone', ...AUDIT_OPENED, viewport: NARROW },
+  { ...OWN_AUDIT, label: 'my profile, your week' },
+  { ...OWN_AUDIT, label: 'my profile, your week, light', colorScheme: 'light' },
+  { ...OWN_AUDIT, label: 'my profile, your week, on a phone', viewport: NARROW },
   { label: 'my profile, no roster character', ...PROFILE_NO_CHARACTER },
   { label: 'my profile, no roster character, light', ...PROFILE_NO_CHARACTER, colorScheme: 'light' },
   { label: 'my profile, no roster character, on a phone', ...PROFILE_NO_CHARACTER, viewport: NARROW },
@@ -2327,9 +2378,10 @@ describe('sidebar folding', () => {
   });
 
   it('folds only the top section when that is enough', async () => {
-    // 1040, not 1000: the Officer menu gained its Recruiting item (#1548), a
-    // row more to fit before a second section has to fold.
-    const { context, page, pageErrors } = await openApp(browser, server.port, at(1040));
+    // 1080, not 1000: the Officer menu gained its Recruiting item (#1548) and
+    // the Team menu its Audit item (#1639), a row each to fit before a second
+    // section has to fold.
+    const { context, page, pageErrors } = await openApp(browser, server.port, at(1080));
     try {
       await expect
         .poll(() => sidebarState(page))
@@ -2341,7 +2393,8 @@ describe('sidebar folding', () => {
   });
 
   it('folds more sections from the top as needed, and clicks through without looping', async () => {
-    const { context, page, pageErrors } = await openApp(browser, server.port, at(940));
+    // 980, not 940: the Team menu's Audit item (#1639) is a row more.
+    const { context, page, pageErrors } = await openApp(browser, server.port, at(980));
     try {
       const nav = page.locator('#sidebar nav');
       await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 3, open: ['Officer', 'Site'] });

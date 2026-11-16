@@ -1,0 +1,412 @@
+/* Audit (#1639). Track colors follow the game's: Myth orange, Hero purple,
+   Champion blue, Veteran green, Adventurer grey. Status is plain colored text,
+   never a pill (Kat). */
+.audit-page,
+.audit-own {
+  --track-Myth: #ff9a3c;
+  --track-Hero: #b48cf2;
+  --track-Champion: #5b9cf5;
+  --track-Veteran: #5bc98a;
+  --track-Adventurer: #9da8b8;
+}
+
+:root[data-theme='light'] .audit-page,
+:root[data-theme='light'] .audit-own {
+  --track-Myth: #a34a00;
+  --track-Hero: #7245cd;
+  --track-Champion: #255fc0;
+  --track-Veteran: #226f42;
+  --track-Adventurer: #5b636f;
+}
+
+.audit-bad {
+  color: var(--bad);
+}
+.audit-ok {
+  color: var(--good);
+}
+.audit-warn {
+  color: var(--warn);
+}
+.audit-note {
+  margin: 0;
+  font-size: var(--text-xs);
+}
+
+.audit-toolbar,
+.audit-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+.audit-controls {
+  justify-content: flex-start;
+}
+.audit-controls .select {
+  width: auto;
+}
+.audit-summary {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.audit-switch {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+}
+.audit-switch button {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.audit-switch button[aria-pressed='true'] {
+  background: var(--nav-selected);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.audit-attention,
+.audit-opened {
+  padding: var(--space-4);
+}
+.audit-attention .card-title {
+  margin: 0 0 var(--space-2);
+}
+.audit-attention ul {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+.audit-table-wrap {
+  position: relative;
+  padding: 0;
+}
+/* Narrower than the table can fit, the box scrolls sideways, and its headings
+   then scroll with it. Wider, the page scrolls and the headings stay put. */
+@media (max-width: 1300px) {
+  .audit-table-wrap {
+    overflow-x: auto;
+  }
+}
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.audit-table th,
+.audit-table td {
+  padding: 6px var(--space-2);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.audit-table td {
+  white-space: nowrap;
+}
+.audit-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
+  /* Bigger and brighter than the roster's: these headings are what you read
+     the whole table by, and they were easy to miss. */
+  color: var(--text);
+  font-size: var(--text-md);
+  font-weight: 700;
+  vertical-align: bottom;
+  border-bottom: 2px solid var(--border-strong);
+}
+.audit-table .sep {
+  border-left: 2px solid var(--border-strong);
+}
+/* Two stacked headings: the section names, then the columns. The section row
+   has a fixed height so the column row can stick right under it. */
+.audit-table .audit-sections th,
+.audit-table .audit-sections td {
+  height: 30px;
+  padding-block: 0;
+  font-size: var(--text-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+.audit-table .audit-sections th,
+.audit-table .audit-sections td {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
+}
+.audit-table thead tr:nth-child(2) th {
+  top: 30px;
+}
+.audit-table .col-num {
+  text-align: right;
+}
+.audit-table .col-tier {
+  text-align: center;
+  padding-inline: var(--space-1);
+}
+.audit-table .col-wrap {
+  white-space: normal;
+  min-width: 4.5rem;
+}
+.audit-group th,
+.audit-group td {
+  background: var(--sidebar);
+  font-weight: 600;
+}
+.audit-group-status {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+.audit-avg-label {
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+.audit-name {
+  font-weight: 500;
+}
+.audit-spec,
+.audit-sub {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+.audit-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+}
+.audit-link:hover,
+.audit-link:focus-visible {
+  text-decoration-color: currentColor;
+}
+
+.tier-M {
+  color: var(--track-Myth);
+  font-weight: 700;
+}
+.tier-H {
+  color: var(--track-Hero);
+  font-weight: 700;
+}
+.tier-C {
+  color: var(--track-Champion);
+  font-weight: 700;
+}
+.tier-V {
+  color: var(--track-Veteran);
+  font-weight: 700;
+}
+.tier-A,
+.tier-\? {
+  color: var(--track-Adventurer);
+  font-weight: 700;
+}
+
+.audit-cell-vault {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.audit-bars {
+  display: inline-flex;
+  gap: 3px;
+}
+.audit-bars span {
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+}
+.audit-bars .bar-empty {
+  background: var(--raised);
+  outline: 1px solid var(--border-strong);
+  outline-offset: -1px;
+}
+.audit-bars .track-Myth {
+  background: var(--track-Myth);
+}
+.audit-bars .track-Hero {
+  background: var(--track-Hero);
+}
+.audit-bars .track-Champion {
+  background: var(--track-Champion);
+}
+.audit-bars .track-Veteran {
+  background: var(--track-Veteran);
+}
+.audit-bars .track-Adventurer {
+  background: var(--track-Adventurer);
+}
+
+/* The opened raider and the raider's own card. */
+.audit-opened-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.audit-opened-name {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+.audit-opened-head p {
+  margin: 0;
+}
+.audit-week {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+.audit-h {
+  margin: 0 0 var(--space-2);
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.audit-fix-list,
+.audit-vault-rows,
+.audit-slots,
+.audit-crests {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.audit-fix-list li {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+.audit-fix-slot {
+  font-weight: 600;
+}
+.audit-vault-rows {
+  display: grid;
+  gap: var(--space-2);
+}
+.audit-vault-row {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+}
+.audit-vault-name {
+  font-weight: 600;
+}
+.audit-slots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.audit-slot {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2);
+  border: 1px solid var(--border-strong);
+  /* The track color is a stripe, so the number keeps text contrast. */
+  border-top: 4px solid var(--track-Adventurer);
+}
+.audit-slot.track-Myth {
+  border-top-color: var(--track-Myth);
+}
+.audit-slot.track-Hero {
+  border-top-color: var(--track-Hero);
+}
+.audit-slot.track-Champion {
+  border-top-color: var(--track-Champion);
+}
+.audit-slot.track-Veteran {
+  border-top-color: var(--track-Veteran);
+}
+.audit-slot-empty {
+  border-style: dashed;
+  border-top-color: var(--border-strong);
+  color: var(--text-muted);
+}
+.audit-slot-level {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+.audit-slot-text {
+  font-size: var(--text-xs);
+}
+.audit-crests {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: var(--space-3);
+}
+.audit-crests li {
+  display: grid;
+  gap: 2px;
+}
+.audit-big {
+  margin: var(--space-2) 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+.audit-run + .audit-run::before {
+  content: ' · ';
+  color: var(--text-dim);
+}
+
+/* My profile's own week, phone first. */
+.audit-own {
+  display: grid;
+  gap: var(--space-3);
+}
+.audit-own-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+.audit-own-facts dt {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+.audit-own-facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+.audit-todo {
+  margin: 0;
+  padding: var(--space-3);
+  border-left: 3px solid var(--bad);
+  background: var(--raised);
+}
+.audit-todo ul {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .audit-fix-list li {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .audit-vault-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+}

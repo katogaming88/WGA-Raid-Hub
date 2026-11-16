@@ -230,6 +230,10 @@ export function fakeClient(
           read.filters.push(['gte', column, value]);
           return builder;
         },
+        neq(column: string, value: unknown) {
+          read.filters.push(['neq', column, value]);
+          return builder;
+        },
         lte(column: string, value: unknown) {
           read.filters.push(['lte', column, value]);
           return builder;

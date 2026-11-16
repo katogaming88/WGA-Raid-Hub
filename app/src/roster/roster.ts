@@ -298,7 +298,7 @@ export function toIncoming(rows: IncomingRow[]): RoleGroup[] {
 }
 
 // Tier sets are one per armor type, so officers plan around this split.
-const ARMOR_BY_CLASS: Record<string, 'Cloth' | 'Leather' | 'Mail' | 'Plate'> = {
+export const ARMOR_BY_CLASS: Record<string, 'Cloth' | 'Leather' | 'Mail' | 'Plate'> = {
   Mage: 'Cloth',
   Priest: 'Cloth',
   Warlock: 'Cloth',

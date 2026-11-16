@@ -3684,3 +3684,15 @@ Shipped: `20261115124701_set_team_audit_rules.sql`.
 **Per team only.** #1261 called the vault rule "a team or guild setting". There is no guild-wide default yet; a guild that wants one rule sets it on each team.
 
 [Full discussion -> #1638](https://github.com/katogaming88/WGA-Raid-Hub/issues/1638).
+
+## #1639 -- the audit page's item level: the highest ever, kept by the database
+
+Shipped: `20261115174722_audit_item_level.sql`.
+
+**Two columns on `character_weeks`.** `item_level` is the equipped item level at the week's last read; `best_item_level` is the highest `item_level` the character has had in any week of the same season, and it starts over with each season (Kat, 2026-11-15, on the fresh review's catch: an item level squish at a new expansion would otherwise leave every mark stuck at the old scale). The default on the audit page is the highest ever (#1261, 2026-10-24), because some raiders log out in PvP gear and would otherwise show far below their real raid gear; a switch shows what they wear now.
+
+**A trigger keeps the mark, not the sync.** `character_weeks_keep_best_item_level()` runs before every insert or update and sets `best_item_level` to the greatest of the new read, the mark the row already had, and the best of the character's other weeks in the same season (`greatest()` ignores nulls; seasons by `current_season(week_of)`). The sync sends only what it read, a re-read in lower gear cannot lower the mark, and a week the sync skips leaves the mark on the last row, which is the one the page reads. No new access: the table's existing read rule and service_role-only writes cover both columns.
+
+**Null until the first read after this lands.** Nothing is backfilled; the page falls back to the gear it already has until a weekly read supplies a level.
+
+[Full discussion -> #1639](https://github.com/katogaming88/WGA-Raid-Hub/issues/1639).

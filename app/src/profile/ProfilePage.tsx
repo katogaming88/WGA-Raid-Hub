@@ -38,6 +38,7 @@ import { NoCharacterCard } from '../characters/NoCharacterCard';
 import { CharactersCard } from '../characters/CharactersCard';
 import { withEarlierLoot } from '../characters/characters';
 import { useAlsoOnTeams, useEarlierLoot } from '../characters/useCharacters';
+import { OwnWeekCard } from '../audit/OwnWeek';
 import './profile.css';
 import { SignupButton } from '../signup/SignupButton';
 
@@ -483,6 +484,8 @@ function Profile({
       >
         {tab === '' && (
           <>
+            {own && !signup && <OwnWeekCard teamId={teamId} playerId={player.id} />}
+
             <dl className="profile-stats">
               <Stat label="Item level" value={itemLevel === null ? '–' : itemLevel.toFixed(1)} />
               <Stat label="Attendance" value={attend ? formatPct(attend.pct) : '–'} />
