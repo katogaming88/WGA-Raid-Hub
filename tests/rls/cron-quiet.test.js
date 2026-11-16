@@ -28,7 +28,8 @@ const SCHEDULED = [
   'optional-rsvp-reminders',
   'recruit-reminders',
   'twitch-live-check',
-  'wcl-progression-sync'
+  'wcl-progression-sync',
+  'wcl-sync-attendance'
 ];
 
 // Jobs that run SQL in the database and call nothing outside it (#1216 fills

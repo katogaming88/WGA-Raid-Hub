@@ -43,7 +43,8 @@ function readFunctionTables(toml) {
 
 const tables = readFunctionTables(readFileSync(join(ROOT, 'supabase', 'config.toml'), 'utf8'));
 
-// The functions deployed with the gate off: five called by pg_cron,
+// The functions deployed with the gate off: six called by pg_cron (wcl-sync's
+// hourly attendance run since #1845; its officer calls carry a JWT PostgREST checks),
 // recruit-ticket (the recruiting sweep calls it with the cron secret, #1544,
 // and it checks a signed-in caller's token itself), the relay the public forms
 // post through, and Discord's interactions endpoint (#998).
@@ -55,7 +56,8 @@ const GATE_OFF = [
   'recruit-reminders',
   'recruit-ticket',
   'twitch-live-check',
-  'wcl-progression-sync'
+  'wcl-progression-sync',
+  'wcl-sync'
 ];
 
 // The deploy job's own list, so _shared/ and anything else the CLI's slug rule

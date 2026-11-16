@@ -113,14 +113,14 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.281.0';
+var VERSION = '3.282.0';
 
 // The newest migration stamp in the repo at stamp time, written by
 // `npm run stamp` (#967). It is what the deployed code expects the database to
 // have applied, and #970 compares it against app_version() at boot: Pages
 // deploys the moment a PR merges while `supabase db push` is a separate step,
 // so there is a window where the site is ahead of the schema.
-var REQUIRED_SCHEMA = '20261115231709';
+var REQUIRED_SCHEMA = '20261116111721';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -7972,12 +7972,11 @@ function addAttendanceNight(firstName) {
   // (same resolution, no behavior change) -- needed for the chained
   // .then().then().catch() below, since PromiseLike itself has no .catch().
   Promise.resolve(
-    supabaseClient
-      .from('attendance')
-      .upsert(
-        { team_id: _teamCfg.supabaseTeamId, player_id: player.id, raid_date: date, status: status },
-        { onConflict: 'team_id,player_id,raid_date' }
-      )
+    supabaseClient.from('attendance').upsert(
+      // source 'Officer' (#1845): a sync never overwrites it, the same as the grid.
+      { team_id: _teamCfg.supabaseTeamId, player_id: player.id, raid_date: date, status: status, source: 'Officer' },
+      { onConflict: 'team_id,player_id,raid_date' }
+    )
   )
     .then(function (result) {
       if (result.error) throw new Error(result.error.message);
@@ -8063,12 +8062,11 @@ function saveAttendanceFromCard(selectEl) {
   // (same resolution, no behavior change) -- needed for the chained
   // .then().then().catch() below, since PromiseLike itself has no .catch().
   Promise.resolve(
-    supabaseClient
-      .from('attendance')
-      .upsert(
-        { team_id: _teamCfg.supabaseTeamId, player_id: player.id, raid_date: date, status: status },
-        { onConflict: 'team_id,player_id,raid_date' }
-      )
+    supabaseClient.from('attendance').upsert(
+      // source 'Officer' (#1845): a sync never overwrites it, the same as the grid.
+      { team_id: _teamCfg.supabaseTeamId, player_id: player.id, raid_date: date, status: status, source: 'Officer' },
+      { onConflict: 'team_id,player_id,raid_date' }
+    )
   )
     .then(function (result) {
       if (result.error) throw new Error(result.error.message);

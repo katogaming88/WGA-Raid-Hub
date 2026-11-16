@@ -552,70 +552,15 @@ function executeCommitScores() {
   }
   if (status) status.textContent = '';
 
-  // This read drives a write: every player's committed attendance score is
-  // computed from it. Unpaged it silently stopped at the 1000-row cap, and
-  // team 1 was at 1160 rows when this was found (#707), so committing scores
-  // was averaging over part of the season and storing the result as fact.
-  // Same shape as the "Not on Roster" backfill #696 fixed.
-  fetchAllPaged(
-    function (afterId, limit) {
-      var q = supabaseClient
-        .from('attendance')
-        .select('id, player_id, raid_date, status, report_excluded', afterId === null ? { count: 'exact' } : undefined)
-        .eq('team_id', _teamCfg.supabaseTeamId)
-        .order('id', { ascending: true })
-        .limit(limit);
-      return afterId === null ? q : q.gt('id', afterId);
-    },
-    { label: 'attendance commit scores' }
-  )
-    .then(function (attendanceRows) {
-      // null, not [], is the failure signal. Committing scores off a failed
-      // read would write zeros over everyone.
-      if (attendanceRows === null) throw new Error('Could not read the team attendance history.');
-
-      var byPlayer = {};
-      var nightSet = {};
-      attendanceRows.forEach(function (row) {
-        if (row.report_excluded) return;
-        var weight = ATTENDANCE_WEIGHTS_JS[row.status];
-        if (weight === undefined) return;
-        if (!byPlayer[row.player_id]) byPlayer[row.player_id] = { sum: 0, nights: 0 };
-        byPlayer[row.player_id].sum += weight;
-        byPlayer[row.player_id].nights += 1;
-        nightSet[row.raid_date] = true;
-      });
-
-      var season = currentSeasonCode();
-      var rows = Object.keys(byPlayer).map(function (playerId) {
-        var agg = byPlayer[playerId];
-        var ratio = agg.sum / agg.nights;
-        return {
-          team_id: _teamCfg.supabaseTeamId,
-          player_id: parseInt(playerId, 10),
-          season: season,
-          attendance_score: Math.min(Math.round(ratio * 10 * 100) / 100, 10),
-          attendance_pct: Math.round(ratio * 1000) / 10
-        };
-      });
-      var totalNights = Object.keys(nightSet).length;
-
-      if (rows.length === 0) return { committed: 0, totalNights: totalNights };
-
-      return supabaseClient
-        .from('scoring')
-        .upsert(rows, { onConflict: 'player_id,season' })
-        .then(function (upsertResult) {
-          if (upsertResult.error) throw new Error(upsertResult.error.message);
-          return writeAuditLog(
-            'Attendance Scores Committed',
-            null,
-            null,
-            rows.length + ' players, ' + totalNights + ' nights'
-          ).then(function () {
-            return { committed: rows.length, totalNights: totalNights };
-          });
-        });
+  // #1845: the math lives in commit_attendance_scores(), the one copy the
+  // new app's button and the hourly wcl-sync run call too. It reads the whole
+  // team's attendance in SQL, so the 1000-row cap #707 hit no longer applies.
+  supabaseClient
+    .rpc('commit_attendance_scores', { p_team_id: _teamCfg.supabaseTeamId })
+    .then(function (result) {
+      // The function writes its own audit entry.
+      if (result.error) throw new Error(result.error.message);
+      return result.data;
     })
     .then(function (summary) {
       if (btn) {

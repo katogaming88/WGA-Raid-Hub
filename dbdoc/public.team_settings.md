@@ -7,6 +7,7 @@
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | config | jsonb | '{}'::jsonb | false |  |  |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
+| attendance_sync_last_run | jsonb |  | true |  |  | Outcome of the last scheduled wcl-sync attendance run for this team (#1845): started_at, finished_at, main_nights, excluded, waiting, committed, error (null when it worked). |
 
 ## Constraints
 
@@ -38,6 +39,7 @@ erDiagram
   integer team_id FK
   jsonb config
   timestamp_with_time_zone updated_at
+  jsonb attendance_sync_last_run
 }
 "public.teams" {
   integer id

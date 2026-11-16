@@ -9,15 +9,17 @@ CREATE OR REPLACE FUNCTION public.record_raid_night_participation(p_team_id inte
  SET search_path TO 'public'
 AS $function$
 begin
-  if auth.uid() is null then
-    raise exception 'Not signed in';
-  end if;
+  if coalesce(auth.role(), '') <> 'service_role' then
+    if auth.uid() is null then
+      raise exception 'Not signed in';
+    end if;
 
-  if not (
-    public.has_team_permission(p_team_id, 'attendance')
-    or public.is_site_admin()
-  ) then
-    raise exception 'Not authorized';
+    if not (
+      public.has_team_permission(p_team_id, 'attendance')
+      or public.is_site_admin()
+    ) then
+      raise exception 'Not authorized';
+    end if;
   end if;
 
   if not exists (

@@ -19,7 +19,7 @@
 | [public.season_signups](public.season_signups.md) | 23 |  | BASE TABLE |
 | [public.self_received_requests](public.self_received_requests.md) | 12 |  | BASE TABLE |
 | [public.team_members](public.team_members.md) | 10 |  | BASE TABLE |
-| [public.team_settings](public.team_settings.md) | 3 |  | BASE TABLE |
+| [public.team_settings](public.team_settings.md) | 4 |  | BASE TABLE |
 | [public.teams](public.teams.md) | 7 |  | BASE TABLE |
 | [public.pending_roster](public.pending_roster.md) | 15 |  | VIEW |
 | [public.rnlsi](public.rnlsi.md) | 6 |  | VIEW |
@@ -114,6 +114,7 @@
 | [public.season_vault_raids](public.season_vault_raids.md) | 3 | The raids whose kills fill Raid vault slots in a season (#1637), by Blizzard journal instance id. Added by migration. | BASE TABLE |
 | [public.season_raid_bosses](public.season_raid_bosses.md) | 5 | The bosses of each season's counted raids (#1641), by Blizzard journal encounter id, in the game's order. Added by migration per season. | BASE TABLE |
 | [public.mplus_dungeons](public.mplus_dungeons.md) | 2 | Mythic+ dungeon names by the dungeon id the profile API uses, Blizzard's MapChallengeMode id (#1641). Every dungeon, not a season's pool. | BASE TABLE |
+| [public.attendance_log_names](public.attendance_log_names.md) | 5 | Characters in a team's Warcraft Logs raid night who matched nobody on the roster (#1845). Written by wcl-sync; first name only, lower case, as the sync matches names. Informational: never holds back the attendance commit. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -393,6 +394,9 @@
 | public.character_weeks_fill_vault | trigger |  | FUNCTION |
 | public.set_team_audit_rules | jsonb | p_team_id integer, p_enchant_check text, p_vault_rule jsonb | FUNCTION |
 | public.character_weeks_keep_best_item_level | trigger |  | FUNCTION |
+| public.attendance_items_waiting | int4 | p_team_id integer | FUNCTION |
+| public.commit_attendance_scores | jsonb | p_team_id integer | FUNCTION |
+| public.keep_officer_attendance | trigger |  | FUNCTION |
 
 ## Enums
 
@@ -590,6 +594,7 @@ erDiagram
 "public.season_vault_rewards" }o--|| "public.season_track_steps" : "FOREIGN KEY (season, track, rank) REFERENCES season_track_steps(season, track, rank)"
 "public.season_vault_raids" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.season_raid_bosses" }o--|| "public.season_vault_raids" : "FOREIGN KEY (season, instance_id) REFERENCES season_vault_raids(season, instance_id)"
+"public.attendance_log_names" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -788,6 +793,7 @@ erDiagram
   integer team_id FK
   jsonb config
   timestamp_with_time_zone updated_at
+  jsonb attendance_sync_last_run
 }
 "public.teams" {
   integer id
@@ -1728,6 +1734,13 @@ erDiagram
 "public.mplus_dungeons" {
   integer dungeon_id
   text name
+}
+"public.attendance_log_names" {
+  integer team_id FK
+  date raid_date
+  text character_name
+  text report_id
+  timestamp_with_time_zone seen_at
 }
 ```
 

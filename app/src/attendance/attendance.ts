@@ -74,38 +74,3 @@ export function buildGrid(rows: FullAttendanceRow[], roster: PlayerRow[]): Night
 function nameOf(player: PlayerRow): string {
   return player.nickname?.trim() || firstName(player.name_realm);
 }
-
-export type ScoreRow = { player_id: number; season: string; attendance_score: number; attendance_pct: number };
-
-// executeCommitScores()'s aggregation: each player's own recorded, non-excluded
-// nights average their status weight, written as both a 0-10 score and a
-// percentage. A player with zero eligible nights gets no row at all (nothing
-// to score), same as the current tab.
-export function commitScores(
-  rows: FullAttendanceRow[],
-  weights: Record<string, number>,
-  season: string
-): { rows: ScoreRow[]; totalNights: number } {
-  const byPlayer = new Map<number, { sum: number; nights: number }>();
-  const nightSet = new Set<string>();
-  for (const row of rows) {
-    if (row.report_excluded || row.player_id === null) continue;
-    const weight = row.status ? weights[row.status] : undefined;
-    if (weight === undefined) continue;
-    const agg = byPlayer.get(row.player_id) ?? { sum: 0, nights: 0 };
-    agg.sum += weight;
-    agg.nights += 1;
-    byPlayer.set(row.player_id, agg);
-    nightSet.add(row.raid_date);
-  }
-  const scoreRows = [...byPlayer.entries()].map(([playerId, agg]) => {
-    const ratio = agg.sum / agg.nights;
-    return {
-      player_id: playerId,
-      season,
-      attendance_score: Math.min(Math.round(ratio * 10 * 100) / 100, 10),
-      attendance_pct: Math.round(ratio * 1000) / 10
-    };
-  });
-  return { rows: scoreRows, totalNights: nightSet.size };
-}
