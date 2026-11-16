@@ -427,6 +427,10 @@
 .ilvl-Adventurer {
   color: var(--track-Adventurer);
 }
+.audit-tab-table {
+  /* Scrolls only when a team's table is wider than the page. */
+  overflow-x: auto;
+}
 .audit-tab-table .col-tier {
   min-width: 3rem;
 }
@@ -473,13 +477,17 @@
 .audit-rule-name {
   color: var(--text);
 }
+.audit-enchants th,
+.audit-enchants td {
+  padding-inline: 6px;
+}
 .audit-enchants .enchant-cell {
-  max-width: 8.5rem;
-  min-width: 6rem;
+  max-width: 6.5rem;
+  min-width: 4.5rem;
 }
 .enchant-name {
   display: block;
-  max-width: 7.5rem;
+  max-width: 5.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
