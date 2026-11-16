@@ -410,3 +410,117 @@
     gap: var(--space-1);
   }
 }
+
+/* The Gear, Upgrades and Enchants & gems tabs (#1640). */
+.ilvl-Myth {
+  color: var(--track-Myth);
+}
+.ilvl-Hero {
+  color: var(--track-Hero);
+}
+.ilvl-Champion {
+  color: var(--track-Champion);
+}
+.ilvl-Veteran {
+  color: var(--track-Veteran);
+}
+.ilvl-Adventurer {
+  color: var(--track-Adventurer);
+}
+.audit-tab-table {
+  /* Scrolls only when a team's table is wider than the page. */
+  overflow-x: auto;
+}
+.audit-tab-table .col-tier {
+  min-width: 3rem;
+}
+.gear-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.gear-ilvl {
+  font-weight: 600;
+}
+.gear-marks {
+  display: flex;
+  gap: 3px;
+  height: 7px;
+}
+.mark {
+  display: block;
+  width: 7px;
+  height: 7px;
+}
+.mark-enchant {
+  border-radius: 50%;
+  background: var(--bad);
+}
+.mark-socket {
+  border-radius: 1px;
+  background: var(--warn);
+}
+.mark-emb {
+  background: var(--text-muted);
+  transform: rotate(45deg);
+}
+.step-done {
+  font-weight: 700;
+}
+.audit-rule {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+.audit-rule-name {
+  color: var(--text);
+}
+.audit-enchants th,
+.audit-enchants td {
+  padding-inline: 6px;
+}
+.audit-enchants .enchant-cell {
+  max-width: 6.5rem;
+  min-width: 4.5rem;
+}
+.enchant-name {
+  display: block;
+  max-width: 5.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.enchant-none .enchant-name {
+  color: var(--bad);
+  font-weight: 600;
+}
+.audit-enchants .audit-sub {
+  display: block;
+}
+.gem-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.gem-chip {
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.gem-chip + .gem-chip::before {
+  content: '/';
+  margin-right: 3px;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+.gem-top {
+  color: var(--text);
+}
+.gem-low,
+.gem-old {
+  color: var(--warn);
+}
+.gem-empty {
+  color: var(--bad);
+}

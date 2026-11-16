@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   auditRaider,
+  enchantCell,
+  enchantColumns,
+  gemChips,
+  gemColumns,
+  lowGemCount,
+  upgradeFigures,
   belowVaultRule,
   gearCheck,
   groupRaiders,
@@ -25,14 +31,14 @@ const REFS: SeasonRefs = {
     { slot: 'FEET', counts_from: '2026-12-01' }
   ],
   enchants: new Map([
-    [7959, { top_rank: true, tertiary: true }], // head, Leech, top rank
-    [7958, { top_rank: false, tertiary: true }], // head, Leech, lower rank
-    [7964, { top_rank: false, tertiary: false }], // ring, lower rank
-    [7965, { top_rank: true, tertiary: false }]
+    [7959, { name: 'Hex of Leeching', top_rank: true, tertiary: true }], // head, Leech, top rank
+    [7958, { name: 'Hex of Leeching', top_rank: false, tertiary: true }], // head, Leech, lower rank
+    [7964, { name: 'Amani Mastery', top_rank: false, tertiary: false }], // ring, lower rank
+    [7965, { name: 'Amani Mastery', top_rank: true, tertiary: false }]
   ]),
   gems: new Map([
-    [1, { top_rank: true, epic: true }],
-    [2, { top_rank: false, epic: false }]
+    [1, { name: 'Eversong Diamond', top_rank: true, epic: true }],
+    [2, { name: 'Flawless Garnet', top_rank: false, epic: false }]
   ])
 };
 
@@ -263,5 +269,62 @@ describe('groups and Needs attention', () => {
     expect(items[0]).toMatchObject({ count: 1, who: ['Bel'] });
     expect(items[1]).toMatchObject({ count: 1, who: ['Cor'] });
     expect(needsAttention(raiders, true).some((a) => a.id === 'vault')).toBe(false);
+  });
+});
+
+describe('the Gear, Upgrades and Enchants & gems tabs', () => {
+  it('counts items per track and the steps left, ignoring crafted pieces', () => {
+    const r = raiderOf({
+      gear: [
+        piece('HEAD', { track: 'Myth', upgrade_rank: 4, upgrade_max: 6 }),
+        piece('NECK', { track: 'Hero', upgrade_rank: 6, upgrade_max: 6 }),
+        piece('BACK', { track: 'Hero', upgrade_rank: 1, upgrade_max: 6 }),
+        piece('WRIST', { track: null, upgrade_rank: null, upgrade_max: null, crafted: true })
+      ]
+    });
+    expect(upgradeFigures(r)).toEqual({ myth: 1, hero: 2, champion: 0, stepsLeft: 7 });
+  });
+
+  it('a Myth 9 of 6 piece has no steps left, never a negative', () => {
+    const r = raiderOf({ gear: [piece('HEAD', { track: 'Myth', upgrade_rank: 9, upgrade_max: 6 })] });
+    expect(upgradeFigures(r).stepsLeft).toBe(0);
+  });
+
+  it('enchant columns come from the season settings, in slot order, less any not counting yet', () => {
+    expect(enchantColumns(REFS, '2026-11-15')).toEqual(['OFF_HAND', 'HEAD', 'FINGER_1']);
+    expect(enchantColumns(REFS, '2026-12-01')).toEqual(['OFF_HAND', 'HEAD', 'FEET', 'FINGER_1']);
+  });
+
+  it('gem columns: neck and rings always, other slots only when someone has a socket there', () => {
+    const none = [raiderOf({ gear: [piece('HEAD')] })];
+    expect(gemColumns(none)).toEqual(['NECK', 'FINGER_1', 'FINGER_2']);
+    const wrist = [raiderOf({ gear: [piece('WRIST', { gem_wow_item_ids: [1] })] })];
+    expect(gemColumns(wrist)).toEqual(['NECK', 'WRIST', 'FINGER_1', 'FINGER_2']);
+  });
+
+  it('one chip per socket: top, low, old or empty', () => {
+    const chips = gemChips(piece('NECK', { gem_wow_item_ids: [1, 2, 77, null] }), REFS);
+    expect(chips.map((c) => c.kind)).toEqual(['top', 'low', 'old', 'empty']);
+    expect(gemChips(null, REFS)).toEqual([]);
+  });
+
+  it('an enchant cell names the enchant and its rank, None, or an old one; nothing for an empty slot', () => {
+    expect(enchantCell(piece('HEAD', { enchantment_id: 7959 }), REFS)).toEqual({
+      name: 'Hex of Leeching',
+      rank: 'Highest rank',
+      kind: 'ok'
+    });
+    expect(enchantCell(piece('HEAD', { enchantment_id: 7958 }), REFS)?.rank).toBe('Lower rank');
+    expect(enchantCell(piece('HEAD'), REFS)?.kind).toBe('none');
+    expect(enchantCell(piece('HEAD', { enchantment_id: 9999 }), REFS)?.kind).toBe('old');
+    expect(enchantCell(piece('HEAD', { wow_item_id: null }), REFS)).toBeNull();
+    expect(enchantCell(null, REFS)).toBeNull();
+  });
+
+  it('low quality counts lower-rank and old gems, never empty sockets', () => {
+    const r = raiderOf({
+      gear: [piece('NECK', { gem_wow_item_ids: [1, 2, null] }), piece('FINGER_1', { gem_wow_item_ids: [77] })]
+    });
+    expect(lowGemCount(r, REFS)).toBe(2);
   });
 });

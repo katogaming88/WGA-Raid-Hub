@@ -286,6 +286,9 @@ function allMenu(o: string, council: boolean, recruitsWaiting: number): (NavItem
 export const TEAM_PAGES: Record<string, string> = {
   roster: 'Roster',
   audit: 'Audit',
+  'audit/gear': 'Audit: gear',
+  'audit/upgrades': 'Audit: upgrades',
+  'audit/enchants': 'Audit: enchants and gems',
   calendar: 'Calendar',
   loot: 'Loot history',
   me: 'My profile',

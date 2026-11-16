@@ -56,8 +56,8 @@ export type WeekRow = {
 export type SeasonRefs = {
   // The slots a day expects enchanted, as season_enchant_slots_on() answers.
   slots: { slot: string; counts_from: string | null }[];
-  enchants: Map<number, { top_rank: boolean; tertiary: boolean }>;
-  gems: Map<number, { top_rank: boolean; epic: boolean }>;
+  enchants: Map<number, { name: string; top_rank: boolean; tertiary: boolean }>;
+  gems: Map<number, { name: string; top_rank: boolean; epic: boolean }>;
 };
 
 // -- Weeks -------------------------------------------------------------------
@@ -304,6 +304,8 @@ export type AuditRaider = {
   wornIlvl: number | null;
   rating: number | null;
   check: GearCheck;
+  // The slots' current gear, for the Gear, Upgrades and Enchants & gems tabs.
+  gear: GearItem[];
   tier: TierLetters;
   // The chosen week's row, and both weeks' rows for the opened raider.
   week: WeekRow | null;
@@ -383,6 +385,7 @@ export function auditRaider(i: AuditInput): AuditRaider {
     wornIlvl: worn,
     rating: newest?.mplus_rating ?? null,
     check,
+    gear,
     tier: TIER_SLOTS.map((slot) => {
       const piece = gear.find((g) => g.equipment_slot === slot);
       const isTier = !!piece?.wow_item_id && i.tierItems.has(piece.wow_item_id);
@@ -525,4 +528,109 @@ export function buildAudit(data: AuditData, which: WhichWeek, now: Date): AuditR
       now
     })
   );
+}
+
+// -- The Gear, Upgrades and Enchants & gems tabs (#1640) --------------------------
+
+// The sixteen slots in the order the character pane lists them, main hand
+// first. (A two-hander leaves the off hand empty.)
+export const GEAR_SLOTS = [
+  'MAIN_HAND',
+  'OFF_HAND',
+  'HEAD',
+  'NECK',
+  'SHOULDER',
+  'BACK',
+  'CHEST',
+  'WRIST',
+  'HANDS',
+  'WAIST',
+  'LEGS',
+  'FEET',
+  'FINGER_1',
+  'FINGER_2',
+  'TRINKET_1',
+  'TRINKET_2'
+];
+
+// Short slot headings for the wide tables; the full name stays on hover.
+export const SHORT_SLOT: Record<string, string> = {
+  MAIN_HAND: 'Main',
+  OFF_HAND: 'Off',
+  HEAD: 'Head',
+  NECK: 'Neck',
+  SHOULDER: 'Shld',
+  BACK: 'Back',
+  CHEST: 'Chest',
+  WRIST: 'Wrist',
+  HANDS: 'Hands',
+  WAIST: 'Waist',
+  LEGS: 'Legs',
+  FEET: 'Feet',
+  FINGER_1: 'Ring',
+  FINGER_2: 'Ring',
+  TRINKET_1: 'Trink',
+  TRINKET_2: 'Trink'
+};
+
+// Everyone in the Summary's order: by role, highest item level first.
+export const inTabOrder = (raiders: AuditRaider[]) =>
+  groupRaiders(raiders, 'role', 'highest').flatMap((g) => g.raiders);
+
+export const itemIn = (r: AuditRaider, slot: string) => r.gear.find((g) => g.equipment_slot === slot) ?? null;
+
+// Items on each upgrade track, and the steps still to buy across every slot.
+// Crafted pieces and anything without a track step have none to buy.
+export function upgradeFigures(r: AuditRaider) {
+  const onTrack = (track: string) => r.gear.filter((g) => g.track === track).length;
+  const stepsLeft = r.gear.reduce(
+    (n, g) => (g.upgrade_rank != null && g.upgrade_max != null ? n + Math.max(0, g.upgrade_max - g.upgrade_rank) : n),
+    0
+  );
+  return { myth: onTrack('Myth'), hero: onTrack('Hero'), champion: onTrack('Champion'), stepsLeft };
+}
+
+// The slots that take an enchant this season, from the season settings (never
+// a fixed list), in the order of GEAR_SLOTS.
+export function enchantColumns(refs: SeasonRefs, today: string): string[] {
+  const slots = new Set(refs.slots.filter((s) => !s.counts_from || s.counts_from <= today).map((s) => s.slot));
+  return GEAR_SLOTS.filter((s) => slots.has(s));
+}
+
+// The slots to show a gem column for: always neck and rings, and any other
+// slot (head, wrist, waist...) only when someone's item there has a socket.
+export function gemColumns(raiders: AuditRaider[]): string[] {
+  const has = (slot: string) => raiders.some((r) => (itemIn(r, slot)?.gem_wow_item_ids ?? []).length > 0);
+  return GEAR_SLOTS.filter((s) => ['NECK', 'FINGER_1', 'FINGER_2'].includes(s) || has(s));
+}
+
+export type GemChip = { label: string; kind: 'top' | 'low' | 'old' | 'empty'; title: string };
+
+// One chip per socket: the gem's quality, or Empty.
+export function gemChips(item: GearItem | null, refs: SeasonRefs): GemChip[] {
+  return (item?.gem_wow_item_ids ?? []).map((id) => {
+    if (id == null) return { label: 'Empty', kind: 'empty', title: 'Empty socket' };
+    const g = refs.gems.get(id);
+    if (!g) return { label: 'Old', kind: 'old', title: 'Gem from an old expansion' };
+    return g.top_rank
+      ? { label: 'Top', kind: 'top', title: `${g.name}, highest rank` }
+      : { label: 'Low', kind: 'low', title: `${g.name}, lower rank` };
+  });
+}
+
+export type EnchantCell = { name: string; rank: string; kind: 'ok' | 'none' | 'old' };
+
+// What the Enchants cell shows for a slot: the enchant's name and rank, None,
+// or one from an old expansion. Null when the slot has no item (nothing to enchant).
+export function enchantCell(item: GearItem | null, refs: SeasonRefs): EnchantCell | null {
+  if (!item || item.wow_item_id == null) return null;
+  if (item.enchantment_id == null) return { name: 'None', rank: '', kind: 'none' };
+  const e = refs.enchants.get(item.enchantment_id);
+  if (!e) return { name: 'Old expansion', rank: '', kind: 'old' };
+  return { name: e.name, rank: e.top_rank ? 'Highest rank' : 'Lower rank', kind: 'ok' };
+}
+
+// Low quality and old gems, counted as the tab's Low quality column does.
+export function lowGemCount(r: AuditRaider, refs: SeasonRefs): number {
+  return r.gear.reduce((n, g) => n + gemChips(g, refs).filter((c) => c.kind === 'low' || c.kind === 'old').length, 0);
 }

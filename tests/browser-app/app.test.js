@@ -1617,6 +1617,18 @@ const AUDIT_PAGE = {
     character_weeks: AUDIT.WEEKS
   }
 };
+const AUDIT_TABS = [
+  ['gear', 'Gear'],
+  ['upgrades', 'Upgrades'],
+  ['enchants', 'Enchants & gems']
+].flatMap(([path, name]) => {
+  const base = { ...AUDIT_PAGE, path: `/g/wga/t/phoenix/audit/${path}` };
+  return [
+    { ...base, label: `audit, ${name}` },
+    { ...base, label: `audit, ${name}, light`, colorScheme: 'light' },
+    { ...base, label: `audit, ${name}, on a phone`, viewport: NARROW }
+  ];
+});
 const AUDIT_OPENED = {
   ...AUDIT_PAGE,
   click: 'role=button[name="Open Katorri"]',
@@ -1648,6 +1660,7 @@ const STATES = [
   { label: 'audit', ...AUDIT_PAGE },
   { label: 'audit, light', ...AUDIT_PAGE, colorScheme: 'light' },
   { label: 'audit, on a phone', ...AUDIT_PAGE, viewport: NARROW },
+  ...AUDIT_TABS,
   { label: 'audit, a raider opened', ...AUDIT_OPENED },
   { label: 'audit, a raider opened, light', ...AUDIT_OPENED, colorScheme: 'light' },
   { label: 'audit, a raider opened, on a phone', ...AUDIT_OPENED, viewport: NARROW },

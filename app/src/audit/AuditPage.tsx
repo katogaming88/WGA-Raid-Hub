@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useLocation, useSearchParams } from 'react-router';
 import { DataState } from '../components/DataState';
 import { useTeam } from '../data/address';
 import { localTimeZoneNote } from '../lib/dates';
@@ -21,8 +21,10 @@ import {
   type IlvlMode,
   type WhichWeek
 } from './audit';
+import { AuditTabView, type AuditTab } from './AuditTabs';
 import { RaidLine, RaiderWeek } from './RaiderWeek';
 import { useAuditData } from './useAudit';
+import '../reports/reports.css';
 import './audit.css';
 
 const GROUPS: { id: GroupBy; label: string }[] = [
@@ -35,7 +37,7 @@ const GROUPS: { id: GroupBy; label: string }[] = [
 // Audit (#1639, #1261): every raider's week on one page, for everyone on the
 // team. Gear, tier and item level are always as of the last sync; the week
 // switch changes the Great Vault, M+ and raid columns.
-export function AuditPage() {
+export function AuditPage({ tab = 'summary' }: { tab?: AuditTab }) {
   const team = useTeam();
   const season = useCurrentSeason(team.id);
   const code = season.isSuccess ? season.data.code : null;
@@ -55,10 +57,12 @@ export function AuditPage() {
           Everyone&rsquo;s gear, Great Vault and weekly runs, from Blizzard&rsquo;s data.
         </p>
       </div>
+      <AuditTabs current={tab} />
       <DataState query={season} label="the season">
         {() => (
           <DataState query={data} label="the audit">
             {(audit) => {
+              if (tab !== 'summary') return <AuditTabView tab={tab} audit={audit} now={now} />;
               const raiders = buildAudit(audit, which, now);
               const hasRule = audit.vaultRule !== null;
               const attention = needsAttention(raiders, hasRule);
@@ -168,6 +172,29 @@ export function AuditPage() {
         )}
       </DataState>
     </section>
+  );
+}
+
+const TABS: { id: AuditTab; label: string; path: string }[] = [
+  { id: 'summary', label: 'Summary', path: '' },
+  { id: 'gear', label: 'Gear', path: '/gear' },
+  { id: 'upgrades', label: 'Upgrades', path: '/upgrades' },
+  { id: 'enchants', label: 'Enchants & gems', path: '/enchants' }
+];
+
+// The audit's views, as links so each has its own address (and the browser's
+// Back works), styled like the report tabs.
+function AuditTabs({ current }: { current: AuditTab }) {
+  const { pathname } = useLocation();
+  const root = pathname.replace(/\/audit(\/[^/]+)?\/?$/, '/audit');
+  return (
+    <nav className="report-tabs" aria-label="Audit views">
+      {TABS.map((t) => (
+        <Link key={t.id} to={root + t.path} aria-current={t.id === current ? 'page' : undefined}>
+          {t.label}
+        </Link>
+      ))}
+    </nav>
   );
 }
 

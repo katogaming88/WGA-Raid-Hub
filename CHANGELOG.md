@@ -12,6 +12,13 @@ answers to.
 
 ---
 
+## [3.280.0] - 2026-11-15
+
+### Project
+
+- The Audit page has three more views, as tabs beside the Summary, each at its own address: Gear, Upgrades, and Enchants & gems. Gear shows every raider's item level in all 16 slots, colored by track, with marks for no enchant, an empty socket and embellished (information only). Upgrades shows items per track, each slot's upgrade step out of its track's steps (bold when done) and the steps left to buy. Enchants & gems shows a column per enchantable slot of the current season (from the season settings) with the enchant's name and rank or None, then each socket's quality or Empty, then Empty, Low quality and Epic gem totals, under the team's Strict, Lenient or Casual rule. A raider whose gear has not been read yet shows dashes instead of everything missing (#1640).
+- Revamp time log: #1639's review and tweaks, and #1640.
+
 ## [3.279.0] - 2026-11-15
 
 ### Backend

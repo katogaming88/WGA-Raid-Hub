@@ -72,6 +72,11 @@ export const GEAR = PLAYERS.flatMap((p) =>
     if (p.id === 1 && slot === 'FINGER_1') Object.assign(over, { gem_wow_item_ids: [1], embellished: true });
     if (p.id === 4 && slot === 'LEGS') Object.assign(over, { gem_wow_item_ids: [2] });
     if (p.id === 5) Object.assign(over, { item_level: 688 });
+    if (slot === 'NECK') Object.assign(over, { gem_wow_item_ids: p.id === 3 ? [1, null] : [1] });
+    if (slot === 'FINGER_2' && p.id === 2)
+      Object.assign(over, { crafted: true, upgrade_rank: null, upgrade_max: null });
+    if (p.id === 2) Object.assign(over, slot === 'HEAD' || slot === 'CHEST' ? { upgrade_rank: 6 } : {});
+    if (p.id === 4 && slot === 'CHEST') Object.assign(over, { enchantment_id: 7958 });
     if (p.id === 6) Object.assign(over, { synced_at: '2026-11-09T14:00:00Z' });
     // Tier pieces in head and shoulders, on Myth for some and Hero for others.
     if (isTier(slot)) Object.assign(over, { wow_item_id: tierItem(p, slot), track: p.id % 2 ? 'Myth' : 'Hero' });
@@ -151,10 +156,13 @@ export const WEEKS = PLAYERS.flatMap((p) => [
 export const REFERENCE = {
   seasons: [SEASON],
   season_enchant_slots: ENCHANTED_SLOTS.map((slot) => ({ slot, counts_from: null })),
-  season_enchants: [{ enchantment_id: 7959, top_rank: true, tertiary: true }],
+  season_enchants: [
+    { enchantment_id: 7959, name: 'Hex of Leeching', top_rank: true, tertiary: true },
+    { enchantment_id: 7958, name: 'Empowered Hex of Leeching', top_rank: false, tertiary: true }
+  ],
   season_gems: [
-    { wow_item_id: 1, top_rank: true, epic: true },
-    { wow_item_id: 2, top_rank: false, epic: false }
+    { wow_item_id: 1, name: 'Eversong Diamond', top_rank: true, epic: true },
+    { wow_item_id: 2, name: 'Flawless Garnet', top_rank: false, epic: false }
   ],
   tier_token_map: PLAYERS.flatMap((p) =>
     ['HEAD', 'SHOULDER'].map((slot) => ({ class: p.classes_specs.class, resolved_item_id: tierItem(p, slot) }))
