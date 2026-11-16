@@ -1932,6 +1932,27 @@ const STATES = [
     colorScheme: 'light'
   },
   { label: 'tier sets', ...TABLE_REPORT, path: '/g/wga/t/phoenix/officer/reports/tier-sets' },
+  // #1344: nobody on this roster is claimed, and no wishlist is started.
+  { label: 'unclaimed', ...TABLE_REPORT, path: '/g/wga/t/phoenix/officer/reports/unclaimed' },
+  {
+    label: 'unclaimed, light',
+    ...TABLE_REPORT,
+    path: '/g/wga/t/phoenix/officer/reports/unclaimed',
+    colorScheme: 'light'
+  },
+  {
+    label: 'wishlist completeness',
+    ...TABLE_REPORT,
+    tables: { ...TABLE_REPORT.tables, items: [], raid_zones: [], item_preferences: [] },
+    path: '/g/wga/t/phoenix/officer/reports/wishlist-completeness'
+  },
+  {
+    label: 'wishlist completeness, light',
+    ...TABLE_REPORT,
+    tables: { ...TABLE_REPORT.tables, items: [], raid_zones: [], item_preferences: [] },
+    path: '/g/wga/t/phoenix/officer/reports/wishlist-completeness',
+    colorScheme: 'light'
+  },
   { label: 'BiS demand', ...TABLE_REPORT, path: '/g/wga/t/phoenix/officer/reports/bis-demand' },
   {
     label: 'BiS demand, light',
@@ -2271,6 +2292,7 @@ const STATES = [
   profileState('my profile, M+ exclusion request dialog, light', 'dodgey', 'dodgey', {
     sentinel: 'main .mplus-request',
     click: 'main .mplus-request',
+    hideStreams: true,
     colorScheme: 'light',
     tables: {
       ...profileState('', 'dodgey', 'dodgey').tables,
@@ -2434,7 +2456,9 @@ describe('sidebar folding', () => {
   });
 
   it('folds Site too only when the window is too short for it', async () => {
-    const { context, page, pageErrors } = await openApp(browser, server.port, at(720));
+    // 770, not 720: the Reports menu gained its Unclaimed item (#1344), a row
+    // more. Officer alone fits from 740, and Site stays folded to 800.
+    const { context, page, pageErrors } = await openApp(browser, server.port, at(770));
     try {
       await expect.poll(() => sidebarState(page)).toEqual({ overflow: 0, folds: 5, open: ['Officer'] });
       expect(pageErrors).toEqual([]);

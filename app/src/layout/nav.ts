@@ -138,6 +138,7 @@ const REPORT_TABS = {
     ['BiS demand', 'bis-demand'],
     ['Loot pace', 'loot-pace'],
     ['Priority order health', 'priority-health'],
+    ['Wishlist completeness', 'wishlist-completeness'],
     ['Tier sets', 'tier-sets']
   ],
   bench: [
@@ -151,7 +152,7 @@ export const REPORT_KINDS = Object.keys(REPORT_TABS) as ReportKind[];
 
 // Reports read from wishlists and priority orders, left out for a Loot
 // council team (#1563), which uses neither.
-const WISHLIST_REPORTS: string[] = ['bis-demand', 'priority-health'];
+const WISHLIST_REPORTS: string[] = ['bis-demand', 'priority-health', 'wishlist-completeness'];
 
 export function reportTabs(o: string, kind: ReportKind, council = false): NavPage[] {
   return REPORT_TABS[kind]
@@ -192,6 +193,9 @@ const OFFICER_ABILITY: Record<string, Ability | readonly Ability[]> = {
   'officer/reviews': 'viewLoot',
   'officer/import': 'manageLoot',
   'officer/reassign': 'manageLoot',
+  // A wishlist read the rank's loot permission lets through (#1344): without
+  // it every raider would read as not started.
+  'officer/reports/wishlist-completeness': 'viewLoot',
   'officer/attendance': 'viewAttendance',
   'officer/attendance/scores': 'viewAttendance',
   'officer/groups': 'viewGroups',
@@ -245,6 +249,7 @@ function allMenu(o: string, council: boolean, recruitsWaiting: number): (NavItem
       pages: [
         { label: 'Loot', to: `${o}/reports/loot-fairness`, tabs: reportTabs(o, 'loot', council) },
         { label: 'Bench and lineups', to: `${o}/reports/bench-fairness`, tabs: reportTabs(o, 'bench') },
+        { label: 'Unclaimed', to: `${o}/reports/unclaimed` },
         // A placeholder until #1503 decides what it shows (Kat, 2026-10-11).
         { label: 'Performance trends', to: `${o}/reports/performance` }
       ]
@@ -312,6 +317,8 @@ export const TEAM_PAGES: Record<string, string> = {
   'officer/reports/bis-demand': 'BiS demand',
   'officer/reports/loot-pace': 'Loot pace',
   'officer/reports/priority-health': 'Priority order health',
+  'officer/reports/wishlist-completeness': 'Wishlist completeness',
+  'officer/reports/unclaimed': 'Unclaimed',
   'officer/reports/tier-sets': 'Tier sets',
   'officer/reports/performance': 'Performance trends',
   'officer/recruiting': 'Recruits',

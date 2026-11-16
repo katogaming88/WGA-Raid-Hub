@@ -327,6 +327,10 @@ describe('M+ exclusion request (new app), checked against the current site', () 
     const opened = await openOwnProfile('dodgey', { mplusOpen: true, rejections: false });
     try {
       const calls = recordCalls(opened.page);
+      // The fixed Streams panel sits over the last card at this window height
+      // (more so since #1344 added a line to the wishlist card), and this test
+      // is not about streams.
+      await opened.page.addStyleTag({ content: '.stream-widget { display: none }' });
       await opened.page.getByRole('button', { name: 'Request M+ exclusion' }).click();
       const dialog = opened.page.getByRole('dialog', { name: 'Request M+ exclusion' });
       await expect(dialog.getByLabel('Raider.IO profile').inputValue()).resolves.toBe(

@@ -487,6 +487,8 @@ describe('Wishlist (new app), the season picker', () => {
       await expect(opened.page.locator('main .wishlist-summary').textContent()).resolves.toMatch(
         new RegExp(`^${ODD_SEASON.name}: 0 of \\d+ slots`)
       );
+      // #1344: where the wishlist stands, in words.
+      await expect(opened.page.locator('main .wishlist-status').textContent()).resolves.toMatch(/^Not started/);
       expect(opened.pageErrors).toEqual([]);
     } finally {
       await opened.context.close();

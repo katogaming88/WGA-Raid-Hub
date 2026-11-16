@@ -8,6 +8,7 @@ import {
   picksInSeason,
   planMark,
   wishlistCandidates,
+  wishlistProgress,
   wishlistSummary,
   type EditorInput,
   type Pick,
@@ -432,5 +433,54 @@ describe('wishlistSummary counts one season', () => {
 
   it('does not count the same pick stamped with another season', () => {
     expect(wishlistSummary([pick(1, 'bis', null, { season: 'MID1' })], catalog, zones, season.code).bis).toBe(0);
+  });
+});
+
+// #1344: where a raider's wishlist stands, for the officer report and the
+// raider's own profile. A slot is done when it has a BiS pick or a Pass (#1032).
+describe('wishlistProgress', () => {
+  const zones = [{ wcl_zone_id: 53, season: 'MID2' }];
+
+  it('is not started with no picks in the season, and a pick from another season does not start it', () => {
+    expect(wishlistProgress([], catalog, zones, 'MID2')).toEqual({ state: 'not-started', done: 0, total: 16 });
+    expect(wishlistProgress([pick(1, 'bis', null, { season: 'MID1' })], catalog, zones, 'MID2').state).toBe(
+      'not-started'
+    );
+  });
+
+  it('is partly done with some slots filled, counting a Pass as done', () => {
+    const rows = [pick(1, 'bis', null), pick(6, 'pass', 'Weapon')];
+    expect(wishlistProgress(rows, catalog, zones, 'MID2')).toEqual({ state: 'partly', done: 2, total: 16 });
+  });
+
+  it('is partly done at 0 of 16 when the only marks are Sidegrade', () => {
+    expect(wishlistProgress([pick(1, 'ok', null)], catalog, zones, 'MID2')).toEqual({
+      state: 'partly',
+      done: 0,
+      total: 16
+    });
+  });
+
+  it('is done when every slot is a BiS pick or a Pass', () => {
+    const slots = [
+      'Head',
+      'Neck',
+      'Shoulder',
+      'Back',
+      'Chest',
+      'Wrist',
+      'Hands',
+      'Waist',
+      'Legs',
+      'Feet',
+      'Finger 1',
+      'Finger 2',
+      'Trinket 1',
+      'Trinket 2',
+      'Weapon',
+      'Off Hand'
+    ];
+    const rows = slots.map((slot) => pick(14, 'pass', slot));
+    expect(wishlistProgress(rows, catalog, zones, 'MID2')).toEqual({ state: 'done', done: 16, total: 16 });
   });
 });

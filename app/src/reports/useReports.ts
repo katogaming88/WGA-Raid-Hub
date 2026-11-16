@@ -20,6 +20,35 @@ export function useRaidNightsSinceItem(teamId: number) {
 // The season-picked reports (#1359 part 3). Each read asks for one season, so
 // a team's whole history never meets the 1000-row page limit.
 
+export type TeamWishlistRow = {
+  player_id: number;
+  item_id: number;
+  status: string;
+  slot: string | null;
+  season: string | null;
+  synced_bis: boolean;
+};
+
+// Every pick the team's raiders filed for one season (#1344), paged by id: a
+// team's wishlists outgrow the 1000-row read limit, and a short read would
+// show a raider's finished wishlist as unstarted.
+export function useTeamWishlists(teamId: number, season: string | null) {
+  return useSupabaseQuery<TeamWishlistRow[]>(
+    ['team-wishlists', teamId, season],
+    (client) =>
+      readAll<TeamWishlistRow>((from, to) =>
+        client
+          .from('item_preferences')
+          .select('id, player_id, item_id, status, slot, season, synced_bis')
+          .eq('team_id', teamId)
+          .eq('season', season!)
+          .order('id')
+          .range(from, to)
+      ),
+    { enabled: season !== null }
+  );
+}
+
 export type BisDemandRow = {
   item_id: number | null;
   item_name: string | null;

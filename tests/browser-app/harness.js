@@ -182,7 +182,7 @@ function json(body, headers = {}) {
  * @param {{ path: string, viewport?: {width:number,height:number}, session?: object, who?: keyof PEOPLE,
  *           reducedMotion?: 'reduce'|'no-preference', colorScheme?: 'light'|'dark', sentinel?: string,
  *           tables?: Record<string, unknown[]>, person?: { discordId: string|null, person: object|null },
- *           click?: string, afterClick?: string, touch?: boolean, rpc?: Record<string, unknown>, functions?: string[],
+ *           click?: string, hideStreams?: boolean, afterClick?: string, touch?: boolean, rpc?: Record<string, unknown>, functions?: string[],
  *           functionAnswers?: Record<string, unknown>, sessionStorage?: Record<string, string>,
  *           clock?: string, teams?: object[], news?: object[], newsSeen?: string }} state
  */
@@ -423,6 +423,9 @@ export async function openApp(browser, port, state) {
 
   await page.goto(`http://127.0.0.1:${port}${state.path}`, { waitUntil: 'load' });
   await page.waitForSelector(state.sentinel ?? 'main h1', { timeout: 20000 });
+  // The fixed Streams panel covers the last content at a short window; a click
+  // into that corner can opt out of it (#1344).
+  if (state.hideStreams) await page.addStyleTag({ content: '.stream-widget { display: none }' });
   // A state reached by clicking once the page is there, like a tab.
   if (state.click) await page.click(state.click);
   // What the click opens, when it loads data of its own first.
