@@ -90,6 +90,10 @@ export type GearProblem = {
 };
 
 export type GearCheck = {
+  // False until the gear sync has saved a raider's slot details (#1634): rows
+  // from before it carry empty defaults, which would read as every enchant
+  // missing. Nothing is flagged then.
+  read: boolean;
   enchantable: number;
   enchanted: number;
   sockets: number;
@@ -138,6 +142,29 @@ export function gearCheck(
   today: string,
   weaponOffHand: boolean
 ): GearCheck {
+  // Any detail at all means the sync has read this raider's gear since #1634:
+  // a track step comes with every raid, dungeon or crafted piece.
+  const read = gear.some(
+    (g) =>
+      g.upgrade_rank != null ||
+      g.enchantment_id != null ||
+      (g.gem_wow_item_ids ?? []).length > 0 ||
+      g.embellished ||
+      g.crafted
+  );
+  if (!read) {
+    return {
+      read,
+      enchantable: 0,
+      enchanted: 0,
+      sockets: 0,
+      filledSockets: 0,
+      noEpicGem: null,
+      embellishments: 0,
+      sparks: 0,
+      problems: []
+    };
+  }
   const slots = new Set(refs.slots.filter((s) => !s.counts_from || s.counts_from <= today).map((s) => s.slot));
   const problems: GearProblem[] = [];
   let enchantable = 0;
@@ -202,6 +229,7 @@ export function gearCheck(
   }
   problems.sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot));
   return {
+    read,
     enchantable,
     enchanted,
     sockets,

@@ -46,8 +46,8 @@ const piece = (slot: string, over: Partial<GearItem> = {}): GearItem => ({
   gem_wow_item_ids: [],
   embellished: false,
   crafted: false,
-  upgrade_rank: null,
-  upgrade_max: null,
+  upgrade_rank: 4,
+  upgrade_max: 6,
   synced_at: '2026-11-15T10:00:00Z',
   ...over
 });
@@ -86,6 +86,18 @@ describe('gearCheck: enchants', () => {
 
   it('ignores an empty slot (no item to enchant)', () => {
     expect(check([piece('HEAD', { wow_item_id: null })]).enchantable).toBe(0);
+  });
+});
+
+describe('gearCheck: gear not read yet', () => {
+  it('flags nothing for rows from before the gear sync saved slot details', () => {
+    const bare = [
+      piece('HEAD', { upgrade_rank: null, upgrade_max: null }),
+      piece('FINGER_1', { upgrade_rank: null, upgrade_max: null })
+    ];
+    const c = check(bare);
+    expect(c.read).toBe(false);
+    expect([c.enchantable, c.sockets, c.noEpicGem, c.problems]).toEqual([0, 0, null, []]);
   });
 });
 

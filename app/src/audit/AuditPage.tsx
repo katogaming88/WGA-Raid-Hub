@@ -103,7 +103,7 @@ export function AuditPage() {
                   <div className="audit-controls">
                     <label>
                       <span className="text-muted">Item level </span>
-                      <select value={mode} onChange={(e) => setMode(e.target.value as IlvlMode)}>
+                      <select className="select" value={mode} onChange={(e) => setMode(e.target.value as IlvlMode)}>
                         <option value="highest">Highest ever</option>
                         <option value="worn">Equipped now</option>
                       </select>
@@ -223,15 +223,17 @@ function SummaryTable({
           <tbody key={g.label}>
             {group !== 'none' && (
               <tr className="audit-group">
-                <th scope="rowgroup" colSpan={2}>
+                <th scope="rowgroup">
                   {g.label} <span className="text-dim">({g.raiders.length})</span>
-                </th>
-                <td colSpan={20}>
-                  <span className="text-muted">avg ilvl {g.avg ?? '–'}</span>{' '}
-                  <span className={g.needLook ? 'audit-bad' : 'audit-ok'}>
+                  <span className={`audit-group-status ${g.needLook ? 'audit-bad' : 'audit-ok'}`}>
                     {g.needLook ? `${g.needLook} need a look` : 'all ready'}
                   </span>
+                </th>
+                <td />
+                <td className="col-num" title="Average item level">
+                  <span className="text-dim audit-avg-label">avg</span> {g.avg ?? '–'}
                 </td>
+                <td colSpan={15} />
               </tr>
             )}
             {g.raiders.map((r) => (
@@ -259,7 +261,7 @@ function RaiderRow({
   const c = r.check;
   const m = mplusFigures(r.week);
   const worn = mode === 'highest' && r.wornIlvl != null && r.highestIlvl != null && r.wornIlvl < r.highestIlvl - 0.5;
-  const checked = c.enchantable > 0 || c.sockets > 0;
+  const checked = c.read && (c.enchantable > 0 || c.sockets > 0);
   return (
     <tr>
       <th scope="row" className="audit-name">
@@ -310,8 +312,8 @@ function RaiderRow({
           </td>
         );
       })}
-      <td>{m === null ? '–' : m.runs ? `${m.runs} · best +${m.best}` : 'None'}</td>
-      <td>
+      <td className="col-wrap">{m === null ? '–' : m.runs ? `${m.runs} · best +${m.best}` : 'None'}</td>
+      <td className="col-wrap">
         <RaidLine week={r.week} />
       </td>
       <td className={r.stale ? 'audit-warn' : 'text-muted'}>{ago(r.updatedAt, now)}</td>

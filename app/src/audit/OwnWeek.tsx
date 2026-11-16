@@ -89,6 +89,8 @@ function WeekTodo({
 }) {
   const names = useItemNames(todo.map((p) => p.item).filter((id): id is number => id != null));
   const named = names.data ?? new Map<number, string>();
+  if (!raider.check.read)
+    return <p className="text-muted">Gear details are not read yet. They fill in on the next gear sync.</p>;
   const count = raider.issues;
   if (count === 0) return <p className="audit-ok">Nothing to fix before raid.</p>;
   return (

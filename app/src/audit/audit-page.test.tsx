@@ -33,8 +33,8 @@ const gear = (player_id: number, equipment_slot: string, over: object = {}) => (
   gem_wow_item_ids: [],
   embellished: false,
   crafted: false,
-  upgrade_rank: null,
-  upgrade_max: null,
+  upgrade_rank: 4,
+  upgrade_max: 6,
   synced_at: NOW_ISO,
   ...over
 });

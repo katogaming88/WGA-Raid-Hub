@@ -71,6 +71,9 @@ export function GearToFix({ raider }: { raider: AuditRaider }) {
   const names = useItemNames(issues.map((p) => p.item).filter((id): id is number => id != null));
   const named = names.data ?? new Map<number, string>();
   const c = raider.check;
+  if (!c.read) {
+    return <p className="text-muted">Gear details are not read yet. They fill in on the next gear sync.</p>;
+  }
   return (
     <div className="audit-fix">
       {issues.length === 0 ? (

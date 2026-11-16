@@ -44,6 +44,9 @@
 .audit-controls {
   justify-content: flex-start;
 }
+.audit-controls .select {
+  width: auto;
+}
 .audit-summary {
   margin: 0;
   color: var(--text-muted);
@@ -69,6 +72,13 @@
   font-weight: 600;
 }
 
+.audit-attention,
+.audit-opened {
+  padding: var(--space-4);
+}
+.audit-attention .card-title {
+  margin: 0 0 var(--space-2);
+}
 .audit-attention ul {
   margin: 0;
   padding-left: var(--space-4);
@@ -76,8 +86,14 @@
 
 .audit-table-wrap {
   position: relative;
-  overflow-x: auto;
   padding: 0;
+}
+/* Narrower than the table can fit, the box scrolls sideways, and its headings
+   then scroll with it. Wider, the page scrolls and the headings stay put. */
+@media (max-width: 1300px) {
+  .audit-table-wrap {
+    overflow-x: auto;
+  }
 }
 .audit-table {
   width: 100%;
@@ -87,29 +103,50 @@
 }
 .audit-table th,
 .audit-table td {
-  padding: 6px var(--space-3);
+  padding: 6px var(--space-2);
   text-align: left;
-  white-space: nowrap;
   border-bottom: 1px solid var(--border);
 }
+.audit-table td {
+  white-space: nowrap;
+}
 .audit-table thead th {
-  color: var(--text-dim);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
+  /* Bigger and brighter than the roster's: these headings are what you read
+     the whole table by, and they were easy to miss. */
+  color: var(--text);
+  font-size: var(--text-md);
+  font-weight: 700;
+  vertical-align: bottom;
+  border-bottom: 2px solid var(--border-strong);
 }
 .audit-table .col-num {
   text-align: right;
 }
 .audit-table .col-tier {
   text-align: center;
-  padding-inline: var(--space-2);
+  padding-inline: var(--space-1);
+}
+.audit-table .col-wrap {
+  white-space: normal;
+  min-width: 4.5rem;
 }
 .audit-group th,
 .audit-group td {
   background: var(--sidebar);
   font-weight: 600;
+}
+.audit-group-status {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+.audit-avg-label {
+  font-size: var(--text-xs);
+  font-weight: 400;
 }
 .audit-name {
   font-weight: 500;
@@ -159,8 +196,9 @@
 
 .audit-cell-vault {
   display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
 }
 .audit-bars {
   display: inline-flex;
