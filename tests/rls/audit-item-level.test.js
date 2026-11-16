@@ -26,24 +26,41 @@ const read = async (q, week) =>
 describe('character_weeks.best_item_level', () => {
   it('starts as the first read', async () => {
     await withTxn(async ({ q }) => {
-      await put(q, '2026-11-03', 721);
-      expect(await read(q, '2026-11-03')).toEqual({ item_level: 721, best_item_level: 721 });
+      await put(q, '2026-11-03', 300);
+      expect(await read(q, '2026-11-03')).toEqual({ item_level: 300, best_item_level: 300 });
     });
   });
 
   it('carries the best of earlier weeks, so a PvP-gear week does not lower it', async () => {
     await withTxn(async ({ q }) => {
-      await put(q, '2026-11-03', 721);
-      await put(q, '2026-11-10', 688);
-      expect(await read(q, '2026-11-10')).toEqual({ item_level: 688, best_item_level: 721 });
+      await put(q, '2026-11-03', 300);
+      await put(q, '2026-11-10', 266);
+      expect(await read(q, '2026-11-10')).toEqual({ item_level: 266, best_item_level: 300 });
     });
   });
 
   it('never goes down when the same week is read again in lower gear', async () => {
     await withTxn(async ({ q }) => {
-      await put(q, '2026-11-10', 725);
-      await put(q, '2026-11-10', 690);
-      expect(await read(q, '2026-11-10')).toEqual({ item_level: 690, best_item_level: 725 });
+      await put(q, '2026-11-10', 310);
+      await put(q, '2026-11-10', 270);
+      expect(await read(q, '2026-11-10')).toEqual({ item_level: 270, best_item_level: 310 });
+    });
+  });
+
+  it('matches the character by its name as the key is built, and a failed read still carries the best', async () => {
+    await withTxn(async ({ q }) => {
+      await q(
+        `insert into public.character_weeks (week_of, name_realm, item_level) values ('2026-11-03', 'Katorri-Area 52', 300)`
+      );
+      // The next week's summary read failed (no level) and the name is typed differently.
+      await q(`insert into public.character_weeks (week_of, name_realm) values ('2026-11-10', 'katorri-area52')`);
+      const { rows } = await q(
+        `select week_of::text, item_level, best_item_level from public.character_weeks where name_realm_key = 'katorri-area52' order by week_of`
+      );
+      expect(rows).toEqual([
+        { week_of: '2026-11-03', item_level: 300, best_item_level: 300 },
+        { week_of: '2026-11-10', item_level: null, best_item_level: 300 }
+      ]);
     });
   });
 
