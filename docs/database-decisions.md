@@ -3696,3 +3696,18 @@ Shipped: `20261115174722_audit_item_level.sql`.
 **Null until the first read after this lands.** Nothing is backfilled; the page falls back to the gear it already has until a weekly read supplies a level.
 
 [Full discussion -> #1639](https://github.com/katogaming88/WGA-Raid-Hub/issues/1639).
+
+## #1641 -- boss and dungeon names for the audit's Raids and Dungeons tabs
+
+Shipped: `20261115231709_audit_boss_and_dungeon_names.sql`.
+
+**The weekly row stores ids, so the tabs need names.** `character_weeks` keeps each boss kill by Blizzard's journal encounter id and each M+ run by Blizzard's dungeon id (#1636). Two plain reference tables say what they are called, added by migration and read by anyone, like the other season settings. Neither is written from the site.
+
+**`season_raid_bosses`: the bosses of each season's counted raids, in the game's order.** Keyed by (season, encounter id), with a foreign key from (season, instance id) to `season_vault_raids`, so a boss can only belong to a raid the vault counts. The Raids tab's columns are these rows, so the list is a season setting, never hard-coded in the page. Midnight Season 2 holds The Venomous Abyss's eight bosses and The Tidebound Grotto's one. Ids and names are from Blizzard's JournalEncounter table (wago.tools), checked against the ids the vault tests already use.
+
+**`mplus_dungeons`: every Mythic+ dungeon's name by the id the profile API uses (Blizzard's MapChallengeMode id), not per season.** A dungeon keeps its id from season to season, and the season's pool is simply the dungeons its runs name, so there is no pool to maintain and a rotation needs no migration. The 87 rows are every challenge mode in the table, old ones included.
+
+**No access beyond reading.** Each table grants select to anon, authenticated and service_role and nothing else (the new-table grants check), with a public read rule and one for the Claude readers; nothing writes them but migrations.
+
+[Full discussion -> #1641](https://github.com/katogaming88/WGA-Raid-Hub/issues/1641).
+

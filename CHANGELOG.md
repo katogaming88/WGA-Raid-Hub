@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.281.0] - 2026-11-15
+
+### Backend
+
+- Two reference tables name what the weekly row stores by id: the bosses of each season's counted raids in the game's order, and every Mythic+ dungeon by its id. Midnight Season 2's raids are filled in (#1641).
+
+### Project
+
+- The Audit page has four more tabs: Great Vault, Raids, Dungeons and Crests. Great Vault shows all nine slots per raider (Raid, Dungeons, World) with the item level each offers, colored by track, what is left to fill an empty one, and a Filled count out of 9. Raids shows the highest difficulty killed per boss with counts per difficulty, for this week, last week or the whole season. Dungeons shows this week's or last week's rating, runs and best key, then the best key in each dungeon this season (bold when finished in time). Crests shows each crest type earned against this week's cap, Capped when full and the earned total for types with no cap; crests on hand wait for the addon (#1641).
+- Revamp time log: #1640's merge, and #1641.
+
 ## [3.280.0] - 2026-11-15
 
 ### Project

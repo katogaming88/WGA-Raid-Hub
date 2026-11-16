@@ -294,6 +294,8 @@ export type TierLetters = { slot: string; letter: string }[];
 export type AuditRaider = {
   id: number;
   code: string | null;
+  // The character's name_realm_key, for reading its other weeks.
+  key: string | null;
   name: string;
   realm: string;
   className: string;
@@ -376,6 +378,7 @@ export function auditRaider(i: AuditInput): AuditRaider {
   return {
     id: player.id,
     code: player.url_code ?? null,
+    key: player.name_realm_key,
     name,
     realm: realm.join('-'),
     className: cs?.class ?? '',
@@ -633,4 +636,71 @@ export function enchantCell(item: GearItem | null, refs: SeasonRefs): EnchantCel
 // Low quality and old gems, counted as the tab's Low quality column does.
 export function lowGemCount(r: AuditRaider, refs: SeasonRefs): number {
   return r.gear.reduce((n, g) => n + gemChips(g, refs).filter((c) => c.kind === 'low' || c.kind === 'old').length, 0);
+}
+
+// -- The Great Vault, Raids, Dungeons and Crests tabs (#1641) ----------------------
+
+// A week of one character's raid kills and M+ runs, for the tabs that look at
+// the whole season.
+export type SeasonWeek = {
+  name_realm_key: string;
+  week_of: string;
+  raid_kills: { encounter_id: number; difficulty: string }[];
+  mplus_runs: { dungeon_id: number; level: number; timed: boolean }[];
+};
+
+export type Difficulty = 'mythic' | 'heroic' | 'normal';
+const DIFFICULTY_RANK: Record<string, number> = { lfr: 0, normal: 1, heroic: 2, mythic: 3 };
+
+// The highest of Normal, Heroic and Mythic killed on each boss. Raid Finder
+// kills are left out: the tab is about the difficulties a guild raids.
+export function bestKills(
+  weeks: { raid_kills: { encounter_id: number; difficulty: string }[] }[]
+): Map<number, Difficulty> {
+  const best = new Map<number, Difficulty>();
+  for (const w of weeks) {
+    for (const k of w.raid_kills) {
+      if ((DIFFICULTY_RANK[k.difficulty] ?? 0) < 1) continue;
+      const have = best.get(k.encounter_id);
+      if (!have || DIFFICULTY_RANK[k.difficulty]! > DIFFICULTY_RANK[have]!)
+        best.set(k.encounter_id, k.difficulty as Difficulty);
+    }
+  }
+  return best;
+}
+
+// Bosses killed on each difficulty, however many times and whatever else was
+// killed on them: a Mythic kill does not count as a Heroic one.
+export function killCounts(weeks: { raid_kills: { encounter_id: number; difficulty: string }[] }[], bossIds: number[]) {
+  const on = (difficulty: Difficulty) =>
+    new Set(
+      weeks
+        .flatMap((w) => w.raid_kills)
+        .filter((k) => k.difficulty === difficulty && bossIds.includes(k.encounter_id))
+        .map((k) => k.encounter_id)
+    ).size;
+  return { normal: on('normal'), heroic: on('heroic'), mythic: on('mythic') };
+}
+
+// The best key in each dungeon across the weeks, preferring one finished in time
+// when two reach the same level.
+export function seasonBestKeys(weeks: SeasonWeek[]): Map<number, { level: number; timed: boolean }> {
+  const best = new Map<number, { level: number; timed: boolean }>();
+  for (const w of weeks) {
+    for (const r of w.mplus_runs) {
+      const have = best.get(r.dungeon_id);
+      if (!have || r.level > have.level || (r.level === have.level && r.timed && !have.timed)) {
+        best.set(r.dungeon_id, { level: r.level, timed: r.timed });
+      }
+    }
+  }
+  return best;
+}
+
+// A crest's progress against its cap this week: Capped when full, a count and
+// percent against the cap, or just the total when the type has no cap.
+export function crestProgress(earned: number, cap: number | null) {
+  if (cap === null) return { kind: 'uncapped' as const, earned, pct: 0 };
+  if (cap > 0 && earned >= cap) return { kind: 'capped' as const, earned, pct: 100 };
+  return { kind: 'open' as const, earned, pct: cap > 0 ? Math.min(100, Math.round((earned / cap) * 100)) : 0 };
 }

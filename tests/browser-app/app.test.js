@@ -1620,7 +1620,11 @@ const AUDIT_PAGE = {
 const AUDIT_TABS = [
   ['gear', 'Gear'],
   ['upgrades', 'Upgrades'],
-  ['enchants', 'Enchants & gems']
+  ['enchants', 'Enchants & gems'],
+  ['vault', 'Great Vault'],
+  ['raids', 'Raids'],
+  ['dungeons', 'Dungeons'],
+  ['crests', 'Crests']
 ].flatMap(([path, name]) => {
   const base = { ...AUDIT_PAGE, path: `/g/wga/t/phoenix/audit/${path}` };
   return [

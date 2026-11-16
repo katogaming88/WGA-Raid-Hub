@@ -1,6 +1,14 @@
 import { readAll, useSupabaseQuery } from '../data/query';
 import { asEnchantCheck, asVaultRule } from '../settings/settings';
-import { weekBefore, weekOf, type AuditData, type AuditPlayer, type GearItem, type WeekRow } from './audit';
+import {
+  weekBefore,
+  weekOf,
+  type AuditData,
+  type AuditPlayer,
+  type GearItem,
+  type SeasonWeek,
+  type WeekRow
+} from './audit';
 
 const GEAR_COLUMNS =
   'player_id, equipment_slot, item_level, wow_item_id, track, enchantment_id, gem_wow_item_ids, embellished, crafted, upgrade_rank, upgrade_max, synced_at';
@@ -172,5 +180,55 @@ export function useCrestCaps(seasonCode: string | null, week: string) {
       };
     },
     { enabled: seasonCode !== null }
+  );
+}
+
+export type RaidBoss = { instance_id: number; encounter_id: number; name: string; sort_order: number };
+
+// The season's counted raids' bosses, in the game's order (the Raids tab's columns).
+export function useRaidBosses(seasonCode: string | null) {
+  return useSupabaseQuery<RaidBoss[]>(
+    ['audit-raid-bosses', seasonCode],
+    (client) =>
+      // team-read-guard: a season's raid bosses, a dozen at most
+      client
+        .from('season_raid_bosses')
+        .select('instance_id, encounter_id, name, sort_order')
+        .eq('season', seasonCode ?? '')
+        .order('sort_order'),
+    { enabled: seasonCode !== null }
+  );
+}
+
+// Dungeon names by the id a run carries.
+export function useDungeonNames() {
+  return useSupabaseQuery<Map<number, string>>(['audit-dungeon-names'], async (client) => {
+    const { data, error } = await readAll<{ dungeon_id: number; name: string }>((from, to) =>
+      client.from('mplus_dungeons').select('dungeon_id, name').order('dungeon_id').range(from, to)
+    );
+    if (error) return { data: null, error };
+    return { data: new Map((data ?? []).map((d) => [d.dungeon_id, d.name])), error: null };
+  });
+}
+
+// Every week of the season for these characters: the Raids tab's Whole season
+// and the Dungeons tab's best key per dungeon.
+export function useSeasonWeeks(keys: string[], seasonStart: string | null) {
+  return useSupabaseQuery<SeasonWeek[]>(
+    ['audit-season-weeks', keys, seasonStart],
+    (client) =>
+      readAll<SeasonWeek>(
+        (from, to) =>
+          // The json columns come back as Json; their shapes are SeasonWeek's.
+          client
+            .from('character_weeks')
+            .select('name_realm_key, week_of, raid_kills, mplus_runs')
+            .in('name_realm_key', keys)
+            .gte('week_of', seasonStart ?? '2000-01-01')
+            .order('name_realm_key')
+            .order('week_of')
+            .range(from, to) as unknown as ReturnType<Parameters<typeof readAll<SeasonWeek>>[0]>
+      ),
+    { enabled: keys.length > 0 }
   );
 }

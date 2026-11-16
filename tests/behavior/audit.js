@@ -112,16 +112,44 @@ const RUNS = {
   6: []
 };
 
+// Season 2's Venomous Abyss bosses (journal ids, in the game's order) and the
+// dungeons the team ran.
+export const BOSSES = [
+  [2888, "Nek'zali the Soulcoiler"],
+  [2874, 'Entombed Sentinels'],
+  [2894, 'The Lost Explorers'],
+  [2882, 'Vashnik the Malignant'],
+  [2871, 'Sszorak'],
+  [2887, 'The Twin Fangs'],
+  [2883, 'The Coiled Altar'],
+  [2895, "Ula'tek"]
+];
+const BOSS_IDS = BOSSES.map(([id]) => id);
+export const DUNGEONS = [
+  [525, 'Operation: Floodgate'],
+  [558, "Magisters' Terrace"],
+  [559, 'Nexus-Point Xenas'],
+  [560, 'Maisara Caverns'],
+  [583, 'Seat of the Triumvirate'],
+  [556, 'Pit of Saron']
+];
+const DUNGEON_IDS = DUNGEONS.map(([id]) => id);
+
 const week = (p, week_of, over = {}) => ({
   name_realm_key: p.name_realm_key,
   week_of,
+  // Heroic on every boss of the raid but the last, Mythic on the first few: the
+  // better the raider's id, the more Mythic.
   raid_kills: [
-    { encounter_id: 1, difficulty: 'heroic' },
-    { encounter_id: 2, difficulty: 'heroic' },
-    { encounter_id: 3, difficulty: 'mythic' }
+    ...BOSS_IDS.slice(0, 7).map((encounter_id) => ({ encounter_id, difficulty: 'heroic' })),
+    ...BOSS_IDS.slice(0, 2 + (p.id % 3)).map((encounter_id) => ({ encounter_id, difficulty: 'mythic' }))
   ],
   raids_at: '2026-11-12T14:00:00Z',
-  mplus_runs: (RUNS[p.id] ?? []).map((level, i) => ({ dungeon_id: 500 + i, level, timed: level > 9 })),
+  mplus_runs: (RUNS[p.id] ?? []).map((level, i) => ({
+    dungeon_id: DUNGEON_IDS[i % DUNGEON_IDS.length],
+    level,
+    timed: level > 9
+  })),
   mplus_rating: RAIDERS[p.id - 1][5],
   mplus_at: '2026-11-12T14:00:00Z',
   crests: { Myth: 640, Hero: 1100, Champion: 564, Veteran: 912, Adventurer: 520 },
@@ -148,13 +176,22 @@ export const WEEKS = PLAYERS.flatMap((p) => [
       : {}
   ),
   week(p, LAST_WEEK, {
-    mplus_runs: (RUNS[p.id] ?? []).slice(0, 3).map((level, i) => ({ dungeon_id: 500 + i, level, timed: true }))
+    mplus_runs: (RUNS[p.id] ?? [])
+      .slice(0, 3)
+      .map((level, i) => ({ dungeon_id: DUNGEON_IDS[i % DUNGEON_IDS.length], level, timed: true }))
   })
 ]);
 
 // What the page reads besides the people.
 export const REFERENCE = {
   seasons: [SEASON],
+  season_raid_bosses: BOSSES.map(([encounter_id, name], i) => ({
+    instance_id: 1320,
+    encounter_id,
+    name,
+    sort_order: i + 1
+  })),
+  mplus_dungeons: DUNGEONS.map(([dungeon_id, name]) => ({ dungeon_id, name })),
   season_enchant_slots: ENCHANTED_SLOTS.map((slot) => ({ slot, counts_from: null })),
   season_enchants: [
     { enchantment_id: 7959, name: 'Hex of Leeching', top_rank: true, tertiary: true },

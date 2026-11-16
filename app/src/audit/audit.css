@@ -524,3 +524,76 @@
 .gem-empty {
   color: var(--bad);
 }
+
+/* The Great Vault, Raids, Dungeons and Crests tabs (#1641). */
+.audit-strong {
+  font-weight: 700;
+}
+.vault-box {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 4.2rem;
+  padding: 3px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+}
+.vault-box-empty {
+  border-style: dashed;
+}
+.boss-head {
+  max-width: 6.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kill {
+  display: inline-block;
+  min-width: 1.6rem;
+  font-weight: 700;
+  text-align: center;
+}
+.kill-mythic {
+  color: var(--track-Myth);
+}
+.kill-heroic {
+  color: var(--track-Hero);
+}
+.kill-normal {
+  color: var(--track-Champion);
+}
+.crest-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.crest-bar {
+  display: block;
+  width: 56px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--raised);
+}
+.crest-fill {
+  display: block;
+  height: 6px;
+}
+.fill-Myth {
+  background: var(--track-Myth);
+}
+.fill-Hero {
+  background: var(--track-Hero);
+}
+.fill-Champion {
+  background: var(--track-Champion);
+}
+.fill-Veteran {
+  background: var(--track-Veteran);
+}
+.fill-Adventurer {
+  background: var(--track-Adventurer);
+}
+.audit-page .audit-toolbar {
+  margin-bottom: var(--space-2);
+}

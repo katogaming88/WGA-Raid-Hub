@@ -112,6 +112,8 @@
 | [public.season_vault_slots](public.season_vault_slots.md) | 4 | How many runs fill each Great Vault slot in a season (#1637): raid bosses, keys, or delves. Added by migration. | BASE TABLE |
 | [public.season_vault_rewards](public.season_vault_rewards.md) | 7 | What a run offers in the Great Vault in a season (#1637). Raid: by kill difficulty, and encounter_id (Blizzard journal id) for a boss with its own reward. Dungeon: a key from from_level up. World: a delve from tier from_level up. Added by migration. | BASE TABLE |
 | [public.season_vault_raids](public.season_vault_raids.md) | 3 | The raids whose kills fill Raid vault slots in a season (#1637), by Blizzard journal instance id. Added by migration. | BASE TABLE |
+| [public.season_raid_bosses](public.season_raid_bosses.md) | 5 | The bosses of each season's counted raids (#1641), by Blizzard journal encounter id, in the game's order. Added by migration per season. | BASE TABLE |
+| [public.mplus_dungeons](public.mplus_dungeons.md) | 2 | Mythic+ dungeon names by the dungeon id the profile API uses, Blizzard's MapChallengeMode id (#1641). Every dungeon, not a season's pool. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -587,6 +589,7 @@ erDiagram
 "public.season_vault_rewards" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.season_vault_rewards" }o--|| "public.season_track_steps" : "FOREIGN KEY (season, track, rank) REFERENCES season_track_steps(season, track, rank)"
 "public.season_vault_raids" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
+"public.season_raid_bosses" }o--|| "public.season_vault_raids" : "FOREIGN KEY (season, instance_id) REFERENCES season_vault_raids(season, instance_id)"
 
 "public.attendance" {
   integer id
@@ -1713,6 +1716,17 @@ erDiagram
 "public.season_vault_raids" {
   text season FK
   integer instance_id
+  text name
+}
+"public.season_raid_bosses" {
+  text season FK
+  integer instance_id FK
+  integer encounter_id
+  text name
+  smallint sort_order
+}
+"public.mplus_dungeons" {
+  integer dungeon_id
   text name
 }
 ```

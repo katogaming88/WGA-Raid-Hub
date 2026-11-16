@@ -62,7 +62,16 @@ export function AuditPage({ tab = 'summary' }: { tab?: AuditTab }) {
         {() => (
           <DataState query={data} label="the audit">
             {(audit) => {
-              if (tab !== 'summary') return <AuditTabView tab={tab} audit={audit} now={now} />;
+              if (tab !== 'summary')
+                return (
+                  <AuditTabView
+                    tab={tab}
+                    audit={audit}
+                    now={now}
+                    seasonCode={code}
+                    seasonStart={season.isSuccess ? season.data.start : null}
+                  />
+                );
               const raiders = buildAudit(audit, which, now);
               const hasRule = audit.vaultRule !== null;
               const attention = needsAttention(raiders, hasRule);
@@ -179,7 +188,11 @@ const TABS: { id: AuditTab; label: string; path: string }[] = [
   { id: 'summary', label: 'Summary', path: '' },
   { id: 'gear', label: 'Gear', path: '/gear' },
   { id: 'upgrades', label: 'Upgrades', path: '/upgrades' },
-  { id: 'enchants', label: 'Enchants & gems', path: '/enchants' }
+  { id: 'enchants', label: 'Enchants & gems', path: '/enchants' },
+  { id: 'vault', label: 'Great Vault', path: '/vault' },
+  { id: 'raids', label: 'Raids', path: '/raids' },
+  { id: 'dungeons', label: 'Dungeons', path: '/dungeons' },
+  { id: 'crests', label: 'Crests', path: '/crests' }
 ];
 
 // The audit's views, as links so each has its own address (and the browser's

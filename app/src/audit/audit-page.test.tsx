@@ -64,11 +64,11 @@ const week = (key: string, week_of: string, over: object = {}) => ({
   name_realm_key: key,
   week_of,
   raid_kills: [
-    { encounter_id: 1, difficulty: 'heroic' },
-    { encounter_id: 2, difficulty: 'mythic' }
+    { encounter_id: 2888, difficulty: 'heroic' },
+    { encounter_id: 2874, difficulty: 'mythic' }
   ],
   raids_at: NOW_ISO,
-  mplus_runs: [{ dungeon_id: 1, level: 12, timed: true }],
+  mplus_runs: [{ dungeon_id: 525, level: 12, timed: true }],
   mplus_rating: 2865,
   mplus_at: NOW_ISO,
   crests: { Myth: 640, Hero: 900 },
@@ -98,7 +98,12 @@ function handlers(settings: object = { enchantCheck: 'lenient', vaultRule: null 
     season_enchants: [{ enchantment_id: 7959, name: 'Hex of Leeching', top_rank: true, tertiary: true }],
     season_gems: [{ wow_item_id: 1, name: 'Eversong Diamond', top_rank: true, epic: true }],
     tier_token_map: [],
-    items: []
+    items: [],
+    season_raid_bosses: [
+      { instance_id: 1320, encounter_id: 2888, name: 'Nek’zali the Soulcoiler', sort_order: 1 },
+      { instance_id: 1320, encounter_id: 2874, name: 'Entombed Sentinels', sort_order: 2 }
+    ],
+    mplus_dungeons: [{ dungeon_id: 525, name: 'Operation: Floodgate' }]
   };
   return asMember({
     ...base,
@@ -219,5 +224,45 @@ describe('Audit page', () => {
     const region = await screen.findByRole('region', { name: 'Upgrade steps by slot' });
     const kat = within(region).getByRole('row', { name: /Katorri/ });
     expect(within(kat).getAllByText('4/6').length).toBeGreaterThan(0);
+  });
+
+  it('Great Vault shows each slot with its item level, what is left, and the filled count', async () => {
+    renderApp(`${PATH}/vault`, handlers());
+    const region = await screen.findByRole('region', { name: 'Great Vault slots' });
+    const kat = within(region).getByRole('row', { name: /Katorri/ });
+    expect(within(kat).getByText('4 / 9')).toBeInTheDocument();
+    expect(within(kat).getByText('730')).toBeInTheDocument();
+    expect(within(kat).getAllByText(/more run/).length).toBeGreaterThan(0);
+  });
+
+  it('Raids shows the highest difficulty per boss and switches period', async () => {
+    renderApp(`${PATH}/raids`, handlers());
+    const region = await screen.findByRole('region', { name: 'Raid kills by boss' });
+    const kat = within(region).getByRole('row', { name: /Katorri/ });
+    expect(within(kat).getByText('M')).toBeInTheDocument();
+    expect(within(kat).getByText('H')).toBeInTheDocument();
+    expect(within(region).getByRole('columnheader', { name: /Entombed Sentinels/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Last week' }));
+    expect(screen.getByRole('button', { name: 'Last week' })).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(screen.getByRole('button', { name: 'Whole season' }));
+    expect(screen.getByRole('button', { name: 'Whole season' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('Dungeons shows the rating, runs, best key and the best key per dungeon', async () => {
+    renderApp(`${PATH}/dungeons`, handlers());
+    const region = await screen.findByRole('region', { name: 'Mythic plus by dungeon' });
+    expect(within(region).getByRole('columnheader', { name: /Operation: Floodgate/ })).toBeInTheDocument();
+    const kat = within(region).getByRole('row', { name: /Katorri/ });
+    expect(within(kat).getByText('2,865')).toBeInTheDocument();
+    expect(within(kat).getAllByText(/\+12/).length).toBeGreaterThan(0);
+  });
+
+  it('Crests shows each type against its cap, and Capped when full', async () => {
+    renderApp(`${PATH}/crests`, handlers());
+    const region = await screen.findByRole('region', { name: 'Crests earned' });
+    expect(await within(region).findByText('cap 800')).toBeInTheDocument();
+    const kat = within(region).getByRole('row', { name: /Katorri/ });
+    expect(within(kat).getByText('640 / 800')).toBeInTheDocument();
+    expect(within(kat).getAllByText('no cap').length).toBeGreaterThan(0);
   });
 });
