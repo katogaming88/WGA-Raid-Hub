@@ -9,14 +9,15 @@ CREATE OR REPLACE FUNCTION public.character_weeks_keep_best_item_level()
 AS $function$
 begin
   -- greatest() ignores nulls: the new read, the mark this row already had,
-  -- and the best of every other week of the character.
+  -- and the best of the character's other weeks in the same season.
   new.best_item_level := greatest(
     new.item_level,
     new.best_item_level,
     (select max(w.best_item_level)
        from character_weeks w
       where w.name_realm_key = lower(replace(new.name_realm, ' ', ''))
-        and w.week_of <> new.week_of)
+        and w.week_of <> new.week_of
+        and current_season(w.week_of) is not distinct from current_season(new.week_of))
   );
   return new;
 end;

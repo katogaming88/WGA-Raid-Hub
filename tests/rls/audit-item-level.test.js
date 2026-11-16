@@ -64,6 +64,21 @@ describe('character_weeks.best_item_level', () => {
     });
   });
 
+  it('starts over with a new season, so an item level squish does not leave the mark stuck', async () => {
+    await withTxn(async ({ q }) => {
+      // MID2 is open-ended, and seasons never overlap: close it, then start a new one.
+      await q(`update public.seasons set ends_at = '2026-12-07' where code = 'MID2'`);
+      await q(
+        `insert into public.seasons (code, display_name, starts_at, ends_at) values ('TSTSQ', 'Squish test', '2026-12-08', '2027-06-01')`
+      );
+      await put(q, '2026-12-01', 300);
+      await put(q, '2026-12-08', 90);
+      expect(await read(q, '2026-12-08')).toEqual({ item_level: 90, best_item_level: 90 });
+      // The old season's weeks keep their own mark.
+      expect(await read(q, '2026-12-01')).toEqual({ item_level: 300, best_item_level: 300 });
+    });
+  });
+
   it('is null for a character never read', async () => {
     await withTxn(async ({ q }) => {
       await q(`insert into public.character_weeks (week_of, name_realm) values ('2026-11-10', $1)`, [NAME]);
