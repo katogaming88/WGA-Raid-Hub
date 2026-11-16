@@ -123,6 +123,32 @@
   vertical-align: bottom;
   border-bottom: 2px solid var(--border-strong);
 }
+.audit-table .sep {
+  border-left: 2px solid var(--border-strong);
+}
+/* Two stacked headings: the section names, then the columns. The section row
+   has a fixed height so the column row can stick right under it. */
+.audit-table .audit-sections th,
+.audit-table .audit-sections td {
+  height: 30px;
+  padding-block: 0;
+  font-size: var(--text-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+.audit-table .audit-sections th,
+.audit-table .audit-sections td {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
+}
+.audit-table thead tr:nth-child(2) th {
+  top: 30px;
+}
 .audit-table .col-num {
   text-align: right;
 }

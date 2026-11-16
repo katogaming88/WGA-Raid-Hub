@@ -6,7 +6,7 @@ import { localTimeZoneNote } from '../lib/dates';
 import { useCurrentSeason } from '../profile/useProfile';
 import { classColor } from '../roster/roster';
 import {
-  TIER_SLOT_LABELS,
+  TIER_SLOT_HEADINGS,
   VAULT_ROWS,
   ago,
   buildAudit,
@@ -148,6 +148,7 @@ export function AuditPage() {
 
                   <SummaryTable
                     raiders={raiders}
+                    which={which}
                     group={group}
                     mode={mode}
                     now={now}
@@ -155,9 +156,10 @@ export function AuditPage() {
                   />
                   <p className="text-muted audit-note">{localTimeZoneNote()}</p>
                   <p className="text-muted audit-note">
-                    Tier: M Myth, H Hero, C Champion, V Veteran, A Adventurer, – not worn. Great Vault: each bar is a
-                    slot, colored by the track it offers; the number is the best item level. Issues adds up missing
-                    enchants, empty sockets, no epic gem and, if the team set one, the vault rule.
+                    Tier columns: H head, S shoulders, C chest, G hands, L legs; the letter in each is its track: M
+                    Myth, H Hero, C Champion, V Veteran, A Adventurer, – not worn. Great Vault: each bar is a slot,
+                    colored by the track it offers; the number is the best item level. Issues adds up missing enchants,
+                    empty sockets, no epic gem and, if the team set one, the vault rule.
                   </p>
                 </>
               );
@@ -171,12 +173,14 @@ export function AuditPage() {
 
 function SummaryTable({
   raiders,
+  which,
   group,
   mode,
   now,
   onOpen
 }: {
   raiders: AuditRaider[];
+  which: WhichWeek;
   group: GroupBy;
   mode: IlvlMode;
   now: Date;
@@ -188,6 +192,22 @@ function SummaryTable({
     <div className="card audit-table-wrap" tabIndex={0} role="region" aria-label="Audit summary">
       <table className="audit-table">
         <thead>
+          <tr className="audit-sections">
+            <td colSpan={5} />
+            <th scope="colgroup" colSpan={5} className="sep">
+              Tier pieces
+            </th>
+            <th scope="colgroup" colSpan={2} className="sep">
+              Gear check
+            </th>
+            <th scope="colgroup" colSpan={3} className="sep">
+              Great Vault
+            </th>
+            <th scope="colgroup" colSpan={2} className="sep">
+              {which === 'this' ? 'This week' : 'Last week'}
+            </th>
+            <td className="sep" />
+          </tr>
           <tr>
             <th scope="col">Raider</th>
             <th scope="col" title="Missing enchants, empty sockets, no epic gem and below the vault rule, added up">
@@ -202,21 +222,28 @@ function SummaryTable({
             <th scope="col" className="col-num">
               Sparks
             </th>
-            {TIER_SLOT_LABELS.map((l) => (
-              <th key={l} scope="col" className="col-tier">
-                {l}
+            {TIER_SLOT_HEADINGS.map((t, i) => (
+              <th key={t.name} scope="col" className={`col-tier${i === 0 ? ' sep' : ''}`} title={t.name}>
+                <span aria-hidden="true">{t.letter}</span>
+                <span className="visually-hidden">{t.name}</span>
               </th>
             ))}
-            <th scope="col">Enchants</th>
+            <th scope="col" className="sep">
+              Enchants
+            </th>
             <th scope="col">Gems</th>
-            {VAULT_ROWS.map((r) => (
-              <th key={r.id} scope="col">
+            {VAULT_ROWS.map((r, i) => (
+              <th key={r.id} scope="col" className={i === 0 ? 'sep' : undefined}>
                 {r.name}
               </th>
             ))}
-            <th scope="col">M+ runs</th>
+            <th scope="col" className="sep">
+              M+ runs
+            </th>
             <th scope="col">Bosses</th>
-            <th scope="col">Updated</th>
+            <th scope="col" className="sep">
+              Updated
+            </th>
           </tr>
         </thead>
         {groups.map((g) => (
@@ -233,7 +260,12 @@ function SummaryTable({
                 <td className="col-num" title="Average item level">
                   <span className="text-dim audit-avg-label">avg</span> {g.avg ?? '–'}
                 </td>
-                <td colSpan={15} />
+                <td colSpan={2} />
+                <td colSpan={5} className="sep" />
+                <td colSpan={2} className="sep" />
+                <td colSpan={3} className="sep" />
+                <td colSpan={2} className="sep" />
+                <td className="sep" />
               </tr>
             )}
             {g.raiders.map((r) => (
@@ -279,21 +311,21 @@ function RaiderRow({
       </td>
       <td className="col-num">{r.rating == null ? '–' : Math.round(r.rating).toLocaleString('en-US')}</td>
       <td className="col-num">{c.sparks || '–'}</td>
-      {r.tier.map((t) => (
-        <td key={t.slot} className="col-tier">
+      {r.tier.map((t, i) => (
+        <td key={t.slot} className={`col-tier${i === 0 ? ' sep' : ''}`}>
           {t.letter ? <span className={`tier-${t.letter}`}>{t.letter}</span> : <span className="text-muted">–</span>}
         </td>
       ))}
-      <td className={!checked ? 'text-muted' : c.enchanted < c.enchantable ? 'audit-bad' : 'audit-ok'}>
+      <td className={`sep ${!checked ? 'text-muted' : c.enchanted < c.enchantable ? 'audit-bad' : 'audit-ok'}`}>
         {checked ? `${c.enchanted}/${c.enchantable}` : '–'}
       </td>
       <td className={!checked ? 'text-muted' : c.filledSockets < c.sockets ? 'audit-bad' : 'audit-ok'}>
         {checked ? `${c.filledSockets}/${c.sockets}` : '–'}
       </td>
-      {VAULT_ROWS.map((row) => {
+      {VAULT_ROWS.map((row, i) => {
         const v = vaultView(r.week?.vault, row.id);
         return (
-          <td key={row.id}>
+          <td key={row.id} className={i === 0 ? 'sep' : undefined}>
             {v.slots === null ? (
               <span className="text-muted">–</span>
             ) : (
@@ -312,11 +344,11 @@ function RaiderRow({
           </td>
         );
       })}
-      <td className="col-wrap">{m === null ? '–' : m.runs ? `${m.runs} · best +${m.best}` : 'None'}</td>
+      <td className="col-wrap sep">{m === null ? '–' : m.runs ? `${m.runs} · best +${m.best}` : 'None'}</td>
       <td className="col-wrap">
         <RaidLine week={r.week} />
       </td>
-      <td className={r.stale ? 'audit-warn' : 'text-muted'}>{ago(r.updatedAt, now)}</td>
+      <td className={`sep ${r.stale ? 'audit-warn' : 'text-muted'}`}>{ago(r.updatedAt, now)}</td>
     </tr>
   );
 }

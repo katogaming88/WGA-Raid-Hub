@@ -317,7 +317,15 @@ export type AuditRaider = {
 };
 
 export const TIER_SLOTS = ['HEAD', 'SHOULDER', 'CHEST', 'HANDS', 'LEGS'] as const;
-export const TIER_SLOT_LABELS = ['Head', 'Shld', 'Chest', 'Hands', 'Legs'];
+// One letter each in the table heading (Gloves for Hands), the full name for
+// screen readers and the tooltip.
+export const TIER_SLOT_HEADINGS = [
+  { letter: 'H', name: 'Head' },
+  { letter: 'S', name: 'Shoulders' },
+  { letter: 'C', name: 'Chest' },
+  { letter: 'G', name: 'Hands' },
+  { letter: 'L', name: 'Legs' }
+];
 const TRACK_LETTER: Record<string, string> = { Myth: 'M', Hero: 'H', Champion: 'C', Veteran: 'V', Adventurer: 'A' };
 
 export const trackLetter = (track: string | null) => (track ? (TRACK_LETTER[track] ?? '?') : '?');
