@@ -29,7 +29,7 @@ The roster audit's weekly row (#1635, #1261): one per character (name_realm_key,
 | sparks_used | smallint |  | true |  |  |  |  |
 | gear_at | timestamp with time zone |  | true |  |  |  |  |
 | item_level | smallint |  | true |  |  |  | The equipped item level at the week's last read (#1639). |
-| best_item_level | smallint |  | true |  |  |  | The highest item_level the character has had in any week (#1639), kept by character_weeks_keep_best_item_level() on every write; never goes down. |
+| best_item_level | smallint |  | true |  |  |  | The highest item_level the character has had in any week (#1639), kept by character_weeks_keep_best_item_level() on every write; never goes down within a season and starts over with the next. |
 
 ## Constraints
 

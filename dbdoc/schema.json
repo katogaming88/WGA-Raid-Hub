@@ -13679,7 +13679,7 @@
           "name": "best_item_level",
           "type": "smallint",
           "nullable": true,
-          "comment": "The highest item_level the character has had in any week (#1639), kept by character_weeks_keep_best_item_level() on every write; never goes down."
+          "comment": "The highest item_level the character has had in any week (#1639), kept by character_weeks_keep_best_item_level() on every write; never goes down within a season and starts over with the next."
         }
       ],
       "indexes": [
