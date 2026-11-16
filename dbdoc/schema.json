@@ -149,6 +149,10 @@
         {
           "name": "trg_attendance_team_id_check",
           "def": "CREATE TRIGGER trg_attendance_team_id_check BEFORE INSERT OR UPDATE ON public.attendance FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        },
+        {
+          "name": "trg_keep_officer_attendance",
+          "def": "CREATE TRIGGER trg_keep_officer_attendance BEFORE UPDATE ON public.attendance FOR EACH ROW EXECUTE FUNCTION keep_officer_attendance()"
         }
       ]
     },
@@ -18489,6 +18493,12 @@
       "name": "public.commit_attendance_scores",
       "return_type": "jsonb",
       "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.keep_officer_attendance",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],

@@ -49,6 +49,11 @@ begin
          (select count(distinct raid_date) from weighted where weight is not null)
     into v_committed, v_nights;
 
+  if auth.uid() is not null and v_committed > 0 then
+    perform public.write_audit_log(p_team_id, 'Attendance Scores Committed', null, null,
+      to_jsonb(v_committed || ' players, ' || v_nights || ' nights'));
+  end if;
+
   return jsonb_build_object('committed', v_committed, 'totalNights', v_nights);
 end;
 $function$;

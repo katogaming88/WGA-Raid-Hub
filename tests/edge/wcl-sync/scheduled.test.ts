@@ -15,7 +15,7 @@ type Tables = Record<string, Row[]>;
 
 // ── The database ───────────────────────────────────────────────────────
 
-function fakeDb(tables: Tables) {
+function fakeDb(tables: Tables, failWrites: string[] = []) {
   const rpcCalls: Array<{ name: string; args: any }> = [];
   const rpcs: Record<string, (args: any) => unknown> = {
     current_season: () => 'MID2',
@@ -36,6 +36,7 @@ function fakeDb(tables: Tables) {
       null;
     const rows = () => (tables[table] ??= []);
     const run = () => {
+      if (write && failWrites.includes(table)) return { data: null, error: { message: table + ' write failed' } };
       if (write?.kind === 'upsert') {
         for (const row of write.rows) {
           const keys = (write as any).keys as string[];
@@ -92,12 +93,15 @@ const NIGHT_MS = Date.UTC(2026, 8, 16, 0, 30);
 
 type Log = { guildId: number; inLog: string[]; atFirstPull?: string[] };
 
-function wcl(logs: Log[], { tokenFails = false } = {}) {
+type WclOpts = { tokenFails?: boolean; tokenThrows?: boolean; actorsFail?: boolean };
+
+function wcl(logs: Log[], { tokenFails = false, tokenThrows = false, actorsFail = false }: WclOpts = {}) {
   const queries: string[] = [];
   const respond = (body: unknown) => Promise.resolve(new Response(JSON.stringify(body)));
   const byCode = new Map(logs.map((log) => ['R' + log.guildId, log]));
   const fetch = (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input instanceof Request ? input.url : input);
+    if (url.endsWith('/oauth/token') && tokenThrows) return Promise.reject(new TypeError('network down'));
     if (url.endsWith('/oauth/token')) return respond(tokenFails ? {} : { access_token: 'wcl-token' });
     const query: string = JSON.parse(String(init?.body)).query;
     queries.push(query);
@@ -112,6 +116,7 @@ function wcl(logs: Log[], { tokenFails = false } = {}) {
     if (query.includes('zone { id }')) return report({ zone: { id: 1 } });
     if (query.includes('rankings(')) return report({ rankings: JSON.stringify({ data: [] }) });
     if (query.includes('actors(type: "Player") { name }')) {
+      if (actorsFail) return respond({ errors: [{ message: 'rate limited' }] });
       return report({ masterData: { actors: log.inLog.map((name) => ({ name })) } });
     }
     if (query.includes('fights { id startTime')) {
@@ -138,8 +143,8 @@ function cronRequest(secret = SECRET) {
   });
 }
 
-function setup(tables: Tables, logs: Log[], opts: { tokenFails?: boolean } = {}) {
-  const db = fakeDb(tables);
+function setup(tables: Tables, logs: Log[], opts: WclOpts & { failWrites?: string[] } = {}) {
+  const db = fakeDb(tables, opts.failWrites);
   const w = wcl(logs, opts);
   let serviceBuilt = 0;
   const deps: Deps = {
@@ -274,4 +279,31 @@ Deno.test('a wrong secret is refused before anything is built', async () => {
   assertEquals(res.status, 401);
   assertEquals(await res.json(), { success: false, error: 'Not authorized' });
   assertEquals(serviceBuilt(), 0);
+});
+
+// CodeRabbit on PR #1858: the three ways a run could leave wrong or lost data.
+Deno.test('a failed read of who was in the log writes nothing, so the next run tries the report again', async () => {
+  const { deps, db } = setup(team1(ROSTER), [{ guildId: 11, inLog: ['Alpha'] }], { actorsFail: true });
+  await handle(cronRequest(), deps);
+  assertEquals(night(db.tables), []);
+  const run = db.tables.team_settings[0].attendance_sync_last_run;
+  assertEquals(run.error, 'Could not read who was in Warcraft Logs report R11');
+  assertEquals(run.committed, null);
+});
+
+Deno.test('a failed write of the not-on-roster names leaves the report new, so they are read again', async () => {
+  const { deps, db } = setup(team1(ROSTER), [{ guildId: 11, inLog: ['Alpha', 'Pugguy'] }], {
+    failWrites: ['attendance_log_names']
+  });
+  await handle(cronRequest(), deps);
+  assertEquals(night(db.tables), []);
+  assertEquals(db.tables.team_settings[0].attendance_sync_last_run.error, 'attendance_log_names write failed');
+});
+
+Deno.test('a sign-in that throws is still recorded on every team', async () => {
+  const { deps, db } = setup(team1(ROSTER), [], { tokenThrows: true });
+  const res = await handle(cronRequest(), deps);
+  assertEquals(res.status, 200);
+  const run = db.tables.team_settings[0].attendance_sync_last_run;
+  assertEquals(run.error, 'Failed to get WCL access token. Check WCL_CLIENT_ID/WCL_CLIENT_SECRET.');
 });

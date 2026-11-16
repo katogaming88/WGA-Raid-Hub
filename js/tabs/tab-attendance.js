@@ -558,17 +558,9 @@ function executeCommitScores() {
   supabaseClient
     .rpc('commit_attendance_scores', { p_team_id: _teamCfg.supabaseTeamId })
     .then(function (result) {
+      // The function writes its own audit entry.
       if (result.error) throw new Error(result.error.message);
-      var summary = result.data;
-      if (summary.committed === 0) return summary;
-      return writeAuditLog(
-        'Attendance Scores Committed',
-        null,
-        null,
-        summary.committed + ' players, ' + summary.totalNights + ' nights'
-      ).then(function () {
-        return summary;
-      });
+      return result.data;
     })
     .then(function (summary) {
       if (btn) {

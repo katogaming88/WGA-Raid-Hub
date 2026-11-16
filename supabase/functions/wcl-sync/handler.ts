@@ -474,7 +474,9 @@ async function getReportEncounterIds(token: Wcl, reportCode: string): Promise<Se
 // role-filtered -- any character in the log counts as present) with a
 // masterData.actors combatant dump, to also catch players present on nights
 // with no ranked boss kill (wipes-only, non-kill logs).
-async function getReportParticipants(token: Wcl, reportCode: string): Promise<Set<string>> {
+// null when the combatant dump itself failed (#1845): read as "nobody came",
+// it would mark the whole roster Absent? and cache the report for good.
+async function getReportParticipants(token: Wcl, reportCode: string): Promise<Set<string> | null> {
   const names = new Set<string>();
 
   const fights = await fetchReportFights(token, reportCode);
@@ -498,7 +500,8 @@ async function getReportParticipants(token: Wcl, reportCode: string): Promise<Se
     }
   `;
   const combatantsResult = await wclQuery(token, combatantsQuery);
-  const actors = combatantsResult?.data?.reportData?.report?.masterData?.actors || [];
+  if (!combatantsResult?.data?.reportData?.report) return null;
+  const actors = combatantsResult.data.reportData.report.masterData?.actors || [];
   for (const actor of actors) {
     if (actor.name) names.add(String(actor.name).split('-')[0].trim().toLowerCase());
   }
@@ -957,6 +960,9 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
 
     mainNights++;
     const participants = await getReportParticipants(token, report.code);
+    // Nothing is written this run, so the report stays new and the next run
+    // tries again.
+    if (participants === null) throw new Error(`Could not read who was in Warcraft Logs report ${report.code}`);
 
     if (!lineupByDate.has(date)) lineupByDate.set(date, await getNightLineup(supabase, teamId, date));
     const { bosses: nightBosses, lineupPlayerIds } = lineupByDate.get(date)!;
@@ -1078,18 +1084,20 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
     }
   }
 
-  if (rowsToUpsert.size > 0) {
-    const { error: upsertError } = await supabase
-      .from('attendance')
-      .upsert([...rowsToUpsert.values()], { onConflict: 'team_id,player_id,raid_date' });
-    if (upsertError) throw new Error(upsertError.message);
-  }
-
+  // Names first: once the attendance rows land, the report counts as done
+  // and is never read again, so a failed names write must come before them.
   if (logNames.size > 0) {
     const { error: namesError } = await supabase
       .from('attendance_log_names')
       .upsert([...logNames.values()], { onConflict: 'team_id,raid_date,character_name', ignoreDuplicates: true });
     if (namesError) throw new Error(namesError.message);
+  }
+
+  if (rowsToUpsert.size > 0) {
+    const { error: upsertError } = await supabase
+      .from('attendance')
+      .upsert([...rowsToUpsert.values()], { onConflict: 'team_id,player_id,raid_date' });
+    if (upsertError) throw new Error(upsertError.message);
   }
 
   return { success: true, mainNights, excluded };
@@ -1256,7 +1264,12 @@ export async function runScheduled(supabase: SupabaseClient<any>, io: Io): Promi
     .order('id');
   if (teamsError) throw new Error(teamsError.message);
 
-  const token = await getAccessToken(io);
+  // A thrown sign-in (network, a bad reply) is recorded on every team the
+  // same way a refused one is, rather than skipping the records.
+  const token = await getAccessToken(io).catch((err) => {
+    console.error('wcl-sync: WCL sign-in failed:', err);
+    return null;
+  });
   const runs: Record<number, TeamRun> = {};
   for (const team of (teams || []) as Array<{ id: number; wcl_guild_id: number }>) {
     const run: TeamRun = {

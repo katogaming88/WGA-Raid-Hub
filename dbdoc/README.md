@@ -396,6 +396,7 @@
 | public.character_weeks_keep_best_item_level | trigger |  | FUNCTION |
 | public.attendance_items_waiting | int4 | p_team_id integer | FUNCTION |
 | public.commit_attendance_scores | jsonb | p_team_id integer | FUNCTION |
+| public.keep_officer_attendance | trigger |  | FUNCTION |
 
 ## Enums
 

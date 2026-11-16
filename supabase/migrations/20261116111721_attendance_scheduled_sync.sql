@@ -17,11 +17,17 @@
 --    non-excluded row with a weighted status, averaged per raider, written
 --    for current_season(). SECURITY INVOKER, so the caller's own access to
 --    scoring decides, as the direct upsert did.
+--    An officer's commit writes its audit entry inside the function; the
+--    hourly run (no signed-in user) writes none, its record is item 5.
 -- 5. team_settings.attendance_sync_last_run: the last scheduled run per team,
 --    the gear sync's shape (#1174), so a dead schedule shows.
 -- 6. record_raid_night_participation() also admits the service role, which
 --    is who the scheduled run is.
 -- 7. The hourly job.
+-- 8. A trigger keeps an officer's row: an update that would turn a source
+--    'Officer' row into anything else leaves it as it was. The sync skips
+--    officer rows it read at its start; this covers one an officer saves
+--    while a run is in progress (CodeRabbit on PR #1858).
 
 -- 1.
 alter table public.attendance drop constraint attendance_source_check;
@@ -140,6 +146,11 @@ begin
          (select count(distinct raid_date) from weighted where weight is not null)
     into v_committed, v_nights;
 
+  if auth.uid() is not null and v_committed > 0 then
+    perform public.write_audit_log(p_team_id, 'Attendance Scores Committed', null, null,
+      to_jsonb(v_committed || ' players, ' || v_nights || ' nights'));
+  end if;
+
   return jsonb_build_object('committed', v_committed, 'totalNights', v_nights);
 end;
 $$;
@@ -225,3 +236,23 @@ select cron.schedule(
   );
   $cron$
 );
+
+-- 8.
+create or replace function public.keep_officer_attendance()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if old.source = 'Officer' and new.source is distinct from 'Officer' then
+    return old;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.keep_officer_attendance() from public, anon, authenticated;
+
+create trigger trg_keep_officer_attendance
+  before update on public.attendance
+  for each row execute function public.keep_officer_attendance();

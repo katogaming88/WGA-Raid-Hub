@@ -37,6 +37,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | trg_attendance_team_id_check | CREATE TRIGGER trg_attendance_team_id_check BEFORE INSERT OR UPDATE ON public.attendance FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player() |
+| trg_keep_officer_attendance | CREATE TRIGGER trg_keep_officer_attendance BEFORE UPDATE ON public.attendance FOR EACH ROW EXECUTE FUNCTION keep_officer_attendance() |
 
 ## Relations
 

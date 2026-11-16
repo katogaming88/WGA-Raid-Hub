@@ -56,7 +56,8 @@ describe('executeCommitScores', () => {
 
     expect(rpcs).toEqual([['commit_attendance_scores', { p_team_id: 3 }]]);
     expect(els.commitScoresStatus.textContent).toBe('12 players scored (9 nights)');
-    expect(audits).toEqual([['Attendance Scores Committed', null, null, '12 players, 9 nights']]);
+    // The function writes the audit entry itself.
+    expect(audits).toEqual([]);
     expect(els.commitScoresBtn.disabled).toBe(false);
   });
 

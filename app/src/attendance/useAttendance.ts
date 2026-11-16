@@ -99,18 +99,8 @@ export function useCommitAttendanceScores(teamId: number) {
     async (client) => {
       const result = await client.rpc('commit_attendance_scores', { p_team_id: teamId });
       if (result.error) return { data: null, error: result.error };
-      const summary = result.data as unknown as CommitSummary;
-      if (summary.committed > 0) {
-        await writeAuditLog(
-          client,
-          teamId,
-          'Attendance Scores Committed',
-          null,
-          null,
-          `${summary.committed} players, ${summary.totalNights} nights`
-        );
-      }
-      return { data: summary, error: null };
+      // The function writes its own audit entry.
+      return { data: result.data as unknown as CommitSummary, error: null };
     },
     { key: ['commit-attendance-scores', teamId], refreshes: [] }
   );

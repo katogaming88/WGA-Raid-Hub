@@ -293,17 +293,10 @@ describe('Attendance Manage (new app): commit attendance scores', () => {
     );
     try {
       const commit = recordRpcCalls(opened.page, 'commit_attendance_scores');
-      const audit = recordRpcCalls(opened.page, 'write_audit_log');
       await opened.page.getByRole('button', { name: 'Commit Attendance Scores' }).click();
       await opened.page.getByRole('button', { name: 'Yes, Commit' }).click();
       await expect.poll(() => commit.length).toBe(1);
       expect(commit[0]).toEqual({ p_team_id: TEAM_ID });
-      await expect.poll(() => audit.length).toBe(1);
-      expect(audit[0]).toEqual({
-        p_team_id: TEAM_ID,
-        p_action: 'Attendance Scores Committed',
-        p_detail: '5 players, 2 nights'
-      });
       await expect
         .poll(() => opened.page.getByRole('status').filter({ hasText: '5 players scored (2 nights)' }).count())
         .toBe(1);
