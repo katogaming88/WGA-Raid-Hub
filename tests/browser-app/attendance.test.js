@@ -283,21 +283,21 @@ describe('Attendance Manage (new app): refresh from WCL', () => {
 });
 
 describe('Attendance Manage (new app): commit attendance scores', () => {
-  it('writes each raider’s weighted score to Scoring, skipping one with no eligible night', async () => {
-    const opened = await openApp(browser, server.port, state(BASE, '.attend-grid-rows'));
+  // #1845: the math is commit_attendance_scores() in the database, the copy
+  // the current site and the hourly run use too (tests/rls/attendance-scheduled-sync.test.js).
+  it('asks the database to commit the team and reports what it did', async () => {
+    const opened = await openApp(
+      browser,
+      server.port,
+      state(BASE, '.attend-grid-rows', { rpc: { commit_attendance_scores: { committed: 5, totalNights: 2 } } })
+    );
     try {
-      const scoring = recordRestCalls(opened.page, 'scoring', 'POST');
+      const commit = recordRpcCalls(opened.page, 'commit_attendance_scores');
       const audit = recordRpcCalls(opened.page, 'write_audit_log');
       await opened.page.getByRole('button', { name: 'Commit Attendance Scores' }).click();
       await opened.page.getByRole('button', { name: 'Yes, Commit' }).click();
-      await expect.poll(() => scoring.length).toBe(1);
-      expect(scoring[0]).toEqual([
-        { player_id: 1, season: 'MID2', attendance_score: 10, attendance_pct: 100, team_id: TEAM_ID },
-        { player_id: 2, season: 'MID2', attendance_score: 9, attendance_pct: 90, team_id: TEAM_ID },
-        { player_id: 3, season: 'MID2', attendance_score: 7.5, attendance_pct: 75, team_id: TEAM_ID },
-        { player_id: 4, season: 'MID2', attendance_score: 5, attendance_pct: 50, team_id: TEAM_ID },
-        { player_id: 5, season: 'MID2', attendance_score: 10, attendance_pct: 100, team_id: TEAM_ID }
-      ]);
+      await expect.poll(() => commit.length).toBe(1);
+      expect(commit[0]).toEqual({ p_team_id: TEAM_ID });
       await expect.poll(() => audit.length).toBe(1);
       expect(audit[0]).toEqual({
         p_team_id: TEAM_ID,

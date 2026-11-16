@@ -604,7 +604,7 @@ whatever the file holds. Copy `supabase/functions/.env.example`
 to `supabase/functions/.env` (gitignored) and set that one variable to the
 sink, plus any value you like for the secret of each timed function you will
 call (`OPTIONAL_RSVP_REMINDERS_SECRET`, `TWITCH_LIVE_CHECK_SECRET`,
-`WCL_PROGRESS_SYNC_SECRET`, `BLIZZARD_GEAR_SYNC_SECRET`):
+`WCL_PROGRESS_SYNC_SECRET`, `BLIZZARD_GEAR_SYNC_SECRET`, `WCL_SYNC_SECRET`):
 
 ```sh
 DISCORD_TEST_WEBHOOK_URL=http://host.docker.internal:8899/webhooks/test-channel

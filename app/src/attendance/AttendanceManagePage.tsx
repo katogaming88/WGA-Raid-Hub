@@ -77,16 +77,13 @@ function Manage({
   const onCommit = () => {
     setConfirmingCommit(false);
     if (!season.isSuccess || !season.data.code) return;
-    commit.mutate(
-      { rows, season: season.data.code },
-      {
-        onSuccess: (summary) => {
-          const text = `${summary.committed} player${summary.committed === 1 ? '' : 's'} scored (${summary.totalNights} night${summary.totalNights === 1 ? '' : 's'})`;
-          announce('success', text);
-        },
-        onError: (error) => announce('error', errorMessage(error))
-      }
-    );
+    commit.mutate(undefined, {
+      onSuccess: (summary) => {
+        const text = `${summary.committed} player${summary.committed === 1 ? '' : 's'} scored (${summary.totalNights} night${summary.totalNights === 1 ? '' : 's'})`;
+        announce('success', text);
+      },
+      onError: (error) => announce('error', errorMessage(error))
+    });
   };
 
   return (

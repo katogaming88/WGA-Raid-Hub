@@ -424,6 +424,12 @@ verify_jwt = false
 [functions.blizzard-gear-sync]
 verify_jwt = false
 
+# #1845: its hourly attendance run comes from pg_cron with no session and
+# checks WCL_SYNC_SECRET; an officer's call still has its JWT checked by
+# PostgREST on every read, and is refused without one.
+[functions.wcl-sync]
+verify_jwt = false
+
 [functions.optional-rsvp-reminders]
 verify_jwt = false
 

@@ -79,7 +79,7 @@
         {
           "name": "attendance_source_check",
           "type": "CHECK",
-          "def": "CHECK ((source = ANY (ARRAY['WCL'::text, 'Officer'::text, 'Auto (Bench)'::text, 'WCL (Late?)'::text])))",
+          "def": "CHECK ((source = ANY (ARRAY['WCL'::text, 'Officer'::text, 'Auto (Bench)'::text, 'WCL (Late?)'::text, 'WCL (Absent?)'::text])))",
           "table": "public.attendance",
           "referenced_table": "",
           "columns": [
@@ -2501,6 +2501,12 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "attendance_sync_last_run",
+          "type": "jsonb",
+          "nullable": true,
+          "comment": "Outcome of the last scheduled wcl-sync attendance run for this team (#1845): started_at, finished_at, main_nights, excluded, waiting, committed, error (null when it worked)."
         }
       ],
       "indexes": [
@@ -14472,6 +14478,78 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.attendance_log_names",
+      "type": "BASE TABLE",
+      "comment": "Characters in a team's Warcraft Logs raid night who matched nobody on the roster (#1845). Written by wcl-sync; first name only, lower case, as the sync matches names. Informational: never holds back the attendance commit.",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "character_name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "report_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "seen_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "attendance_log_names_pkey",
+          "def": "CREATE UNIQUE INDEX attendance_log_names_pkey ON public.attendance_log_names USING btree (team_id, raid_date, character_name)",
+          "table": "public.attendance_log_names",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "character_name"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "attendance_log_names_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.attendance_log_names",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "attendance_log_names_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id, raid_date, character_name)",
+          "table": "public.attendance_log_names",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "character_name"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -16741,6 +16819,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (season, instance_id) REFERENCES season_vault_raids(season, instance_id)"
+    },
+    {
+      "table": "public.attendance_log_names",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -18386,6 +18477,18 @@
       "name": "public.character_weeks_keep_best_item_level",
       "return_type": "trigger",
       "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.attendance_items_waiting",
+      "return_type": "int4",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.commit_attendance_scores",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer",
       "type": "FUNCTION"
     }
   ],

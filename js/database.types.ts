@@ -148,6 +148,38 @@ export type Database = {
           },
         ]
       }
+      attendance_log_names: {
+        Row: {
+          character_name: string
+          raid_date: string
+          report_id: string
+          seen_at: string
+          team_id: number
+        }
+        Insert: {
+          character_name: string
+          raid_date: string
+          report_id: string
+          seen_at?: string
+          team_id: number
+        }
+        Update: {
+          character_name?: string
+          raid_date?: string
+          report_id?: string
+          seen_at?: string
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_log_names_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -4821,16 +4853,19 @@ export type Database = {
       }
       team_settings: {
         Row: {
+          attendance_sync_last_run: Json | null
           config: Json
           team_id: number
           updated_at: string | null
         }
         Insert: {
+          attendance_sync_last_run?: Json | null
           config?: Json
           team_id: number
           updated_at?: string | null
         }
         Update: {
+          attendance_sync_last_run?: Json | null
           config?: Json
           team_id?: number
           updated_at?: string | null
@@ -5654,6 +5689,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      attendance_items_waiting: { Args: { p_team_id: number }; Returns: number }
       auth_user_for_discord_id: {
         Args: { p_discord_id: string }
         Returns: string
@@ -5820,6 +5856,7 @@ export type Database = {
         Returns: Json
       }
       close_started_season_signups: { Args: never; Returns: number }
+      commit_attendance_scores: { Args: { p_team_id: number }; Returns: Json }
       create_guild: {
         Args: {
           p_name: string

@@ -3713,3 +3713,22 @@ Shipped: `20261115231709_audit_boss_and_dungeon_names.sql`.
 
 [Full discussion -> #1641](https://github.com/katogaming88/WGA-Raid-Hub/issues/1641).
 
+## #1845 -- attendance refreshes from Warcraft Logs every hour, and commits when nothing needs a look
+
+Shipped: `20261116111721_attendance_scheduled_sync.sql`.
+
+**Officers no longer have to press Refresh.** A pg_cron job calls `wcl-sync` at minute 23 of every hour with the secret header the gear sync's job uses (`wcl_sync_secret` in Vault, `WCL_SYNC_SECRET` in the function's secrets). The function runs the same refresh the button runs for every team with a Warcraft Logs guild, one after another, on the service role. `wcl-sync`'s JWT gate is off (`config.toml`) so the job can reach it; an officer's call still has its JWT checked by PostgREST on every read.
+
+**What needs a look is the attendance rows themselves, not a second table.** Late? was already a row with a blank status and source `WCL (Late?)`. A rostered raider who is not in the log and has no status now gets the same, under a new source `WCL (Absent?)` (the source check gains it). Both clear the moment an officer picks a status, because the grid writes source `Officer`, and a run never touches an Officer row. `attendance_items_waiting(team)` counts them for the live season (from `team_season_start()`), excluded nights left out.
+
+**Someone in the log who is not on the roster goes in `attendance_log_names`, and never holds anything back** (Kat, 2026-11-16: pugs every night must not freeze priority). One row per team, night and lower-case first name (how the sync matches names). Read and written by the team's `attendance` permission, guild officers and site admins; the service role writes too. New table, own grants.
+
+**One copy of the score math: `commit_attendance_scores(team)`.** It was in both browsers (`executeCommitScores` on the current site, `commitScores` in the new app). Now both buttons and the hourly run call the function, so the schedule can only give what the button gives. Same rules: every non-excluded row with a weighted status, averaged per raider, score `least(round(avg * 10, 2), 10)` and percentage `round(avg * 100, 1)`, written for `current_season()`. SECURITY INVOKER, so the caller's own access to `scoring` decides, as the direct upsert did. Exact numeric average, where the browsers summed floats; the two can differ only in a last digit that a float sum rounded the other way.
+
+**The hourly run commits only at zero waiting.** Otherwise it commits nothing, and the count is on the team's last-run record. Committing by hand stays. On the day this shipped, Hellfire Rollers had 20 old Late? rows and Immolation 7, so those two wait until an officer fills them in; Phoenix had none.
+
+**The last run is on `team_settings.attendance_sync_last_run`**, the gear sync's shape (#1174): started_at, finished_at, main_nights, excluded, waiting, committed, error. One team failing does not stop the next.
+
+**`record_raid_night_participation()` admits the service role**, which is who the hourly run is (`auth.role() = 'service_role'` skips the signed-in and permission checks; the raider checks still run). EXECUTE granted to `service_role` alongside `authenticated`.
+
+[Full discussion -> #1845](https://github.com/katogaming88/WGA-Raid-Hub/issues/1845).

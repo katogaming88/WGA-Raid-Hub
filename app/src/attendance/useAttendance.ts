@@ -1,7 +1,6 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
-import { commitScores, type FullAttendanceRow, type ScoreRow } from './attendance';
-import { ATTENDANCE_WEIGHTS } from '../profile/profile';
+import type { FullAttendanceRow } from './attendance';
 
 async function writeAuditLog(
   client: Client,
@@ -92,26 +91,26 @@ export function useToggleReportExcluded(teamId: number) {
 
 export type CommitSummary = { committed: number; totalNights: number };
 
-// executeCommitScores(): recomputes every player's attendance score from
-// scratch and writes it to Scoring. Reads the same rows useAttendanceRows()
-// has cached rather than a second full-table read.
+// Recomputes every player's attendance score from scratch and writes it to
+// Scoring for the live season. The math is commit_attendance_scores() (#1845),
+// the one copy the current site's button and the hourly wcl-sync run call too.
 export function useCommitAttendanceScores(teamId: number) {
-  return useSupabaseMutation<CommitSummary, { rows: FullAttendanceRow[]; season: string }>(
-    async (client, { rows, season }) => {
-      const { rows: scoreRows, totalNights } = commitScores(rows, ATTENDANCE_WEIGHTS, season);
-      if (scoreRows.length === 0) return { data: { committed: 0, totalNights }, error: null };
-      const upsertRows: (ScoreRow & { team_id: number })[] = scoreRows.map((r) => ({ ...r, team_id: teamId }));
-      const result = await client.from('scoring').upsert(upsertRows, { onConflict: 'player_id,season' });
+  return useSupabaseMutation<CommitSummary, void>(
+    async (client) => {
+      const result = await client.rpc('commit_attendance_scores', { p_team_id: teamId });
       if (result.error) return { data: null, error: result.error };
-      await writeAuditLog(
-        client,
-        teamId,
-        'Attendance Scores Committed',
-        null,
-        null,
-        `${scoreRows.length} players, ${totalNights} nights`
-      );
-      return { data: { committed: scoreRows.length, totalNights }, error: null };
+      const summary = result.data as unknown as CommitSummary;
+      if (summary.committed > 0) {
+        await writeAuditLog(
+          client,
+          teamId,
+          'Attendance Scores Committed',
+          null,
+          null,
+          `${summary.committed} players, ${summary.totalNights} nights`
+        );
+      }
+      return { data: summary, error: null };
     },
     { key: ['commit-attendance-scores', teamId], refreshes: [] }
   );

@@ -12,6 +12,24 @@ answers to.
 
 ---
 
+## [3.282.0] - 2026-11-16
+
+### Frontend
+
+- Commit Attendance Scores on the Attendance tab now asks the database to work the scores out, the same calculation the hourly run uses, instead of doing the math in the browser. The numbers are the same (#1845).
+
+### Backend
+
+- Attendance refreshes from Warcraft Logs on its own every hour, for every team with a Warcraft Logs guild, and commits the scores to loot priority when nothing needs an officer's look. A raider on the roster who isn't in the log and has no status is now saved with a blank status as "Absent?", like "Late?" already was, and either one stops the automatic commit until an officer picks a status. People in the log who aren't on the roster are saved for officers to see but never hold the commit back. Each team's last run is recorded, with any error (#1845).
+
+### Functions
+
+- `wcl-sync` takes the hourly run: a secret header, the service role, every team in turn, the same refresh as the button, then the commit only when nothing is waiting (#1845).
+
+### Project
+
+- The new app's Commit button calls the same database calculation. Database and Edge Function tests for the hourly run. Revamp time log: #1641's merge, and #1845.
+
 ## [3.281.0] - 2026-11-15
 
 ### Backend

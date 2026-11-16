@@ -444,6 +444,25 @@ describe('record_raid_night_participation()', () => {
     }
   });
 
+  // #1845: the hourly attendance run is the service role, with no session.
+  it('lets the hourly run (service role) write, still checking the raiders', async () => {
+    await withTxn(async ({ q, asUser, asRole }) => {
+      const { p1, p3 } = await seed(q);
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      await plan(asUser, OFFICER_T1, '2026-09-17');
+      const service = asRole('service_role', null);
+      const call = (players) =>
+        service('select public.record_raid_night_participation(1, $1, $2, $3::int[]) as n', [
+          '2026-09-17',
+          FIRST,
+          players
+        ]);
+      expect((await call([p1])).rows[0].n).toBe(1);
+      expect(await participation(q, '2026-09-17', FIRST)).toEqual([p1]);
+      await expect(call([p3])).rejects.toThrow(/must be on this team/);
+    });
+  });
+
   it('is read the same way as the rest of the plan, and refuses direct writes', async () => {
     await withTxn(async ({ q, asUser, asAnon }) => {
       const { p1 } = await seed(q);

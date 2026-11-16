@@ -79,11 +79,20 @@ function formatReportDate(ms: number): string {
 
 // ── WCL API helpers (ported from gs/WCL.gs) ─────────────────────────────────
 
-async function getAccessToken(): Promise<string | null> {
-  const clientId = Deno.env.get('WCL_CLIENT_ID');
-  const clientSecret = Deno.env.get('WCL_CLIENT_SECRET');
+// The platform side of a WCL call (#1845): fetch and the environment, so
+// tests/edge/ can run the attendance sync against a scripted Warcraft Logs.
+// Every caller but the attendance paths takes the platform default.
+export type Io = { fetch: typeof fetch; env(name: string): string | undefined };
+const platformIo: Io = { fetch: (input, init) => fetch(input, init), env: (name) => Deno.env.get(name) };
+
+// The access token travels with the fetch it was got with.
+type Wcl = { token: string; fetch: typeof fetch };
+
+async function getAccessToken(io: Io = platformIo): Promise<Wcl | null> {
+  const clientId = io.env('WCL_CLIENT_ID');
+  const clientSecret = io.env('WCL_CLIENT_SECRET');
   const credentials = btoa(`${clientId}:${clientSecret}`);
-  const response = await fetch('https://www.warcraftlogs.com/oauth/token', {
+  const response = await io.fetch('https://www.warcraftlogs.com/oauth/token', {
     method: 'POST',
     headers: {
       Authorization: `Basic ${credentials}`,
@@ -96,15 +105,15 @@ async function getAccessToken(): Promise<string | null> {
     console.error('WCL token response:', JSON.stringify(data));
     return null;
   }
-  return data.access_token;
+  return { token: data.access_token, fetch: io.fetch };
 }
 
-async function wclQuery(token: string, query: string): Promise<any | null> {
+async function wclQuery(token: Wcl, query: string): Promise<any | null> {
   try {
-    const response = await fetch('https://www.warcraftlogs.com/api/v2/client', {
+    const response = await token.fetch('https://www.warcraftlogs.com/api/v2/client', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token.token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ query })
@@ -228,7 +237,7 @@ function classRoleToScoringRole(role: string | null | undefined): Role {
   return 'dps';
 }
 
-async function fetchReportFights(token: string, reportCode: string): Promise<any[]> {
+async function fetchReportFights(token: Wcl, reportCode: string): Promise<any[]> {
   async function fightsForDifficulty(difficulty: number): Promise<any[]> {
     const query = `
       query {
@@ -257,7 +266,7 @@ async function fetchReportFights(token: string, reportCode: string): Promise<any
 }
 
 async function refreshPerformance(
-  token: string,
+  token: Wcl,
   guildId: number,
   teamId: number,
   supabase: SupabaseClient<any>,
@@ -428,7 +437,7 @@ const SEASON_REPORT_LIMIT = 50;
 // an unexpected has_more_pages loop.
 const MAX_REPORT_PAGES = 20;
 
-async function getReportZone(token: string, reportCode: string): Promise<number | null> {
+async function getReportZone(token: Wcl, reportCode: string): Promise<number | null> {
   const query = `query { reportData { report(code: ${gqlString(reportCode)}) { zone { id } } } }`;
   const result = await wclQuery(token, query);
   return result?.data?.reportData?.report?.zone?.id ?? null;
@@ -445,7 +454,7 @@ async function getReportZone(token: string, reportCode: string): Promise<number 
 // `raidProgression` to actually have bosses configured with wclEncounterId
 // and a zone-only report (wipes on a brand-new boss with no ranked kill yet)
 // wouldn't show up here either.
-async function getReportEncounterIds(token: string, reportCode: string): Promise<Set<number>> {
+async function getReportEncounterIds(token: Wcl, reportCode: string): Promise<Set<number>> {
   const query = `
     query {
       reportData {
@@ -465,7 +474,7 @@ async function getReportEncounterIds(token: string, reportCode: string): Promise
 // role-filtered -- any character in the log counts as present) with a
 // masterData.actors combatant dump, to also catch players present on nights
 // with no ranked boss kill (wipes-only, non-kill logs).
-async function getReportParticipants(token: string, reportCode: string): Promise<Set<string>> {
+async function getReportParticipants(token: Wcl, reportCode: string): Promise<Set<string>> {
   const names = new Set<string>();
 
   const fights = await fetchReportFights(token, reportCode);
@@ -568,7 +577,7 @@ export function uniqueFirstNameIndex<T extends { firstName: string; playerId: nu
 // same way getFirstPullParticipants' null already does, instead of reading a
 // failure as "absent from every boss" and flagging the whole roster.
 async function getReportParticipationByEncounter(
-  token: string,
+  token: Wcl,
   reportCode: string,
   wclEncounterIds: ReadonlySet<number>
 ): Promise<Map<number, Set<string>> | null> {
@@ -629,7 +638,7 @@ async function getReportParticipationByEncounter(
 // `validEncounterIds` (the configured raid's own boss list) when it's
 // populated rules dungeon pulls out the same way the zone fallback does.
 async function getFirstPullParticipants(
-  token: string,
+  token: Wcl,
   reportCode: string,
   validEncounterIds: Set<number>
 ): Promise<Set<string> | null> {
@@ -735,7 +744,7 @@ async function getNightLineup(
   return { bosses, lineupPlayerIds };
 }
 
-async function refreshAttendance(token: string, guildId: number, teamId: number, supabase: SupabaseClient<any>) {
+async function refreshAttendance(token: Wcl, guildId: number, teamId: number, supabase: SupabaseClient<any>) {
   const { data: settingsRow } = await supabase
     .from('team_settings')
     .select('config')
@@ -845,6 +854,8 @@ async function refreshAttendance(token: string, guildId: number, teamId: number,
   // is keyed against) would otherwise re-fetch it.
   const lineupByDate = new Map<string, { bosses: LineupBossRow[]; lineupPlayerIds: Map<number, Set<number>> }>();
   const playerIdByFirstName = uniqueFirstNameIndex(roster);
+  const rosterNames = new Set(roster.map((p) => p.firstName));
+  const logNames = new Map<string, { team_id: number; raid_date: string; character_name: string; report_id: string }>();
 
   // #1242: who was seen at which boss, per date, unioned across every report
   // on that date this run touches -- written once per date after the whole
@@ -1013,8 +1024,26 @@ async function refreshAttendance(token: string, guildId: number, teamId: number,
         rowsToUpsert.set(key, { ...base, status: 'Bench', source: 'Auto (Bench)' });
       } else if (player.joinDate && date < player.joinDate) {
         rowsToUpsert.set(key, { ...base, status: 'Not on Roster', source: 'WCL' });
+      } else {
+        // #1845: on the roster, not in the log, no status. Saved blank under
+        // its own source so it reads as needing a look, the way Late? does,
+        // until an officer picks Bench, Excused, No Show or the rest.
+        rowsToUpsert.set(key, { ...base, status: null, source: 'WCL (Absent?)' });
       }
-      // else: left unset -- officer fills the status in manually via the grid.
+    }
+
+    // #1845: in the log, matching nobody on the roster -- a pug, a guest, an
+    // alt. Listed for an officer; never holds back the commit (Kat,
+    // 2026-11-16).
+    for (const name of participants) {
+      if (!rosterNames.has(name)) {
+        logNames.set(`${date}|${name}`, {
+          team_id: teamId,
+          raid_date: date,
+          character_name: name,
+          report_id: report.code
+        });
+      }
     }
   }
 
@@ -1054,6 +1083,13 @@ async function refreshAttendance(token: string, guildId: number, teamId: number,
       .from('attendance')
       .upsert([...rowsToUpsert.values()], { onConflict: 'team_id,player_id,raid_date' });
     if (upsertError) throw new Error(upsertError.message);
+  }
+
+  if (logNames.size > 0) {
+    const { error: namesError } = await supabase
+      .from('attendance_log_names')
+      .upsert([...logNames.values()], { onConflict: 'team_id,raid_date,character_name', ignoreDuplicates: true });
+    if (namesError) throw new Error(namesError.message);
   }
 
   return { success: true, mainNights, excluded };
@@ -1187,12 +1223,102 @@ async function fetchSeasonPerf(teamId: number, season: string, zoneId: number, s
 
 // ── Entry point ──────────────────────────────────────────────────────────
 
-// The caller's client is the one dependency injected so far; see the header.
-export type Deps = { supabase(authHeader: string): SupabaseClient<any> };
+// The caller's client; and for the hourly run (#1845) the service-role
+// client and the platform (fetch, env), which tests/edge/ script.
+export type Deps = {
+  supabase(authHeader: string): SupabaseClient<any>;
+  service?(): SupabaseClient<any>;
+  cronSecret?: string;
+  io?: Io;
+};
+
+export type TeamRun = {
+  started_at: string;
+  finished_at: string;
+  main_nights: number;
+  excluded: number;
+  waiting: number | null;
+  committed: number | null;
+  error: string | null;
+};
+
+// #1845: the hourly run. Every team with a Warcraft Logs guild, one after
+// another, the same refresh the officer's button runs. Then, only when
+// nothing this season needs an officer's look, the same commit the button
+// runs. Each team's outcome lands on team_settings.attendance_sync_last_run,
+// so a broken schedule shows (#1174's shape). One team failing does not
+// stop the next.
+export async function runScheduled(supabase: SupabaseClient<any>, io: Io): Promise<Record<number, TeamRun>> {
+  const { data: teams, error: teamsError } = await supabase
+    .from('teams')
+    .select('id, wcl_guild_id')
+    .not('wcl_guild_id', 'is', null)
+    .order('id');
+  if (teamsError) throw new Error(teamsError.message);
+
+  const token = await getAccessToken(io);
+  const runs: Record<number, TeamRun> = {};
+  for (const team of (teams || []) as Array<{ id: number; wcl_guild_id: number }>) {
+    const run: TeamRun = {
+      started_at: new Date().toISOString(),
+      finished_at: '',
+      main_nights: 0,
+      excluded: 0,
+      waiting: null,
+      committed: null,
+      error: null
+    };
+    try {
+      if (!token) throw new Error('Failed to get WCL access token. Check WCL_CLIENT_ID/WCL_CLIENT_SECRET.');
+      const result = await refreshAttendance(token, team.wcl_guild_id, team.id, supabase);
+      run.main_nights = result.mainNights;
+      run.excluded = result.excluded;
+      const { data: waiting, error: waitingError } = await supabase.rpc('attendance_items_waiting', {
+        p_team_id: team.id
+      });
+      if (waitingError) throw new Error(waitingError.message);
+      run.waiting = waiting as number;
+      if (run.waiting === 0) {
+        const { data: committed, error: commitError } = await supabase.rpc('commit_attendance_scores', {
+          p_team_id: team.id
+        });
+        if (commitError) throw new Error(commitError.message);
+        run.committed = (committed as { committed: number }).committed;
+      }
+    } catch (err) {
+      console.error('wcl-sync scheduled run failed for team', team.id, err);
+      run.error = err instanceof Error ? err.message : String(err);
+    }
+    run.finished_at = new Date().toISOString();
+    const { error: recordError } = await supabase
+      .from('team_settings')
+      .update({ attendance_sync_last_run: run })
+      .eq('team_id', team.id);
+    if (recordError) console.error('wcl-sync: could not record the run for team', team.id, recordError.message);
+    runs[team.id] = run;
+  }
+  return runs;
+}
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: CORS_HEADERS });
+  }
+
+  // The hourly job (#1845): the secret header the gear sync's job uses,
+  // WCL_SYNC_SECRET, read in deps.ts.
+  const cronHeader = req.headers.get('x-cron-secret');
+  if (cronHeader) {
+    if (!deps.cronSecret || cronHeader !== deps.cronSecret || !deps.service) {
+      return jsonResponse({ success: false, error: 'Not authorized' }, 401);
+    }
+    try {
+      const runs = await runScheduled(deps.service(), deps.io ?? platformIo);
+      return jsonResponse({ success: true, teams: runs });
+    } catch (err) {
+      console.error('wcl-sync scheduled run error:', err);
+      return jsonResponse({ success: false, error: err instanceof Error ? err.message : 'Unknown error' }, 500);
+    }
   }
 
   // Every response is HTTP 200 with a { success, error } body, matching the
@@ -1283,7 +1409,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       if (!team?.wcl_guild_id) {
         return jsonResponse({ success: false, error: 'No WCL guild ID configured for this team' });
       }
-      const token = await getAccessToken();
+      const token = await getAccessToken(deps.io);
       if (!token)
         return jsonResponse({
           success: false,
