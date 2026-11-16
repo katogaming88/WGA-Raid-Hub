@@ -17,7 +17,7 @@ describe('season_raid_bosses', () => {
           where b.season = 'MID2'
           order by (b.instance_id <> 1320), b.sort_order`
       );
-      expect(rows.length).toBe(9);
+      expect(rows.length).toBe(10);
       expect(rows.slice(0, 8).map((r) => r.encounter_id)).toEqual([2888, 2874, 2894, 2882, 2871, 2887, 2883, 2895]);
       expect(rows[0]).toMatchObject({ instance_id: 1320, name: 'Nek’zali the Soulcoiler'.replace('’', "'") });
       expect(rows[7].name).toBe('Ula’tek'.replace('’', "'"));
@@ -36,6 +36,48 @@ describe('season_raid_bosses', () => {
   });
 });
 
+describe('Kith’ix', () => {
+  it('is the tenth boss, in a raid of its own that the vault counts', async () => {
+    await withTxn(async ({ q }) => {
+      const boss = (
+        await q('select instance_id, name, sort_order from public.season_raid_bosses where encounter_id = 2896')
+      ).rows[0];
+      expect(boss).toMatchObject({ instance_id: 1324, sort_order: 10 });
+      const raid = (await q("select name from public.season_vault_raids where season = 'MID2' and instance_id = 1324"))
+        .rows[0];
+      expect(raid).toBeTruthy();
+    });
+  });
+
+  it('a Kith’ix kill fills a Raid vault slot like any other boss', async () => {
+    await withTxn(async ({ q }) => {
+      const kills = [
+        { encounter_id: 2896, instance_id: 1324, difficulty: 'heroic' },
+        { encounter_id: 2888, instance_id: 1320, difficulty: 'heroic' }
+      ];
+      const { rows } = await q('select public.season_vault($1, $2::jsonb, $3::jsonb, $4::jsonb) as v', [
+        'MID2',
+        JSON.stringify(kills),
+        '[]',
+        '{}'
+      ]);
+      // Two bosses fill the first slot; without Kith'ix there would be one.
+      expect(rows[0].v.raid[0]).toMatchObject({ needs: 2, done: 2 });
+      expect(rows[0].v.raid[0].item_level).toBeGreaterThan(0);
+    });
+  });
+
+  it('no two bosses of a season share a place in the order', async () => {
+    await withTxn(async ({ q }) => {
+      await expect(
+        q(
+          "insert into public.season_raid_bosses (season, instance_id, encounter_id, name, sort_order) values ('MID2', 1324, 99999, 'X', 10)"
+        )
+      ).rejects.toMatchObject({ code: '23505' });
+    });
+  });
+});
+
 describe('mplus_dungeons', () => {
   it('names the dungeons by the id the profile API uses', async () => {
     await withTxn(async ({ q }) => {
@@ -50,7 +92,7 @@ describe('mplus_dungeons', () => {
 describe('who can read and write them', () => {
   it('anyone reads, signed out included', async () => {
     await withTxn(async ({ asAnon }) => {
-      expect((await asAnon('select count(*)::int as n from public.season_raid_bosses')).rows[0].n).toBe(9);
+      expect((await asAnon('select count(*)::int as n from public.season_raid_bosses')).rows[0].n).toBe(10);
       expect((await asAnon('select count(*)::int as n from public.mplus_dungeons')).rows[0].n).toBeGreaterThan(50);
     });
   });
@@ -66,7 +108,8 @@ describe('who can read and write them', () => {
         'delete from public.mplus_dungeons',
         "update public.season_raid_bosses set name = 'X'",
         'delete from public.season_raid_bosses',
-        'truncate public.season_raid_bosses'
+        'truncate public.season_raid_bosses',
+        'truncate public.mplus_dungeons'
       ]) {
         await expect(asUser(uid, sql)).rejects.toMatchObject({ code: RLS_DENIED });
       }

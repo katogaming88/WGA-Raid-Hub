@@ -11,6 +11,14 @@
 --   per season: a dungeon keeps its id, and the season's pool is simply the
 --   dungeons its runs name.
 --
+-- Kith'ix (#1641, the fresh review's catch): The Unbinding of Kith'ix is the
+-- tenth Season 2 boss, a raid of its own (journal instance 1324) that unlocks
+-- after Ula'tek. The vault step (#1637) left it out, so its kills gave no Raid
+-- slot. Kat confirmed a Kith'ix kill fills a Raid slot like any other boss
+-- (2026-11-16), so this migration adds its raid to season_vault_raids. Weekly
+-- rows already written recompute their vault on their next write (the sync
+-- writes the current week each run), so no row is rewritten here.
+--
 -- Reference data, read by anyone and written only by migrations, like
 -- season_vault_raids. A new table grants its own access (revoke all, then a
 -- grant per role).
@@ -22,6 +30,8 @@ create table public.season_raid_bosses (
   name text not null check (name ~ '\S'),
   sort_order smallint not null check (sort_order > 0),
   primary key (season, encounter_id),
+  -- The game's order is one list per season: no two bosses share a place.
+  constraint season_raid_bosses_order unique (season, sort_order),
   foreign key (season, instance_id) references public.season_vault_raids (season, instance_id)
 );
 
@@ -53,7 +63,11 @@ grant select on table public.season_raid_bosses to anon, authenticated, service_
 revoke all on table public.mplus_dungeons from public, anon, authenticated, service_role;
 grant select on table public.mplus_dungeons to anon, authenticated, service_role;
 
--- Midnight Season 2: The Venomous Abyss (8 bosses) and The Tidebound Grotto.
+-- Midnight Season 2: The Venomous Abyss (8 bosses), The Tidebound Grotto and The
+-- Unbinding of Kith'ix (one boss each). Kith'ix's raid counts for the vault.
+insert into public.season_vault_raids (season, instance_id, name) values
+  ('MID2', 1324, 'The Unbinding of Kith''ix');
+
 insert into public.season_raid_bosses (season, instance_id, encounter_id, name, sort_order) values
   ('MID2', 1320, 2888, 'Nek''zali the Soulcoiler', 1),
   ('MID2', 1320, 2874, 'Entombed Sentinels', 2),
@@ -63,7 +77,8 @@ insert into public.season_raid_bosses (season, instance_id, encounter_id, name, 
   ('MID2', 1320, 2887, 'The Twin Fangs', 6),
   ('MID2', 1320, 2883, 'The Coiled Altar', 7),
   ('MID2', 1320, 2895, 'Ula''tek', 8),
-  ('MID2', 1317, 2849, 'Nymrissa Wavecaller', 9);
+  ('MID2', 1317, 2849, 'Nymrissa Wavecaller', 9),
+  ('MID2', 1324, 2896, 'Kith''ix', 10);
 
 insert into public.mplus_dungeons (dungeon_id, name) values
   (2, 'Temple of the Jade Serpent'),

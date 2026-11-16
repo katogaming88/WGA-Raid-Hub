@@ -212,23 +212,26 @@ export function useDungeonNames() {
 }
 
 // Every week of the season for these characters: the Raids tab's Whole season
-// and the Dungeons tab's best key per dungeon.
+// and the Dungeons tab's best key per dungeon. Weeks are stored by their reset
+// Tuesday, so the read starts at the week the season (or the team's first raid
+// night in it) falls in, never the day itself, or that first week is lost. With
+// no start date there is no season to read, so it is empty rather than every
+// week since 2000 (last season's keys read as this season's).
 export function useSeasonWeeks(keys: string[], seasonStart: string | null) {
-  return useSupabaseQuery<SeasonWeek[]>(
-    ['audit-season-weeks', keys, seasonStart],
-    (client) =>
-      readAll<SeasonWeek>(
-        (from, to) =>
-          // The json columns come back as Json; their shapes are SeasonWeek's.
-          client
-            .from('character_weeks')
-            .select('name_realm_key, week_of, raid_kills, mplus_runs')
-            .in('name_realm_key', keys)
-            .gte('week_of', seasonStart ?? '2000-01-01')
-            .order('name_realm_key')
-            .order('week_of')
-            .range(from, to) as unknown as ReturnType<Parameters<typeof readAll<SeasonWeek>>[0]>
-      ),
-    { enabled: keys.length > 0 }
-  );
+  return useSupabaseQuery<SeasonWeek[]>(['audit-season-weeks', keys, seasonStart], async (client) => {
+    if (!seasonStart || keys.length === 0) return { data: [], error: null };
+    const from = weekOf(new Date(`${seasonStart.slice(0, 10)}T12:00:00Z`));
+    return readAll<SeasonWeek>(
+      (start, end) =>
+        // The json columns come back as Json; their shapes are SeasonWeek's.
+        client
+          .from('character_weeks')
+          .select('name_realm_key, week_of, raid_kills, mplus_runs')
+          .in('name_realm_key', keys)
+          .gte('week_of', from)
+          .order('name_realm_key')
+          .order('week_of')
+          .range(start, end) as unknown as ReturnType<Parameters<typeof readAll<SeasonWeek>>[0]>
+    );
+  });
 }

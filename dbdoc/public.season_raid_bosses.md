@@ -24,12 +24,14 @@ The bosses of each season's counted raids (#1641), by Blizzard journal encounter
 | season_raid_bosses_sort_order_check | CHECK | CHECK ((sort_order > 0)) |
 | season_raid_bosses_season_instance_id_fkey | FOREIGN KEY | FOREIGN KEY (season, instance_id) REFERENCES season_vault_raids(season, instance_id) |
 | season_raid_bosses_pkey | PRIMARY KEY | PRIMARY KEY (season, encounter_id) |
+| season_raid_bosses_order | UNIQUE | UNIQUE (season, sort_order) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | season_raid_bosses_pkey | CREATE UNIQUE INDEX season_raid_bosses_pkey ON public.season_raid_bosses USING btree (season, encounter_id) |
+| season_raid_bosses_order | CREATE UNIQUE INDEX season_raid_bosses_order ON public.season_raid_bosses USING btree (season, sort_order) |
 
 ## Relations
 

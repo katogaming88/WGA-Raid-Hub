@@ -122,7 +122,8 @@ export const BOSSES = [
   [2871, 'Sszorak'],
   [2887, 'The Twin Fangs'],
   [2883, 'The Coiled Altar'],
-  [2895, "Ula'tek"]
+  [2895, "Ula'tek"],
+  [2896, "Kith'ix"]
 ];
 const BOSS_IDS = BOSSES.map(([id]) => id);
 export const DUNGEONS = [

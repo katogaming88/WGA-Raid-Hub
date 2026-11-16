@@ -14323,6 +14323,15 @@
             "season",
             "encounter_id"
           ]
+        },
+        {
+          "name": "season_raid_bosses_order",
+          "def": "CREATE UNIQUE INDEX season_raid_bosses_order ON public.season_raid_bosses USING btree (season, sort_order)",
+          "table": "public.season_raid_bosses",
+          "columns": [
+            "season",
+            "sort_order"
+          ]
         }
       ],
       "constraints": [
@@ -14390,6 +14399,17 @@
           "columns": [
             "season",
             "encounter_id"
+          ]
+        },
+        {
+          "name": "season_raid_bosses_order",
+          "type": "UNIQUE",
+          "def": "UNIQUE (season, sort_order)",
+          "table": "public.season_raid_bosses",
+          "referenced_table": "",
+          "columns": [
+            "season",
+            "sort_order"
           ]
         }
       ]
