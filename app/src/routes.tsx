@@ -11,6 +11,7 @@ import { BenchFairnessPage, LootFairnessPage } from './reports/FairnessPages';
 import { RaidNightsPage, TierSetsPage } from './reports/TableReports';
 import { BisDemandPage, LootPacePage, PriorityHealthPage } from './reports/SeasonReports';
 import { LineupReportPage } from './reports/LineupReport';
+import { UnclaimedPage, WishlistCompletenessPage } from './reports/RosterReports';
 import { PriorityPage } from './priority/PriorityPage';
 import { GeneralSettingsPage } from './settings/GeneralSettingsPage';
 import { SeasonSettingsPage } from './settings/SeasonSettingsPage';
@@ -82,6 +83,8 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   'officer/reports/bis-demand': <BisDemandPage />,
   'officer/reports/loot-pace': <LootPacePage />,
   'officer/reports/priority-health': <PriorityHealthPage />,
+  'officer/reports/wishlist-completeness': <WishlistCompletenessPage />,
+  'officer/reports/unclaimed': <UnclaimedPage />,
   history: <HistoryPage />,
   officers: <TeamOfficersPage />,
   signup: <SignUpPage />,

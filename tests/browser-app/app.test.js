@@ -1932,6 +1932,27 @@ const STATES = [
     colorScheme: 'light'
   },
   { label: 'tier sets', ...TABLE_REPORT, path: '/g/wga/t/phoenix/officer/reports/tier-sets' },
+  // #1344: nobody on this roster is claimed, and no wishlist is started.
+  { label: 'unclaimed', ...TABLE_REPORT, path: '/g/wga/t/phoenix/officer/reports/unclaimed' },
+  {
+    label: 'unclaimed, light',
+    ...TABLE_REPORT,
+    path: '/g/wga/t/phoenix/officer/reports/unclaimed',
+    colorScheme: 'light'
+  },
+  {
+    label: 'wishlist completeness',
+    ...TABLE_REPORT,
+    tables: { ...TABLE_REPORT.tables, items: [], raid_zones: [], item_preferences: [] },
+    path: '/g/wga/t/phoenix/officer/reports/wishlist-completeness'
+  },
+  {
+    label: 'wishlist completeness, light',
+    ...TABLE_REPORT,
+    tables: { ...TABLE_REPORT.tables, items: [], raid_zones: [], item_preferences: [] },
+    path: '/g/wga/t/phoenix/officer/reports/wishlist-completeness',
+    colorScheme: 'light'
+  },
   { label: 'BiS demand', ...TABLE_REPORT, path: '/g/wga/t/phoenix/officer/reports/bis-demand' },
   {
     label: 'BiS demand, light',

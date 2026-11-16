@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 29 h 47 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 30 h 12 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **201 h 43 m** |             |
+| **All revamp work**                | **202 h 8 m** |             |
 
 ### By area
 
@@ -30,8 +30,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | --- | --- | ---: | ---: |
 | Tester fixes | Phase 2 | 2 h 30 m | ~2 h |
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
-| The roster audit and reports | Phase 2 | 10 h 16 m | ~9 h 50 m |
-| Attendance on its own | Phase 2 | 1 h 0 m | ~3 h 10 m |
+| The roster audit and reports | Phase 2 | 10 h 26 m | ~9 h 50 m |
+| Attendance on its own | Phase 2 | 1 h 15 m | ~3 h 10 m |
 | Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
@@ -764,6 +764,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:10-11:40 AM | #1845: attendance refreshes from Warcraft Logs every hour: a pg_cron job calls `wcl-sync` with a secret header, every team with a Warcraft Logs guild in turn on the service role; a missing raider saved blank as Absent? beside Late?, pugs in `attendance_log_names` (Kat's answer: listed, never blocking); `commit_attendance_scores()` as the one copy of the score math, both Attendance buttons switched to it; commits only when `attendance_items_waiting()` is zero; last run per team on `team_settings`; database and Edge Function tests red first, generated docs, RLS.md, decision log, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / Attendance on its own (#1845) | 30 m | build; review and merge not yet counted | 266,500 | Added 2026-11-16. |
 | 12:15-12:30 PM | PR #1858 (#1845) after it opened: CodeRabbit's six findings, all taken: a failed read of who was in a report now writes nothing (it would have marked the whole roster Absent? and cached the report), a trigger keeps an officer's row from being blanked by a run in progress, names saved before attendance, a thrown WCL sign-in still recorded, the commit's audit entry moved into the database, signed-out tests; #1845 amended for the pug rule; tests red first, generated docs, decision log, this row | Phase 2: Before the new site goes live / Attendance on its own (#1845) | 15 m | build; fresh review and merge not yet counted | 41,200 | Added 2026-11-16. |
 | 12:31-12:45 PM | PR #1858 (#1845): the fresh-agent migration review (changes needed: the hourly run could not read the season start, so it would never have committed; the refresh's team reads stopped at 1000 rows; backup doc) and its nice-to-haves (deleted players skipped in the commit, archived teams not synced, profile-card status edits saved as the officer's); the 1000-row cap added to the test fake; tests red first, generated docs, decision log, this row | Phase 2: Before the new site goes live / Attendance on its own (#1845) | 15 m | build; Kat's merge not yet counted | 213,000 | Tokens include the fresh agent's 179,000. Added 2026-11-16. |
+| 12:45-12:59 PM | #1845's wait on CI and Kat's merge (12:58 PM), cleanup, #1487 | Phase 2: Before the new site goes live / Attendance on its own (#1845) | 15 m | Kat's merge | 16,000 | Added 2026-11-16. |
+| 1:19-1:27 PM | #1344: two officer reports, Unclaimed (characters with no Member and unclaimed Members, with the share of the roster) and Wishlist completeness (Not started, Partly done N of 16, Done, a Pass counting as a slot done, by role, sortable), and the same status on each raider's own profile; Kat's answer (officers only); `wishlistProgress()` red first, page and browser tests, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / The roster audit and reports (#1344) | 10 m | build; review and merge not yet counted | 362,600 | Added 2026-11-16. |
 
 ## Not counted (same sessions, not revamp)
 

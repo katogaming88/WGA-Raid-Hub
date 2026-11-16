@@ -12,6 +12,13 @@ answers to.
 
 ---
 
+## [3.283.0] - 2026-11-16
+
+### Project
+
+- Two new officer reports. Unclaimed lists the roster spots nobody has claimed yet (characters with no Member behind them, and Members an officer typed in), with how many of the roster they are, officers only. Wishlist completeness shows each raider's wishlist this season as Not started, Partly done (for example 12 of 16 slots) or Done, with a Pass counting as a slot done, by role and sortable, for ranks that can see loot. Each raider's own profile now says the same status under the wishlist summary (#1344).
+- Revamp time log: #1845's merge, and #1344.
+
 ## [3.282.0] - 2026-11-16
 
 ### Frontend

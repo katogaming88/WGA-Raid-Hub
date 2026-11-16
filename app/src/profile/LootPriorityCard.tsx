@@ -4,7 +4,7 @@ import { ItemLink } from '../components/ItemLink';
 import { bothQueries } from '../data/query';
 import { latestSelfReceivedUpdate, lootPriority, sourceTag, type PriorityRow, type Standing } from './lootPriority';
 import { MarkReceivedButton } from './ProfileForms';
-import { wishlistSummary } from './wishlist';
+import { wishlistProgress, wishlistSummary } from './wishlist';
 import { timeAgoLabel, type LootRow, type SeasonWindow } from './profile';
 import {
   useCatalog,
@@ -220,17 +220,28 @@ export function WishlistSummaryCard({
           const code = seasonOf ? seasonOf.code : s.code;
           const name = seasonOf ? seasonOf.name : s.name;
           const summary = wishlistSummary(w, c, z, code);
+          const progress = wishlistProgress(w, c, z, code);
           return (
-            <p className="wishlist-summary">
-              {code && <>{name}: </>}
-              <span className="num wishlist-bis">{summary.bis}</span> of {summary.total} slots have a BiS pick
-              {summary.pass > 0 && (
-                <>
-                  , <span className="num wishlist-pass">{summary.pass}</span> passed
-                </>
-              )}
-              .
-            </p>
+            <>
+              <p className="wishlist-summary">
+                {code && <>{name}: </>}
+                <span className="num wishlist-bis">{summary.bis}</span> of {summary.total} slots have a BiS pick
+                {summary.pass > 0 && (
+                  <>
+                    , <span className="num wishlist-pass">{summary.pass}</span> passed
+                  </>
+                )}
+                .
+              </p>
+              {/* Where it stands, the officers' report read for this raider (#1344). */}
+              <p className="wishlist-status">
+                {progress.state === 'not-started'
+                  ? 'Not started: pick a BiS item or a Pass for each slot.'
+                  : progress.state === 'done'
+                    ? `Done: all ${progress.total} slots have a BiS pick or a Pass.`
+                    : `Partly done: ${progress.done} of ${progress.total} slots have a BiS pick or a Pass.`}
+              </p>
+            </>
           );
         }}
       </DataState>

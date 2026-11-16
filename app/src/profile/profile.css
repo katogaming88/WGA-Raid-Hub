@@ -381,6 +381,11 @@
   color: var(--text-muted);
 }
 
+.wishlist-status {
+  margin: var(--space-1, 4px) 0 0;
+  color: var(--text-muted);
+}
+
 .wishlist-summary .num {
   color: var(--text);
   font-weight: 650;

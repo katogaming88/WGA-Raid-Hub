@@ -534,3 +534,21 @@ export function wishlistSummary(
   }
   return { bis, pass, total: WISHLIST_SLOTS.length };
 }
+
+// Where a wishlist stands (#1344): not started with no picks in the season at
+// all, done when every slot has a BiS pick or a Pass (so a deliberate Pass is
+// never flagged, #1032), partly done in between. Only Sidegrade marks count as
+// started but not as a slot done.
+export type WishlistProgress = { state: 'not-started' | 'partly' | 'done'; done: number; total: number };
+
+export function wishlistProgress(
+  rows: WishlistRow[],
+  catalog: CatalogItem[],
+  zones: ZoneRow[],
+  seasonCode: string | null
+): WishlistProgress {
+  const { bis, pass, total } = wishlistSummary(rows, catalog, zones, seasonCode);
+  const done = bis + pass;
+  const started = rows.some((r) => seasonCode === null || (r.season ?? null) === seasonCode);
+  return { state: done >= total ? 'done' : started ? 'partly' : 'not-started', done, total };
+}
