@@ -56,6 +56,9 @@ export type RouteHandle = { title: string };
 const BUILT_PAGES: Record<string, ReactElement> = {
   roster: <RosterPage />,
   audit: <AuditPage />,
+  'audit/gear': <AuditPage tab="gear" />,
+  'audit/upgrades': <AuditPage tab="upgrades" />,
+  'audit/enchants': <AuditPage tab="enchants" />,
   calendar: <CalendarPage />,
   me: <MyProfilePage />,
   'officer/priority': <PriorityPage />,

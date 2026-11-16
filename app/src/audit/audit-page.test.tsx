@@ -95,8 +95,8 @@ function handlers(settings: object = { enchantCheck: 'lenient', vaultRule: null 
     player_equipped_gear: GEAR,
     character_weeks: WEEKS,
     season_enchant_slots: [{ slot: 'HEAD', counts_from: null }],
-    season_enchants: [{ enchantment_id: 7959, top_rank: true, tertiary: true }],
-    season_gems: [{ wow_item_id: 1, top_rank: true, epic: true }],
+    season_enchants: [{ enchantment_id: 7959, name: 'Hex of Leeching', top_rank: true, tertiary: true }],
+    season_gems: [{ wow_item_id: 1, name: 'Eversong Diamond', top_rank: true, epic: true }],
     tier_token_map: [],
     items: []
   };
@@ -188,5 +188,36 @@ describe('Audit page', () => {
   it('says what went wrong when the weekly rows cannot be read, instead of an empty page', async () => {
     renderApp(PATH, handlers(undefined, true));
     expect(await screen.findByText(/Couldn.t load the audit/)).toBeInTheDocument();
+  });
+
+  it('has Gear, Upgrades and Enchants & gems tabs, each at its own address', async () => {
+    renderApp(PATH, handlers());
+    const tabs = await screen.findByRole('navigation', { name: 'Audit views' });
+    expect(within(tabs).getByRole('link', { name: 'Summary' })).toHaveAttribute('aria-current', 'page');
+    await userEvent.click(within(tabs).getByRole('link', { name: 'Gear' }));
+    const region = await screen.findByRole('region', { name: 'Equipped gear by slot' });
+    // Katorri's head has no enchant and an empty socket: both marked.
+    const kat = within(region).getByRole('row', { name: /Katorri/ });
+    expect(within(kat).getByText('No enchant')).toBeInTheDocument();
+    expect(within(kat).getByText('Empty socket')).toBeInTheDocument();
+    expect(within(tabs).getByRole('link', { name: 'Gear' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('Enchants & gems shows the team rule above enchant names, None and gem chips', async () => {
+    renderApp(`${PATH}/enchants`, handlers());
+    const region = await screen.findByRole('region', { name: 'Enchants and gems by slot' });
+    expect(screen.getByText(/Team rule:/)).toHaveTextContent(/Lenient/);
+    const kat = within(region).getByRole('row', { name: /Katorri/ });
+    expect(kat.querySelector('.enchant-none')).toHaveTextContent('None');
+    expect(within(kat).getByText('Empty')).toBeInTheDocument();
+    const torb = within(region).getByRole('row', { name: /Torbjorn/ });
+    expect(within(torb).getAllByText('Hex of Leeching').length).toBeGreaterThan(0);
+  });
+
+  it('Upgrades shows each slot out of its track and the steps left', async () => {
+    renderApp(`${PATH}/upgrades`, handlers());
+    const region = await screen.findByRole('region', { name: 'Upgrade steps by slot' });
+    const kat = within(region).getByRole('row', { name: /Katorri/ });
+    expect(within(kat).getAllByText('4/6').length).toBeGreaterThan(0);
   });
 });

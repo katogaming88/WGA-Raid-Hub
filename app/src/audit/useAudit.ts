@@ -51,18 +51,18 @@ export function useAuditData(teamId: number, seasonCode: string | null, playerId
             )
           : Promise.resolve({ data: [] as WeekRow[], error: null }),
         client.from('season_enchant_slots').select('slot, counts_from').eq('season', season),
-        readAll<{ enchantment_id: number; top_rank: boolean; tertiary: boolean }>((from, to) =>
+        readAll<{ enchantment_id: number; name: string; top_rank: boolean; tertiary: boolean }>((from, to) =>
           client
             .from('season_enchants')
-            .select('enchantment_id, top_rank, tertiary')
+            .select('enchantment_id, name, top_rank, tertiary')
             .eq('season', season)
             .order('enchantment_id')
             .range(from, to)
         ),
-        readAll<{ wow_item_id: number; top_rank: boolean; epic: boolean }>((from, to) =>
+        readAll<{ wow_item_id: number; name: string; top_rank: boolean; epic: boolean }>((from, to) =>
           client
             .from('season_gems')
-            .select('wow_item_id, top_rank, epic')
+            .select('wow_item_id, name, top_rank, epic')
             .eq('season', season)
             .order('wow_item_id')
             .range(from, to)
