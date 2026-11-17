@@ -60,7 +60,7 @@ function fakeDb(tables: Tables, saveError: { code: string; message: string } | n
 }
 
 type Call = { method: string; path: string; body: any };
-function discord({ patchStatus = 200, channelGuild = 'G1' } = {}) {
+function discord({ patchStatus = 200, postStatus = 200, channelGuild = 'G1' } = {}) {
   const calls: Call[] = [];
   let next = 0;
   const fetch = (input: string | URL | Request, init?: RequestInit) => {
@@ -69,7 +69,7 @@ function discord({ patchStatus = 200, channelGuild = 'G1' } = {}) {
     calls.push({ method, path, body: init?.body ? JSON.parse(String(init.body)) : undefined });
     const reply = (status: number, body: unknown) => Promise.resolve(new Response(JSON.stringify(body), { status }));
     if (method === 'GET') return reply(200, { id: 'C1', guild_id: channelGuild });
-    if (method === 'POST') return reply(200, { id: 'M' + ++next });
+    if (method === 'POST') return postStatus === 200 ? reply(200, { id: 'M' + ++next }) : reply(postStatus, {});
     if (method === 'PATCH') return reply(patchStatus, {});
     return reply(204, null);
   };
@@ -364,5 +364,25 @@ Deno.test(
       ]
     );
     assertEquals([t.team_attendance_posts![0]!.channel_id, t.team_attendance_posts![0]!.message_id], ['C1', 'M1']);
+  }
+);
+
+Deno.test(
+  'a new officer channel that refuses the post leaves the old post and its row alone (CodeRabbit on PR #1862)',
+  async () => {
+    const t = tables({ attendance: [flag(2, 'WCL (Absent?)')] });
+    await run(t, discord().io);
+    t.team_discord_config![0]!.officer_channel_id = 'C2';
+    const before = { ...t.team_attendance_posts![0]! };
+    const d = discord({ postStatus: 403 });
+    let failed = false;
+    await run(t, d.io).catch(() => (failed = true));
+    assertEquals(failed, true);
+    // The refused post is the only write: the old message is never taken down.
+    assertEquals(
+      writes(d.calls).map((c) => [c.method, c.path]),
+      [['POST', '/channels/C2/messages']]
+    );
+    assertEquals(t.team_attendance_posts![0], before);
   }
 );
