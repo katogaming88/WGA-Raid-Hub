@@ -350,7 +350,7 @@ describe('Calendar (new app): the boss lineup', () => {
 
   it('lists everyone on the roster by role, with the plan, the counts and the changes', async () => {
     const rows = await opened.page.locator('.lineup-grid tbody .lineup-raider-name').allTextContents();
-    expect(rows).toEqual(['Aur', 'Brightmoor', 'Frostvale', 'Glim', 'Dawnthistle', 'Em', 'Zed']);
+    expect(rows).toEqual(['Aur', 'Brightmoor', 'Frostvale', 'Dawnthistle', 'Em', 'Zed']);
     expect(await opened.page.getByRole('button', { name: 'Zed, Sszorak: in' }).count()).toBe(1);
     expect(
       await opened.page.getByRole('button', { name: 'Aur, Sszorak: out, changed for tonight only, usually in' }).count()

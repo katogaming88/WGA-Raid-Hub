@@ -27,6 +27,8 @@ export const TEAM_ID = 1;
 
 // The roster: Roster's six raiders and the one row with no class. Emberlyn is
 // on the bench.
+export const PLAYERS = ROSTER.players;
+
 // Tuesdays and Thursdays at 9pm.
 export const SCHEDULE = [
   { weekday: 2, start_time: '21:00:00', duration_minutes: 180, active: true, is_optional: false },
