@@ -12,7 +12,6 @@ export type ProfilePlayer = {
   url_code: string | null;
   is_trial: boolean;
   is_bench: boolean;
-  is_rotator: boolean;
   is_backup_tank: boolean;
   is_backup_healer: boolean;
   wishlist_allowed: boolean;
@@ -24,7 +23,7 @@ export type ProfilePlayer = {
 };
 
 const PLAYER_COLUMNS =
-  'id, name_realm, nickname, url_code, is_trial, is_bench, is_rotator, is_backup_tank, is_backup_healer, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, tier_pieces_equipped, classes_specs(class, spec, role)';
+  'id, name_realm, nickname, url_code, is_trial, is_bench, is_backup_tank, is_backup_healer, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, tier_pieces_equipped, classes_specs(class, spec, role)';
 
 // The profile's character, by id (My profile) or by its address code (an
 // officer opening someone else's). Active characters only.

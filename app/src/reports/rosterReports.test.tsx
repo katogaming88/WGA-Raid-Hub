@@ -17,7 +17,6 @@ const player = (id: number, nameRealm: string, klass: string, spec: string, role
     nickname: null,
     is_trial: false,
     is_bench: false,
-    is_rotator: false,
     tier_pieces_equipped: null,
     join_date: '2026-08-01',
     team_member_id: member,

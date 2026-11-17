@@ -11,7 +11,7 @@ import {
   BENCH_VIEWER,
   EXPECTED_MONTH,
   EXPECTED_NIGHT,
-  NEW_COUNTS,
+  COUNTS,
   OWN_ANSWER,
   OWN_NOTE_REQUIRED,
   OWN_WRITES,
@@ -19,9 +19,7 @@ import {
   CLEAR_WRITES,
   OFFICER_CHANGE,
   OFFICER_NOTE_REQUIRED,
-  OFFICER_WRITES,
-  ROTATOR,
-  ROTATOR_WRITES
+  OFFICER_WRITES
 } from '../behavior/calendar.js';
 
 // The new app's Calendar page against the behaviour recorded from the current
@@ -77,7 +75,6 @@ const signedIn = (viewer, role, extra = {}) => ({
   rpc: {
     set_own_rsvp: null,
     officer_set_rsvp: null,
-    officer_set_rotator_week: null,
     team_rsvp_answers: withoutNotes
   },
   ...extra
@@ -97,7 +94,7 @@ function recordCalls(page) {
     const url = new URL(request.url());
     const rpc = url.pathname.split('/rest/v1/rpc/')[1];
     const fn = url.pathname.split('/functions/v1/')[1];
-    if (!['set_own_rsvp', 'officer_set_rsvp', 'officer_set_rotator_week'].includes(rpc) && !fn) return;
+    if (!['set_own_rsvp', 'officer_set_rsvp'].includes(rpc) && !fn) return;
     calls.push({ name: rpc ?? fn, body: JSON.parse(request.postData()) });
   });
   return calls;
@@ -177,8 +174,7 @@ describe('Calendar (new app): a raid night, checked against the current site', (
 
   it('lists every raider’s status and note for the night', async () => {
     expect(await readNight(opened.page)).toEqual(EXPECTED_NIGHT);
-    // The rotator is counted with the bench now, not as coming.
-    expect(await readCounts(opened.page)).toEqual(NEW_COUNTS);
+    expect(await readCounts(opened.page)).toEqual(COUNTS);
     expect(opened.pageErrors).toEqual([]);
     expect(opened.unexpected).toEqual([]);
   });
@@ -218,13 +214,6 @@ describe('Calendar (new app): a raid night, checked against the current site', (
     expect(calls).toEqual(withTeamId(OFFICER_WRITES));
     await expect.poll(() => opened.page.getByRole('dialog').count()).toBe(0);
     calls.length = 0;
-  });
-
-  it('lets an officer put a rotator in for the week', async () => {
-    await opened.page.getByRole('button', { name: `Change ${ROTATOR.nickname}’s answer` }).click();
-    await opened.page.getByRole('dialog').getByRole('button', { name: 'In for the week' }).click();
-    await expect.poll(() => calls.length).toBe(ROTATOR_WRITES.length);
-    expect(calls).toEqual(withTeamId(ROTATOR_WRITES));
   });
 });
 
@@ -285,7 +274,7 @@ describe('Calendar (new app): a raider sees answers, not notes', () => {
       const night = await readNight(opened.page);
       expect(night.find((r) => r.name === 'Frostvale')).toEqual({ name: 'Frostvale', status: 'Absent', note: '' });
       expect(night.find((r) => r.name === 'Zed')).toEqual({ name: 'Zed', status: 'Late', note: 'Work until 9:15' });
-      expect(await readCounts(opened.page)).toEqual(NEW_COUNTS);
+      expect(await readCounts(opened.page)).toEqual(COUNTS);
       expect(await opened.page.locator('.edit-button').count()).toBe(0);
       expect(opened.unexpected).toEqual([]);
     } finally {
@@ -361,7 +350,7 @@ describe('Calendar (new app): the boss lineup', () => {
 
   it('lists everyone on the roster by role, with the plan, the counts and the changes', async () => {
     const rows = await opened.page.locator('.lineup-grid tbody .lineup-raider-name').allTextContents();
-    expect(rows).toEqual(['Aur', 'Brightmoor', 'Frostvale', 'Glim', 'Dawnthistle', 'Em', 'Zed']);
+    expect(rows).toEqual(['Aur', 'Brightmoor', 'Frostvale', 'Dawnthistle', 'Em', 'Zed']);
     expect(await opened.page.getByRole('button', { name: 'Zed, Sszorak: in' }).count()).toBe(1);
     expect(
       await opened.page.getByRole('button', { name: 'Aur, Sszorak: out, changed for tonight only, usually in' }).count()

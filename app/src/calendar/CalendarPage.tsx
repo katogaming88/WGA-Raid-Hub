@@ -37,7 +37,6 @@ import {
   startTime,
   statusFor,
   timeRange,
-  weekStart,
   type Answer,
   type CancelledNight,
   type Kind,
@@ -52,7 +51,6 @@ import { YourBosses } from './YourBosses';
 import {
   useAnswers,
   useOfficerSetAnswer,
-  useRotatorWeek,
   useSchedule,
   useScheduleChanges,
   useSetOwnAnswer,
@@ -716,7 +714,7 @@ function Coming({
               <Count kind="in" label="On time" value={view.counts.in - view.counts.flagged} />
               <Count kind="flag" label="Late, leaving early or tentative" value={view.counts.flagged} />
               <Count kind="out" label="Out" value={view.counts.out} />
-              <Count kind="apart" label="Bench and rotators" value={view.counts.apart} />
+              <Count kind="apart" label="Bench" value={view.counts.apart} />
             </dl>
           </section>
           {view.latest.length > 0 && (
@@ -780,7 +778,7 @@ function Coming({
                 <ul className="night-rows">{g.rows.map(row)}</ul>
                 {g.apart.length > 0 && (
                   <>
-                    <h3 className="visually-hidden">{g.label}: bench and rotators</h3>
+                    <h3 className="visually-hidden">{g.label}: bench</h3>
                     <ul className="night-rows night-rows-apart">{g.apart.map(row)}</ul>
                   </>
                 )}
@@ -960,22 +958,6 @@ function OfficerDialog({ row, night, onClose }: { row: NightRow; night: RaidNigh
   const [choice, setChoice] = useState('');
   const [note, setNote] = useState('');
   const [missing, setMissing] = useState(false);
-  const rotator = useRotatorWeek(team.id);
-  const week = weekStart(night.date);
-  const inForWeek = row.status.label === answerLabel('Rotator-In');
-  const showRotator = row.player.is_rotator && !night.optional;
-
-  const toggleWeek = () =>
-    rotator.mutate(
-      { date: night.date, weekStart: week, playerId: row.player.id, isIn: !inForWeek, teamKey: team.key },
-      {
-        onSuccess: () => {
-          announce('success', `${row.name} is ${inForWeek ? 'out' : 'in'} for the week of ${shortDay(week)}.`);
-          onClose();
-        }
-      }
-    );
-
   const run = (status: string | null) =>
     save.mutate(
       { date: night.date, playerId: row.player.id, status, note: note.trim(), teamKey: team.key },
@@ -1002,7 +984,7 @@ function OfficerDialog({ row, night, onClose }: { row: NightRow; night: RaidNigh
   };
 
   return (
-    <Dialog title={`Change ${row.name}’s answer`} onClose={onClose} busy={save.isPending || rotator.isPending}>
+    <Dialog title={`Change ${row.name}’s answer`} onClose={onClose} busy={save.isPending}>
       <form className="officer-answer" onSubmit={onSubmit} noValidate>
         <p className="text-muted">
           {longDay(night.date)} · {nightTitle(night)} · {row.player.classes_specs?.spec}{' '}
@@ -1012,24 +994,6 @@ function OfficerDialog({ row, night, onClose }: { row: NightRow; night: RaidNigh
           Right now: <Pill kind={row.status.kind}>{row.status.label}</Pill>
           {!current && <span className="text-dim"> (they haven’t answered)</span>}
         </p>
-        {showRotator && (
-          <div className="rotator-week">
-            <p>
-              {row.name} is a rotator.{' '}
-              {inForWeek
-                ? `They are in for every raid night in the week of ${shortDay(week)}.`
-                : `Put them in for every raid night in the week of ${shortDay(week)}?`}
-            </p>
-            <button type="button" className="button" disabled={rotator.isPending} onClick={toggleWeek}>
-              {inForWeek ? 'Out for the week' : 'In for the week'}
-            </button>
-            {rotator.isError && (
-              <p className="form-error" role="alert">
-                That did not save: {rotator.error.message}
-              </p>
-            )}
-          </div>
-        )}
         <fieldset>
           <legend className="field-label">New answer</legend>
           <div className="answer-choices answer-choices-stacked">

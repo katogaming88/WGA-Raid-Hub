@@ -17,7 +17,6 @@ export type PlayerRow = {
   nickname: string | null;
   is_trial: boolean;
   is_bench: boolean;
-  is_rotator: boolean;
   tier_pieces_equipped: number | null;
   // When the gear sync last counted them (#1359's Tier sets report).
   tier_pieces_synced_at?: string | null;
@@ -82,7 +81,7 @@ export function toProjected(rows: IncomingRow[], rosterNames: string[]): Project
   })).filter((group) => group.raiders.length > 0);
 }
 
-export type Status = 'Trial' | 'Bench' | 'Rotator';
+export type Status = 'Trial' | 'Bench';
 
 export type Raider = {
   key: string;
@@ -234,7 +233,6 @@ export function toRoster(players: PlayerRow[], gear: GearRow[], names: NameRow[]
     const statuses: Status[] = [];
     if (p.is_trial) statuses.push('Trial');
     if (p.is_bench) statuses.push('Bench');
-    if (p.is_rotator) statuses.push('Rotator');
     raiders.push({
       key: `player-${p.id}`,
       playerId: p.id,
@@ -320,7 +318,6 @@ export type RosterSummary = {
   total: number;
   trial: number;
   bench: number;
-  rotator: number;
   roles: { role: Role; label: string; count: number }[];
   averageItemLevel: number | null;
   lowest: { name: string; itemLevel: number } | null;
@@ -342,7 +339,6 @@ export function summarize(groups: RoleGroup[]): RosterSummary {
     total: raiders.length,
     trial: raiders.filter((r) => r.statuses.includes('Trial')).length,
     bench: raiders.filter((r) => r.statuses.includes('Bench')).length,
-    rotator: raiders.filter((r) => r.statuses.includes('Rotator')).length,
     roles: ROLE_ORDER.map((role) => ({
       role,
       label: ROLE_LABELS[role],
@@ -362,7 +358,6 @@ export function summaryLine(summary: RosterSummary): string {
   const parts = [`${summary.total} ${summary.total === 1 ? 'raider' : 'raiders'}`];
   if (summary.trial) parts.push(`${summary.trial} on trial`);
   if (summary.bench) parts.push(`${summary.bench} on the bench`);
-  if (summary.rotator) parts.push(`${summary.rotator} rotating`);
   return parts.join(', ');
 }
 

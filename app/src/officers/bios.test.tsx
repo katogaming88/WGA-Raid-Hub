@@ -26,7 +26,6 @@ const RAIDER = {
   nickname: 'Bright',
   is_trial: false,
   is_bench: false,
-  is_rotator: false,
   tier_pieces_equipped: null,
   classes_specs: { class: 'Priest', spec: 'Holy', role: 'Heal' }
 };

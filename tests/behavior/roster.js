@@ -14,7 +14,7 @@
 //
 // Intentional differences on the new page are not checked here and are listed
 // in the pull request that built it (#870): class-colored names instead of a
-// class badge, item level, tier pieces, Trial/Bench/Rotator tags, a role filter
+// class badge, item level, tier pieces, Trial/Bench tags, a role filter
 // and a summary panel.
 
 const cs = (klass, spec, role) => ({ class: klass, spec, role });
@@ -25,7 +25,6 @@ const player = (id, nameRealm, nickname, classSpec, flags = {}) => ({
   nickname,
   is_trial: false,
   is_bench: false,
-  is_rotator: false,
   tier_pieces_equipped: null,
   classes_specs: classSpec,
   ...flags

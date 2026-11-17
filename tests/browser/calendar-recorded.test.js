@@ -11,7 +11,7 @@ import {
   BENCH_VIEWER,
   EXPECTED_MONTH,
   EXPECTED_NIGHT,
-  CURRENT_COUNTS,
+  COUNTS,
   OWN_ANSWER,
   OWN_NOTE_REQUIRED,
   OWN_WRITES,
@@ -19,9 +19,7 @@ import {
   CLEAR_WRITES,
   OFFICER_CHANGE,
   OFFICER_NOTE_REQUIRED,
-  OFFICER_WRITES,
-  ROTATOR,
-  ROTATOR_WRITES
+  OFFICER_WRITES
 } from '../behavior/calendar.js';
 
 // calendar.html as the current site shows it to a signed-in officer, recorded
@@ -59,7 +57,7 @@ function recordCalls(page) {
     const url = new URL(request.url());
     const rpc = url.pathname.split('/rest/v1/rpc/')[1];
     const fn = url.pathname.split('/functions/v1/')[1];
-    if (!['set_own_rsvp', 'officer_set_rsvp', 'officer_set_rotator_week'].includes(rpc) && !fn) return;
+    if (!['set_own_rsvp', 'officer_set_rsvp'].includes(rpc) && !fn) return;
     calls.push({ name: rpc ?? fn, body: JSON.parse(request.postData()) });
   });
   return calls;
@@ -135,7 +133,7 @@ describe('Calendar (current site): a raid night', () => {
 
   it('lists every raider’s status and note for the night', async () => {
     expect(await readNight(opened.page)).toEqual(EXPECTED_NIGHT);
-    expect(await readCounts(opened.page)).toEqual(CURRENT_COUNTS);
+    expect(await readCounts(opened.page)).toEqual(COUNTS);
     expect(opened.pageErrors).toEqual([]);
   });
 
@@ -169,14 +167,6 @@ describe('Calendar (current site): a raid night', () => {
     await expect.poll(() => calls.length).toBe(OFFICER_WRITES.length);
     expect(calls).toEqual(OFFICER_WRITES);
     calls.length = 0;
-  });
-
-  it('lets an officer put a rotator in for the week', async () => {
-    await opened.page.waitForSelector('.day-roster-edit-btn');
-    const row = opened.page.locator('.roster-table tr', { hasText: ROTATOR.nickname });
-    await row.getByRole('button', { name: 'Set in for week' }).click();
-    await expect.poll(() => calls.length).toBe(ROTATOR_WRITES.length);
-    expect(calls).toEqual(ROTATOR_WRITES);
   });
 });
 

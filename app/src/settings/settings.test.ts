@@ -184,7 +184,6 @@ describe('rosterSnapshot', () => {
       nickname: null,
       is_trial: false,
       is_bench: false,
-      is_rotator: false,
       tier_pieces_equipped: null,
       join_date: '2025-12-01',
       classes_specs: { class: 'Warrior', spec: 'Protection', role: 'Tank' }
@@ -195,7 +194,6 @@ describe('rosterSnapshot', () => {
       nickname: null,
       is_trial: true,
       is_bench: false,
-      is_rotator: false,
       tier_pieces_equipped: null,
       join_date: '2026-05-01',
       classes_specs: { class: 'Mage', spec: 'Frost', role: 'Ranged' }

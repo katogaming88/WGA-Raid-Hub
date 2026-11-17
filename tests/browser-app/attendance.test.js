@@ -18,7 +18,6 @@ const PLAYERS = [
     nickname: 'Aur',
     is_trial: false,
     is_bench: false,
-    is_rotator: false,
     tier_pieces_equipped: null,
     classes_specs: { class: 'Warrior', spec: 'Protection', role: 'Tank' }
   },
@@ -28,7 +27,6 @@ const PLAYERS = [
     nickname: '',
     is_trial: false,
     is_bench: false,
-    is_rotator: false,
     tier_pieces_equipped: null,
     classes_specs: { class: 'Paladin', spec: 'Holy', role: 'Heal' }
   },
@@ -38,7 +36,6 @@ const PLAYERS = [
     nickname: 'Zed',
     is_trial: false,
     is_bench: false,
-    is_rotator: false,
     tier_pieces_equipped: null,
     classes_specs: { class: 'Mage', spec: 'Frost', role: 'Ranged' }
   },
@@ -48,7 +45,6 @@ const PLAYERS = [
     nickname: '',
     is_trial: true,
     is_bench: false,
-    is_rotator: false,
     tier_pieces_equipped: null,
     classes_specs: { class: 'Druid', spec: 'Balance', role: 'Ranged' }
   },
@@ -58,7 +54,6 @@ const PLAYERS = [
     nickname: 'Em',
     is_trial: false,
     is_bench: true,
-    is_rotator: false,
     tier_pieces_equipped: null,
     classes_specs: { class: 'Priest', spec: 'Shadow', role: 'Ranged' }
   },
@@ -68,7 +63,6 @@ const PLAYERS = [
     nickname: null,
     is_trial: false,
     is_bench: false,
-    is_rotator: false,
     tier_pieces_equipped: null,
     classes_specs: { class: 'Rogue', spec: 'Assassination', role: 'Melee' }
   }

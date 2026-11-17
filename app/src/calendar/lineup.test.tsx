@@ -39,7 +39,6 @@ const player = (id: number, name: string, cls: string, role: string, flags: Part
   nickname: null,
   is_trial: false,
   is_bench: false,
-  is_rotator: false,
   tier_pieces_equipped: null,
   classes_specs: { class: cls, spec: 'Spec', role },
   ...flags

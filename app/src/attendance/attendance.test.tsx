@@ -29,7 +29,6 @@ const player = (id: number, name: string, cls: string) => ({
   nickname: null,
   is_trial: false,
   is_bench: false,
-  is_rotator: false,
   tier_pieces_equipped: null,
   team_member_id: id,
   classes_specs: { class: cls, spec: 'x', role: 'Ranged' }

@@ -128,7 +128,6 @@ const TORBJORN = {
   url_code: 'tb000011',
   is_trial: false,
   is_bench: false,
-  is_rotator: false,
   is_backup_tank: true,
   is_backup_healer: false,
   m_plus_excluded: false,

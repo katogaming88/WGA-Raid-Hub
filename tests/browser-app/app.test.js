@@ -1099,7 +1099,6 @@ const SETTINGS_DANGER = {
         nickname: null,
         is_trial: false,
         is_bench: false,
-        is_rotator: false,
         tier_pieces_equipped: null,
         join_date: '2025-01-01',
         classes_specs: { class: 'Warrior', spec: 'Protection', role: 'Tank' }

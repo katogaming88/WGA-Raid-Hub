@@ -10,6 +10,19 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-11-17 -- The Rotator roster status retires (#1352)
+
+Shipped: 20261117133959_retire_rotator.sql
+
+- **Rotator goes app-wide; Bench stays** (#1243 Option 2, 2026-09-27). The per-boss lineup (#1216) does what a week-long Rotator did, boss by boss. Removed: `players.is_rotator`, `officer_set_rotator_week()`, the `Rotator-In` answer on `raid_rsvps`, and the rotator tier and label in `generate_priority_order()`. Bench keeps its tier number (3), so the sort among full status, Trial and Bench is unchanged.
+- **Anyone marked Rotator moves to Bench first** (Kat, 2026-10-19). On production on 2026-11-17: four rows, three active on Immolation (Plumnoir-Area 52, Swipesyou-Moon Guard, Yoshpet-Tichondrius) and one archived on Phoenix (Khaosmagi-Thrall). No officer check: Immolation has stopped raiding for the season (Kat, 2026-11-17). As Bench they now sort with the bench in loot priority, can't answer a normal night themselves, and are left out of boss groups, as every benched raider is.
+- **A `Rotator-In` answer becomes `Attending`**: it meant an officer put the raider in for that night. Production had none on 2026-11-17, so this only guards the deploy.
+- **The current site and the new app ship in the same PR**, since both read `is_rotator` and a dropped column fails the whole roster read.
+
+[Full discussion -> #1352](https://github.com/katogaming88/WGA-Raid-Hub/issues/1352).
+
+---
+
 ## 2026-11-17 -- A raid night's title (#1478)
 
 Shipped: 20261117091736_raid_night_titles.sql

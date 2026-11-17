@@ -63,7 +63,6 @@ const PLAYER = {
   nickname: null,
   is_trial: false,
   is_bench: false,
-  is_rotator: false,
   tier_pieces_equipped: null,
   classes_specs: { class: 'Mage', spec: 'Frost', role: 'Ranged' }
 };

@@ -1741,7 +1741,6 @@ export type Database = {
           is_backup_healer: boolean
           is_backup_tank: boolean
           is_bench: boolean
-          is_rotator: boolean
           is_trial: boolean
           join_date: string | null
           m_plus_excluded: boolean
@@ -1768,7 +1767,6 @@ export type Database = {
           is_backup_healer?: boolean
           is_backup_tank?: boolean
           is_bench?: boolean
-          is_rotator?: boolean
           is_trial?: boolean
           join_date?: string | null
           m_plus_excluded?: boolean
@@ -1795,7 +1793,6 @@ export type Database = {
           is_backup_healer?: boolean
           is_backup_tank?: boolean
           is_bench?: boolean
-          is_rotator?: boolean
           is_trial?: boolean
           join_date?: string | null
           m_plus_excluded?: boolean
@@ -6225,15 +6222,6 @@ export type Database = {
       notify_player: {
         Args: { p_message: string; p_player_id: number }
         Returns: number
-      }
-      officer_set_rotator_week: {
-        Args: {
-          p_in: boolean
-          p_player_id: number
-          p_team_id: number
-          p_week_start: string
-        }
-        Returns: undefined
       }
       officer_set_rsvp: {
         Args: {

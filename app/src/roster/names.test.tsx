@@ -29,7 +29,6 @@ const TORBJORN = {
   nickname: null,
   is_trial: false,
   is_bench: false,
-  is_rotator: false,
   tier_pieces_equipped: null,
   team_member_id: 9,
   classes_specs: { class: 'Death Knight', spec: 'Frost', role: 'Melee' }

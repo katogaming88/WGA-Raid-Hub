@@ -88,7 +88,6 @@ const player = (
     nickname,
     is_trial: false,
     is_bench: false,
-    is_rotator: false,
     tier_pieces_equipped: null,
     classes_specs: { class: klass, spec, role }
   }) satisfies PlayerRow;

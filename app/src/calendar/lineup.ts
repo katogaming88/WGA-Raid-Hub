@@ -340,15 +340,7 @@ export function lineupView(
         conflict: inn && saidOut(r)
       };
     });
-    const tag = r.status.answered
-      ? r.status.label
-      : r.player.is_bench
-        ? 'Bench'
-        : r.player.is_rotator
-          ? 'Rotator'
-          : r.player.is_trial
-            ? 'Trial'
-            : null;
+    const tag = r.status.answered ? r.status.label : r.player.is_bench ? 'Bench' : r.player.is_trial ? 'Trial' : null;
     return {
       row: r,
       tag,
@@ -443,15 +435,7 @@ export function groupsView(
     });
     const count = cells.filter((c) => c.in).length;
     const unplaced = count === 0 && !r.player.is_bench;
-    const tag = r.player.is_bench
-      ? 'Bench'
-      : unplaced
-        ? 'In no group'
-        : r.player.is_rotator
-          ? 'Rotator'
-          : r.player.is_trial
-            ? 'Trial'
-            : null;
+    const tag = r.player.is_bench ? 'Bench' : unplaced ? 'In no group' : r.player.is_trial ? 'Trial' : null;
     return { raider: r, tag, tagTone: unplaced ? 'warn' : 'plain', cells, count };
   };
 

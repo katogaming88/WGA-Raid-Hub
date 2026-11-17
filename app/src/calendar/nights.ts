@@ -43,13 +43,13 @@ export function raidNights(schedule: ScheduleRow[], exceptions: ExceptionRow[], 
   return nights;
 }
 
-// How a day's marker reads. Absent is its own colour; Attending and
-// Rotator-In read as Present; Late, Leaving Early and Tentative share the
+// How a day's marker reads. Absent is its own colour; Attending reads as
+// Present; Late, Leaving Early and Tentative share the
 // "still coming, but flagged" colour.
 export type Tone = 'present' | 'tentative' | 'absent';
 
 const toneOf = (status: string): Tone =>
-  status === 'Absent' ? 'absent' : status === 'Attending' || status === 'Rotator-In' ? 'present' : 'tentative';
+  status === 'Absent' ? 'absent' : status === 'Attending' ? 'present' : 'tentative';
 
 export type CalendarDay = {
   day: number;
@@ -71,7 +71,7 @@ export type RosterCounts = { roster: number; bench: number };
 
 // One month's grid. Signed out, or with no answer of your own, a normal
 // night is Present with how many are expected ("5/6": the roster less the
-// bench and rotators), and an optional night is No Response, since nobody is
+// bench), and an optional night is No Response, since nobody is
 // expected on it until they say so. With your own answer, the day shows that
 // answer instead, without the count.
 export function calendarMonth(

@@ -13,8 +13,6 @@
 //                                        save makes, in order
 //
 // Deliberate differences, checked by the new suite only:
-// - Rotators are counted with the bench, not as coming (the current site
-//   counts a rotator as "in").
 // - Signed out, the new page shows the schedule only, and raiders read
 //   teammates' answers without notes (docs/database-decisions.md, 2026-09-16).
 // - The arrows move between raid nights, not calendar days.
@@ -27,19 +25,9 @@ export const TODAY = '2026-05-13T16:00:00Z';
 export const NIGHT = '2026-05-14';
 export const TEAM_ID = 1;
 
-// The roster: Roster's six raiders plus a rotator and the one row with no
-// class. Emberlyn is on the bench.
-export const ROTATOR = {
-  id: 8,
-  name_realm: 'Glimmerpaw-Illidan',
-  nickname: 'Glim',
-  is_trial: false,
-  is_bench: false,
-  is_rotator: true,
-  tier_pieces_equipped: null,
-  classes_specs: { class: 'Druid', spec: 'Feral', role: 'Melee' }
-};
-export const PLAYERS = [...ROSTER.players, ROTATOR];
+// The roster: Roster's six raiders and the one row with no class. Emberlyn is
+// on the bench.
+export const PLAYERS = ROSTER.players;
 
 // Tuesdays and Thursdays at 9pm.
 export const SCHEDULE = [
@@ -93,14 +81,11 @@ export const EXPECTED_NIGHT = [
   { name: 'Dawnthistle', status: 'Present', note: '' },
   { name: 'Em', status: 'Bench', note: '' },
   { name: 'Frostvale', status: 'Absent', note: 'Out of town' },
-  { name: 'Glim', status: 'Rotator', note: '' },
   { name: 'Zed', status: 'Late', note: 'Work until 9:15' }
 ];
 
-// Counted on the current site: the rotator is "in". The new page leaves
-// rotators out of the count, with the bench.
-export const CURRENT_COUNTS = { in: 5, out: 1 };
-export const NEW_COUNTS = { in: 4, out: 1 };
+// Counted the same on both sites: the bench is left out.
+export const COUNTS = { in: 4, out: 1 };
 
 // Saving your own answer. A note is required for anything but Present (and
 // Attending on an optional night). set_own_rsvp() queues the answer's Discord
@@ -140,16 +125,6 @@ export const OFFICER_WRITES = [
       p_status: 'Absent',
       p_note: 'Told us in Discord'
     }
-  },
-  { name: 'discord-bot-webhook', body: { action: 'signupSheetSync', team: 'phoenix', payload: { raidDate: NIGHT } } }
-];
-
-// Putting the rotator in for the week the night falls in (Sunday to
-// Saturday).
-export const ROTATOR_WRITES = [
-  {
-    name: 'officer_set_rotator_week',
-    body: { p_team_id: TEAM_ID, p_player_id: ROTATOR.id, p_week_start: '2026-05-10', p_in: true }
   },
   { name: 'discord-bot-webhook', body: { action: 'signupSheetSync', team: 'phoenix', payload: { raidDate: NIGHT } } }
 ];

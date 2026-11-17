@@ -25,7 +25,6 @@
 | tier_pieces_equipped | integer |  | true |  |  |  |  |
 | tier_pieces_synced_at | timestamp with time zone |  | true |  |  |  |  |
 | bonus_roll_encounter_id | integer |  | true |  |  | [public.raid_encounters](public.raid_encounters.md) |  |
-| is_rotator | boolean | false | false |  |  |  | Rotator roster status (#924): not automatically Present/Attending on a raid night like Bench, but officer-assigned per raid week (officer_set_rotator_week()) rather than self-RSVP. |
 | bis_link_updated_at | timestamp with time zone |  | true |  |  |  |  |
 | url_code | text | new_url_code() | false |  |  |  | The player's code in an address (/players/\<code\>, #1114). Random, unique site-wide, and fixed once issued so shared links keep working. |
 | name_realm_key | text |  | true | GENERATED ALWAYS AS lower(replace(name_realm, ' '::text, ''::text)) STORED |  |  | name_realm in lower case with spaces removed, so "Fxd-Area 52" and "fxd-Area52" are one character (#941). Unique per team. |
@@ -125,7 +124,6 @@ erDiagram
   integer tier_pieces_equipped
   timestamp_with_time_zone tier_pieces_synced_at
   integer bonus_roll_encounter_id FK
-  boolean is_rotator
   timestamp_with_time_zone bis_link_updated_at
   text url_code
   text name_realm_key
