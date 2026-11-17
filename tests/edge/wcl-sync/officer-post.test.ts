@@ -7,18 +7,21 @@ import { ALL_SET, nightLabel, postAttendanceProblems } from '../../../supabase/f
 type Row = Record<string, any>;
 type Tables = Record<string, Row[]>;
 
-function fakeDb(tables: Tables) {
+function fakeDb(tables: Tables, saveError: { code: string; message: string } | null = null) {
   function from(table: string) {
     const filters: Array<(r: Row) => boolean> = [];
-    let write: { kind: 'upsert'; row: Row; keys: string[] } | { kind: 'update'; set: Row } | null = null;
+    let write: { kind: 'insert'; row: Row } | { kind: 'update'; set: Row } | null = null;
     let slice: [number, number] = [0, 1000];
     const rows = () => (tables[table] ??= []);
     const run = () => {
-      if (write?.kind === 'upsert') {
-        const { row, keys } = write;
-        const existing = rows().find((r) => keys.every((k) => r[k] === row[k]));
-        if (existing) Object.assign(existing, row);
-        else rows().push({ ...row });
+      if (write && saveError && table === 'team_attendance_posts') return { data: null, error: saveError };
+      if (write?.kind === 'insert') {
+        const { row } = write;
+        // The primary key (team_id, raid_date).
+        if (rows().some((r) => r.team_id === row.team_id && r.raid_date === row.raid_date)) {
+          return { data: null, error: { code: '23505', message: 'duplicate key' } };
+        }
+        rows().push({ ...row });
         return { data: null, error: null };
       }
       if (write?.kind === 'update') {
@@ -41,10 +44,7 @@ function fakeDb(tables: Tables) {
       gte: (c: string, v: string) => (filters.push((r) => r[c] >= v), b),
       in: (c: string, v: unknown[]) => (filters.push((r) => v.includes(r[c])), b),
       is: (c: string, v: null) => (filters.push((r) => (r[c] ?? null) === v), b),
-      upsert: (row: Row, o: { onConflict: string }) => (
-        (write = { kind: 'upsert', row, keys: o.onConflict.split(',') }),
-        b
-      ),
+      insert: (row: Row) => ((write = { kind: 'insert', row }), b),
       update: (set: Row) => ((write = { kind: 'update', set }), b),
       maybeSingle: () => Promise.resolve({ data: (run().data as Row[])[0] ?? null, error: null }),
       then: (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) => Promise.resolve(run()).then(res, rej)
@@ -82,8 +82,8 @@ function discord({ patchStatus = 200, channelGuild = 'G1' } = {}) {
   return { io: { fetch: fetch as typeof globalThis.fetch, env }, calls };
 }
 
-const NIGHT = '2026-11-10';
-const NOW = new Date('2026-11-11T12:00:00Z');
+const NIGHT = '2026-11-24';
+const NOW = new Date('2026-11-25T12:00:00Z');
 const flag = (player_id: number, source: string, raid_date = NIGHT) => ({
   team_id: 1,
   player_id,
@@ -112,12 +112,12 @@ function tables(extra: Partial<Tables> = {}): Tables {
   };
 }
 
-const run = (t: Tables, io: ReturnType<typeof discord>['io'], now = NOW) =>
-  postAttendanceProblems(fakeDb(t), io, 1, now);
+const run = (t: Tables, io: ReturnType<typeof discord>['io'], now = NOW, saveError: any = null) =>
+  postAttendanceProblems(fakeDb(t, saveError), io, 1, now);
 const writes = (calls: Call[]) => calls.filter((c) => c.method !== 'GET');
 
 Deno.test('the night label is the calendar day as written', () => {
-  assertEquals(nightLabel(NIGHT), 'Tue Nov 10');
+  assertEquals(nightLabel(NIGHT), 'Tue Nov 24');
 });
 
 Deno.test('a night with items posts once, each line the reason the site shows, no one pinged', async () => {
@@ -154,7 +154,7 @@ Deno.test('a night with items posts once, each line the reason the site shows, n
   assertEquals(posts.length, 1);
   assertEquals(posts[0]!.path, '/channels/C1/messages');
   const embed = posts[0]!.body.embeds[0];
-  assertEquals(embed.title, 'Attendance, Tue Nov 10: 3 need a look');
+  assertEquals(embed.title, 'Attendance, Tue Nov 24: 3 need a look');
   assertEquals(
     embed.description,
     [
@@ -188,7 +188,7 @@ Deno.test('a later run with more items edits the same post', async () => {
     writes(d.calls).map((c) => [c.method, c.path]),
     [['PATCH', '/channels/C1/messages/M1']]
   );
-  assertEquals(writes(d.calls)[0]!.body.embeds[0].title, 'Attendance, Tue Nov 10: 2 need a look');
+  assertEquals(writes(d.calls)[0]!.body.embeds[0].title, 'Attendance, Tue Nov 24: 2 need a look');
   assertEquals(writes(d.calls)[0]!.body.embeds[0].description.split('\n')[0], '**Katorrí**: Missed the first pull.');
 });
 
@@ -198,7 +198,7 @@ Deno.test('officers set every item: the post is edited to all set, then left alo
   t.attendance![0]!.status = 'Excused';
   const d = discord();
   assertEquals(await run(t, d.io), { posted: 0, edited: 1 });
-  assertEquals(writes(d.calls)[0]!.body.embeds[0].title, 'Attendance, Tue Nov 10: all set');
+  assertEquals(writes(d.calls)[0]!.body.embeds[0].title, 'Attendance, Tue Nov 24: all set');
   assertEquals(t.team_attendance_posts![0]!.content_key, ALL_SET);
   const later = discord();
   await run(t, later.io);
@@ -237,7 +237,7 @@ Deno.test('a team with no officer channel posts nothing', async () => {
 });
 
 Deno.test('a night from before the last week never posts: the waiting backlog stays quiet', async () => {
-  const t = tables({ attendance: [flag(2, 'WCL (Absent?)', '2026-11-03')] });
+  const t = tables({ attendance: [flag(2, 'WCL (Absent?)', '2026-11-17')] });
   const d = discord();
   assertEquals(await run(t, d.io), { posted: 0, edited: 0 });
   assertEquals(d.calls, []);
@@ -293,4 +293,54 @@ Deno.test('a new officer channel gets the post, and the old one is taken down (C
   const again = discord();
   await run(t, again.io);
   assertEquals(again.calls, []);
+});
+
+Deno.test('a night from before this shipped never posts, even within the week (fresh review on PR #1862)', async () => {
+  const t = tables({ attendance: [flag(2, 'WCL (Absent?)', '2026-11-12')] });
+  const d = discord();
+  assertEquals(await run(t, d.io, new Date('2026-11-18T12:00:00Z')), { posted: 0, edited: 0 });
+  assertEquals(d.calls, []);
+});
+
+Deno.test('a post that cannot be saved is taken back down, so the next hour does not post a second', async () => {
+  const t = tables({ attendance: [flag(2, 'WCL (Absent?)')] });
+  const d = discord();
+  let failed = false;
+  await run(t, d.io, NOW, { code: 'XX000', message: 'save failed' }).catch(() => (failed = true));
+  assertEquals(failed, true);
+  assertEquals(
+    writes(d.calls).map((c) => [c.method, c.path]),
+    [
+      ['POST', '/channels/C1/messages'],
+      ['DELETE', '/channels/C1/messages/M1']
+    ]
+  );
+});
+
+Deno.test('two runs posting the same night at once: the second takes its own message back', async () => {
+  const t = tables({ attendance: [flag(2, 'WCL (Absent?)')] });
+  const first = discord();
+  // Both read no post yet, then both post.
+  const second = discord();
+  const late = postAttendanceProblems(fakeDb(t), second.io, 1, NOW);
+  await run(t, first.io);
+  await late;
+  assertEquals(t.team_attendance_posts!.length, 1);
+  // Whichever run lost the save took its own message back: one post stays up.
+  const methods = writes([...first.calls, ...second.calls]).map((c) => c.method);
+  assertEquals(methods.filter((m) => m === 'POST').length, 2);
+  assertEquals(methods.filter((m) => m === 'DELETE').length, 1);
+});
+
+Deno.test('a post out of reach with nothing left is settled as all set', async () => {
+  const t = tables({ attendance: [flag(2, 'WCL (Absent?)')] });
+  await run(t, discord().io);
+  t.attendance![0]!.status = 'Excused';
+  const d = discord({ patchStatus: 403 });
+  assertEquals(await run(t, d.io), { posted: 0, edited: 1 });
+  assertEquals(
+    writes(d.calls).map((c) => c.method),
+    ['PATCH']
+  );
+  assertEquals(t.team_attendance_posts![0]!.content_key, ALL_SET);
 });

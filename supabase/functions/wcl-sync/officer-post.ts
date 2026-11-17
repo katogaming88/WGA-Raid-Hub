@@ -2,8 +2,8 @@
 // problems to the team's officer channel, once, and later runs edit that post
 // as officers set statuses, down to "all set" (Kat, 2026-11-16).
 //
-// * Only nights from the last week post, so the backlog already waiting
-//   never floods the channel when this turns on.
+// * Only nights from the last week post, and none from before this shipped:
+//   the backlog already waiting never posts (Kat; fresh review on PR #1862).
 // * Each line is the reason the site's Needs a look list shows (#1846).
 // * No officer channel, or a local stack: no post. Names are plain text and
 //   nothing is pinged.
@@ -13,6 +13,8 @@ import { truncate } from '../_shared/discord-text.ts';
 
 export const ALL_SET = 'all set';
 export const NEW_NIGHT_DAYS = 7;
+// The first night that can post: nights already waiting when this shipped stay quiet.
+export const FIRST_NIGHT = '2026-11-17';
 const API = 'https://discord.com/api/v10';
 const CALL_TIMEOUT_MS = 10_000;
 const COLOR = 0x5b9cf5;
@@ -198,7 +200,7 @@ export async function postAttendanceProblems(
 
   const seasonStart = check(await supabase.rpc('team_season_start', { p_team_id: teamId })) as string | null;
   const since = new Date(now.getTime() - NEW_NIGHT_DAYS * 86_400_000).toISOString().slice(0, 10);
-  const from = seasonStart && seasonStart > since ? seasonStart : since;
+  const from = [since, FIRST_NIGHT, seasonStart ?? ''].sort().at(-1)!;
   const [flagged, posts] = await Promise.all([
     readAll((f, t) => {
       const q = supabase
@@ -289,15 +291,16 @@ export async function postAttendanceProblems(
     if (moved) await discord('DELETE', `/channels/${row.channel_id}/messages/${row.message_id}`).catch(() => null);
     const sent = await discord('POST', `/channels/${channelId}/messages`, body);
     if (sent.status !== 200 || !sent.body?.id) throw new Error(`Discord answered ${sent.status} to the post`);
-    const saved = await supabase
-      .from('team_attendance_posts')
-      .upsert(
-        { team_id: teamId, raid_date: night.date, channel_id: channelId, message_id: sent.body.id, content_key: key },
-        { onConflict: 'team_id,raid_date' }
-      );
+    // A night's first post is an insert, so two runs at once can't both keep
+    // theirs: the primary key refuses the second (fresh review on PR #1862).
+    const post = { channel_id: channelId, message_id: sent.body.id, content_key: key };
+    const saved = row
+      ? await supabase.from('team_attendance_posts').update(post).eq('team_id', teamId).eq('raid_date', night.date)
+      : await supabase.from('team_attendance_posts').insert({ team_id: teamId, raid_date: night.date, ...post });
     if (saved.error) {
       // Unrecorded, the next run would post a second; take this one back.
       await discord('DELETE', `/channels/${channelId}/messages/${sent.body.id}`).catch(() => null);
+      if (saved.error.code === '23505') continue;
       throw new Error(saved.error.message);
     }
     counts.posted++;

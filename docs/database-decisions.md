@@ -3761,9 +3761,9 @@ Shipped: `20261116224851_attendance_officer_posts.sql`.
 
 **`team_attendance_posts` keeps each night's message,** one row per team and raid night, so later hourly runs edit it rather than post again (`team_lineup_posts`' shape). `content_key` is what the message lists, so an unchanged night asks Discord nothing; it reads `all set` once every item has a status. A night at `all set` that needs a look again within the week edits its own post (CodeRabbit on PR #1862). If the team picks another officer channel, a night with items left is posted there and the old post taken down. Service role and `claude_readers` only, with its own grants.
 
-**Only nights from the last week post** (Kat, 2026-11-16: "only new nights"). The run looks at nights with items from the last seven days, plus any night whose post still lists items. The backlog already waiting when this shipped (100 or more items per team) never posts. A week rather than "the nights this run read first" so a night an officer refreshed by hand still posts.
+**Only new nights post** (Kat, 2026-11-16: "old nights already waiting never post"). The run looks at nights with items from the last seven days and on or after 2026-11-17, the day this shipped, plus any night whose post still lists items. The backlog already waiting (100 or more items per team, Phoenix's Nov 12 night among them) never posts; without the ship-day floor the first run would have posted it (fresh review). A week rather than "the nights this run read first" so a night an officer refreshed by hand still posts.
 
-**Fixes edit the post down** (Kat). Each run edits a night's post to what is left, and to "all set" when nothing is. A post deleted in Discord is posted again while items are left.
+**Fixes edit the post down** (Kat). Each run edits a night's post to what is left, and to "all set" when nothing is. A post deleted in Discord is posted again the next time its list changes, while items are left. A night's first post is an insert, so two runs at once can't both keep a message: the loser takes its own back down.
 
 **The lines are the site's** (Kat): the Needs a look list's reason (#1846), the boss name from the night's lineup, and the not-on-roster names. Names are plain text, nothing is pinged, and the link is the new app's Manage attendance page (Kat).
 
