@@ -21,7 +21,7 @@ answers to.
 ### Project
 
 - The new app's Calendar shows a night's title on its month tile and its page, with "Optional night" or "Extra night" and the difficulty beside it; with no title, a night is still headed by its difficulty. Officers set a title for each weekly night in Edit schedule, and "Rename this night" on a night's page sets one for that date; leaving it empty goes back to the usual title (#1478).
-- Database and page tests for it.
+- Database, page and browser tests for it, and time-log rows for #1484's merge and #1478.
 
 ## [3.286.0] - 2026-11-17
 
