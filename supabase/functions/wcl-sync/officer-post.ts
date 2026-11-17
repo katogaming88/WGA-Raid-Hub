@@ -288,7 +288,8 @@ export async function postAttendanceProblems(
       console.error(`wcl-sync: team ${teamId}'s officer channel is not in its server`);
       return counts;
     }
-    if (moved) await discord('DELETE', `/channels/${row.channel_id}/messages/${row.message_id}`).catch(() => null);
+    // Where the old channel's post is, read before the row is saved over.
+    const oldPost = moved ? `/channels/${row.channel_id}/messages/${row.message_id}` : null;
     const sent = await discord('POST', `/channels/${channelId}/messages`, body);
     if (sent.status !== 200 || !sent.body?.id) throw new Error(`Discord answered ${sent.status} to the post`);
     // A night's first post is an insert, so two runs at once can't both keep
@@ -303,6 +304,9 @@ export async function postAttendanceProblems(
       if (saved.error.code === '23505') continue;
       throw new Error(saved.error.message);
     }
+    // The old channel's post comes down only once the new one is up and
+    // saved, so a failed repost never leaves the night with none (CodeRabbit).
+    if (oldPost) await discord('DELETE', oldPost).catch(() => null);
     counts.posted++;
   }
   return counts;

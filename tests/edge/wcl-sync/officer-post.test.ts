@@ -284,8 +284,8 @@ Deno.test('a new officer channel gets the post, and the old one is taken down (C
   assertEquals(
     writes(d.calls).map((c) => [c.method, c.path]),
     [
-      ['DELETE', '/channels/C1/messages/M1'],
-      ['POST', '/channels/C2/messages']
+      ['POST', '/channels/C2/messages'],
+      ['DELETE', '/channels/C1/messages/M1']
     ]
   );
   assertEquals(t.team_attendance_posts![0]!.channel_id, 'C2');
@@ -344,3 +344,25 @@ Deno.test('a post out of reach with nothing left is settled as all set', async (
   );
   assertEquals(t.team_attendance_posts![0]!.content_key, ALL_SET);
 });
+
+Deno.test(
+  'a new officer channel whose post cannot be saved leaves the old post up (CodeRabbit on PR #1862)',
+  async () => {
+    const t = tables({ attendance: [flag(2, 'WCL (Absent?)')] });
+    await run(t, discord().io);
+    t.team_discord_config![0]!.officer_channel_id = 'C2';
+    const d = discord();
+    let failed = false;
+    await run(t, d.io, NOW, { code: 'XX000', message: 'save failed' }).catch(() => (failed = true));
+    assertEquals(failed, true);
+    // Only the new, unsaved post is taken back; the old one stays.
+    assertEquals(
+      writes(d.calls).map((c) => [c.method, c.path]),
+      [
+        ['POST', '/channels/C2/messages'],
+        ['DELETE', '/channels/C2/messages/M1']
+      ]
+    );
+    assertEquals([t.team_attendance_posts![0]!.channel_id, t.team_attendance_posts![0]!.message_id], ['C1', 'M1']);
+  }
+);
