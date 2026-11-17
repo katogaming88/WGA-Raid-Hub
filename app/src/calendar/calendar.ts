@@ -15,6 +15,8 @@ export type ScheduleRule = {
   is_optional: boolean;
   // Its own difficulty; none follows the team default (#1361).
   difficulty?: string | null | undefined;
+  // Its own title (#1478).
+  title?: string | null | undefined;
 };
 
 export type ScheduleChange = {
@@ -51,6 +53,12 @@ export type RaidNight = {
   changeId?: number | undefined;
   // What the night is run at: its own pick, else the team default (#1361).
   difficulty?: Difficulty | null | undefined;
+  // Its title (#1478): this date's own, else the weekly night's.
+  title?: string | null | undefined;
+  // The two it comes from: this date's own, which "Rename this night" edits,
+  // and the weekly night's, which the next week goes back to.
+  dateTitle?: string | null | undefined;
+  weeklyTitle?: string | null | undefined;
 };
 
 // A usual night called off for one date. The note is the reason raiders see,
@@ -73,7 +81,9 @@ export function nightsBetween(
   changes: ScheduleChange[],
   from: string,
   to: string,
-  teamDefault: Difficulty | null = null
+  teamDefault: Difficulty | null = null,
+  // Titles for one date (#1478), which win over the weekly night's.
+  titles: Record<string, string> = {}
 ): { nights: RaidNight[]; cancelled: CancelledNight[] } {
   const cancelledDates = new Map(
     changes.filter((c) => c.exception_type === 'cancelled').map((c) => [c.raid_date, c] as const)
@@ -83,6 +93,7 @@ export function nightsBetween(
   const cancelled: CancelledNight[] = [];
   for (let d = dayOf(from); d <= dayOf(to); d.setDate(d.getDate() + 1)) {
     const date = isoDate(d);
+    const dateTitle = titles[date] ?? null;
     for (const rule of schedule) {
       if (rule.weekday !== d.getDay()) continue;
       const night = { date, start: rule.start_time, durationMinutes: rule.duration_minutes };
@@ -94,7 +105,10 @@ export function nightsBetween(
           optional: rule.is_optional,
           extra: false,
           note: '',
-          difficulty: asDifficulty(rule.difficulty) ?? teamDefault
+          difficulty: asDifficulty(rule.difficulty) ?? teamDefault,
+          title: dateTitle ?? rule.title ?? null,
+          dateTitle,
+          weeklyTitle: rule.title ?? null
         });
     }
     const extra = added.get(date);
@@ -107,7 +121,10 @@ export function nightsBetween(
         extra: true,
         note: extra.note ?? '',
         changeId: extra.id,
-        difficulty: asDifficulty(extra.difficulty) ?? teamDefault
+        difficulty: asDifficulty(extra.difficulty) ?? teamDefault,
+        title: dateTitle,
+        dateTitle,
+        weeklyTitle: null
       });
     }
   }
@@ -171,13 +188,17 @@ export function difficultyOf(night: Pick<RaidNight, 'difficulty'>) {
 export const nightTitle = (night: Pick<RaidNight, 'optional' | 'extra'>) =>
   night.optional ? 'Optional night' : night.extra ? 'Extra night' : 'Raid night';
 
-// How a night is headed on the calendar (Kat, 2026-10-06): a normal night with
-// a difficulty is headed by it, since "Raid night" on every tile says nothing.
-// An optional or extra night keeps its word, with the difficulty beside it.
-export function nightHeading(night: Pick<RaidNight, 'optional' | 'extra' | 'difficulty'>) {
+// How a night is headed on the calendar (Kat, 2026-10-06): its own title
+// first (#1478), with its word ("Optional night", "Extra night") and its
+// difficulty beside it. Without one, a normal night with a difficulty is
+// headed by it, since "Raid night" on every tile says nothing; an optional or
+// extra night keeps its word, with the difficulty beside it.
+export function nightHeading(night: Pick<RaidNight, 'optional' | 'extra' | 'difficulty' | 'title'>) {
   const level = difficultyOf(night);
-  if (level && !night.optional && !night.extra) return { title: level.label, titleClass: level.className, level: null };
-  return { title: nightTitle(night), titleClass: '', level };
+  const word = night.optional || night.extra ? nightTitle(night) : null;
+  if (night.title) return { title: night.title, titleClass: '', word, level };
+  if (level && !word) return { title: level.label, titleClass: level.className, word: null, level: null };
+  return { title: nightTitle(night), titleClass: '', word: null, level };
 }
 
 // Statuses

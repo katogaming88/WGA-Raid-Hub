@@ -5448,6 +5448,12 @@
           "type": "text",
           "nullable": true,
           "comment": "Heroic, Mythic or Heroic into Mythic for this weekly night (#1246); null follows the team default in team_schedule_settings. raid_night_info() counts heroic_into_mythic as mythic."
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "nullable": true,
+          "comment": "This weekly night's own title (#1478), such as \"Mythic Prog\"; null is headed by the night's difficulty where it is shown. A date in raid_night_titles takes its place for that date only."
         }
       ],
       "indexes": [
@@ -5479,6 +5485,16 @@
           "referenced_table": "",
           "columns": [
             "difficulty"
+          ]
+        },
+        {
+          "name": "raid_schedule_title_check",
+          "type": "CHECK",
+          "def": "CHECK ((((char_length(title) \u003e= 1) AND (char_length(title) \u003c= 40)) AND (title = btrim(title))))",
+          "table": "public.raid_schedule",
+          "referenced_table": "",
+          "columns": [
+            "title"
           ]
         },
         {
@@ -14629,6 +14645,87 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.raid_night_titles",
+      "type": "BASE TABLE",
+      "comment": "A title for one raid date (#1478): \"Rename this night\" on the night's page. It covers every night on that date and wins over raid_schedule.title; the next week goes back to the weekly title. Written by the officers who write raid_schedule.",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_night_titles_pkey",
+          "def": "CREATE UNIQUE INDEX raid_night_titles_pkey ON public.raid_night_titles USING btree (team_id, raid_date)",
+          "table": "public.raid_night_titles",
+          "columns": [
+            "team_id",
+            "raid_date"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_night_titles_title_check",
+          "type": "CHECK",
+          "def": "CHECK ((((char_length(title) \u003e= 1) AND (char_length(title) \u003c= 40)) AND (title = btrim(title))))",
+          "table": "public.raid_night_titles",
+          "referenced_table": "",
+          "columns": [
+            "title"
+          ]
+        },
+        {
+          "name": "raid_night_titles_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.raid_night_titles",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_night_titles_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id, raid_date)",
+          "table": "public.raid_night_titles",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "raid_date"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_raid_night_titles_updated_at",
+          "def": "CREATE TRIGGER trg_raid_night_titles_updated_at BEFORE UPDATE ON public.raid_night_titles FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -16914,6 +17011,19 @@
     },
     {
       "table": "public.team_attendance_posts",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_night_titles",
       "columns": [
         "team_id"
       ],

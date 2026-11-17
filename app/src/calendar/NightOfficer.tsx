@@ -2,16 +2,17 @@ import { useId, useState, type FormEvent } from 'react';
 import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
 import { useTeam } from '../data/address';
-import { longDay, shortDay, type CancelledNight, type RaidNight } from './calendar';
+import { longDay, nightHeading, shortDay, type CancelledNight, type RaidNight } from './calendar';
 import {
   asDifficulty,
   DIFFICULTIES,
   DIFFICULTY_LABELS,
   extraNightProblem,
   NEW_EXTRA_NIGHT,
+  TITLE_MAX,
   type ExtraNight
 } from './schedule';
-import { useAddDateChange, useRemoveDateChange } from './useSchedule';
+import { useAddDateChange, useRemoveDateChange, useRenameNight } from './useSchedule';
 
 // One-off schedule changes, made from the day itself (#1361, Kat 2026-10-06):
 // cancel a night from its own page, bring a cancelled one back, or add an
@@ -21,10 +22,15 @@ import { useAddDateChange, useRemoveDateChange } from './useSchedule';
 // The Officer bar on a raid night's page.
 export function NightOfficerBar({ night, teamMemberId }: { night: RaidNight; teamMemberId: number | null }) {
   const [open, setOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   return (
     <div className="card officer-bar">
       <span className="eyebrow">Officer</span>
       <span className="grow" />
+      <button type="button" className="button" onClick={() => setRenaming(true)}>
+        Rename this night
+      </button>
+      {renaming && <RenameDialog night={night} onClose={() => setRenaming(false)} />}
       <button type="button" className="button" onClick={() => setOpen(true)}>
         {night.extra ? 'Remove this extra night' : 'Cancel this night'}
       </button>
@@ -35,6 +41,68 @@ export function NightOfficerBar({ night, teamMemberId }: { night: RaidNight; tea
           <CancelDialog night={night} teamMemberId={teamMemberId} onClose={() => setOpen(false)} />
         ))}
     </div>
+  );
+}
+
+// A title for this date only (Kat, 2026-10-06): the next week goes back to
+// the weekly night's title. Empty takes this date's own title off.
+function RenameDialog({ night, onClose }: { night: RaidNight; onClose: () => void }) {
+  const team = useTeam();
+  const { announce } = useStatus();
+  const rename = useRenameNight(team.id);
+  const [title, setTitle] = useState(night.dateTitle ?? '');
+  const titleId = useId();
+  const day = longDay(night.date);
+  // What the night is headed by without a title of its own for this date.
+  const usual = nightHeading({ ...night, title: night.weeklyTitle }).title;
+
+  const onSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    rename.mutate(
+      { date: night.date, title },
+      {
+        onSuccess: () => {
+          announce('success', title.trim() ? `${day} is now ${title.trim()}.` : `${day} has its usual title again.`);
+          onClose();
+        }
+      }
+    );
+  };
+
+  return (
+    <Dialog title={`Rename ${day}?`} onClose={onClose} busy={rename.isPending}>
+      <form onSubmit={onSubmit} noValidate>
+        <p>Only this date. Raiders see the title on the calendar. Next week goes back to the usual title.</p>
+        <div className="field">
+          <label className="field-label" htmlFor={titleId}>
+            Title
+          </label>
+          <input
+            id={titleId}
+            className="input"
+            value={title}
+            maxLength={TITLE_MAX}
+            placeholder={usual}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <p className="field-hint">Leave it empty to show {usual}.</p>
+        </div>
+        {rename.isError && (
+          <p className="form-error" role="alert">
+            That did not save: {rename.error.message}
+          </p>
+        )}
+        <div className="dialog-actions">
+          <span className="grow" />
+          <button type="button" className="button" onClick={onClose} disabled={rename.isPending}>
+            Keep it as it is
+          </button>
+          <button type="submit" className="button button-primary" disabled={rename.isPending}>
+            {rename.isPending ? 'Saving…' : 'Save the title'}
+          </button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 

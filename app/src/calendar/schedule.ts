@@ -26,6 +26,9 @@ export const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thurs
 // can say so. A row saved with another zone keeps it as an extra choice.
 export const TIMEZONES = ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles'];
 
+// A night's title (#1478), as long as the database allows.
+export const TITLE_MAX = 40;
+
 // One weekly night as the editor reads it.
 export type WeeklyNight = {
   id: number;
@@ -36,6 +39,7 @@ export type WeeklyNight = {
   active: boolean;
   is_optional: boolean;
   difficulty: string | null;
+  title: string | null;
 };
 
 // The editable copy of a weekly night. `id` is null until a new night saves.
@@ -48,6 +52,8 @@ export type NightDraft = {
   optional: boolean;
   active: boolean;
   difficulty: Difficulty | null;
+  // Its own title (#1478); empty is headed by the difficulty.
+  title: string;
 };
 
 // Postgres hands a time back as "HH:MM:SS"; a time input wants "HH:MM".
@@ -61,7 +67,8 @@ export const draftOf = (n: WeeklyNight): NightDraft => ({
   timezone: n.timezone,
   optional: n.is_optional,
   active: n.active,
-  difficulty: asDifficulty(n.difficulty)
+  difficulty: asDifficulty(n.difficulty),
+  title: n.title ?? ''
 });
 
 // A new weekly night starts where the current site's did: 8 PM Eastern, three
@@ -74,7 +81,8 @@ export const NEW_NIGHT: NightDraft = {
   timezone: 'America/New_York',
   optional: false,
   active: true,
-  difficulty: null
+  difficulty: null,
+  title: ''
 };
 
 export const sameDraft = (a: NightDraft, b: NightDraft) =>
@@ -84,7 +92,8 @@ export const sameDraft = (a: NightDraft, b: NightDraft) =>
   a.timezone === b.timezone &&
   a.optional === b.optional &&
   a.active === b.active &&
-  a.difficulty === b.difficulty;
+  a.difficulty === b.difficulty &&
+  a.title === b.title;
 
 // Why a weekly night cannot save yet, or null when it can.
 export function draftProblem(d: NightDraft): string | null {
@@ -92,6 +101,7 @@ export function draftProblem(d: NightDraft): string | null {
   if (!d.start) return 'Give the night a start time.';
   if (!Number.isInteger(minutes) || minutes < 15) return 'A night is at least 15 minutes long.';
   if (!d.timezone.trim()) return 'Choose a timezone.';
+  if (d.title.trim().length > TITLE_MAX) return `A title is at most ${TITLE_MAX} characters.`;
   return null;
 }
 
@@ -103,7 +113,8 @@ export const nightRow = (d: NightDraft) => ({
   timezone: d.timezone.trim(),
   is_optional: d.optional,
   active: d.active,
-  difficulty: d.difficulty
+  difficulty: d.difficulty,
+  title: d.title.trim() || null
 });
 
 // The audit log line the current site writes for a weekly night, word for

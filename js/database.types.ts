@@ -2321,6 +2321,35 @@ export type Database = {
           },
         ]
       }
+      raid_night_titles: {
+        Row: {
+          raid_date: string
+          team_id: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          raid_date: string
+          team_id: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          raid_date?: string
+          team_id?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raid_night_titles_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       raid_rsvp_reminders_sent: {
         Row: {
           checkpoint: string
@@ -2450,6 +2479,7 @@ export type Database = {
           start_time: string
           team_id: number
           timezone: string
+          title: string | null
           weekday: number
         }
         Insert: {
@@ -2462,6 +2492,7 @@ export type Database = {
           start_time: string
           team_id: number
           timezone?: string
+          title?: string | null
           weekday: number
         }
         Update: {
@@ -2474,6 +2505,7 @@ export type Database = {
           start_time?: string
           team_id?: number
           timezone?: string
+          title?: string | null
           weekday?: number
         }
         Relationships: [

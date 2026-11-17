@@ -32,7 +32,7 @@ export function useSchedule(teamId: number) {
       // team-read-guard: one row per raid night of the week
       client
         .from('raid_schedule')
-        .select('weekday, start_time, duration_minutes, is_optional, difficulty')
+        .select('weekday, start_time, duration_minutes, is_optional, difficulty, title')
         .eq('team_id', teamId)
         .eq('active', true)
         .order('weekday'),
@@ -51,18 +51,39 @@ export function useSchedule(teamId: number) {
   });
 }
 
-// One-off changes (a cancelled night, an extra one) between two dates.
+// One-off changes between two dates: a cancelled night, an extra one, and a
+// title for one date (#1478), keyed by date.
+export type ScheduleChanges = { changes: ScheduleChange[]; titles: Record<string, string> };
+
 export function useScheduleChanges(teamId: number, from: string, to: string) {
-  return useSupabaseQuery<ScheduleChange[]>(['calendar-changes', teamId, from, to], (client) =>
-    // team-read-guard: one-off changes inside a date window, a few a month
-    client
-      .from('raid_schedule_exceptions')
-      .select('id, raid_date, exception_type, start_time, duration_minutes, is_optional, note, difficulty')
-      .eq('team_id', teamId)
-      .gte('raid_date', from)
-      .lte('raid_date', to)
-      .order('raid_date')
-  );
+  return useSupabaseQuery<ScheduleChanges>(['calendar-changes', teamId, from, to], async (client) => {
+    const [changes, titles] = await Promise.all([
+      // team-read-guard: one-off changes inside a date window, a few a month
+      client
+        .from('raid_schedule_exceptions')
+        .select('id, raid_date, exception_type, start_time, duration_minutes, is_optional, note, difficulty')
+        .eq('team_id', teamId)
+        .gte('raid_date', from)
+        .lte('raid_date', to)
+        .order('raid_date'),
+      // team-read-guard: renamed nights inside a date window, a few a month
+      client
+        .from('raid_night_titles')
+        .select('raid_date, title')
+        .eq('team_id', teamId)
+        .gte('raid_date', from)
+        .lte('raid_date', to)
+    ]);
+    const error = changes.error ?? titles.error;
+    if (error) return { data: null, error };
+    return {
+      data: {
+        changes: (changes.data ?? []) as ScheduleChange[],
+        titles: Object.fromEntries((titles.data ?? []).map((t) => [t.raid_date, t.title]))
+      },
+      error: null
+    };
+  });
 }
 
 // Whose answers the reader may see (docs/database-decisions.md, 2026-09-16):

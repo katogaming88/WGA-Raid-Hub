@@ -68,7 +68,11 @@ const PLAYER = {
   classes_specs: { class: 'Mage', spec: 'Frost', role: 'Ranged' }
 };
 
-function handlers(role: string, changes: ScheduleChange[] = []): FakeHandlers {
+function handlers(
+  role: string,
+  changes: ScheduleChange[] = [],
+  titles: { raid_date: string; title: string }[] = []
+): FakeHandlers {
   const base = seededHandlers();
   return seededHandlers({
     session: fakeSession({ battlenet: 'A#1', discord: { id: 'd', name: 'Ana' } }),
@@ -87,6 +91,7 @@ function handlers(role: string, changes: ScheduleChange[] = []): FakeHandlers {
             : [{ weekday: WEEKDAY, start_time: '20:00:00', duration_minutes: 180, is_optional: false }]
         };
       if (read.table === 'raid_schedule_exceptions') return { data: changes };
+      if (read.table === 'raid_night_titles') return { data: titles };
       if (read.table === 'team_schedule_settings') return { data: { default_difficulty: 'mythic' } };
       if (read.table === 'players') return { data: [PLAYER] };
       if (read.table === 'raid_rsvps') return { data: [] };
@@ -165,7 +170,8 @@ describe('the Edit schedule panel', () => {
           timezone: 'America/New_York',
           is_optional: false,
           active: true,
-          difficulty: 'heroic'
+          difficulty: 'heroic',
+          title: null
         },
         filters: [['eq', 'id', 7]]
       })
@@ -181,6 +187,21 @@ describe('the Edit schedule panel', () => {
           p_detail: `${DAY} 20:00 (Heroic)`
         }
       ])
+    );
+  });
+
+  it('saves a weekly night’s title, trimmed', async () => {
+    const { user, editor, client } = await openEditor();
+    await user.type(await editor.findByRole('textbox', { name: `${DAY} title` }), ' Mythic Prog ');
+    await user.click(editor.getByRole('button', { name: 'Save' }));
+    await vi.waitFor(() =>
+      expect(client.writes).toContainEqual(
+        expect.objectContaining({
+          table: 'raid_schedule',
+          method: 'update',
+          values: expect.objectContaining({ title: 'Mythic Prog' })
+        })
+      )
     );
   });
 
@@ -306,6 +327,54 @@ describe('changes to one date', () => {
     );
   });
 
+  it('renames one night from its own page', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(`/g/wga/t/phoenix/calendar?date=${FUTURE_NIGHT}`, handlers('officer'));
+    await user.click(await screen.findByRole('button', { name: 'Rename this night' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    const title = dialog.getByRole('textbox', { name: 'Title' });
+    expect(title).toHaveAttribute('placeholder', 'Mythic');
+    await user.type(title, 'Ulatek Prog');
+    await user.click(dialog.getByRole('button', { name: 'Save the title' }));
+    await vi.waitFor(() =>
+      expect(client.writes).toContainEqual({
+        table: 'raid_night_titles',
+        method: 'upsert',
+        values: { team_id: 1, raid_date: FUTURE_NIGHT, title: 'Ulatek Prog' },
+        filters: []
+      })
+    );
+  });
+
+  it('shows a renamed night’s title, and an empty title takes it off', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(
+      `/g/wga/t/phoenix/calendar?date=${FUTURE_NIGHT}`,
+      handlers('officer', [], [{ raid_date: FUTURE_NIGHT, title: 'Costume night' }])
+    );
+    await user.click(await screen.findByRole('button', { name: 'Rename this night' }));
+    expect(screen.getByText(/Costume night/)).toBeInTheDocument();
+    const dialog = within(await screen.findByRole('dialog'));
+    await user.clear(dialog.getByRole('textbox', { name: 'Title' }));
+    await user.click(dialog.getByRole('button', { name: 'Save the title' }));
+    await vi.waitFor(() =>
+      expect(client.writes).toContainEqual({
+        table: 'raid_night_titles',
+        method: 'delete',
+        values: undefined,
+        filters: [
+          ['eq', 'team_id', 1],
+          ['eq', 'raid_date', FUTURE_NIGHT]
+        ]
+      })
+    );
+  });
+
+  it('puts a renamed night’s title on its month tile', async () => {
+    renderApp(MONTH, handlers('raider', [], [{ raid_date: FUTURE_NIGHT, title: 'Costume night' }]));
+    expect(await screen.findAllByRole('link', { name: /, Costume night, 8:00 PM, Mythic/ })).not.toHaveLength(0);
+  });
+
   it('changes nothing about a date that has passed', async () => {
     renderApp('/g/wga/t/phoenix/calendar?date=2026-05-13', handlers('officer'));
     expect(await screen.findByText('The team has no raid on this date.')).toBeInTheDocument();
@@ -345,6 +414,22 @@ describe('the schedule’s rules', () => {
       ['2030-05-14', 'mythic'],
       ['2030-05-16', 'heroic']
     ]);
+  });
+
+  it('titles a night by its date’s own title, then its weekly night’s, never carrying a rename forward', () => {
+    const rules = [
+      { weekday: 2, start_time: '20:00:00', duration_minutes: 180, is_optional: false, title: 'Mythic Prog' }
+    ];
+    const { nights } = nightsBetween(rules, [], '2030-05-07', '2030-05-21', 'mythic', {
+      '2030-05-14': 'Ulatek Prog'
+    });
+    expect(nights.map((n) => n.title)).toEqual(['Mythic Prog', 'Ulatek Prog', 'Mythic Prog']);
+  });
+
+  it('heads a titled night by its title, with its word and difficulty beside it', () => {
+    const base = { optional: false, extra: false, difficulty: 'mythic' as const, title: 'Costume night' };
+    expect(nightHeading(base)).toMatchObject({ title: 'Costume night', word: null, level: { label: 'Mythic' } });
+    expect(nightHeading({ ...base, extra: true })).toMatchObject({ title: 'Costume night', word: 'Extra night' });
   });
 
   it('heads a normal night by its difficulty, and keeps the word on optional and extra nights', () => {
