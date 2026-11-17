@@ -11,6 +11,7 @@ import { RankPermissionsSection, RanksSection } from './RanksSettingsPage';
 import { clampInt, ENCHANT_CHECKS, VAULT_ROWS, type EnchantCheck, type VaultRule } from './settings';
 import {
   useGeneralSettings,
+  useSaveAttendanceTentative,
   useSaveAuditRules,
   useSaveRosterTargets,
   useSaveSeasonView,
@@ -76,6 +77,7 @@ function TeamBasics({ teamId }: { teamId: number }) {
           <RosterTargetsCard teamId={teamId} settings={settings} />
           <TrialThresholdsCard teamId={teamId} settings={settings} />
           <AuditRulesCard teamId={teamId} settings={settings} />
+          <AttendanceCard teamId={teamId} settings={settings} />
         </div>
       )}
     </DataState>
@@ -272,6 +274,56 @@ function WclUrlCard({ teamId, settings }: { teamId: number; settings: GeneralSet
           value={url}
           onChange={(e) => setUrl(e.target.value)}
         />
+        <button type="button" className="button button-primary" onClick={onSave} disabled={save.isPending}>
+          {save.isPending ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// #1846: what a Calendar RSVP of Tentative becomes when the raider isn't in
+// the log. The other RSVPs fill in on their own; this one is the team's call
+// (Kat, 2026-11-16). The leave statuses are left out (#1860).
+const TENTATIVE_CHOICES: [string, string][] = [
+  ['', 'Needs a look (an officer picks)'],
+  ['Present', 'Present (100%)'],
+  ['Bench', 'Bench (100%)'],
+  ['Late (with notice)', 'Late (with notice) (90%)'],
+  ['Excused', 'Excused (80%)'],
+  ['Late (no notice)', 'Late (no notice) (50%)'],
+  ['No Show', 'No Show (0%)']
+];
+
+function AttendanceCard({ teamId, settings }: { teamId: number; settings: GeneralSettings }) {
+  const { announce } = useStatus();
+  const [value, setValue] = useState(settings.attendanceTentative ?? '');
+  const save = useSaveAttendanceTentative(teamId);
+
+  const onSave = () =>
+    save.mutate(value || null, {
+      onSuccess: () => announce('success', 'Saved!'),
+      onError: (error) => announce('error', errorMessage(error))
+    });
+
+  return (
+    <div className="card settings-card">
+      <h2>Attendance</h2>
+      <p className="text-muted">
+        When a raider says Absent or Late in the Calendar before the raid starts, attendance marks them Excused or Late
+        (with notice) on its own. Tentative is your call:
+      </p>
+      <label className="field-label" htmlFor="attendance-tentative">
+        Said Tentative, then wasn't in the log
+      </label>
+      <div className="settings-row">
+        <select id="attendance-tentative" className="input" value={value} onChange={(e) => setValue(e.target.value)}>
+          {TENTATIVE_CHOICES.map(([status, label]) => (
+            <option key={label} value={status}>
+              {label}
+            </option>
+          ))}
+        </select>
         <button type="button" className="button button-primary" onClick={onSave} disabled={save.isPending}>
           {save.isPending ? 'Saving…' : 'Save'}
         </button>

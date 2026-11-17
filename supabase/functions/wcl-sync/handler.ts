@@ -555,6 +555,28 @@ export function decideLineupStatus(
   return { status: null, source: 'WCL (Late?)' };
 }
 
+// #1846: what the night's log made of a raider, with their Calendar RSVP
+// (one made before the start, see attendance_rsvps_before_start) laid over
+// it. Only a flag is ever filled in: a raider the log already settled stays
+// as the log says. Absent -> Excused and Late -> Late (with notice) are fixed
+// (Kat, 2026-11-16); Tentative becomes the team's choice, and without one
+// stays a flag for an officer.
+type SyncedStatus = { status: string | null; source: string };
+
+export function applyRsvp(
+  decided: SyncedStatus,
+  rsvp: string | undefined,
+  tentativeStatus: string | null
+): SyncedStatus {
+  const filled = (status: string) => ({ status, source: 'Calendar (RSVP)' });
+  if (decided.source === 'WCL (Late?)' && rsvp === 'Late') return filled('Late (with notice)');
+  if (decided.source === 'WCL (Absent?)') {
+    if (rsvp === 'Absent') return filled('Excused');
+    if (rsvp === 'Tentative' && tentativeStatus) return filled(tentativeStatus);
+  }
+  return decided;
+}
+
 // Two roster raiders sharing a first name can't be told apart in WCL data by
 // name alone -- excluded here rather than guessed at, so a real match never
 // gets written to the wrong player_id in raid_night_participation. (#1242;
@@ -858,6 +880,24 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
   // so new rows for that date must preserve it rather than default to false.
   const excludedDates = new Set(existingStatusRows.filter((r: any) => r.report_excluded).map((r: any) => r.raid_date));
 
+  // #1846: RSVPs made before each night's start, for the nights this run
+  // reads (a report already saved is never read again), and what the team
+  // counts a Tentative no-show as (null: an officer decides).
+  const newDates = [
+    ...new Set(reports.filter((r) => !cachedReportIds.has(r.code)).map((r) => formatReportDate(r.startTime)))
+  ];
+  const { data: rsvpRows, error: rsvpError } = newDates.length
+    ? await supabase.rpc('attendance_rsvps_before_start', { p_team_id: teamId, p_dates: newDates })
+    : { data: [], error: null };
+  if (rsvpError) throw new Error(rsvpError.message);
+  const rsvpByKey = new Map<string, string>(
+    ((rsvpRows || []) as Array<{ player_id: number; raid_date: string; status: string }>).map((r) => [
+      `${r.player_id}|${r.raid_date}`,
+      r.status
+    ])
+  );
+  const tentativeStatus: string | null = config.attendanceTentative || null;
+
   let mainNights = 0;
   let excluded = 0;
   let latestNewZoneId: number | null = null;
@@ -1052,6 +1092,10 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
         // until an officer picks Bench, Excused, No Show or the rest.
         rowsToUpsert.set(key, { ...base, status: null, source: 'WCL (Absent?)' });
       }
+
+      const row = rowsToUpsert.get(key);
+      const withRsvp = applyRsvp(row, rsvpByKey.get(key), tentativeStatus);
+      if (withRsvp !== row) rowsToUpsert.set(key, { ...row, ...withRsvp });
     }
 
     // #1845: in the log, matching nobody on the roster -- a pug, a guest, an

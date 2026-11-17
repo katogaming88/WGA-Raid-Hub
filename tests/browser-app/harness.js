@@ -274,6 +274,8 @@ export async function openApp(browser, port, state) {
     // Scoring table Commit writes to.
     attendance: [],
     scoring: [],
+    // Who was in a night's log but not on the roster (#1846).
+    attendance_log_names: [],
     // Officer Settings (#1357): season/raid catalog reads and the WCL
     // performance-baseline count, empty unless a state lists them.
     raid_zones: [],
@@ -363,6 +365,15 @@ export async function openApp(browser, port, state) {
       // open the Recruits page (#1549): nobody, unless the state says otherwise.
       if (rest === 'rpc/team_recruits' && !state.rpc?.team_recruits) {
         return route.fulfill(json({ access: 'manage', min_item_level: null, needs: [], recruits: [] }));
+      }
+      // The sidebar counts attendance items needing a look for anyone who may
+      // set them (#1846): none, unless the state says otherwise. So are the
+      // RSVPs the list's reason lines read.
+      if (rest === 'rpc/attendance_items_waiting' && !state.rpc?.attendance_items_waiting) {
+        return route.fulfill(json(0));
+      }
+      if (rest === 'rpc/attendance_rsvps_before_start' && !state.rpc?.attendance_rsvps_before_start) {
+        return route.fulfill(json([]));
       }
       // Guild creation is off unless the state says otherwise (#1226).
       if (rest === 'rpc/guild_creation_open' && !state.rpc?.guild_creation_open) return route.fulfill(json(false));

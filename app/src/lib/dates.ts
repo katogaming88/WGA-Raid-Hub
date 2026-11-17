@@ -31,6 +31,7 @@ const MONTH = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' 
 
 const INSTANT_SHORT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
 const INSTANT_DATE = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
+const INSTANT_TIME = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -71,6 +72,9 @@ export const formatInstantDate = (instant: string | Date): string => INSTANT_DAT
 
 // "Aug 27" for an instant, in the viewer's own zone.
 export const formatInstantShort = (instant: string): string => INSTANT_SHORT.format(new Date(instant));
+
+// "3:23 PM" for an instant, in the viewer's own zone.
+export const formatInstantTime = (instant: string | Date): string => INSTANT_TIME.format(new Date(instant));
 
 // The line every page that shows an instant carries (#905): the viewer's zone
 // by its short name and its IANA name, read from the browser.

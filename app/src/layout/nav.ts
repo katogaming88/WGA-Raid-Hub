@@ -41,6 +41,8 @@ export function navGroups(
     council?: boolean;
     // Recruits waiting on officers (#1549), on the Recruits page and its group.
     recruitsWaiting?: number;
+    // Attendance items needing an officer's look (#1846), on Manage and its group.
+    attendanceWaiting?: number;
     // Someone with no team and no guild rank here (#1546): the apply pages
     // are all the guild offers them, so the rest of the menu is left out.
     visitor?: boolean;
@@ -101,7 +103,13 @@ export function navGroups(
     },
     {
       heading: 'Officer',
-      items: officerMenu(`${base.team}/officer`, show.council ?? false, show.can, show.recruitsWaiting ?? 0)
+      items: officerMenu(
+        `${base.team}/officer`,
+        show.council ?? false,
+        show.can,
+        show.recruitsWaiting ?? 0,
+        show.attendanceWaiting ?? 0
+      )
     },
     {
       heading: 'Site',
@@ -171,10 +179,11 @@ function officerMenu(
   o: string,
   council: boolean,
   can: (ability: Ability) => boolean,
-  recruitsWaiting: number
+  recruitsWaiting: number,
+  attendanceWaiting: number
 ): NavItem[] {
   const allowed = (page: NavPage) => canAny(can, officerAbility(page.to));
-  return allMenu(o, council, recruitsWaiting)
+  return allMenu(o, council, recruitsWaiting, attendanceWaiting)
     .map((item) => {
       const pages = (item.pages ?? []).filter(allowed);
       return { ...item, pages, to: pages[0]?.to ?? item.to };
@@ -217,7 +226,12 @@ export function officerAbility(path: string): Ability | readonly Ability[] {
 export const canAny = (can: (ability: Ability) => boolean, need: Ability | readonly Ability[]) =>
   typeof need === 'string' ? can(need) : need.some(can);
 
-function allMenu(o: string, council: boolean, recruitsWaiting: number): (NavItem & { pages: NavPage[] })[] {
+function allMenu(
+  o: string,
+  council: boolean,
+  recruitsWaiting: number,
+  attendanceWaiting: number
+): (NavItem & { pages: NavPage[] })[] {
   return [
     {
       label: 'Loot',
@@ -234,8 +248,9 @@ function allMenu(o: string, council: boolean, recruitsWaiting: number): (NavItem
       label: 'Attendance',
       icon: 'chart',
       to: `${o}/attendance`,
+      count: attendanceWaiting,
       pages: [
-        { label: 'Manage', to: `${o}/attendance` },
+        { label: 'Manage', to: `${o}/attendance`, count: attendanceWaiting },
         { label: 'Scores', to: `${o}/attendance/scores` },
         { label: 'Boss groups', to: `${o}/groups` }
       ]

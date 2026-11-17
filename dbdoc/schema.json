@@ -79,7 +79,7 @@
         {
           "name": "attendance_source_check",
           "type": "CHECK",
-          "def": "CHECK ((source = ANY (ARRAY['WCL'::text, 'Officer'::text, 'Auto (Bench)'::text, 'WCL (Late?)'::text, 'WCL (Absent?)'::text])))",
+          "def": "CHECK ((source = ANY (ARRAY['WCL'::text, 'Officer'::text, 'Auto (Bench)'::text, 'WCL (Late?)'::text, 'WCL (Absent?)'::text, 'Calendar (RSVP)'::text])))",
           "table": "public.attendance",
           "referenced_table": "",
           "columns": [
@@ -18499,6 +18499,18 @@
       "name": "public.keep_officer_attendance",
       "return_type": "trigger",
       "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.attendance_rsvps_before_start",
+      "return_type": "record",
+      "arguments": "p_team_id integer, p_dates date[]",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_attendance_tentative",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer, p_status text",
       "type": "FUNCTION"
     }
   ],

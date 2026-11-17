@@ -5690,6 +5690,15 @@ export type Database = {
         Returns: undefined
       }
       attendance_items_waiting: { Args: { p_team_id: number }; Returns: number }
+      attendance_rsvps_before_start: {
+        Args: { p_dates: string[]; p_team_id: number }
+        Returns: {
+          note: string
+          player_id: number
+          raid_date: string
+          status: string
+        }[]
+      }
       auth_user_for_discord_id: {
         Args: { p_discord_id: string }
         Returns: string
@@ -6559,6 +6568,10 @@ export type Database = {
       set_team_archived: {
         Args: { p_archived: boolean; p_team_id: number }
         Returns: undefined
+      }
+      set_team_attendance_tentative: {
+        Args: { p_status: string; p_team_id: number }
+        Returns: Json
       }
       set_team_audit_rules: {
         Args: { p_enchant_check: string; p_team_id: number; p_vault_rule: Json }

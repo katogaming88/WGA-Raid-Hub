@@ -1,6 +1,6 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
-import type { FullAttendanceRow } from './attendance';
+import { firstLineupBoss, type FullAttendanceRow, type LastRun, type LookContext } from './attendance';
 
 async function writeAuditLog(
   client: Client,
@@ -26,6 +26,106 @@ async function writeAuditLog(
 }
 
 const rowsKey = (teamId: number) => ['attendance-rows', teamId] as const;
+// #1846: the menu's count; refreshed whenever an officer sets a status.
+export const waitingKey = (teamId: number) => ['attendance-waiting', teamId] as const;
+const lastRunKey = (teamId: number) => ['attendance-last-run', teamId] as const;
+
+// The same count the hourly run commits at zero, so the menu and the run agree.
+export function useAttendanceWaiting(teamId: number, enabled: boolean) {
+  return useSupabaseQuery<number>(
+    waitingKey(teamId),
+    async (client) => {
+      const result = await client.rpc('attendance_items_waiting', { p_team_id: teamId });
+      return result.error ? { data: null, error: result.error } : { data: result.data ?? 0, error: null };
+    },
+    { enabled }
+  );
+}
+
+export function useLastRun(teamId: number) {
+  return useSupabaseQuery<LastRun | null>(lastRunKey(teamId), async (client) => {
+    const result = await client
+      .from('team_settings')
+      .select('attendance_sync_last_run')
+      .eq('team_id', teamId)
+      .maybeSingle();
+    if (result.error) return { data: null, error: result.error };
+    const run = (result.data as { attendance_sync_last_run?: unknown } | null)?.attendance_sync_last_run;
+    return { data: (run as LastRun | null) ?? null, error: null };
+  });
+}
+
+type BossRow = { raid_date: string; encounter_id: number; position: number; skipped: boolean };
+type PlaceRow = { raid_date: string; encounter_id: number; player_id: number };
+
+export type LookDetails = LookContext & { logNames: { raid_date: string; character_name: string }[] };
+
+// What the Needs a look list's reason lines name, read only for the nights on
+// it: the lineup's first boss for a late raider, a Calendar RSVP made before
+// the start, and who was in the log but not on the roster.
+export function useLookDetails(teamId: number, lateDates: string[], dates: string[]) {
+  return useSupabaseQuery<LookDetails>(
+    ['attendance-look-details', teamId, lateDates.join(','), dates.join(',')],
+    async (client) => {
+      const none = { data: [] as never[], error: null };
+      const [bosses, places, encounters, rsvps, logNames] = await Promise.all([
+        lateDates.length
+          ? readAll<BossRow>((from, to) =>
+              client
+                .from('raid_night_bosses')
+                .select('raid_date, encounter_id, position, skipped')
+                .eq('team_id', teamId)
+                .in('raid_date', lateDates)
+                .order('raid_date')
+                .order('position')
+                .range(from, to)
+            )
+          : none,
+        lateDates.length
+          ? readAll<PlaceRow>((from, to) =>
+              client
+                .from('raid_night_lineups')
+                .select('raid_date, encounter_id, player_id')
+                .eq('team_id', teamId)
+                .in('raid_date', lateDates)
+                .order('id')
+                .range(from, to)
+            )
+          : none,
+        lateDates.length ? client.from('raid_encounters').select('id, name') : none,
+        dates.length ? client.rpc('attendance_rsvps_before_start', { p_team_id: teamId, p_dates: dates }) : none,
+        dates.length
+          ? readAll<{ raid_date: string; character_name: string }>((from, to) =>
+              client
+                .from('attendance_log_names')
+                .select('raid_date, character_name')
+                .eq('team_id', teamId)
+                .in('raid_date', dates)
+                .order('raid_date')
+                .order('character_name')
+                .range(from, to)
+            )
+          : none
+      ]);
+      const error = bosses.error ?? places.error ?? encounters.error ?? rsvps.error ?? logNames.error;
+      if (error) return { data: null, error };
+      const names = new Map(((encounters.data ?? []) as { id: number; name: string }[]).map((e) => [e.id, e.name]));
+      return {
+        data: {
+          firstBoss: firstLineupBoss(bosses.data ?? [], places.data ?? [], (id) => names.get(id)),
+          rsvps: new Map(
+            ((rsvps.data ?? []) as { player_id: number; raid_date: string; status: string }[]).map((r) => [
+              `${r.player_id}|${r.raid_date}`,
+              r.status
+            ])
+          ),
+          logNames: logNames.data ?? []
+        },
+        error: null
+      };
+    }
+  );
+}
 
 // Every attendance row the team has, id-ordered so paging is deterministic
 // (#707: unpaged, this silently stopped at 1000 rows).
@@ -62,7 +162,7 @@ export function useSetAttendanceStatus(teamId: number) {
       );
       return { data: null, error: null };
     },
-    { key: ['set-attendance-status', teamId], refreshes: [rowsKey(teamId)] }
+    { key: ['set-attendance-status', teamId], refreshes: [rowsKey(teamId), waitingKey(teamId)] }
   );
 }
 
