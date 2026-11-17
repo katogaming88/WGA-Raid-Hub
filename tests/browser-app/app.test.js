@@ -2003,7 +2003,8 @@ const STATES = [
   {
     label: 'attendance manage, officer, committing scores',
     ...ATTENDANCE_MANAGE,
-    click: 'role=button[name="Commit Attendance Scores"]'
+    // "Commit anyway" while anything needs a look (#1846).
+    click: 'role=button[name=/^Commit/]'
   },
   { label: 'settings general, officer', ...SETTINGS_GENERAL },
   { label: 'settings general, officer, light', ...SETTINGS_GENERAL, colorScheme: 'light' },
