@@ -4353,6 +4353,7 @@ export type Database = {
         Row: {
           channel_id: string | null
           content_key: string
+          covers_until: string | null
           finished_at: string | null
           message_id: string | null
           posted_at: string
@@ -4362,6 +4363,7 @@ export type Database = {
         Insert: {
           channel_id?: string | null
           content_key: string
+          covers_until?: string | null
           finished_at?: string | null
           message_id?: string | null
           posted_at?: string
@@ -4371,6 +4373,7 @@ export type Database = {
         Update: {
           channel_id?: string | null
           content_key?: string
+          covers_until?: string | null
           finished_at?: string | null
           message_id?: string | null
           posted_at?: string

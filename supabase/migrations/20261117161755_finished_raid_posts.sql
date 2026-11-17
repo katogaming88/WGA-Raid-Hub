@@ -32,6 +32,14 @@ alter table public.team_lineup_posts add column finished_at timestamp with time 
 comment on column public.team_lineup_posts.finished_at is
   'When the bot marked this week''s lineup post finished or deleted it, once the week''s last raid night had passed (#1825). A finished week is never edited or posted again.';
 
+-- Where the week ended as it was posted (the next post's time), so moving the
+-- posting time can't end a week already up before its last raid (CodeRabbit
+-- on PR #1866). Null on a row written before this.
+alter table public.team_lineup_posts add column covers_until timestamp with time zone;
+
+comment on column public.team_lineup_posts.covers_until is
+  'When this week''s post stopped covering raid nights as it was posted: the next post''s time then (#1825). The bot finishes the post once every raid night before this has passed, so a later change to the posting time can''t cut a posted week short.';
+
 create or replace function public.set_team_discord_after_raid(p_team_id integer, p_after_raid text)
  returns void
  language plpgsql

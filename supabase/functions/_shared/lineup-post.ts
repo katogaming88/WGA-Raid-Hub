@@ -45,7 +45,9 @@ export type LineupTeam = {
 export type TeamLineup = { team: LineupTeam; setting: LineupSetting };
 // One boss on a night's list, in pull order, with who is in for it.
 export type LineupBoss = { name: string; position: number; playerIds: number[] };
-export type WeekPost = { messageId: string | null; channelId: string | null; key: string };
+// coversUntil: when the post's week ended as it was posted (#1825), so a
+// later change to the posting time can't cut short a week already up.
+export type WeekPost = { messageId: string | null; channelId: string | null; key: string; coversUntil?: string };
 // The key of a week whose lineup was emptied after it posted.
 export const EMPTY_KEY = 'empty';
 export const WEEK_FINISHED = "This week's raids have finished.";
@@ -70,7 +72,9 @@ export interface LineupDb {
   previousWeek(teamId: number, before: string): Promise<string | null>;
   markPosted(teamId: number): Promise<void>;
   // The team's posted weeks not yet finished (#1825).
-  unfinishedWeeks(teamId: number): Promise<Array<{ weekOf: string; channelId: string; messageId: string }>>;
+  unfinishedWeeks(
+    teamId: number
+  ): Promise<Array<{ weekOf: string; channelId: string; messageId: string; coversUntil: string | null }>>;
   // Records that a week's post was finished or deleted, so it happens once.
   finishLineup(teamId: number, weekOf: string): Promise<void>;
 }
@@ -109,23 +113,27 @@ export function currentWeek(setting: LineupSetting, now: Date): { weekOf: string
   return { weekOf, due };
 }
 
+// When a week's post stops covering nights: the next post's time.
+// Seven days on at the same clock time, so a week the clocks change in
+// neither drops nor repeats the hour before the next post (fresh review on #1761).
+// The next post's own clock time, not this one's after a clock change
+// moved it (CodeRabbit on #1761).
+const weekEnd = (weekOf: string, setting: Pick<LineupSetting, 'time' | 'timezone'>) =>
+  zonedTimeToUtc(addDays(weekOf, 7), setting.time, setting.timezone);
+
 // The raid nights a week's post covers: every night starting in the seven
-// days from the time it was due.
+// days from the time it was due, or up to the end it was posted with.
 export async function weekNights(
   db: LineupDb,
   teamId: number,
-  week: { weekOf: string; due: Date },
+  week: { weekOf: string; due: Date; end?: Date },
   setting: Pick<LineupSetting, 'time' | 'timezone'>
 ): Promise<Array<{ raidDate: string; night: Night }>> {
   const dates = Array.from({ length: 9 }, (_, n) => addDays(week.weekOf, n - 1));
   const nights = await Promise.all(
     dates.map(async (raidDate) => ({ raidDate, night: await db.night(teamId, raidDate) }))
   );
-  // Seven days on at the same clock time, so a week the clocks change in
-  // neither drops nor repeats the hour before the next post (fresh review on #1761).
-  // The next post's own clock time, not this one's after a clock change
-  // moved it (CodeRabbit on #1761).
-  const end = zonedTimeToUtc(addDays(week.weekOf, 7), setting.time, setting.timezone).getTime();
+  const end = (week.end ?? weekEnd(week.weekOf, setting)).getTime();
   return nights.filter(({ raidDate, night }) => {
     if (!night.exists) return false;
     const at = startsAt(raidDate, night);
@@ -439,6 +447,7 @@ export async function syncLineup(ctx: LineupContext, { team, setting }: TeamLine
   const inWeek = await weekNights(ctx.db, team.id, week, setting);
   const nights = await gridsFor(ctx, team.id, coveredUntil ? inWeek.filter((n) => n.raidDate >= coveredUntil) : inWeek);
   const key = nights.length ? await keyOf(nights) : EMPTY_KEY;
+  const coversUntil = weekEnd(week.weekOf, setting).toISOString();
   if (!row && nights.length === 0) return 'no lineup';
   if (row?.key === key) return 'unchanged';
 
@@ -453,7 +462,7 @@ export async function syncLineup(ctx: LineupContext, { team, setting }: TeamLine
           throw new Error(`Discord answered ${removed.status} to the take-down`);
         }
       }
-      await ctx.db.updateLineup(team.id, week.weekOf, { messageId: null, channelId: null, key });
+      await ctx.db.updateLineup(team.id, week.weekOf, { messageId: null, channelId: null, key, coversUntil });
       return 'edited';
     }
     if (path) {
@@ -465,7 +474,12 @@ export async function syncLineup(ctx: LineupContext, { team, setting }: TeamLine
         files
       );
       if (edited.status === 200) {
-        await ctx.db.updateLineup(team.id, week.weekOf, { messageId: row.messageId, channelId: row.channelId, key });
+        await ctx.db.updateLineup(team.id, week.weekOf, {
+          messageId: row.messageId,
+          channelId: row.channelId,
+          key,
+          coversUntil
+        });
         return 'edited';
       }
       if (edited.status !== 403 && edited.status !== 404)
@@ -495,7 +509,7 @@ export async function syncLineup(ctx: LineupContext, { team, setting }: TeamLine
     files
   );
   if (sent.status !== 200 || !sent.body?.id) throw new Error(`Discord answered ${sent.status} to the post`);
-  const post = { messageId: sent.body.id as string, channelId: setting.channelId, key };
+  const post = { messageId: sent.body.id as string, channelId: setting.channelId, key, coversUntil };
   const takeDown = () =>
     ctx.discord('DELETE', `/channels/${setting.channelId}/messages/${sent.body.id}`).catch(() => null);
   if (row) {
@@ -528,26 +542,39 @@ export async function syncLineup(ctx: LineupContext, { team, setting }: TeamLine
 // deleted as the team chose, once each (#1825). A week is over 4 hours after
 // its last raid night starts; until then the post is left alone, so a week
 // raiding Tuesday and Thursday keeps its post through Thursday's raid.
-export async function finishLineups(ctx: LineupContext, { team, setting }: TeamLineup): Promise<number> {
-  let finished = 0;
+// One week failing (Discord down) is left for the next run and the rest go
+// on (CodeRabbit on #1866).
+export async function finishLineups(
+  ctx: LineupContext,
+  { team, setting }: TeamLineup
+): Promise<{ finished: number; failed: number }> {
+  const counts = { finished: 0, failed: 0 };
   for (const row of await ctx.db.unfinishedWeeks(team.id)) {
-    const week = { weekOf: row.weekOf, due: zonedTimeToUtc(row.weekOf, setting.time, setting.timezone) };
-    const nights = await weekNights(ctx.db, team.id, week, setting);
-    // A week whose nights were all cancelled is over once its seven days are.
-    const over = nights.length
-      ? nights.every((n) => hasPassed(n.raidDate, n.night, ctx.now))
-      : ctx.now.getTime() >= week.due.getTime() + 7 * DAY_MS;
-    if (!over) continue;
-    await finishPost(
-      ctx.discord,
-      `/channels/${row.channelId}/messages/${row.messageId}`,
-      team.afterRaid,
-      WEEK_FINISHED
-    );
-    await ctx.db.finishLineup(team.id, row.weekOf);
-    finished++;
+    try {
+      // The end the post went up with, so a posting time changed since
+      // can't end its week early (CodeRabbit on #1866).
+      const end = row.coversUntil ? new Date(row.coversUntil) : weekEnd(row.weekOf, setting);
+      const due = zonedTimeToUtc(row.weekOf, setting.time, setting.timezone);
+      const nights = await weekNights(ctx.db, team.id, { weekOf: row.weekOf, due, end }, setting);
+      // A week whose nights were all cancelled is over once its seven days are.
+      const over = nights.length
+        ? nights.every((n) => hasPassed(n.raidDate, n.night, ctx.now))
+        : ctx.now.getTime() >= end.getTime();
+      if (!over) continue;
+      await finishPost(
+        ctx.discord,
+        `/channels/${row.channelId}/messages/${row.messageId}`,
+        team.afterRaid,
+        WEEK_FINISHED
+      );
+      await ctx.db.finishLineup(team.id, row.weekOf);
+      counts.finished++;
+    } catch (err) {
+      counts.failed++;
+      console.error(`lineup post: team ${team.id} finishing ${row.weekOf}:`, err instanceof Error ? err.message : err);
+    }
   }
-  return finished;
+  return counts;
 }
 
 // The scheduled run: every team's weekly post brought up to date, then its
@@ -561,10 +588,18 @@ export async function sweepLineups(
       const result = await syncLineup(ctx, lineup);
       if (result === 'posted') counts.posted++;
       if (result === 'edited') counts.edited++;
-      counts.finished += await finishLineups(ctx, lineup);
     } catch (err) {
       counts.failed++;
       console.error(`lineup post: team ${lineup.team.id}:`, err instanceof Error ? err.message : err);
+    }
+    // Apart, so this week's post failing still finishes older ones (CodeRabbit on #1866).
+    try {
+      const done = await finishLineups(ctx, lineup);
+      counts.finished += done.finished;
+      counts.failed += done.failed;
+    } catch (err) {
+      counts.failed++;
+      console.error(`lineup post: team ${lineup.team.id} finishing:`, err instanceof Error ? err.message : err);
     }
   }
   return counts;

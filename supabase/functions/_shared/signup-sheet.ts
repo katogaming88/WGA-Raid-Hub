@@ -474,21 +474,30 @@ export function hasPassed(raidDate: string, night: Night, now: Date): boolean {
 }
 
 // A team's sheets whose raids have passed, finished or deleted as the team
-// chose, once each.
-export async function finishSheets(ctx: SheetContext, team: Team): Promise<number> {
-  let finished = 0;
+// chose, once each. One sheet failing (Discord down) is left for the next run
+// and the rest go on (CodeRabbit on #1866).
+export async function finishSheets(ctx: SheetContext, team: Team): Promise<{ finished: number; failed: number }> {
+  const counts = { finished: 0, failed: 0 };
   for (const row of await ctx.db.unfinished(team.id)) {
-    if (!hasPassed(row.raidDate, await ctx.db.night(team.id, row.raidDate), ctx.now)) continue;
-    await finishPost(
-      ctx.discord,
-      `/channels/${row.channelId}/messages/${row.messageId}`,
-      team.afterRaid,
-      SHEET_FINISHED
-    );
-    await ctx.db.finish(team.id, row.raidDate);
-    finished++;
+    try {
+      if (!hasPassed(row.raidDate, await ctx.db.night(team.id, row.raidDate), ctx.now)) continue;
+      await finishPost(
+        ctx.discord,
+        `/channels/${row.channelId}/messages/${row.messageId}`,
+        team.afterRaid,
+        SHEET_FINISHED
+      );
+      await ctx.db.finish(team.id, row.raidDate);
+      counts.finished++;
+    } catch (err) {
+      counts.failed++;
+      console.error(
+        `signup sheet: team ${team.id} finishing ${row.raidDate}:`,
+        err instanceof Error ? err.message : err
+      );
+    }
   }
-  return finished;
+  return counts;
 }
 
 // One raid night's sheet for a team, from an RSVP change or the Refresh
@@ -532,7 +541,9 @@ export async function sweepSheets(
       }
     }
     try {
-      counts.finished += await finishSheets(ctx, team);
+      const done = await finishSheets(ctx, team);
+      counts.finished += done.finished;
+      counts.failed += done.failed;
     } catch (err) {
       counts.failed++;
       console.error(`signup sheet: team ${team.id} finishing:`, err instanceof Error ? err.message : err);

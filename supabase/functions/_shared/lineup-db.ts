@@ -118,13 +118,16 @@ export function lineupDb(client: () => SupabaseClient<any>): LineupDb {
         : null;
     },
     async saveLineup(teamId, weekOf, post) {
-      const { error } = await client().from('team_lineup_posts').insert({
-        team_id: teamId,
-        week_of: weekOf,
-        channel_id: post.channelId,
-        message_id: post.messageId,
-        content_key: post.key
-      });
+      const { error } = await client()
+        .from('team_lineup_posts')
+        .insert({
+          team_id: teamId,
+          week_of: weekOf,
+          channel_id: post.channelId,
+          message_id: post.messageId,
+          content_key: post.key,
+          covers_until: post.coversUntil ?? null
+        });
       // Another run's post is already on record.
       if (error?.code === '23505') return false;
       if (error) throw new Error('team_lineup_posts: ' + error.message);
@@ -134,7 +137,12 @@ export function lineupDb(client: () => SupabaseClient<any>): LineupDb {
       must(
         await client()
           .from('team_lineup_posts')
-          .update({ channel_id: post.channelId, message_id: post.messageId, content_key: post.key })
+          .update({
+            channel_id: post.channelId,
+            message_id: post.messageId,
+            content_key: post.key,
+            ...(post.coversUntil ? { covers_until: post.coversUntil } : {})
+          })
           .eq('team_id', teamId)
           .eq('week_of', weekOf),
         'team_lineup_posts'
@@ -158,13 +166,18 @@ export function lineupDb(client: () => SupabaseClient<any>): LineupDb {
       const rows = must(
         await client()
           .from('team_lineup_posts')
-          .select('week_of, channel_id, message_id')
+          .select('week_of, channel_id, message_id, covers_until')
           .eq('team_id', teamId)
           .is('finished_at', null)
           .not('message_id', 'is', null),
         'team_lineup_posts'
       ) as any[] | null;
-      return (rows ?? []).map((r) => ({ weekOf: r.week_of, channelId: r.channel_id, messageId: r.message_id }));
+      return (rows ?? []).map((r) => ({
+        weekOf: r.week_of,
+        channelId: r.channel_id,
+        messageId: r.message_id,
+        coversUntil: r.covers_until
+      }));
     },
     async finishLineup(teamId, weekOf) {
       must(

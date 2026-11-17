@@ -137,7 +137,12 @@ function fakeLineups(over: Partial<{ bosses: Record<string, LineupBoss[]>; night
       Promise.resolve(
         [...rows.entries()]
           .filter(([, r]) => r.messageId !== null && !r.finished)
-          .map(([weekOf, r]) => ({ weekOf, channelId: r.channelId!, messageId: r.messageId! }))
+          .map(([weekOf, r]) => ({
+            weekOf,
+            channelId: r.channelId!,
+            messageId: r.messageId!,
+            coversUntil: r.coversUntil ?? null
+          }))
       ),
     finishLineup(_t, week) {
       log.push('finish ' + week);
@@ -286,7 +291,12 @@ Deno.test(
       emptied.calls.map((c) => c.key),
       [`DELETE ${MSG}/m1`]
     );
-    assertEquals(emptied.rows.get(WEEK), { messageId: null, channelId: null, key: 'empty' });
+    assertEquals(emptied.rows.get(WEEK), {
+      messageId: null,
+      channelId: null,
+      key: 'empty',
+      coversUntil: '2026-11-11T23:00:00.000Z'
+    });
 
     const back = context();
     back.rows.set(WEEK, { messageId: null, channelId: null, key: 'empty' });
@@ -399,4 +409,31 @@ Deno.test('a team that chose Delete has the week’s post deleted once its raids
   ctx.now = THURSDAY_OVER;
   assertEquals((await sweepLineups(ctx)).finished, 1);
   assertEquals(keys(calls.filter((c) => c.key.startsWith('DELETE'))), [`DELETE ${MSG}/m1`]);
+});
+
+Deno.test('a posting time moved later in the season does not finish an older week early', async () => {
+  // Wednesday 11-11's raid at 5 PM Eastern is in the 11-04 post, which runs
+  // to Wednesday 6 PM. Then the post moves to 4 PM.
+  const { ctx } = context({
+    nights: { '2026-11-05': RAID, '2026-11-11': { ...RAID, startTime: '17:00:00' } },
+    bosses: { '2026-11-05': BOSSES }
+  });
+  await syncLineup(ctx, LINEUP);
+  const moved = { ...LINEUP, setting: { ...SETTING, time: '16:00:00' } };
+  ctx.db.allLineups = () => Promise.resolve([moved]);
+  // Wednesday 4:30 PM Eastern: Thursday's raid is over, Wednesday's not started.
+  ctx.now = new Date('2026-11-11T21:30:00Z');
+  assertEquals((await sweepLineups(ctx)).finished, 0);
+  ctx.now = new Date('2026-11-12T02:00:00Z');
+  assertEquals((await sweepLineups(ctx)).finished, 1);
+});
+
+Deno.test('one week failing to finish leaves it for the next run and finishes the rest', async () => {
+  const { ctx, rows } = context({}, { [`PATCH ${MSG}/old`]: { status: 500 } });
+  rows.set('2026-10-21', { messageId: 'old', channelId: CHANNEL, key: 'k1' });
+  rows.set('2026-10-28', { messageId: 'older', channelId: CHANNEL, key: 'k2' });
+  ctx.now = THURSDAY_OVER;
+  const counts = await sweepLineups(ctx);
+  assertEquals([counts.finished, counts.failed], [1, 1]);
+  assertEquals([!!rows.get('2026-10-21')!.finished, !!rows.get('2026-10-28')!.finished], [false, true]);
 });

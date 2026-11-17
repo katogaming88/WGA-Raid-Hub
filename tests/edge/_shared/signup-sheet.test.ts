@@ -539,3 +539,20 @@ Deno.test('a sheet whose raid was cancelled after it went up is finished two day
   await sweepSheets(ctx);
   assertEquals(keys(onTuesday(calls)), [`PATCH ${MSG}/tue`]);
 });
+
+Deno.test('one sheet failing to finish leaves it for the next run and finishes the rest', async () => {
+  const { ctx, rows } = context(
+    {
+      rows: {
+        '2026-11-03': { channelId: CHANNEL, messageId: 'tue' },
+        '2026-10-29': { channelId: CHANNEL, messageId: 'thu' }
+      },
+      nights: { ...NIGHTS, '2026-10-29': RAID }
+    },
+    { [`PATCH ${MSG}/tue`]: { status: 500 } }
+  );
+  ctx.now = new Date(TUESDAY_START + PASSED_AFTER_MS);
+  const counts = await sweepSheets(ctx);
+  assertEquals([counts.finished, counts.failed], [1, 1]);
+  assertEquals([!!rows.get('2026-11-03')!.finished, !!rows.get('2026-10-29')!.finished], [false, true]);
+});

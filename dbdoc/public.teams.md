@@ -634,6 +634,7 @@ erDiagram
   text content_key
   timestamp_with_time_zone posted_at
   timestamp_with_time_zone finished_at
+  timestamp_with_time_zone covers_until
 }
 "public.team_recruiting" {
   integer team_id FK
