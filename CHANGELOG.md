@@ -12,6 +12,21 @@ answers to.
 
 ---
 
+## [3.288.0] - 2026-11-17
+
+### Frontend
+
+- The Rotator status is gone from the roster, the profile and the Calendar: no Rotator tag, group, filter or "Mark as Rotator" button, and no "Set in for week" on a raid night. Anyone who was a Rotator is on the Bench now, and the Calendar's count leaves them out with the rest of the bench.
+
+### Backend
+
+- The Rotator status retires (#1352). Everyone marked Rotator moves to Bench, the column and the week-assignment function go, the "Rotator-In" answer is no longer accepted, and loot priority sorts full status, then Trial, then Bench.
+
+### Project
+
+- The new app drops Rotator too: no Rotator tag on the roster or profile, no "In for the week" when an officer changes an answer, and "Bench" where the Calendar said "Bench and rotators".
+- Tests and generated schema files follow; the rotator week tests are removed.
+
 ## [3.287.0] - 2026-11-17
 
 ### Backend

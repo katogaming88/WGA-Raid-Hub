@@ -231,19 +231,17 @@ export function timeAgoLabel(iso: string | null): string {
   return `${years}y ago`;
 }
 
-export type ProfileTag = 'Trial' | 'Bench' | 'Rotator' | 'Backup Tank' | 'Backup Healer';
+export type ProfileTag = 'Trial' | 'Bench' | 'Backup Tank' | 'Backup Healer';
 
 export function profileTags(p: {
   is_trial: boolean;
   is_bench: boolean;
-  is_rotator: boolean;
   is_backup_tank: boolean;
   is_backup_healer: boolean;
 }): ProfileTag[] {
   const tags: ProfileTag[] = [];
   if (p.is_trial) tags.push('Trial');
   if (p.is_bench) tags.push('Bench');
-  if (p.is_rotator) tags.push('Rotator');
   if (p.is_backup_tank) tags.push('Backup Tank');
   if (p.is_backup_healer) tags.push('Backup Healer');
   return tags;

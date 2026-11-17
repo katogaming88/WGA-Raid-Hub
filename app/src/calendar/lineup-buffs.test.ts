@@ -17,7 +17,6 @@ const dk = (id: number, name: string, spec: string): PlayerRow => ({
   nickname: null,
   is_trial: false,
   is_bench: false,
-  is_rotator: false,
   tier_pieces_equipped: null,
   classes_specs: { class: 'Death Knight', spec, role: 'Tank' }
 });

@@ -26,7 +26,6 @@ const player = (id: number, nameRealm: string, klass: string, spec: string, role
     nickname: null,
     is_trial: false,
     is_bench: false,
-    is_rotator: false,
     tier_pieces_equipped: null,
     classes_specs: role === null ? null : { class: klass, spec, role },
     ...over
@@ -110,12 +109,12 @@ describe('toRoster', () => {
     ]);
   });
 
-  it('carries trial, bench and rotator as tags', () => {
+  it('carries trial and bench as tags', () => {
     const [group] = toRoster(
-      [player(1, 'Dodgey-Illidan', 'Monk', 'Windwalker', 'Melee', { is_trial: true, is_rotator: true })],
+      [player(1, 'Dodgey-Illidan', 'Monk', 'Windwalker', 'Melee', { is_trial: true, is_bench: true })],
       []
     );
-    expect(group!.raiders[0]!.statuses).toEqual(['Trial', 'Rotator']);
+    expect(group!.raiders[0]!.statuses).toEqual(['Trial', 'Bench']);
   });
 });
 

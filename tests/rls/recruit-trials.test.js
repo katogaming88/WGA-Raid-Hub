@@ -55,7 +55,7 @@ const player = async (q, id) =>
   (
     await q(
       `select p.team_id, p.name_realm, p.is_trial, p.archived_at is not null as archived, p.team_member_id,
-              p.wishlist_allowed, p.is_backup_tank, p.is_bench, p.is_rotator, cs.class, cs.spec
+              p.wishlist_allowed, p.is_backup_tank, p.is_bench, cs.class, cs.spec
          from public.players p left join public.classes_specs cs on cs.id = p.class_spec_id where p.id = $1`,
       [id]
     )
@@ -149,8 +149,8 @@ describe('recruit trials', () => {
       ).rows[0].id;
       const old = (
         await q(
-          `insert into public.players (team_id, name_realm, team_member_id, archived_at, wishlist_allowed, is_backup_tank, is_bench, is_rotator)
-           values (1, 'Katorrí-Stormrage', $1, now() - interval '1 year', true, true, true, true) returning id`,
+          `insert into public.players (team_id, name_realm, team_member_id, archived_at, wishlist_allowed, is_backup_tank, is_bench)
+           values (1, 'Katorrí-Stormrage', $1, now() - interval '1 year', true, true, true) returning id`,
           [member]
         )
       ).rows[0].id;
@@ -164,8 +164,7 @@ describe('recruit trials', () => {
         team_member_id: member,
         wishlist_allowed: false,
         is_backup_tank: false,
-        is_bench: false,
-        is_rotator: false
+        is_bench: false
       });
       expect((await audit(q, id))[1].detail).toMatchObject({ membership_restored: true });
 

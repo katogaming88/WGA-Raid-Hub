@@ -198,7 +198,7 @@ function Calendar({ roster }: { roster: PlayerRow[] }) {
   // Signed in, wait to know who the reader is rather than read the month twice.
   const knowsWho = !(access.isPending && access.fetchStatus !== 'idle');
   const calendar = useCalendarMonth(team.id, year, month, mine, knowsWho);
-  const counts = { roster: onRoster.length, bench: onRoster.filter((p) => p.is_bench || p.is_rotator).length };
+  const counts = { roster: onRoster.length, bench: onRoster.filter((p) => p.is_bench).length };
   const base = `/g/${guild.key}/t/${team.key}/calendar`;
 
   return (

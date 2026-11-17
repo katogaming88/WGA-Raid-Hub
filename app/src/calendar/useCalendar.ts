@@ -201,26 +201,6 @@ export function useOfficerSetAnswer(teamId: number) {
   );
 }
 
-export type RotatorWeek = { date: string; weekStart: string; playerId: number; isIn: boolean; teamKey: string };
-
-// An officer putting a rotator in (or back out) for every raid night of a week.
-export function useRotatorWeek(teamId: number) {
-  return useSupabaseMutation<null, RotatorWeek>(
-    async (client, w) => {
-      const { error } = await client.rpc('officer_set_rotator_week', {
-        p_team_id: teamId,
-        p_player_id: w.playerId,
-        p_week_start: w.weekStart,
-        p_in: w.isIn
-      });
-      if (error) return { data: null, error };
-      await tellBot(client, { action: 'signupSheetSync', team: w.teamKey, teamId, payload: { raidDate: w.date } });
-      return { data: null, error: null };
-    },
-    { key: ['rotator-week', teamId], refreshes: refreshes(teamId) }
-  );
-}
-
 // Boss lineups (#1216)
 
 export const lineupKey = (teamId: number) => ['boss-lineup', teamId] as const;

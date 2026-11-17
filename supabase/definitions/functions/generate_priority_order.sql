@@ -161,7 +161,6 @@ begin
       cs.role,
       p.is_bench,
       p.is_trial,
-      p.is_rotator,
       p.tier_pieces_equipped,
       sc.performance_score,
       sc.attendance_score,
@@ -205,10 +204,9 @@ begin
         else 1.0
       end as role_mult,
       -- Sort tier only, no longer a score input: 0 = full status, 1 =
-      -- trial, 2 = rotator (#924), 3 = bench. Precedence when more than one
-      -- flag is somehow set: bench > rotator > trial, matching the old
-      -- bench-over-trial precedence this branch already had.
-      case when is_bench then 3 when is_rotator then 2 when is_trial then 1 else 0 end as status_tier,
+      -- trial, 3 = bench (2 was rotator, retired by #1352). Bench wins when
+      -- both flags are somehow set.
+      case when is_bench then 3 when is_trial then 1 else 0 end as status_tier,
       -- Wishlist status as a hard sort tier, not just a score multiplier --
       -- BiS always outranks Good, which always outranks OK/Catalyst (tied),
       -- regardless of raw_score. Tier tokens keep their existing binary
@@ -242,7 +240,6 @@ begin
       tier_pieces_equipped,
       is_bench,
       is_trial,
-      is_rotator,
       has_myth,
       has_hero,
       has_champ,
@@ -286,7 +283,6 @@ begin
       ) as final_mult,
       (case
         when is_bench then 'Bench'
-        when is_rotator then 'Rotator'
         when is_trial then 'Trial'
         else ''
       end) as base_status,

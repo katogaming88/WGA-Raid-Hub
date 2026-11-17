@@ -12,7 +12,6 @@ import {
   parseMonth,
   statusFor,
   timeRange,
-  weekStart,
   type Answer,
   type ScheduleChange,
   type ScheduleRule
@@ -43,7 +42,6 @@ const player = (id: number, name: string, role: string, flags: Partial<PlayerRow
   nickname: null,
   is_trial: false,
   is_bench: false,
-  is_rotator: false,
   tier_pieces_equipped: null,
   classes_specs: { class: 'Mage', spec: 'Frost', role },
   ...flags
@@ -84,11 +82,6 @@ describe('raid nights', () => {
     expect(neighbours(nights, '2026-05-01')).toEqual({ previous: null, next: '2026-05-05' });
   });
 
-  it('puts a rotator in from the Sunday that starts the week', () => {
-    expect(weekStart('2026-05-14')).toBe('2026-05-10');
-    expect(weekStart('2026-05-10')).toBe('2026-05-10');
-  });
-
   it('only takes a real date or month from the address', () => {
     expect(isDateParam('2026-05-14')).toBe(true);
     expect(isDateParam('2026-02-30')).toBe(false);
@@ -110,22 +103,13 @@ describe('a night’s statuses', () => {
   const night = { optional: false };
   const optional = { optional: true };
 
-  it('keeps the bench and rotators apart on a normal night only', () => {
+  it('keeps the bench apart on a normal night only', () => {
     expect(statusFor(player(1, 'A', 'Tank', { is_bench: true }), night)).toEqual({
       label: 'Bench',
       kind: 'apart',
       answered: false
     });
-    expect(statusFor(player(1, 'A', 'Tank', { is_rotator: true }), optional).label).toBe('No answer');
-  });
-
-  it('reads a rotator put in for the week as coming', () => {
-    const rotator = player(1, 'A', 'Tank', { is_rotator: true });
-    expect(statusFor(rotator, night, answer(1, '2026-05-14', 'Rotator-In'))).toEqual({
-      label: 'In this week',
-      kind: 'in',
-      answered: true
-    });
+    expect(statusFor(player(1, 'A', 'Tank', { is_bench: true }), optional).label).toBe('No answer');
   });
 
   it('moves out and late raiders to Heads up, and counts the late ones as coming', () => {

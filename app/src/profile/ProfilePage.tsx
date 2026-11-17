@@ -195,7 +195,6 @@ function ProjectedProfile({
           url_code: null,
           is_trial: false,
           is_bench: false,
-          is_rotator: false,
           is_backup_tank: false,
           is_backup_healer: false,
           wishlist_allowed: false,

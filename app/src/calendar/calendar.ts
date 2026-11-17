@@ -219,19 +219,18 @@ export const ANSWERS = ['Late', 'Leaving Early', 'Tentative', 'Absent'] as const
 export const PRESENT = 'Present';
 export const ATTENDING = 'Attending';
 
-const LABELS: Record<string, string> = { 'Leaving Early': 'Leaving early', 'Rotator-In': 'In this week' };
+const LABELS: Record<string, string> = { 'Leaving Early': 'Leaving early' };
 export const answerLabel = (status: string) => LABELS[status] ?? status;
 
 const kindOf = (status: string): Kind =>
-  status === 'Absent' ? 'out' : status === 'Attending' || status === 'Rotator-In' || status === PRESENT ? 'in' : 'flag';
+  status === 'Absent' ? 'out' : status === 'Attending' || status === PRESENT ? 'in' : 'flag';
 
 // A raider's status for a night: their answer when there is one; otherwise the
-// bench and rotators sit apart on a normal night, nobody is expected on an
+// bench sits apart on a normal night, nobody is expected on an
 // optional night until they say so, and everyone else is Present.
 export function statusFor(player: PlayerRow, night: Pick<RaidNight, 'optional'>, answer?: Answer): NightStatus {
   if (answer) return { label: answerLabel(answer.status), kind: kindOf(answer.status), answered: true };
   if (!night.optional && player.is_bench) return { label: 'Bench', kind: 'apart', answered: false };
-  if (!night.optional && player.is_rotator) return { label: 'Rotator', kind: 'apart', answered: false };
   if (night.optional) return { label: 'No answer', kind: 'flag', answered: false };
   return { label: PRESENT, kind: 'in', answered: false };
 }
@@ -331,14 +330,6 @@ export function neighbours(nights: RaidNight[], date: string) {
     previous: dates.filter((d) => d < date).at(-1) ?? null,
     next: dates.find((d) => d > date) ?? null
   };
-}
-
-// The Sunday that starts the week a date falls in, which is what putting a
-// rotator in "for the week" means.
-export function weekStart(date: string): string {
-  const d = dayOf(date);
-  d.setDate(d.getDate() - d.getDay());
-  return isoDate(d);
 }
 
 // "2 hours ago", for when an answer changed. The reader's own clock.

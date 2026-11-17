@@ -1,0 +1,483 @@
+-- #1352: the Rotator roster status retires (#1243 Option 2, 2026-09-27).
+-- The per-boss lineup (#1216) does what a week-long Rotator did, boss by
+-- boss. Bench stays, untouched.
+--
+-- Anyone marked Rotator moves to Bench first (Kat, 2026-10-19). On
+-- production on 2026-11-17: four rows, three active on Immolation
+-- (Plumnoir-Area 52, Swipesyou-Moon Guard, Yoshpet-Tichondrius) and one
+-- archived on Phoenix (Khaosmagi-Thrall); no Rotator-In answers. Kat
+-- 2026-11-17: no officer check needed, Immolation is done for the season.
+--
+-- Goes: players.is_rotator, officer_set_rotator_week(), the Rotator-In
+-- answer on raid_rsvps, and the rotator tier in generate_priority_order().
+-- A Rotator-In answer still on a row, if any, becomes Attending: it meant an
+-- officer put the raider in for that night.
+
+update public.players set is_bench = true where is_rotator and not is_bench;
+
+update public.raid_rsvps set status = 'Attending', updated_at = now() where status = 'Rotator-In';
+
+alter table public.raid_rsvps drop constraint raid_rsvps_status_check;
+alter table public.raid_rsvps add constraint raid_rsvps_status_check
+  check (status = any (array['Attending'::text, 'Late'::text, 'Leaving Early'::text, 'Tentative'::text, 'Absent'::text]));
+
+comment on table public.raid_rsvps is
+  'A raider''s self-declared override for one raid night (#893, part of #640) -- absence of a row means the computed default (Present, or Bench via players.is_bench) applies. Forward-looking intent only, never synced into public.attendance. Written only through set_own_rsvp() or officer_set_rsvp() (SECURITY DEFINER); No direct INSERT/UPDATE/DELETE grant for anyone.';
+
+-- generate_priority_order(): the rotator tier and label come out; the
+-- rest of the body is as it was.
+CREATE OR REPLACE FUNCTION public.generate_priority_order(p_team_id integer, p_season text, p_item_id integer, p_track text)
+ RETURNS TABLE(player_id integer, name_realm text, role text, weighted_total numeric, status_label text, wishlist_status text)
+ LANGUAGE plpgsql
+ STABLE
+ SET search_path TO 'public'
+AS $function$
+#variable_conflict use_column
+declare
+  v_item_slot text;
+  v_equipment_slots text[];
+begin
+  if not (public.has_team_permission(p_team_id, 'view_loot') or public.is_site_admin()) then
+    raise exception 'Not authorized';
+  end if;
+  if p_track not in ('Hero', 'Myth') then
+    raise exception 'Invalid track';
+  end if;
+
+  select i.slot into v_item_slot from public.items i where i.id = p_item_id;
+
+  v_equipment_slots := case v_item_slot
+    when 'Head' then array['HEAD']
+    when 'Neck' then array['NECK']
+    when 'Shoulder' then array['SHOULDER']
+    when 'Back' then array['BACK']
+    when 'Chest' then array['CHEST']
+    when 'Wrist' then array['WRIST']
+    when 'Hands' then array['HANDS']
+    when 'Waist' then array['WAIST']
+    when 'Legs' then array['LEGS']
+    when 'Feet' then array['FEET']
+    when 'Finger' then array['FINGER_1', 'FINGER_2']
+    when 'Trinket' then array['TRINKET_1', 'TRINKET_2']
+    when 'One-Hand' then array['MAIN_HAND']
+    when 'Two-Hand' then array['MAIN_HAND']
+    when 'Ranged' then array['MAIN_HAND']
+    when 'Off Hand' then array['OFF_HAND']
+    else array[]::text[]
+  end;
+
+  return query
+  -- The picks filed under the tier being generated, and only those (#936).
+  -- A raider holds a separate pick for the same item in each tier since the
+  -- unique key carried the season, so the strongest status across every row
+  -- would let a BiS mark left in an earlier tier outvote this tier's pass.
+  with wishlist as (
+    select
+      ip.player_id,
+      (array_agg(ip.status order by
+        case ip.status
+          when 'bis' then 1
+          when 'good' then 2
+          when 'catalyst' then 3
+          when 'ok' then 4
+          when 'pass' then 5
+        end
+      ))[1] as status
+    from public.item_preferences ip
+    join public.players p on p.id = ip.player_id
+    where ip.item_id = p_item_id
+      and p.team_id = p_team_id
+      and p.archived_at is null
+      and ip.season = p_season
+    group by ip.player_id
+  ),
+  candidates as (
+    select player_id from wishlist where status <> 'pass'
+  ),
+  -- wow_item_id space, not items.id (20260913004747). Null entries drop out
+  -- on their own: an IN-list containing only null matches nothing. The
+  -- item_id alias is load-bearing -- see that migration for why an
+  -- unaliased column here silently becomes a self-referential tautology.
+  equipped_item_ids as (
+    select wow_item_id as item_id from public.items where id = p_item_id
+    union
+    select i.wow_item_id as item_id
+    from public.tier_token_map ttm
+    join public.items i on i.id = ttm.resolved_item_id
+    where ttm.token_item_id = p_item_id
+      and ttm.season = p_season
+  ),
+  recip as (
+    select
+      player_id,
+      bool_or(track = 'Myth') as has_myth,
+      bool_or(track = 'Hero') as has_hero,
+      bool_or(track = 'Champion') as has_champ
+    from (
+      select player_id, track
+      from public.rclc_loot
+      where team_id = p_team_id
+        and item_id = p_item_id
+        and season = p_season
+        and player_id is not null
+        -- A Main spec award under the team's button list (#1561); with no
+        -- list saved, today's rule: anything but an OS or M+ roll.
+        and coalesce(
+          public.loot_response_counts_as(p_team_id, response) = 'main',
+          not coalesce(response ~* '\mos\M', false) and not coalesce(response ~* 'm\+', false)
+        )
+      union all
+      select player_id, track
+      from public.self_received_requests
+      where team_id = p_team_id
+        and self_item_id = p_item_id
+        and status = 'approved'
+        and player_id is not null
+      union all
+      select peg.player_id, peg.track
+      from public.player_equipped_gear peg
+      join public.players p on p.id = peg.player_id
+      where p.team_id = p_team_id
+        and p.archived_at is null
+        and peg.wow_item_id in (select item_id from equipped_item_ids where item_id is not null)
+    ) owned
+    group by player_id
+  ),
+  -- The lowest track worn across this item's equipment slot(s), as a rank
+  -- (3 = Myth, 2 = Hero, 1 = anything lower, 0 = nothing worn). min() over
+  -- the slots gives rings/trinkets their lower-of-two grading and is a
+  -- no-op for the single-slot cases. A slot with no synced row contributes
+  -- nothing to min(), so the count check below catches an unfilled half of
+  -- a pair and drops the whole thing to the lowest step.
+  equipped as (
+    select
+      peg.player_id,
+      case
+        when count(*) < coalesce(array_length(v_equipment_slots, 1), 0) then 0
+        else min(case peg.track when 'Myth' then 3 when 'Hero' then 2 else 1 end)
+      end as slot_track_rank
+    from public.player_equipped_gear peg
+    where peg.equipment_slot = any (v_equipment_slots)
+    group by peg.player_id
+  ),
+  tier_meta as (
+    select exists(
+      select 1 from public.tier_token_map
+      where token_item_id = p_item_id
+        and season = p_season
+    ) as is_tier_token
+  ),
+  existing_priority as (
+    select
+      po.player_id,
+      avg(po.rank) as avg_existing_rank
+    from public.priority_order po
+    where po.team_id = p_team_id
+      and po.season = p_season
+      and po.track = p_track
+      and po.item_id <> p_item_id
+    group by po.player_id
+  ),
+  base as (
+    select
+      p.id as player_id,
+      p.name_realm,
+      cs.role,
+      p.is_bench,
+      p.is_trial,
+      p.tier_pieces_equipped,
+      sc.performance_score,
+      sc.attendance_score,
+      coalesce(r.has_myth, false) as has_myth,
+      coalesce(r.has_hero, false) as has_hero,
+      coalesce(r.has_champ, false) as has_champ,
+      coalesce(e.slot_track_rank, 0) as slot_track_rank,
+      w.status as wishlist_status,
+      tm.is_tier_token,
+      ep.avg_existing_rank
+    from candidates c
+    join public.players p on p.id = c.player_id
+    left join public.classes_specs cs on cs.id = p.class_spec_id
+    left join public.scoring sc on sc.player_id = p.id and sc.season = p_season
+    left join recip r on r.player_id = p.id
+    left join equipped e on e.player_id = p.id
+    left join wishlist w on w.player_id = p.id
+    left join existing_priority ep on ep.player_id = p.id
+    cross join tier_meta tm
+    where not coalesce(r.has_myth, false)
+      and not (p_track = 'Hero' and coalesce(r.has_hero, false))
+  ),
+  scored as (
+    select
+      player_id,
+      name_realm,
+      role,
+      case
+        when role in ('Tank', 'Heal') then
+          case when attendance_score > 0 then attendance_score else null end
+        else
+          case
+            when performance_score > 0 or attendance_score > 0
+              then round((coalesce(performance_score, 0) * 0.5 + coalesce(attendance_score, 0) * 0.5), 1)
+            else null
+          end
+      end as raw_score,
+      case role
+        when 'Tank' then 0.50
+        when 'Heal' then 0.75
+        else 1.0
+      end as role_mult,
+      -- Sort tier only, no longer a score input: 0 = full status, 1 =
+      -- trial, 3 = bench (2 was rotator, retired by #1352). Bench wins when
+      -- both flags are somehow set.
+      case when is_bench then 3 when is_trial then 1 else 0 end as status_tier,
+      -- Wishlist status as a hard sort tier, not just a score multiplier --
+      -- BiS always outranks Good, which always outranks OK/Catalyst (tied),
+      -- regardless of raw_score. Tier tokens keep their existing binary
+      -- split (0 = keeping it, 1 = any sidegrade tag) since tier_rank is a
+      -- stronger, more specific signal there than a 3-way wishlist split
+      -- would add.
+      case
+        when is_tier_token then
+          case
+            when wishlist_status = 'bis' then 0
+            else 1
+          end
+        when wishlist_status = 'bis' then 0
+        when wishlist_status = 'good' then 1
+        when wishlist_status in ('ok', 'catalyst') then 2
+        else 0
+      end as wishlist_rank,
+      case
+        when not is_tier_token then 0
+        else case coalesce(tier_pieces_equipped, 0)
+          when 1 then 1
+          when 0 then 2
+          when 3 then 3
+          when 2 then 4
+          when 4 then 5
+          else 6
+        end
+      end as tier_rank,
+      avg_existing_rank,
+      is_tier_token,
+      tier_pieces_equipped,
+      is_bench,
+      is_trial,
+      has_myth,
+      has_hero,
+      has_champ,
+      slot_track_rank,
+      wishlist_status
+    from base
+  ),
+  multiplied as (
+    select
+      player_id,
+      name_realm,
+      role,
+      raw_score,
+      status_tier,
+      wishlist_rank,
+      tier_rank,
+      avg_existing_rank,
+      wishlist_status,
+      (role_mult
+      -- Item-ownership multipliers stack on top, mythic and heroic branches
+      -- are mutually exclusive since p_track is one or the other.
+      * case when p_track = 'Myth' and has_hero then 0.85 else 1.0 end
+      * case when p_track = 'Myth' and has_champ and not has_hero then 1.07 else 1.0 end
+      * case when p_track = 'Myth' and not has_hero and not has_champ then 1.15 else 1.0 end
+      * case when p_track = 'Hero' and has_champ then 0.90 else 1.0 end
+      -- Equipped-slot track steps: a weaker, independent signal from the
+      -- same-item ones above -- "already itemized here," not "already owns
+      -- this drop." Applies to both generated tracks alike; the question
+      -- (how well is this slot already covered, and can they improve it
+      -- themselves) does not change with the track being handed out.
+      * case slot_track_rank when 3 then 0.92 when 2 then 0.96 else 1.0 end
+      -- Wishlist multiplier (#515): 'bis' stays at 1.0. 'pass' never reaches
+      -- here -- already excluded by the candidates CTE above.
+      * case wishlist_status
+          when 'bis' then 1.0
+          when 'good' then 0.90
+          when 'ok' then 0.60
+          when 'catalyst' then 0.75
+          else 1.0
+        end
+      ) as final_mult,
+      (case
+        when is_bench then 'Bench'
+        when is_trial then 'Trial'
+        else ''
+      end) as base_status,
+      case when is_tier_token then 'Tier: ' || coalesce(tier_pieces_equipped, 0) || '/5' end as tier_status_label,
+      case when p_track = 'Myth' and has_hero then 'Has Heroic' end as myth_hero_status,
+      case when p_track = 'Myth' and has_champ and not has_hero then 'Has Champion' end as myth_champ_status,
+      case when p_track = 'Myth' and not has_hero and not has_champ then 'No Version' end as myth_neither_status,
+      case when p_track = 'Hero' and has_champ then 'Has Champion' end as hero_champ_status,
+      -- No longer says "ilvl": the step is the slot's actual gear track now,
+      -- not whether an item level cleared a threshold.
+      case slot_track_rank
+        when 3 then 'Myth Equipped (Slot)'
+        when 2 then 'Hero Equipped (Slot)'
+      end as slot_track_status
+    from scored
+  )
+  select
+    player_id,
+    name_realm,
+    role,
+    case when raw_score is not null then round(raw_score * final_mult, 1) end as weighted_total,
+    nullif(
+      array_to_string(
+        array_remove(
+          array[
+            nullif(base_status, ''),
+            tier_status_label,
+            myth_hero_status,
+            myth_champ_status,
+            myth_neither_status,
+            hero_champ_status,
+            slot_track_status
+          ],
+          null
+        ),
+        ', '
+      ),
+      ''
+    ) as status_label,
+    wishlist_status
+  from multiplied
+  order by
+    status_tier asc,
+    wishlist_rank asc,
+    tier_rank asc,
+    avg_existing_rank desc nulls first,
+    coalesce(case when raw_score is not null then round(raw_score * final_mult, 1) end, -1) desc;
+end;
+$function$;
+
+-- recruit_trial_start(): no rotator flag left to reset.
+CREATE OR REPLACE FUNCTION public.recruit_trial_start(p_application_id integer, p_actor integer)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_app recruit_applications;
+  v_today date := (now() at time zone 'America/New_York')::date;
+  v_ends date;
+  v_name text;
+  v_class text;
+  v_spec text;
+  v_spec_id integer;
+  v_theirs boolean;
+  v_discord text;
+  v_member integer;
+  v_restored boolean := false;
+  v_added integer;
+  v_player integer;
+begin
+  v_app := recruit_lock(p_application_id, p_actor);
+  if v_app.status not in ('waiting_on_officers', 'waiting_on_applicant') then
+    raise exception 'Only an open recruit who isn''t on trial can start one';
+  end if;
+  select v_today + r.trial_days into v_ends from team_recruiting r where r.team_id = v_app.team_id;
+
+  -- The character applied with, by its name now while it is still theirs
+  -- (for an officer's ticket-only record, theirs by name); otherwise the copy
+  -- taken when they applied, which goes on the roster unlinked, as the signup
+  -- add does with a character that has moved to someone else.
+  select c.name_realm, c.class_name, c.spec_name into v_name, v_class, v_spec
+    from characters c
+   where c.person_id = v_app.person_id
+     and (c.id = v_app.character_id
+          or (v_app.character_id is null and c.name_realm_key = lower(replace(v_app.name_realm, ' ', ''))))
+   limit 1;
+  v_theirs := found;
+  if not v_theirs then
+    v_name := v_app.name_realm;
+    v_class := v_app.class_name;
+    v_spec := v_app.spec_name;
+  end if;
+  select cs.id into v_spec_id from classes_specs cs where cs.class = v_class and cs.spec = v_spec;
+
+  -- The membership, by the person: made or brought back as a raider, as
+  -- through the invite link; a current one stays as it is. Making one needs
+  -- their Discord id (team_members is keyed on it); a ticket-only recruit
+  -- with neither goes on the roster unlinked, as an officer's hand add.
+  if v_app.person_id is not null then
+    select m.id, m.archived_at is not null into v_member, v_restored
+      from team_members m
+     where m.team_id = v_app.team_id and m.person_id = v_app.person_id
+       for update;
+    if v_member is null then
+      select p.discord_id into v_discord from people p where p.id = v_app.person_id;
+      if v_discord is not null then
+        insert into team_members (team_id, discord_id, role)
+        values (v_app.team_id, v_discord, 'raider')
+        on conflict (team_id, person_id) do nothing
+        returning id into v_added;
+        v_member := v_added;
+        -- An invite-link join in the same instant made it first.
+        if v_member is null then
+          select m.id, m.archived_at is not null into v_member, v_restored
+            from team_members m
+           where m.team_id = v_app.team_id and m.person_id = v_app.person_id
+             for update;
+        end if;
+      end if;
+    end if;
+    if v_restored then
+      update team_members set archived_at = null, role = 'raider' where id = v_member;
+      v_added := v_member;
+    end if;
+  end if;
+
+  -- New, or back from the archive: a new stint, on trial, without the flags
+  -- an officer set for the last one, as the invite link resets them. Never a
+  -- character on the roster now, or one someone else holds.
+  insert into players (team_id, name_realm, class_spec_id, is_trial, join_date, team_member_id)
+  values (v_app.team_id, v_name, v_spec_id, true, v_today, case when v_theirs then v_member end)
+  on conflict (team_id, name_realm_key) do update
+     set team_member_id = excluded.team_member_id,
+         class_spec_id = coalesce(excluded.class_spec_id, players.class_spec_id),
+         is_trial = true,
+         -- Bench from the last stint would outrank Trial in loot priority
+         -- (CodeRabbit).
+         is_bench = false,
+         join_date = excluded.join_date,
+         is_backup_tank = false,
+         is_backup_healer = false,
+         wishlist_allowed = false,
+         bis_allowed = false,
+         archived_at = null
+   where players.archived_at is not null
+     and (players.team_member_id is null or players.team_member_id = excluded.team_member_id)
+  returning id into v_player;
+
+  if v_player is null then
+    if exists (select 1 from players p
+                where p.team_id = v_app.team_id and p.name_realm_key = lower(replace(v_name, ' ', ''))
+                  and p.archived_at is null) then
+      raise exception '% is already on the roster', v_name;
+    end if;
+    raise exception '% is someone else''s character on this team', v_name;
+  end if;
+
+  update recruit_applications
+     set status = 'on_trial', trial_starts_on = v_today, trial_ends_on = v_ends, trial_player_id = v_player,
+         trial_team_member_id = v_added
+   where id = p_application_id;
+  insert into recruit_events (application_id, kind, actor_person_id, detail)
+  values (p_application_id, 'trial_started', p_actor, 'Until ' || v_ends);
+  perform recruit_log(v_app.team_id, p_actor, 'Recruit Trial Started', p_application_id,
+                      jsonb_build_object('name_realm', v_name, 'player_id', v_player,
+                                         'trial_ends_on', v_ends, 'membership_restored', coalesce(v_restored, false)));
+  return v_player;
+end;
+$function$;
+
+drop function public.officer_set_rotator_week(integer, integer, date, boolean);
+
+alter table public.players drop column is_rotator;

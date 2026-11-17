@@ -27,7 +27,6 @@ const player = (id, nameRealm, nickname, classSpec, flags = {}) => ({
   url_code: `code${id}`,
   is_trial: false,
   is_bench: false,
-  is_rotator: false,
   is_backup_tank: false,
   is_backup_healer: false,
   bis_link: '',
