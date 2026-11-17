@@ -62,6 +62,37 @@ describe('team_member_accounts()', () => {
     });
   });
 
+  it('takes the newest Battle.net sign-in, and falls back to name when full_name is empty', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await connectBattlenet(q, RAIDER_T1, 'Old#1');
+      await q(
+        `update auth.identities set created_at = now() - interval '1 day' where user_id = $1 and provider = 'custom:battlenet'`,
+        [RAIDER_T1]
+      );
+      await connectBattlenet(q, RAIDER_T1, 'New#2');
+      await nameDiscord(q, RAIDER_T1, { full_name: '', name: 'brakkus#0' });
+      const res = await ask(asUser, OFFICER_T1, 1);
+      expect(res.rows.find((r) => r.team_member_id === 3)).toMatchObject({
+        battletag: 'New#2',
+        discord_username: 'brakkus'
+      });
+    });
+  });
+
+  it('names only the Discord account the member is listed under, not another one the person signed in with', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await nameDiscord(q, RAIDER_T1, { full_name: 'brakkus' });
+      // Then a newer sign-in with another Discord account.
+      await q(
+        `insert into auth.identities (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+         values ('discord-other', $1::uuid, '{"sub":"discord-other","full_name":"someoneelse"}'::jsonb, 'discord', now(), now() + interval '1 hour', now())`,
+        [RAIDER_T1]
+      );
+      const res = await ask(asUser, OFFICER_T1, 1);
+      expect(res.rows.find((r) => r.team_member_id === 3).discord_username).toBe('brakkus');
+    });
+  });
+
   it('leaves out members who left', async () => {
     await withTxn(async ({ q, asUser }) => {
       // Past the guard that sends archiving through archive_team_member().
@@ -69,7 +100,10 @@ describe('team_member_accounts()', () => {
       await q('update public.team_members set archived_at = now() where id = 3');
       await q('set local session_replication_role = origin');
       const res = await ask(asUser, OFFICER_T1, 1);
-      expect(res.rows.map((r) => r.team_member_id)).not.toContain(3);
+      const ids = res.rows.map((r) => r.team_member_id);
+      expect(ids).toContain(1);
+      expect(ids).toContain(2);
+      expect(ids).not.toContain(3);
     });
   });
 

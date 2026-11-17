@@ -1023,6 +1023,23 @@ describe('Roster page, quick Claim and accounts', () => {
     expect(raz).toHaveTextContent('Discord: Not linked');
   });
 
+  it('does not read the accounts for an officer tool other than editing the roster (fresh review on PR #1863)', async () => {
+    const { client } = renderApp(
+      '/g/wga/t/phoenix/roster',
+      namesHandlers({
+        role: 'officer',
+        rpc(name, args) {
+          if (name === 'my_permissions') return { data: { team: ['see_rsvps'], guild: [] } };
+          return seededHandlers().rpc!(name, args);
+        }
+      })
+    );
+    const table = await rosterTable();
+    await within(table).findByRole('rowheader', { name: /Raz/ });
+    expect(screen.queryByText(/connected accounts/i)).not.toBeInTheDocument();
+    expect(client.rpcs.some(([n]) => n === 'team_member_accounts')).toBe(false);
+  });
+
   it('shows a raider no accounts, and does not read them', async () => {
     const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers());
     const table = await rosterTable();

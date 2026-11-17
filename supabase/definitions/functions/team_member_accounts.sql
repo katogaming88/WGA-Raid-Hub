@@ -35,13 +35,8 @@ begin
     order by i.created_at desc
     limit 1
   ) bn on true
-  left join lateral (
-    select i.identity_data
-    from auth.identities i
-    where i.user_id = pe.auth_user_id and i.provider = 'discord'
-    order by i.created_at desc
-    limit 1
-  ) dc on true
+  left join auth.identities dc
+    on dc.provider = 'discord' and dc.provider_id = tm.discord_id
   where tm.team_id = p_team_id
     and tm.archived_at is null
   order by tm.id;

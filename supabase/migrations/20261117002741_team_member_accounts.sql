@@ -6,8 +6,10 @@
 -- current site.
 --
 -- Discord counts as linked by team_members.discord_id, as the Roster already
--- reads it; the username comes from the Discord sign-in, full_name being the
--- username (name carries a "#0" on the new usernames).
+-- reads it, and the username is that same Discord account's, matched on the
+-- sign-in's provider_id: a person who later signed in with another Discord
+-- account never shows that one's name beside this link (fresh review on PR
+-- #1863). full_name is the username; name carries a "#0" on new usernames.
 
 create or replace function public.team_member_accounts(p_team_id integer)
 returns table (
@@ -49,13 +51,8 @@ begin
     order by i.created_at desc
     limit 1
   ) bn on true
-  left join lateral (
-    select i.identity_data
-    from auth.identities i
-    where i.user_id = pe.auth_user_id and i.provider = 'discord'
-    order by i.created_at desc
-    limit 1
-  ) dc on true
+  left join auth.identities dc
+    on dc.provider = 'discord' and dc.provider_id = tm.discord_id
   where tm.team_id = p_team_id
     and tm.archived_at is null
   order by tm.id;
