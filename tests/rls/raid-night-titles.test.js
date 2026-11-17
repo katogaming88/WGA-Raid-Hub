@@ -44,6 +44,16 @@ describe('raid_night_titles', () => {
     await withTxn(async ({ asAnon }) => {
       await expect(asAnon(SAVE)).rejects.toMatchObject({ code: '42501' });
     });
+    for (const write of [
+      "update public.raid_night_titles set title = 'Costume night'",
+      'delete from public.raid_night_titles'
+    ]) {
+      await withTxn(async ({ q, asAnon }) => {
+        await seed(q);
+        await expect(asAnon(write)).rejects.toMatchObject({ code: '42501' });
+        expect((await q(READ)).rows).toEqual([{ team_id: 1, raid_date: DATE, title: 'Ulatek Prog' }]);
+      });
+    }
   });
 
   it('is readable by a signed-out visitor, like the schedule', async () => {
