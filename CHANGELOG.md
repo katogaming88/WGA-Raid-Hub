@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.285.0] - 2026-11-16
+
+### Backend
+
+- A new table remembers the officer-channel post for each team and raid night, so later runs edit that post instead of posting again (#1847).
+
+### Functions
+
+- After the hourly attendance refresh, the bot posts a raid night's problems to the team's officer channel once: who needs a look and why, in the same words as the site's Needs a look list, plus anyone in the log who isn't on the roster, with a link to Manage attendance. Later runs edit the same post as officers set statuses, down to "all set". Only nights from the last week post, so the items already waiting don't flood the channel. No officer channel set: no post. Names are plain text, and nobody is pinged (#1847).
+
+### Project
+
+- Edge Function and database tests for the officer post, and time-log rows for #1344, #1845 and #1846.
+
 ## [3.284.0] - 2026-11-16
 
 ### Backend

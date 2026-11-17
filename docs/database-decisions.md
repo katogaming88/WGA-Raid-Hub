@@ -3754,3 +3754,19 @@ Shipped: `20261116193518_attendance_rsvp_fill.sql`.
 **Tentative is the team's call** (Kat: "up to the guild/team"). `team_settings.config.attendanceTentative` holds the status a Tentative no-show becomes: Present, Bench, Late (with notice), Excused, Late (no notice) or No Show, or null for Needs a look, the default. The leave statuses are left out (leave is #1860). It picks an existing status rather than a new percentage, so the score math does not change. Saved by `set_team_attendance_tentative(team, status)`, gated like `set_team_audit_rules()`: `promote_assistants` (Officer by default, which opens Settings) or a site admin. Writes its own audit entry.
 
 [Full discussion -> #1846](https://github.com/katogaming88/WGA-Raid-Hub/issues/1846).
+
+## #1847 -- the bot posts each raid night's attendance problems to the officer channel
+
+Shipped: `20261116224851_attendance_officer_posts.sql`.
+
+**`team_attendance_posts` keeps each night's message,** one row per team and raid night, so later hourly runs edit it rather than post again (`team_lineup_posts`' shape). `content_key` is what the message lists, so an unchanged night asks Discord nothing; it reads `all set` once every item has a status, and a night at `all set` is not looked at again. Service role and `claude_readers` only, with its own grants.
+
+**Only nights from the last week post** (Kat, 2026-11-16: "only new nights"). The run looks at nights with items from the last seven days, plus any night whose post still lists items. The backlog already waiting when this shipped (100 or more items per team) never posts. A week rather than "the nights this run read first" so a night an officer refreshed by hand still posts.
+
+**Fixes edit the post down** (Kat). Each run edits a night's post to what is left, and to "all set" when nothing is. A post deleted in Discord is posted again while items are left.
+
+**The lines are the site's** (Kat): the Needs a look list's reason (#1846), the boss name from the night's lineup, and the not-on-roster names. Names are plain text, nothing is pinged, and the link is the new app's Manage attendance page (Kat).
+
+**No officer channel, a channel outside the team's server, or a local stack: no post.** A failed post is logged and tried again next hour; it never fails the attendance run.
+
+[Full discussion -> #1847](https://github.com/katogaming88/WGA-Raid-Hub/issues/1847).

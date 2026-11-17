@@ -29,6 +29,7 @@ import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { isAltRun } from '../_shared/alt-run.ts';
 import { gqlInt, gqlString } from '../_shared/gql.ts';
 import { tierStartTimeMs } from '../_shared/tier-start.ts';
+import { postAttendanceProblems } from './officer-post.ts';
 import { parseRequest, type ScoringMetric } from './request.ts';
 import { VERSION } from './version.ts';
 
@@ -1375,6 +1376,13 @@ export async function runScheduled(supabase: SupabaseClient<any>, io: Io): Promi
     } catch (err) {
       console.error('wcl-sync scheduled run failed for team', team.id, err);
       run.error = err instanceof Error ? err.message : String(err);
+    }
+    // #1847: the officer channel hears about each new night's items. A post
+    // that fails is tried again next hour and never fails the run.
+    if (!run.error) {
+      await postAttendanceProblems(supabase, io, team.id, new Date()).catch((err) =>
+        console.error('wcl-sync: officer post failed for team', team.id, err)
+      );
     }
     run.finished_at = new Date().toISOString();
     const { error: recordError } = await supabase

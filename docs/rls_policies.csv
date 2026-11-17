@@ -211,6 +211,7 @@ streamers,Public read streamers,public,SELECT,PERMISSIVE,true,
 streamers,Raiders manage own streamer,public,ALL,PERMISSIVE,(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])),(player_id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))
 team_application_questions,Claude readers read team_application_questions,claude_readers,SELECT,PERMISSIVE,true,
 team_application_starters,Claude readers read team_application_starters,claude_readers,SELECT,PERMISSIVE,true,
+team_attendance_posts,Claude readers read team_attendance_posts,claude_readers,SELECT,PERMISSIVE,true,
 team_discord_config,Claude readers read team_discord_config,claude_readers,SELECT,PERMISSIVE,true,
 team_discord_posts,Claude readers read team_discord_posts,claude_readers,SELECT,PERMISSIVE,true,
 team_discord_signup_sheets,Claude readers read team_discord_signup_sheets,claude_readers,SELECT,PERMISSIVE,true,

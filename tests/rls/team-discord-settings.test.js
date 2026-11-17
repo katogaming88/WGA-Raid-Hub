@@ -411,7 +411,8 @@ describe('team Discord settings', () => {
         'team_discord_posts',
         'team_discord_signup_sheets',
         'discord_server_access',
-        'team_lineup_posts'
+        'team_lineup_posts',
+        'team_attendance_posts'
       ]) {
         await expect(asUser(OFFICER_T1, `select * from public.${table}`)).rejects.toThrow(/permission denied/);
         await expect(asAnon(`select * from public.${table}`)).rejects.toThrow(/permission denied/);

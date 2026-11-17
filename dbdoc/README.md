@@ -115,6 +115,7 @@
 | [public.season_raid_bosses](public.season_raid_bosses.md) | 5 | The bosses of each season's counted raids (#1641), by Blizzard journal encounter id, in the game's order. Added by migration per season. | BASE TABLE |
 | [public.mplus_dungeons](public.mplus_dungeons.md) | 2 | Mythic+ dungeon names by the dungeon id the profile API uses, Blizzard's MapChallengeMode id (#1641). Every dungeon, not a season's pool. | BASE TABLE |
 | [public.attendance_log_names](public.attendance_log_names.md) | 5 | Characters in a team's Warcraft Logs raid night who matched nobody on the roster (#1845). Written by wcl-sync; first name only, lower case, as the sync matches names. Informational: never holds back the attendance commit. | BASE TABLE |
+| [public.team_attendance_posts](public.team_attendance_posts.md) | 6 | The officer-channel message wcl-sync's hourly run posted for each team and raid night with attendance items (#1847). content_key is what the message lists ('all set' once every item has a status). Written by wcl-sync with the service role; later runs edit this message as items are set. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -597,6 +598,7 @@ erDiagram
 "public.season_vault_raids" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.season_raid_bosses" }o--|| "public.season_vault_raids" : "FOREIGN KEY (season, instance_id) REFERENCES season_vault_raids(season, instance_id)"
 "public.attendance_log_names" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_attendance_posts" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -1743,6 +1745,14 @@ erDiagram
   text character_name
   text report_id
   timestamp_with_time_zone seen_at
+}
+"public.team_attendance_posts" {
+  integer team_id FK
+  date raid_date
+  text channel_id
+  text message_id
+  text content_key
+  timestamp_with_time_zone posted_at
 }
 ```
 
