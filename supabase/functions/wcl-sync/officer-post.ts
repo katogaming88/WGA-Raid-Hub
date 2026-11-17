@@ -210,19 +210,21 @@ export async function postAttendanceProblems(
         .eq('report_excluded', false);
       return (seasonStart ? q.gte('raid_date', seasonStart) : q).order('id').range(f, t);
     }),
-    readAll((f, t) =>
-      supabase
+    // Every post this season, all set ones too, so a night that needs a
+    // look again edits its own post rather than posting a second
+    // (CodeRabbit on PR #1862).
+    readAll((f, t) => {
+      const q = supabase
         .from('team_attendance_posts')
         .select('raid_date, channel_id, message_id, content_key')
-        .eq('team_id', teamId)
-        .neq('content_key', ALL_SET)
-        .order('raid_date')
-        .range(f, t)
-    )
+        .eq('team_id', teamId);
+      return (seasonStart ? q.gte('raid_date', seasonStart) : q).order('raid_date').range(f, t);
+    })
   ]);
   const postOf = new Map(posts.map((p) => [p.raid_date as string, p]));
   // New nights with items, and every night whose post still lists some.
-  const dates = [...new Set([...flagged.map((r) => r.raid_date).filter((d) => d >= from), ...postOf.keys()])].sort();
+  const open = posts.filter((p) => p.content_key !== ALL_SET).map((p) => p.raid_date as string);
+  const dates = [...new Set([...flagged.map((r) => r.raid_date).filter((d) => d >= from), ...open])].sort();
   if (!dates.length) return { posted: 0, edited: 0 };
 
   const discord = async (method: string, path: string, body?: unknown) => {
@@ -255,10 +257,13 @@ export async function postAttendanceProblems(
   for (const night of await readNights(supabase, teamId, dates, flagged)) {
     const key = contentKey(night);
     const row = postOf.get(night.date);
-    if (row?.content_key === key) continue;
+    // The team picked another officer channel since: items left are posted
+    // there, and the old post taken down (CodeRabbit on PR #1862).
+    const moved = !!row && row.channel_id !== channelId && night.items.length > 0;
+    if (row?.content_key === key && !moved) continue;
     if (!row && !night.items.length) continue;
     const body = postBody(night, link);
-    if (row) {
+    if (row && !moved) {
       const edited = await discord('PATCH', `/channels/${row.channel_id}/messages/${row.message_id}`, body);
       // 403 or 404: deleted in Discord, or out of the bot's reach now.
       const gone = edited.status === 403 || edited.status === 404;
@@ -281,6 +286,7 @@ export async function postAttendanceProblems(
       console.error(`wcl-sync: team ${teamId}'s officer channel is not in its server`);
       return counts;
     }
+    if (moved) await discord('DELETE', `/channels/${row.channel_id}/messages/${row.message_id}`).catch(() => null);
     const sent = await discord('POST', `/channels/${channelId}/messages`, body);
     if (sent.status !== 200 || !sent.body?.id) throw new Error(`Discord answered ${sent.status} to the post`);
     const saved = await supabase

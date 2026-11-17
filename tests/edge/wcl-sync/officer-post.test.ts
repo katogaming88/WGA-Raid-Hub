@@ -257,3 +257,40 @@ Deno.test('a local stack posts nothing', async () => {
   assertEquals(await postAttendanceProblems(fakeDb(t), io, 1, NOW), 'local');
   assertEquals(d.calls, []);
 });
+
+Deno.test(
+  'a night set all set that needs a look again edits its own post, not a second (CodeRabbit on PR #1862)',
+  async () => {
+    const t = tables({ attendance: [flag(2, 'WCL (Absent?)')] });
+    await run(t, discord().io);
+    t.attendance![0]!.status = 'Excused';
+    await run(t, discord().io);
+    t.attendance![0]!.status = null;
+    const d = discord();
+    assertEquals(await run(t, d.io), { posted: 0, edited: 1 });
+    assertEquals(
+      writes(d.calls).map((c) => [c.method, c.path]),
+      [['PATCH', '/channels/C1/messages/M1']]
+    );
+  }
+);
+
+Deno.test('a new officer channel gets the post, and the old one is taken down (CodeRabbit on PR #1862)', async () => {
+  const t = tables({ attendance: [flag(2, 'WCL (Absent?)')] });
+  await run(t, discord().io);
+  t.team_discord_config![0]!.officer_channel_id = 'C2';
+  const d = discord();
+  assertEquals(await run(t, d.io), { posted: 1, edited: 0 });
+  assertEquals(
+    writes(d.calls).map((c) => [c.method, c.path]),
+    [
+      ['DELETE', '/channels/C1/messages/M1'],
+      ['POST', '/channels/C2/messages']
+    ]
+  );
+  assertEquals(t.team_attendance_posts![0]!.channel_id, 'C2');
+  // Settled there: the next hour asks Discord nothing.
+  const again = discord();
+  await run(t, again.io);
+  assertEquals(again.calls, []);
+});

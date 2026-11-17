@@ -3759,7 +3759,7 @@ Shipped: `20261116193518_attendance_rsvp_fill.sql`.
 
 Shipped: `20261116224851_attendance_officer_posts.sql`.
 
-**`team_attendance_posts` keeps each night's message,** one row per team and raid night, so later hourly runs edit it rather than post again (`team_lineup_posts`' shape). `content_key` is what the message lists, so an unchanged night asks Discord nothing; it reads `all set` once every item has a status, and a night at `all set` is not looked at again. Service role and `claude_readers` only, with its own grants.
+**`team_attendance_posts` keeps each night's message,** one row per team and raid night, so later hourly runs edit it rather than post again (`team_lineup_posts`' shape). `content_key` is what the message lists, so an unchanged night asks Discord nothing; it reads `all set` once every item has a status. A night at `all set` that needs a look again within the week edits its own post (CodeRabbit on PR #1862). If the team picks another officer channel, a night with items left is posted there and the old post taken down. Service role and `claude_readers` only, with its own grants.
 
 **Only nights from the last week post** (Kat, 2026-11-16: "only new nights"). The run looks at nights with items from the last seven days, plus any night whose post still lists items. The backlog already waiting when this shipped (100 or more items per team) never posts. A week rather than "the nights this run read first" so a night an officer refreshed by hand still posts.
 
