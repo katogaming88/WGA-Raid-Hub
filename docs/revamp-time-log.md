@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 30 h 12 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 35 h 12 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **202 h 8 m** |             |
+| **All revamp work**                | **207 h 8 m** |             |
 
 ### By area
 
@@ -30,8 +30,8 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | --- | --- | ---: | ---: |
 | Tester fixes | Phase 2 | 2 h 30 m | ~2 h |
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
-| The roster audit and reports | Phase 2 | 10 h 26 m | ~9 h 50 m |
-| Attendance on its own | Phase 2 | 1 h 15 m | ~3 h 10 m |
+| The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
+| Attendance on its own | Phase 2 | 5 h 10 m | ~3 h 10 m |
 | Roster, loot and the team's raids | Phase 2 | 1 h 5 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
@@ -766,6 +766,14 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:31-12:45 PM | PR #1858 (#1845): the fresh-agent migration review (changes needed: the hourly run could not read the season start, so it would never have committed; the refresh's team reads stopped at 1000 rows; backup doc) and its nice-to-haves (deleted players skipped in the commit, archived teams not synced, profile-card status edits saved as the officer's); the 1000-row cap added to the test fake; tests red first, generated docs, decision log, this row | Phase 2: Before the new site goes live / Attendance on its own (#1845) | 15 m | build; Kat's merge not yet counted | 213,000 | Tokens include the fresh agent's 179,000. Added 2026-11-16. |
 | 12:45-12:59 PM | #1845's wait on CI and Kat's merge (12:58 PM), cleanup, #1487 | Phase 2: Before the new site goes live / Attendance on its own (#1845) | 15 m | Kat's merge | 16,000 | Added 2026-11-16. |
 | 1:19-1:27 PM | #1344: two officer reports, Unclaimed (characters with no Member and unclaimed Members, with the share of the roster) and Wishlist completeness (Not started, Partly done N of 16, Done, a Pass counting as a slot done, by role, sortable), and the same status on each raider's own profile; Kat's answer (officers only); `wishlistProgress()` red first, page and browser tests, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / The roster audit and reports (#1344) | 10 m | build; review and merge not yet counted | 362,600 | Added 2026-11-16. |
+| 1:27-2:33 PM | PR #1859 (#1344) after it opened: the failed check (the sidebar folding test's height with the new menu rows, the Streams panel hidden in tests so it stops covering the last card), merge, cleanup, #1487 | Phase 2: Before the new site goes live / The roster audit and reports (#1344) | 1 h 5 m | build; Kat's merge | 88,400 | Added 2026-11-16 (in #1847's PR). |
+| 2:37-3:29 PM | #1845 going live: Kat's questions on the hourly run's secret (one value, saved in the Vault and in the Edge Function secrets), Kat set both; the first hourly run read (no errors, nothing committed: every team waiting on 100 or more items), handoff | Phase 2: Before the new site goes live / Attendance on its own (#1845) | 20 m | Kat's setup; quiet stretch 2:48-3:20 PM not counted | 16,000 | Added 2026-11-16 (in #1847's PR). |
+| 6:07-7:07 PM | #1845's waiting items looked into: stale rosters (people who left still rostered), Phoenix's 10/03 log matching nobody, two lineup nights flagging everyone Late?, rotators not marked like bench; Kat's call: no team is using the site, so test it properly next season | Phase 2: Before the new site goes live / Attendance on its own (#1845) | 15 m | build; Kat's call; break 6:17-7:06 PM not counted | 116,300 | Added 2026-11-16 (in #1847's PR). Tokens include the /resume check. |
+| 7:07-7:33 PM | #1846's design: whether attendance reads the Calendar, Kat's answers (build the automatic fill; Absent -> Excused, Late -> Late (with notice), only RSVPs made before the start, a Tentative no-show is the team's choice of any status, no RSVP -> Needs a look, folded into #1846), mockup canvas with the two list layouts (Kat kept A, editable on a phone), leave filed as #1860 | Phase 2: Before the new site goes live / Attendance on its own (#1846) | 25 m | build; Kat's answers not split | 142,900 | Added 2026-11-16 (in #1847's PR). |
+| 7:33-8:16 PM | #1846: the Needs a look list on Manage attendance (each item's reason, a status picked in place, the not-on-roster names), the last refresh and what scores wait on, the menu count, Commit anyway; the hourly run fills a status from Calendar RSVPs made before the night's start (`attendance_rsvps_before_start()`), the team's Tentative setting on Settings > General (`set_team_attendance_tentative()`); database, Edge Function, page and browser tests, screenshots, generated docs, RLS.md, decision log, stamp, changelog; PR | Phase 2: Before the new site goes live / Attendance on its own (#1846) | 45 m | build | 244,900 | Added 2026-11-16 (in #1847's PR). |
+| 8:16-10:41 PM | PR #1861 (#1846) after it opened: CodeRabbit (the RSVP read could stop at 1000 rows: ten nights per call, then one night per call; paging declined with production's numbers, 131 players on the largest team), the fresh-agent migration review (changes needed: Kat chose Calendar only for the start time, the RSVP read got its own permission check; nit done: a bad Tentative value ignored), tests, local backup restored, merge, cleanup | Phase 2: Before the new site goes live / Attendance on its own (#1846) | 1 h 5 m | build; Kat's CodeRabbit trigger, answer and merge not split; idle 9:00-10:20 PM not counted | 299,300 | Added 2026-11-16 (in #1847's PR). Tokens include the fresh agent's 175,200. |
+| 10:41-11:09 PM | #1847: Kat's answers (only new nights, edit down to all set, the site's wording, link to the new app), the officer-channel post after the hourly run (`officer-post.ts`: posts once per night, edits as items are set, a post deleted in Discord posted again, nothing for a channel outside the team's server or a local stack), `team_attendance_posts` with its own grants; the time-log rows above; Edge Function and database tests, generated docs, RLS.md, decision log, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / Attendance on its own (#1847) | 30 m | build; CodeRabbit, the fresh-agent review and merge not yet counted | 167,600 | Added 2026-11-16. Tokens include writing the time-log rows above. |
+| 11:09-11:42 PM | PR #1862 (#1847) after it opened: CodeRabbit's two findings (a night set all set that needs a look again edits its own post; a new officer channel gets the post and the old one comes down only once the new one is saved, its follow-up); the fresh-agent migration review (changes needed: the first run would have posted Phoenix's Nov 12 night, so nights before the ship day never post; nice-to-haves done: a night's first post is an insert so overlapping runs keep one, tests for a failed save and an out-of-reach post, decision log wording, the backup doc's count and coverage map); tests, PR body, this row | Phase 2: Before the new site goes live / Attendance on its own (#1847) | 35 m | build; Kat's CodeRabbit trigger not split; merge not yet counted | 177,600 | Added 2026-11-16. Tokens include the fresh agent's 109,400. |
 
 ## Not counted (same sessions, not revamp)
 

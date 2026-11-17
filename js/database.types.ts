@@ -4079,6 +4079,41 @@ export type Database = {
           },
         ]
       }
+      team_attendance_posts: {
+        Row: {
+          channel_id: string
+          content_key: string
+          message_id: string
+          posted_at: string
+          raid_date: string
+          team_id: number
+        }
+        Insert: {
+          channel_id: string
+          content_key: string
+          message_id: string
+          posted_at?: string
+          raid_date: string
+          team_id: number
+        }
+        Update: {
+          channel_id?: string
+          content_key?: string
+          message_id?: string
+          posted_at?: string
+          raid_date?: string
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_attendance_posts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_discord_config: {
         Row: {
           apps_script_url: string | null
