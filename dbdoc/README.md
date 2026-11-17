@@ -46,7 +46,7 @@
 | [public.player_equipped_gear](public.player_equipped_gear.md) | 15 | One row per player per physical gear slot (Blizzard API slot keys: HEAD, FINGER_1, FINGER_2, ...), synced from the Blizzard Character Equipment Summary endpoint. Feeds generate_priority_order()'s equipped-item-level fairness factor. | BASE TABLE |
 | [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) | 5 | Marks a team/season/item/track priority list as deliberately saved empty (no one wants the item) -- keeps it out of the Unmanaged Items list without a placeholder priority_order row. Cleared automatically the next time that item/track is saved with a non-empty roster. | BASE TABLE |
 | [public.priority_stale_dismissals](public.priority_stale_dismissals.md) | 7 | Officer-acknowledged "stale-after-Heroic" Priority List conflicts (a Mythic #1 who already has the Heroic version of the same item), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one. Sibling to priority_conflict_dismissals, kept separate since this is keyed by player+item rather than player+boss+track. | BASE TABLE |
-| [public.raid_schedule](public.raid_schedule.md) | 10 | The raid calendar's officer-owned recurring weekly rule (#892, part of #640): one row per weekday/time this team normally raids. is_optional flags a night with no automatic default-Present (#895) -- every non-bench roster player must explicitly RSVP. Raid nights are computed on the fly from this table plus raid_schedule_exceptions (js/calendar.js, computeRaidNights()), not materialized as rows. | BASE TABLE |
+| [public.raid_schedule](public.raid_schedule.md) | 11 | The raid calendar's officer-owned recurring weekly rule (#892, part of #640): one row per weekday/time this team normally raids. is_optional flags a night with no automatic default-Present (#895) -- every non-bench roster player must explicitly RSVP. Raid nights are computed on the fly from this table plus raid_schedule_exceptions (js/calendar.js, computeRaidNights()), not materialized as rows. | BASE TABLE |
 | [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) | 11 | One-off cancellation or addition on top of raid_schedule's recurring rule (#892) -- exception_type distinguishes skipping a normally-scheduled night from adding an extra one. is_optional only applies to an 'added' row. | BASE TABLE |
 | [public.raid_rsvps](public.raid_rsvps.md) | 8 | A raider's self-declared override for one raid night (#893, part of #640) -- absence of a row means the computed default (Present, or Bench/Rotator via players.is_bench/is_rotator) applies. Forward-looking intent only, never synced into public.attendance. Written only through set_own_rsvp() or officer_set_rsvp() (SECURITY DEFINER); the Rotator-In status is written only through officer_set_rotator_week(). No direct INSERT/UPDATE/DELETE grant for anyone. | BASE TABLE |
 | [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) | 6 | Dedup log for the optional-night DM reminder sweep (#895, part of #640) -- records that a 24h/2h reminder was already sent for a player/raid_date/checkpoint so the cron sweep does not re-DM on every tick. Insert-only, written solely by the optional-rsvp-reminders Edge Function via the service role. Not the source of truth for whether a player has responded -- that is raid_rsvps. | BASE TABLE |
@@ -116,6 +116,7 @@
 | [public.mplus_dungeons](public.mplus_dungeons.md) | 2 | Mythic+ dungeon names by the dungeon id the profile API uses, Blizzard's MapChallengeMode id (#1641). Every dungeon, not a season's pool. | BASE TABLE |
 | [public.attendance_log_names](public.attendance_log_names.md) | 5 | Characters in a team's Warcraft Logs raid night who matched nobody on the roster (#1845). Written by wcl-sync; first name only, lower case, as the sync matches names. Informational: never holds back the attendance commit. | BASE TABLE |
 | [public.team_attendance_posts](public.team_attendance_posts.md) | 6 | The officer-channel message wcl-sync's hourly run posted for each team and raid night with attendance items (#1847). content_key is what the message lists ('all set' once every item has a status). Written by wcl-sync with the service role; later runs edit this message as items are set. | BASE TABLE |
+| [public.raid_night_titles](public.raid_night_titles.md) | 4 | A title for one raid date (#1478): "Rename this night" on the night's page. It covers every night on that date and wins over raid_schedule.title; the next week goes back to the weekly title. Written by the officers who write raid_schedule. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -600,6 +601,7 @@ erDiagram
 "public.season_raid_bosses" }o--|| "public.season_vault_raids" : "FOREIGN KEY (season, instance_id) REFERENCES season_vault_raids(season, instance_id)"
 "public.attendance_log_names" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_attendance_posts" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.raid_night_titles" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -1092,6 +1094,7 @@ erDiagram
   boolean is_optional
   timestamp_with_time_zone created_at
   text difficulty
+  text title
 }
 "public.raid_schedule_exceptions" {
   integer id
@@ -1754,6 +1757,12 @@ erDiagram
   text message_id
   text content_key
   timestamp_with_time_zone posted_at
+}
+"public.raid_night_titles" {
+  integer team_id FK
+  date raid_date
+  text title
+  timestamp_with_time_zone updated_at
 }
 ```
 

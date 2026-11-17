@@ -18,12 +18,14 @@ The raid calendar's officer-owned recurring weekly rule (#892, part of #640): on
 | is_optional | boolean | false | false |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | difficulty | text |  | true |  |  | Heroic, Mythic or Heroic into Mythic for this weekly night (#1246); null follows the team default in team_schedule_settings. raid_night_info() counts heroic_into_mythic as mythic. |
+| title | text |  | true |  |  | This weekly night's own title (#1478), such as "Mythic Prog"; null is headed by the night's difficulty where it is shown. A date in raid_night_titles takes its place for that date only. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | raid_schedule_difficulty_check | CHECK | CHECK ((difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text, 'heroic_into_mythic'::text]))) |
+| raid_schedule_title_check | CHECK | CHECK ((((char_length(title) >= 1) AND (char_length(title) <= 40)) AND (title = btrim(title)))) |
 | raid_schedule_weekday_check | CHECK | CHECK (((weekday >= 0) AND (weekday <= 6))) |
 | raid_schedule_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | raid_schedule_pkey | PRIMARY KEY | PRIMARY KEY (id) |
@@ -54,6 +56,7 @@ erDiagram
   boolean is_optional
   timestamp_with_time_zone created_at
   text difficulty
+  text title
 }
 "public.teams" {
   integer id

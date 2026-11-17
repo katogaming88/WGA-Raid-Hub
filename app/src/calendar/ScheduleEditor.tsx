@@ -13,6 +13,7 @@ import {
   NEW_NIGHT,
   sameDraft,
   TIMEZONES,
+  TITLE_MAX,
   WEEKDAY_NAMES,
   type Difficulty,
   type NightDraft
@@ -76,6 +77,7 @@ function Editor({ data }: { data: ScheduleEditorData }) {
               <thead>
                 <tr>
                   <th scope="col">Day</th>
+                  <th scope="col">Title</th>
                   <th scope="col">Start</th>
                   <th scope="col">Length (minutes)</th>
                   <th scope="col">Timezone</th>
@@ -194,6 +196,8 @@ function WeeklyRow({
   const set = (change: Partial<NightDraft>) => setDraft((d) => ({ ...d, ...change }));
   const zones = TIMEZONES.includes(draft.timezone) ? TIMEZONES : [...TIMEZONES, draft.timezone];
   const differs = draft.difficulty !== null;
+  // With no title, the night is headed by its difficulty, which the box shows.
+  const headingLevel = draft.difficulty ?? teamDefault;
 
   const onSave = () => {
     const why = draftProblem(draft);
@@ -232,6 +236,16 @@ function WeeklyRow({
             </option>
           ))}
         </select>
+      </td>
+      <td>
+        <input
+          className="input"
+          aria-label={`${day} title`}
+          maxLength={TITLE_MAX}
+          placeholder={headingLevel ? DIFFICULTY_LABELS[headingLevel] : 'Raid night'}
+          value={draft.title}
+          onChange={(e) => set({ title: e.target.value })}
+        />
       </td>
       <td>
         <input

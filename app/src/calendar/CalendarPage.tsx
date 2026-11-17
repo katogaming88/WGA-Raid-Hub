@@ -80,6 +80,9 @@ type Viewer = {
   // The reader's character on this team's roster, if any.
   me: PlayerRow | null;
   officer: boolean;
+  // May change the schedule: Edit schedule, which the database checks on
+  // every schedule write, not the RSVP permission above.
+  schedules: boolean;
   // Their membership on this team, recorded on a schedule change they make.
   teamMemberId: number | null;
   // Still finding out who a signed-in reader is.
@@ -100,6 +103,7 @@ function useViewer(roster: PlayerRow[] | undefined): Viewer {
     access: officer ? { kind: 'officer' } : mine.length ? { kind: 'raider', playerIds: mine } : { kind: 'none' },
     me,
     officer,
+    schedules: permissions.can('editSchedule'),
     teamMemberId: access.data?.teams.find((t) => t.teamId === team.id)?.teamMemberId ?? null,
     ready: ready && roster !== undefined
   };
@@ -156,7 +160,7 @@ function MonthPage({ month: monthValue }: { month: string | null }) {
   const next = new Date(year, month + 1, 1);
   const touch = useTouchScreen();
   // Officer changes need a computer (Kat, 2026-09-16).
-  const officerTools = viewer.officer && !touch;
+  const officerTools = viewer.schedules && !touch;
   const [editing, setEditing] = useState(false);
   const editorId = useId();
 
@@ -214,7 +218,7 @@ function MonthPage({ month: monthValue }: { month: string | null }) {
             viewer={viewer}
             players={players}
             answers={rows}
-            {...nightsBetween(weekly.rules, dayChanges, from, to, weekly.teamDefault)}
+            {...nightsBetween(weekly.rules, dayChanges.changes, from, to, weekly.teamDefault, dayChanges.titles)}
           />
         )}
       </DataState>
@@ -283,11 +287,12 @@ function Month({
     const night = entry.night!;
     const counts = seesAnswers ? monthCounts(players, night, answers) : null;
     const status = mine(night);
-    const { title, titleClass, level } = nightHeading(night);
+    const { title, titleClass, word, level } = nightHeading(night);
     const label = [
       shortDay(night.date),
       title,
       startTime(night),
+      word,
       level?.label,
       counts ? `${counts.in} in${counts.out ? `, ${counts.out} out` : ''}` : null,
       // In brackets, so the visible words stay a run the label contains.
@@ -308,6 +313,7 @@ function Month({
           <span className={`night-title ${titleClass}`.trim()}>{title}</span>{' '}
           <span className="night-time">{startTime(night)}</span>
         </span>{' '}
+        {word && <span className="night-difficulty">{word}</span>}{' '}
         {level && <span className={`night-difficulty ${level.className}`}>{level.label}</span>}{' '}
         {counts && (
           <span className="night-count num">
@@ -485,7 +491,14 @@ function NightPage({ date, lineup }: { date: string; lineup: boolean }) {
 
   const found =
     schedule.isSuccess && changes.isSuccess
-      ? nightsBetween(schedule.data.rules, changes.data, from, to, schedule.data.teamDefault)
+      ? nightsBetween(
+          schedule.data.rules,
+          changes.data.changes,
+          from,
+          to,
+          schedule.data.teamDefault,
+          changes.data.titles
+        )
       : null;
   const night = found?.nights.find((n) => n.date === date) ?? null;
   const heading = night ? nightHeading(night) : null;
@@ -494,7 +507,7 @@ function NightPage({ date, lineup }: { date: string; lineup: boolean }) {
   const touch = useTouchScreen();
   // Schedule changes (#1361): an officer on a computer, and only for today on.
   const [todayIso] = useState(() => isoDate(new Date()));
-  const changesSchedule = viewer.officer && !touch && date >= todayIso;
+  const changesSchedule = viewer.schedules && !touch && date >= todayIso;
 
   return (
     <section className="page calendar-page night-page" aria-labelledby="page-title">
@@ -509,6 +522,7 @@ function NightPage({ date, lineup }: { date: string; lineup: boolean }) {
             {night && heading && (
               <>
                 {timeRange(night)} · <span className={heading.titleClass || undefined}>{heading.title}</span>
+                {heading.word && ` · ${heading.word}`}
                 {level && (
                   <>
                     {' · '}

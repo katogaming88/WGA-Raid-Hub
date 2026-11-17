@@ -253,6 +253,8 @@ export async function openApp(browser, port, state) {
     team_raid_progress: [],
     raid_schedule: [],
     raid_schedule_exceptions: [],
+    // A title for one raid date (#1478).
+    raid_night_titles: [],
     // The team default difficulty a raid night follows (#1361).
     team_schedule_settings: [],
     raid_rsvps: [],

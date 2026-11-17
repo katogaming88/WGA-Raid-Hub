@@ -64,7 +64,7 @@ export function useScheduleEditor(teamId: number, enabled: boolean) {
         // team-read-guard: one row per weekday and start time a team raids
         client
           .from('raid_schedule')
-          .select('id, weekday, start_time, timezone, duration_minutes, active, is_optional, difficulty')
+          .select('id, weekday, start_time, timezone, duration_minutes, active, is_optional, difficulty, title')
           .eq('team_id', teamId)
           .order('weekday')
           .order('start_time')
@@ -190,5 +190,31 @@ export function useRemoveDateChange(teamId: number) {
       return { data: null, error: null };
     },
     { key: ['remove-date-change', teamId], refreshes: refreshes(teamId) }
+  );
+}
+
+// A title for one date (#1478), from the night's own page. An empty title
+// takes the date's own off, so the night goes back to its weekly title.
+export function useRenameNight(teamId: number) {
+  return useSupabaseMutation<null, { date: string; title: string }>(
+    async (client, { date, title }) => {
+      const text = title.trim();
+      const { error } = text
+        ? await client
+            .from('raid_night_titles')
+            .upsert({ team_id: teamId, raid_date: date, title: text }, { onConflict: 'team_id,raid_date' })
+        : await client.from('raid_night_titles').delete().eq('team_id', teamId).eq('raid_date', date);
+      if (error) return { data: null, error };
+      await audit(
+        client,
+        teamId,
+        'Raid Night Renamed',
+        'raid_night_titles',
+        null,
+        text ? `${date}: ${text}` : `${date}: title removed`
+      );
+      return { data: null, error: null };
+    },
+    { key: ['rename-night', teamId], refreshes: refreshes(teamId) }
   );
 }

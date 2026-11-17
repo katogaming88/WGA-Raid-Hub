@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.287.0] - 2026-11-17
+
+### Backend
+
+- A raid night can carry its own title. Each weekly night keeps one, and a single date can have its own that wins for that date only, so "Ulatek Prog" on one Tuesday goes back to the weekly "Mythic Prog" the next week. Whoever can edit the schedule writes them; anyone reads them, like the schedule (#1478).
+
+### Project
+
+- The new app's Calendar shows a night's title on its month tile and its page, with "Optional night" or "Extra night" and the difficulty beside it; with no title, a night is still headed by its difficulty. Officers set a title for each weekly night in Edit schedule, and "Rename this night" on a night's page sets one for that date; leaving it empty goes back to the usual title (#1478).
+- The new app's Calendar shows Edit schedule, adding a night, cancelling, renaming and bringing a night back only to those with the Edit schedule permission, which is what the database checks; before, seeing RSVPs was enough to see them, and saving then failed. A weekly night's audit entry now names its title.
+- Database, page and browser tests for it, and time-log rows for #1484's merge and #1478.
+
 ## [3.286.0] - 2026-11-17
 
 ### Backend

@@ -10,6 +10,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-11-17 -- A raid night's title (#1478)
+
+Shipped: 20261117091736_raid_night_titles.sql
+
+- **A weekly night's title is a column on `raid_schedule`; one date's title is its own table, `raid_night_titles`** (team, date, title). A normal Tuesday has no row of its own, so "Rename this night" needed somewhere to live. A third `raid_schedule_exceptions` type was the other shape on the issue, but the current site's Schedule tab lists every exception that is not `added` as a cancelled night, so a rename would have shown there as Cancelled.
+- **First match wins: the date's title, then the weekly night's, then a heading worked out where it is shown** (Kat, 2026-10-06). No default title is stored, so changing the team default difficulty still changes every untitled night. A rename never carries forward: the next week reads the weekly title again.
+- **A date's title covers every night on that date**, an extra night included, so an extra night is renamed the same way and `raid_schedule_exceptions` gets no title column.
+- **1 to 40 characters, trimmed**, on both. Reads and writes follow `raid_schedule`: anyone reads; the team's `edit_schedule` permission or a site admin writes.
+- **The Discord signup sheet is unchanged.** `raid_night_info()` does not return the title yet, and the sheet's heading stays "<team> -- Signup Sheet" with the date.
+
+[Full discussion -> #1478](https://github.com/katogaming88/WGA-Raid-Hub/issues/1478).
+
+---
+
 ## 2026-11-12 -- Who tickets would add, and where the bot can make them (#1814)
 
 Shipped: 20261112115816_team_ticket_viewers.sql
