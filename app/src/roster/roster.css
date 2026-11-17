@@ -394,8 +394,8 @@ a.raider-name:hover {
   color: var(--text-muted);
 }
 
-/* Accounts under a member's name (#1360 part 4): the real logos, lit when
-   connected, grey with "Not linked" when not. */
+/* Accounts under a member's name (#1360 part 4): the real logos, lit with the
+   account's name when connected (#1484), grey with "Not linked" when not. */
 .accounts-line {
   display: flex;
   flex-wrap: wrap;
@@ -412,11 +412,17 @@ a.raider-name:hover {
   gap: var(--space-1);
 }
 
-.account-battlenet.linked {
+/* A connected account's name reads in the line's own text color; only the
+   logo carries the brand color, which is too faint for small text (#1484). */
+.account.linked {
+  color: var(--text-muted);
+}
+
+.account-battlenet.linked svg {
   color: #148eff;
 }
 
-.account-discord.linked {
+.account-discord.linked svg {
   color: #5865f2;
 }
 
