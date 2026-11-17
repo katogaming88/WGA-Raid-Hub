@@ -840,7 +840,7 @@ const lineupDb = (): LineupDb => ({
   allLineups: () => Promise.resolve([]),
   teamLineup: () =>
     Promise.resolve({
-      team: { id: 1, name: 'Phoenix', slug: 'phoenix', serverId: SERVER, quietHours: null },
+      team: { id: 1, name: 'Phoenix', slug: 'phoenix', serverId: SERVER, quietHours: null, afterRaid: 'finish' },
       setting: { channelId: CHANNEL, pingRoleId: null, weekday: 3, time: '18:00:00', timezone: 'America/New_York' }
     }),
   night: () => Promise.resolve(RAID),
@@ -850,7 +850,9 @@ const lineupDb = (): LineupDb => ({
   saveLineup: () => Promise.resolve(true),
   updateLineup: () => Promise.resolve(),
   previousWeek: () => Promise.resolve(null),
-  markPosted: () => Promise.resolve()
+  markPosted: () => Promise.resolve(),
+  unfinishedWeeks: () => Promise.resolve([]),
+  finishLineup: () => Promise.resolve()
 });
 
 Deno.test('/officer post lineup from someone who cannot edit the schedule posts nothing', async () => {

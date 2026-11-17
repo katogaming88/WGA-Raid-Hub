@@ -24,6 +24,7 @@ import {
   rsvpWhen,
   sheetTiming,
   takenDays,
+  type AfterRaid,
   type DiscordPost,
   type DiscordRead,
   type DiscordServer,
@@ -42,7 +43,8 @@ import {
   useSetRsvpPost,
   useSetWeeklyLineup,
   useSetDiscordServer,
-  useSetQuietHours
+  useSetQuietHours,
+  useSetAfterRaid
 } from './useDiscordSettings';
 import '../characters/characters.css';
 import './settings.css';
@@ -112,7 +114,7 @@ function DiscordBody({
       {server.botIn && (
         <>
           <PostsCard teamId={teamId} posts={saved.posts} server={server} />
-          <SheetsCard teamId={teamId} sheets={saved.sheets} server={server} />
+          <SheetsCard teamId={teamId} sheets={saved.sheets} afterRaid={saved.after_raid} server={server} />
           <QuietHoursCard teamId={teamId} saved={saved.quiet_hours} />
           <ActivityCard teamId={teamId} server={server} />
         </>
@@ -741,7 +743,17 @@ function TestMessage({
   );
 }
 
-function SheetsCard({ teamId, sheets, server }: { teamId: number; sheets: SignupSheet[]; server: DiscordServer }) {
+function SheetsCard({
+  teamId,
+  sheets,
+  afterRaid,
+  server
+}: {
+  teamId: number;
+  sheets: SignupSheet[];
+  afterRaid: AfterRaid;
+  server: DiscordServer;
+}) {
   const [open, setOpen] = useState<SignupSheet | 'new' | null>(null);
   const allTaken = DAY_ORDER.every((d) => takenDays(sheets, null).has(d));
   return (
@@ -786,6 +798,7 @@ function SheetsCard({ teamId, sheets, server }: { teamId: number; sheets: Signup
           Add a signup sheet
         </button>
       </div>
+      <AfterRaidChoice teamId={teamId} saved={afterRaid} />
       {open && (
         <SheetDialog
           teamId={teamId}
@@ -1010,6 +1023,48 @@ function ActivityCard({ teamId, server }: { teamId: number; server: DiscordServe
         )}
       </DataState>
     </section>
+  );
+}
+
+// What the bot does with a raid's sheet once the raid has passed (#1825), and
+// with the weekly lineup post once the week's raids have. Saved on picking.
+function AfterRaidChoice({ teamId, saved }: { teamId: number; saved: AfterRaid }) {
+  const { announce } = useStatus();
+  const save = useSetAfterRaid(teamId);
+  const pick = (value: AfterRaid) =>
+    save.mutate(value, {
+      onSuccess: () => announce('success', 'Saved.'),
+      onError: (error) => announce('error', errorMessage(error))
+    });
+  const shown = save.isPending && save.variables ? save.variables : saved;
+  return (
+    <fieldset className="field discord-fieldset discord-after-raid">
+      <legend className="field-label">Once a raid has passed</legend>
+      {(
+        [
+          [
+            'finish',
+            'Mark it as finished',
+            'The sheet says the raid has finished and loses its dropdown. The roster picture stays as a record.'
+          ],
+          ['delete', 'Delete it', 'The channel only shows raids still to come.']
+        ] as const
+      ).map(([value, label, hint]) => (
+        <label key={value}>
+          <input
+            type="radio"
+            name={`after-raid-${teamId}`}
+            checked={shown === value}
+            disabled={save.isPending}
+            onChange={() => pick(value)}
+          />{' '}
+          <b>{label}</b> <span className="text-muted">{hint}</span>
+        </label>
+      ))}
+      <p className="field-hint">
+        Four hours after the raid starts. The weekly lineup post does the same once the week’s last raid has passed.
+      </p>
+    </fieldset>
   );
 }
 

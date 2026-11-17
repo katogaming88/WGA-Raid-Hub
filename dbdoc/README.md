@@ -50,9 +50,9 @@
 | [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) | 11 | One-off cancellation or addition on top of raid_schedule's recurring rule (#892) -- exception_type distinguishes skipping a normally-scheduled night from adding an extra one. is_optional only applies to an 'added' row. | BASE TABLE |
 | [public.raid_rsvps](public.raid_rsvps.md) | 8 | A raider's self-declared override for one raid night (#893, part of #640) -- absence of a row means the computed default (Present, or Bench via players.is_bench) applies. Forward-looking intent only, never synced into public.attendance. Written only through set_own_rsvp() or officer_set_rsvp() (SECURITY DEFINER); no direct INSERT/UPDATE/DELETE grant for anyone. | BASE TABLE |
 | [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) | 6 | Dedup log for the optional-night DM reminder sweep (#895, part of #640) -- records that a 24h/2h reminder was already sent for a player/raid_date/checkpoint so the cron sweep does not re-DM on every tick. Insert-only, written solely by the optional-rsvp-reminders Edge Function via the service role. Not the source of truth for whether a player has responded -- that is raid_rsvps. | BASE TABLE |
-| [public.raid_signup_sheets](public.raid_signup_sheets.md) | 6 | Which Discord message holds each team's signup sheet for a raid night (#900): one edited-in-place embed per team and raid_date. Written and read only by the service role, through claim_raid_signup_sheet(), by discord-bot-webhook and discord-interactions since #960 (the bot process before). No read use case for an officer or end user. Mirrors raid_rsvp_reminders_sent's locked-down shape (#895). | BASE TABLE |
+| [public.raid_signup_sheets](public.raid_signup_sheets.md) | 7 | Which Discord message holds each team's signup sheet for a raid night (#900): one edited-in-place embed per team and raid_date. Written and read only by the service role, through claim_raid_signup_sheet(), by discord-bot-webhook and discord-interactions since #960 (the bot process before). No read use case for an officer or end user. Mirrors raid_rsvp_reminders_sent's locked-down shape (#895). | BASE TABLE |
 | [public.player_officer_notes](public.player_officer_notes.md) | 6 | Officer-only annotations on a roster slot (#925): the private officer note, and why a player was removed plus the freeform specifics (#476). One row per players row, created on first write. These lived on players until #925, where the table's public read policy and its table-level anon grant made them readable with the publishable key and by every signed-in raider. m_plus_note stayed on players because the public profile renders it. archived_reason keeps the fixed vocabulary its old CHECK constraint carried. | BASE TABLE |
-| [public.team_discord_config](public.team_discord_config.md) | 16 | A team's Discord server, quiet hours and the old bot's channel and ping role ids (#991, #1712). Read and changed by the team's officers through team_discord_settings() and the set_team_discord_* functions; the old bot reads it with the service key. Each kind of post is in team_discord_posts, each signup sheet in team_discord_signup_sheets. | BASE TABLE |
+| [public.team_discord_config](public.team_discord_config.md) | 17 | A team's Discord server, quiet hours and the old bot's channel and ping role ids (#991, #1712). Read and changed by the team's officers through team_discord_settings() and the set_team_discord_* functions; the old bot reads it with the service key. Each kind of post is in team_discord_posts, each signup sheet in team_discord_signup_sheets. | BASE TABLE |
 | [public.track_bonus_ids](public.track_bonus_ids.md) | 5 | Maps a WoW item bonus ID to its gear upgrade track and rank (e.g. 12853 -> Myth 5/6). Read by blizzard-gear-sync when syncing equipped gear, and the intended future home of the constants currently inlined in import_rclc_loot(). Seeded by hand per tier -- append the new block, never edit or delete old rows, since older gear keeps its original bonus IDs. | BASE TABLE |
 | [public.account_preferences](public.account_preferences.md) | 6 | Per-account preferences, one row per (account, team, key); team_id is null for guild-wide keys. The account_preferences_known_key CHECK lists every allowed key. Replaced no_character_dismissals (#940). | BASE TABLE |
 | [public.guilds](public.guilds.md) | 9 | One row per guild. url_key is the /g/<key> segment of an address: readable for WGA, a random code for any other guild (#1100, #1114). | BASE TABLE |
@@ -90,7 +90,7 @@
 | [public.discord_server_access](public.discord_server_access.md) | 3 | Discord servers a person and the bot were both found in, and when (#1712). Written with the service key by the function that reads Discord (#994); set_team_discord_server() takes only a server verified for the caller in the last hour. | BASE TABLE |
 | [public.discord_post_queue](public.discord_post_queue.md) | 12 | Every Discord notice the bot posts to a team's channels, queued by the write behind it and posted by discord-bot-webhook's drain every minute (#962). Added only through queue_discord_post(), taken only through claim_discord_posts(). Service role only. | BASE TABLE |
 | [public.discord_nudges_sent](public.discord_nudges_sent.md) | 3 | When the bot last DMed each Discord user about each thing it chases: a missing wishlist, BiS link or BiS pick (/officer nudge-missing, #998) or a season signup (/officer missing-signups, #990). One row per Discord id and category, overwritten on each DM, so the 24-hour cooldown holds across every team. Written by discord-interactions with the service role, after the DM was sent. | BASE TABLE |
-| [public.team_lineup_posts](public.team_lineup_posts.md) | 6 | The weekly boss lineup message posted for each team and week (#1709). week_of is the date the post was due, in the team's lineup time zone; content_key is what the message shows. No message: the week posted, then its lineup was emptied and the message taken down. Written by discord-bot-webhook with the service role; later runs edit this message when the lineup changes. | BASE TABLE |
+| [public.team_lineup_posts](public.team_lineup_posts.md) | 7 | The weekly boss lineup message posted for each team and week (#1709). week_of is the date the post was due, in the team's lineup time zone; content_key is what the message shows. No message: the week posted, then its lineup was emptied and the message taken down. Written by discord-bot-webhook with the service role; later runs edit this message when the lineup changes. | BASE TABLE |
 | [public.team_recruiting](public.team_recruiting.md) | 35 | A team's recruiting settings, one row per team, made with the team (#1535): whether it takes applications and how people join, the apply page's text, what it asks of applicants, and what the bot does in Discord when someone applies. Read and changed by the team's officers through team_recruiting_settings() and save_team_recruiting(); the apply pages read it through team_recruiting_page(); the bot reads it with the service key. | BASE TABLE |
 | [public.team_recruiting_spots](public.team_recruiting_spots.md) | 6 | A team's open spots (#1535), one row each, in sort_order. A spec, or no spec for Any tank, Any healer, Any melee or Any ranged. role matches the spec's. Replaced as a list through set_team_recruiting_spots(). | BASE TABLE |
 | [public.guild_recruiters](public.guild_recruiters.md) | 6 | A guild's recruiters (#1537): one row per person per guild, with the code in their apply links (?from=<code>) and whether they are switched on. Switched off keeps the row and its code. Changed only through set_guild_recruiter(); read through guild_recruiter_list(), recruiter_for_code() and guild_active_recruiters(). | BASE TABLE |
@@ -401,6 +401,7 @@
 | public.attendance_rsvps_before_start | record | p_team_id integer, p_dates date[] | FUNCTION |
 | public.set_team_attendance_tentative | jsonb | p_team_id integer, p_status text | FUNCTION |
 | public.team_member_accounts | record | p_team_id integer | FUNCTION |
+| public.set_team_discord_after_raid | void | p_team_id integer, p_after_raid text | FUNCTION |
 
 ## Enums
 
@@ -1132,6 +1133,7 @@ erDiagram
   text channel_id
   text message_id
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone finished_at
 }
 "public.player_officer_notes" {
   integer player_id FK
@@ -1158,6 +1160,7 @@ erDiagram
   time_without_time_zone quiet_hours_start
   time_without_time_zone quiet_hours_end
   text quiet_hours_timezone
+  text after_raid
 }
 "public.track_bonus_ids" {
   integer bonus_id
@@ -1484,6 +1487,7 @@ erDiagram
   text message_id
   text content_key
   timestamp_with_time_zone posted_at
+  timestamp_with_time_zone finished_at
 }
 "public.team_recruiting" {
   integer team_id FK

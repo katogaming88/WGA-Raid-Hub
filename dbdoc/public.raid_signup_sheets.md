@@ -14,6 +14,7 @@ Which Discord message holds each team's signup sheet for a raid night (#900): on
 | channel_id | text |  | true |  |  |  |
 | message_id | text |  | true |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
+| finished_at | timestamp with time zone |  | true |  |  | When the bot marked this raid's sheet finished or deleted it, as the team chose (#1825); null while the raid is still to come. A sheet it could no longer reach is set here too. |
 
 ## Constraints
 
@@ -44,6 +45,7 @@ erDiagram
   text channel_id
   text message_id
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone finished_at
 }
 "public.teams" {
   integer id

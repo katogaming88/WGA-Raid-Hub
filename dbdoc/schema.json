@@ -5996,6 +5996,12 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "finished_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "When the bot marked this raid's sheet finished or deleted it, as the team chose (#1825); null while the raid is still to come. A sheet it could no longer reach is set here too."
         }
       ],
       "indexes": [
@@ -6255,6 +6261,13 @@
           "type": "text",
           "nullable": true,
           "comment": "The time zone quiet hours are in, an IANA name such as America/New_York (#1712)."
+        },
+        {
+          "name": "after_raid",
+          "type": "text",
+          "nullable": false,
+          "default": "'finish'::text",
+          "comment": "What the bot does with a raid night's signup sheet and the weekly lineup post once the raid has passed (#1825): finish (edit it to say so, without its dropdown and buttons) or delete. Set by set_team_discord_after_raid()."
         }
       ],
       "indexes": [
@@ -6268,6 +6281,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "team_discord_config_after_raid_check",
+          "type": "CHECK",
+          "def": "CHECK ((after_raid = ANY (ARRAY['finish'::text, 'delete'::text])))",
+          "table": "public.team_discord_config",
+          "referenced_table": "",
+          "columns": [
+            "after_raid"
+          ]
+        },
         {
           "name": "team_discord_config_quiet_hours",
           "type": "CHECK",
@@ -10625,6 +10648,12 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "finished_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "When the bot marked this week's lineup post finished or deleted it, once the week's last raid night had passed (#1825). A finished week is never edited or posted again."
         }
       ],
       "indexes": [
@@ -18702,6 +18731,12 @@
       "name": "public.team_member_accounts",
       "return_type": "record",
       "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_discord_after_raid",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_after_raid text",
       "type": "FUNCTION"
     }
   ],

@@ -218,7 +218,8 @@ export const GUIDES: Guide[] = [
       'Pick your team’s server. Only servers that you and the bot are both in are listed. Discord lists the bot as offline in the member list; that’s normal, it posts without staying connected.',
       'Choose each kind of post to pick its channel and, if you like, a role to ping. Send test message checks that the bot can post there.',
       'Private channels: the bot only sees public channels on its own. For each private channel it posts in (or the category holding them), in Discord choose Edit Channel, then Permissions, add the WGA Raid Hub role, and turn on View Channel, Send Messages, Embed Links and Read Message History. The page marks any channel still missing one.',
-      'Add a signup sheet for each set of raid days that should post in its own channel, and set quiet hours if the bot should stay silent overnight.'
+      'Add a signup sheet for each set of raid days that should post in its own channel, and set quiet hours if the bot should stay silent overnight.',
+      'Under Once a raid has passed, choose whether the bot marks each raid’s sheet as finished, keeping it as a record, or deletes it. The weekly lineup post does the same once the week’s last raid has passed.'
     ]
   },
   {

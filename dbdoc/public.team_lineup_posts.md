@@ -14,6 +14,7 @@ The weekly boss lineup message posted for each team and week (#1709). week_of is
 | message_id | text |  | true |  |  |  |
 | content_key | text |  | false |  |  |  |
 | posted_at | timestamp with time zone | now() | false |  |  |  |
+| finished_at | timestamp with time zone |  | true |  |  | When the bot marked this week's lineup post finished or deleted it, once the week's last raid night had passed (#1825). A finished week is never edited or posted again. |
 
 ## Constraints
 
@@ -43,6 +44,7 @@ erDiagram
   text message_id
   text content_key
   timestamp_with_time_zone posted_at
+  timestamp_with_time_zone finished_at
 }
 "public.teams" {
   integer id

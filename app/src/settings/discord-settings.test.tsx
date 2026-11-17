@@ -27,6 +27,7 @@ const person = (role: 'officer' | 'raider') => ({
 
 const SAVED: DiscordSettings = {
   server_id: SERVER_ID,
+  after_raid: 'finish',
   quiet_hours: null,
   posts: [
     { kind: 'officer_requests', channel_id: '201', ping_role_id: '301', last_posted_at: null },
@@ -314,6 +315,16 @@ describe('Settings › Discord (#994)', () => {
         p_ping_role_id: null
       }
     ]);
+  });
+
+  it('picks what the bot does with a raid’s posts once it has passed (#1825), Mark it as finished by default', async () => {
+    const rpcs: [string, Record<string, unknown>][] = [];
+    renderApp(PATH, handlers({ rpcs }));
+    const card = (await screen.findByRole('heading', { name: 'Signup sheets' })).closest('section')!;
+    const choice = within(card).getByRole('group', { name: 'Once a raid has passed' });
+    expect(within(choice).getByRole('radio', { name: /Mark it as finished/ })).toBeChecked();
+    await userEvent.click(within(choice).getByRole('radio', { name: /Delete it/ }));
+    await expect.poll(() => rpcs[0]).toEqual(['set_team_discord_after_raid', { p_team_id: 1, p_after_raid: 'delete' }]);
   });
 
   it('turns quiet hours on', async () => {

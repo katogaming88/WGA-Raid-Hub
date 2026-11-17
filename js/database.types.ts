@@ -2575,6 +2575,7 @@ export type Database = {
       raid_signup_sheets: {
         Row: {
           channel_id: string | null
+          finished_at: string | null
           id: number
           message_id: string | null
           raid_date: string
@@ -2583,6 +2584,7 @@ export type Database = {
         }
         Insert: {
           channel_id?: string | null
+          finished_at?: string | null
           id?: number
           message_id?: string | null
           raid_date: string
@@ -2591,6 +2593,7 @@ export type Database = {
         }
         Update: {
           channel_id?: string | null
+          finished_at?: string | null
           id?: number
           message_id?: string | null
           raid_date?: string
@@ -4145,6 +4148,7 @@ export type Database = {
       }
       team_discord_config: {
         Row: {
+          after_raid: string
           apps_script_url: string | null
           attendance_channel_id: string | null
           created_at: string
@@ -4163,6 +4167,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          after_raid?: string
           apps_script_url?: string | null
           attendance_channel_id?: string | null
           created_at?: string
@@ -4181,6 +4186,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          after_raid?: string
           apps_script_url?: string | null
           attendance_channel_id?: string | null
           created_at?: string
@@ -4347,6 +4353,7 @@ export type Database = {
         Row: {
           channel_id: string | null
           content_key: string
+          finished_at: string | null
           message_id: string | null
           posted_at: string
           team_id: number
@@ -4355,6 +4362,7 @@ export type Database = {
         Insert: {
           channel_id?: string | null
           content_key: string
+          finished_at?: string | null
           message_id?: string | null
           posted_at?: string
           team_id: number
@@ -4363,6 +4371,7 @@ export type Database = {
         Update: {
           channel_id?: string | null
           content_key?: string
+          finished_at?: string | null
           message_id?: string | null
           posted_at?: string
           team_id?: number
@@ -6630,6 +6639,10 @@ export type Database = {
       set_team_audit_rules: {
         Args: { p_enchant_check: string; p_team_id: number; p_vault_rule: Json }
         Returns: Json
+      }
+      set_team_discord_after_raid: {
+        Args: { p_after_raid: string; p_team_id: number }
+        Returns: undefined
       }
       set_team_discord_post: {
         Args: {

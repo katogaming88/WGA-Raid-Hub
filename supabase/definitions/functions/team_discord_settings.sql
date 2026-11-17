@@ -22,6 +22,9 @@ begin
 
   return jsonb_build_object(
     'server_id', v_config.guild_id,
+    -- What the bot does with a raid's posts once it has passed (#1825); a
+    -- team with no server yet reads the default.
+    'after_raid', coalesce(v_config.after_raid, 'finish'),
     'quiet_hours', case when v_config.quiet_hours_start is null then null else jsonb_build_object(
       'start', v_config.quiet_hours_start,
       'end', v_config.quiet_hours_end,

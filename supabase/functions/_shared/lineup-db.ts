@@ -26,7 +26,7 @@ export function lineupDb(client: () => SupabaseClient<any>): LineupDb {
       (must(
         await client()
           .from('team_discord_config')
-          .select('team_id, guild_id, quiet_hours_start, quiet_hours_end, quiet_hours_timezone, teams(name, slug)')
+          .select('team_id, guild_id, quiet_hours_start, quiet_hours_end, quiet_hours_timezone, after_raid, teams(name, slug)')
           .in(
             'team_id',
             rows.map((r) => r.team_id)
@@ -45,7 +45,8 @@ export function lineupDb(client: () => SupabaseClient<any>): LineupDb {
             serverId: c.guild_id,
             quietHours: c.quiet_hours_start
               ? { start: c.quiet_hours_start, end: c.quiet_hours_end, timezone: c.quiet_hours_timezone }
-              : null
+              : null,
+            afterRaid: c.after_raid === 'delete' ? 'delete' : 'finish'
           },
           setting: {
             channelId: r.channel_id,
@@ -94,13 +95,25 @@ export function lineupDb(client: () => SupabaseClient<any>): LineupDb {
       const row = must(
         await client()
           .from('team_lineup_posts')
-          .select('message_id, channel_id, content_key')
+          .select('message_id, channel_id, content_key, finished_at')
           .eq('team_id', teamId)
           .eq('week_of', weekOf)
           .maybeSingle(),
         'team_lineup_posts'
-      ) as { message_id: string | null; channel_id: string | null; content_key: string } | null;
-      return row ? { messageId: row.message_id, channelId: row.channel_id, key: row.content_key } : null;
+      ) as {
+        message_id: string | null;
+        channel_id: string | null;
+        content_key: string;
+        finished_at: string | null;
+      } | null;
+      return row
+        ? {
+            messageId: row.message_id,
+            channelId: row.channel_id,
+            key: row.content_key,
+            finished: row.finished_at !== null
+          }
+        : null;
     },
     async saveLineup(teamId, weekOf, post) {
       const { error } = await client().from('team_lineup_posts').insert({
@@ -138,6 +151,28 @@ export function lineupDb(client: () => SupabaseClient<any>): LineupDb {
         'team_lineup_posts'
       ) as { week_of: string } | null;
       return row?.week_of ?? null;
+    },
+    async unfinishedWeeks(teamId) {
+      const rows = must(
+        await client()
+          .from('team_lineup_posts')
+          .select('week_of, channel_id, message_id')
+          .eq('team_id', teamId)
+          .is('finished_at', null)
+          .not('message_id', 'is', null),
+        'team_lineup_posts'
+      ) as any[] | null;
+      return (rows ?? []).map((r) => ({ weekOf: r.week_of, channelId: r.channel_id, messageId: r.message_id }));
+    },
+    async finishLineup(teamId, weekOf) {
+      must(
+        await client()
+          .from('team_lineup_posts')
+          .update({ finished_at: new Date().toISOString() })
+          .eq('team_id', teamId)
+          .eq('week_of', weekOf),
+        'team_lineup_posts'
+      );
     },
     async markPosted(teamId) {
       const { error } = await client()

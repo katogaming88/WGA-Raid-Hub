@@ -2,7 +2,8 @@
 // picks on Settings › Discord, the bot posts the boss lineup for the raid
 // nights of the coming week, a drawn grid per night, and edits that message
 // when an officer changes the lineup. /officer post lineup posts one night's
-// now.
+// now. Once the last raid night it covers has passed, the post is marked
+// finished or deleted, as the team chose (#1825).
 //
 // The grid is the look Kat picked (2026-11-04, mockup C2): raiders down the
 // side by role in class colour, the night's bosses across the top in pull
@@ -12,11 +13,14 @@
 //
 // No reads or Discord calls of its own, like signup-sheet.ts.
 import {
+  type AfterRaid,
   type DiscordCall,
   type DiscordFile,
   type Night,
   type QuietHours,
   type RosterRow,
+  finishPost,
+  hasPassed,
   inQuietHours,
   startsAt
 } from './signup-sheet.ts';
@@ -30,13 +34,21 @@ export type LineupSetting = {
   time: string;
   timezone: string;
 };
-export type LineupTeam = { id: number; name: string; slug: string; serverId: string; quietHours: QuietHours | null };
+export type LineupTeam = {
+  id: number;
+  name: string;
+  slug: string;
+  serverId: string;
+  quietHours: QuietHours | null;
+  afterRaid: AfterRaid;
+};
 export type TeamLineup = { team: LineupTeam; setting: LineupSetting };
 // One boss on a night's list, in pull order, with who is in for it.
 export type LineupBoss = { name: string; position: number; playerIds: number[] };
 export type WeekPost = { messageId: string | null; channelId: string | null; key: string };
 // The key of a week whose lineup was emptied after it posted.
 export const EMPTY_KEY = 'empty';
+export const WEEK_FINISHED = "This week's raids have finished.";
 
 export interface LineupDb {
   // Every team with a weekly lineup post set, or one team's.
@@ -47,9 +59,9 @@ export interface LineupDb {
   // The bosses being pulled that night (skipped ones left out), in order.
   bosses(teamId: number, raidDate: string): Promise<LineupBoss[]>;
   // The message posted for a week, or null.
-  // The week's row: its message and channel (null once taken down) and what
-  // it shows. Null when the week hasn't posted.
-  postedLineup(teamId: number, weekOf: string): Promise<WeekPost | null>;
+  // The week's row: its message and channel (null once taken down), what it
+  // shows, and whether it was finished (#1825). Null when the week hasn't posted.
+  postedLineup(teamId: number, weekOf: string): Promise<(WeekPost & { finished: boolean }) | null>;
   // Records the week's first message; false when another run's is already there.
   saveLineup(teamId: number, weekOf: string, post: WeekPost & { messageId: string }): Promise<boolean>;
   // Changes the week's row after an edit, a take-down or a repost.
@@ -57,6 +69,10 @@ export interface LineupDb {
   // The latest week the team posted for before this one, or null.
   previousWeek(teamId: number, before: string): Promise<string | null>;
   markPosted(teamId: number): Promise<void>;
+  // The team's posted weeks not yet finished (#1825).
+  unfinishedWeeks(teamId: number): Promise<Array<{ weekOf: string; channelId: string; messageId: string }>>;
+  // Records that a week's post was finished or deleted, so it happens once.
+  finishLineup(teamId: number, weekOf: string): Promise<void>;
 }
 
 export type LineupContext = {
@@ -412,6 +428,8 @@ export type LineupResult = 'posted' | 'edited' | 'unchanged' | 'no lineup' | 'pa
 export async function syncLineup(ctx: LineupContext, { team, setting }: TeamLineup): Promise<LineupResult> {
   const week = currentWeek(setting, ctx.now);
   const row = await ctx.db.postedLineup(team.id, week.weekOf);
+  // Finished once its last raid night passed (#1825): never edited or posted again.
+  if (row?.finished) return 'passed';
   // The day or time moved since the last post, which went out less than a
   // week before this one: its nights are left out here, so none is posted
   // (and pinged) twice and none is missed (Kat, 2026-11-04; fresh review on
@@ -506,14 +524,44 @@ export async function syncLineup(ctx: LineupContext, { team, setting }: TeamLine
   return 'posted';
 }
 
-// The scheduled run: every team's weekly post. One failing does not stop the rest.
-export async function sweepLineups(ctx: LineupContext): Promise<{ posted: number; edited: number; failed: number }> {
-  const counts = { posted: 0, edited: 0, failed: 0 };
+// A team's weekly posts whose raid nights have all passed, finished or
+// deleted as the team chose, once each (#1825). A week is over 4 hours after
+// its last raid night starts; until then the post is left alone, so a week
+// raiding Tuesday and Thursday keeps its post through Thursday's raid.
+export async function finishLineups(ctx: LineupContext, { team, setting }: TeamLineup): Promise<number> {
+  let finished = 0;
+  for (const row of await ctx.db.unfinishedWeeks(team.id)) {
+    const week = { weekOf: row.weekOf, due: zonedTimeToUtc(row.weekOf, setting.time, setting.timezone) };
+    const nights = await weekNights(ctx.db, team.id, week, setting);
+    // A week whose nights were all cancelled is over once its seven days are.
+    const over = nights.length
+      ? nights.every((n) => hasPassed(n.raidDate, n.night, ctx.now))
+      : ctx.now.getTime() >= week.due.getTime() + 7 * DAY_MS;
+    if (!over) continue;
+    await finishPost(
+      ctx.discord,
+      `/channels/${row.channelId}/messages/${row.messageId}`,
+      team.afterRaid,
+      WEEK_FINISHED
+    );
+    await ctx.db.finishLineup(team.id, row.weekOf);
+    finished++;
+  }
+  return finished;
+}
+
+// The scheduled run: every team's weekly post brought up to date, then its
+// passed weeks finished. One failing does not stop the rest.
+export async function sweepLineups(
+  ctx: LineupContext
+): Promise<{ posted: number; edited: number; failed: number; finished: number }> {
+  const counts = { posted: 0, edited: 0, failed: 0, finished: 0 };
   for (const lineup of await ctx.db.allLineups()) {
     try {
       const result = await syncLineup(ctx, lineup);
       if (result === 'posted') counts.posted++;
       if (result === 'edited') counts.edited++;
+      counts.finished += await finishLineups(ctx, lineup);
     } catch (err) {
       counts.failed++;
       console.error(`lineup post: team ${lineup.team.id}:`, err instanceof Error ? err.message : err);

@@ -24,11 +24,13 @@ A team's Discord server, quiet hours and the old bot's channel and ping role ids
 | quiet_hours_start | time without time zone |  | true |  |  | When quiet hours start, in quiet_hours_timezone (#1712). Posts made in quiet hours are held until they end. Empty with the end and the time zone for off. |
 | quiet_hours_end | time without time zone |  | true |  |  | When quiet hours end, in quiet_hours_timezone (#1712). Earlier than the start when they run past midnight. |
 | quiet_hours_timezone | text |  | true |  |  | The time zone quiet hours are in, an IANA name such as America/New_York (#1712). |
+| after_raid | text | 'finish'::text | false |  |  | What the bot does with a raid night's signup sheet and the weekly lineup post once the raid has passed (#1825): finish (edit it to say so, without its dropdown and buttons) or delete. Set by set_team_discord_after_raid(). |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| team_discord_config_after_raid_check | CHECK | CHECK ((after_raid = ANY (ARRAY['finish'::text, 'delete'::text]))) |
 | team_discord_config_quiet_hours | CHECK | CHECK ((((quiet_hours_start IS NULL) AND (quiet_hours_end IS NULL) AND (quiet_hours_timezone IS NULL)) OR ((quiet_hours_start IS NOT NULL) AND (quiet_hours_end IS NOT NULL) AND (quiet_hours_timezone IS NOT NULL) AND (quiet_hours_start <> quiet_hours_end)))) |
 | team_discord_config_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | team_discord_config_pkey | PRIMARY KEY | PRIMARY KEY (team_id) |
@@ -65,6 +67,7 @@ erDiagram
   time_without_time_zone quiet_hours_start
   time_without_time_zone quiet_hours_end
   text quiet_hours_timezone
+  text after_raid
 }
 "public.teams" {
   integer id

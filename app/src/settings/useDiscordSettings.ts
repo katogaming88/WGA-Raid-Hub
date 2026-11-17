@@ -1,7 +1,7 @@
 import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import { refusalOf } from '../characters/useCharacters';
-import type { Activity, DiscordRead, DiscordSettings, PostKind } from './discord';
+import type { Activity, AfterRaid, DiscordRead, DiscordSettings, PostKind } from './discord';
 
 // The generated types mark every function argument as non-null; these
 // functions take null on purpose (no channel is off, no role is no ping).
@@ -172,6 +172,18 @@ export function useSetQuietHours(teamId: number) {
       return { data: null, error: result.error };
     },
     { key: ['set-quiet-hours', teamId], refreshes: [settingsKey(teamId)] }
+  );
+}
+
+// What the bot does with a raid's sheet, and the week's lineup post, once the
+// raid has passed (#1825).
+export function useSetAfterRaid(teamId: number) {
+  return useSupabaseMutation<null, AfterRaid>(
+    async (client, afterRaid) => {
+      const result = await client.rpc('set_team_discord_after_raid', { p_team_id: teamId, p_after_raid: afterRaid });
+      return { data: null, error: result.error };
+    },
+    { key: ['set-after-raid', teamId], refreshes: [settingsKey(teamId)] }
   );
 }
 

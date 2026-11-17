@@ -3809,3 +3809,19 @@ Shipped: `20261117002741_team_member_accounts.sql`.
 **`team_battlenet_connections()` stays** for the current site's roster tab; the new app reads only the new function.
 
 [Full discussion -> #1484](https://github.com/katogaming88/WGA-Raid-Hub/issues/1484).
+
+## #1825 -- the bot finishes or deletes a raid's Discord posts once it has passed
+
+Shipped: `20261117161755_finished_raid_posts.sql`.
+
+**One choice per team, on `team_discord_config.after_raid`:** `finish` (the default) or `delete`. It covers both the signup sheets and the weekly lineup post, as the issue asks, so it lives on the team's Discord row rather than on each sheet. A team that never chose gets `finish`, since it loses nothing; WGA's teams pick `delete` on the page. `set_team_discord_after_raid()` saves it with the other `set_team_discord_*` functions' check (`change_discord_settings` or a site admin) and one audit row per change.
+
+**`finished_at` on `raid_signup_sheets` and `team_lineup_posts` makes it happen once.** The scheduled sweep finishes a sheet 4 hours after its raid starts (`PASSED_AFTER_MS`, where the bot already stops updating it), and a week's lineup post once every raid night it covers is that far past, so a Tuesday-and-Thursday week keeps its post through Thursday. A finished week is never edited or posted again, even if the lineup changes after. A sheet whose raid was cancelled after it went up is finished two days after its date.
+
+**Finish edits; delete deletes; neither pings.** Finishing replaces the message's text with "This raid has finished." (or "This week's raids have finished.") and takes the dropdown and buttons off; the roster picture and counts stay. A post the bot can no longer reach (403 or 404: deleted by hand, channel gone, permission lost) is let go and marked finished. Anything else is tried again next run.
+
+**No Manage Messages warning.** The issue asked the page to say when Delete lacks the bot's Manage Messages. Discord lets a bot delete its own messages without it (it is needed only for other people's), so there is nothing to warn about; a channel the bot can't reach at all is already marked on the page.
+
+**Nothing backfilled.** Production had one posted sheet (team 5, 2026-11-17) and no lineup posts when this shipped; the first run after deploy finishes it like any other. Phoenix's seven old sheets were posted by the old bots: the sweep reads only teams with a sheet set, and if Phoenix sets one, this bot can't edit or delete another application's messages (403), so they are let go.
+
+[Full discussion -> #1825](https://github.com/katogaming88/WGA-Raid-Hub/issues/1825).

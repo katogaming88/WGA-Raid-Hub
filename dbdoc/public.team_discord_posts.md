@@ -81,6 +81,7 @@ erDiagram
   time_without_time_zone quiet_hours_start
   time_without_time_zone quiet_hours_end
   text quiet_hours_timezone
+  text after_raid
 }
 ```
 
