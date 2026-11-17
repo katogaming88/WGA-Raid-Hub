@@ -22,7 +22,9 @@ export function sheetDb(client: () => SupabaseClient<any>): SheetDb {
       (must(
         await client()
           .from('team_discord_config')
-          .select('team_id, guild_id, quiet_hours_start, quiet_hours_end, quiet_hours_timezone, after_raid, teams(name, slug)')
+          .select(
+            'team_id, guild_id, quiet_hours_start, quiet_hours_end, quiet_hours_timezone, after_raid, teams(name, slug)'
+          )
           .in('team_id', ids),
         'team_discord_config'
       ) as any[] | null) ?? [];

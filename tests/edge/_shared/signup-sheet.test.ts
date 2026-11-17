@@ -116,7 +116,14 @@ Deno.test('View on Site leaves ?team= off for the default team; Refresh carries 
   assertEquals(link.url, 'https://site.test/calendar.html?date=2026-11-03');
   assertEquals(refresh.custom_id, 'signup-sheet-refresh:1:2026-11-03');
   const other = buildSheet({
-    team: { id: 2, name: 'Hellfire Rollers', slug: 'hellfire', serverId: SERVER, quietHours: null, afterRaid: 'finish' },
+    team: {
+      id: 2,
+      name: 'Hellfire Rollers',
+      slug: 'hellfire',
+      serverId: SERVER,
+      quietHours: null,
+      afterRaid: 'finish'
+    },
     raidDate: '2026-11-03',
     night: RAID,
     roster: [],

@@ -15,7 +15,14 @@ export const SERVER = '100000000000000001';
 export const CHANNEL = '200000000000000002';
 export const ROLE = '300000000000000003';
 
-export const TEAM: Team = { id: 1, name: 'Phoenix', slug: 'phoenix', serverId: SERVER, quietHours: null, afterRaid: 'finish' };
+export const TEAM: Team = {
+  id: 1,
+  name: 'Phoenix',
+  slug: 'phoenix',
+  serverId: SERVER,
+  quietHours: null,
+  afterRaid: 'finish'
+};
 
 // Tuesdays and Thursdays, two raids kept posted.
 export const SHEET: SheetSetting = {

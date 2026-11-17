@@ -26,7 +26,9 @@ export function lineupDb(client: () => SupabaseClient<any>): LineupDb {
       (must(
         await client()
           .from('team_discord_config')
-          .select('team_id, guild_id, quiet_hours_start, quiet_hours_end, quiet_hours_timezone, after_raid, teams(name, slug)')
+          .select(
+            'team_id, guild_id, quiet_hours_start, quiet_hours_end, quiet_hours_timezone, after_raid, teams(name, slug)'
+          )
           .in(
             'team_id',
             rows.map((r) => r.team_id)
