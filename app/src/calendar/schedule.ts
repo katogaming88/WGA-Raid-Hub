@@ -118,9 +118,10 @@ export const nightRow = (d: NightDraft) => ({
 });
 
 // The audit log line the current site writes for a weekly night, word for
-// word, so the Audit log reads the same whichever site made the change.
+// word, so the Audit log reads the same whichever site made the change, plus
+// the night's own title, which only the new app sets (#1478).
 export const nightAuditDetail = (d: NightDraft) =>
-  `${WEEKDAY_NAMES[d.weekday]} ${d.start}${d.optional ? ' (optional)' : ''}${
+  `${WEEKDAY_NAMES[d.weekday]} ${d.start}${d.title.trim() ? ` "${d.title.trim()}"` : ''}${d.optional ? ' (optional)' : ''}${
     d.difficulty ? ` (${DIFFICULTY_LABELS[d.difficulty]})` : ''
   }${d.active ? '' : ' (inactive)'}`;
 

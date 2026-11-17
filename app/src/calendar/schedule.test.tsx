@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers, type Read } from '../test/fakeSupabase';
@@ -327,6 +327,24 @@ describe('changes to one date', () => {
     );
   });
 
+  it('needs Edit schedule, not only seeing RSVPs, to change the schedule', async () => {
+    const base = handlers('officer');
+    const rsvpsOnly: FakeHandlers = {
+      ...base,
+      rpc: (name, args) =>
+        name === 'my_permissions' ? { data: { team: ['see_rsvps'], guild: [] } } : base.rpc!(name, args)
+    };
+    renderApp(MONTH, rsvpsOnly);
+    expect(await screen.findByRole('region', { name: 'Raid nights in May 2030' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit schedule' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Add a raid night/ })).not.toBeInTheDocument();
+    cleanup();
+    renderApp(`/g/wga/t/phoenix/calendar?date=${FUTURE_NIGHT}`, rsvpsOnly);
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rename this night' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Cancel this night/ })).not.toBeInTheDocument();
+  });
+
   it('renames one night from its own page', async () => {
     const user = userEvent.setup();
     const { client } = renderApp(`/g/wga/t/phoenix/calendar?date=${FUTURE_NIGHT}`, handlers('officer'));
@@ -400,6 +418,7 @@ describe('the schedule’s rules', () => {
       nightAuditDetail({ ...NEW_NIGHT, weekday: 4, start: '19:30', optional: true, difficulty: 'heroic_into_mythic' })
     ).toBe('Thursday 19:30 (optional) (Heroic into Mythic)');
     expect(nightAuditDetail({ ...NEW_NIGHT, active: false })).toBe('Tuesday 20:00 (inactive)');
+    expect(nightAuditDetail({ ...NEW_NIGHT, title: ' Mythic Prog ' })).toBe('Tuesday 20:00 "Mythic Prog"');
   });
 
   it('gives each night its own difficulty, else the team default', () => {
