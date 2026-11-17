@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 38 h 32 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 39 h 22 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **210 h 28 m** |             |
+| **All revamp work**                | **211 h 18 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 3 h 45 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 4 h 35 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -786,6 +786,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:15-9:45 AM | #1478: a raid night's own title: `raid_schedule.title` for each weekly night and `raid_night_titles` for one date (not a third exception type, which the current site's Schedule tab would list as Cancelled), written under the `edit_schedule` permission; the Calendar's tiles and night page headed by the title with "Optional night"/"Extra night" and the difficulty beside it, a Title column in Edit schedule, "Rename this night" on the night's page; database, page and browser tests, screenshots, generated docs, RLS.md, decision log, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1478) | 30 m | build; Kat's design review, CodeRabbit, the fresh-agent review and merge not yet counted | 185,600 | Added 2026-11-17. |
 | 1:06-1:36 PM | PR #1864 (#1478) after it opened: CodeRabbit's three comments (a signed-out update and delete test added; audited functions and a "Team not found" error declined, as the schedule tables beside it), the fresh-agent migration review (one blocker: the backup doc's table count), Kat's two answers (schedule buttons need Edit schedule; a weekly night's audit entry names its title), CI's rls rerun (a runner Docker error), Kat's merge (1:34 PM), cleanup, #1487 | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1478) | 30 m | ~25 m build, ~5 m Kat | 106,400 | |
 | 1:36-2:20 PM | #1352: the Rotator status retires. What #1352 waited on (Kat: no Immolation check, they're done for the season); rotators move to Bench, `is_rotator`, `officer_set_rotator_week()` and the Rotator-In answer go, loot priority loses the rotator tier; the current site's roster, profile and Calendar and the new app's roster, profile, Calendar and lineup drop it; tests, generated docs, decision log, stamp, changelog; preflight's browser run hung on a test fixture this change broke, fixed | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1352) | 45 m | ~43 m build, ~2 m Kat | 145,000 | Fresh-agent review and Kat's merge not yet counted |
+| 3:57-4:16 PM | PR #1865 (#1352) after CodeRabbit: its description fixes (a Screenshots section with four after-pictures, the decision log and RLS.md lines, Kat: no news.json entry), the fresh-agent migration review (Approve; a typo, an unreachable Rotator-In case and two stale comments), Kat's "fix the typo", Kat's merge (4:14 PM), cleanup, #1487 | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1352) | 20 m | ~17 m build, ~3 m Kat | 224,100 | |
+| 4:16-4:45 PM | #1825: a raid's Discord posts once it has passed. `team_discord_config.after_raid` (finish or delete) and its setter, `finished_at` on sheets and weekly lineup posts; the sweep marks a sheet finished (or deletes it) 4 hours after its raid starts and the week's lineup post after the week's last raid; "Once a raid has passed" on Settings > Discord, a Help step; database, Edge Function and page tests, generated docs, decision log, stamp, changelog, screenshots | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1825) | 30 m | ~29 m build, ~1 m Kat | 405,700 | Fresh-agent review and Kat's merge not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
