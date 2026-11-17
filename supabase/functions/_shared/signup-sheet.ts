@@ -6,8 +6,9 @@
 //
 // A team sets its sheets on Settings › Discord (#1712): each has a channel,
 // the raid days it covers, and either keeps the next 1 to 4 raids posted or
-// posts each raid a number of hours before it starts. A sheet that is posted
-// stays up after its raid and stops being updated (Kat, 2026-11-03).
+// posts each raid a number of hours before it starts. A sheet stops being
+// updated once its raid has passed, and is then marked finished or deleted,
+// as the team chose (#1825).
 //
 // The roster is drawn as a picture (#983, sheet-picture.ts) when the caller
 // hands over a way to draw one; the posted file is named after what it shows,
@@ -33,7 +34,16 @@ export type RosterRow = {
 };
 export type Rsvp = { playerId: number; status: string };
 export type QuietHours = { start: string; end: string; timezone: string };
-export type Team = { id: number; name: string; slug: string; serverId: string; quietHours: QuietHours | null };
+// What the bot does with a raid's posts once it has passed (#1825).
+export type AfterRaid = 'finish' | 'delete';
+export type Team = {
+  id: number;
+  name: string;
+  slug: string;
+  serverId: string;
+  quietHours: QuietHours | null;
+  afterRaid: AfterRaid;
+};
 export type SheetSetting = {
   id: number;
   channelId: string;
@@ -63,6 +73,10 @@ export interface SheetDb {
   // Forgets this message id, only where the row still holds it.
   forgetMessage(teamId: number, raidDate: string, messageId: string): Promise<void>;
   markPosted(sheetId: number): Promise<void>;
+  // The team's posted sheets not yet finished (#1825), any date.
+  unfinished(teamId: number): Promise<Array<{ raidDate: string; channelId: string; messageId: string }>>;
+  // Records that a sheet was finished or deleted, so it happens once.
+  finish(teamId: number, raidDate: string): Promise<void>;
 }
 
 // A file sent with the message (#983's picture): Discord takes it as a
@@ -104,6 +118,7 @@ const DEFAULT_TIMEZONE = 'America/New_York';
 // A raid counts as passed this long after it starts: its sheet stops being
 // updated and, on a sheet that keeps raids posted, the next one goes up.
 export const PASSED_AFTER_MS = 4 * 60 * 60 * 1000;
+export const SHEET_FINISHED = 'This raid has finished.';
 // How far ahead the sweep looks: four weekly raids, the most a sheet keeps.
 export const LOOKAHEAD_DAYS = 28;
 
@@ -432,6 +447,59 @@ export async function syncSheet(
   return 'posted';
 }
 
+// Finishes one passed post (#1825), pinging nobody: deletes it, or edits it to
+// say so and takes its dropdown and buttons off, keeping the rest as a record.
+// A post the bot can no longer reach (deleted by hand, gone with its channel,
+// out of its permissions) is let go. Any other answer throws, so the next run
+// tries again.
+export async function finishPost(discord: DiscordCall, path: string, afterRaid: AfterRaid, notice: string) {
+  const done =
+    afterRaid === 'delete'
+      ? await discord('DELETE', path)
+      : await discord('PATCH', path, { content: notice, components: [], allowed_mentions: { parse: [] } });
+  if (![200, 204, 403, 404].includes(done.status)) {
+    throw new Error(`Discord answered ${done.status} to finishing a post`);
+  }
+}
+
+// Whether a raid night is over by now: 4 hours after it started. A night
+// with no start (cancelled since the sheet went up) is over once its date
+// is two days back, so an evening raid in the Americas is never cut short.
+export function hasPassed(raidDate: string, night: Night, now: Date): boolean {
+  const at = night.exists ? startsAt(raidDate, night) : null;
+  if (at) return now.getTime() >= at.getTime() + PASSED_AFTER_MS;
+  const twoDaysBack = new Date(now);
+  twoDaysBack.setUTCDate(twoDaysBack.getUTCDate() - 2);
+  return raidDate <= isoDate(twoDaysBack);
+}
+
+// A team's sheets whose raids have passed, finished or deleted as the team
+// chose, once each. One sheet failing (Discord down) is left for the next run
+// and the rest go on (CodeRabbit on #1866).
+export async function finishSheets(ctx: SheetContext, team: Team): Promise<{ finished: number; failed: number }> {
+  const counts = { finished: 0, failed: 0 };
+  for (const row of await ctx.db.unfinished(team.id)) {
+    try {
+      if (!hasPassed(row.raidDate, await ctx.db.night(team.id, row.raidDate), ctx.now)) continue;
+      await finishPost(
+        ctx.discord,
+        `/channels/${row.channelId}/messages/${row.messageId}`,
+        team.afterRaid,
+        SHEET_FINISHED
+      );
+      await ctx.db.finish(team.id, row.raidDate);
+      counts.finished++;
+    } catch (err) {
+      counts.failed++;
+      console.error(
+        `signup sheet: team ${team.id} finishing ${row.raidDate}:`,
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+  return counts;
+}
+
 // One raid night's sheet for a team, from an RSVP change or the Refresh
 // button: edits only, unless the posted message has to be replaced. A raid
 // that has passed is left alone, so an officer fixing last week's answers
@@ -447,11 +515,13 @@ export async function refreshSheet(ctx: SheetContext, teamId: number, raidDate: 
   return syncSheet(ctx, found.team, sheet, raidDate, { create: false, night });
 }
 
-// The scheduled run: every team's sheets, each raid night posted when due and
-// every posted one not yet passed brought up to date. One night failing does
-// not stop the rest.
-export async function sweepSheets(ctx: SheetContext): Promise<{ posted: number; edited: number; failed: number }> {
-  const counts = { posted: 0, edited: 0, failed: 0 };
+// The scheduled run: every team's sheets, each raid night posted when due,
+// every posted one not yet passed brought up to date, and every passed one
+// finished. One night failing does not stop the rest.
+export async function sweepSheets(
+  ctx: SheetContext
+): Promise<{ posted: number; edited: number; failed: number; finished: number }> {
+  const counts = { posted: 0, edited: 0, failed: 0, finished: 0 };
   const dates = lookaheadDates(ctx.now);
   for (const { team, sheets } of await ctx.db.allSheets()) {
     for (const sheet of sheets) {
@@ -469,6 +539,14 @@ export async function sweepSheets(ctx: SheetContext): Promise<{ posted: number; 
           console.error(`signup sheet: team ${team.id} ${n.raidDate}:`, err instanceof Error ? err.message : err);
         }
       }
+    }
+    try {
+      const done = await finishSheets(ctx, team);
+      counts.finished += done.finished;
+      counts.failed += done.failed;
+    } catch (err) {
+      counts.failed++;
+      console.error(`signup sheet: team ${team.id} finishing:`, err instanceof Error ? err.message : err);
     }
   }
   return counts;

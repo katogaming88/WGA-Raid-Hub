@@ -66,14 +66,18 @@ describe('team Discord settings', () => {
   it("an Officer reads and changes every setting, and each change lands in the team's audit log once", async () => {
     await txn(async ({ q, asUser }) => {
       await asUser(OFFICER_T1, 'select public.set_team_discord_server(1, $1)', [SERVER]);
+      // A team that never chose gets its finished raids' posts marked finished (#1825).
+      expect((await settings(asUser, OFFICER_T1)).after_raid).toBe('finish');
       await asUser(OFFICER_T1, "select public.set_team_discord_post(1, 'officer_requests', $1, $2)", [
         CH_OFFICERS,
         ROLE_OFFICER
       ]);
       const id = (await sheet(asUser, OFFICER_T1, { days: [2, 2] })).rows[0].id;
       await asUser(OFFICER_T1, "select public.set_team_discord_quiet_hours(1, '00:00', '08:00', 'America/New_York')");
+      await asUser(OFFICER_T1, "select public.set_team_discord_after_raid(1, 'delete')");
 
       const s = await settings(asUser, OFFICER_T1);
+      expect(s.after_raid).toBe('delete');
       expect(s.server_id).toBe(SERVER);
       expect(s.quiet_hours).toEqual({ start: '00:00:00', end: '08:00:00', timezone: 'America/New_York' });
       expect(s.posts.map((p) => p.kind)).toEqual([
@@ -96,12 +100,17 @@ describe('team Discord settings', () => {
       ]);
       await sheet(asUser, OFFICER_T1, { id });
       await asUser(OFFICER_T1, "select public.set_team_discord_quiet_hours(1, '00:00', '08:00', 'America/New_York')");
+      await asUser(OFFICER_T1, "select public.set_team_discord_after_raid(1, 'delete')");
       expect(await audits(q)).toEqual([
         'Discord Server Set',
         'Discord Post Set',
         'Discord Signup Sheet Saved',
-        'Discord Quiet Hours Set'
+        'Discord Quiet Hours Set',
+        'Discord After Raid Set'
       ]);
+      await expect(asUser(OFFICER_T1, "select public.set_team_discord_after_raid(1, 'archive')")).rejects.toThrow(
+        /Pick finish or delete/
+      );
 
       await asUser(OFFICER_T1, 'select public.remove_team_discord_signup_sheet(1, $1)', [id]);
       await asUser(OFFICER_T1, 'select public.set_team_discord_quiet_hours(1, null, null, null)');
@@ -120,7 +129,8 @@ describe('team Discord settings', () => {
         ["select public.set_team_discord_post(1, 'rsvp_changes', $1, null)", [CH_RSVPS]],
         ['select public.save_team_discord_signup_sheet(1, null, $1, $2, 2, null, null)', [CH_TUESDAY, [2]]],
         ['select public.remove_team_discord_signup_sheet(1, 1)', []],
-        ["select public.set_team_discord_quiet_hours(1, '00:00', '08:00', 'UTC')", []]
+        ["select public.set_team_discord_quiet_hours(1, '00:00', '08:00', 'UTC')", []],
+        ["select public.set_team_discord_after_raid(1, 'delete')", []]
       ];
       for (const [sql, params] of calls) {
         await expect(asUser(RAIDER_T1, sql, params)).rejects.toThrow(/Not authorized/);

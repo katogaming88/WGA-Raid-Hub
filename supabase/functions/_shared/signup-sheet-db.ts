@@ -22,7 +22,9 @@ export function sheetDb(client: () => SupabaseClient<any>): SheetDb {
       (must(
         await client()
           .from('team_discord_config')
-          .select('team_id, guild_id, quiet_hours_start, quiet_hours_end, quiet_hours_timezone, teams(name, slug)')
+          .select(
+            'team_id, guild_id, quiet_hours_start, quiet_hours_end, quiet_hours_timezone, after_raid, teams(name, slug)'
+          )
           .in('team_id', ids),
         'team_discord_config'
       ) as any[] | null) ?? [];
@@ -36,7 +38,8 @@ export function sheetDb(client: () => SupabaseClient<any>): SheetDb {
           serverId: c.guild_id,
           quietHours: c.quiet_hours_start
             ? { start: c.quiet_hours_start, end: c.quiet_hours_end, timezone: c.quiet_hours_timezone }
-            : null
+            : null,
+          afterRaid: c.after_raid === 'delete' ? 'delete' : 'finish'
         },
         sheets: rows
           .filter((r) => r.team_id === c.team_id)
@@ -139,6 +142,29 @@ export function sheetDb(client: () => SupabaseClient<any>): SheetDb {
           .eq('team_id', teamId)
           .eq('raid_date', raidDate)
           .eq('message_id', messageId),
+        'raid_signup_sheets'
+      );
+    },
+    async unfinished(teamId) {
+      const rows = must(
+        await client()
+          .from('raid_signup_sheets')
+          .select('raid_date, channel_id, message_id')
+          .eq('team_id', teamId)
+          .is('finished_at', null)
+          .not('message_id', 'is', null)
+          .not('channel_id', 'is', null),
+        'raid_signup_sheets'
+      ) as any[] | null;
+      return (rows ?? []).map((r) => ({ raidDate: r.raid_date, channelId: r.channel_id, messageId: r.message_id }));
+    },
+    async finish(teamId, raidDate) {
+      must(
+        await client()
+          .from('raid_signup_sheets')
+          .update({ finished_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq('team_id', teamId)
+          .eq('raid_date', raidDate),
         'raid_signup_sheets'
       );
     },

@@ -1002,6 +1002,7 @@ const SETTINGS_DISCORD = {
   rpc: {
     team_discord_settings: {
       server_id: '100000000000000001',
+      after_raid: 'delete',
       quiet_hours: { start: '00:00:00', end: '08:00:00', timezone: 'America/New_York' },
       posts: [
         { kind: 'officer_requests', channel_id: '201', ping_role_id: '301', last_posted_at: null },

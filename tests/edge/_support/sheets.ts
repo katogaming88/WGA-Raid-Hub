@@ -15,7 +15,14 @@ export const SERVER = '100000000000000001';
 export const CHANNEL = '200000000000000002';
 export const ROLE = '300000000000000003';
 
-export const TEAM: Team = { id: 1, name: 'Phoenix', slug: 'phoenix', serverId: SERVER, quietHours: null };
+export const TEAM: Team = {
+  id: 1,
+  name: 'Phoenix',
+  slug: 'phoenix',
+  serverId: SERVER,
+  quietHours: null,
+  afterRaid: 'finish'
+};
 
 // Tuesdays and Thursdays, two raids kept posted.
 export const SHEET: SheetSetting = {
@@ -37,7 +44,7 @@ export type SheetState = {
   nights?: Record<string, Night>;
   roster?: RosterRow[];
   rsvps?: Rsvp[];
-  rows?: Record<string, { channelId: string; messageId: string | null }>;
+  rows?: Record<string, { channelId: string; messageId: string | null; finished?: boolean }>;
   saveFails?: boolean;
 };
 
@@ -81,6 +88,17 @@ export function fakeSheets(state: SheetState = {}) {
     },
     markPosted(sheetId) {
       log.push('markPosted ' + sheetId);
+      return Promise.resolve();
+    },
+    unfinished: () =>
+      Promise.resolve(
+        [...rows.entries()]
+          .filter(([, r]) => r.messageId !== null && !r.finished)
+          .map(([raidDate, r]) => ({ raidDate, channelId: r.channelId, messageId: r.messageId! }))
+      ),
+    finish(_team, date) {
+      log.push('finish ' + date);
+      rows.get(date)!.finished = true;
       return Promise.resolve();
     }
   };

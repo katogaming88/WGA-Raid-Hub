@@ -12,6 +12,21 @@ answers to.
 
 ---
 
+## [3.289.0] - 2026-11-17
+
+### Backend
+
+- A team chooses what the bot does with a raid's Discord posts once the raid has passed: mark them as finished (the default) or delete them. Each sheet and weekly lineup post records when it was handled, so it happens once (#1825).
+
+### Functions
+
+- 4 hours after a raid starts, the bot marks its signup sheet as finished ("This raid has finished.", with no dropdown or buttons, the roster picture kept) or deletes it, as the team chose. The weekly lineup post does the same once the week's last raid night has passed, and is never edited again after. Nobody is pinged, and a post the bot can no longer reach is let go (#1825).
+
+### Project
+
+- The new app's Settings > Discord has "Once a raid has passed" under Signup sheets: Mark it as finished, or Delete it. Help's Discord setup guide mentions it.
+- Database, Edge Function and page tests for it.
+
 ## [3.288.0] - 2026-11-17
 
 ### Frontend

@@ -6,6 +6,7 @@ import {
   type Night,
   PASSED_AFTER_MS,
   type RosterRow,
+  SHEET_FINISHED,
   type SheetContext,
   bannerUrl,
   buildSheet,
@@ -115,7 +116,14 @@ Deno.test('View on Site leaves ?team= off for the default team; Refresh carries 
   assertEquals(link.url, 'https://site.test/calendar.html?date=2026-11-03');
   assertEquals(refresh.custom_id, 'signup-sheet-refresh:1:2026-11-03');
   const other = buildSheet({
-    team: { id: 2, name: 'Hellfire Rollers', slug: 'hellfire', serverId: SERVER, quietHours: null },
+    team: {
+      id: 2,
+      name: 'Hellfire Rollers',
+      slug: 'hellfire',
+      serverId: SERVER,
+      quietHours: null,
+      afterRaid: 'finish'
+    },
     raidDate: '2026-11-03',
     night: RAID,
     roster: [],
@@ -348,7 +356,7 @@ Deno.test('a date the team does not raid is left alone', async () => {
 
 Deno.test('the run posts the next two raids, soonest first, and not the third', async () => {
   const { ctx, calls, rows } = context();
-  assertEquals(await sweepSheets(ctx), { posted: 2, edited: 0, failed: 0 });
+  assertEquals(await sweepSheets(ctx), { posted: 2, edited: 0, failed: 0, finished: 0 });
   assertEquals(calls.filter((c) => c.key.startsWith('POST')).length, 2);
   assertEquals([...rows.keys()].sort(), ['2026-11-03', '2026-11-05']);
 });
@@ -357,7 +365,7 @@ Deno.test('a second run edits what the first posted and posts nothing new', asyn
   const { ctx, calls } = context();
   await sweepSheets(ctx);
   calls.length = 0;
-  assertEquals(await sweepSheets(ctx), { posted: 0, edited: 2, failed: 0 });
+  assertEquals(await sweepSheets(ctx), { posted: 0, edited: 2, failed: 0, finished: 0 });
   assertEquals(keys(calls), [`PATCH ${MSG}/m1`, `PATCH ${MSG}/m2`]);
 });
 
@@ -366,7 +374,7 @@ Deno.test('one night failing does not stop the rest', async () => {
     { rows: { '2026-11-03': { channelId: CHANNEL, messageId: 'old' } } },
     { [`PATCH ${MSG}/old`]: { status: 500 } }
   );
-  assertEquals(await sweepSheets(ctx), { posted: 1, edited: 0, failed: 1 });
+  assertEquals(await sweepSheets(ctx), { posted: 1, edited: 0, failed: 1, finished: 0 });
 });
 
 Deno.test('a refresh leaves a passed raid alone: no edit, and no new sheet for a deleted one', async () => {
@@ -444,7 +452,7 @@ Deno.test("the run reads the bot's emojis once, and a failed read just means no 
     }
   );
   delete read.ctx.emojis;
-  assertEquals(await sweepSheets(read.ctx), { posted: 0, edited: 2, failed: 0 });
+  assertEquals(await sweepSheets(read.ctx), { posted: 0, edited: 2, failed: 0, finished: 0 });
   assertEquals(keys(read.calls).filter((k) => k.startsWith('GET /applications')).length, 2);
   assertEquals(
     read.calls.find((c) => c.key === `PATCH ${MSG}/a`)!.body.embeds[0].fields[0].value,
@@ -463,4 +471,88 @@ Deno.test("the run reads the bot's emojis once, and a failed read just means no 
   delete failed.ctx.emojis;
   assertEquals(await syncSheet(failed.ctx, TEAM, SHEET, '2026-11-03', { create: false }), 'edited');
   assertEquals(failed.calls.at(-1)!.body.embeds[0].fields[0].value, 'Icy');
+});
+
+// -- Once a raid has passed (#1825) ----------------------------------------------
+
+// Tuesday 11-03's raid starts 02:00Z on 11-04.
+const TUESDAY_START = Date.parse('2026-11-04T02:00:00Z');
+const tuesdaySheet = () => ({ '2026-11-03': { channelId: CHANNEL, messageId: 'tue' } });
+const onTuesday = <T extends { key: string }>(calls: T[]) => calls.filter((c) => c.key.endsWith(`${MSG}/tue`));
+
+Deno.test('4 hours after a raid starts, its sheet is marked finished, once, pinging nobody', async () => {
+  const { ctx, calls, log } = context({ rows: tuesdaySheet() });
+  ctx.now = new Date(TUESDAY_START + PASSED_AFTER_MS);
+  assertEquals((await sweepSheets(ctx)).finished, 1);
+  const done = onTuesday(calls);
+  assertEquals(keys(done), [`PATCH ${MSG}/tue`]);
+  // The dropdown and buttons come off; the picture and counts stay as they were.
+  assertEquals(done[0].body, { content: SHEET_FINISHED, components: [], allowed_mentions: { parse: [] } });
+  assert(log.includes('finish 2026-11-03'));
+
+  calls.length = 0;
+  assertEquals((await sweepSheets(ctx)).finished, 0);
+  assertEquals(onTuesday(calls), []);
+});
+
+Deno.test('a team that chose Delete has the passed sheet deleted', async () => {
+  const { ctx, calls } = context({
+    rows: tuesdaySheet(),
+    teams: [{ team: { ...TEAM, afterRaid: 'delete' }, sheets: [SHEET] }]
+  });
+  ctx.now = new Date(TUESDAY_START + PASSED_AFTER_MS);
+  await sweepSheets(ctx);
+  assertEquals(keys(onTuesday(calls)), [`DELETE ${MSG}/tue`]);
+});
+
+Deno.test('a sheet is left alone until its raid has passed', async () => {
+  const { ctx, calls, log } = context({ rows: tuesdaySheet() });
+  ctx.now = new Date(TUESDAY_START + PASSED_AFTER_MS - 60_000);
+  assertEquals((await sweepSheets(ctx)).finished, 0);
+  // Still being kept up to date, not finished.
+  assertEquals(
+    onTuesday(calls).map((c) => c.body?.content ?? null),
+    [null]
+  );
+  assert(!log.includes('finish 2026-11-03'));
+});
+
+Deno.test('a sheet the bot can no longer reach is let go without an error; Discord down is tried again', async () => {
+  for (const status of [403, 404]) {
+    const { ctx, rows } = context({ rows: tuesdaySheet() }, { [`PATCH ${MSG}/tue`]: { status } });
+    ctx.now = new Date(TUESDAY_START + PASSED_AFTER_MS);
+    assertEquals(await sweepSheets(ctx), { posted: 2, edited: 0, failed: 0, finished: 1 }, String(status));
+    assert(rows.get('2026-11-03')!.finished);
+  }
+  const { ctx, rows } = context({ rows: tuesdaySheet() }, { [`PATCH ${MSG}/tue`]: { status: 500 } });
+  ctx.now = new Date(TUESDAY_START + PASSED_AFTER_MS);
+  assertEquals((await sweepSheets(ctx)).failed, 1);
+  assert(!rows.get('2026-11-03')!.finished);
+});
+
+Deno.test('a sheet whose raid was cancelled after it went up is finished two days on', async () => {
+  const { ctx, calls } = context({ rows: tuesdaySheet(), nights: {} });
+  ctx.now = new Date('2026-11-04T23:00:00Z');
+  await sweepSheets(ctx);
+  assertEquals(onTuesday(calls), []);
+  ctx.now = new Date('2026-11-05T00:00:00Z');
+  await sweepSheets(ctx);
+  assertEquals(keys(onTuesday(calls)), [`PATCH ${MSG}/tue`]);
+});
+
+Deno.test('one sheet failing to finish leaves it for the next run and finishes the rest', async () => {
+  const { ctx, rows } = context(
+    {
+      rows: {
+        '2026-11-03': { channelId: CHANNEL, messageId: 'tue' },
+        '2026-10-29': { channelId: CHANNEL, messageId: 'thu' }
+      },
+      nights: { ...NIGHTS, '2026-10-29': RAID }
+    },
+    { [`PATCH ${MSG}/tue`]: { status: 500 } }
+  );
+  ctx.now = new Date(TUESDAY_START + PASSED_AFTER_MS);
+  const counts = await sweepSheets(ctx);
+  assertEquals([counts.finished, counts.failed], [1, 1]);
+  assertEquals([!!rows.get('2026-11-03')!.finished, !!rows.get('2026-10-29')!.finished], [false, true]);
 });

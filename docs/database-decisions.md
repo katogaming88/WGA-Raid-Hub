@@ -3809,3 +3809,21 @@ Shipped: `20261117002741_team_member_accounts.sql`.
 **`team_battlenet_connections()` stays** for the current site's roster tab; the new app reads only the new function.
 
 [Full discussion -> #1484](https://github.com/katogaming88/WGA-Raid-Hub/issues/1484).
+
+## #1825 -- the bot finishes or deletes a raid's Discord posts once it has passed
+
+Shipped: `20261117161755_finished_raid_posts.sql`.
+
+**One choice per team, on `team_discord_config.after_raid`:** `finish` (the default) or `delete`. It covers both the signup sheets and the weekly lineup post, as the issue asks, so it lives on the team's Discord row rather than on each sheet. A team that never chose gets `finish`, since it loses nothing; WGA's teams pick `delete` on the page. `set_team_discord_after_raid()` saves it with the other `set_team_discord_*` functions' check (`change_discord_settings` or a site admin) and one audit row per change.
+
+**`finished_at` on `raid_signup_sheets` and `team_lineup_posts` makes it happen once.** The scheduled sweep finishes a sheet 4 hours after its raid starts (`PASSED_AFTER_MS`, where the bot already stops updating it), and a week's lineup post once every raid night it covers is that far past, so a Tuesday-and-Thursday week keeps its post through Thursday. A finished week is never edited or posted again, even if the lineup changes after. A sheet whose raid was cancelled after it went up is finished two days after its date. `team_lineup_posts.covers_until` keeps where the week ended as it was posted (the next post's time then), so moving the posting time can't finish a week that is still up before its last raid (CodeRabbit on PR #1866); each edit of the week's post updates it with what the post shows.
+
+**Finish edits; delete deletes; neither pings.** Finishing replaces the message's text with "This raid has finished." (or "This week's raids have finished.") and takes the dropdown and buttons off; the roster picture and counts stay. A post the bot can no longer reach (403 or 404: deleted by hand, channel gone, permission lost) is let go and marked finished. Anything else is tried again next run, and the other posts carry on (CodeRabbit).
+
+**No Manage Messages warning.** The issue asked the page to say when Delete lacks the bot's Manage Messages. Discord lets a bot delete its own messages without it (it is needed only for other people's), so there is nothing to warn about; a channel the bot can't reach at all is already marked on the page.
+
+**Nothing backfilled.** Production had eight posted sheets and no lineup posts when this shipped (fresh review): team 5's 2026-11-17 sheet, finished on the first run after its raid, and seven of team 1's from the old bots (2026-09-07 to 10-31). The sweep reads only teams with a sheet set, so team 1's wait until it sets one. Then Delete takes them down where the bot has Manage Messages (deleting another application's message needs it; `syncSheet` already does the same for an old bot's sheet), and Finish lets them go, since no bot can edit another's message (403). Either way the channel stops showing them as live once Delete is picked.
+
+**Left as is (fresh review).** Finishing runs for teams that still have a sheet set or the weekly lineup post on: a team that removes its last sheet or turns the lineup post off leaves the posts already up as they are. A raid night added to a week after that week's post was finished shows in no weekly post; the night's own sheet still covers it.
+
+[Full discussion -> #1825](https://github.com/katogaming88/WGA-Raid-Hub/issues/1825).

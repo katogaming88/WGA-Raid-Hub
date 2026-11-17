@@ -32,8 +32,12 @@ export type SignupSheet = {
 
 export type QuietHours = { start: string; end: string; timezone: string };
 
+// What the bot does with a raid's posts once it has passed (#1825).
+export type AfterRaid = 'finish' | 'delete';
+
 export type DiscordSettings = {
   server_id: string | null;
+  after_raid: AfterRaid;
   quiet_hours: QuietHours | null;
   posts: DiscordPost[];
   sheets: SignupSheet[];

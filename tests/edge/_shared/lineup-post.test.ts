@@ -7,11 +7,13 @@ import {
   type LineupContext,
   type LineupDb,
   type TeamLineup,
+  WEEK_FINISHED,
   type WeekPost,
   currentWeek,
   lineupGrid,
   lineupSvg,
   postLineupNow,
+  sweepLineups,
   weekNights,
   swapLines,
   syncLineup
@@ -45,7 +47,7 @@ const BOSSES: LineupBoss[] = [
 ];
 const SETTING = { channelId: CHANNEL, pingRoleId: ROLE, weekday: 3, time: '18:00:00', timezone: 'America/New_York' };
 const LINEUP: TeamLineup = {
-  team: { id: 1, name: 'Phoenix', slug: 'phoenix', serverId: SERVER, quietHours: null },
+  team: { id: 1, name: 'Phoenix', slug: 'phoenix', serverId: SERVER, quietHours: null, afterRaid: 'finish' },
   setting: SETTING
 };
 const RAID: Night = { exists: true, startTime: '21:00:00', timezone: 'America/New_York', isOptional: false };
@@ -97,7 +99,7 @@ Deno.test(
 // -- Posting -------------------------------------------------------------------
 
 function fakeLineups(over: Partial<{ bosses: Record<string, LineupBoss[]>; nights: Record<string, Night> }> = {}) {
-  const rows = new Map<string, WeekPost>();
+  const rows = new Map<string, WeekPost & { finished?: boolean }>();
   const log: string[] = [];
   const db: LineupDb = {
     allLineups: () => Promise.resolve([LINEUP]),
@@ -105,7 +107,10 @@ function fakeLineups(over: Partial<{ bosses: Record<string, LineupBoss[]>; night
     night: (_t, date) => Promise.resolve((over.nights ?? { '2026-11-05': RAID })[date] ?? { ...RAID, exists: false }),
     roster: () => Promise.resolve(ROSTER),
     bosses: (_t, date) => Promise.resolve((over.bosses ?? { '2026-11-05': BOSSES })[date] ?? []),
-    postedLineup: (_t, week) => Promise.resolve(rows.get(week) ?? null),
+    postedLineup: (_t, week) => {
+      const row = rows.get(week);
+      return Promise.resolve(row ? { ...row, finished: !!row.finished } : null);
+    },
     saveLineup(_t, week, post) {
       log.push(`save ${week} ${post.messageId}`);
       if (rows.has(week)) return Promise.resolve(false);
@@ -126,6 +131,22 @@ function fakeLineups(over: Partial<{ bosses: Record<string, LineupBoss[]>; night
       ),
     markPosted() {
       log.push('markPosted');
+      return Promise.resolve();
+    },
+    unfinishedWeeks: () =>
+      Promise.resolve(
+        [...rows.entries()]
+          .filter(([, r]) => r.messageId !== null && !r.finished)
+          .map(([weekOf, r]) => ({
+            weekOf,
+            channelId: r.channelId!,
+            messageId: r.messageId!,
+            coversUntil: r.coversUntil ?? null
+          }))
+      ),
+    finishLineup(_t, week) {
+      log.push('finish ' + week);
+      rows.get(week)!.finished = true;
       return Promise.resolve();
     }
   };
@@ -270,7 +291,12 @@ Deno.test(
       emptied.calls.map((c) => c.key),
       [`DELETE ${MSG}/m1`]
     );
-    assertEquals(emptied.rows.get(WEEK), { messageId: null, channelId: null, key: 'empty' });
+    assertEquals(emptied.rows.get(WEEK), {
+      messageId: null,
+      channelId: null,
+      key: 'empty',
+      coversUntil: '2026-11-11T23:00:00.000Z'
+    });
 
     const back = context();
     back.rows.set(WEEK, { messageId: null, channelId: null, key: 'empty' });
@@ -335,4 +361,79 @@ Deno.test('/officer post lineup posts one night now, pinging nobody, and is not 
   assertEquals(post.body.allowed_mentions, { parse: [] });
   assertEquals(rows.size, 0);
   assertEquals(await postLineupNow(context({ bosses: {} }).ctx, 1, '2026-11-05'), 'no lineup');
+});
+
+// -- Once the week's raids have passed (#1825) ------------------------------------
+
+const keys = (calls: Array<{ key: string }>) => calls.map((c) => c.key);
+
+// Thursday 11-05's raid starts 02:00Z on 11-06; Monday 11-09's at 02:00Z on 11-10.
+const THURSDAY_OVER = new Date(Date.parse('2026-11-06T02:00:00Z') + 4 * 3_600_000);
+const MONDAY_OVER = new Date(Date.parse('2026-11-10T02:00:00Z') + 4 * 3_600_000);
+const TWO_NIGHTS = {
+  nights: { '2026-11-05': RAID, '2026-11-09': RAID },
+  bosses: { '2026-11-05': BOSSES, '2026-11-09': BOSSES }
+};
+
+Deno.test('the week’s post is marked finished once its last raid night has passed, and not before', async () => {
+  const { ctx, calls, rows } = context(TWO_NIGHTS);
+  await syncLineup(ctx, LINEUP);
+  calls.length = 0;
+  // Thursday is over, Monday still to come: left alone.
+  ctx.now = THURSDAY_OVER;
+  assertEquals((await sweepLineups(ctx)).finished, 0);
+  assertEquals(
+    calls.filter((c) => c.key === `PATCH ${MSG}/m1`).map((c) => c.body?.content ?? null),
+    []
+  );
+  ctx.now = MONDAY_OVER;
+  assertEquals((await sweepLineups(ctx)).finished, 1);
+  const done = calls.filter((c) => c.body?.content === WEEK_FINISHED);
+  assertEquals(keys(done), [`PATCH ${MSG}/m1`]);
+  assertEquals(done[0].body.components, []);
+  assert(rows.get(WEEK)!.finished);
+
+  // Finished for good: a later change to the lineup neither edits nor reposts it.
+  calls.length = 0;
+  assertEquals(await syncLineup(ctx, LINEUP), 'passed');
+  assertEquals((await sweepLineups(ctx)).finished, 0);
+  assertEquals(calls, []);
+});
+
+Deno.test('a team that chose Delete has the week’s post deleted once its raids have passed', async () => {
+  const deleting = { ...LINEUP, team: { ...LINEUP.team, afterRaid: 'delete' as const } };
+  const { ctx, calls } = context();
+  await syncLineup(ctx, deleting);
+  ctx.db.allLineups = () => Promise.resolve([deleting]);
+  calls.length = 0;
+  ctx.now = THURSDAY_OVER;
+  assertEquals((await sweepLineups(ctx)).finished, 1);
+  assertEquals(keys(calls.filter((c) => c.key.startsWith('DELETE'))), [`DELETE ${MSG}/m1`]);
+});
+
+Deno.test('a posting time moved later in the season does not finish an older week early', async () => {
+  // Wednesday 11-11's raid at 5 PM Eastern is in the 11-04 post, which runs
+  // to Wednesday 6 PM. Then the post moves to 4 PM.
+  const { ctx } = context({
+    nights: { '2026-11-05': RAID, '2026-11-11': { ...RAID, startTime: '17:00:00' } },
+    bosses: { '2026-11-05': BOSSES }
+  });
+  await syncLineup(ctx, LINEUP);
+  const moved = { ...LINEUP, setting: { ...SETTING, time: '16:00:00' } };
+  ctx.db.allLineups = () => Promise.resolve([moved]);
+  // Wednesday 4:30 PM Eastern: Thursday's raid is over, Wednesday's not started.
+  ctx.now = new Date('2026-11-11T21:30:00Z');
+  assertEquals((await sweepLineups(ctx)).finished, 0);
+  ctx.now = new Date('2026-11-12T02:00:00Z');
+  assertEquals((await sweepLineups(ctx)).finished, 1);
+});
+
+Deno.test('one week failing to finish leaves it for the next run and finishes the rest', async () => {
+  const { ctx, rows } = context({}, { [`PATCH ${MSG}/old`]: { status: 500 } });
+  rows.set('2026-10-21', { messageId: 'old', channelId: CHANNEL, key: 'k1' });
+  rows.set('2026-10-28', { messageId: 'older', channelId: CHANNEL, key: 'k2' });
+  ctx.now = THURSDAY_OVER;
+  const counts = await sweepLineups(ctx);
+  assertEquals([counts.finished, counts.failed], [1, 1]);
+  assertEquals([!!rows.get('2026-10-21')!.finished, !!rows.get('2026-10-28')!.finished], [false, true]);
 });

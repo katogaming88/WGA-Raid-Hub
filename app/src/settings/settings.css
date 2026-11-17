@@ -566,6 +566,26 @@
   width: auto;
 }
 
+/* Once a raid has passed (#1825): a native radio a line. */
+.discord-after-raid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.discord-after-raid label {
+  cursor: pointer;
+}
+
+/* Floated, a legend leaves the fieldset's top line and sits under it. */
+.discord-after-raid legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+}
+
 .discord-fieldset .picker-choice {
   align-self: flex-start;
 }

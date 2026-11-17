@@ -455,6 +455,7 @@ erDiagram
   text channel_id
   text message_id
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone finished_at
 }
 "public.player_officer_notes" {
   integer player_id FK
@@ -481,6 +482,7 @@ erDiagram
   time_without_time_zone quiet_hours_start
   time_without_time_zone quiet_hours_end
   text quiet_hours_timezone
+  text after_raid
 }
 "public.account_preferences" {
   bigint id
@@ -631,6 +633,8 @@ erDiagram
   text message_id
   text content_key
   timestamp_with_time_zone posted_at
+  timestamp_with_time_zone finished_at
+  timestamp_with_time_zone covers_until
 }
 "public.team_recruiting" {
   integer team_id FK
