@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 36 h 17 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 36 h 42 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **208 h 13 m** |             |
+| **All revamp work**                | **208 h 38 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 1 h 30 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 1 h 55 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -781,6 +781,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 12:26-12:50 AM | #1484: officers see which Battle.net and Discord account each member connected: `team_member_accounts()` (whether each is linked, the BattleTag and the Discord username, for whoever can edit the roster), the Roster's accounts line shows the names; the brand color kept to the logo after the contrast check failed on the names; database, page and browser tests, screenshots, generated docs, decision log, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1484) | 25 m | build; Kat's design review, the fresh-agent review and merge not yet counted | 76,000 | Added 2026-11-17. |
+| 12:50-1:13 AM | PR #1863 (#1484) after it opened: the phone screenshot retaken as the whole screen, Kat's screenshots; CodeRabbit's one finding (who sees the names: Kat chose roster editors only, recorded on #1484); the fresh-agent migration review (changes needed: the Roster asked for the names with any officer tool and met Not authorized; nice-to-haves done: the Discord name matched to the listed account, newest BattleTag and empty full_name tests, the members-who-left test tightened); tests, local backup restored, generated docs, this row | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1484) | 25 m | build; Kat's design review, CodeRabbit trigger and answer not split; merge not yet counted | 132,000 | Added 2026-11-17. Tokens include the fresh agent's 91,200. |
 
 ## Not counted (same sessions, not revamp)
 
