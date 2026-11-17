@@ -53,15 +53,42 @@ describe('attendance_rsvps_before_start()', () => {
     });
   });
 
-  it('answers an officer only the RSVPs raid_rsvps already shows them', async () => {
-    await withTxn(async ({ q, asUser }) => {
+  it('counts by a regular weekly night too, at its own time zone', async () => {
+    await withTxn(async ({ q, asRole }) => {
+      // 2026-09-08 is a Tuesday; 8 PM Pacific is 03:00 UTC the next day.
+      await q('delete from public.raid_schedule where team_id = 1 and weekday = 2');
+      await q("delete from public.raid_schedule_exceptions where team_id = 1 and raid_date = '2026-09-08'");
+      await q(
+        "insert into public.raid_schedule (team_id, weekday, start_time, timezone) values (1, 2, '20:00', 'America/Los_Angeles')"
+      );
+      await q('delete from public.raid_rsvps where team_id = 1');
+      const before = await seedPlayer(q, { teamId: 1 });
+      const after = await seedPlayer(q, { teamId: 1 });
+      await rsvp(q, before, '2026-09-08', 'Late', '2026-09-09T02:59:00Z');
+      await rsvp(q, after, '2026-09-08', 'Late', '2026-09-09T03:00:00Z');
+      const rows = (
+        await asRole(
+          'service_role',
+          null
+        )("select player_id from public.attendance_rsvps_before_start(1, array['2026-09-08']::date[])")
+      ).rows;
+      expect(rows).toEqual([{ player_id: before }]);
+    });
+  });
+
+  // It reads past the RSVP read rule on purpose: the Refresh button needs only
+  // the attendance permission (fresh review on PR #1861).
+  it("answers the hourly run, the team's attendance officers and nobody else", async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
       await nights(q);
       await q('delete from public.raid_rsvps where team_id = 1');
       const a = await seedPlayer(q, { teamId: 1 });
       await rsvp(q, a, NIGHT, 'Tentative', '2026-09-01T12:00:00Z');
 
       expect(await counted((t, p) => asUser(OFFICER_T1, t, p))).toHaveLength(1);
-      expect(await counted((t, p) => asUser(OFFICER_T2, t, p))).toEqual([]);
+      await expect(counted((t, p) => asUser(OFFICER_T2, t, p))).rejects.toThrow(/Not authorized/);
+      await expect(counted((t, p) => asUser(RAIDER_T1, t, p))).rejects.toThrow(/Not authorized/);
+      await expect(counted(asAnon)).rejects.toThrow(/permission denied/);
     });
   });
 });

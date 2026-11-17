@@ -19,8 +19,14 @@
 --    nights asked about, last changed before each night's start, at the team's time zone. The start comes
 --    from raid_night_info(), the Calendar's own answer for a night; a night
 --    it does not know (cancelled, or off the schedule) has no RSVPs that
---    count. SECURITY INVOKER: the hourly run is the service role, and an
---    officer reading it gets only the rows raid_rsvps already shows them.
+--    count: a team with no weekly schedule gets no fill until it sets one
+--    (Kat, 2026-11-16, after the fresh review).
+--    SECURITY DEFINER with its own gate: the hourly run (service role),
+--    whoever has the team's attendance permission (the Refresh button), or
+--    a site admin. Reading as the caller would have tied the fill to the
+--    rank's RSVP permission, so a rank with attendance but not RSVPs would
+--    refresh nights unfilled for good (fresh review). It answers only who,
+--    which night and which RSVP, never the raider's note.
 --    It takes the nights so a caller reads a few nights' RSVPs, never a
 --    season's worth past PostgREST's 1000-row cap.
 -- 3. set_team_attendance_tentative(team, status): the team's choice for
@@ -38,18 +44,31 @@ alter table public.attendance add constraint attendance_source_check
 
 -- 2.
 create or replace function public.attendance_rsvps_before_start(p_team_id integer, p_dates date[])
-returns table (player_id integer, raid_date date, status text, note text)
-language sql
+returns table (player_id integer, raid_date date, status text)
+language plpgsql
 stable
+security definer
 set search_path = public
 as $$
-  select r.player_id, r.raid_date, r.status, r.note
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    if auth.uid() is null then
+      raise exception 'Not signed in';
+    end if;
+    if not (public.has_team_permission(p_team_id, 'attendance') or public.is_site_admin()) then
+      raise exception 'Not authorized';
+    end if;
+  end if;
+
+  return query
+  select r.player_id, r.raid_date, r.status
   from public.raid_rsvps r
   cross join lateral public.raid_night_info(r.team_id, r.raid_date) n
   where r.team_id = p_team_id
     and r.raid_date = any (p_dates)
     and n."exists"
-    and r.updated_at < ((r.raid_date + n.start_time) at time zone n.timezone)
+    and r.updated_at < ((r.raid_date + n.start_time) at time zone n.timezone);
+end;
 $$;
 
 comment on function public.attendance_rsvps_before_start(integer, date[]) is

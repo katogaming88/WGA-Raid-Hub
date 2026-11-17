@@ -558,6 +558,9 @@ export function decideLineupStatus(
 // #1846: nights asked for per attendance_rsvps_before_start() call.
 export const RSVP_NIGHTS_PER_CALL = 10;
 
+// #1846: what a Tentative no-show may become, as set_team_attendance_tentative() allows.
+const TENTATIVE_STATUSES = ['Present', 'Bench', 'Late (with notice)', 'Excused', 'Late (no notice)', 'No Show'];
+
 // #1846: what the night's log made of a raider, with their Calendar RSVP
 // (one made before the start, see attendance_rsvps_before_start) laid over
 // it. Only a flag is ever filled in: a raider the log already settled stays
@@ -903,7 +906,12 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
       rsvpByKey.set(`${r.player_id}|${r.raid_date}`, r.status);
     }
   }
-  const tentativeStatus: string | null = config.attendanceTentative || null;
+  // Only a status set_team_attendance_tentative() would save: a value written
+  // another way (set_team_setting) never fills a leave status or breaks the
+  // run (fresh review).
+  const tentativeStatus: string | null = TENTATIVE_STATUSES.includes(config.attendanceTentative)
+    ? config.attendanceTentative
+    : null;
 
   let mainNights = 0;
   let excluded = 0;

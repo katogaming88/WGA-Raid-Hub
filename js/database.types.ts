@@ -5693,7 +5693,6 @@ export type Database = {
       attendance_rsvps_before_start: {
         Args: { p_dates: string[]; p_team_id: number }
         Returns: {
-          note: string
           player_id: number
           raid_date: string
           status: string

@@ -386,6 +386,17 @@ Deno.test('said Tentative and not in the log: a look, unless the team picked a s
   assertEquals(night(second.db.tables)[1], { player_id: 102, status: 'No Show', source: 'Calendar (RSVP)' });
 });
 
+Deno.test('a Tentative choice saved some other way is ignored, never a leave status', async () => {
+  const tables: Tables = {
+    ...team1(ROSTER),
+    team_settings: [{ team_id: 1, config: { attendanceTentative: 'Medical Leave' } }],
+    raid_rsvps: [rsvp(102, 'Tentative')]
+  };
+  const { deps, db } = setup(tables, [{ guildId: 11, inLog: ['Alpha'] }]);
+  await handle(cronRequest(), deps);
+  assertEquals(night(db.tables)[1], { player_id: 102, status: null, source: 'WCL (Absent?)' });
+});
+
 Deno.test('an RSVP never touches a status an officer set', async () => {
   const officerRow = {
     team_id: 1,
