@@ -22,7 +22,7 @@ alter table public.raid_rsvps add constraint raid_rsvps_status_check
   check (status = any (array['Attending'::text, 'Late'::text, 'Leaving Early'::text, 'Tentative'::text, 'Absent'::text]));
 
 comment on table public.raid_rsvps is
-  'A raider''s self-declared override for one raid night (#893, part of #640) -- absence of a row means the computed default (Present, or Bench via players.is_bench) applies. Forward-looking intent only, never synced into public.attendance. Written only through set_own_rsvp() or officer_set_rsvp() (SECURITY DEFINER); No direct INSERT/UPDATE/DELETE grant for anyone.';
+  'A raider''s self-declared override for one raid night (#893, part of #640) -- absence of a row means the computed default (Present, or Bench via players.is_bench) applies. Forward-looking intent only, never synced into public.attendance. Written only through set_own_rsvp() or officer_set_rsvp() (SECURITY DEFINER); no direct INSERT/UPDATE/DELETE grant for anyone.';
 
 -- generate_priority_order(): the rotator tier and label come out; the
 -- rest of the body is as it was.
