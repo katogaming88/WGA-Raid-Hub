@@ -166,8 +166,8 @@ describe('Needs a look (#1846)', () => {
     expect(await screen.findByText(/Last refresh failed .*: Warcraft Logs did not answer\./)).toBeInTheDocument();
   });
 
-  it('asks for RSVPs ten nights at a time, so a long list is never cut short', async () => {
-    const nights = Array.from({ length: 12 }, (_, i) =>
+  it('asks for RSVPs one night at a time, so a long list is never cut short', async () => {
+    const nights = Array.from({ length: 3 }, (_, i) =>
       row(100 + i, 2, `2026-10-${String(i + 1).padStart(2, '0')}`, null, 'WCL (Absent?)')
     );
     const asked: number[] = [];
@@ -178,7 +178,7 @@ describe('Needs a look (#1846)', () => {
       return rpc(name, args);
     };
     renderApp(PAGE, h);
-    await expect.poll(() => asked.sort((x, y) => y - x)).toEqual([10, 2]);
+    await expect.poll(() => asked).toEqual([1, 1, 1]);
   });
 
   it('is not shown to someone who can only read attendance', async () => {

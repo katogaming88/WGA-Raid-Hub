@@ -555,9 +555,6 @@ export function decideLineupStatus(
   return { status: null, source: 'WCL (Late?)' };
 }
 
-// #1846: nights asked for per attendance_rsvps_before_start() call.
-export const RSVP_NIGHTS_PER_CALL = 10;
-
 // #1846: what a Tentative no-show may become, as set_team_attendance_tentative() allows.
 const TENTATIVE_STATUSES = ['Present', 'Bench', 'Late (with notice)', 'Excused', 'Late (no notice)', 'No Show'];
 
@@ -892,14 +889,15 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
   const newDates = [
     ...new Set(reports.filter((r) => !cachedReportIds.has(r.code)).map((r) => formatReportDate(r.startTime)))
   ];
-  // A few nights per call: one night is one RSVP per raider at most, so a
-  // batch stays far under PostgREST's 1000-row cap, which would otherwise cut
-  // a team's first refresh short without an error (CodeRabbit on PR #1861).
+  // One night per call: raid_rsvps is unique on (team, player, night), so an
+  // answer holds at most one row per team player, far under PostgREST's
+  // 1000-row cap, which would otherwise cut a team's first refresh short
+  // without an error (CodeRabbit on PR #1861).
   const rsvpByKey = new Map<string, string>();
-  for (let i = 0; i < newDates.length; i += RSVP_NIGHTS_PER_CALL) {
+  for (const date of newDates) {
     const { data: rsvpRows, error: rsvpError } = await supabase.rpc('attendance_rsvps_before_start', {
       p_team_id: teamId,
-      p_dates: newDates.slice(i, i + RSVP_NIGHTS_PER_CALL)
+      p_dates: [date]
     });
     if (rsvpError) throw new Error(rsvpError.message);
     for (const r of (rsvpRows || []) as Array<{ player_id: number; raid_date: string; status: string }>) {

@@ -58,14 +58,13 @@ export function useLastRun(teamId: number) {
 type BossRow = { raid_date: string; encounter_id: number; position: number; skipped: boolean };
 type PlaceRow = { raid_date: string; encounter_id: number; player_id: number };
 
-// Ten nights per call, as wcl-sync asks: one RSVP per raider a night keeps
-// each answer far under PostgREST's 1000-row cap, which cuts a long list
-// short without an error (CodeRabbit on PR #1861).
+// One night per call, as wcl-sync asks: raid_rsvps is unique on (team,
+// player, night), so each answer holds at most one row per team player, far
+// under PostgREST's 1000-row cap, which cuts a long list short without an
+// error (CodeRabbit on PR #1861).
 async function rsvpsFor(client: Client, teamId: number, dates: string[]) {
-  const batches = [];
-  for (let i = 0; i < dates.length; i += 10) batches.push(dates.slice(i, i + 10));
   const answers = await Promise.all(
-    batches.map((p_dates) => client.rpc('attendance_rsvps_before_start', { p_team_id: teamId, p_dates }))
+    dates.map((date) => client.rpc('attendance_rsvps_before_start', { p_team_id: teamId, p_dates: [date] }))
   );
   const failed = answers.find((a) => a.error);
   if (failed) return { data: null, error: failed.error };
