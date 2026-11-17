@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.286.0] - 2026-11-17
+
+### Backend
+
+- Officers can read which Battle.net and Discord account each team member connected: the BattleTag and the Discord username, for the team's current members. Only whoever can edit the roster, or a site admin (#1484).
+
+### Project
+
+- The new app's Roster shows each member's BattleTag and Discord username beside the two logos under their name, so a wrong or stale link stands out. A connected account with no name on record still lights its logo, and one that isn't connected still says Not linked (#1484).
+- Database, page and browser tests for it, and a time-log row for #1847's merge.
+
 ## [3.285.0] - 2026-11-16
 
 ### Backend

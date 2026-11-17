@@ -264,30 +264,36 @@ export function useSetOwnSpec(teamId: number) {
   );
 }
 
-export type AccountLinks = { battlenet: boolean; discord: boolean };
+export type AccountLinks = {
+  battlenet: boolean;
+  battletag: string | null;
+  discord: boolean;
+  discordName: string | null;
+};
 
-// Officers: whether each current member has connected Battle.net and Discord
-// (#1360 part 4). Which accounts they are waits on #1484; until then the
-// Roster only lights the logos.
+// Officers: which Battle.net and Discord account each current member
+// connected (#1360 part 4, #1484), so a wrong or stale link shows.
 export function useAccountLinks(teamId: number, enabled: boolean) {
   return useSupabaseQuery<Map<number, AccountLinks>>(
     ['account-links', teamId],
     async (client) => {
-      const battlenet = await client.rpc('team_battlenet_connections', { p_team_id: teamId });
-      if (battlenet.error) return { data: null, error: battlenet.error };
       // team-read-guard: one row per current member of the team (80 on the largest)
-      const members = await client
-        .from('team_members')
-        .select('id, discord_id')
-        .eq('team_id', teamId)
-        .is('archived_at', null);
-      if (members.error) return { data: null, error: members.error };
-      const withBattlenet = new Set(
-        ((battlenet.data ?? []) as { team_member_id: number }[]).map((r) => r.team_member_id)
-      );
-      const rows = (members.data ?? []) as { id: number; discord_id: string | null }[];
+      const result = await client.rpc('team_member_accounts', { p_team_id: teamId });
+      if (result.error) return { data: null, error: result.error };
+      const rows = (result.data ?? []) as {
+        team_member_id: number;
+        battlenet: boolean;
+        battletag: string | null;
+        discord: boolean;
+        discord_username: string | null;
+      }[];
       return {
-        data: new Map(rows.map((m) => [m.id, { battlenet: withBattlenet.has(m.id), discord: m.discord_id !== null }])),
+        data: new Map(
+          rows.map((m) => [
+            m.team_member_id,
+            { battlenet: m.battlenet, battletag: m.battletag, discord: m.discord, discordName: m.discord_username }
+          ])
+        ),
         error: null
       };
     },
