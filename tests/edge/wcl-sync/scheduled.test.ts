@@ -346,6 +346,11 @@ Deno.test('said Absent and not in the log: Excused from the Calendar, and nothin
   await handle(cronRequest(), deps);
   assertEquals(night(db.tables)[1], { player_id: 102, status: 'Excused', source: 'Calendar (RSVP)' });
   assertEquals(db.tables.team_settings[0].attendance_sync_last_run.committed, 3);
+  // Only the nights this run reads, in batches (CodeRabbit on PR #1861).
+  assertEquals(
+    db.rpcCalls.filter((c) => c.name === 'attendance_rsvps_before_start').map((c) => c.args),
+    [{ p_team_id: 1, p_dates: [NIGHT] }]
+  );
 });
 
 Deno.test('said Late and missed the first pull: Late (with notice)', async () => {

@@ -555,6 +555,9 @@ export function decideLineupStatus(
   return { status: null, source: 'WCL (Late?)' };
 }
 
+// #1846: nights asked for per attendance_rsvps_before_start() call.
+export const RSVP_NIGHTS_PER_CALL = 10;
+
 // #1846: what the night's log made of a raider, with their Calendar RSVP
 // (one made before the start, see attendance_rsvps_before_start) laid over
 // it. Only a flag is ever filled in: a raider the log already settled stays
@@ -886,16 +889,20 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
   const newDates = [
     ...new Set(reports.filter((r) => !cachedReportIds.has(r.code)).map((r) => formatReportDate(r.startTime)))
   ];
-  const { data: rsvpRows, error: rsvpError } = newDates.length
-    ? await supabase.rpc('attendance_rsvps_before_start', { p_team_id: teamId, p_dates: newDates })
-    : { data: [], error: null };
-  if (rsvpError) throw new Error(rsvpError.message);
-  const rsvpByKey = new Map<string, string>(
-    ((rsvpRows || []) as Array<{ player_id: number; raid_date: string; status: string }>).map((r) => [
-      `${r.player_id}|${r.raid_date}`,
-      r.status
-    ])
-  );
+  // A few nights per call: one night is one RSVP per raider at most, so a
+  // batch stays far under PostgREST's 1000-row cap, which would otherwise cut
+  // a team's first refresh short without an error (CodeRabbit on PR #1861).
+  const rsvpByKey = new Map<string, string>();
+  for (let i = 0; i < newDates.length; i += RSVP_NIGHTS_PER_CALL) {
+    const { data: rsvpRows, error: rsvpError } = await supabase.rpc('attendance_rsvps_before_start', {
+      p_team_id: teamId,
+      p_dates: newDates.slice(i, i + RSVP_NIGHTS_PER_CALL)
+    });
+    if (rsvpError) throw new Error(rsvpError.message);
+    for (const r of (rsvpRows || []) as Array<{ player_id: number; raid_date: string; status: string }>) {
+      rsvpByKey.set(`${r.player_id}|${r.raid_date}`, r.status);
+    }
+  }
   const tentativeStatus: string | null = config.attendanceTentative || null;
 
   let mainNights = 0;

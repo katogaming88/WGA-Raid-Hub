@@ -58,6 +58,20 @@ export function useLastRun(teamId: number) {
 type BossRow = { raid_date: string; encounter_id: number; position: number; skipped: boolean };
 type PlaceRow = { raid_date: string; encounter_id: number; player_id: number };
 
+// Ten nights per call, as wcl-sync asks: one RSVP per raider a night keeps
+// each answer far under PostgREST's 1000-row cap, which cuts a long list
+// short without an error (CodeRabbit on PR #1861).
+async function rsvpsFor(client: Client, teamId: number, dates: string[]) {
+  const batches = [];
+  for (let i = 0; i < dates.length; i += 10) batches.push(dates.slice(i, i + 10));
+  const answers = await Promise.all(
+    batches.map((p_dates) => client.rpc('attendance_rsvps_before_start', { p_team_id: teamId, p_dates }))
+  );
+  const failed = answers.find((a) => a.error);
+  if (failed) return { data: null, error: failed.error };
+  return { data: answers.flatMap((a) => a.data ?? []), error: null };
+}
+
 export type LookDetails = LookContext & { logNames: { raid_date: string; character_name: string }[] };
 
 // What the Needs a look list's reason lines name, read only for the nights on
@@ -93,7 +107,7 @@ export function useLookDetails(teamId: number, lateDates: string[], dates: strin
             )
           : none,
         lateDates.length ? client.from('raid_encounters').select('id, name') : none,
-        dates.length ? client.rpc('attendance_rsvps_before_start', { p_team_id: teamId, p_dates: dates }) : none,
+        dates.length ? rsvpsFor(client, teamId, dates) : none,
         dates.length
           ? readAll<{ raid_date: string; character_name: string }>((from, to) =>
               client
