@@ -27,7 +27,11 @@ function fakeDb(tables: Tables, failWrites: string[] = []) {
           (r.source === 'WCL (Late?)' || r.source === 'WCL (Absent?)') &&
           !r.report_excluded
       ).length,
-    commit_attendance_scores: () => ({ committed: 3, totalNights: 1 })
+    commit_attendance_scores: () => ({ committed: 3, totalNights: 1 }),
+    // #1846: which RSVPs came before the start is SQL's call, tested in
+    // tests/rls/attendance-rsvp-fill.test.js; the fake's rows all did.
+    attendance_rsvps_before_start: ({ p_team_id, p_dates }) =>
+      (tables.raid_rsvps || []).filter((r) => r.team_id === p_team_id && p_dates.includes(r.raid_date))
   };
 
   function from(table: string) {
@@ -331,6 +335,82 @@ Deno.test('a report saved past the first 1000 rows is still known, and not read 
     w.queries.filter((q) => q.includes('zone { id }')),
     []
   );
+});
+
+// #1846: a Calendar RSVP made before the start fills in what it can.
+const rsvp = (player_id: number, status: string) => ({ team_id: 1, player_id, raid_date: NIGHT, status, note: null });
+
+Deno.test('said Absent and not in the log: Excused from the Calendar, and nothing holds back the commit', async () => {
+  const tables = { ...team1(ROSTER), raid_rsvps: [rsvp(102, 'Absent')] };
+  const { deps, db } = setup(tables, [{ guildId: 11, inLog: ['Alpha'] }]);
+  await handle(cronRequest(), deps);
+  assertEquals(night(db.tables)[1], { player_id: 102, status: 'Excused', source: 'Calendar (RSVP)' });
+  assertEquals(db.tables.team_settings[0].attendance_sync_last_run.committed, 3);
+  // Only the nights this run reads, one per call (CodeRabbit on PR #1861).
+  assertEquals(
+    db.rpcCalls.filter((c) => c.name === 'attendance_rsvps_before_start').map((c) => c.args),
+    [{ p_team_id: 1, p_dates: [NIGHT] }]
+  );
+});
+
+Deno.test('said Late and missed the first pull: Late (with notice)', async () => {
+  const tables = { ...team1(ROSTER), raid_rsvps: [rsvp(102, 'Late')] };
+  const { deps, db } = setup(tables, [{ guildId: 11, inLog: ['Alpha', 'Bravo'], atFirstPull: ['Alpha'] }]);
+  await handle(cronRequest(), deps);
+  assertEquals(night(db.tables)[1], { player_id: 102, status: 'Late (with notice)', source: 'Calendar (RSVP)' });
+});
+
+Deno.test('said Absent but came on time: the log wins', async () => {
+  const tables = { ...team1(ROSTER), raid_rsvps: [rsvp(102, 'Absent'), rsvp(101, 'Late')] };
+  const { deps, db } = setup(tables, [{ guildId: 11, inLog: ['Alpha', 'Bravo'] }]);
+  await handle(cronRequest(), deps);
+  assertEquals(night(db.tables), [
+    { player_id: 101, status: 'Present', source: 'WCL' },
+    { player_id: 102, status: 'Present', source: 'WCL' }
+  ]);
+});
+
+Deno.test('said Tentative and not in the log: a look, unless the team picked a status', async () => {
+  const waiting = { ...team1(ROSTER), raid_rsvps: [rsvp(102, 'Tentative')] };
+  const first = setup(waiting, [{ guildId: 11, inLog: ['Alpha'] }]);
+  await handle(cronRequest(), first.deps);
+  assertEquals(night(first.db.tables)[1], { player_id: 102, status: null, source: 'WCL (Absent?)' });
+
+  const picked: Tables = {
+    ...team1(ROSTER),
+    team_settings: [{ team_id: 1, config: { attendanceTentative: 'No Show' } }],
+    raid_rsvps: [rsvp(102, 'Tentative')]
+  };
+  const second = setup(picked, [{ guildId: 11, inLog: ['Alpha'] }]);
+  await handle(cronRequest(), second.deps);
+  assertEquals(night(second.db.tables)[1], { player_id: 102, status: 'No Show', source: 'Calendar (RSVP)' });
+});
+
+Deno.test('a Tentative choice saved some other way is ignored, never a leave status', async () => {
+  const tables: Tables = {
+    ...team1(ROSTER),
+    team_settings: [{ team_id: 1, config: { attendanceTentative: 'Medical Leave' } }],
+    raid_rsvps: [rsvp(102, 'Tentative')]
+  };
+  const { deps, db } = setup(tables, [{ guildId: 11, inLog: ['Alpha'] }]);
+  await handle(cronRequest(), deps);
+  assertEquals(night(db.tables)[1], { player_id: 102, status: null, source: 'WCL (Absent?)' });
+});
+
+Deno.test('an RSVP never touches a status an officer set', async () => {
+  const officerRow = {
+    team_id: 1,
+    player_id: 102,
+    raid_date: NIGHT,
+    status: 'No Show',
+    source: 'Officer',
+    report_id: null,
+    report_excluded: false
+  };
+  const tables = { ...team1(ROSTER, [officerRow]), raid_rsvps: [rsvp(102, 'Absent')] };
+  const { deps, db } = setup(tables, [{ guildId: 11, inLog: ['Alpha'] }]);
+  await handle(cronRequest(), deps);
+  assertEquals(night(db.tables)[1], { player_id: 102, status: 'No Show', source: 'Officer' });
 });
 
 Deno.test('an archived team is skipped', async () => {

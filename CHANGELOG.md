@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.284.0] - 2026-11-16
+
+### Backend
+
+- A raider's Calendar RSVP now fills in their attendance on its own, when it was set before the raid started: Absent becomes Excused, and Late becomes Late (with notice) when they missed their first boss. Someone who said Absent or Late but turned up on time stays Present. An RSVP changed after the start doesn't count. Rows filled this way show "Calendar (RSVP)" as where the status came from (#1846).
+- Each team picks what a Tentative RSVP becomes when the raider isn't in the log: Needs a look (an officer decides, the default), or any attendance status except the two leave ones (#1846).
+
+### Functions
+
+- `wcl-sync`'s refresh lays each raider's RSVP over what the log showed, for the nights it reads, and never changes a status an officer set (#1846).
+
+### Project
+
+- Manage attendance in the new app shows a "Needs a look" list: each raider, the night, and why (late for the first boss they were in the lineup for, not in the log, said Tentative), with a status picker right in the item, on a phone too. The item leaves the list once set. Above it: when the hourly refresh last ran (or why it failed), "Scores waiting on N items", and Commit anyway. People in the log who aren't on the roster are listed under it. The Attendance menu shows the count. Settings > General has a new Attendance section for the Tentative choice (#1846).
+- Database, Edge Function and page tests for all of it.
+
 ## [3.283.0] - 2026-11-16
 
 ### Project

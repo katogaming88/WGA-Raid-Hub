@@ -709,3 +709,35 @@ describe('What gets counted as loot received (#1561)', () => {
     });
   });
 });
+
+describe('Attendance: a Tentative no-show (#1846)', () => {
+  it('shows the saved choice and saves a new one, Needs a look as null', async () => {
+    const calls: unknown[] = [];
+    renderApp(
+      '/g/wga/t/phoenix/officer/settings',
+      officerHandlers({
+        from: (read) =>
+          read.table === 'team_settings'
+            ? { data: { attendanceTentative: 'No Show' } }
+            : read.table === 'raid_zones'
+              ? { data: [] }
+              : undefined,
+        rpc: (name, args) => {
+          if (name === 'set_team_attendance_tentative') {
+            calls.push(args);
+            return { data: {} };
+          }
+          return undefined;
+        }
+      })
+    );
+    const select = (await screen.findByLabelText("Said Tentative, then wasn't in the log")) as HTMLSelectElement;
+    expect(select.value).toBe('No Show');
+    expect([...select.options].map((o) => o.textContent)).not.toContain('Medical Leave (100%)');
+    await userEvent.selectOptions(select, 'Needs a look (an officer picks)');
+    await userEvent.click(
+      within(select.closest('.settings-card') as HTMLElement).getByRole('button', { name: 'Save' })
+    );
+    await expect.poll(() => calls).toEqual([{ p_team_id: 1, p_status: null }]);
+  });
+});

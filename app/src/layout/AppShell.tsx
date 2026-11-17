@@ -31,6 +31,7 @@ import { liveCount } from '../streams/directory';
 import { needsOfficers } from '../recruiting/myRecruits';
 import { useMyRecruiterCode, useMyRecruits } from '../recruiting/useMyRecruits';
 import { waitingOnOfficers } from '../recruiting/recruits';
+import { useAttendanceWaiting } from '../attendance/useAttendance';
 import { useTeamRecruits } from '../recruiting/useRecruits';
 import { useGuildStreamers } from '../streams/StreamWidget';
 import { useNews, useNewsSeen } from '../news/useNews';
@@ -130,6 +131,8 @@ export function AppShell() {
   // The Recruits page's own read, for the sidebar's count (#1549); only asked of
   // someone who may open it.
   const recruits = useTeamRecruits(navTeam?.id ?? 0, !!navTeam && can('seeRecruits'));
+  // Attendance items needing a look (#1846): only for someone who can set them.
+  const attendanceWaiting = useAttendanceWaiting(navTeam?.id ?? 0, !!navTeam && can('manageAttendance'));
   // The apply pages (#1546) are open to anyone: no team or guild rank needed.
   const applyPage = /^\/g\/[^/]+\/(apply|applications)(\/|$)/.test(location.pathname);
   const visitor = !hasGuildRank && !teams.some((t) => onTeamIds.has(t.id));
@@ -145,7 +148,8 @@ export function AppShell() {
     newsUnread: news.isSuccess && hasUnread(news.data, newsSeen),
     liveCount: streamers.isSuccess ? liveCount(streamers.data) : 0,
     council,
-    recruitsWaiting: recruits.data ? waitingOnOfficers(recruits.data.recruits) : 0
+    recruitsWaiting: recruits.data ? waitingOnOfficers(recruits.data.recruits) : 0,
+    attendanceWaiting: attendanceWaiting.data ?? 0
   });
 
   // Officer menu: one group open at a time. On a page change the group holding

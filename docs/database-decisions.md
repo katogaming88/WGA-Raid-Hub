@@ -3738,3 +3738,19 @@ Shipped: `20261116111721_attendance_scheduled_sync.sql`.
 **`record_raid_night_participation()` admits the service role**, which is who the hourly run is (`auth.role() = 'service_role'` skips the signed-in and permission checks; the raider checks still run). EXECUTE granted to `service_role` alongside `authenticated`.
 
 [Full discussion -> #1845](https://github.com/katogaming88/WGA-Raid-Hub/issues/1845).
+
+## #1846 -- a Calendar RSVP fills in attendance on its own
+
+Shipped: `20261116193518_attendance_rsvp_fill.sql`.
+
+**Notice means an RSVP made before the raid started** (Kat, 2026-11-16). `attendance_rsvps_before_start(team, nights)` returns the team's `raid_rsvps` for those nights whose `updated_at` is before the night's start, read from `raid_night_info()` (the Calendar's own answer for a night, at the team's time zone). A cancelled night, or one off the schedule, has none that count. An RSVP changed after the start reads as no RSVP, so nobody marks themselves Absent the next morning to dodge a No Show. The start is today's schedule for that weekday: a schedule changed since the night would move it, which only matters for an RSVP made between the two start times. **A team with no weekly schedule gets no fill** (Kat, 2026-11-16, after the fresh review): on production only Immolation and the Sandbox had one, so Phoenix and Hellfire Rollers need a weekly schedule before their RSVPs count. Falling back to the log's start was offered and declined.
+
+**Its own gate, not the caller's RSVP access** (fresh review). SECURITY DEFINER: the service role, the team's `attendance` permission (what the Refresh button needs) or a site admin. Read as the caller, a rank with attendance but not RSVPs would refresh nights unfilled, and a saved report is never read again. It returns who, which night and which RSVP, never the raider's note. The sync also ignores a saved Tentative value `set_team_attendance_tentative()` would refuse, since `set_team_setting()` can write the key too.
+
+**Only a flag is filled in; the log wins.** In `wcl-sync`, after the log decides a raider's night: a Late? with RSVP Late becomes `Late (with notice)`, an Absent? with RSVP Absent becomes `Excused`, and an Absent? with RSVP Tentative becomes the team's choice. A raider the log already settled (present on time, bench, not yet on the roster) stays as the log says, and an officer's row is never touched (`keep_officer_attendance()` still applies). No RSVP and not in the log stays Absent?: it could be a wrong character name in the log (Kat).
+
+**A filled row has its own source, `Calendar (RSVP)`** (the source check gains it), so the grid says where the status came from. It has a status, so it never counts as waiting.
+
+**Tentative is the team's call** (Kat: "up to the guild/team"). `team_settings.config.attendanceTentative` holds the status a Tentative no-show becomes: Present, Bench, Late (with notice), Excused, Late (no notice) or No Show, or null for Needs a look, the default. The leave statuses are left out (leave is #1860). It picks an existing status rather than a new percentage, so the score math does not change. Saved by `set_team_attendance_tentative(team, status)`, gated like `set_team_audit_rules()`: `promote_assistants` (Officer by default, which opens Settings) or a site admin. Writes its own audit entry.
+
+[Full discussion -> #1846](https://github.com/katogaming88/WGA-Raid-Hub/issues/1846).

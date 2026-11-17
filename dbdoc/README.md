@@ -397,6 +397,8 @@
 | public.attendance_items_waiting | int4 | p_team_id integer | FUNCTION |
 | public.commit_attendance_scores | jsonb | p_team_id integer | FUNCTION |
 | public.keep_officer_attendance | trigger |  | FUNCTION |
+| public.attendance_rsvps_before_start | record | p_team_id integer, p_dates date[] | FUNCTION |
+| public.set_team_attendance_tentative | jsonb | p_team_id integer, p_status text | FUNCTION |
 
 ## Enums
 

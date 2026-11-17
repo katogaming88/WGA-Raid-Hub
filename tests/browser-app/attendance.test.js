@@ -181,9 +181,14 @@ describe('Attendance Manage (new app): the per-night grid', () => {
     await expect(opened.page.locator('#attend-night-select').inputValue()).resolves.toBe('0');
     const names = await opened.page.locator('.attend-grid-name').allTextContents();
     expect(names).toEqual(['Aur', 'Brightmoor', 'Dawnthistle', 'Em', 'Frostvale', 'Zed']);
-    const statuses = await opened.page.locator('.attend-status-select').evaluateAll((els) => els.map((e) => e.value));
+    // The grid's own pickers; the Needs a look list above has one too (#1846).
+    const statuses = await opened.page
+      .locator('.attend-grid-rows .attend-status-select')
+      .evaluateAll((els) => els.map((e) => e.value));
     expect(statuses).toEqual(['Present', 'Excused', 'Present', 'Bench', '', 'Present']);
-    await expect(opened.page.locator('.attend-late-flag').textContent()).resolves.toBe('WCL (Late?)');
+    await expect(opened.page.locator('.attend-grid-rows .attend-late-flag').textContent()).resolves.toBe('WCL (Late?)');
+    // The night's Late? is on the Needs a look list, set right there.
+    await expect(opened.page.getByLabel("Frostvale's status for Thu May 14").count()).resolves.toBe(1);
     expect(opened.unexpected).toEqual([]);
     expect(opened.pageErrors).toEqual([]);
   });
@@ -192,7 +197,9 @@ describe('Attendance Manage (new app): the per-night grid', () => {
     await opened.page.locator('#attend-night-select').selectOption('1');
     const names = await opened.page.locator('.attend-grid-name').allTextContents();
     expect(names).toEqual(['Aur', 'Brightmoor', 'Dawnthistle', 'Em', 'Frostvale', 'Zed']);
-    const statuses = await opened.page.locator('.attend-status-select').evaluateAll((els) => els.map((e) => e.value));
+    const statuses = await opened.page
+      .locator('.attend-grid-rows .attend-status-select')
+      .evaluateAll((els) => els.map((e) => e.value));
     expect(statuses).toEqual(['Present', 'Present', 'No Show', 'Present', '', 'Late (no notice)']);
   });
 });
@@ -231,8 +238,10 @@ describe('Attendance Manage (new app): a guild Admin on another team (#1703)', (
     const opened = await openApp(browser, server.port, { ...state(BASE, '.attend-grid-rows'), person: ADMIN });
     try {
       await expect(opened.page.getByRole('link', { name: 'Boss groups' }).count()).resolves.toBe(1);
-      await expect(opened.page.getByRole('button', { name: 'Refresh from WCL' }).count()).resolves.toBe(0);
-      await expect(opened.page.getByRole('button', { name: 'Commit Attendance Scores' }).count()).resolves.toBe(0);
+      await expect(opened.page.getByRole('button', { name: 'Refresh now' }).count()).resolves.toBe(0);
+      await expect(opened.page.getByRole('button', { name: /^Commit/ }).count()).resolves.toBe(0);
+      // Nor the Needs a look list, which is for those who can set a status (#1846).
+      await expect(opened.page.getByRole('heading', { name: /Needs a look/ }).count()).resolves.toBe(0);
       await expect(opened.page.getByRole('button', { name: 'Exclude Report' }).count()).resolves.toBe(0);
       const disabled = await opened.page
         .locator('.attend-status-select')
@@ -272,7 +281,7 @@ describe('Attendance Manage (new app): refresh from WCL', () => {
       })
     );
     try {
-      await opened.page.getByRole('button', { name: 'Refresh from WCL' }).click();
+      await opened.page.getByRole('button', { name: 'Refresh now' }).click();
       await expect
         .poll(() => opened.page.getByRole('status').filter({ hasText: 'Done: 1 night found, 0 excluded.' }).count())
         .toBe(1);
@@ -293,7 +302,8 @@ describe('Attendance Manage (new app): commit attendance scores', () => {
     );
     try {
       const commit = recordRpcCalls(opened.page, 'commit_attendance_scores');
-      await opened.page.getByRole('button', { name: 'Commit Attendance Scores' }).click();
+      // Frostvale's Late? is still waiting, so it reads Commit anyway (#1846).
+      await opened.page.getByRole('button', { name: 'Commit anyway' }).click();
       await opened.page.getByRole('button', { name: 'Yes, Commit' }).click();
       await expect.poll(() => commit.length).toBe(1);
       expect(commit[0]).toEqual({ p_team_id: TEAM_ID });

@@ -166,7 +166,7 @@ Per-player, per-raid-night attendance records.
 | `report_excluded` | bool | Whether this record is excluded from attendance reports (e.g. cancelled raid) |
 | `report_id`       | text | External report identifier (Warcraft Logs report ID)                          |
 
-A blank `status` with source `WCL (Late?)` or `WCL (Absent?)` is a night the sync flagged for an officer's look (#1845); `attendance_items_waiting()` counts them and the hourly run commits scores only at zero. People in the log who are not on the roster are in `attendance_log_names` (team, night, lower-case first name, report), listed but never holding the commit back.
+A blank `status` with source `WCL (Late?)` or `WCL (Absent?)` is a night the sync flagged for an officer's look (#1845); `attendance_items_waiting()` counts them and the hourly run commits scores only at zero. People in the log who are not on the roster are in `attendance_log_names` (team, night, lower-case first name, report), listed but never holding the commit back. A row with source `Calendar (RSVP)` was filled in from a Calendar RSVP made before the raid started (#1846): Absent to Excused, Late to Late (with notice), Tentative to the team's `config.attendanceTentative` choice.
 
 ---
 

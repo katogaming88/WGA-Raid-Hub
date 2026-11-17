@@ -6,13 +6,26 @@ import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
 import { errorMessage } from '../lib/errors';
+import { formatInstantDate, formatInstantShort, formatInstantTime, localTimeZoneNote } from '../lib/dates';
 import { useCurrentSeason } from '../profile/useProfile';
 import { useRosterPlayers } from '../roster/useRoster';
-import type { PlayerRow } from '../roster/roster';
-import { ATTENDANCE_STATUSES, buildGrid, type FullAttendanceRow, type Night } from './attendance';
+import { classColor, type PlayerRow } from '../roster/roster';
+import {
+  ATTENDANCE_STATUSES,
+  buildGrid,
+  needsALook,
+  nightLabel,
+  type FullAttendanceRow,
+  type LastRun,
+  type LookContext,
+  type LookItem,
+  type Night
+} from './attendance';
 import {
   useAttendanceRows,
   useCommitAttendanceScores,
+  useLastRun,
+  useLookDetails,
   useRefreshAttendanceFromWcl,
   useSetAttendanceStatus,
   useToggleReportExcluded
@@ -33,9 +46,8 @@ export function AttendanceManagePage() {
       <div className="page-header">
         <h1 id="page-title">Manage attendance</h1>
         <p className="text-muted page-subtitle">
-          Refresh from Warcraft Logs after each raid night, then fix up any status it couldn't tell on its own. Commit
-          Attendance Scores writes each raider's weighted attendance to Scoring, which is what the Priority Generator
-          uses.
+          Attendance refreshes from Warcraft Logs every hour. Scores go into loot priority on their own once nothing
+          below needs a look.
         </p>
       </div>
       <DataState query={page} label="attendance">
@@ -63,6 +75,13 @@ function Manage({
   const [confirmingCommit, setConfirmingCommit] = useState(false);
   const refresh = useRefreshAttendanceFromWcl(teamId);
   const commit = useCommitAttendanceScores(teamId);
+  const lastRun = useLastRun(teamId);
+  const seasonStart = season.isSuccess ? season.data.start : null;
+  const flagged = needsALook(rows, roster, seasonStart, NO_CONTEXT);
+  const dates = [...new Set(flagged.map((i) => i.date))];
+  const lateDates = [...new Set(flagged.filter((i) => i.kind === 'Late?').map((i) => i.date))];
+  const details = useLookDetails(teamId, lateDates, dates);
+  const items = details.isSuccess ? needsALook(rows, roster, seasonStart, details.data) : flagged;
 
   const onRefresh = () =>
     refresh.mutate(undefined, {
@@ -86,25 +105,29 @@ function Manage({
     });
   };
 
+  const waiting = items.length;
+
   return (
     <div className="attend-manage-panel card">
-      {!readOnly && (
-        <div className="attend-manage-header">
+      <div className="attend-manage-header">
+        <RefreshLine run={lastRun.data ?? null} loaded={lastRun.isSuccess} waiting={readOnly ? 0 : waiting} />
+        {!readOnly && (
           <div className="attend-manage-actions">
             <button type="button" className="button" onClick={onRefresh} disabled={refresh.isPending}>
-              {refresh.isPending ? 'Refreshing…' : 'Refresh from WCL'}
+              {refresh.isPending ? 'Refreshing…' : 'Refresh now'}
             </button>
             <button
               type="button"
-              className="button button-primary"
+              className={waiting > 0 ? 'button button-primary' : 'button'}
               onClick={() => setConfirmingCommit(true)}
               disabled={commit.isPending || !season.isSuccess || !season.data.code}
             >
-              Commit Attendance Scores
+              {waiting > 0 ? 'Commit anyway' : 'Commit Attendance Scores'}
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+      {!readOnly && <LookList teamId={teamId} items={items} logNames={details.data?.logNames ?? []} />}
       {confirmingCommit && (
         <Dialog title="Commit attendance scores" onClose={() => setConfirmingCommit(false)}>
           <p>Calculate and write attendance scores for all players to Scoring?</p>
@@ -120,12 +143,141 @@ function Manage({
         </Dialog>
       )}
 
-      {nights.length === 0 ? (
-        <p className="text-muted">No raid nights recorded yet. Run "Refresh from WCL" first.</p>
-      ) : (
-        <NightGrid teamId={teamId} nights={nights} shown={shown} onShow={setShown} readOnly={readOnly} />
-      )}
+      <section className="attend-section" aria-labelledby="attend-grid-title">
+        <h2 id="attend-grid-title" className="section-title">
+          Every night
+        </h2>
+        {nights.length === 0 ? (
+          <p className="text-muted">No raid nights recorded yet. They show here after the first refresh.</p>
+        ) : (
+          <NightGrid teamId={teamId} nights={nights} shown={shown} onShow={setShown} readOnly={readOnly} />
+        )}
+      </section>
     </div>
+  );
+}
+
+const NO_CONTEXT: LookContext = { firstBoss: new Map(), rsvps: new Map() };
+
+// "today at 3:23 PM", or "Nov 15 at 3:23 PM" on another day, in the viewer's zone.
+function whenLabel(iso: string): string {
+  const time = formatInstantTime(iso);
+  if (formatInstantDate(iso) === formatInstantDate(new Date())) return `today at ${time}`;
+  return `${formatInstantShort(iso)} at ${time}`;
+}
+
+const hourAfter = (iso: string) => formatInstantTime(new Date(new Date(iso).getTime() + 60 * 60 * 1000));
+
+// When the hourly refresh last ran, its error if it failed, and where the
+// scores stand.
+function RefreshLine({ run, loaded, waiting }: { run: LastRun | null; loaded: boolean; waiting: number }) {
+  if (!loaded) return <div className="attend-refresh" />;
+  return (
+    <div className="attend-refresh">
+      {!run ? (
+        <span>No hourly refresh has run yet.</span>
+      ) : run.error ? (
+        <span className="attend-refresh-failed">
+          Last refresh failed {whenLabel(run.started_at)}: {run.error}. It tries again around{' '}
+          {hourAfter(run.started_at)}.
+        </span>
+      ) : (
+        <span>
+          Last refresh: <strong>{whenLabel(run.finished_at || run.started_at)}</strong>. Next one around{' '}
+          {hourAfter(run.started_at)}.
+        </span>
+      )}
+      {waiting > 0 ? (
+        <span className="attend-scores-waiting">
+          Scores waiting on {waiting} item{waiting === 1 ? '' : 's'}. They go into loot priority once{' '}
+          {waiting === 1 ? 'it is' : 'these are'} set.
+        </span>
+      ) : (
+        run?.committed != null &&
+        !run.error && (
+          <span className="attend-scores-done">Scores went into loot priority {whenLabel(run.finished_at)}.</span>
+        )
+      )}
+      {run && <span className="text-muted attend-zone">{localTimeZoneNote()}</span>}
+    </div>
+  );
+}
+
+const capitalized = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
+
+// The Needs a look list (#1846): each item sets its status right here and
+// leaves the list once set (Kat, 2026-11-16).
+function LookList({
+  teamId,
+  items,
+  logNames
+}: {
+  teamId: number;
+  items: LookItem[];
+  logNames: { raid_date: string; character_name: string }[];
+}) {
+  const { announce } = useStatus();
+  const setStatus = useSetAttendanceStatus(teamId);
+  const strangers = new Map<string, string[]>();
+  for (const n of logNames) strangers.set(n.raid_date, [...(strangers.get(n.raid_date) ?? []), n.character_name]);
+
+  return (
+    <section className="attend-section" aria-labelledby="attend-look-title">
+      <h2 id="attend-look-title" className="section-title">
+        Needs a look{items.length > 0 && <span className="attend-look-count"> {items.length}</span>}
+      </h2>
+      {items.length === 0 ? (
+        <p className="text-muted">Nothing right now. New items show here after a refresh.</p>
+      ) : (
+        <ul className="attend-look-list">
+          {items.map((item) => {
+            const night = nightLabel(item.date);
+            const id = `attend-look-${item.date}-${item.playerId}`;
+            return (
+              <li className="attend-look-item" key={`${item.date}-${item.playerId}`}>
+                <span className="attend-look-name" style={{ color: classColor(item.className) }}>
+                  {item.name}
+                </span>
+                <span className="attend-look-night">{night}</span>
+                <span className="attend-look-reason">
+                  <span className="attend-late-flag">{item.kind}</span> {item.reason}
+                </span>
+                <label className="visually-hidden" htmlFor={id}>
+                  {item.name}'s status for {night}
+                </label>
+                <select
+                  id={id}
+                  className="input attend-status-select"
+                  value=""
+                  disabled={setStatus.isPending}
+                  onChange={(e) =>
+                    setStatus.mutate(
+                      { playerId: item.playerId, raidDate: item.date, status: e.target.value, oldStatus: null },
+                      { onError: (error) => announce('error', errorMessage(error)) }
+                    )
+                  }
+                >
+                  <option value="" disabled>
+                    Pick a status
+                  </option>
+                  {ATTENDANCE_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {[...strangers].map(([date, names]) => (
+        <p className="text-muted" key={date}>
+          In the {nightLabel(date)} log but not on the roster: {names.map(capitalized).join(', ')}. These never hold up
+          scores.
+        </p>
+      ))}
+    </section>
   );
 }
 

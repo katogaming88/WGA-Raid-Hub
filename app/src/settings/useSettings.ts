@@ -53,6 +53,8 @@ export type GeneralSettings = {
   warcraftLogsUrl: string;
   enchantCheck: EnchantCheck;
   vaultRule: VaultRule | null;
+  // #1846: what a Tentative RSVP becomes when the raider isn't in the log; null: Needs a look.
+  attendanceTentative: string | null;
 };
 
 const generalKey = (teamId: number) => ['general-settings', teamId] as const;
@@ -62,7 +64,7 @@ export function useGeneralSettings(teamId: number) {
     const result = await client
       .from('team_settings')
       .select(
-        'seasonView:config->>seasonView, trialWeeks:config->trialWeeks, trialAttend:config->trialAttend, targetTankCount:config->targetTankCount, targetHealCount:config->targetHealCount, warcraftLogsUrl:config->externalLinks->>warcraftLogsUrl, enchantCheck:config->>enchantCheck, vaultRule:config->vaultRule'
+        'seasonView:config->>seasonView, trialWeeks:config->trialWeeks, trialAttend:config->trialAttend, targetTankCount:config->targetTankCount, targetHealCount:config->targetHealCount, warcraftLogsUrl:config->externalLinks->>warcraftLogsUrl, enchantCheck:config->>enchantCheck, vaultRule:config->vaultRule, attendanceTentative:config->>attendanceTentative'
       )
       .eq('team_id', teamId)
       .maybeSingle();
@@ -80,7 +82,8 @@ export function useGeneralSettings(teamId: number) {
         targetHealCount: row.targetHealCount ?? null,
         warcraftLogsUrl: row.warcraftLogsUrl ?? '',
         enchantCheck: asEnchantCheck(row.enchantCheck),
-        vaultRule: asVaultRule(row.vaultRule)
+        vaultRule: asVaultRule(row.vaultRule),
+        attendanceTentative: row.attendanceTentative ?? null
       },
       error: null
     };
@@ -170,6 +173,20 @@ export function useSaveAuditRules(teamId: number) {
       return { data: null, error: result.error };
     },
     { key: ['save-audit-rules', teamId], refreshes: [generalKey(teamId)] }
+  );
+}
+
+// #1846: the team's choice for a Tentative no-show, null for Needs a look.
+export function useSaveAttendanceTentative(teamId: number) {
+  return useSupabaseMutation<null, string | null>(
+    async (client, status) => {
+      const result = await client.rpc('set_team_attendance_tentative', {
+        p_team_id: teamId,
+        p_status: status as string
+      });
+      return { data: null, error: result.error };
+    },
+    { key: ['save-attendance-tentative', teamId], refreshes: [generalKey(teamId)] }
   );
 }
 
