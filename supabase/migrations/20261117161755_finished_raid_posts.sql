@@ -13,8 +13,11 @@
 -- weekly lineup post once the last raid night it covers is that far past.
 --
 -- finished_at on each post's row records that it was handled, so it happens
--- once. Posts already up (one on production, 2026-11-17) are handled on the
--- first run after deploy like any other.
+-- once. Posts already up are handled on the first run after deploy like any
+-- other, for teams with a sheet set: on production that is team 5's
+-- 2026-11-17 sheet. Team 1's seven sheets from the old bots wait until team 1
+-- sets a sheet; then Delete removes them where the bot has Manage Messages,
+-- and Finish lets them go (no bot can edit another's message).
 
 alter table public.team_discord_config
   add column after_raid text not null default 'finish' check (after_raid in ('finish', 'delete'));

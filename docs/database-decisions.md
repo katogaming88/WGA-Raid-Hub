@@ -3822,6 +3822,8 @@ Shipped: `20261117161755_finished_raid_posts.sql`.
 
 **No Manage Messages warning.** The issue asked the page to say when Delete lacks the bot's Manage Messages. Discord lets a bot delete its own messages without it (it is needed only for other people's), so there is nothing to warn about; a channel the bot can't reach at all is already marked on the page.
 
-**Nothing backfilled.** Production had one posted sheet (team 5, 2026-11-17) and no lineup posts when this shipped; the first run after deploy finishes it like any other. Phoenix's seven old sheets were posted by the old bots: the sweep reads only teams with a sheet set, and if Phoenix sets one, this bot can't edit or delete another application's messages (403), so they are let go.
+**Nothing backfilled.** Production had eight posted sheets and no lineup posts when this shipped (fresh review): team 5's 2026-11-17 sheet, finished on the first run after its raid, and seven of team 1's from the old bots (2026-09-07 to 10-31). The sweep reads only teams with a sheet set, so team 1's wait until it sets one. Then Delete takes them down where the bot has Manage Messages (deleting another application's message needs it; `syncSheet` already does the same for an old bot's sheet), and Finish lets them go, since no bot can edit another's message (403). Either way the channel stops showing them as live once Delete is picked.
+
+**Left as is (fresh review).** Finishing runs for teams that still have a sheet set or the weekly lineup post on: a team that removes its last sheet or turns the lineup post off leaves the posts already up as they are. A raid night added to a week after that week's post was finished shows in no weekly post; the night's own sheet still covers it.
 
 [Full discussion -> #1825](https://github.com/katogaming88/WGA-Raid-Hub/issues/1825).
