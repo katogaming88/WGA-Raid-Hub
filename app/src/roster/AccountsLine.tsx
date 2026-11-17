@@ -5,22 +5,36 @@ import { useClaimName } from './useNames';
 import type { AccountLinks } from './useRoster';
 
 // Officers: the Battle.net and Discord logos under a member's name (#1360
-// part 4), lit when connected and grey with "Not linked" when not, so the
-// state never rests on color alone. The account names arrive with #1484.
+// part 4), lit with the account's name when connected (#1484) and grey with
+// "Not linked" when not, so the state never rests on color alone.
 export function AccountsLine({ links }: { links: AccountLinks }) {
   return (
     <span className="accounts-line">
-      <Account brand="battlenet" label="Battle.net" linked={links.battlenet} />
-      <Account brand="discord" label="Discord" linked={links.discord} />
+      <Account brand="battlenet" label="Battle.net" linked={links.battlenet} name={links.battletag} />
+      <Account brand="discord" label="Discord" linked={links.discord} name={links.discordName} />
     </span>
   );
 }
 
-function Account({ brand, label, linked }: { brand: 'battlenet' | 'discord'; label: string; linked: boolean }) {
+function Account({
+  brand,
+  label,
+  linked,
+  name
+}: {
+  brand: 'battlenet' | 'discord';
+  label: string;
+  linked: boolean;
+  name: string | null;
+}) {
   return (
     <span className={`account account-${brand}${linked ? ' linked' : ''}`}>
       <BrandLogo brand={brand} />
-      {linked ? (
+      {linked && name ? (
+        <>
+          <span className="visually-hidden">{label}:</span> {name}
+        </>
+      ) : linked ? (
         <span className="visually-hidden">{label} connected</span>
       ) : (
         <>

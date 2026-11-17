@@ -253,8 +253,9 @@ const needsALook = () => {
   };
 };
 
-// The accounts line and quick Claim (#1360 part 4): every member but one has
-// Battle.net, every other one Discord, and two bare Names offer Claim.
+// The accounts line and quick Claim (#1360 part 4, #1484): every member but
+// one has Battle.net, every other one Discord, with their account names, and
+// two bare Names offer Claim.
 const ACCOUNTS = {
   path: '/g/wga/t/phoenix/roster',
   sentinel: 'table.roster-table .accounts-line',
@@ -268,9 +269,13 @@ const ACCOUNTS = {
     }))
   },
   rpc: {
-    team_battlenet_connections: rosterWithNames()
-      .team_members.slice(1)
-      .map((m) => ({ team_member_id: m.id }))
+    team_member_accounts: rosterWithNames().team_members.map((m, i) => ({
+      team_member_id: m.id,
+      battlenet: i > 0,
+      battletag: i > 0 ? `Raider${m.id}#1${m.id}` : null,
+      discord: i % 2 === 0,
+      discord_username: i % 2 === 0 ? `raider${m.id}` : null
+    }))
   }
 };
 

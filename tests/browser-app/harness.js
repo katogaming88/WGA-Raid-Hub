@@ -332,10 +332,22 @@ export async function openApp(browser, port, state) {
       // step 5b): none unless the state says otherwise.
       if (rest === 'rpc/earlier_characters' && !state.rpc?.earlier_characters) return route.fulfill(json([]));
       if (rest === 'rpc/also_on_teams') return route.fulfill(json([]));
-      // Who has connected Battle.net, for the Roster's accounts line (#1360):
-      // nobody unless the state says otherwise.
-      if (rest === 'rpc/team_battlenet_connections' && !state.rpc?.team_battlenet_connections) {
-        return route.fulfill(json([]));
+      // Each member's accounts, for the Roster's accounts line (#1360,
+      // #1484): from the state's team_members, Discord by its id, no
+      // Battle.net and no names, unless the state says otherwise.
+      if (rest === 'rpc/team_member_accounts' && !state.rpc?.team_member_accounts) {
+        const members = (state.tables?.team_members ?? []).filter((m) => !m.archived_at);
+        return route.fulfill(
+          json(
+            members.map((m) => ({
+              team_member_id: m.id,
+              battlenet: false,
+              battletag: null,
+              discord: !!m.discord_id,
+              discord_username: null
+            }))
+          )
+        );
       }
       // The team's first raid night in the tier (#1269): none unless the
       // state says otherwise, which reads as the tier's own start.

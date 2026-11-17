@@ -990,17 +990,32 @@ describe('Roster page, quick Claim and accounts', () => {
     await waitFor(() => expect(within(table).queryByRole('button', { name: /^Claim / })).not.toBeInTheDocument());
   });
 
-  it('shows an officer which accounts each member has connected', async () => {
+  const accounts = (row: Record<string, unknown>) =>
+    namesHandlers({
+      role: 'officer',
+      members: [{ id: 9, person_id: 70, archived_at: null, discord_id: null }],
+      rpc(name, args) {
+        if (name === 'team_member_accounts') return { data: [{ team_member_id: 9, ...row }] };
+        return seededHandlers().rpc!(name, args);
+      }
+    });
+
+  it("shows an officer which accounts each member has connected, by the account's name (#1484)", async () => {
     renderApp(
       '/g/wga/t/phoenix/roster',
-      namesHandlers({
-        role: 'officer',
-        members: [{ id: 9, person_id: 70, archived_at: null, discord_id: null }],
-        rpc(name, args) {
-          if (name === 'team_battlenet_connections') return { data: [{ team_member_id: 9 }] };
-          return seededHandlers().rpc!(name, args);
-        }
-      })
+      accounts({ battlenet: true, battletag: 'Brakkus#1184', discord: true, discord_username: 'brakkus' })
+    );
+    const table = await rosterTable();
+    const raz = within(table).getByRole('rowheader', { name: /Raz/ });
+    await within(raz).findByText('Brakkus#1184');
+    expect(raz).toHaveTextContent('Battle.net: Brakkus#1184');
+    expect(raz).toHaveTextContent('Discord: brakkus');
+  });
+
+  it('lights a connected account with no name on record, and says Not linked for the other', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/roster',
+      accounts({ battlenet: true, battletag: null, discord: false, discord_username: null })
     );
     const table = await rosterTable();
     const raz = within(table).getByRole('rowheader', { name: /Raz/ });
@@ -1008,12 +1023,29 @@ describe('Roster page, quick Claim and accounts', () => {
     expect(raz).toHaveTextContent('Discord: Not linked');
   });
 
+  it('does not read the accounts for an officer tool other than editing the roster (fresh review on PR #1863)', async () => {
+    const { client } = renderApp(
+      '/g/wga/t/phoenix/roster',
+      namesHandlers({
+        role: 'officer',
+        rpc(name, args) {
+          if (name === 'my_permissions') return { data: { team: ['see_rsvps'], guild: [] } };
+          return seededHandlers().rpc!(name, args);
+        }
+      })
+    );
+    const table = await rosterTable();
+    await within(table).findByRole('rowheader', { name: /Raz/ });
+    expect(screen.queryByText(/connected accounts/i)).not.toBeInTheDocument();
+    expect(client.rpcs.some(([n]) => n === 'team_member_accounts')).toBe(false);
+  });
+
   it('shows a raider no accounts, and does not read them', async () => {
     const { client } = renderApp('/g/wga/t/phoenix/roster', namesHandlers());
     const table = await rosterTable();
     await within(table).findByRole('rowheader', { name: /Raz/ });
     expect(within(table).queryByText(/Not linked|connected/)).not.toBeInTheDocument();
-    expect(client.rpcs.some(([n]) => n === 'team_battlenet_connections')).toBe(false);
+    expect(client.rpcs.some(([n]) => n === 'team_member_accounts')).toBe(false);
   });
 });
 

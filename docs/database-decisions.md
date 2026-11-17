@@ -3770,3 +3770,15 @@ Shipped: `20261116224851_attendance_officer_posts.sql`.
 **No officer channel, a channel outside the team's server, or a local stack: no post.** A failed post is logged and tried again next hour; it never fails the attendance run.
 
 [Full discussion -> #1847](https://github.com/katogaming88/WGA-Raid-Hub/issues/1847).
+
+## #1484 -- officers see which Battle.net and Discord account each member connected
+
+Shipped: `20261117002741_team_member_accounts.sql`.
+
+**`team_member_accounts(team)` names the accounts,** one row per current team member: whether Battle.net and Discord are linked, the BattleTag and the Discord username. The names live in `auth.identities`, which no client role reads, so it is SECURITY DEFINER with `team_battlenet_connections()`' check: `edit_roster` on the team, or a site admin. A raider, another team's officer and a guild rank are refused.
+
+**The Discord username, not the display name.** The issue asked for the username, which stays put while display names change, so a wrong link is easier to spot. It is the sign-in's `full_name`, or `name` with Discord's `#0` taken off. `team_unnamed_members()` (#1355) keeps the display name first for Assign. Discord counts as linked by `team_members.discord_id`, as the Roster already read it, and the username is that same Discord account's (the sign-in matched on `provider_id`), so a person who later signed in with another Discord account never shows that one's name beside this link (fresh review). A link with no sign-in on record shows the logo lit with no name. Battle.net is the person's newest Battle.net sign-in.
+
+**`team_battlenet_connections()` stays** for the current site's roster tab; the new app reads only the new function.
+
+[Full discussion -> #1484](https://github.com/katogaming88/WGA-Raid-Hub/issues/1484).

@@ -327,8 +327,12 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
     : ownMember !== undefined
       ? new Set([ownMember])
       : null;
-  // The accounts line under each member (#1360 part 4), officers only.
-  const accountLinks = useAccountLinks(team.id, officer);
+  // The accounts line under each member (#1360 part 4): only whoever can
+  // edit the roster, the one check team_member_accounts() answers (#1484;
+  // fresh review on PR #1863: any other officer tool met "Not authorized").
+  const pageCan = usePageCan();
+  const seesAccounts = !!user && !pageCan.loading && pageCan.can('editRoster');
+  const accountLinks = useAccountLinks(team.id, seesAccounts);
   // Quick Claim is for someone who holds no Name on the team yet; signed out,
   // that is unknown, and the link starts sign-in.
   const holdsName = ownMember !== undefined && names.some((n) => n.team_member_id === ownMember);
@@ -417,7 +421,7 @@ function CurrentRoster({ players, gear }: { players: RosterPlayers; gear: GearRo
               {() => null}
             </DataState>
           )}
-          {officer && accountLinks.isError && (
+          {seesAccounts && accountLinks.isError && (
             <DataState query={accountLinks} label="connected accounts">
               {() => null}
             </DataState>

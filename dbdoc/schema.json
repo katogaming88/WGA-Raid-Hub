@@ -18600,6 +18600,12 @@
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_status text",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_member_accounts",
+      "return_type": "record",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [
