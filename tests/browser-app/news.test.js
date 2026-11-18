@@ -1,44 +1,34 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { launchBrowser, openApp, startApp, NARROW } from './harness.js';
-import {
-  ENTRIES,
-  EXPECTED,
-  TOGGLE_OPEN,
-  TOGGLE_CLOSED,
-  AFTER_TOGGLES,
-  NEWEST_VERSION,
-  SEEN_KEY,
-  EMPTY_MESSAGE
-} from '../behavior/news.js';
+import { NEWEST_SEEN_KEY, POSTS, READER_POSTS, STAFF } from './news-fixtures.js';
 
-// The new app's News page against the behavior recorded from the current
-// site's News tab (tests/browser/news-recorded.test.js, #1102 step 1), plus
-// what the redesign changes on purpose.
+// The new app's News (#1102, #1230): the timeline with its pinned post,
+// filters and search, a post's own page, and Staff's editor. News is posts in
+// the news_posts table, so a state lists them under `tables`.
+// tests/behavior/news.js is the current site's News tab, which keeps reading
+// news.json until cutover and is checked by tests/browser/news-recorded.test.js.
 
-const STATE = { path: '/news', sentinel: '.news-entry', news: ENTRIES };
+const SEEN_KEY = 'wga_news_last_seen';
+const EMPTY_MESSAGE = 'No news yet.';
+const STATE = { path: '/news', sentinel: '.news-month', tables: { news_posts: READER_POSTS } };
+const POST = '/news/raid-calendar';
 
-// The shape tests/behavior/news.js describes, read from the new markup. The
-// date is the machine-readable one; the page writes it out (below).
-const readEntries = (page) =>
-  page.locator('.news-entry').evaluateAll((els) =>
-    els.map((el) => {
-      const open = el.querySelector('.news-entry-header').getAttribute('aria-expanded') === 'true';
-      return {
-        title: el.querySelector('.news-entry-title').textContent.trim(),
-        date: el.querySelector('time').getAttribute('datetime'),
-        category: el.querySelector('.news-category').textContent.trim(),
-        version: el.querySelector('.news-entry-version').textContent.trim().replace(/^v/, ''),
-        pinned: el.querySelector('.news-pinned') !== null,
-        open,
-        body: open ? el.querySelector('.news-entry-body').textContent.trim() : null
-      };
-    })
+// The timeline as a reader sees it.
+const readTimeline = (page) =>
+  page.locator('.news-month').evaluateAll((months) =>
+    months.map((month) => ({
+      month: month.querySelector('.news-month-title').textContent.trim(),
+      posts: [...month.querySelectorAll('.news-item')].map((a) => ({
+        title: a.querySelector('.news-item-title').textContent.trim(),
+        category: a.querySelector('.news-category').textContent.trim(),
+        date: a.querySelector('time').getAttribute('datetime'),
+        href: a.getAttribute('href')
+      }))
+    }))
   );
 
 const markShown = async (page) =>
   (await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'News, new' }).count()) > 0;
-
-const toggle = (page, title) => page.getByRole('button', { name: new RegExp(title) }).click();
 
 let server;
 let browser;
@@ -53,116 +43,236 @@ afterAll(async () => {
   if (server) await server.close();
 });
 
-describe('News (new app)', () => {
-  let opened;
-
-  beforeAll(async () => {
-    opened = await openApp(browser, server.port, STATE);
-  });
-
-  afterAll(async () => {
-    if (opened) await opened.context.close();
-  });
-
-  it('lists pinned entries first, then the newest, with the pinned and newest open', async () => {
-    expect(await readEntries(opened.page)).toEqual(EXPECTED);
+// Opens a state, runs the check, and always closes the browser context.
+async function within(state, check) {
+  const opened = await openApp(browser, server.port, state);
+  try {
+    await check(opened);
     expect(opened.pageErrors).toEqual([]);
     expect(opened.unexpected).toEqual([]);
-  });
+  } finally {
+    await opened.context.close();
+  }
+}
 
-  it('remembers the newest entry once News has been opened, and shows no mark', async () => {
-    await expect.poll(() => opened.page.evaluate((k) => localStorage.getItem(k), SEEN_KEY)).toBe(NEWEST_VERSION);
-    expect(await markShown(opened.page)).toBe(false);
-  });
-
-  it('opens and closes an entry from its header', async () => {
-    await toggle(opened.page, TOGGLE_OPEN);
-    await toggle(opened.page, TOGGLE_CLOSED);
-    expect(await readEntries(opened.page)).toEqual(AFTER_TOGGLES);
-  });
-
-  // Deliberate: dates are written out.
-  it('writes the date out', async () => {
-    await expect(opened.page.locator('.news-entry time').first().textContent()).resolves.toBe('Jun 1, 2026');
-  });
-
-  it('keeps a closed entry’s text away from the keyboard and screen readers', async () => {
-    const closed = opened.page.locator('.news-entry', { hasText: 'Loot history on every profile' });
-    await expect(closed.locator('.news-entry-body-wrap').evaluate((el) => el.inert)).resolves.toBe(true);
-    await expect(closed.locator('.news-entry-body').isVisible()).resolves.toBe(false);
-  });
-});
-
-describe('News (new app), other states', () => {
-  it('marks the News item on another page while there is something new', async () => {
-    const { context, page } = await openApp(browser, server.port, { path: '/g/wga/streams', news: ENTRIES });
-    try {
-      await expect.poll(() => markShown(page)).toBe(true);
-    } finally {
-      await context.close();
-    }
-  });
-
-  it('shows no mark to a reader who has seen the newest entry', async () => {
-    const { context, page } = await openApp(browser, server.port, {
-      path: '/g/wga/streams',
-      news: ENTRIES,
-      newsSeen: NEWEST_VERSION
+describe('News timeline', () => {
+  it('lists the posts by month, newest first, a later post first on a shared day', async () => {
+    await within(STATE, async ({ page }) => {
+      expect(await readTimeline(page)).toEqual([
+        {
+          month: 'September 2026',
+          posts: [
+            {
+              title: 'Signup form keeps your off-specs',
+              category: 'Fix',
+              date: '2026-09-07',
+              href: '/news/signup-keeps-offspecs'
+            },
+            {
+              title: 'Raid Calendar: a day view for every raid night',
+              category: 'Feature',
+              date: '2026-09-07',
+              href: '/news/raid-calendar'
+            }
+          ]
+        },
+        {
+          month: 'August 2026',
+          posts: [
+            {
+              title: 'Loot history on every profile',
+              category: 'Change',
+              date: '2026-08-20',
+              href: '/news/loot-history'
+            },
+            {
+              title: 'Welcome to the new Raid Hub',
+              category: 'Announcement',
+              date: '2026-08-01',
+              href: '/news/welcome'
+            }
+          ]
+        }
+      ]);
     });
-    try {
+  });
+
+  it('shows the pinned post in its box, with its cover, and only there', async () => {
+    await within(STATE, async ({ page }) => {
+      const pinned = page.getByRole('region', { name: 'Pinned' });
+      await expect(pinned.getByText('Report a BoE and follow it, on one page').count()).resolves.toBe(1);
+      await expect(
+        pinned.locator('img.news-pinned-cover').evaluate((img) => img.complete && img.naturalWidth > 0)
+      ).resolves.toBe(true);
+      await expect(page.getByText('Report a BoE and follow it, on one page').count()).resolves.toBe(1);
+      await pinned.getByRole('link').click();
+      await page.waitForURL('**/news/report-a-boe');
+    });
+  });
+
+  it('narrows by category and by search', async () => {
+    await within(STATE, async ({ page }) => {
+      await page.getByRole('button', { name: 'Fixes' }).click();
+      await expect(page.getByRole('button', { name: 'Fixes' }).getAttribute('aria-pressed')).resolves.toBe('true');
+      expect((await readTimeline(page)).flatMap((m) => m.posts.map((p) => p.title))).toEqual([
+        'Signup form keeps your off-specs'
+      ]);
+      await page.getByRole('button', { name: 'All' }).click();
+      await page.getByRole('searchbox', { name: 'Search news' }).fill('welcome');
+      expect((await readTimeline(page)).flatMap((m) => m.posts.map((p) => p.title))).toEqual([
+        'Welcome to the new Raid Hub'
+      ]);
+      await page.getByRole('searchbox', { name: 'Search news' }).fill('no such thing');
+      await expect(page.getByText('No posts match.').count()).resolves.toBe(1);
+    });
+  });
+
+  it('remembers the newest post once News has been opened, and shows no mark', async () => {
+    await within(STATE, async ({ page }) => {
+      await expect.poll(() => page.evaluate((k) => localStorage.getItem(k), SEEN_KEY)).toBe(NEWEST_SEEN_KEY);
+      expect(await markShown(page)).toBe(false);
+    });
+  });
+
+  it('marks the News item on another page while there is something new, until it is seen', async () => {
+    const other = { path: '/g/wga/streams', tables: { news_posts: READER_POSTS } };
+    await within(other, async ({ page }) => {
+      await expect.poll(() => markShown(page)).toBe(true);
+    });
+    await within({ ...other, newsSeen: NEWEST_SEEN_KEY }, async ({ page }) => {
       await page.waitForLoadState('networkidle');
       expect(await markShown(page)).toBe(false);
-    } finally {
-      await context.close();
-    }
+    });
   });
 
   it('says so when there is no news', async () => {
-    const { context, page } = await openApp(browser, server.port, {
-      ...STATE,
-      news: [],
-      sentinel: `text=${EMPTY_MESSAGE}`
-    });
-    try {
+    await within({ ...STATE, tables: { news_posts: [] }, sentinel: `text=${EMPTY_MESSAGE}` }, async ({ page }) => {
       expect(await markShown(page)).toBe(false);
-    } finally {
-      await context.close();
-    }
+    });
   });
 
-  // Deliberate (#1041): the body slides open, unless the reader asked for less motion.
-  it('slides an entry open, and does not animate with reduced motion', async () => {
-    for (const [reducedMotion, animates] of [
-      ['no-preference', true],
-      ['reduce', false]
-    ]) {
-      const { context, page } = await openApp(browser, server.port, { ...STATE, reducedMotion });
-      try {
-        await toggle(page, TOGGLE_OPEN);
-        // Reduced motion shortens every transition to next to nothing (base.css).
-        const slide = await page.evaluate(() =>
-          Math.max(
-            0,
-            ...document
-              .getAnimations()
-              .filter((a) => a.transitionProperty === 'grid-template-rows')
-              .map((a) => a.effect.getTiming().duration)
-          )
-        );
-        expect(slide > 50).toBe(animates);
-      } finally {
-        await context.close();
-      }
-    }
+  it('gives a reader no New post button, drafts or posts set for later', async () => {
+    await within(STATE, async ({ page }) => {
+      await expect(page.getByRole('link', { name: 'New post' }).count()).resolves.toBe(0);
+      await expect(page.getByText('Not published yet').count()).resolves.toBe(0);
+    });
+  });
+
+  it('gives Staff New post, and the drafts and posts set for later', async () => {
+    await within({ ...STATE, ...STAFF, tables: { news_posts: POSTS } }, async ({ page }) => {
+      await page.getByRole('link', { name: 'New post' }).waitFor();
+      const unpublished = page.getByRole('region', { name: 'Not published yet' });
+      await expect(unpublished.locator('.news-item-title').allTextContents()).resolves.toEqual([
+        'Set for later',
+        'A draft'
+      ]);
+      // Neither is news: the timeline above is the readers' list.
+      expect((await readTimeline(page)).flatMap((m) => m.posts)).toHaveLength(4);
+    });
   });
 
   it('fits a narrow screen without scrolling sideways', async () => {
-    const { context, page } = await openApp(browser, server.port, { ...STATE, viewport: NARROW });
-    try {
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-      expect(overflow).toBeLessThanOrEqual(0);
-    } finally {
-      await context.close();
+    for (const path of ['/news', POST, '/news/new']) {
+      await within(
+        { ...STATE, ...STAFF, path, sentinel: 'main h1', viewport: NARROW, tables: { news_posts: POSTS } },
+        async ({ page }) => {
+          await page.waitForLoadState('networkidle');
+          const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+          expect(overflow).toBeLessThanOrEqual(0);
+        }
+      );
     }
+  });
+});
+
+describe('A news post', () => {
+  const post = { ...STATE, path: POST, sentinel: '.news-post-title' };
+
+  it('shows the post with its cover, body and the next older post', async () => {
+    await within(post, async ({ page }) => {
+      await expect(page.locator('h1').textContent()).resolves.toBe('Raid Calendar: a day view for every raid night');
+      await expect(page.locator('.news-item-meta').textContent()).resolves.toContain('Version 3.93.0');
+      await expect(page.locator('.news-cover figcaption').textContent()).resolves.toBe('The month view.');
+      await expect(
+        page.locator('.news-cover img').evaluate((img) => img.complete && img.naturalWidth > 0)
+      ).resolves.toBe(true);
+      await expect(page.getByRole('heading', { level: 2, name: 'Open any raid night' }).count()).resolves.toBe(1);
+      await expect(page.locator('.news-body li').allTextContents()).resolves.toEqual([
+        'Your own status sits at the top.',
+        "Everyone's status is below it."
+      ]);
+      // Older than Sep 7 is the pinned BoE post (Sep 3).
+      await page.getByRole('link', { name: /^Older: / }).click();
+      await page.waitForURL('**/news/report-a-boe');
+      await page.getByRole('link', { name: 'All news' }).click();
+      await page.waitForURL('**/news');
+    });
+  });
+
+  it('marks the News item in the sidebar while a post is open', async () => {
+    await within(post, async ({ page }) => {
+      await expect(
+        page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: /^News/ }).getAttribute('aria-current')
+      ).resolves.toBe('page');
+    });
+  });
+
+  it('says so for an address with no post', async () => {
+    await within({ ...post, path: '/news/nothing-here', sentinel: 'text=Post not found' }, async () => {});
+  });
+
+  it('gives Staff Edit and Delete, and a reader neither', async () => {
+    await within({ ...post, ...STAFF }, async ({ page }) => {
+      await page.getByRole('link', { name: 'Edit' }).waitFor();
+      await expect(page.getByRole('button', { name: 'Delete' }).count()).resolves.toBe(1);
+    });
+    await within(post, async ({ page }) => {
+      await expect(page.getByRole('link', { name: 'Edit' }).count()).resolves.toBe(0);
+      await expect(page.getByRole('button', { name: 'Delete' }).count()).resolves.toBe(0);
+    });
+  });
+
+  it('opens a draft for Staff, with a note that it is not out', async () => {
+    await within({ ...post, ...STAFF, path: '/news/a-draft', tables: { news_posts: POSTS } }, async ({ page }) => {
+      await expect(page.getByRole('note').textContent()).resolves.toContain('A draft. Only Staff can see it');
+    });
+  });
+});
+
+describe('Writing a post', () => {
+  const editor = { ...STATE, ...STAFF, path: '/news/new', sentinel: '.news-editor' };
+
+  it('is for Staff', async () => {
+    await within({ ...editor, ...{ session: undefined, person: undefined }, sentinel: 'main h1' }, async ({ page }) => {
+      await expect(page.getByText('Sign in to see this page. It is for Staff.').count()).resolves.toBe(1);
+    });
+  });
+
+  it('previews as you type, and the formatting buttons type for you', async () => {
+    await within(editor, async ({ page }) => {
+      const box = page.getByRole('textbox', { name: 'Post' });
+      await box.fill('Intro');
+      await page.getByRole('button', { name: 'Heading' }).click();
+      await expect(box.inputValue()).resolves.toBe('## Intro');
+      await expect(page.locator('.news-preview h2').textContent()).resolves.toBe('Intro');
+      await box.press('End');
+      await box.pressSequentially('\n\nwords');
+      await page.getByRole('button', { name: 'Bold' }).click();
+      await expect(page.locator('.news-preview strong').textContent()).resolves.toBe('bold');
+    });
+  });
+
+  it('opens a post for editing with its fields filled in and no Publish button', async () => {
+    await within({ ...editor, path: `${POST}/edit` }, async ({ page }) => {
+      await expect(page.getByRole('textbox', { name: 'Title' }).inputValue()).resolves.toBe(
+        'Raid Calendar: a day view for every raid night'
+      );
+      await expect(page.getByRole('textbox', { name: 'Cover caption (optional)' }).inputValue()).resolves.toBe(
+        'The month view.'
+      );
+      await expect(page.locator('.news-preview h2').textContent()).resolves.toBe('Open any raid night');
+      await expect(page.getByRole('button', { name: 'Publish' }).count()).resolves.toBe(0);
+      await expect(page.getByRole('button', { name: 'Save changes' }).count()).resolves.toBe(1);
+    });
   });
 });

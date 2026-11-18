@@ -1,23 +1,115 @@
-import { useCallback, useSyncExternalStore } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import type { NewsEntry } from './news';
+import { useCallback, useState, useSyncExternalStore } from 'react';
+import { useSession } from '../auth/session';
+import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
+import type { Client } from '../lib/supabase';
+import type { NewsPost } from './news';
 
-// news.json is a static file beside the app (the build copies it from the repo
-// root), not a Supabase read: nobody writes it at runtime.
+// News posts are rows of news_posts (#1523): everyone reads the ones that are
+// out, Staff also read drafts and posts dated later, and the database refuses
+// any write from anyone else. The reads are cached with the signed-in person,
+// so signing in brings Staff their drafts.
+const COLUMNS = 'id, slug, title, category, summary, body, cover_path, cover_caption, version, pinned, published_at';
+
 export function useNews() {
-  return useQuery({
-    queryKey: ['news'],
-    queryFn: async (): Promise<NewsEntry[]> => {
-      const res = await fetch(`${import.meta.env.BASE_URL}news.json`);
-      if (!res.ok) throw new Error(`news.json answered ${res.status}`);
-      const data: unknown = await res.json();
-      return Array.isArray(data) ? (data as NewsEntry[]) : [];
-    },
-    staleTime: 5 * 60_000
+  const { user } = useSession();
+  return useSupabaseQuery<NewsPost[]>(['news', user?.id ?? null], async (client) => {
+    const { data, error } = await client
+      .from('news_posts')
+      .select(COLUMNS)
+      .order('published_at', { ascending: false, nullsFirst: true });
+    if (error) return { data: null, error };
+    return {
+      data: (data ?? []).map((row): NewsPost => ({
+        id: row.id,
+        slug: row.slug,
+        title: row.title,
+        category: row.category,
+        summary: row.summary,
+        body: row.body,
+        coverPath: row.cover_path,
+        coverCaption: row.cover_caption,
+        version: row.version,
+        pinned: row.pinned,
+        publishedAt: row.published_at
+      })),
+      error: null
+    };
   });
 }
 
-// The newest entry the reader has seen, in this browser. The same key as the
+// The moment a page judges which posts are out by: fixed when the page opens,
+// so a render never reads the clock.
+export const useNow = (): number => useState(() => Date.now())[0];
+
+export type NewsPostInput = {
+  title: string;
+  category: string;
+  summary: string;
+  body: string;
+  coverPath: string | null;
+  coverCaption: string | null;
+  pinned: boolean;
+};
+
+// Adds a post (id null) at `slug`, or saves one's edits: its address and who
+// wrote it never change. `publishedAt` null saves a draft. Resolves to the
+// post's address.
+export function useSaveNewsPost() {
+  return useSupabaseMutation<
+    string,
+    { id: number | null; slug: string; input: NewsPostInput; publishedAt: string | null }
+  >(
+    async (client, { id, slug, input, publishedAt }) => {
+      const values = {
+        title: input.title,
+        category: input.category,
+        summary: input.summary,
+        body: input.body,
+        cover_path: input.coverPath,
+        cover_caption: input.coverCaption,
+        pinned: input.pinned,
+        published_at: publishedAt
+      };
+      // written_by is left out of an add: the database signs it as the caller.
+      const result =
+        id === null
+          ? await client.from('news_posts').insert({ slug, ...values })
+          : await client.from('news_posts').update(values).eq('id', id);
+      return { data: slug, error: result.error };
+    },
+    { key: ['save-news-post'], refreshes: [['news']] }
+  );
+}
+
+// `onDeleted` runs once the list has been read again, and runs even though the
+// post's own page has gone by then (a callback passed to mutate() would not).
+export function useDeleteNewsPost(onDeleted: () => void) {
+  return useSupabaseMutation<null, number>(
+    async (client, id) => {
+      const result = await client.from('news_posts').delete().eq('id', id);
+      return { data: null, error: result.error };
+    },
+    { key: ['delete-news-post'], refreshes: [['news']], onSuccess: onDeleted }
+  );
+}
+
+// The pictures bucket takes png, jpg, webp and gif up to 5 MB, which Storage
+// itself enforces. A picture is never replaced in place: a new upload is a new
+// file, and one no post uses any more stays in the bucket.
+const PICTURE_BUCKET = 'news-pictures';
+
+export async function uploadNewsPicture(client: Client, file: File): Promise<string> {
+  const ext = /\.(png|jpe?g|gif|webp)$/i.exec(file.name)?.[1]?.toLowerCase() ?? 'png';
+  const path = `${crypto.randomUUID()}.${ext}`;
+  const { error } = await client.storage.from(PICTURE_BUCKET).upload(path, file, { upsert: false });
+  if (error) throw new Error('That picture didn’t upload (a PNG, JPG, WebP or GIF up to 5 MB). Try another.');
+  return path;
+}
+
+export const newsPictureUrl = (client: Client, path: string): string =>
+  client.storage.from(PICTURE_BUCKET).getPublicUrl(path).data.publicUrl;
+
+// The newest post the reader has seen, in this browser. The same key as the
 // current site, so the mark carries over at cutover.
 export const SEEN_KEY = 'wga_news_last_seen';
 const SEEN_EVENT = 'wga-news-seen';
@@ -39,11 +131,11 @@ function subscribe(onChange: () => void) {
   };
 }
 
-export function useNewsSeen(): [string | null, (version: string) => void] {
+export function useNewsSeen(): [string | null, (mark: string) => void] {
   const seen = useSyncExternalStore(subscribe, readSeen, () => null);
-  const markSeen = useCallback((version: string) => {
+  const markSeen = useCallback((mark: string) => {
     try {
-      localStorage.setItem(SEEN_KEY, version);
+      localStorage.setItem(SEEN_KEY, mark);
     } catch {
       // Not remembered; the mark comes back next visit.
     }

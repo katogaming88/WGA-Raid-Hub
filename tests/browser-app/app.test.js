@@ -4,7 +4,12 @@ import { GUIDES } from '../../app/src/help/guide.ts';
 import { DIST, launchBrowser, openApp, asMember, startApp, storedSession, NARROW, PEOPLE } from './harness.js';
 import { GUILD_TABLES, GUILD_TEAMS, WAITING } from './guild-fixtures.js';
 import { OFFICER_BIOS } from '../behavior/guild.js';
-import { ENTRIES as NEWS_ENTRIES } from '../behavior/news.js';
+import {
+  POSTS as NEWS_POSTS,
+  STAFF as NEWS_STAFF,
+  READER_POSTS as NEWS_READER_POSTS,
+  newsJsonRows
+} from './news-fixtures.js';
 import { SCENARIO, SIGNUP_SEASON_APP_ROW } from '../behavior/roster.js';
 import {
   ATTENDANCE,
@@ -1249,7 +1254,20 @@ const CRASH = {
   sentinel: 'text=Something went wrong on this page',
   tables: { players: [null] }
 };
-const NEWS = { path: '/news', sentinel: 'main:has(.news-entry)', news: NEWS_ENTRIES };
+const NEWS = { path: '/news', sentinel: 'main:has(.news-month)', tables: { news_posts: NEWS_READER_POSTS } };
+const NEWS_POST = {
+  path: '/news/raid-calendar',
+  sentinel: '.news-post-title',
+  tables: { news_posts: NEWS_READER_POSTS }
+};
+// Staff see the drafts and the editor (#1230).
+const NEWS_STAFF_PAGE = { ...NEWS, ...NEWS_STAFF, tables: { news_posts: NEWS_POSTS } };
+const NEWS_EDITOR = {
+  ...NEWS_STAFF,
+  path: '/news/raid-calendar/edit',
+  sentinel: '.news-editor',
+  tables: { news_posts: NEWS_POSTS }
+};
 
 // The Streams page (#1102): the live players and the offline directory, which
 // between them carry every stream card state axe should measure (#796).
@@ -1770,6 +1788,11 @@ const STATES = [
   { label: 'signup, no characters imported', ...SIGNUP_NO_CHARACTERS },
   { label: 'news', ...NEWS },
   { label: 'news, light', ...NEWS, colorScheme: 'light' },
+  { label: 'news, Staff', ...NEWS_STAFF_PAGE },
+  { label: 'news post', ...NEWS_POST },
+  { label: 'news post, light', ...NEWS_POST, colorScheme: 'light' },
+  { label: 'news editor', ...NEWS_EDITOR },
+  { label: 'news editor, light', ...NEWS_EDITOR, colorScheme: 'light' },
   { label: 'streams', ...STREAMS_PAGE },
   { label: 'streams, light', ...STREAMS_PAGE, colorScheme: 'light' },
   {
@@ -3060,7 +3083,10 @@ const FRONT_SHOTS = {
   },
   'across-the-guild': { state: asMember(GUILD), frame: 'main', at: '.guild-team' }
 };
-const FRONT_FILLED = { ...FRONT, news: NEWS_ENTRIES, tables: { seasons: REPORT_TABLES.seasons } };
+const FRONT_FILLED = {
+  ...FRONT,
+  tables: { seasons: REPORT_TABLES.seasons, news_posts: newsJsonRows() }
+};
 
 describe.runIf(process.env.HELP_SHOTS)('front page pictures', () => {
   for (const [id, { state, frame, at }] of Object.entries(FRONT_SHOTS)) {

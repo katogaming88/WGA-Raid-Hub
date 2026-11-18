@@ -44,6 +44,10 @@ const TEAMS = [
 ];
 
 // Who the signed-in states are. resolve_person()'s shape (#941).
+// What every news-pictures address answers with: a flat 16:9 picture.
+const NEWS_PICTURE =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#3a4a63"/></svg>';
+
 export const PEOPLE = {
   officer: {
     discordId: 'discord-officer-1',
@@ -184,7 +188,7 @@ function json(body, headers = {}) {
  *           tables?: Record<string, unknown[]>, person?: { discordId: string|null, person: object|null },
  *           click?: string, hideStreams?: boolean, afterClick?: string, touch?: boolean, rpc?: Record<string, unknown>, functions?: string[],
  *           functionAnswers?: Record<string, unknown>, sessionStorage?: Record<string, string>,
- *           clock?: string, teams?: object[], news?: object[], newsSeen?: string }} state
+ *           clock?: string, teams?: object[], newsSeen?: string }} state
  */
 export async function openApp(browser, port, state) {
   const host = supabaseHost();
@@ -211,7 +215,7 @@ export async function openApp(browser, port, state) {
       for (const [key, value] of entries) window.sessionStorage.setItem(key, value);
     }, Object.entries(state.sessionStorage));
   }
-  // The newest news entry this browser has seen (#1102).
+  // The newest news post this browser has seen (#1102, #1230): its version, else its address.
   if (state.newsSeen) {
     await context.addInitScript((v) => window.localStorage.setItem('wga_news_last_seen', v), state.newsSeen);
   }
@@ -267,6 +271,8 @@ export async function openApp(browser, port, state) {
     raid_night_lineups: [],
     team_lineup_settings: [],
     streamers: [],
+    // News posts (#1230): empty unless a state lists them.
+    news_posts: [],
     // Guild home (#1102): the guild officers, and what waits on an officer.
     site_settings: [],
     self_received_requests: [],
@@ -296,9 +302,6 @@ export async function openApp(browser, port, state) {
     const request = route.request();
     const url = new URL(request.url());
     if (url.hostname === '127.0.0.1' && url.port === String(port)) {
-      // The build copies the repo's news.json beside the app; a state can
-      // answer its own entries instead.
-      if (url.pathname === '/news.json' && state.news) return route.fulfill(json(state.news));
       return route.continue();
     }
     // The stream widget's Twitch players. axe does not look inside a
@@ -311,6 +314,10 @@ export async function openApp(browser, port, state) {
 
     if (url.host === host.host) {
       if (request.method() === 'OPTIONS') return route.fulfill({ status: 204 });
+      // A picture from the news-pictures bucket (#1230): a plain 16:9 image.
+      if (url.pathname.startsWith('/storage/v1/object/public/news-pictures/')) {
+        return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: NEWS_PICTURE });
+      }
       const rest = url.pathname.split('/rest/v1/')[1];
       if (rest === 'rpc/resolve_address') {
         // A guild page's address names no team, so none comes back.

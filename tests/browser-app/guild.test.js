@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { asMember, launchBrowser, openApp, startApp, storedSession, NARROW } from './harness.js';
 import { GUILD_TABLES, WAITING } from './guild-fixtures.js';
+import { newestThree } from './news-fixtures.js';
 import {
   TEAMS,
   EXPECTED_TEAMS,
@@ -9,7 +10,6 @@ import {
   ARCHIVED_AT,
   EXPECTED_LIVE,
   NOBODY_LIVE,
-  EXPECTED_NEWS,
   EXPECTED_OFFICERS,
   LINKS
 } from '../behavior/guild.js';
@@ -118,8 +118,11 @@ describe('Guild home (new app), as a member', () => {
     expect(await readLive(opened.page)).toEqual(EXPECTED_LIVE);
   });
 
-  it('shows the three newest news entries', async () => {
-    expect(await readNews(opened.page)).toEqual(EXPECTED_NEWS);
+  // Deliberate (#1230): the three newest by date, pin or not, each a link to its page.
+  it('shows the three newest news posts, each linking to its page', async () => {
+    expect(await readNews(opened.page)).toEqual(newestThree(GUILD_TABLES.news_posts));
+    const hrefs = await opened.page.locator('.guild-news a').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+    expect(hrefs.every((h) => /^\/news\/entry-\d+$/.test(h))).toBe(true);
   });
 
   it('lists the guild officers in order', async () => {

@@ -22,7 +22,9 @@ import { AuditLogPage } from './settings/AuditLogPage';
 import { DangerZonePage } from './settings/DangerZonePage';
 import { GuildHomePage } from './guild/GuildHomePage';
 import { BoePage } from './boe/BoePage';
+import { NewsEditorPage } from './news/NewsEditorPage';
 import { NewsPage } from './news/NewsPage';
+import { NewsPostPage } from './news/NewsPostPage';
 import { StreamsPage } from './streams/StreamsPage';
 import { HelpPage } from './help/HelpPage';
 import { AboutPage } from './about/AboutPage';
@@ -201,7 +203,29 @@ export const routes: RouteObject[] = [
             path: path === 'help' ? '/help/:guideId?' : `/${path}`,
             element: BUILT_SITE_PAGES[path],
             handle: { title } satisfies RouteHandle
-          }))
+          })),
+          // A news post on its own page, and Staff's editor for one (#1230).
+          // /news/new is the editor's own address, so no post is ever
+          // given it.
+          {
+            path: '/news/new',
+            element: (
+              <RequireAbility ability="adminSite" title="New post" forWhom="Staff">
+                <NewsEditorPage />
+              </RequireAbility>
+            ),
+            handle: { title: 'New post' } satisfies RouteHandle
+          },
+          { path: '/news/:slug', element: <NewsPostPage />, handle: { title: 'News' } satisfies RouteHandle },
+          {
+            path: '/news/:slug/edit',
+            element: (
+              <RequireAbility ability="adminSite" title="Edit post" forWhom="Staff">
+                <NewsEditorPage />
+              </RequireAbility>
+            ),
+            handle: { title: 'Edit post' } satisfies RouteHandle
+          }
         ]
       }
     ]

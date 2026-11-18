@@ -34,7 +34,7 @@ import { waitingOnOfficers } from '../recruiting/recruits';
 import { useAttendanceWaiting } from '../attendance/useAttendance';
 import { useTeamRecruits } from '../recruiting/useRecruits';
 import { useGuildStreamers } from '../streams/StreamWidget';
-import { useNews, useNewsSeen } from '../news/useNews';
+import { useNews, useNewsSeen, useNow } from '../news/useNews';
 import type { RouteHandle } from '../routes';
 import './layout.css';
 
@@ -96,6 +96,7 @@ export function AppShell() {
   const matches = useMatches();
   const pageTitle = (matches.at(-1)?.handle as RouteHandle | undefined)?.title ?? '';
   const news = useNews();
+  const newsNow = useNow();
   const [newsSeen] = useNewsSeen();
   // Read from the build setting, so the links are right while access loads.
   const testKey = limited ? previewTeamKeys()?.[0] : undefined;
@@ -145,7 +146,7 @@ export function AppShell() {
     guildSettings: (can('manageTeams') || can('manageMembers')) && !limited,
     hideBoe: limited,
     siteAdmin: can('adminSite'),
-    newsUnread: news.isSuccess && hasUnread(news.data, newsSeen),
+    newsUnread: news.isSuccess && hasUnread(news.data, newsSeen, newsNow),
     liveCount: streamers.isSuccess ? liveCount(streamers.data) : 0,
     council,
     recruitsWaiting: recruits.data ? waitingOnOfficers(recruits.data.recruits) : 0,

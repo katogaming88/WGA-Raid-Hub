@@ -1,20 +1,18 @@
-// How the News page behaves, written once and checked against both sites
-// (#1102 step 1). tests/browser/news-recorded.test.js runs it against the
-// current site's News tab, where it was recorded; tests/browser-app/
-// news.test.js runs the same checks against the new app's News page.
+// How the current site's News tab behaves, recorded in #1102 step 1 and
+// checked by tests/browser/news-recorded.test.js against index.html, which
+// keeps reading news.json until cutover.
 //
-// Both sites read news.json, so each suite answers that file with ENTRIES and
-// turns what the page rendered into:
+// The new app no longer shares this: since #1230 its News is posts in the
+// news_posts table, each on its own page, and tests/browser-app/news.test.js
+// checks that instead.
+//
+// The test answers news.json with ENTRIES and turns what the page rendered
+// into:
 //
 //   entries: [{ title, date, category, version, pinned, open, body }]
 //            `body` is the text shown, or null while the entry is closed
 //
 // plus whether the News menu item shows its "something new" dot.
-//
-// Deliberate differences, checked by the new suite only:
-// - Dates read "Sep 7, 2026" rather than "2026-09-07".
-// - An entry's body slides open with its arrow instead of appearing at once,
-//   and does not move for a reader who has asked for less motion (#1041).
 
 const entry = (version, date, category, title, extra = {}) => ({
   date,

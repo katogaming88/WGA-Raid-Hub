@@ -69,7 +69,7 @@ describe('crash screen', () => {
 describe('page not found', () => {
   it("offers the team's home for a wrong team page, and reports nothing", async () => {
     const reported: unknown[] = [];
-    // The frame's own reads (news.json has no server here) may report; the 404 must not.
+    // The frame's own reads (the news read has no server here) may report; the 404 must not.
     setErrorReporter((_error, context) => reported.push(context.where));
     renderApp('/g/wga/t/phoenix/nope', asMember());
 

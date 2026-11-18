@@ -19,10 +19,10 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
 | Phase 2: Before the new site goes live | 40 h 22 m |  ~105 h 50 m |
-| Phase 3: After the new site goes live  |   2 h 40 m |   ~56 h 40 m |
+| Phase 3: After the new site goes live  |   3 h 22 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **212 h 38 m** |             |
+| **All revamp work**                | **213 h 20 m** |             |
 
 ### By area
 
@@ -37,7 +37,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
 | Revamp 3 extras | Phase 3 | 0 m | ~21 h 30 m |
-| Revamp 4 | Phase 3 | 20 m | ~4 h 50 m |
+| Revamp 4 | Phase 3 | 1 h 2 m | ~4 h 50 m |
 | Discord notifications | Phase 3 | 0 m | ~2 h 30 m |
 | Addon and Sync | Phase 3 | 2 h 20 m | ~22 h 50 m |
 | The look across the site | Phase 3 | 0 m | ~5 h |
@@ -790,6 +790,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 4:16-4:45 PM | #1825: a raid's Discord posts once it has passed. `team_discord_config.after_raid` (finish or delete) and its setter, `finished_at` on sheets and weekly lineup posts; the sweep marks a sheet finished (or deletes it) 4 hours after its raid starts and the week's lineup post after the week's last raid; "Once a raid has passed" on Settings > Discord, a Help step; database, Edge Function and page tests, generated docs, decision log, stamp, changelog, screenshots | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1825) | 30 m | ~29 m build, ~1 m Kat | 405,700 | Fresh-agent review and Kat's merge not yet counted |
 | 4:45-5:45 PM | PR #1866 (#1825) after it opened: the screenshots added to the PR body, CodeRabbit's review (a posted week keeps its end; one post failing doesn't stop the rest), the fresh-agent migration review (the decision log and migration name all eight posted sheets), Kat's merge (5:42 PM), cleanup | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1825) | 1 h | build; Kat's screenshots ask and merge, not split | 330,000 | Added 2026-11-17 (in #1523's PR). |
 | 9:26-9:45 PM | #1523: news posts in the database. `news_posts` (a draft is `published_at` null; anyone reads published posts, Staff read drafts and write with plain table writes; an insert signed as the caller), the public `news-pictures` bucket only Staff upload to, the 27 `news.json` entries copied in by the migration; database tests, generated docs, RLS.md, decision log, stamp, changelog | Phase 3: After the new site goes live / Revamp 4 (#1523) | 20 m | ~20 m build, Kat's ask | 119,300 | Fresh-agent review and Kat's merge not yet counted. |
+| 9:57-10:18 PM | PR #1867 (#1523) after it opened: CodeRabbit's two findings (an edit can't change a post's author, picture replace and remove tests), the fresh-agent migration review (changes needed: the backup guide; a later date waits, an add names its columns), Kat's answer on the Change category, Kat's merge (10:17 PM), cleanup | Phase 3: After the new site goes live / Revamp 4 (#1523) | 20 m | build; Kat's trigger and merge not split | 47,200 | Added 2026-11-17 (in #1230's PR). |
+| 10:18-10:40 PM | #1230: News as a blog in the new app. The timeline (Pinned, category filters, search, posts by month), a post's own page (cover, body with headings, lists, bold, links and pictures, Copy link, the next older post), Staff's editor (formatting buttons, live preview, cover picture and caption, pin, draft and publish, edit, delete); Guild home and the front page link to the posts; the app stops carrying news.json; tests (page, browser, accessibility states), real run against the local stack with uploads, stamp, changelog | Phase 3: After the new site goes live / Revamp 4 (#1230) | 22 m | ~22 m build | 456,400 | CodeRabbit, review and Kat's design review not yet counted |
 
 ## Not counted (same sessions, not revamp)
 
