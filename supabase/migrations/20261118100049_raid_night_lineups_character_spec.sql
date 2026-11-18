@@ -39,17 +39,35 @@ create index raid_night_lineups_character_id_idx on public.raid_night_lineups (c
 create index boss_groups_character_id_idx on public.boss_groups (character_id)
   where character_id is not null;
 
--- A character someone takes off their Battle.net list takes its picks with
--- it: the raider goes back to their roster character in its usual spec. The
--- foreign key alone would clear character_id and leave the alt's spec behind
--- on the main.
+-- A character someone takes off their Battle.net list, or that moves to
+-- another person's list (save_battlenet_characters() keeps its id), takes its
+-- picks with it: the raider goes back to their roster character in its usual
+-- spec. The foreign key alone would clear character_id on a delete and leave
+-- the alt's spec behind on the main. Each team's lineup lock is taken first,
+-- in team order, as the save functions take it before touching either table,
+-- so a cleanup and a save never wait on each other (CodeRabbit on PR #1874).
 create or replace function public.clear_lineup_picks_for_character() returns trigger
 language plpgsql set search_path = public
 as $$
+declare
+  v_team integer;
 begin
+  if tg_op = 'UPDATE' and new.person_id is not distinct from old.person_id then
+    return new;
+  end if;
+
+  for v_team in
+    select team_id from raid_night_lineups where character_id = old.id
+    union
+    select team_id from boss_groups where character_id = old.id
+    order by 1
+  loop
+    perform pg_advisory_xact_lock(hashtext('boss_lineup'), v_team);
+  end loop;
+
   update raid_night_lineups set character_id = null, class_spec_id = null where character_id = old.id;
   update boss_groups set character_id = null, class_spec_id = null where character_id = old.id;
-  return old;
+  return case when tg_op = 'DELETE' then old else new end;
 end;
 $$;
 
@@ -57,6 +75,10 @@ revoke all on function public.clear_lineup_picks_for_character() from public, an
 
 create trigger characters_clear_lineup_picks
   before delete on public.characters
+  for each row execute function public.clear_lineup_picks_for_character();
+
+create trigger characters_clear_lineup_picks_on_new_owner
+  after update of person_id on public.characters
   for each row execute function public.clear_lineup_picks_for_character();
 
 -- The picks a save sends, as stored: an object per raider whose character or
@@ -140,9 +162,16 @@ begin
     left join characters c on c.id = x.character_id
     where x.class_spec_id is not null
       and not exists (
+        -- The class of the row it is stored on: a character with the
+        -- roster row's own name is stored as the roster row
+        -- (lineup_picks_norm()), so its spec must be one of the roster
+        -- class's (CodeRabbit on PR #1874).
         select 1 from classes_specs cs
         where cs.id = x.class_spec_id
-          and cs.class = case when x.character_id is null then main.class else c.class_name end
+          and cs.class = case
+                when c.id is null or c.name_realm_key = lower(replace(p.name_realm, ' ', '')) then main.class
+                else c.class_name
+              end
       )
   ) then
     raise exception 'That spec isn''t one the character''s class has.';
@@ -180,7 +209,7 @@ create function public.set_raid_night_lineup(
   p_encounter_id integer,
   p_player_ids integer[],
   p_expected_player_ids integer[] default null,
-  p_picks jsonb default '[]'::jsonb,
+  p_picks jsonb default null,
   p_expected_picks jsonb default null
 )
 returns integer
@@ -212,6 +241,14 @@ begin
   end if;
 
   perform public.check_lineup_players(p_team_id, p_player_ids);
+  -- The picked alts stay put until this save is done: a removal waits for
+  -- it, and one that came first fails the check below. Taken before the
+  -- lineup lock, the order the removal's cleanup takes them in.
+  perform 1 from characters
+  where id in (
+    select x.character_id from jsonb_to_recordset(coalesce(p_picks, '[]'::jsonb)) as x(character_id integer)
+  )
+  for share;
   perform public.check_lineup_picks(p_team_id, p_player_ids, coalesce(p_picks, '[]'::jsonb));
   perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
 
@@ -224,7 +261,8 @@ begin
   where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id;
 
   if (p_expected_player_ids is not null and not public.same_player_set(v_current, p_expected_player_ids))
-     or (p_expected_picks is not null and not public.same_lineup_picks(v_current_picks, p_expected_picks)) then
+     or (p_expected_picks is not null and not public.same_lineup_picks(v_current_picks, p_expected_picks))
+     or (p_picks is null and v_current_picks <> '[]'::jsonb) then
     raise exception 'Someone else changed this boss''s lineup since you opened it. Reload to see their change.';
   end if;
 
@@ -275,7 +313,7 @@ create function public.set_boss_group(
   p_encounter_id integer,
   p_player_ids integer[],
   p_expected_player_ids integer[] default null,
-  p_picks jsonb default '[]'::jsonb,
+  p_picks jsonb default null,
   p_expected_picks jsonb default null
 )
 returns integer
@@ -304,6 +342,14 @@ begin
   end if;
 
   perform public.check_lineup_players(p_team_id, p_player_ids);
+  -- The picked alts stay put until this save is done: a removal waits for
+  -- it, and one that came first fails the check below. Taken before the
+  -- lineup lock, the order the removal's cleanup takes them in.
+  perform 1 from characters
+  where id in (
+    select x.character_id from jsonb_to_recordset(coalesce(p_picks, '[]'::jsonb)) as x(character_id integer)
+  )
+  for share;
   perform public.check_lineup_picks(p_team_id, p_player_ids, coalesce(p_picks, '[]'::jsonb));
   perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
 
@@ -315,7 +361,8 @@ begin
   from boss_groups where team_id = p_team_id and encounter_id = p_encounter_id;
 
   if (p_expected_player_ids is not null and not public.same_player_set(v_current, p_expected_player_ids))
-     or (p_expected_picks is not null and not public.same_lineup_picks(v_current_picks, p_expected_picks)) then
+     or (p_expected_picks is not null and not public.same_lineup_picks(v_current_picks, p_expected_picks))
+     or (p_picks is null and v_current_picks <> '[]'::jsonb) then
     raise exception 'Someone else changed this group since you opened it. Reload to see their change.';
   end if;
 

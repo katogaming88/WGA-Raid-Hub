@@ -7400,6 +7400,10 @@
         {
           "name": "characters_clear_lineup_picks",
           "def": "CREATE TRIGGER characters_clear_lineup_picks BEFORE DELETE ON public.characters FOR EACH ROW EXECUTE FUNCTION clear_lineup_picks_for_character()"
+        },
+        {
+          "name": "characters_clear_lineup_picks_on_new_owner",
+          "def": "CREATE TRIGGER characters_clear_lineup_picks_on_new_owner AFTER UPDATE OF person_id ON public.characters FOR EACH ROW EXECUTE FUNCTION clear_lineup_picks_for_character()"
         }
       ]
     },
@@ -19121,13 +19125,13 @@
     {
       "name": "public.set_raid_night_lineup",
       "return_type": "int4",
-      "arguments": "p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT '[]'::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb",
+      "arguments": "p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb",
       "type": "FUNCTION"
     },
     {
       "name": "public.set_boss_group",
       "return_type": "int4",
-      "arguments": "p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT '[]'::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb",
+      "arguments": "p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb",
       "type": "FUNCTION"
     }
   ],

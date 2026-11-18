@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.set_boss_group(p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT '[]'::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb)
+CREATE OR REPLACE FUNCTION public.set_boss_group(p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb)
  RETURNS integer
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -29,6 +29,14 @@ begin
   end if;
 
   perform public.check_lineup_players(p_team_id, p_player_ids);
+  -- The picked alts stay put until this save is done: a removal waits for
+  -- it, and one that came first fails the check below. Taken before the
+  -- lineup lock, the order the removal's cleanup takes them in.
+  perform 1 from characters
+  where id in (
+    select x.character_id from jsonb_to_recordset(coalesce(p_picks, '[]'::jsonb)) as x(character_id integer)
+  )
+  for share;
   perform public.check_lineup_picks(p_team_id, p_player_ids, coalesce(p_picks, '[]'::jsonb));
   perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
 
@@ -40,7 +48,8 @@ begin
   from boss_groups where team_id = p_team_id and encounter_id = p_encounter_id;
 
   if (p_expected_player_ids is not null and not public.same_player_set(v_current, p_expected_player_ids))
-     or (p_expected_picks is not null and not public.same_lineup_picks(v_current_picks, p_expected_picks)) then
+     or (p_expected_picks is not null and not public.same_lineup_picks(v_current_picks, p_expected_picks))
+     or (p_picks is null and v_current_picks <> '[]'::jsonb) then
     raise exception 'Someone else changed this group since you opened it. Reload to see their change.';
   end if;
 

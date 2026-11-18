@@ -1221,8 +1221,9 @@ describe('character and spec picks', () => {
       // A night planned after copies them.
       await plan(asUser, OFFICER_T1, nextWeek);
       expect(await picksOf(q, 'raid_night_lineups', 'raid_date = $1', [nextWeek])).toEqual(picked);
-      // So does putting a skipped boss back.
+      // So does putting a skipped boss back, after skipping empties it.
       await asUser(OFFICER_T1, 'select public.set_raid_night_boss_skipped(1, $1, $2, true)', [nextWeek, FIRST]);
+      expect(await picksOf(q, 'raid_night_lineups', 'raid_date = $1', [nextWeek])).toEqual([]);
       await asUser(OFFICER_T1, 'select public.set_raid_night_boss_skipped(1, $1, $2, false)', [nextWeek, FIRST]);
       expect(await picksOf(q, 'raid_night_lineups', 'raid_date = $1', [nextWeek])).toEqual(picked);
     });
@@ -1230,11 +1231,14 @@ describe('character and spec picks', () => {
 
   it('puts a raider back on their main when the picked alt leaves their character list', async () => {
     await withTxn(async ({ q, asUser }) => {
-      const { p4, mateAlt } = await seedPicks(q);
+      const { p4, mateAlt, spec } = await seedPicks(q);
       const night = await today(q, 1);
-      const onAlt = [{ player_id: p4, character_id: mateAlt, class_spec_id: null }];
+      // On the alt in a spec that isn't its usual, so the spec has to go too.
+      const onAlt = [{ player_id: p4, character_id: mateAlt, class_spec_id: spec.Elemental }];
       await setNightPicks(asUser, OFFICER_T1, night, FIRST, [p4], onAlt);
       await setGroupPicks(asUser, OFFICER_T1, FIRST, [p4], onAlt);
+      expect(await picksOf(q, 'raid_night_lineups', 'raid_date = $1', [night])).toEqual(onAlt);
+      expect(await picksOf(q, 'boss_groups', 'encounter_id = $1', [FIRST])).toEqual(onAlt);
       await q('delete from public.characters where id = $1', [mateAlt]);
       expect(await picksOf(q, 'raid_night_lineups', 'raid_date = $1', [night])).toEqual([
         { player_id: p4, character_id: null, class_spec_id: null }
@@ -1243,6 +1247,117 @@ describe('character and spec picks', () => {
         { player_id: p4, character_id: null, class_spec_id: null }
       ]);
     });
+  });
+
+  it('puts a raider back on their main when the picked alt moves to someone else', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p4, mateAlt, spec } = await seedPicks(q);
+      const night = await today(q, 1);
+      const onAlt = [{ player_id: p4, character_id: mateAlt, class_spec_id: spec.Elemental }];
+      await setNightPicks(asUser, OFFICER_T1, night, FIRST, [p4], onAlt);
+      // A refresh that keeps the owner leaves the pick alone.
+      await q('update public.characters set item_level = 640 where id = $1', [mateAlt]);
+      await q('update public.characters set person_id = person_id where id = $1', [mateAlt]);
+      expect(await picksOf(q, 'raid_night_lineups', 'raid_date = $1', [night])).toEqual(onAlt);
+      await q(
+        'update public.characters set person_id = (select person_id from public.team_members where id = 3) where id = $1',
+        [mateAlt]
+      );
+      expect(await picksOf(q, 'raid_night_lineups', 'raid_date = $1', [night])).toEqual([
+        { player_id: p4, character_id: null, class_spec_id: null }
+      ]);
+    });
+  });
+
+  it("refuses a same-name character with a spec its roster row's class lacks", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, spec } = await seedPicks(q);
+      // A Shaman saved under the roster Mage's own name.
+      const p1Name = (await q('select name_realm from public.players where id = $1', [p1])).rows[0].name_realm;
+      const [first, ...rest] = p1Name.split('-');
+      await q("update public.characters set name = 'Gone' where blizzard_id = 910003");
+      const twin = (
+        await q(
+          `insert into public.characters (person_id, blizzard_id, name, realm, realm_slug, class_name, spec_name)
+           values ((select person_id from public.team_members where id = 3), 910004, $1, $2, 'illidan', 'Shaman', 'Restoration')
+           returning id`,
+          [first, rest.join('-')]
+        )
+      ).rows[0].id;
+      await expect(
+        setNightPicks(
+          asUser,
+          OFFICER_T1,
+          await today(q, 1),
+          FIRST,
+          [p1],
+          [{ player_id: p1, character_id: twin, class_spec_id: spec.Restoration }]
+        )
+      ).rejects.toThrow(/class has/);
+    });
+  });
+
+  it('refuses a save that leaves picks out when the boss has some, and lets an empty list clear them', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, spec } = await seedPicks(q);
+      const night = await today(q, 1);
+      await setNightPicks(
+        asUser,
+        OFFICER_T1,
+        night,
+        FIRST,
+        [p1],
+        [{ player_id: p1, character_id: null, class_spec_id: spec.Fire }]
+      );
+      // A page from before picks: the old arguments only.
+      await expect(
+        asUser(OFFICER_T1, 'select public.set_raid_night_lineup($1, $2, $3, $4::int[], $5::int[])', [
+          1,
+          night,
+          FIRST,
+          [p1],
+          [p1]
+        ])
+      ).rejects.toThrow(/Someone else changed/);
+      await setNightPicks(asUser, OFFICER_T1, night, FIRST, [p1], []);
+      expect(await picksOf(q, 'raid_night_lineups', 'raid_date = $1', [night])).toEqual([
+        { player_id: p1, character_id: null, class_spec_id: null }
+      ]);
+    });
+  });
+
+  it("refuses a valid pick from a raider, another team's officer, and someone signed out", async () => {
+    const callers = [
+      ['a raider', (asUser, text, params) => asUser(RAIDER_T1, text, params), /Not authorized/],
+      ["another team's officer", (asUser, text, params) => asUser(OFFICER_T2, text, params), /Not authorized/],
+      ['someone signed out', (asUser, text, params, asAnon) => asAnon(text, params), /permission denied|Not signed in/]
+    ];
+    for (const [, run, message] of callers) {
+      await withTxn(async ({ q, asUser, asAnon }) => {
+        const { p1, spec } = await seedPicks(q);
+        const night = await today(q, 1);
+        const fire = JSON.stringify([{ player_id: p1, character_id: null, class_spec_id: spec.Fire }]);
+        await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+        await plan(asUser, OFFICER_T1, night);
+        await expect(
+          run(
+            asUser,
+            'select public.set_raid_night_lineup(1, $1, $2, $3::int[], null, $4::jsonb)',
+            [night, FIRST, [p1], fire],
+            asAnon
+          )
+        ).rejects.toThrow(message);
+        await expect(
+          run(asUser, 'select public.set_boss_group(1, $1, $2::int[], null, $3::jsonb)', [FIRST, [p1], fire], asAnon)
+        ).rejects.toThrow(message);
+        expect(await picksOf(q, 'raid_night_lineups', 'raid_date = $1', [night])).toEqual([
+          { player_id: p1, character_id: null, class_spec_id: null }
+        ]);
+        expect(await picksOf(q, 'boss_groups', 'encounter_id = $1', [FIRST])).toEqual([
+          { player_id: p1, character_id: null, class_spec_id: null }
+        ]);
+      });
+    }
   });
 
   it('lets a teammate read an alt picked for their team, and nobody else', async () => {

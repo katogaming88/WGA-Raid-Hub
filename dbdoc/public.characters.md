@@ -43,6 +43,7 @@ Characters a person chose to show from their Battle.net account (#942 step 5, #1
 | Name | Definition |
 | ---- | ---------- |
 | characters_clear_lineup_picks | CREATE TRIGGER characters_clear_lineup_picks BEFORE DELETE ON public.characters FOR EACH ROW EXECUTE FUNCTION clear_lineup_picks_for_character() |
+| characters_clear_lineup_picks_on_new_owner | CREATE TRIGGER characters_clear_lineup_picks_on_new_owner AFTER UPDATE OF person_id ON public.characters FOR EACH ROW EXECUTE FUNCTION clear_lineup_picks_for_character() |
 
 ## Relations
 

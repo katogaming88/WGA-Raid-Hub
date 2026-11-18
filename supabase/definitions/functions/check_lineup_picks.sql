@@ -48,9 +48,16 @@ begin
     left join characters c on c.id = x.character_id
     where x.class_spec_id is not null
       and not exists (
+        -- The class of the row it is stored on: a character with the
+        -- roster row's own name is stored as the roster row
+        -- (lineup_picks_norm()), so its spec must be one of the roster
+        -- class's (CodeRabbit on PR #1874).
         select 1 from classes_specs cs
         where cs.id = x.class_spec_id
-          and cs.class = case when x.character_id is null then main.class else c.class_name end
+          and cs.class = case
+                when c.id is null or c.name_realm_key = lower(replace(p.name_realm, ' ', '')) then main.class
+                else c.class_name
+              end
       )
   ) then
     raise exception 'That spec isn''t one the character''s class has.';

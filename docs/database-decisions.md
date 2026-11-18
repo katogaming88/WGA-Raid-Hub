@@ -3867,6 +3867,14 @@ Shipped: `20261118100049_raid_night_lineups_character_spec.sql`.
 
 **A deleted alt takes its picks with it.** A `before delete` trigger on `characters` clears both columns wherever the alt was picked, so the raider goes back to their main in its usual spec. The foreign key's own `on delete set null` would have left the alt's spec on the main.
 
+**Held together under concurrent writes (CodeRabbit on PR #1874).**
+
+- A save locks the picked characters before checking them, so removing an alt waits for the save, or the save is refused if the removal came first.
+- The cleanup takes each team's lineup lock in team order before touching either table, the order the saves use, so the two can't deadlock.
+- An alt that moves to another person's list (`save_battlenet_characters()` keeps its id) is cleared the same way.
+- A spec is checked against the class of the row it is stored on, so a character with the roster row's own name can't carry another class's spec onto it.
+- `p_picks` defaults to null rather than an empty list. A save that leaves picks out, as a page loaded before this shipped would, is refused when the boss has picks; an explicit empty list clears them.
+
 **Teammates read a picked alt (Kat, 2026-11-18).** A new read rule on `characters` lets a raider read an alt picked in their own team's lineups or groups, so the team's read-only grid names it. No other alt becomes readable.
 
 **Left for later.** The Discord lineup post naming the character and spec is its own issue (Kat). Attendance still matches Warcraft Logs names to the roster character (#1242), so a raider who brings an alt can read as absent until that issue is done.

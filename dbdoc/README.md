@@ -405,8 +405,8 @@
 | public.lineup_picks_norm | record | p_team_id integer, p_picks jsonb | FUNCTION |
 | public.check_lineup_picks | void | p_team_id integer, p_player_ids integer[], p_picks jsonb | FUNCTION |
 | public.same_lineup_picks | bool | a jsonb, b jsonb | FUNCTION |
-| public.set_raid_night_lineup | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT '[]'::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb | FUNCTION |
-| public.set_boss_group | int4 | p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT '[]'::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb | FUNCTION |
+| public.set_raid_night_lineup | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb | FUNCTION |
+| public.set_boss_group | int4 | p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb | FUNCTION |
 
 ## Enums
 
