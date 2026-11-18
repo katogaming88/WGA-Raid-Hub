@@ -1319,10 +1319,10 @@ a.night-chip:hover {
   /* Three lines; more scroll inside, a whole line at a time. */
   height: calc(3 * 22px);
   overflow-y: auto;
-  padding: var(--space-2) 0;
+  /* No bottom padding, so a fourth line never peeks under the third. */
+  padding: var(--space-2) 0 0;
   line-height: 22px;
   border-top: 2px solid var(--warn);
-  border-bottom: 1px solid var(--border);
   font-size: var(--text-sm);
 }
 
@@ -1369,13 +1369,20 @@ a.night-chip:hover {
     --blg-names: 140px;
   }
 
+  /* Room for the name: the spec and tag go (a cell's marker still says
+     who isn't coming), and the corner's how-to. */
   .blg-raider-spec,
+  .blg-raider-box .lineup-tag,
   .blg-corner .text-dim {
     display: none;
   }
 }
 
 .blg-grid {
+  /* The not-coming stripes: dark on a bar; lighter where a name sits on
+     them, lightest on light mode's pale cells, so the name still reads. */
+  --blg-stripe: rgb(11 14 19 / 0.55);
+
   border-collapse: separate;
   border-spacing: 4px 3px;
   font-size: var(--text-sm);
@@ -1584,7 +1591,10 @@ a.night-chip:hover {
   align-items: center;
   gap: 6px;
   box-sizing: border-box;
-  width: 100%;
+  /* Fixed, so a long name or tag never widens the pinned column past what
+     the grid's scroll padding allows for. */
+  width: var(--blg-names);
+  overflow: hidden;
   height: 30px;
   padding: 0 10px;
   border: 1px solid var(--border);
@@ -1641,6 +1651,8 @@ a.night-chip:hover {
 }
 
 .blg-raider-name {
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   font-weight: 600;
   text-overflow: ellipsis;
@@ -1655,7 +1667,14 @@ a.night-chip:hover {
   white-space: nowrap;
 }
 
+.blg-raider-box .lineup-tag {
+  flex: none;
+  margin-left: 0;
+}
+
 .blg-raider-count {
+  flex: none;
+  margin-left: auto;
   color: var(--text-muted);
   font-size: var(--text-xs);
   font-weight: 600;
@@ -1703,6 +1722,14 @@ button.blg-cell {
 
 .blg-cell:disabled {
   cursor: default;
+}
+
+[data-style='names'] {
+  --blg-stripe: rgb(11 14 19 / 0.35);
+}
+
+:root[data-theme='light'] [data-style='names'] {
+  --blg-stripe: rgb(11 14 19 / 0.12);
 }
 
 /* Names: a slate cell with the character's name in class color. */
@@ -1759,7 +1786,7 @@ button.blg-cell[data-in='false']:hover:not(:disabled) {
 .blg-cell[data-conflict]::before {
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(135deg, rgb(11 14 19 / 0.55) 0 4px, transparent 4px 9px);
+  background: repeating-linear-gradient(135deg, var(--blg-stripe) 0 4px, transparent 4px 9px);
   content: '';
   pointer-events: none;
 }
