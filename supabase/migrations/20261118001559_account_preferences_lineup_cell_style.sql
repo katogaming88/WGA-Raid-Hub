@@ -1,8 +1,12 @@
--- #1681: the Boss Lineup grid has two cell styles, Names and Solid bars, and
--- each officer picks their own. The pick is a view setting for that one
--- account (Kat, 2026-11-18: per account, so it follows them to every
--- device), so it is a new key in account_preferences (#940) rather than a
--- table or a team setting.
+-- #1681: allow a guild-wide lineup_cell_style key in account_preferences.
+--
+-- The Boss Lineup grid has two cell styles, Names and Solid bars, and each
+-- person picks their own. The pick is a view setting for that one account
+-- (Kat, 2026-11-18: per account, so it follows them to every device), so it
+-- is a new key in the per-account store built by
+-- 20260913162438_account_preferences.sql (#940), not a table or a team
+-- setting. This replaces that migration's account_preferences_known_key
+-- CHECK with one that also names the new key.
 --
 -- Guild-wide (team_id null): the same officer reading two teams' lineups
 -- wants one look. The value is the style's name as a JSON string, and the

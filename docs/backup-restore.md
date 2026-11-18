@@ -80,7 +80,7 @@ Note the dependency, because it decides restore order: `priority_order` and `sco
 - `notifications`
 - `streamers`
 - `team_members` (Discord claims and auth links)
-- `account_preferences` (per-account UI state: the "no character" claim-prompt dismissal and the notification bell's cleared-through marker, [#940](https://github.com/katogaming88/WGA-Raid-Hub/issues/940); losing it only makes a dismissed prompt or cleared notifications reappear)
+- `account_preferences` (per-account UI state: the "no character" claim-prompt dismissal and the notification bell's cleared-through marker, [#940](https://github.com/katogaming88/WGA-Raid-Hub/issues/940); and each person's Boss Lineup cell style, Names or Solid bars, [#1681](https://github.com/katogaming88/WGA-Raid-Hub/issues/1681); losing it only makes a dismissed prompt or cleared notifications reappear, or the lineup go back to Names)
 - `people` (one row per human, [#942](https://github.com/katogaming88/WGA-Raid-Hub/issues/942); `team_members` and `guild_grants` point at it through `person_id`, so it restores before them. Rebuildable from their Discord ids and `auth.identities` in principle, but its ids are what those `person_id` columns hold, so it comes back from the dump)
 - `priority_conflict_dismissals` (officer-acknowledged Priority List same-boss conflicts; losing it only makes a dismissed warning reappear, same low-stakes shape as `account_preferences`)
 - `priority_stale_dismissals` (officer-acknowledged Priority List stale-after-Heroic conflicts; same low-stakes shape as `priority_conflict_dismissals`)

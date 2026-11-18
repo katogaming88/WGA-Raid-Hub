@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     57 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 41 h 27 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 41 h 42 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **217 h 15 m** |             |
+| **All revamp work**                | **217 h 30 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 6 h 40 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 6 h 55 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -800,6 +800,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 12:00-1:05 AM | #1681: Boss Lineup's new grid from board D: roles Tanks / Healers / Melee / Ranged with per-boss role counts, class-colored cells in Names or Solid bars (each person's own, saved to their account by a new `account_preferences` key), the tonight-only and not-coming markers, boss art from Warcraft Logs with the pull number, count, warning and fill bar, one Save... that asks just that night or every night after, the change list, Needs a look on three fixed lines; officers edit on a phone, raiders see it read-only; Kat's three answers (link WCL's art, per account, Names first); a covered-cell bug on phones and headings showing their screen-reader text, both caught in testing; migration, RLS, page, browser and accessibility tests, generated docs, decision log, Help guide and picture, stamp, changelog, these rows; PR | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1681) | 1 h 5 m | build; Kat's answers not split | 449,800 | Kat's design review, the fresh-agent review and merge not yet counted. |
+| 9:16-9:30 AM | PR #1870 (#1681) after it opened: the screenshots retaken with this season's real boss art from Warcraft Logs (a phone bug found: markers from cells under the pinned name column drew on top of it, fixed); CodeRabbit's two test findings (each write read back; another team's officer, a raider and a signed-out caller refused); the fresh-agent migration review (changes needed: the backup doc's account_preferences line; nice-to-haves done: the migration header, "each person" not "each officer", a failed style save goes back and says so); tests, this row | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1681) | 15 m | build; Kat's CodeRabbit trigger and questions not split | 459,000 | Tokens include the fresh agent's 89,300. Kat's design review and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 

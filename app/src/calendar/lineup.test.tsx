@@ -532,6 +532,18 @@ describe('the boss lineup tab', () => {
     );
   });
 
+  it('goes back to the saved cell style, and says so, when the pick doesn’t save', async () => {
+    const user = userEvent.setup();
+    renderApp(LINEUP, {
+      ...handlers(who('officer')),
+      write: (w) => (w.table === 'account_preferences' ? { error: { message: 'Network down' } } : { data: null })
+    });
+    await grid();
+    await user.click(screen.getByRole('radio', { name: 'Solid bars' }));
+    expect(await screen.findByText('Your cell style didn’t save: Network down')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Names' })).toBeChecked();
+  });
+
   it('shows everyone on the roster, with the bench out and changes from the group marked', async () => {
     renderApp(LINEUP, handlers(who('officer'), { ...PLANNED, answers: [answer(3, 'Absent')] }));
     const g = await grid();

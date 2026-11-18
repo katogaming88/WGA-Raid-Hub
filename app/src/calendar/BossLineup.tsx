@@ -320,9 +320,16 @@ function Lineup({
     else onSaveGroups();
   };
 
+  // The grid switches at once; a save that fails goes back to what is saved,
+  // and says so, rather than looking kept until the next visit.
   const pickStyle = (style: CellStyle) => {
     setPicked(style);
-    saveStyle.mutate(style);
+    saveStyle.mutate(style, {
+      onError: (e) => {
+        setPicked(null);
+        announce('error', `Your cell style didn’t save: ${e.message}`);
+      }
+    });
   };
 
   return (

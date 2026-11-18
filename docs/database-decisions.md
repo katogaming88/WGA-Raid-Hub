@@ -3843,12 +3843,12 @@ Shipped: `20261117161755_finished_raid_posts.sql`.
 
 [Full discussion -> #1825](https://github.com/katogaming88/WGA-Raid-Hub/issues/1825).
 
-## #1681 -- each officer's Boss Lineup cell style is remembered on their account
+## #1681 -- each person's Boss Lineup cell style is remembered on their account
 
 Shipped: `20261118001559_account_preferences_lineup_cell_style.sql`.
 
-**A new key in `account_preferences`, `lineup_cell_style`,** not a table or a team setting. The Boss Lineup grid draws its cells two ways, Names and Solid bars, and the choice is a view setting for one person that never changes anyone else's screen (#1681). Kat picked per account over per browser (2026-11-18) so it follows an officer to their phone; it is the store #940 built for exactly this.
+**A new key in `account_preferences`, `lineup_cell_style`,** not a table or a team setting. The Boss Lineup grid draws its cells two ways, Names and Solid bars, and the choice is a view setting for one person (an officer or a raider) that never changes anyone else's screen (#1681). Kat picked per account over per browser (2026-11-18) so it follows them to their phone; it is the store #940 built for exactly this.
 
-**Guild-wide (`team_id` null),** so one officer reading two teams' lineups sees one look. **The value is held to `"names"` or `"bars"`** by the same `account_preferences_known_key` CHECK, so a typo fails at the write instead of quietly showing the default. No row means Names. The own-rows rule already covers it: anyone signed in sets their own row and reads only theirs.
+**Guild-wide (`team_id` null),** so someone reading two teams' lineups sees one look. **The value is held to `"names"` or `"bars"`** by the same `account_preferences_known_key` CHECK, so a typo fails at the write instead of quietly showing the default. No row means Names. The own-rows rule already covers it: anyone signed in sets their own row and reads only theirs.
 
 [Full discussion -> #1681](https://github.com/katogaming88/WGA-Raid-Hub/issues/1681).
