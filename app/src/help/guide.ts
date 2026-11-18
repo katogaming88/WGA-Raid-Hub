@@ -365,15 +365,15 @@ export const GUIDES: Guide[] = [
     officers: true,
     quick: 'A raid night’s Boss lineup tab changes who’s in for each boss on that night only.',
     place: { label: 'Calendar', to: (b) => `${b.team}/calendar` },
-    picture: 'A raid night’s Boss lineup tab: the tab, a cell in the grid and Save tonight marked.',
+    picture: 'A raid night’s Boss lineup tab: the tab, a cell in the grid and Save… marked.',
     marked: [1, 2, 4, 5],
     menu: 'calendar',
     steps: [
       'Open the Calendar and pick the raid night.',
-      'Choose the Boss lineup tab. It needs a computer.',
+      'Choose the Boss lineup tab. It works on a phone too.',
       'If the night isn’t planned yet, choose Fill from the groups.',
-      'Click a cell to swap someone in or out for that boss.',
-      'Choose Save tonight. Save to the group also makes it the usual group, so every coming night starts this way.'
+      'Click a cell to put someone in or sit them out for that boss. Click a name to do it for every boss.',
+      'Choose Save…, then Just that night, or that night and every night after, which also makes it the usual group.'
     ]
   },
   {

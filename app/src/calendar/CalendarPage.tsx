@@ -628,8 +628,10 @@ function Night({
   // Officer changes need a computer (Kat, 2026-09-16).
   const officerTools = viewer.officer && !touch;
 
-  // The boss lineup is an officer tool (#1216), so it needs a computer too.
-  if (officerTools) {
+  // The boss lineup (#1216): officers change it on any device, the one
+  // exception to edits needing a computer (#1681), and the team's raiders see
+  // it read-only.
+  if (viewer.officer || viewer.me) {
     return (
       <>
         <nav className="night-tabs" aria-label="Night views">
@@ -641,9 +643,9 @@ function Night({
           </Link>
         </nav>
         {lineup ? (
-          <BossLineup night={night} players={players} answers={answers} />
+          <BossLineup night={night} players={players} answers={answers} canEdit={viewer.officer} />
         ) : (
-          <Coming night={night} viewer={viewer} players={players} answers={answers} officerTools />
+          <Coming night={night} viewer={viewer} players={players} answers={answers} officerTools={officerTools} />
         )}
       </>
     );

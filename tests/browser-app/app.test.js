@@ -32,7 +32,8 @@ import {
   SCHEDULE as CAL_SCHEDULE,
   RSVPS as CAL_RSVPS,
   NIGHT as CAL_NIGHT,
-  TODAY as CAL_TODAY
+  TODAY as CAL_TODAY,
+  VIEWER as CAL_VIEWER
 } from '../behavior/calendar.js';
 import { SCENARIO as HOME, SEASON as HOME_SEASON, PROGRESSION, CALENDAR, STREAMS, TODAY } from '../behavior/home.js';
 import { TEAMS as STREAM_TEAMS, STREAMS as DIRECTORY, NOBODY_LIVE as DIRECTORY_OFFLINE } from '../behavior/streams.js';
@@ -534,18 +535,45 @@ const placed = (encounter_id, ids) => ids.map((player_id) => ({ encounter_id, pl
 const CAL_LINEUP = {
   ...CAL_OFFICER,
   path: `/g/wga/t/phoenix/calendar?date=${CAL_NIGHT}&view=lineup`,
-  sentinel: 'main:has(.lineup-toggle)',
+  sentinel: 'main:has(.blg-cell)',
   tables: {
     ...CAL_TABLES,
     seasons: [{ code: 'S1', display_name: 'Season One', starts_at: '2026-01-01', ends_at: null }],
     raid_encounters: [
-      { id: 101, name: "Nek'zali the Soulcoiler", sort_index: 1, zone: LINEUP_ZONE },
-      { id: 102, name: 'Sszorak', sort_index: 2, zone: LINEUP_ZONE },
-      { id: 103, name: 'Nymrissa Wavecaller', sort_index: 1, zone: LINEUP_MINI }
+      { id: 101, name: "Nek'zali the Soulcoiler", sort_index: 1, wcl_encounter_id: 3101, zone: LINEUP_ZONE },
+      { id: 102, name: 'Sszorak', sort_index: 2, wcl_encounter_id: 3102, zone: LINEUP_ZONE },
+      { id: 103, name: 'Nymrissa Wavecaller', sort_index: 1, wcl_encounter_id: 3103, zone: LINEUP_MINI }
     ],
     raid_night_bosses: [lineupBoss(101, 1), lineupBoss(102, 2), lineupBoss(103, 3)],
     raid_night_lineups: [...placed(101, [1, 2, 3, 4, 6]), ...placed(102, [2, 3, 4]), ...placed(103, [1, 2, 3, 4])],
     boss_groups: [...placed(101, [1, 2, 3, 4, 6]), ...placed(102, [1, 2, 3, 4]), ...placed(103, [1, 2, 3, 4])]
+  }
+};
+
+// The same night as a raider on the team sees it (#1681): the grid, read-only.
+const CAL_LINEUP_RAIDER = {
+  ...CAL_LINEUP,
+  who: undefined,
+  sentinel: 'main:has(span.blg-cell)',
+  // A raider reads the night's answers through this function, not the table.
+  rpc: { team_rsvp_answers: [] },
+  person: {
+    discordId: CAL_VIEWER.discordId,
+    person: {
+      site_admin: false,
+      guild_officer: false,
+      boe_manager: false,
+      teams: [
+        {
+          team_id: 1,
+          team_member_id: CAL_VIEWER.teamMemberId,
+          role: 'raider',
+          characters: [
+            { player_id: CAL_VIEWER.playerId, name_realm: CAL_VIEWER.nameRealm, url_code: null, archived_at: null }
+          ]
+        }
+      ]
+    }
   }
 };
 
@@ -1818,6 +1846,20 @@ const STATES = [
   { label: 'calendar night, officer, light', ...CAL_NIGHT_PAGE, colorScheme: 'light' },
   { label: 'calendar boss lineup, officer', ...CAL_LINEUP },
   { label: 'calendar boss lineup, officer, light', ...CAL_LINEUP, colorScheme: 'light' },
+  {
+    label: 'calendar boss lineup, officer, solid bars',
+    ...CAL_LINEUP,
+    click: 'role=radio[name="Solid bars"]'
+  },
+  {
+    label: 'calendar boss lineup, officer, solid bars, light',
+    ...CAL_LINEUP,
+    colorScheme: 'light',
+    click: 'role=radio[name="Solid bars"]'
+  },
+  { label: 'calendar boss lineup, officer, asking how far to save', ...CAL_LINEUP, click: 'role=button[name="Save…"]' },
+  { label: 'calendar boss lineup, raider', ...CAL_LINEUP_RAIDER },
+  { label: 'calendar boss lineup, raider, light', ...CAL_LINEUP_RAIDER, colorScheme: 'light' },
   { label: 'calendar night, your bosses', ...CAL_OWN_BOSSES },
   { label: 'calendar night, your bosses, light', ...CAL_OWN_BOSSES, colorScheme: 'light' },
   { label: 'boss groups, officer', ...BOSS_GROUPS },
@@ -2777,7 +2819,7 @@ const HELP_SHOT_STATES = {
   },
   lineup: {
     state: CAL_LINEUP,
-    markers: [null, 'role=link[name="Boss lineup"]', null, '.lineup-toggle', 'role=button[name="Save tonight"]'],
+    markers: [null, 'role=link[name="Boss lineup"]', null, 'button.blg-cell >> nth=0', 'role=button[name="Save…"]'],
     frame: 'main .night-tabs',
     viewport: { width: 700, height: 900 }
   },

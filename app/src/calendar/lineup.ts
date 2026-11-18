@@ -21,6 +21,8 @@ export type EncounterRow = {
   // Wavecaller or Kith'ix that allows more than the raid's own cap. Null for
   // every other boss, which falls back to the raid's cap.
   cap: number | null;
+  // Warcraft Logs' id for the fight, which names its boss art (#1681).
+  wcl_encounter_id: number;
   zone: { id: number; name: string; season: string; is_mini_raid: boolean; sort_index: number };
 };
 export type NightBossRow = {
@@ -75,7 +77,23 @@ export function seasonOn(seasons: SeasonRow[], date: string): string | null {
   );
 }
 
-export type LineupBoss = { id: number; name: string; short: string; skipped: boolean; confirmed: boolean; cap: number };
+export type LineupBoss = {
+  id: number;
+  name: string;
+  short: string;
+  skipped: boolean;
+  confirmed: boolean;
+  cap: number;
+  // The raid's own cap: below `cap` a flex boss can take more but isn't short.
+  base: number;
+  art: string;
+};
+
+// A boss's picture, linked from Warcraft Logs by its fight id (Kat,
+// 2026-11-18: link to their copy, the way item icons link to Wowhead's, so a
+// new season's bosses need nothing from us).
+export const bossArt = (wclEncounterId: number) =>
+  `https://assets.rpglogs.com/img/warcraft/bosses/${wclEncounterId}-icon.jpg`;
 export type LineupRaid = { zoneId: number; name: string; cap: number; bosses: LineupBoss[] };
 
 // "20 per boss", or "20-25 per boss" when a flex fight inside the raid (a
@@ -124,7 +142,9 @@ export function lineupRaids(
       short: shortBossName(e.name),
       skipped: boss?.skipped ?? false,
       confirmed: !!boss?.confirmed_at,
-      cap: e.cap ?? raid.cap
+      cap: e.cap ?? raid.cap,
+      base: raid.cap,
+      art: bossArt(e.wcl_encounter_id)
     });
   }
   return raids;
@@ -201,12 +221,15 @@ export function everyoneIn(players: PlayerRow[], bosses: LineupBoss[]): Map<numb
   return new Map(bosses.map((b) => [b.id, ids]));
 }
 
-export type CapStatus = { text: string; tone: 'good' | 'warn' | 'bad' };
+// `room`: a flex boss at or past the raid's own cap with space left (#1681),
+// which is not a problem to fix.
+export type CapStatus = { text: string; tone: 'good' | 'warn' | 'bad' | 'room' };
 
-export function capStatus(count: number, cap: number): CapStatus {
+export function capStatus(count: number, cap: number, base = cap): CapStatus {
   if (count === cap) return { text: 'Full', tone: 'good' };
   if (count > cap) return { text: `${count - cap} over`, tone: 'bad' };
-  const open = cap - count;
+  if (count >= base) return { text: `room for ${cap - count} more`, tone: 'room' };
+  const open = base - count;
   return { text: `${open} open spot${open === 1 ? '' : 's'}`, tone: 'warn' };
 }
 
@@ -240,12 +263,16 @@ export type BossTotal = {
   tanks: number;
   healers: number;
   damage: number;
+  roles: Record<Role, number>;
   // Buffs nobody in brings.
   missing: string[];
   // The one warning under the boss's count: the cap first, then buffs.
   warn: string;
-  // Everything "Needs a look" lists for the boss.
+  // Everything that needs a look on the boss.
   problems: string[];
+  // The same, with missing buffs as a count ("3 buffs missing"), for the
+  // one-line Needs a look on a night's lineup (#1681).
+  brief: string[];
 };
 
 export type BuffCell = { boss: LineupBoss; providers: string[] };
@@ -258,6 +285,8 @@ export type LineupView = {
   buffs: { buff: Buff; cells: BuffCell[] }[];
   // Bench raiders out on every boss, for "Needs a look".
   benchOut: string[];
+  // In on a boss tonight, but said they are not coming.
+  notComing: string[];
 };
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -270,32 +299,35 @@ const providersOf = (buff: Buff, inn: Raider[]) =>
     .filter((r) => brings(buff, r.player.classes_specs?.class ?? '', r.player.classes_specs?.spec ?? ''))
     .map((r) => r.name);
 
+// "1 tank, wants 2": a role short of, or over, the team's target. A target
+// of 0 means the team doesn't count that role.
+const roleCheck = (n: number, target: number, word: string) =>
+  target === 0 || n === target ? [] : [`${n === 0 ? `no ${word}s` : plural(n, word)}, wants ${target}`];
+
 // One boss's count, role mix, missing buffs and warnings, for whoever is in.
-// `out` names raiders in who said they are not coming (a night only).
-function totalOf(boss: LineupBoss, inn: Raider[], targets: RoleTargets, out: string[] = []): BossTotal {
+function totalOf(boss: LineupBoss, inn: Raider[], targets: RoleTargets): BossTotal {
   const n = (role: Role) => inn.filter((r) => r.role === role).length;
-  const tanks = n('Tank');
-  const healers = n('Heal');
-  const status = capStatus(inn.length, boss.cap);
-  const full = inn.length === boss.cap;
+  const roles = { Tank: n('Tank'), Heal: n('Heal'), Melee: n('Melee'), Ranged: n('Ranged') };
+  const status = capStatus(inn.length, boss.cap, boss.base);
+  const fine = status.tone === 'good' || status.tone === 'room';
   const missing = LINEUP_BUFFS.filter((b) => !providersOf(b, inn).length).map((b) => b.name);
-  const problems = [
-    ...(full ? [] : [status.text]),
-    ...(targets.tanks === 0 ? [] : tanks === 0 ? ['no tanks'] : tanks < targets.tanks ? [plural(tanks, 'tank')] : []),
-    ...(healers < targets.healers ? [plural(healers, 'healer')] : []),
-    ...(missing.length ? [`no ${missing.join(', no ')}`] : []),
-    ...(out.length ? [`${out.join(', ')} said they’re not coming`] : [])
+  const checks = [
+    ...(fine ? [] : [status.text]),
+    ...roleCheck(roles.Tank, targets.tanks, 'tank'),
+    ...roleCheck(roles.Heal, targets.healers, 'healer')
   ];
   return {
     boss,
     count: inn.length,
     status,
-    tanks,
-    healers,
-    damage: n('Melee') + n('Ranged'),
+    tanks: roles.Tank,
+    healers: roles.Heal,
+    damage: roles.Melee + roles.Ranged,
+    roles,
     missing,
-    warn: !full ? status.text : missing.length ? plural(missing.length, 'buff') : '',
-    problems
+    warn: !fine ? status.text : missing.length ? plural(missing.length, 'buff') : '',
+    problems: [...checks, ...(missing.length ? [`no ${missing.join(', no ')}`] : [])],
+    brief: [...checks, ...(missing.length ? [`${plural(missing.length, 'buff')} missing`] : [])]
   };
 }
 
@@ -359,21 +391,47 @@ export function lineupView(
       rows: rows.filter((r) => r.role === role).map(rowOf)
     })).filter((g) => g.rows.length),
     live,
-    totals: live.map((boss) => {
-      const inn = inFor(boss);
-      return totalOf(
-        boss,
-        inn,
-        targets,
-        inn.filter(saidOut).map((r) => r.name)
-      );
-    }),
+    totals: live.map((boss) => totalOf(boss, inFor(boss), targets)),
     buffs: LINEUP_BUFFS.map((buff) => ({
       buff,
       cells: live.map((boss) => ({ boss, providers: providersOf(buff, inFor(boss)) }))
     })),
-    benchOut: rows.filter((r) => r.player.is_bench && live.every((b) => !isIn(b, r.player.id))).map((r) => r.name)
+    benchOut: rows.filter((r) => r.player.is_bench && live.every((b) => !isIn(b, r.player.id))).map((r) => r.name),
+    notComing: rows.filter((r) => saidOut(r) && live.some((b) => isIn(b, r.player.id))).map((r) => r.name)
   };
+}
+
+// What the save bar lists (#1681): "Ironjaw out on Twin Fangs", or "Ironjaw
+// out all night" when a raider changed on more than one boss and is now out
+// (or in) on every boss of the raid still on the night. On a night with two
+// raids, `all` names the raid instead ("for all of Tidebound Grotto").
+export function changeList(
+  saved: Places,
+  edits: Edits,
+  bosses: LineupBoss[],
+  nameOf: (id: number) => string,
+  all = 'all night'
+): string[] {
+  const live = bosses.filter((b) => !b.skipped);
+  const now = current(saved, edits);
+  const byPlayer = new Map<number, LineupBoss[]>();
+  for (const boss of live) {
+    const was = placesFor(saved, boss.id);
+    const is = placesFor(now, boss.id);
+    for (const id of new Set([...was, ...is])) {
+      if (was.has(id) === is.has(id)) continue;
+      byPlayer.set(id, [...(byPlayer.get(id) ?? []), boss]);
+    }
+  }
+  return [...byPlayer]
+    .map(([id, changed]) => ({ id, name: nameOf(id), changed }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .flatMap(({ id, name, changed }) => {
+      const inOn = (b: LineupBoss) => placesFor(now, b.id).has(id);
+      if (changed.length > 1 && live.every((b) => !inOn(b))) return [`${name} out ${all}`];
+      if (changed.length > 1 && live.every(inOn)) return [`${name} in ${all}`];
+      return changed.map((b) => `${name} ${inOn(b) ? 'in' : 'out'} on ${b.short}`);
+    });
 }
 
 // The message a refused save gives when someone else saved first.

@@ -19,7 +19,7 @@ Per-account preferences, one row per (account, team, key); team_id is null for g
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| account_preferences_known_key | CHECK | CHECK ((((key = 'no_character_dismissed'::text) AND (team_id IS NULL)) OR ((key = 'notifications_cleared_through'::text) AND (team_id IS NOT NULL)))) |
+| account_preferences_known_key | CHECK | CHECK ((((key = 'no_character_dismissed'::text) AND (team_id IS NULL)) OR ((key = 'notifications_cleared_through'::text) AND (team_id IS NOT NULL)) OR ((key = 'lineup_cell_style'::text) AND (team_id IS NULL) AND (value = ANY (ARRAY['"names"'::jsonb, '"bars"'::jsonb]))))) |
 | account_preferences_auth_user_id_fkey | FOREIGN KEY | FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE CASCADE |
 | account_preferences_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | account_preferences_pkey | PRIMARY KEY | PRIMARY KEY (id) |

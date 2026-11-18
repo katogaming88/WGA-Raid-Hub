@@ -1,3 +1,4 @@
+import { useSession } from '../auth/session';
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import { visibleSeasons } from '../profile/profile';
@@ -223,7 +224,9 @@ export function useEncounters() {
   return useSupabaseQuery<EncounterRow[]>(['raid-encounters'], (client) =>
     client
       .from('raid_encounters')
-      .select('id, name, sort_index, cap, zone:raid_zones!inner(id, name, season, is_mini_raid, sort_index)')
+      .select(
+        'id, name, sort_index, cap, wcl_encounter_id, zone:raid_zones!inner(id, name, season, is_mini_raid, sort_index)'
+      )
       .order('id')
   );
 }
@@ -311,7 +314,7 @@ async function saveEach(
   return { data: result, error: null };
 }
 
-// "Save tonight": each changed boss's lineup for the night, one boss at a time,
+// Save, "Just this night": each changed boss's lineup for the night, one boss at a time,
 // so two officers on different bosses never get in each other's way.
 export function useSaveNight(teamId: number, date: string) {
   return useSupabaseMutation<SaveResult, BossSave[]>(
@@ -329,7 +332,7 @@ export function useSaveNight(teamId: number, date: string) {
   );
 }
 
-// "Save to the group": tonight first, for each boss changed tonight, then the
+// Save, "this night and every night after": tonight first, for each boss changed tonight, then the
 // usual groups. That order matters: a group save also rewrites coming nights
 // nobody has saved for that boss, and tonight is saved by then, so it keeps
 // what the officer set.
@@ -454,5 +457,45 @@ export function useSetEncounterCap() {
         ...(s.cap !== null && { p_cap: s.cap })
       }),
     { key: ['set-encounter-cap'], refreshes: [['raid-encounters']] }
+  );
+}
+
+// Each officer's Boss Lineup cell style (#1681): Names unless they picked
+// Solid bars. One account_preferences row per account, guild-wide.
+export type CellStyle = 'names' | 'bars';
+const cellStyleKey = (userId: string | null) => ['lineup-cell-style', userId] as const;
+
+export function useCellStyle() {
+  const { user } = useSession();
+  return useSupabaseQuery<CellStyle>(
+    cellStyleKey(user?.id ?? null),
+    async (client) => {
+      const { data, error } = await client
+        .from('account_preferences')
+        .select('value')
+        .eq('auth_user_id', user!.id)
+        .is('team_id', null)
+        .eq('key', 'lineup_cell_style')
+        .maybeSingle();
+      if (error) return { data: null, error };
+      return { data: data?.value === 'bars' ? 'bars' : 'names', error: null };
+    },
+    { enabled: user !== null }
+  );
+}
+
+export function useSaveCellStyle() {
+  const { user } = useSession();
+  return useSupabaseMutation<null, CellStyle>(
+    async (client, style) => {
+      const { error } = await client
+        .from('account_preferences')
+        .upsert(
+          { auth_user_id: user!.id, team_id: null, key: 'lineup_cell_style', value: style },
+          { onConflict: 'auth_user_id,team_id,key' }
+        );
+      return { data: null, error };
+    },
+    { key: ['save-cell-style'], refreshes: [cellStyleKey(user?.id ?? null)] }
   );
 }

@@ -140,6 +140,30 @@ describe('account_preferences shape', () => {
     });
   });
 
+  // #1681: each officer's Boss Lineup cell style, guild-wide, one of two names.
+  it('takes an officer’s lineup cell style, guild-wide and only Names or Solid bars', async () => {
+    const setStyle = (run, teamId, value) =>
+      run(
+        `insert into public.account_preferences (auth_user_id, team_id, key, value)
+         values ($1, $2, 'lineup_cell_style', $3)
+         on conflict (auth_user_id, team_id, key) do update set value = excluded.value`,
+        [OFFICER_T1, teamId, value]
+      );
+    await withTxn(async ({ asUser }) => {
+      const run = (text, params) => asUser(OFFICER_T1, text, params);
+      await setStyle(run, null, '"bars"');
+      await setStyle(run, null, '"names"');
+      const res = await run("select value from public.account_preferences where key = 'lineup_cell_style'");
+      expect(res.rows).toEqual([{ value: 'names' }]);
+    });
+    await withTxn(async ({ q }) => {
+      await expect(setStyle(q, null, '"stripes"')).rejects.toThrow(/check/i);
+    });
+    await withTxn(async ({ q }) => {
+      await expect(setStyle(q, 1, '"names"')).rejects.toThrow(/check/i);
+    });
+  });
+
   it("accepts the client's guild-wide upsert twice, which is how a double-click lands", async () => {
     await withTxn(async ({ asUser }) => {
       const upsert = () =>
