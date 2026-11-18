@@ -10,6 +10,21 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-11-17 -- News posts in the database (#1523)
+
+Shipped: 20261117212811_news_posts.sql
+
+- **One table, `news_posts`, written with plain table writes under its rules**, not through functions: Staff (`is_site_admin()` today, Admins and Moderators once #1520 lands) insert, edit and delete; nothing else changes on a write. An insert must be signed as the caller (`written_by` = `my_person_id()`, its default), and no edit changes the author: UPDATE is granted on every column but `written_by`.
+- **A draft is `published_at` null.** Anyone, signed in or not, reads a post once its date is reached; only Staff read drafts and posts dated later (so the editor can schedule one for free). No separate status column. An add names its columns, so it never picks its own `id` or timestamps.
+- **`slug` is the post's address** (`/news/<slug>`), unique, lowercase words and hyphens, kept when the title is edited.
+- **Category is Feature, Fix, Change or Announcement.** Change is kept because five `news.json` entries use it.
+- **Pictures go in a public bucket, `news-pictures`**: anyone views by URL, Staff alone upload, replace or remove. 5 MB, PNG, JPEG, WebP or GIF.
+- **The 27 `news.json` entries are copied in by the migration**, published at their date's noon Eastern, oldest first so a later entry on the same day has the higher id. Body as written, first sentence as the summary, version and pin kept. `news.json` stays for the current site until cutover; a post written on the site does not show there.
+
+[Full discussion -> #1523](https://github.com/katogaming88/WGA-Raid-Hub/issues/1523).
+
+---
+
 ## 2026-11-17 -- The Rotator roster status retires (#1352)
 
 Shipped: 20261117133959_retire_rotator.sql

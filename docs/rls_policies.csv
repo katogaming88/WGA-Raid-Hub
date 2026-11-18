@@ -82,6 +82,11 @@ mplus_exclusion_requests,Raiders read own mplus_exclusion_requests,public,SELECT
 names,Claude readers read names,claude_readers,SELECT,PERMISSIVE,true,
 names,Officers write names,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('edit_roster'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 names,Public read names,public,SELECT,PERMISSIVE,true,
+news_posts,Claude readers read news_posts,claude_readers,SELECT,PERMISSIVE,true,
+news_posts,Public read published news_posts,public,SELECT,PERMISSIVE,((published_at <= CURRENT_TIMESTAMP) OR ( SELECT is_site_admin() AS is_site_admin)),
+news_posts,Staff add news_posts,authenticated,INSERT,PERMISSIVE,,(( SELECT is_site_admin() AS is_site_admin) AND (NOT (written_by IS DISTINCT FROM ( SELECT my_person_id() AS my_person_id))))
+news_posts,Staff delete news_posts,authenticated,DELETE,PERMISSIVE,( SELECT is_site_admin() AS is_site_admin),
+news_posts,Staff edit news_posts,authenticated,UPDATE,PERMISSIVE,( SELECT is_site_admin() AS is_site_admin),( SELECT is_site_admin() AS is_site_admin)
 notifications,Claude readers read notifications,claude_readers,SELECT,PERMISSIVE,true,
 notifications,Raiders mark own notifications read,public,UPDATE,PERMISSIVE,(player_id = ANY (( SELECT my_player_ids() AS my_player_ids)::integer[])),(player_id = ANY (( SELECT my_player_ids() AS my_player_ids)::integer[]))
 notifications,Raiders read own notifications,public,SELECT,PERMISSIVE,(player_id = ANY (( SELECT my_player_ids() AS my_player_ids)::integer[])),

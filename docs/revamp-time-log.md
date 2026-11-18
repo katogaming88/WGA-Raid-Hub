@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     55 h 46 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 39 h 22 m |  ~105 h 50 m |
-| Phase 3: After the new site goes live  |   2 h 20 m |   ~56 h 40 m |
+| Phase 2: Before the new site goes live | 40 h 22 m |  ~105 h 50 m |
+| Phase 3: After the new site goes live  |   2 h 40 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **211 h 18 m** |             |
+| **All revamp work**                | **212 h 38 m** |             |
 
 ### By area
 
@@ -32,12 +32,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 4 h 35 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 5 h 35 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
 | Revamp 3 extras | Phase 3 | 0 m | ~21 h 30 m |
-| Revamp 4 | Phase 3 | 0 m | ~4 h 50 m |
+| Revamp 4 | Phase 3 | 20 m | ~4 h 50 m |
 | Discord notifications | Phase 3 | 0 m | ~2 h 30 m |
 | Addon and Sync | Phase 3 | 2 h 20 m | ~22 h 50 m |
 | The look across the site | Phase 3 | 0 m | ~5 h |
@@ -788,6 +788,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 1:36-2:20 PM | #1352: the Rotator status retires. What #1352 waited on (Kat: no Immolation check, they're done for the season); rotators move to Bench, `is_rotator`, `officer_set_rotator_week()` and the Rotator-In answer go, loot priority loses the rotator tier; the current site's roster, profile and Calendar and the new app's roster, profile, Calendar and lineup drop it; tests, generated docs, decision log, stamp, changelog; preflight's browser run hung on a test fixture this change broke, fixed | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1352) | 45 m | ~43 m build, ~2 m Kat | 145,000 | Fresh-agent review and Kat's merge not yet counted |
 | 3:57-4:16 PM | PR #1865 (#1352) after CodeRabbit: its description fixes (a Screenshots section with four after-pictures, the decision log and RLS.md lines, Kat: no news.json entry), the fresh-agent migration review (Approve; a typo, an unreachable Rotator-In case and two stale comments), Kat's "fix the typo", Kat's merge (4:14 PM), cleanup, #1487 | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1352) | 20 m | ~17 m build, ~3 m Kat | 224,100 | |
 | 4:16-4:45 PM | #1825: a raid's Discord posts once it has passed. `team_discord_config.after_raid` (finish or delete) and its setter, `finished_at` on sheets and weekly lineup posts; the sweep marks a sheet finished (or deletes it) 4 hours after its raid starts and the week's lineup post after the week's last raid; "Once a raid has passed" on Settings > Discord, a Help step; database, Edge Function and page tests, generated docs, decision log, stamp, changelog, screenshots | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1825) | 30 m | ~29 m build, ~1 m Kat | 405,700 | Fresh-agent review and Kat's merge not yet counted |
+| 4:45-5:45 PM | PR #1866 (#1825) after it opened: the screenshots added to the PR body, CodeRabbit's review (a posted week keeps its end; one post failing doesn't stop the rest), the fresh-agent migration review (the decision log and migration name all eight posted sheets), Kat's merge (5:42 PM), cleanup | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1825) | 1 h | build; Kat's screenshots ask and merge, not split | 330,000 | Added 2026-11-17 (in #1523's PR). |
+| 9:26-9:45 PM | #1523: news posts in the database. `news_posts` (a draft is `published_at` null; anyone reads published posts, Staff read drafts and write with plain table writes; an insert signed as the caller), the public `news-pictures` bucket only Staff upload to, the 27 `news.json` entries copied in by the migration; database tests, generated docs, RLS.md, decision log, stamp, changelog | Phase 3: After the new site goes live / Revamp 4 (#1523) | 20 m | ~20 m build, Kat's ask | 119,300 | Fresh-agent review and Kat's merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 

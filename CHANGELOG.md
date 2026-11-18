@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.290.0] - 2026-11-17
+
+### Backend
+
+- News posts live in the database now, so Staff can write them on the site (the pages follow in #1230). Anyone reads a published post; only Staff read drafts and write, edit, pin, publish or delete. Each post has its own address for linking from Discord. Pictures go in a new public bucket that only Staff upload to. Every `news.json` entry is copied in as a published post; the current site keeps reading `news.json` until cutover (#1523).
+
+### Project
+
+- Database tests for who reads and writes news posts and their pictures.
+
 ## [3.289.0] - 2026-11-17
 
 ### Backend
