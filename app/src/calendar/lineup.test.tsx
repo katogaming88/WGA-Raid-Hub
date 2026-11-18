@@ -569,14 +569,29 @@ describe('the boss lineup tab', () => {
     expect(
       look.getByText(/^18 open spots · 1 tank, wants 2 · 1 healer, wants 4 · \d+ buffs missing$/)
     ).toBeInTheDocument();
-    expect(look.getByText('2. Sszorak')).toHaveAttribute(
-      'title',
-      expect.stringMatching(/^Sszorak: 18 open spots; .*no Mark of the Wild/)
-    );
-    expect(g.getByRole('columnheader', { name: /^Sszorak, pull 2/ })).toHaveAttribute(
-      'title',
-      expect.stringMatching(/^Sszorak: 18 open spots; 1 tank, wants 2; 1 healer, wants 4; no Mark of the Wild/)
-    );
+    // A screen reader hears the buffs by name in Needs a look itself.
+    expect(
+      look.getByText(/^18 open spots; 1 tank, wants 2; 1 healer, wants 4; no Mark of the Wild/)
+    ).toBeInTheDocument();
+  });
+
+  it('names a boss’s missing buffs in the site’s own tip, at once, on hover (#1681)', async () => {
+    const user = userEvent.setup();
+    renderApp(LINEUP, handlers(who('officer')));
+    const g = await grid();
+    const heading = g.getByRole('columnheader', { name: /^Sszorak, pull 2/ });
+    expect(heading).not.toHaveAttribute('title');
+    await user.hover(heading);
+    const tip = screen.getByRole('tooltip');
+    expect(within(tip).getByText('Sszorak')).toBeInTheDocument();
+    expect(within(tip).getByText('18 open spots')).toBeInTheDocument();
+    expect(within(tip).getByText(/^Missing: Mark of the Wild, /)).toBeInTheDocument();
+    await user.unhover(heading);
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+
+    const look = within(screen.getByRole('region', { name: 'Needs a look' }));
+    await user.hover(look.getByText('2. Sszorak').closest('li')!);
+    expect(within(screen.getByRole('tooltip')).getByText(/^Missing: /)).toBeInTheDocument();
   });
 
   it('saves a change for tonight only', async () => {

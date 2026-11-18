@@ -1827,6 +1827,39 @@ button.blg-cell[data-in='false']:hover:not(:disabled) {
   color: #f0b44c;
 }
 
+/* The boss tip (#1681): the site's own, shown at once on hover. */
+.blg-tip {
+  position: fixed;
+  z-index: 50;
+  box-sizing: border-box;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.35);
+  color: var(--text);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.blg-tip strong {
+  display: block;
+  margin-bottom: 2px;
+  font-size: var(--text-sm);
+}
+
+.blg-tip ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.blg-tip li + li {
+  margin-top: 2px;
+}
+
 .blg-key {
   display: flex;
   flex-wrap: wrap;

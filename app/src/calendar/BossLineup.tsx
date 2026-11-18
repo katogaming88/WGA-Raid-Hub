@@ -1,4 +1,5 @@
-import { useState, type CSSProperties, type SyntheticEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type MouseEvent, type SyntheticEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
@@ -484,11 +485,25 @@ function fillTone(t: BossTotal): string {
   return t.status.tone === 'good' ? 'good' : 'room';
 }
 
-// Hovering a boss names everything that needs a look, missing buffs by name
-// (Kat, 2026-11-18): Needs a look itself only counts them, to stay on its
-// three lines.
-const hoverText = (t: BossTotal | undefined) =>
-  t?.problems.length ? `${t.boss.name}: ${t.problems.join('; ')}` : undefined;
+// Hovering a boss shows the site's own tip at once (Kat, 2026-11-18): each
+// problem on its own line, missing buffs by name, where Needs a look only
+// counts them to stay on its three lines.
+type Tip = { title: string; lines: string[]; left: number; top: number };
+
+const tipLines = (t: BossTotal) => [
+  ...(t.missing.length ? t.brief.slice(0, -1) : t.brief),
+  ...(t.missing.length ? [`Missing: ${t.missing.join(', ')}`] : [])
+];
+
+// Fixed to the page, centered under what it describes and kept on screen;
+// portaled to the body so the grid's scroll box can't clip it.
+const TIP_WIDTH = 300;
+function tipAt(el: HTMLElement, t: BossTotal): Tip {
+  const r = el.getBoundingClientRect();
+  const half = TIP_WIDTH / 2 + 8;
+  const left = Math.min(Math.max(r.left + r.width / 2, half), window.innerWidth - half);
+  return { title: t.boss.name, lines: tipLines(t), left, top: r.bottom + 6 };
+}
 
 const roleTarget = (role: Role, targets: RoleTargets) =>
   role === 'Tank' ? targets.tanks : role === 'Heal' ? targets.healers : 0;
@@ -526,6 +541,21 @@ function RaidGrid({
   const [showBuffs, setShowBuffs] = useState(false);
   // The column under the pointer, brightened top to bottom.
   const [hot, setHot] = useState<number | null>(null);
+  const [tip, setTip] = useState<Tip | null>(null);
+  // A scroll moves what the tip points at; it closes rather than drift.
+  useEffect(() => {
+    if (!tip) return;
+    const close = () => setTip(null);
+    window.addEventListener('scroll', close, true);
+    return () => window.removeEventListener('scroll', close, true);
+  }, [tip]);
+  const tipProps = (t: BossTotal | undefined) =>
+    t?.problems.length
+      ? {
+          onMouseEnter: (e: MouseEvent<HTMLElement>) => setTip(tipAt(e.currentTarget, t)),
+          onMouseLeave: () => setTip(null)
+        }
+      : {};
   const view = lineupView(players, night, answers, raid, places, usual, targets);
   const totals = new Map(view.totals.map((t) => [t.boss.id, t]));
   const gaps = view.totals.filter((t) => t.problems.length);
@@ -535,13 +565,16 @@ function RaidGrid({
       key: `boss-${t.boss.id}`,
       head: `${raid.bosses.indexOf(t.boss) + 1}. ${t.boss.short}`,
       text: t.brief.join(' · '),
-      title: hoverText(t)
+      // Read out in full, since the tip is for the pointer only.
+      full: `${t.problems.join('; ')}.`,
+      total: t
     })),
     ...view.notComing.map((name) => ({
       key: `out-${name}`,
       head: name,
       text: 'is in, but said they’re not coming',
-      title: undefined
+      full: null,
+      total: undefined
     })),
     ...(view.benchOut.length
       ? [
@@ -549,7 +582,8 @@ function RaidGrid({
             key: 'bench',
             head: 'Bench',
             text: `${view.benchOut.join(' and ')} ${view.benchOut.length === 1 ? 'is' : 'are'} out on every boss unless you put them in.`,
-            title: undefined
+            full: null,
+            total: undefined
           }
         ]
       : [])
@@ -566,11 +600,12 @@ function RaidGrid({
           {looks.length ? (
             <ul>
               {looks.map((l) => (
-                <li key={l.key}>
-                  <strong title={l.title}>{l.head}</strong>{' '}
-                  <span className="text-muted" title={l.title}>
+                <li key={l.key} {...tipProps(l.total)}>
+                  <strong>{l.head}</strong>{' '}
+                  <span className="text-muted" aria-hidden={l.full ? true : undefined}>
                     {l.text}
                   </span>
+                  {l.full && <span className="visually-hidden">{l.full}</span>}
                 </li>
               ))}
             </ul>
@@ -606,8 +641,12 @@ function RaidGrid({
                     className="blg-boss"
                     data-skipped={boss.skipped}
                     data-warn={(t?.problems.length ?? 0) > 0}
-                    title={hoverText(t)}
                     {...hotProps(boss.id)}
+                    {...tipProps(t)}
+                    onMouseEnter={(e) => {
+                      setHot(boss.id);
+                      tipProps(t).onMouseEnter?.(e);
+                    }}
                   >
                     <ColumnSizer bosses={raid.bosses} />
                     <img className="blg-backdrop" src={boss.art} alt="" onError={hideBroken} />
@@ -788,6 +827,19 @@ function RaidGrid({
           })}
         </table>
       </div>
+
+      {tip &&
+        createPortal(
+          <div className="blg-tip" role="tooltip" style={{ left: tip.left, top: tip.top, width: TIP_WIDTH }}>
+            <strong>{tip.title}</strong>
+            <ul>
+              {tip.lines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>,
+          document.body
+        )}
 
       <p className="blg-key text-muted">
         <span>
