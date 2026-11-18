@@ -42,6 +42,29 @@ describe('news posts', () => {
     });
   });
 
+  it('keeps a post dated later hidden from everyone but Staff until then', async () => {
+    await withTxn(async ({ q, asAnon, asUser }) => {
+      await q(
+        "insert into public.news_posts (slug, title, category, summary, published_at) values ('later', 'Later', 'Fix', 'Soon.', now() + interval '1 day')"
+      );
+      const later = "select 1 from public.news_posts where slug = 'later'";
+      expect((await asAnon(later)).rowCount).toBe(0);
+      expect((await asUser(RAIDER_T1, later)).rowCount).toBe(0);
+      expect((await asUser(SITE_ADMIN, later)).rowCount).toBe(1);
+    });
+  });
+
+  it('refuses an add that picks its own id', async () => {
+    await withTxn(async ({ asUser }) => {
+      await expect(
+        asUser(
+          SITE_ADMIN,
+          "insert into public.news_posts (id, slug, title, category, summary) values (999999, 'picked', 'P', 'Fix', 'P.')"
+        )
+      ).rejects.toMatchObject({ code: RLS_DENIED });
+    });
+  });
+
   it('lets Staff write, edit, publish and delete a post, signed as themselves', async () => {
     await withTxn(async ({ q, asUser }) => {
       const me = (await q('select id from public.people where auth_user_id = $1', [SITE_ADMIN])).rows[0]?.id ?? null;

@@ -18,7 +18,7 @@ News posts (#1523), site-wide. published_at null: a draft, which only Staff (is_
 | cover_caption | text |  | true |  |  |  |
 | version | text |  | true |  |  | The site version the post went out with, for the copied news.json entries; optional on a new post. |
 | pinned | boolean | false | false |  |  |  |
-| published_at | timestamp with time zone |  | true |  |  | When the post was published; null while it is a draft. The copied entries carry their news.json date at noon Eastern. |
+| published_at | timestamp with time zone |  | true |  |  | When the post was published; null while it is a draft; a date still to come keeps it hidden until then. The copied entries carry their news.json date at noon Eastern. |
 | written_by | integer | my_person_id() | true |  | [public.people](public.people.md) | The person who wrote the post: the caller, set on insert. |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  | The last edit. |

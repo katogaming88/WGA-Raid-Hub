@@ -2,8 +2,9 @@
 -- instead of in news.json through a PR and a deploy.
 --
 -- * news_posts: one row per post. Site-wide, no guild or team (#1364, #1517).
---   published_at null is a draft; anyone, signed in or not, reads a published
---   post, and only Staff read drafts. Staff write with plain table writes under
+--   published_at null is a draft, and a date still to come waits until then.
+--   Anyone, signed in or not, reads a published post; only Staff read the rest.
+--   Staff write with plain table writes under
 --   the rules below; today Staff is is_site_admin(), Admins and Moderators once
 --   Staff ranks exist (#1520). slug is the post's address (/news/<slug>), kept
 --   when the title is edited.
@@ -45,7 +46,7 @@ comment on column public.news_posts.cover_path is
 comment on column public.news_posts.version is
   'The site version the post went out with, for the copied news.json entries; optional on a new post.';
 comment on column public.news_posts.published_at is
-  'When the post was published; null while it is a draft. The copied entries carry their news.json date at noon Eastern.';
+  'When the post was published; null while it is a draft; a date still to come keeps it hidden until then. The copied entries carry their news.json date at noon Eastern.';
 comment on column public.news_posts.written_by is
   'The person who wrote the post: the caller, set on insert.';
 comment on column public.news_posts.updated_at is
@@ -59,7 +60,7 @@ create trigger trg_news_posts_updated_at
   for each row execute function public.set_updated_at();
 
 create policy "Public read published news_posts" on public.news_posts for select
-  using (published_at is not null or (select is_site_admin()));
+  using (published_at <= current_timestamp or (select is_site_admin()));
 create policy "Staff add news_posts" on public.news_posts for insert to authenticated
   with check ((select is_site_admin()) and written_by is not distinct from (select my_person_id()));
 create policy "Staff edit news_posts" on public.news_posts for update to authenticated
@@ -71,9 +72,12 @@ create policy "Claude readers read news_posts" on public.news_posts
 
 revoke all on table public.news_posts from public, anon, authenticated, service_role;
 grant select on table public.news_posts to anon, service_role;
--- Every column but written_by, so an edit (by any Staff member) keeps the
--- post's author.
-grant select, insert, delete on table public.news_posts to authenticated;
+-- Named columns only: an add never picks its own id or timestamps, and an
+-- edit (by any Staff member) never changes written_by, so a post keeps its
+-- author.
+grant select, delete on table public.news_posts to authenticated;
+grant insert (slug, title, category, summary, body, cover_path, cover_caption, version, pinned, published_at, written_by)
+  on table public.news_posts to authenticated;
 grant update (slug, title, category, summary, body, cover_path, cover_caption, version, pinned, published_at)
   on table public.news_posts to authenticated;
 

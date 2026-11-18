@@ -14821,7 +14821,7 @@
           "name": "published_at",
           "type": "timestamp with time zone",
           "nullable": true,
-          "comment": "When the post was published; null while it is a draft. The copied entries carry their news.json date at noon Eastern."
+          "comment": "When the post was published; null while it is a draft; a date still to come keeps it hidden until then. The copied entries carry their news.json date at noon Eastern."
         },
         {
           "name": "written_by",
