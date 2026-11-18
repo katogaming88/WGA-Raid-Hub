@@ -125,13 +125,14 @@ Deno.test('a raider with no picks has the same row as before picks, so the post 
     ),
     lineupGrid(ROSTER, BOSSES)
   );
-  assert(!lineupSvg(lineupGrid(ROSTER, BOSSES)).includes('another character or spec'));
+  assert(!lineupSvg(lineupGrid(ROSTER, BOSSES)).includes('spec-icon:'));
 });
 
-Deno.test('the drawing marks a picked cell with a bar in the class played, and says so in the legend (#1873)', () => {
+Deno.test('the drawing shows a picked cell as the spec’s icon framed in the class played (#1873)', () => {
   const svg = lineupSvg(lineupGrid(ROSTER, PICKED));
-  assert(svg.includes('height="3" fill="#ff7c0a"/>'));
-  assert(svg.includes('>plays another character or spec</text>'));
+  assert(svg.includes('href="spec-icon:warlock-destruction"'));
+  assert(svg.includes('href="spec-icon:druid-restoration"'));
+  assert(svg.includes('stroke="#ff7c0a"'));
 });
 
 // -- Posting -------------------------------------------------------------------

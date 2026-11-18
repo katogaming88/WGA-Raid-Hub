@@ -24,7 +24,7 @@ import {
   inQuietHours,
   startsAt
 } from './signup-sheet.ts';
-import { CLASS_COLORS, pictureKey } from './sheet-picture.ts';
+import { CLASS_COLORS, pictureKey, specIconKey } from './sheet-picture.ts';
 import { isoDate, zonedTimeToUtc } from './time.ts';
 
 export type LineupSetting = {
@@ -298,14 +298,20 @@ export function lineupSvg(grid: Grid): string {
       row.cells.forEach((cell, i) => {
         const x = PAD + NAME_W + i * CELL_W;
         const cx = x + CELL_W / 2;
-        // Another character or spec: a bar under the mark in the class played (#1873).
+        // Another character or spec: the spec's icon in a frame of the class
+        // played, as on the site's grid (#1873). drawSvg fills in the icon; a
+        // missing one leaves a dot in the class colour.
         const picked = row.picks?.[i];
         if (picked) {
+          const color = CLASS_COLORS[picked.className] ?? '#e8eaf0';
+          if (cell === 'came')
+            parts.push(`<rect x="${x}" y="${y}" width="${CELL_W}" height="${ROW_H}" fill="#1a3a2c"/>`);
           parts.push(
-            `<rect x="${x + 14}" y="${y + ROW_H - 5}" width="${CELL_W - 28}" height="3" fill="${CLASS_COLORS[picked.className] ?? '#e8eaf0'}"/>`
+            `<circle cx="${cx}" cy="${y + ROW_H / 2}" r="5" fill="${color}"/>`,
+            `<image href="spec-icon:${specIconKey(picked.className, picked.spec)}" x="${cx - 12}" y="${y + 4}" width="24" height="24"/>`,
+            `<rect x="${cx - 13}" y="${y + 3}" width="26" height="26" fill="none" stroke="${color}" stroke-width="2"/>`
           );
-        }
-        if (cell === 'out') {
+        } else if (cell === 'out') {
           parts.push(`<rect x="${x}" y="${y}" width="${CELL_W}" height="${ROW_H}" fill="#161a22"/>`);
           parts.push(`<text x="${cx}" y="${y + 21}" font-size="16" fill="#3a4152" text-anchor="middle">–</text>`);
         } else if (cell === 'in') {
@@ -364,13 +370,7 @@ export function lineupSvg(grid: Grid): string {
     `<path d="M${lx} ${ly + 17} L${lx + 12} ${ly + 17} L${lx + 6} ${ly + 27} Z" fill="#ff6b6b"/><text x="${lx + 20}" y="${ly + 26}" font-size="14" fill="#9aa3b5">goes out for this boss</text>`,
     `<text x="${lx + 1}" y="${ly + 52}" font-size="14" fill="#9aa3b5">–<tspan dx="12">sitting out</tspan></text>`
   );
-  const anyPick = grid.groups.some((g) => g.rows.some((r) => r.picks));
-  if (anyPick) {
-    parts.push(
-      `<rect x="${lx}" y="${ly + 70}" width="12" height="3" fill="#e8eaf0"/><text x="${lx + 20}" y="${ly + 76}" font-size="14" fill="#9aa3b5">plays another character or spec</text>`
-    );
-  }
-  const height = Math.max(tableBottom, ly + (anyPick ? 86 : 60)) + PAD;
+  const height = Math.max(tableBottom, ly + 60) + PAD;
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="Onest">` +
     `<rect width="${width}" height="${height}" fill="#11141b"/>` +
