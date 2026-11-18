@@ -2,10 +2,8 @@
    a post's own page, and Staff's editor. Grouped with rules and hairlines and
    plain colored words, not boxes and pills (Kat, 2026-10-24 and 11-01). */
 
-/* Two classes, so they win over .page and .page-header, which load later. */
-.page.news-page {
-  max-width: 860px;
-}
+/* Two classes (.page.x, .page-header.x), so they win over .page and
+   .page-header, which load later. The timeline uses the site's usual page width. */
 
 .page-header.news-header {
   flex-direction: row;
@@ -223,6 +221,7 @@
 }
 
 .news-item-summary {
+  max-width: 75ch;
   color: var(--text-muted);
   line-height: 1.5;
 }
