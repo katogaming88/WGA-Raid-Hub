@@ -81,6 +81,8 @@ erDiagram
   integer encounter_id FK
   integer player_id FK
   timestamp_with_time_zone created_at
+  integer character_id FK
+  integer class_spec_id FK
 }
 "public.raid_night_participation" {
   integer id

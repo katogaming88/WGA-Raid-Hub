@@ -466,6 +466,8 @@ export type Database = {
       }
       boss_groups: {
         Row: {
+          character_id: number | null
+          class_spec_id: number | null
           created_at: string
           encounter_id: number
           id: number
@@ -473,6 +475,8 @@ export type Database = {
           team_id: number
         }
         Insert: {
+          character_id?: number | null
+          class_spec_id?: number | null
           created_at?: string
           encounter_id: number
           id?: never
@@ -480,6 +484,8 @@ export type Database = {
           team_id: number
         }
         Update: {
+          character_id?: number | null
+          class_spec_id?: number | null
           created_at?: string
           encounter_id?: number
           id?: never
@@ -487,6 +493,20 @@ export type Database = {
           team_id?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "boss_groups_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boss_groups_class_spec_id_fkey"
+            columns: ["class_spec_id"]
+            isOneToOne: false
+            referencedRelation: "classes_specs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "boss_groups_encounter_id_fkey"
             columns: ["encounter_id"]
@@ -2267,6 +2287,8 @@ export type Database = {
       }
       raid_night_lineups: {
         Row: {
+          character_id: number | null
+          class_spec_id: number | null
           created_at: string
           encounter_id: number
           id: number
@@ -2275,6 +2297,8 @@ export type Database = {
           team_id: number
         }
         Insert: {
+          character_id?: number | null
+          class_spec_id?: number | null
           created_at?: string
           encounter_id: number
           id?: never
@@ -2283,6 +2307,8 @@ export type Database = {
           team_id: number
         }
         Update: {
+          character_id?: number | null
+          class_spec_id?: number | null
           created_at?: string
           encounter_id?: number
           id?: never
@@ -2291,6 +2317,20 @@ export type Database = {
           team_id?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "raid_night_lineups_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raid_night_lineups_class_spec_id_fkey"
+            columns: ["class_spec_id"]
+            isOneToOne: false
+            referencedRelation: "classes_specs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "raid_night_lineups_player_id_fkey"
             columns: ["player_id"]
@@ -5947,6 +5987,10 @@ export type Database = {
         Args: { p_team_id: number; p_team_member_id: number }
         Returns: undefined
       }
+      check_lineup_picks: {
+        Args: { p_picks: Json; p_player_ids: number[]; p_team_id: number }
+        Returns: undefined
+      }
       check_lineup_players: {
         Args: { p_player_ids: number[]; p_team_id: number }
         Returns: undefined
@@ -6237,6 +6281,14 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      lineup_picks_norm: {
+        Args: { p_picks: Json; p_team_id: number }
+        Returns: {
+          character_id: number
+          class_spec_id: number
+          player_id: number
+        }[]
       }
       link_battlenet_roster_characters: {
         Args: { p_characters: Json; p_person_id: number }
@@ -6533,6 +6585,7 @@ export type Database = {
         Args: { p_approve: boolean; p_note?: string; p_request_id: number }
         Returns: number
       }
+      same_lineup_picks: { Args: { a: Json; b: Json }; Returns: boolean }
       same_player_set: { Args: { a: number[]; b: number[] }; Returns: boolean }
       save_battlenet_characters: {
         Args: { p_characters: Json; p_person_id: number }
@@ -6624,7 +6677,9 @@ export type Database = {
       set_boss_group: {
         Args: {
           p_encounter_id: number
+          p_expected_picks?: Json
           p_expected_player_ids?: number[]
+          p_picks?: Json
           p_player_ids: number[]
           p_team_id: number
         }
@@ -6683,7 +6738,9 @@ export type Database = {
       set_raid_night_lineup: {
         Args: {
           p_encounter_id: number
+          p_expected_picks?: Json
           p_expected_player_ids?: number[]
+          p_picks?: Json
           p_player_ids: number[]
           p_raid_date: string
           p_team_id: number

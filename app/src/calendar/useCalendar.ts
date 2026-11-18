@@ -11,6 +11,7 @@ import {
   type EncounterRow,
   type LeaverRow,
   type NightBossRow,
+  type PickRow,
   type PlaceRow,
   type RoleTargets,
   type SeasonRow
@@ -231,6 +232,10 @@ export function useEncounters() {
   );
 }
 
+// Each raider's pick on a boss (#1580), with the alt's row: a teammate reads an
+// alt picked for their team, an officer every alt on it.
+const PICK_COLUMNS = 'character_id, class_spec_id, character:characters(id, name, class_name, spec_name)';
+
 // One night's plan: its bosses and who is in for each.
 export type NightPlan = { bosses: NightBossRow[]; places: PlaceRow[] };
 
@@ -247,7 +252,7 @@ export function useNightPlan(teamId: number, date: string) {
       // team-read-guard: one raid night, one row per boss and raider in the lineup, a few hundred at most
       client
         .from('raid_night_lineups')
-        .select('encounter_id, player_id')
+        .select(`encounter_id, player_id, ${PICK_COLUMNS}`)
         .eq('team_id', teamId)
         .eq('raid_date', date)
         .order('id')
@@ -268,7 +273,7 @@ export function useBossGroups(teamId: number) {
     // team-read-guard: one row per boss and raider in the usual groups, a few hundred at most
     client
       .from('boss_groups')
-      .select('encounter_id, player_id, player:players(name_realm, nickname)')
+      .select(`encounter_id, player_id, ${PICK_COLUMNS}, player:players(name_realm, nickname)`)
       .eq('team_id', teamId)
       .order('id')
   );
@@ -293,6 +298,9 @@ export type BossSave = {
   players: number[];
   // What the page last read, so a save made after someone else's is refused.
   expected: number[];
+  // Who plays another character or spec (#1580), and what was read.
+  picks: PickRow[];
+  expectedPicks: PickRow[];
 };
 
 // The outcome of saving several bosses one after another: which went through
@@ -325,7 +333,9 @@ export function useSaveNight(teamId: number, date: string) {
           p_raid_date: date,
           p_encounter_id: s.encounterId,
           p_player_ids: s.players,
-          p_expected_player_ids: s.expected
+          p_expected_player_ids: s.expected,
+          p_picks: s.picks,
+          p_expected_picks: s.expectedPicks
         })
       ),
     { key: ['save-night', teamId], refreshes: [lineupKey(teamId)] }
@@ -347,7 +357,9 @@ export function useSaveGroups(teamId: number, date: string) {
           p_raid_date: date,
           p_encounter_id: b.encounterId,
           p_player_ids: b.players,
-          p_expected_player_ids: b.expected
+          p_expected_player_ids: b.expected,
+          p_picks: b.picks,
+          p_expected_picks: b.expectedPicks
         })
       );
       if (night.error) return night;
@@ -359,7 +371,9 @@ export function useSaveGroups(teamId: number, date: string) {
             p_team_id: teamId,
             p_encounter_id: b.encounterId,
             p_player_ids: b.players,
-            p_expected_player_ids: b.expected
+            p_expected_player_ids: b.expected,
+            p_picks: b.picks,
+            p_expected_picks: b.expectedPicks
           })
       );
       if (groups.error) return groups;
@@ -387,7 +401,9 @@ export function useSaveBossGroups(teamId: number) {
           p_team_id: teamId,
           p_encounter_id: s.encounterId,
           p_player_ids: s.players,
-          p_expected_player_ids: s.expected
+          p_expected_player_ids: s.expected,
+          p_picks: s.picks,
+          p_expected_picks: s.expectedPicks
         })
       ),
     { key: ['save-boss-groups', teamId], refreshes: [lineupKey(teamId)] }

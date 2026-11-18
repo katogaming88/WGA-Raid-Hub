@@ -33,7 +33,18 @@ export type NightBossRow = {
   confirmed_at: string | null;
 };
 // One raider in one boss's group, or in one boss's lineup for the night.
-export type PlaceRow = { encounter_id: number; player_id: number };
+export type PlaceRow = {
+  encounter_id: number;
+  player_id: number;
+  // Which character and spec they play on the boss (#1580): null is their
+  // roster character in its usual spec. `character` is the alt's row, read
+  // with the lineup; null when the reader can't see it.
+  character_id?: number | null;
+  class_spec_id?: number | null;
+  character?: PickedCharacter | null;
+};
+
+export type PickedCharacter = { id: number; name: string; class_name: string | null; spec_name: string | null };
 
 // Who is in, boss by boss.
 export type Places = ReadonlyMap<number, ReadonlySet<number>>;
@@ -52,6 +63,119 @@ export const placesFor = (places: Places, encounterId: number) => places.get(enc
 
 export const sameSet = (a: ReadonlySet<number>, b: ReadonlySet<number>) =>
   a.size === b.size && [...a].every((x) => b.has(x));
+
+// Picks (#1580): for each boss, the raiders playing another character or
+// spec there. A raider with no entry plays their roster character in its
+// usual spec, so a team that never picks sees no change.
+export type Pick = { characterId: number | null; classSpecId: number | null };
+export type BossPicks = ReadonlyMap<number, Pick>;
+export type Picks = ReadonlyMap<number, BossPicks>;
+// A pick as the save functions take and the tables hold it.
+export type PickRow = { player_id: number; character_id: number | null; class_spec_id: number | null };
+
+export function picksOf(rows: PlaceRow[]): Map<number, Map<number, Pick>> {
+  const picks = new Map<number, Map<number, Pick>>();
+  for (const r of rows) {
+    if (r.character_id == null && r.class_spec_id == null) continue;
+    if (!picks.has(r.encounter_id)) picks.set(r.encounter_id, new Map());
+    picks
+      .get(r.encounter_id)!
+      .set(r.player_id, { characterId: r.character_id ?? null, classSpecId: r.class_spec_id ?? null });
+  }
+  return picks;
+}
+
+const NO_PICKS: BossPicks = new Map();
+export const picksFor = (picks: Picks, encounterId: number) => picks.get(encounterId) ?? NO_PICKS;
+
+export const samePick = (a: Pick | undefined, b: Pick | undefined) =>
+  (a?.characterId ?? null) === (b?.characterId ?? null) && (a?.classSpecId ?? null) === (b?.classSpecId ?? null);
+
+// Two bosses' picks, counting only raiders in `inn`: a pick left on someone
+// sitting out means nothing and is never saved.
+export function samePicks(a: BossPicks, b: BossPicks, inn: ReadonlySet<number>): boolean {
+  return [...inn].every((id) => samePick(a.get(id), b.get(id)));
+}
+
+// What a save sends: the picks of raiders still in, in player order.
+export const pickRows = (picks: BossPicks, inn: ReadonlySet<number>): PickRow[] =>
+  [...picks]
+    .filter(([id, p]) => inn.has(id) && (p.characterId !== null || p.classSpecId !== null))
+    .sort(([a], [b]) => a - b)
+    .map(([id, p]) => ({ player_id: id, character_id: p.characterId, class_spec_id: p.classSpecId }));
+
+export type PickEdits = ReadonlyMap<number, BossPicks>;
+
+export function currentPicks(saved: Picks, edits: PickEdits): Map<number, BossPicks> {
+  const out = new Map<number, BossPicks>(saved);
+  for (const [id, picks] of edits) out.set(id, picks);
+  return out;
+}
+
+// One raider's pick on one boss; null goes back to their roster character in
+// its usual spec. A boss whose picks match what is saved drops its edit.
+export function setPick(
+  saved: Picks,
+  edits: PickEdits,
+  encounterId: number,
+  playerId: number,
+  pick: Pick | null
+): Map<number, BossPicks> {
+  const next = new Map(edits);
+  const picks = new Map(edits.get(encounterId) ?? picksFor(saved, encounterId));
+  if (!pick || (pick.characterId === null && pick.classSpecId === null)) picks.delete(playerId);
+  else picks.set(playerId, pick);
+  const was = picksFor(saved, encounterId);
+  const same = picks.size === was.size && [...picks].every(([id, p]) => samePick(p, was.get(id)));
+  if (same) next.delete(encounterId);
+  else next.set(encounterId, picks);
+  return next;
+}
+
+// What a raider plays on a boss, from their pick: the class and spec (for
+// the cell's color and icon, the role counts and the buffs), the alt's name,
+// and whether it differs from their roster character in its usual spec.
+export type ClassSpecRow = { id: number; class: string; spec: string; role: string | null };
+export type PlayLookup = {
+  specs: ReadonlyMap<number, ClassSpecRow>;
+  characters: ReadonlyMap<number, PickedCharacter>;
+};
+export const NO_LOOKUP: PlayLookup = { specs: new Map(), characters: new Map() };
+export type Play = { class: string; spec: string; role: Role; character: string | null; swapped: boolean };
+
+const roleOf = (look: PlayLookup, cls: string, spec: string): Role | null => {
+  for (const cs of look.specs.values()) {
+    if (cs.class === cls && cs.spec === spec && cs.role) return cs.role as Role;
+  }
+  return null;
+};
+
+export function playOf(player: PlayerRow, pick: Pick | undefined, look: PlayLookup): Play {
+  const main = player.classes_specs;
+  const mainPlay: Play = {
+    class: main?.class ?? '',
+    spec: main?.spec ?? '',
+    role: (main?.role ?? 'Ranged') as Role,
+    character: null,
+    swapped: false
+  };
+  if (!pick || (pick.characterId === null && pick.classSpecId === null)) return mainPlay;
+  const alt = pick.characterId !== null ? look.characters.get(pick.characterId) : undefined;
+  const picked = pick.classSpecId !== null ? look.specs.get(pick.classSpecId) : undefined;
+  const cls = picked?.class ?? alt?.class_name ?? mainPlay.class;
+  const spec = picked?.spec ?? (pick.characterId !== null ? alt?.spec_name : null) ?? mainPlay.spec;
+  return {
+    class: cls,
+    spec,
+    role: (picked?.role as Role | null) ?? roleOf(look, cls, spec) ?? mainPlay.role,
+    character: pick.characterId !== null ? (alt?.name ?? 'an alt') : null,
+    swapped: true
+  };
+}
+
+// "on Kattotem as Restoration Shaman" or "as Destruction": a pick in words.
+export const playWords = (play: Play) =>
+  play.character ? `on ${play.character} as ${play.spec} ${play.class}` : `as ${play.spec}`;
 
 // Mythic allows 20 raiders per boss; a lair or mini raid allows 25 (Kat).
 export const MYTHIC_CAP = 20;
@@ -245,6 +369,10 @@ export type LineupCell = {
   differs: boolean;
   // In, but they said they are not coming.
   conflict: boolean;
+  // What they play on this boss (#1580), and on it in the usual group.
+  play: Play;
+  usuallyIn: boolean;
+  usualPlay: Play;
 };
 
 export type LineupRow = {
@@ -341,7 +469,10 @@ export function lineupView(
   raid: LineupRaid,
   places: Places,
   groups: Places,
-  targets: RoleTargets = DEFAULT_ROLE_TARGETS
+  targets: RoleTargets = DEFAULT_ROLE_TARGETS,
+  picks: Picks = new Map(),
+  look: PlayLookup = NO_LOOKUP,
+  usualPicks: Picks = new Map()
 ): LineupView {
   const byPlayer = new Map(answers.filter((a) => a.raid_date === night.date).map((a) => [a.player_id, a]));
   const rows: NightRow[] = rosterOf(players)
@@ -362,14 +493,25 @@ export function lineupView(
   const isIn = (boss: LineupBoss, id: number) => placesFor(places, boss.id).has(id);
   const saidOut = (r: NightRow) => r.status.answered && r.status.kind === 'out';
 
+  const playFor = (boss: LineupBoss, player: PlayerRow) =>
+    playOf(player, picksFor(picks, boss.id).get(player.id), look);
+
   const rowOf = (r: NightRow): LineupRow => {
     const cells = raid.bosses.map((boss) => {
       const inn = !boss.skipped && isIn(boss, r.player.id);
+      const usuallyIn = placesFor(groups, boss.id).has(r.player.id);
+      const pick = picksFor(picks, boss.id).get(r.player.id);
+      const usualPick = picksFor(usualPicks, boss.id).get(r.player.id);
       return {
         boss,
         in: inn,
-        differs: !boss.skipped && inn !== placesFor(groups, boss.id).has(r.player.id),
-        conflict: inn && saidOut(r)
+        // Tonight only: in or out the other way from the usual group, or in
+        // on another character or spec than the group has them on.
+        differs: !boss.skipped && (inn !== usuallyIn || (inn && usuallyIn && !samePick(pick, usualPick))),
+        conflict: inn && saidOut(r),
+        play: inn ? playFor(boss, r.player) : playOf(r.player, undefined, look),
+        usuallyIn,
+        usualPlay: playOf(r.player, usualPick, look)
       };
     });
     const tag = r.status.answered ? r.status.label : r.player.is_bench ? 'Bench' : r.player.is_trial ? 'Trial' : null;
@@ -382,7 +524,19 @@ export function lineupView(
     };
   };
 
-  const inFor = (boss: LineupBoss) => rows.filter((r) => isIn(boss, r.player.id));
+  // Whoever is in, as what they play on the boss: the role counts and buffs
+  // follow a pick (Kat, #1680).
+  const inFor = (boss: LineupBoss): Raider[] =>
+    rows
+      .filter((r) => isIn(boss, r.player.id))
+      .map((r) => {
+        const play = playFor(boss, r.player);
+        return {
+          name: r.name,
+          role: play.role,
+          player: { ...r.player, classes_specs: { class: play.class, spec: play.spec, role: play.role } }
+        };
+      });
 
   return {
     groups: ROLE_ORDER.map((role) => ({
@@ -399,6 +553,37 @@ export function lineupView(
     benchOut: rows.filter((r) => r.player.is_bench && live.every((b) => !isIn(b, r.player.id))).map((r) => r.name),
     notComing: rows.filter((r) => saidOut(r) && live.some((b) => isIn(b, r.player.id))).map((r) => r.name)
   };
+}
+
+// The save bar's lines for picks (#1680): "Katorrí on Kattotem as
+// Restoration Shaman for Ula'tek", "Katorrí as Destruction for Sszorak", or
+// "Katorrí back to Demonology for Sszorak".
+export function pickChanges(
+  saved: Picks,
+  now: Picks,
+  places: Places,
+  bosses: LineupBoss[],
+  players: PlayerRow[],
+  look: PlayLookup
+): string[] {
+  const out: { name: string; text: string }[] = [];
+  for (const boss of bosses.filter((b) => !b.skipped)) {
+    for (const player of players) {
+      if (!placesFor(places, boss.id).has(player.id)) continue;
+      const was = picksFor(saved, boss.id).get(player.id);
+      const is = picksFor(now, boss.id).get(player.id);
+      if (samePick(was, is)) continue;
+      const play = playOf(player, is, look);
+      const name = displayName(player);
+      out.push({
+        name,
+        text: play.swapped
+          ? `${name} ${playWords(play)} for ${boss.short}`
+          : `${name} back to ${play.spec} for ${boss.short}`
+      });
+    }
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name)).map((c) => c.text);
 }
 
 // What the save bar lists (#1681): "Ironjaw out on Twin Fangs", or "Ironjaw
@@ -579,7 +764,7 @@ export function comingNights(rows: ComingBossRow[], bosses: LineupBoss[], change
 // bosses tonight" card says. Kat, 2026-09-18: sitting out a boss is not
 // missing the night, a night filled from the groups but not saved by an
 // officer still shows (marked not final), and raiders see only their own.
-export type YourBossTile = { n: number; name: string; in: boolean };
+export type YourBossTile = { n: number; name: string; in: boolean; play: string | null };
 export type YourBosses = {
   tiles: YourBossTile[];
   summary: string;
@@ -587,10 +772,27 @@ export type YourBosses = {
   notFinal: string | null;
 };
 
-export function yourBosses(raids: LineupRaid[], places: Places, me: PlayerRow): YourBosses | null {
+export function yourBosses(
+  raids: LineupRaid[],
+  places: Places,
+  me: PlayerRow,
+  picks: Picks = new Map(),
+  look: PlayLookup = NO_LOOKUP
+): YourBosses | null {
   const live = raids.flatMap((r) => r.bosses).filter((b) => !b.skipped);
   if (!live.length) return null;
-  const tiles = live.map((b, i) => ({ n: i + 1, name: b.name, in: placesFor(places, b.id).has(me.id) }));
+  // What to bring where it isn't their main in its usual spec (#1580):
+  // "Your Restoration Shaman (Kattotem)" or "Destruction".
+  const tiles = live.map((b, i) => {
+    const inn = placesFor(places, b.id).has(me.id);
+    const play = inn ? playOf(me, picksFor(picks, b.id).get(me.id), look) : null;
+    return {
+      n: i + 1,
+      name: b.name,
+      in: inn,
+      play: play?.swapped ? (play.character ? `Your ${play.spec} ${play.class} (${play.character})` : play.spec) : null
+    };
+  });
   const count = tiles.filter((t) => t.in).length;
   const out = live.filter((b) => !placesFor(places, b.id).has(me.id)).map((b) => b.short);
   const summary =

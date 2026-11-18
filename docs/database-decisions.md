@@ -3852,3 +3852,23 @@ Shipped: `20261118001559_account_preferences_lineup_cell_style.sql`.
 **Guild-wide (`team_id` null),** so someone reading two teams' lineups sees one look. **The value is held to `"names"` or `"bars"`** by the same `account_preferences_known_key` CHECK, so a typo fails at the write instead of quietly showing the default. No row means Names. The own-rows rule already covers it: anyone signed in sets their own row and reads only theirs.
 
 [Full discussion -> #1681](https://github.com/katogaming88/WGA-Raid-Hub/issues/1681).
+
+## #1580 -- a boss lineup records which character and spec each raider plays
+
+Shipped: `20261118100049_raid_night_lineups_character_spec.sql`.
+
+**Two nullable columns on both lineup tables, not a new table.** `raid_night_lineups` and `boss_groups` gain `character_id` (an alt from `characters`) and `class_spec_id` (a spec from `classes_specs`). Null means the raider's roster character in its usual spec, so every row already saved keeps its meaning and nothing is backfilled. `player_id` stays the person on the roster, which is what attendance and loot read, as the issue says.
+
+**The usual group carries picks too.** Kat's #1680 design saves a swap with the same "just this night / every night after" choice, and "every night after" saves the group, so a raider who always plays Destruction on one boss is filled that way each week. Every path that copies a group onto a night copies the picks: `fill_raid_night()`, `set_boss_group()`'s coming nights, and `set_raid_night_boss_skipped()` putting a boss back.
+
+**One spelling for "the main in its usual spec".** `lineup_picks_norm()` stores a pick naming the raider's own roster character, or a character's usual spec, as null, so comparing a night with its group and a save with what it read stay exact. `check_lineup_picks()` refuses a pick for someone not in the lineup, two picks for one raider, a character that isn't one of the raider's own (through their membership's person), or a spec the character's class doesn't have.
+
+**Both save functions take the picks and what was read.** `set_raid_night_lineup()` and `set_boss_group()` were dropped and recreated with `p_picks` and `p_expected_picks`. The new app is their only caller and ships with this. A save made after someone else changed the picks is refused like one made after a change to who is in. The Boss groups page, which doesn't edit picks, sends each group's picks back unchanged.
+
+**A deleted alt takes its picks with it.** A `before delete` trigger on `characters` clears both columns wherever the alt was picked, so the raider goes back to their main in its usual spec. The foreign key's own `on delete set null` would have left the alt's spec on the main.
+
+**Teammates read a picked alt (Kat, 2026-11-18).** A new read rule on `characters` lets a raider read an alt picked in their own team's lineups or groups, so the team's read-only grid names it. No other alt becomes readable.
+
+**Left for later.** The Discord lineup post naming the character and spec is its own issue (Kat). Attendance still matches Warcraft Logs names to the roster character (#1242), so a raider who brings an alt can read as absent until that issue is done.
+
+[Full discussion -> #1580](https://github.com/katogaming88/WGA-Raid-Hub/issues/1580).

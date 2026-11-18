@@ -24,6 +24,9 @@ import {
   lineupRaids,
   onRoster,
   placesFor,
+  pickRows,
+  picksFor,
+  picksOf,
   placesOf,
   seasonOn,
   toggle,
@@ -133,6 +136,9 @@ function Groups({
   // roster: the grid and the save work on the second, the stale check on the
   // first.
   const stored = placesOf(groups);
+  // Picks (#1580) are set on a night's Boss lineup; this page keeps them for
+  // whoever stays in a group.
+  const storedPicks = picksOf(groups);
   const saved = onRoster(stored, players);
   const places = current(saved, edits);
   const changed = changes(saved, edits);
@@ -161,7 +167,9 @@ function Groups({
       changed.bosses.map((id): BossSave => ({
         encounterId: id,
         players: toList(placesFor(places, id)),
-        expected: toList(placesFor(stored, id))
+        expected: toList(placesFor(stored, id)),
+        picks: pickRows(picksFor(storedPicks, id), placesFor(places, id)),
+        expectedPicks: pickRows(picksFor(storedPicks, id), placesFor(stored, id))
       })),
       {
         onSuccess: (result: SaveResult) => {

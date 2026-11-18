@@ -35,8 +35,8 @@ begin
 
   get diagnostics v_count = row_count;
 
-  insert into raid_night_lineups (team_id, raid_date, encounter_id, player_id)
-  select p_team_id, p_raid_date, b.encounter_id, g.player_id
+  insert into raid_night_lineups (team_id, raid_date, encounter_id, player_id, character_id, class_spec_id)
+  select p_team_id, p_raid_date, b.encounter_id, g.player_id, g.character_id, g.class_spec_id
   from raid_night_bosses b
   join boss_groups g on g.team_id = b.team_id and g.encounter_id = b.encounter_id
   join players p on p.id = g.player_id and p.archived_at is null and not p.is_bench

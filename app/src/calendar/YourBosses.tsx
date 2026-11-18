@@ -3,7 +3,8 @@ import { useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
 import type { PlayerRow } from '../roster/roster';
 import type { RaidNight } from './calendar';
-import { lineupRaids, placesOf, yourBosses } from './lineup';
+import { useClassSpecs } from '../characters/useMainSwaps';
+import { lineupRaids, picksOf, placesOf, yourBosses, type PickedCharacter } from './lineup';
 import { useEncounters, useNightPlan } from './useCalendar';
 
 // "Your bosses tonight" on a raid night (#1216, boards C and D): the bosses a
@@ -15,12 +16,20 @@ export function YourBosses({ night, me, className }: { night: RaidNight; me: Pla
   const team = useTeam();
   const id = useId();
   const data = bothQueries(useNightPlan(team.id, night.date), useEncounters());
+  const specs = useClassSpecs();
   if (!data.isSuccess) return null;
   const [plan, encounters] = data.data;
   const card = yourBosses(
     lineupRaids(encounters, plan.bosses, { fresh: false, season: null }),
     placesOf(plan.places),
-    me
+    me,
+    picksOf(plan.places),
+    {
+      specs: new Map((specs.data ?? []).map((cs) => [cs.id, cs])),
+      characters: new Map(
+        plan.places.flatMap((r) => (r.character ? [[r.character.id, r.character] as [number, PickedCharacter]] : []))
+      )
+    }
   );
   if (!card) return null;
 
@@ -40,6 +49,8 @@ export function YourBosses({ night, me, className }: { night: RaidNight; me: Pla
             <span className="your-boss-n text-muted">Boss {t.n}</span>
             <span className="your-boss-name">{t.name}</span>
             <span className="your-boss-word">{t.in ? 'In' : 'Sitting out'}</span>
+            {/* What to bring, where it isn't their main in its usual spec (#1580). */}
+            {t.play && <span className="your-boss-play">{t.play}</span>}
           </li>
         ))}
       </ol>

@@ -8,7 +8,7 @@ Characters a person chose to show from their Battle.net account (#942 step 5, #1
 
 | Name | Type | Default | Nullable | Extra Definition | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | ---------------- | -------- | ------- | ------- |
-| id | integer |  | false |  | [public.season_signups](public.season_signups.md) [public.main_swap_requests](public.main_swap_requests.md) [public.recruit_applications](public.recruit_applications.md) |  |  |
+| id | integer |  | false |  | [public.season_signups](public.season_signups.md) [public.main_swap_requests](public.main_swap_requests.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_lineups](public.raid_night_lineups.md) [public.recruit_applications](public.recruit_applications.md) |  |  |
 | person_id | integer |  | false |  |  | [public.people](public.people.md) |  |
 | blizzard_id | bigint |  | false |  |  |  |  |
 | name | text |  | false |  |  |  |  |
@@ -38,6 +38,12 @@ Characters a person chose to show from their Battle.net account (#942 step 5, #1
 | characters_blizzard_id_key | CREATE UNIQUE INDEX characters_blizzard_id_key ON public.characters USING btree (blizzard_id) |
 | characters_person_id_idx | CREATE INDEX characters_person_id_idx ON public.characters USING btree (person_id) |
 
+## Triggers
+
+| Name | Definition |
+| ---- | ---------- |
+| characters_clear_lineup_picks | CREATE TRIGGER characters_clear_lineup_picks BEFORE DELETE ON public.characters FOR EACH ROW EXECUTE FUNCTION clear_lineup_picks_for_character() |
+
 ## Relations
 
 ```mermaid
@@ -45,6 +51,8 @@ erDiagram
 
 "public.season_signups" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
 "public.main_swap_requests" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
+"public.boss_groups" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
+"public.raid_night_lineups" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
 "public.recruit_applications" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
 "public.characters" }o--|| "public.people" : "FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE"
 
@@ -103,6 +111,25 @@ erDiagram
   integer reviewed_by FK
   text officer_note
   integer approved_player_id FK
+}
+"public.boss_groups" {
+  integer id
+  integer team_id FK
+  integer encounter_id FK
+  integer player_id FK
+  timestamp_with_time_zone created_at
+  integer character_id FK
+  integer class_spec_id FK
+}
+"public.raid_night_lineups" {
+  integer id
+  integer team_id FK
+  date raid_date FK
+  integer encounter_id FK
+  integer player_id FK
+  timestamp_with_time_zone created_at
+  integer character_id FK
+  integer class_spec_id FK
 }
 "public.recruit_applications" {
   integer id

@@ -38,8 +38,8 @@ begin
   where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id;
 
   if not p_skipped then
-    insert into raid_night_lineups (team_id, raid_date, encounter_id, player_id)
-    select p_team_id, p_raid_date, p_encounter_id, g.player_id
+    insert into raid_night_lineups (team_id, raid_date, encounter_id, player_id, character_id, class_spec_id)
+    select p_team_id, p_raid_date, p_encounter_id, g.player_id, g.character_id, g.class_spec_id
     from boss_groups g
     join players p on p.id = g.player_id and p.archived_at is null and not p.is_bench
     where g.team_id = p_team_id and g.encounter_id = p_encounter_id;
