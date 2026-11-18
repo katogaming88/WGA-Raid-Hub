@@ -35,8 +35,8 @@ const RAID: LineupRaid = {
   name: 'R',
   cap: 1,
   bosses: [
-    { id: 1, name: 'A', short: 'A', skipped: false, confirmed: false, cap: 1 },
-    { id: 2, name: 'B', short: 'B', skipped: false, confirmed: false, cap: 1 }
+    { id: 1, name: 'A', short: 'A', skipped: false, confirmed: false, cap: 1, base: 1, art: '' },
+    { id: 2, name: 'B', short: 'B', skipped: false, confirmed: false, cap: 1, base: 1, art: '' }
   ]
 };
 

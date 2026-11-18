@@ -307,8 +307,8 @@ const ZONE = { id: 10, name: 'The Venomous Abyss', season: 'S1', is_mini_raid: f
 const LINEUP_TABLES = {
   seasons: [{ code: 'S1', display_name: 'Season One', starts_at: '2026-01-01', ends_at: null }],
   raid_encounters: [
-    { id: 101, name: "Nek'zali the Soulcoiler", sort_index: 1, zone: ZONE },
-    { id: 102, name: 'Sszorak', sort_index: 2, zone: ZONE }
+    { id: 101, name: "Nek'zali the Soulcoiler", sort_index: 1, wcl_encounter_id: 3101, zone: ZONE },
+    { id: 102, name: 'Sszorak', sort_index: 2, wcl_encounter_id: 3102, zone: ZONE }
   ],
   raid_night_bosses: [
     { raid_date: NIGHT, encounter_id: 101, position: 1, skipped: false, confirmed_at: null },
@@ -332,7 +332,7 @@ describe('Calendar (new app): the boss lineup', () => {
     opened = await openApp(
       browser,
       server.port,
-      asOfficer(`${BASE}?date=${NIGHT}&view=lineup`, 'main:has(.lineup-toggle)', {
+      asOfficer(`${BASE}?date=${NIGHT}&view=lineup`, 'main:has(.blg-cell)', {
         tables: { ...tables(), ...LINEUP_TABLES },
         rpc: { ...signedIn(VIEWER, 'officer').rpc, set_raid_night_lineup: 4 }
       })
@@ -349,7 +349,7 @@ describe('Calendar (new app): the boss lineup', () => {
   });
 
   it('lists everyone on the roster by role, with the plan, the counts and the changes', async () => {
-    const rows = await opened.page.locator('.lineup-grid tbody .lineup-raider-name').allTextContents();
+    const rows = await opened.page.locator('.blg-grid tbody .blg-raider-name').allTextContents();
     expect(rows).toEqual(['Aur', 'Brightmoor', 'Frostvale', 'Dawnthistle', 'Em', 'Zed']);
     expect(await opened.page.getByRole('button', { name: 'Zed, Sszorak: in' }).count()).toBe(1);
     expect(
@@ -361,14 +361,21 @@ describe('Calendar (new app): the boss lineup', () => {
         .count()
     ).toBe(1);
     expect(await opened.page.getByRole('button', { name: "Em, Nek'zali the Soulcoiler: out" }).count()).toBe(1);
-    expect(await opened.page.locator('thead .lineup-total').allTextContents()).toEqual(['5/20', '3/20']);
+    expect(await opened.page.locator('thead .blg-count [data-tone]').allTextContents()).toEqual(['5/20', '3/20']);
+    // Each boss's art comes from Warcraft Logs by its fight id.
+    expect(await opened.page.locator('thead .blg-icon').first().getAttribute('src')).toBe(
+      'https://assets.rpglogs.com/img/warcraft/bosses/3101-icon.jpg'
+    );
     expect(opened.unexpected).toEqual([]);
     expect(opened.pageErrors).toEqual([]);
   });
 
   it('saves one boss for tonight, with the lineup it replaces', async () => {
     await opened.page.getByRole('button', { name: 'Aur, Sszorak: out, changed for tonight only, usually in' }).click();
-    await opened.page.getByRole('button', { name: 'Save tonight' }).click();
+    await opened.page.getByRole('button', { name: 'Save…' }).click();
+    const dialog = opened.page.getByRole('dialog', { name: 'Save the boss lineup' });
+    expect(await dialog.getByRole('radio', { name: /^Just / }).isChecked()).toBe(true);
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
     await expect.poll(() => calls.length).toBe(1);
     expect(calls[0]).toEqual({
       p_team_id: TEAM_ID,
@@ -381,6 +388,30 @@ describe('Calendar (new app): the boss lineup', () => {
 });
 
 describe('Calendar (new app): on a phone', () => {
+  it('lets an officer put raiders in and out of the boss lineup, but not skip a boss (#1681)', async () => {
+    const lineup = await openApp(
+      browser,
+      server.port,
+      asOfficer(`${BASE}?date=${NIGHT}&view=lineup`, 'main:has(.blg-cell)', {
+        tables: { ...tables(), ...LINEUP_TABLES },
+        viewport: NARROW,
+        touch: true
+      })
+    );
+    try {
+      const cell = lineup.page.getByRole('button', { name: 'Zed, Sszorak: in' });
+      await cell.click({ timeout: 8000 });
+      expect(await lineup.page.getByRole('button', { name: /^Zed, Sszorak: out/ }).count()).toBe(1);
+      expect(await lineup.page.getByRole('button', { name: /^Skip / }).count()).toBe(0);
+      // The grid scrolls inside its own box; the page never scrolls sideways.
+      const overflow = await lineup.page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow).toBeLessThanOrEqual(0);
+      expect(lineup.unexpected).toEqual([]);
+    } finally {
+      await lineup.context.close();
+    }
+  });
+
   it('lists the month’s nights, and leaves officer changes to a computer', async () => {
     const month = await openApp(
       browser,
@@ -405,8 +436,8 @@ describe('Calendar (new app): on a phone', () => {
       expect(await night.page.locator('.own-answer').isVisible()).toBe(true);
       expect(await night.page.locator('.edit-button').count()).toBe(0);
       expect(await night.page.getByRole('button', { name: 'In for the week' }).count()).toBe(0);
-      // So is the boss lineup (#1216).
-      expect(await night.page.getByRole('link', { name: 'Boss lineup' }).count()).toBe(0);
+      // The boss lineup is the exception (#1681): it opens on a phone too.
+      expect(await night.page.getByRole('link', { name: 'Boss lineup' }).count()).toBe(1);
     } finally {
       await night.context.close();
     }

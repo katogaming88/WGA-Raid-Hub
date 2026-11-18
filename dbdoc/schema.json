@@ -6458,12 +6458,13 @@
         {
           "name": "account_preferences_known_key",
           "type": "CHECK",
-          "def": "CHECK ((((key = 'no_character_dismissed'::text) AND (team_id IS NULL)) OR ((key = 'notifications_cleared_through'::text) AND (team_id IS NOT NULL))))",
+          "def": "CHECK ((((key = 'no_character_dismissed'::text) AND (team_id IS NULL)) OR ((key = 'notifications_cleared_through'::text) AND (team_id IS NOT NULL)) OR ((key = 'lineup_cell_style'::text) AND (team_id IS NULL) AND (value = ANY (ARRAY['\"names\"'::jsonb, '\"bars\"'::jsonb])))))",
           "table": "public.account_preferences",
           "referenced_table": "",
           "columns": [
             "key",
-            "team_id"
+            "team_id",
+            "value"
           ]
         },
         {

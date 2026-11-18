@@ -10,7 +10,7 @@
 // caller, and assertions happen back as postgres. A savepoint wraps each
 // impersonated call so an expected raise does not abort the whole transaction.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedPlayer, seedSignup, RAIDER_T1, OFFICER_T1 } from './helpers.js';
+import { pool, withTxn, seedPlayer, seedSignup, RAIDER_T1, OFFICER_T1, OFFICER_T2 } from './helpers.js';
 
 // Seeded rows this file leans on (supabase/seed.sql): team_members 3 is the
 // team 1 raider (auth_user_id = RAIDER_T1) and 1 is the team 1 officer. The
@@ -137,6 +137,57 @@ describe('account_preferences shape', () => {
           [RAIDER_T1]
         )
       ).rejects.toThrow(/check/i);
+    });
+  });
+
+  // #1681: each officer's Boss Lineup cell style, guild-wide, one of two names.
+  const setStyle = (run, value, { teamId = null, owner = OFFICER_T1 } = {}) =>
+    run(
+      `insert into public.account_preferences (auth_user_id, team_id, key, value)
+       values ($1, $2, 'lineup_cell_style', $3)
+       on conflict (auth_user_id, team_id, key) do update set value = excluded.value`,
+      [owner, teamId, value]
+    );
+  const savedStyle = async (q) =>
+    (
+      await q("select value from public.account_preferences where auth_user_id = $1 and key = 'lineup_cell_style'", [
+        OFFICER_T1
+      ])
+    ).rows.map((r) => r.value);
+
+  it('takes an officer’s lineup cell style, guild-wide and only Names or Solid bars', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const run = (text, params) => asUser(OFFICER_T1, text, params);
+      await setStyle(run, '"bars"');
+      expect(await savedStyle(q)).toEqual(['bars']);
+      await setStyle(run, '"names"');
+      expect(await savedStyle(q)).toEqual(['names']);
+    });
+    await withTxn(async ({ q }) => {
+      await expect(setStyle(q, '"stripes"')).rejects.toThrow(/check/i);
+    });
+    await withTxn(async ({ q }) => {
+      await expect(setStyle(q, '"names"', { teamId: 1 })).rejects.toThrow(/check/i);
+    });
+  });
+
+  it('lets nobody else set or change an officer’s lineup cell style', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      await setStyle(q, '"names"');
+      const callers = {
+        'another team’s officer': (text, params) => asUser(OFFICER_T2, text, params),
+        'a raider on the same team': (text, params) => asUser(RAIDER_T1, text, params),
+        'someone signed out': asAnon
+      };
+      for (const [who, run] of Object.entries(callers)) {
+        await expect(setStyle(run, '"bars"'), who).rejects.toThrow();
+        const changed = await run(
+          "update public.account_preferences set value = '\"bars\"' where auth_user_id = $1 and key = 'lineup_cell_style'",
+          [OFFICER_T1]
+        ).catch(() => ({ rowCount: 0 }));
+        expect(changed.rowCount, who).toBe(0);
+      }
+      expect(await savedStyle(q)).toEqual(['names']);
     });
   });
 

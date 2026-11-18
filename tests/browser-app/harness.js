@@ -48,6 +48,11 @@ const TEAMS = [
 const NEWS_PICTURE =
   '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#3a4a63"/></svg>';
 
+// Boss art linked from Warcraft Logs (#1681): a square in the boss's own
+// color, from its fight id, so the headings tell apart in a screenshot.
+const bossArt = (id) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="hsl(${(id * 47) % 360} 45% 40%)"/><circle cx="32" cy="26" r="13" fill="hsl(${(id * 47) % 360} 50% 65%)"/></svg>`;
+
 const NEWS_TALL_PICTURE =
   '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800"><rect width="600" height="800" fill="#3a4a63"/></svg>';
 
@@ -314,6 +319,10 @@ export async function openApp(browser, port, state) {
     }
     // A crash is reported to Sentry (#1477); accepted here, never sent.
     if (url.hostname.endsWith('.sentry.io')) return route.fulfill({ status: 200, body: '' });
+    if (url.hostname === 'assets.rpglogs.com') {
+      const id = Number(url.pathname.match(/(\d+)-icon\.jpg$/)?.[1] ?? 0);
+      return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: bossArt(id) });
+    }
 
     if (url.host === host.host) {
       if (request.method() === 'OPTIONS') return route.fulfill({ status: 204 });

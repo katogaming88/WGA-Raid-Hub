@@ -15,14 +15,14 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Planning and design                |     17 h 10 m |             |
 | Revamp 1: decisions and foundation |      6 h 55 m |             |
 | Revamp 2: public pages             |     38 h 15 m |             |
-| Revamp 3: officer dashboard        |     55 h 46 m |             |
+| Revamp 3: officer dashboard        |     57 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 40 h 22 m |  ~105 h 50 m |
-| Phase 3: After the new site goes live  |   3 h 22 m |   ~56 h 40 m |
+| Phase 2: Before the new site goes live | 41 h 42 m |  ~105 h 50 m |
+| Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **213 h 20 m** |             |
+| **All revamp work**                | **217 h 30 m** |             |
 
 ### By area
 
@@ -32,12 +32,12 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 5 h 35 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 6 h 55 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
 | Revamp 3 extras | Phase 3 | 0 m | ~21 h 30 m |
-| Revamp 4 | Phase 3 | 1 h 2 m | ~4 h 50 m |
+| Revamp 4 | Phase 3 | 2 h 17 m | ~4 h 50 m |
 | Discord notifications | Phase 3 | 0 m | ~2 h 30 m |
 | Addon and Sync | Phase 3 | 2 h 20 m | ~22 h 50 m |
 | The look across the site | Phase 3 | 0 m | ~5 h |
@@ -467,6 +467,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 12:26-12:45 AM | #1674 built: the relay refuses addCharacter without a signed-in user and builds the message from the caller's own Audit Log row from the last five minutes; the bot posts each row once; the app stops sending the text; Edge Function and bot tests; stamp, changelog, these rows | Revamp 3 (#1674) | 20 m | ~20 m build | not read | Review and merge not yet counted |
 | 12:45-1:55 AM | PR #1677 (#1674): CodeRabbit's first review (the 20-row limit fixed; the channel check filed as #1678), its second (the add looked up on the asked-for team only); then Kat chose CodeRabbit's way for the Audit Log read: my_recent_own_add(), called as the member, the service role dropped from the relay; database tests red first, full database suite, generated docs, decision log, RLS.md, restamp, changelog | Revamp 3 (#1674) | 70 m | ~65 m build, ~5 m Kat | not read | The fresh-agent review and merge not yet counted |
+| 11:05 AM-12:38 PM | #1680: Boss Lineup's redesign on a mockup canvas: today's grid against a cleaner grid and the class-colored grid (board D, the pick), Names and Solid bars both kept as each officer's choice, the tonight-only moon and the not-coming stripes, boss art from Warcraft Logs, plain headings (no card per boss), melee apart from ranged, A-Z by role, one Save that asks; per-boss role targets, raider order, spec swaps and Send to Viserio filed as their own issues (#1681-#1684, #1580, #1514), #1680 closed | Revamp 3 (#1680) | 1 h 35 m | shared; Kat's design calls not split | 741,300 | Added 2026-11-18 (in #1681's PR). |
 | 12:40-12:55 PM | #1618 built: an approved main swap that brings a character back from the archive turns its wishlist and BiS exceptions off, one already on the roster keeps them; database tests red first (approve, on-roster, refused callers and a decline), generated definitions, decision log, stamp, changelog, this row | Revamp 3 (#1618) | 15 m | ~15 m build | not read | CodeRabbit, the fresh-agent review and merge not yet counted |
 | 12:55-1:15 PM | PR #1685 (#1618): CodeRabbit (nothing to act on), the fresh-agent review (approved; four notes fixed: refused calls leave the swap waiting, the decision log names every path back including the old sheet import, RLS.md); merged 1:15 PM; #1487 row removed and totals redone | Revamp 3 (#1618) | 20 m | ~15 m build, ~5 m Kat | not read | |
 | 1:16-1:30 PM | #1676 built: VITE_PREVIEW_TEAMS on the preview deploy's build (not app/.env.production, which the browser tests build from); for anyone but a site admin the team picker, guild pages, "Also on" and the sidebar's team links show only the Sandbox, and a real team, BoE and Guild settings show "Not part of the test"; app tests (set, empty, site admin, signed out), screenshots, app-preview.md, the removal added to #1105, stamp, changelog, this row | Revamp 3 (#1676) | 15 m | ~15 m build | not read | Review and merge not yet counted |
@@ -792,6 +793,14 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:26-9:45 PM | #1523: news posts in the database. `news_posts` (a draft is `published_at` null; anyone reads published posts, Staff read drafts and write with plain table writes; an insert signed as the caller), the public `news-pictures` bucket only Staff upload to, the 27 `news.json` entries copied in by the migration; database tests, generated docs, RLS.md, decision log, stamp, changelog | Phase 3: After the new site goes live / Revamp 4 (#1523) | 20 m | ~20 m build, Kat's ask | 119,300 | Fresh-agent review and Kat's merge not yet counted. |
 | 9:57-10:18 PM | PR #1867 (#1523) after it opened: CodeRabbit's two findings (an edit can't change a post's author, picture replace and remove tests), the fresh-agent migration review (changes needed: the backup guide; a later date waits, an add names its columns), Kat's answer on the Change category, Kat's merge (10:17 PM), cleanup | Phase 3: After the new site goes live / Revamp 4 (#1523) | 20 m | build; Kat's trigger and merge not split | 47,200 | Added 2026-11-17 (in #1230's PR). |
 | 10:18-10:40 PM | #1230: News as a blog in the new app. The timeline (Pinned, category filters, search, posts by month), a post's own page (cover, body with headings, lists, bold, links and pictures, Copy link, the next older post), Staff's editor (formatting buttons, live preview, cover picture and caption, pin, draft and publish, edit, delete); Guild home and the front page link to the posts; the app stops carrying news.json; tests (page, browser, accessibility states), real run against the local stack with uploads, stamp, changelog | Phase 3: After the new site goes live / Revamp 4 (#1230) | 22 m | ~22 m build | 456,400 | CodeRabbit, review and Kat's design review not yet counted |
+| 10:40-11:53 PM | PR #1868 (#1230) after it opened: Kat's design review (Delete, several pictures in a post with captions, Edit, Copy link and Delete moved to the top, the post left-aligned beside a Recent news list, a symbol for each type of post, pictures not cropped, a wider post, the News page at the site's usual width), a picture that doesn't upload says why, the page-width note, #1869 filed on the back burner, Kat's merge (11:52 PM), cleanup | Phase 3: After the new site goes live / Revamp 4 (#1230) | 1 h 15 m | build; Kat's review and merge not split | 199,800 | Added 2026-11-18 (in #1681's PR). No CodeRabbit on a frontend PR. |
+
+### 2026-11-18
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 12:00-1:05 AM | #1681: Boss Lineup's new grid from board D: roles Tanks / Healers / Melee / Ranged with per-boss role counts, class-colored cells in Names or Solid bars (each person's own, saved to their account by a new `account_preferences` key), the tonight-only and not-coming markers, boss art from Warcraft Logs with the pull number, count, warning and fill bar, one Save... that asks just that night or every night after, the change list, Needs a look on three fixed lines; officers edit on a phone, raiders see it read-only; Kat's three answers (link WCL's art, per account, Names first); a covered-cell bug on phones and headings showing their screen-reader text, both caught in testing; migration, RLS, page, browser and accessibility tests, generated docs, decision log, Help guide and picture, stamp, changelog, these rows; PR | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1681) | 1 h 5 m | build; Kat's answers not split | 449,800 | Kat's design review, the fresh-agent review and merge not yet counted. |
+| 9:16-9:30 AM | PR #1870 (#1681) after it opened: the screenshots retaken with this season's real boss art from Warcraft Logs (a phone bug found: markers from cells under the pinned name column drew on top of it, fixed); CodeRabbit's two test findings (each write read back; another team's officer, a raider and a signed-out caller refused); the fresh-agent migration review (changes needed: the backup doc's account_preferences line; nice-to-haves done: the migration header, "each person" not "each officer", a failed style save goes back and says so); tests, this row | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1681) | 15 m | build; Kat's CodeRabbit trigger and questions not split | 459,000 | Tokens include the fresh agent's 89,300. Kat's design review and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 

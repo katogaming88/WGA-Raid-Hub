@@ -347,3 +347,4 @@ export function ago(instant: string, now: Date): string {
 
 export const longDay = (date: string) => calendarDay(dayOf(date), 'long');
 export const shortDay = (date: string) => calendarDay(dayOf(date), 'short');
+export const weekdayOf = (date: string) => calendarDay(dayOf(date), 'weekday');

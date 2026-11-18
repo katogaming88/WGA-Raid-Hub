@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.292.0] - 2026-11-18
+
+### Backend
+
+- Each person's Boss Lineup cell style (Names or Solid bars) is saved to their own account, so it follows them to every device and never changes anyone else's screen (#1681).
+
+### Project
+
+- Boss Lineup in the new app is redrawn (#1681). Raiders are grouped Tanks, Healers, Melee and Ranged, A to Z, and each group's heading row counts that role on every boss against the team's target. Each cell is colored by class: Names shows the raider's name in class color on a slate cell, Solid bars a dimmed class-color bar, and each person picks their own. Sitting out is an empty dashed cell.
+- Clear markers on the cells: a blue moon and border for "tonight only, not the usual group", and an amber "!", stripes and border for someone in who said they're not coming.
+- Each boss heading shows the boss's picture from Warcraft Logs with its pull number, the count against the cap, a warning count and a fill bar (green full, amber short, red over, blue for a flex boss with room). An amber ring marks a boss with a problem, and hovering a column lights it up.
+- One Save… button asks how far the change reaches: just that night (the default), or that night and every night after, which also makes it the usual group. The bar lists what changed ("Bo out on Sszorak", "Ed in all night"), and Needs a look sits above the grid on three fixed lines: each boss's open spots, roles short or over their target, buffs missing, and anyone in who said they're not coming. Hovering a boss, in its heading or in Needs a look, opens a card right away, above the boss so it never covers the raiders: the boss's raiders, tanks, healers, melee and ranged against their targets, anything short in amber, and each missing buff by name.
+- Clicking a raider's name sits them out on every boss, and clicking again puts them back, for anyone, not only the bench.
+- Officers can change the lineup on a phone too (skipping a boss stays on a computer), and the team's raiders see the same grid, read-only. A flex boss between the raid's cap and its own is no longer flagged as short.
+- Page, browser and accessibility tests for the new grid, the save choice, phones and raiders, light and dark; the Help guide and its picture show the new page.
+
 ## [3.291.0] - 2026-11-17
 
 ### Project
