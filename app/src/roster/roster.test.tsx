@@ -725,17 +725,24 @@ describe('Projected Roster', () => {
   const OPEN = [
     { season_code: 'MID3', signups_open: true, seasons: { starts_at: '2099-01-01', display_name: 'Midnight Season 3' } }
   ];
-  const handlers = (role: string | null, writes: unknown[] = []) => {
+  const handlers = (
+    role: string | null,
+    writes: unknown[] = [],
+    extraSignups: object[] = [],
+    extraFlags: object[] = []
+  ) => {
     const base = rosterHandlers({
       players: [
         player(1, 'Zuggz-Illidan', 'Warrior', 'Arms', 'Melee'),
-        player(2, 'Sorrelmoon-Illidan', 'Druid', 'Restoration', 'Heal')
+        player(2, 'Sorrelmoon-Illidan', 'Druid', 'Restoration', 'Heal'),
+        player(4, 'Brambleoak-Illidan', 'Druid', 'Balance', 'Ranged', { is_trial: true })
       ],
-      incoming_roster: SIGNUPS,
+      incoming_roster: [...SIGNUPS, ...extraSignups],
       team_seasons: OPEN,
       season_signups: [
         { id: 2, is_trial: null, is_backup_tank: false, is_backup_healer: false },
-        { id: 3, is_trial: false, is_backup_tank: false, is_backup_healer: true }
+        { id: 3, is_trial: false, is_backup_tank: false, is_backup_healer: true },
+        ...extraFlags
       ]
     });
     if (role === null) return base;
@@ -790,6 +797,39 @@ describe('Projected Roster', () => {
     await userEvent.click(trial);
     await expect.poll(() => writes.length).toBe(1);
     expect(writes[0]).toMatchObject({ table: 'season_signups', method: 'update', values: { is_trial: false } });
+  });
+
+  it("shows an unset Trial on a character change as the old character's Trial (#1871)", async () => {
+    const swaps = [
+      {
+        signup_id: 5,
+        signup_name_realm: 'Vexwing-Illidan',
+        class: 'Mage',
+        spec: 'Frost',
+        role: 'Ranged',
+        swap_from_name_realm: 'Sorrelmoon-Illidan'
+      },
+      {
+        signup_id: 6,
+        signup_name_realm: 'Thornbark-Illidan',
+        class: 'Druid',
+        spec: 'Feral',
+        role: 'Melee',
+        swap_from_name_realm: 'Brambleoak-Illidan'
+      }
+    ];
+    const flags = [
+      { id: 5, is_trial: null, is_backup_tank: false, is_backup_healer: false },
+      { id: 6, is_trial: null, is_backup_tank: false, is_backup_healer: false }
+    ];
+    renderApp('/g/wga/t/phoenix/roster', handlers('officer', [], swaps, flags));
+    await openTab();
+    const off = await screen.findByRole('checkbox', { name: 'Trial: Vexwing' });
+    await expect.poll(() => (off as HTMLInputElement).disabled).toBe(false);
+    // Sorrelmoon is not a Trial; Brambleoak is; Gloamwing is new.
+    expect(off).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Trial: Thornbark' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Trial: Gloamwing' })).toBeChecked();
   });
 
   it('lets an officer remove a signup after confirming', async () => {

@@ -106,6 +106,25 @@ describe('close_started_season_signups()', () => {
     });
   });
 
+  // #1871: a character change left blank keeps the old character's Trial;
+  // an officer's tick still wins.
+  it.each([
+    { oldTrial: false, signup: null, expected: false },
+    { oldTrial: true, signup: null, expected: true },
+    { oldTrial: false, signup: true, expected: true }
+  ])(
+    'a character change from a Trial=$oldTrial character, Trial on the signup $signup, goes on as Trial=$expected (#1871)',
+    async ({ oldTrial, signup, expected }) => {
+      await withTxn(async ({ q }) => {
+        const s = await scene(q);
+        await q('update public.players set is_trial = $1 where id = $2', [oldTrial, s.ids.old]);
+        await q('update public.season_signups set is_trial = $1 where id = $2', [signup, s.signups.swap]);
+        await run(q);
+        expect((await player(q, s.team.teamId, s.n.next)).is_trial).toBe(expected);
+      });
+    }
+  );
+
   it('writes its audit rows as Automatic, with no actor', async () => {
     await withTxn(async ({ q }) => {
       const s = await scene(q);

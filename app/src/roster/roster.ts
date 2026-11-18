@@ -48,16 +48,21 @@ export type ProjectedRaider = {
   spec: string;
   role: Role;
   kind: SignupKind;
-  // The character it replaces, on a swap.
+  // The character it replaces, on a swap, and whether that one is a Trial:
+  // a swap left unset takes it when signups close (#1871).
   swapFrom: string | null;
+  swapFromTrial: boolean | null;
 };
 
 export type ProjectedGroup = { role: Role; label: string; raiders: ProjectedRaider[] };
 
 const nameKey = (nameRealm: string) => nameRealm.toLowerCase().replace(/\s/g, '');
 
-export function toProjected(rows: IncomingRow[], rosterNames: string[]): ProjectedGroup[] {
-  const onRoster = new Set(rosterNames.map(nameKey));
+export function toProjected(
+  rows: IncomingRow[],
+  roster: Array<{ name_realm: string; is_trial: boolean }>
+): ProjectedGroup[] {
+  const onRoster = new Map(roster.map((p) => [nameKey(p.name_realm), p.is_trial]));
   const raiders: ProjectedRaider[] = [];
   for (const row of rows) {
     const nameRealm = row.signup_name_realm?.trim();
@@ -71,7 +76,8 @@ export function toProjected(rows: IncomingRow[], rosterNames: string[]): Project
       spec: row.spec ?? '',
       role: row.role,
       kind,
-      swapFrom: kind === 'swap' ? firstName(row.swap_from_name_realm!) : null
+      swapFrom: kind === 'swap' ? firstName(row.swap_from_name_realm!) : null,
+      swapFromTrial: kind === 'swap' ? (onRoster.get(nameKey(row.swap_from_name_realm!)) ?? null) : null
     });
   }
   return ROLE_ORDER.map((role) => ({
