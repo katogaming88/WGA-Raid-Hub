@@ -8,7 +8,17 @@ import { useSupabase } from '../data/DataProvider';
 import { errorMessage } from '../lib/errors';
 import { Markdown } from '../lib/markdown';
 import { CategoryLabel } from './NewsPage';
-import { isLive, newestPost, newsDate, olderPost, postDate, seenKey, type NewsPost } from './news';
+import {
+  isLive,
+  livePosts,
+  newestPost,
+  newsDate,
+  newsShortDate,
+  olderPost,
+  postDate,
+  seenKey,
+  type NewsPost
+} from './news';
 import { newsPictureUrl, useDeleteNewsPost, useNews, useNewsSeen, useNow } from './useNews';
 import './news.css';
 
@@ -74,76 +84,113 @@ function PostView({ posts, post }: { posts: NewsPost[]; post: NewsPost }) {
   };
 
   return (
-    <article className="page news-post" aria-labelledby="page-title">
-      <Link to="/news">All news</Link>
-      {!isLive(post, now) && (
-        <p className="news-draft-note" role="note">
-          {post.publishedAt
-            ? `Goes out ${newsDate(date)}. Until then only Staff can see it.`
-            : 'A draft. Only Staff can see it until it is published.'}
-        </p>
-      )}
-      <div className="news-item-meta">
-        <CategoryLabel category={post.category} />
-        {date && <time dateTime={date}>{newsDate(date)}</time>}
-        {post.version && <span>Version {post.version}</span>}
-      </div>
-      <h1 id="page-title" className="news-post-title">
-        {post.title}
-      </h1>
-      <p className="news-post-summary">{post.summary}</p>
-      {post.coverPath && (
-        <figure className="news-cover">
-          <img src={newsPictureUrl(client, post.coverPath)} alt="" />
-          {post.coverCaption && <figcaption>{post.coverCaption}</figcaption>}
-        </figure>
-      )}
-      <div className="news-body">
-        <Markdown text={post.body} pictures headingLevel={2} />
-      </div>
-      <footer className="news-post-footer">
-        <div className="news-post-actions">
-          <button type="button" className="button" onClick={() => void copyLink()}>
-            Copy link
-          </button>
-          {staff && (
-            <>
-              <Link className="button" to={`/news/${post.slug}/edit`}>
-                Edit
-              </Link>
-              <button type="button" className="button" onClick={() => setConfirming(true)}>
-                Delete
-              </button>
-            </>
-          )}
-        </div>
-        {older && <Link to={`/news/${older.slug}`}>Older: {older.title}</Link>}
-      </footer>
-      {confirming && (
-        <Dialog title="Delete this post?" onClose={() => setConfirming(false)} busy={remove.isPending}>
-          <p>“{post.title}” will be gone for everyone, and its address stops working. This can’t be undone.</p>
-          <div className="dialog-actions">
-            <button type="button" className="button" onClick={() => setConfirming(false)} disabled={remove.isPending}>
-              Cancel
+    <div className="page news-post-layout">
+      <article className="news-post" aria-labelledby="page-title">
+        <div className="news-post-bar">
+          <Link to="/news">All news</Link>
+          <div className="news-post-actions">
+            <button type="button" className="button" onClick={() => void copyLink()}>
+              Copy link
             </button>
-            <button
-              type="button"
-              className="button button-danger"
-              disabled={remove.isPending}
-              onClick={() =>
-                remove.mutate(post.id, {
-                  onError: (error) => {
-                    setConfirming(false);
-                    announce('error', errorMessage(error));
-                  }
-                })
-              }
-            >
-              {remove.isPending ? 'Deleting…' : 'Delete post'}
-            </button>
+            {staff && (
+              <>
+                <Link className="button" to={`/news/${post.slug}/edit`}>
+                  Edit
+                </Link>
+                <button type="button" className="button" onClick={() => setConfirming(true)}>
+                  Delete
+                </button>
+              </>
+            )}
           </div>
-        </Dialog>
-      )}
-    </article>
+        </div>
+        {!isLive(post, now) && (
+          <p className="news-draft-note" role="note">
+            {post.publishedAt
+              ? `Goes out ${newsDate(date)}. Until then only Staff can see it.`
+              : 'A draft. Only Staff can see it until it is published.'}
+          </p>
+        )}
+        <div className="news-item-meta">
+          <CategoryLabel category={post.category} />
+          {date && <time dateTime={date}>{newsDate(date)}</time>}
+          {post.version && <span>Version {post.version}</span>}
+        </div>
+        <h1 id="page-title" className="news-post-title">
+          {post.title}
+        </h1>
+        <p className="news-post-summary">{post.summary}</p>
+        {post.coverPath && (
+          <figure className="news-cover">
+            <img src={newsPictureUrl(client, post.coverPath)} alt="" />
+            {post.coverCaption && <figcaption>{post.coverCaption}</figcaption>}
+          </figure>
+        )}
+        <div className="news-body">
+          <Markdown text={post.body} pictures headingLevel={2} />
+        </div>
+        {older && (
+          <footer className="news-post-footer">
+            <Link to={`/news/${older.slug}`}>Older: {older.title}</Link>
+          </footer>
+        )}
+        {confirming && (
+          <Dialog title="Delete this post?" onClose={() => setConfirming(false)} busy={remove.isPending}>
+            <p>“{post.title}” will be gone for everyone, and its address stops working. This can’t be undone.</p>
+            <div className="dialog-actions">
+              <button type="button" className="button" onClick={() => setConfirming(false)} disabled={remove.isPending}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="button button-danger"
+                disabled={remove.isPending}
+                onClick={() =>
+                  remove.mutate(post.id, {
+                    onError: (error) => {
+                      setConfirming(false);
+                      announce('error', errorMessage(error));
+                    }
+                  })
+                }
+              >
+                {remove.isPending ? 'Deleting…' : 'Delete post'}
+              </button>
+            </div>
+          </Dialog>
+        )}
+      </article>
+      <RecentNews posts={posts} current={post} now={now} />
+    </div>
+  );
+}
+
+// The five newest other posts, beside the post on a wide screen (and under it
+// on a narrow one), so a reader has somewhere to go next.
+const RECENT = 5;
+
+function RecentNews({ posts, current, now }: { posts: NewsPost[]; current: NewsPost; now: number }) {
+  const recent = livePosts(posts, now)
+    .filter((p) => p.id !== current.id)
+    .slice(0, RECENT);
+  if (!recent.length) return null;
+  return (
+    <aside className="news-recent" aria-labelledby="news-recent-title">
+      <h2 id="news-recent-title" className="news-month-title">
+        Recent news
+      </h2>
+      <ul className="news-items">
+        {recent.map((p) => (
+          <li key={p.id}>
+            <Link className="news-recent-item" to={`/news/${p.slug}`}>
+              <span className="news-recent-title">{p.title}</span>
+              <time className="news-recent-date" dateTime={postDate(p)}>
+                {newsShortDate(postDate(p))}
+              </time>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </aside>
   );
 }

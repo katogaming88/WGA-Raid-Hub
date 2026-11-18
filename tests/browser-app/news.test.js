@@ -201,6 +201,13 @@ describe('A news post', () => {
         'Your own status sits at the top.',
         "Everyone's status is below it."
       ]);
+      // The other posts that are out, newest first, beside it (never a draft, never itself).
+      await expect(page.locator('.news-recent .news-recent-title').allTextContents()).resolves.toEqual([
+        'Signup form keeps your off-specs',
+        'Report a BoE and follow it, on one page',
+        'Loot history on every profile',
+        'Welcome to the new Raid Hub'
+      ]);
       // Older than Sep 7 is the pinned BoE post (Sep 3).
       await page.getByRole('link', { name: /^Older: / }).click();
       await page.waitForURL('**/news/report-a-boe');

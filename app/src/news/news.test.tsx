@@ -321,6 +321,26 @@ describe('A news post', () => {
     expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
   });
 
+  it('lists the five newest other posts beside it, never the one being read', async () => {
+    const many = Array.from({ length: 8 }, (_, i) =>
+      post(i + 1, { publishedAt: `2026-08-0${i + 1}T16:00:00Z`, title: `Entry ${i + 1}`, slug: `entry-${i + 1}` })
+    );
+    renderApp('/news/entry-8', feed(many));
+    const recent = await screen.findByRole('complementary', { name: 'Recent news' });
+    expect(
+      within(recent)
+        .getAllByRole('link')
+        .map((a) => a.textContent)
+    ).toEqual(['Entry 7Aug 7', 'Entry 6Aug 6', 'Entry 5Aug 5', 'Entry 4Aug 4', 'Entry 3Aug 3']);
+    expect(within(recent).getAllByRole('link')[0]).toHaveAttribute('href', '/news/entry-7');
+  });
+
+  it('leaves the list out when there is no other post', async () => {
+    renderApp('/news/post-1', feed([post(1)]));
+    await screen.findByRole('heading', { level: 1, name: 'Post 1' });
+    expect(screen.queryByRole('complementary', { name: 'Recent news' })).not.toBeInTheDocument();
+  });
+
   it('says so for an address with no post', async () => {
     renderApp('/news/nothing-here', feed(POSTS));
     expect(await screen.findByRole('heading', { level: 1, name: 'Post not found' })).toBeInTheDocument();
