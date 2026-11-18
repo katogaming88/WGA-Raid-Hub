@@ -21,7 +21,9 @@ begin
     select team_id from boss_groups where character_id = old.id
     order by 1
   loop
-    perform pg_advisory_xact_lock(hashtext('boss_lineup'), v_team);
+    if not pg_try_advisory_xact_lock(hashtext('boss_lineup'), v_team) then
+      raise exception 'A Boss lineup using this character is being saved right now. Try again in a moment.';
+    end if;
   end loop;
 
   update boss_groups set character_id = null, class_spec_id = null where character_id = old.id;

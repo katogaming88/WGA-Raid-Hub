@@ -51,7 +51,11 @@ create index boss_groups_character_id_idx on public.boss_groups (character_id)
 -- removes or moves characters, save_battlenet_characters() below, takes the
 -- lineup lock of every team the change reaches before it touches a
 -- character. The cleanup takes the same locks again in team order, which is
--- free when its caller already holds them.
+-- free when its caller already holds them. It never waits for one: a team
+-- that gained a pick of this character after the caller looked, and whose
+-- lock is busy, stops the change with a "try again" (CodeRabbit on PR
+-- #1874), since waiting there while holding the character could deadlock
+-- with a fill that holds that team's lock and wants another's.
 create or replace function public.clear_lineup_picks_for_character() returns trigger
 language plpgsql security definer set search_path = public
 as $$
@@ -68,7 +72,9 @@ begin
     select team_id from boss_groups where character_id = old.id
     order by 1
   loop
-    perform pg_advisory_xact_lock(hashtext('boss_lineup'), v_team);
+    if not pg_try_advisory_xact_lock(hashtext('boss_lineup'), v_team) then
+      raise exception 'A Boss lineup using this character is being saved right now. Try again in a moment.';
+    end if;
   end loop;
 
   update boss_groups set character_id = null, class_spec_id = null where character_id = old.id;
