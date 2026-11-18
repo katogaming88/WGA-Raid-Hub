@@ -43,9 +43,15 @@ create index boss_groups_character_id_idx on public.boss_groups (character_id)
 -- another person's list (save_battlenet_characters() keeps its id), takes its
 -- picks with it: the raider goes back to their roster character in its usual
 -- spec. The foreign key alone would clear character_id on a delete and leave
--- the alt's spec behind on the main. Each team's lineup lock is taken first,
--- in team order, as the save functions take it before touching either table,
--- so a cleanup and a save never wait on each other (CodeRabbit on PR #1874).
+-- the alt's spec behind on the main.
+--
+-- Lock order, everywhere (CodeRabbit on PR #1874): a team's lineup lock
+-- first, then any character. The saves, fills and putting a boss back all
+-- take the lineup lock and then reference a character; the one function that
+-- removes or moves characters, save_battlenet_characters() below, takes the
+-- lineup lock of every team the change reaches before it touches a
+-- character. The cleanup takes the same locks again in team order, which is
+-- free when its caller already holds them.
 create or replace function public.clear_lineup_picks_for_character() returns trigger
 language plpgsql set search_path = public
 as $$
@@ -65,8 +71,8 @@ begin
     perform pg_advisory_xact_lock(hashtext('boss_lineup'), v_team);
   end loop;
 
-  update raid_night_lineups set character_id = null, class_spec_id = null where character_id = old.id;
   update boss_groups set character_id = null, class_spec_id = null where character_id = old.id;
+  update raid_night_lineups set character_id = null, class_spec_id = null where character_id = old.id;
   return case when tg_op = 'DELETE' then old else new end;
 end;
 $$;
@@ -80,6 +86,106 @@ create trigger characters_clear_lineup_picks
 create trigger characters_clear_lineup_picks_on_new_owner
   after update of person_id on public.characters
   for each row execute function public.clear_lineup_picks_for_character();
+
+-- A roster row that moves to another person (add_signup_to_roster(),
+-- claim_character() and the joins set team_member_id) drops its alt picks:
+-- the alt was the old person's (CodeRabbit on PR #1874). A spec pick on the
+-- roster row's own class stays. Rows on the lineup tables only key-share the
+-- players row, which this update doesn't conflict with, so taking the
+-- lineup lock here keeps the order above.
+create or replace function public.clear_lineup_alts_for_player() returns trigger
+language plpgsql set search_path = public
+as $$
+begin
+  if new.team_member_id is not distinct from old.team_member_id
+     or not exists (select 1 from raid_night_lineups where player_id = new.id and character_id is not null
+                    union all
+                    select 1 from boss_groups where player_id = new.id and character_id is not null) then
+    return new;
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('boss_lineup'), new.team_id);
+  update boss_groups set character_id = null, class_spec_id = null
+   where player_id = new.id and character_id is not null;
+  update raid_night_lineups set character_id = null, class_spec_id = null
+   where player_id = new.id and character_id is not null;
+  return new;
+end;
+$$;
+
+revoke all on function public.clear_lineup_alts_for_player() from public, anon, authenticated;
+
+create trigger players_clear_lineup_alts
+  after update of team_member_id on public.players
+  for each row execute function public.clear_lineup_alts_for_player();
+
+-- The one writer of characters takes the lineup lock of every team its
+-- change reaches (an alt it removes, or one it moves from another person)
+-- before touching a character, so its cleanup never waits on a lineup lock
+-- while holding a character a save or fill is waiting for. Otherwise as
+-- 20260923211927_join_verifies_character.sql left it.
+create or replace function public.save_battlenet_characters(p_person_id integer, p_characters jsonb)
+returns setof characters
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_team integer;
+begin
+  if not exists (select 1 from people where id = p_person_id) then
+    raise exception 'No person with id %', p_person_id;
+  end if;
+
+  for v_team in
+    with listed as (
+      select (x ->> 'blizzard_id')::bigint as blizzard_id
+      from jsonb_array_elements(coalesce(p_characters, '[]'::jsonb)) x
+    ),
+    touched as (
+      select c.id from characters c
+      where (c.person_id = p_person_id and c.blizzard_id not in (select blizzard_id from listed))
+         or (c.person_id <> p_person_id and c.blizzard_id in (select blizzard_id from listed))
+    )
+    select l.team_id from raid_night_lineups l where l.character_id in (select id from touched)
+    union
+    select g.team_id from boss_groups g where g.character_id in (select id from touched)
+    order by 1
+  loop
+    perform pg_advisory_xact_lock(hashtext('boss_lineup'), v_team);
+  end loop;
+
+  delete from characters c
+   where c.person_id = p_person_id
+     and c.blizzard_id not in (
+       select (x ->> 'blizzard_id')::bigint from jsonb_array_elements(coalesce(p_characters, '[]'::jsonb)) x
+     );
+
+  insert into characters (person_id, blizzard_id, name, realm, realm_slug, class_name, spec_name, level, item_level)
+  select p_person_id,
+         (x ->> 'blizzard_id')::bigint,
+         x ->> 'name',
+         x ->> 'realm',
+         x ->> 'realm_slug',
+         x ->> 'class_name',
+         x ->> 'spec_name',
+         (x ->> 'level')::integer,
+         (x ->> 'item_level')::integer
+    from jsonb_array_elements(coalesce(p_characters, '[]'::jsonb)) x
+  on conflict (blizzard_id) do update
+    set person_id = excluded.person_id,
+        name = excluded.name,
+        realm = excluded.realm,
+        realm_slug = excluded.realm_slug,
+        class_name = excluded.class_name,
+        spec_name = excluded.spec_name,
+        level = excluded.level,
+        item_level = excluded.item_level,
+        saved_at = now();
+
+  return query select * from characters where person_id = p_person_id order by name, realm;
+end;
+$$;
 
 -- The picks a save sends, as stored: an object per raider whose character or
 -- spec differs, {player_id, character_id, class_spec_id}. A pick naming the
@@ -241,16 +347,22 @@ begin
   end if;
 
   perform public.check_lineup_players(p_team_id, p_player_ids);
-  -- The picked alts stay put until this save is done: a removal waits for
-  -- it, and one that came first fails the check below. Taken before the
-  -- lineup lock, the order the removal's cleanup takes them in.
+  perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
+  -- The picked alts stay put until this save is done (taken after the lineup
+  -- lock, the order everything here takes them in), and one already gone
+  -- asks for a reload: someone changed the characters since it was opened.
   perform 1 from characters
   where id in (
     select x.character_id from jsonb_to_recordset(coalesce(p_picks, '[]'::jsonb)) as x(character_id integer)
   )
   for share;
+  if exists (
+    select 1 from jsonb_to_recordset(coalesce(p_picks, '[]'::jsonb)) as x(character_id integer)
+    where x.character_id is not null and not exists (select 1 from characters c where c.id = x.character_id)
+  ) then
+    raise exception 'Someone else changed this raider''s characters since you opened it. Reload to see their change.';
+  end if;
   perform public.check_lineup_picks(p_team_id, p_player_ids, coalesce(p_picks, '[]'::jsonb));
-  perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
 
   select coalesce(array_agg(player_id), '{}'),
          coalesce(jsonb_agg(jsonb_build_object('player_id', player_id, 'character_id', character_id,
@@ -342,16 +454,22 @@ begin
   end if;
 
   perform public.check_lineup_players(p_team_id, p_player_ids);
-  -- The picked alts stay put until this save is done: a removal waits for
-  -- it, and one that came first fails the check below. Taken before the
-  -- lineup lock, the order the removal's cleanup takes them in.
+  perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
+  -- The picked alts stay put until this save is done (taken after the lineup
+  -- lock, the order everything here takes them in), and one already gone
+  -- asks for a reload: someone changed the characters since it was opened.
   perform 1 from characters
   where id in (
     select x.character_id from jsonb_to_recordset(coalesce(p_picks, '[]'::jsonb)) as x(character_id integer)
   )
   for share;
+  if exists (
+    select 1 from jsonb_to_recordset(coalesce(p_picks, '[]'::jsonb)) as x(character_id integer)
+    where x.character_id is not null and not exists (select 1 from characters c where c.id = x.character_id)
+  ) then
+    raise exception 'Someone else changed this raider''s characters since you opened it. Reload to see their change.';
+  end if;
   perform public.check_lineup_picks(p_team_id, p_player_ids, coalesce(p_picks, '[]'::jsonb));
-  perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
 
   select coalesce(array_agg(player_id), '{}'),
          coalesce(jsonb_agg(jsonb_build_object('player_id', player_id, 'character_id', character_id,

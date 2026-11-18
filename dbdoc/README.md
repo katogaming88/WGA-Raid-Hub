@@ -402,6 +402,7 @@
 | public.team_member_accounts | record | p_team_id integer | FUNCTION |
 | public.set_team_discord_after_raid | void | p_team_id integer, p_after_raid text | FUNCTION |
 | public.clear_lineup_picks_for_character | trigger |  | FUNCTION |
+| public.clear_lineup_alts_for_player | trigger |  | FUNCTION |
 | public.lineup_picks_norm | record | p_team_id integer, p_picks jsonb | FUNCTION |
 | public.check_lineup_picks | void | p_team_id integer, p_player_ids integer[], p_picks jsonb | FUNCTION |
 | public.same_lineup_picks | bool | a jsonb, b jsonb | FUNCTION |

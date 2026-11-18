@@ -23,8 +23,8 @@ begin
     perform pg_advisory_xact_lock(hashtext('boss_lineup'), v_team);
   end loop;
 
-  update raid_night_lineups set character_id = null, class_spec_id = null where character_id = old.id;
   update boss_groups set character_id = null, class_spec_id = null where character_id = old.id;
+  update raid_night_lineups set character_id = null, class_spec_id = null where character_id = old.id;
   return case when tg_op = 'DELETE' then old else new end;
 end;
 $function$;

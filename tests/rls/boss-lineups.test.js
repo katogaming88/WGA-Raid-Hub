@@ -1360,6 +1360,50 @@ describe('character and spec picks', () => {
     }
   });
 
+  it('asks for a reload when the picked alt is already gone', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p4, mateAlt } = await seedPicks(q);
+      await q('delete from public.characters where id = $1', [mateAlt]);
+      await expect(
+        setNightPicks(
+          asUser,
+          OFFICER_T1,
+          await today(q, 1),
+          FIRST,
+          [p4],
+          [{ player_id: p4, character_id: mateAlt, class_spec_id: null }]
+        )
+      ).rejects.toThrow(/Reload/);
+    });
+  });
+
+  it('drops alt picks when a roster row moves to another person, keeping a spec pick', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, p4, mateAlt, spec } = await seedPicks(q);
+      const night = await today(q, 1);
+      const picked = [
+        { player_id: p1, character_id: null, class_spec_id: spec.Fire },
+        { player_id: p4, character_id: mateAlt, class_spec_id: null }
+      ];
+      await setNightPicks(asUser, OFFICER_T1, night, FIRST, [p1, p4], picked);
+      await setGroupPicks(asUser, OFFICER_T1, FIRST, [p1, p4], picked);
+      expect((await asUser(RAIDER_T1, 'select id from public.characters where id = $1', [mateAlt])).rows).toEqual([
+        { id: mateAlt }
+      ]);
+      // p4's roster row goes to another person (as add_signup_to_roster() can).
+      const other = await seedMember(q, { teamId: 1 });
+      await q('update public.players set team_member_id = $1 where id = $2', [other.memberId, p4]);
+      const after = [
+        { player_id: p1, character_id: null, class_spec_id: spec.Fire },
+        { player_id: p4, character_id: null, class_spec_id: null }
+      ];
+      expect(await picksOf(q, 'raid_night_lineups', 'raid_date = $1', [night])).toEqual(after);
+      expect(await picksOf(q, 'boss_groups', 'encounter_id = $1', [FIRST])).toEqual(after);
+      // And teammates no longer read the old person's alt.
+      expect((await asUser(RAIDER_T1, 'select id from public.characters where id = $1', [mateAlt])).rows).toEqual([]);
+    });
+  });
+
   it('lets a teammate read an alt picked for their team, and nobody else', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { p4, mateAlt } = await seedPicks(q);

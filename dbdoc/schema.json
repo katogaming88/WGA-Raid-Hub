@@ -1418,6 +1418,10 @@
         {
           "name": "players_archived_at_through_functions",
           "def": "CREATE TRIGGER players_archived_at_through_functions BEFORE UPDATE OF archived_at ON public.players FOR EACH ROW EXECUTE FUNCTION players_archived_at_through_functions()"
+        },
+        {
+          "name": "players_clear_lineup_alts",
+          "def": "CREATE TRIGGER players_clear_lineup_alts AFTER UPDATE OF team_member_id ON public.players FOR EACH ROW EXECUTE FUNCTION clear_lineup_alts_for_player()"
         }
       ]
     },
@@ -19100,6 +19104,12 @@
     },
     {
       "name": "public.clear_lineup_picks_for_character",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.clear_lineup_alts_for_player",
       "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"

@@ -32,16 +32,22 @@ begin
   end if;
 
   perform public.check_lineup_players(p_team_id, p_player_ids);
-  -- The picked alts stay put until this save is done: a removal waits for
-  -- it, and one that came first fails the check below. Taken before the
-  -- lineup lock, the order the removal's cleanup takes them in.
+  perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
+  -- The picked alts stay put until this save is done (taken after the lineup
+  -- lock, the order everything here takes them in), and one already gone
+  -- asks for a reload: someone changed the characters since it was opened.
   perform 1 from characters
   where id in (
     select x.character_id from jsonb_to_recordset(coalesce(p_picks, '[]'::jsonb)) as x(character_id integer)
   )
   for share;
+  if exists (
+    select 1 from jsonb_to_recordset(coalesce(p_picks, '[]'::jsonb)) as x(character_id integer)
+    where x.character_id is not null and not exists (select 1 from characters c where c.id = x.character_id)
+  ) then
+    raise exception 'Someone else changed this raider''s characters since you opened it. Reload to see their change.';
+  end if;
   perform public.check_lineup_picks(p_team_id, p_player_ids, coalesce(p_picks, '[]'::jsonb));
-  perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
 
   select coalesce(array_agg(player_id), '{}'),
          coalesce(jsonb_agg(jsonb_build_object('player_id', player_id, 'character_id', character_id,

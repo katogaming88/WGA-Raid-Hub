@@ -3873,6 +3873,9 @@ Shipped: `20261118100049_raid_night_lineups_character_spec.sql`.
 - The cleanup takes each team's lineup lock in team order before touching either table, the order the saves use, so the two can't deadlock.
 - An alt that moves to another person's list (`save_battlenet_characters()` keeps its id) is cleared the same way.
 - A spec is checked against the class of the row it is stored on, so a character with the roster row's own name can't carry another class's spec onto it.
+- One lock order everywhere: a team's lineup lock first, then any character. `save_battlenet_characters()`, the one writer of `characters`, now takes the lineup lock of every team its change reaches before removing or moving a character, so its cleanup never holds a character that a save, a fill or putting a boss back is waiting for.
+- A save naming an alt that is already gone asks for a reload.
+- A roster row that moves to another person (`add_signup_to_roster()`, `claim_character()`, the joins) drops its alt picks through a trigger on `players.team_member_id`; a spec pick on the row's own class stays.
 - `p_picks` defaults to null rather than an empty list. A save that leaves picks out, as a page loaded before this shipped would, is refused when the boss has picks; an explicit empty list clears them.
 
 **Teammates read a picked alt (Kat, 2026-11-18).** A new read rule on `characters` lets a raider read an alt picked in their own team's lineups or groups, so the team's read-only grid names it. No other alt becomes readable.
