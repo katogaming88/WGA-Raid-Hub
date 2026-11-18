@@ -293,7 +293,8 @@ function PostEditor({ posts, post }: { posts: NewsPost[]; post: NewsPost | null 
               onChange={(e) => setBody(e.target.value)}
             />
             <p className="field-hint">
-              ## starts a heading, - starts a list item, **two stars** make bold. The buttons type these for you.
+              ## starts a heading, - starts a list item, **two stars** make bold. The buttons type these for you. The
+              quoted text after a picture’s address is its caption.
             </p>
           </div>
           <div className="news-editor-preview">

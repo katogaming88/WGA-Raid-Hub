@@ -139,11 +139,11 @@ describe('formatting buttons', () => {
     expect(pasted.text.slice(pasted.start, pasted.end)).toBe('link text');
   });
 
-  it('sets a picture on a paragraph of its own and leaves the cursor after it', () => {
+  it('sets a picture on a paragraph of its own, with the word Caption selected to type over', () => {
     const out = formatting.picture('Before.After.', 7, 7, 'https://x.test/a.png', 'a [shot]');
-    expect(out.text).toBe('Before.\n\n![a shot](https://x.test/a.png)\n\nAfter.');
-    expect(out.text.slice(0, out.start).endsWith('a.png)')).toBe(true);
-    expect(formatting.picture('', 0, 0, 'https://x.test/a.png', 'a').text).toBe('![a](https://x.test/a.png)');
+    expect(out.text).toBe('Before.\n\n![a shot](https://x.test/a.png "Caption")\n\nAfter.');
+    expect(out.text.slice(out.start, out.end)).toBe('Caption');
+    expect(formatting.picture('', 0, 0, 'https://x.test/a.png', 'a').text).toBe('![a](https://x.test/a.png "Caption")');
   });
 });
 
@@ -155,6 +155,19 @@ describe('Markdown in a post', () => {
     expect([...container.querySelectorAll('img')].map((i) => i.getAttribute('alt'))).toEqual(['ok', 'local']);
     rerender(<Markdown text={text} />);
     expect(container.querySelectorAll('img')).toHaveLength(0);
+  });
+
+  it('sets a picture on its own line as a figure, with its caption when it has one', () => {
+    const { container } = render(
+      <Markdown pictures text={'![a](https://x.test/a.png "The month view.")\n\n![b](https://x.test/b.png)'} />
+    );
+    const figures = [...container.querySelectorAll('figure')];
+    expect(figures).toHaveLength(2);
+    expect(figures[0]?.querySelector('figcaption')?.textContent).toBe('The month view.');
+    expect(figures[0]?.querySelector('img')).toHaveAttribute('alt', 'a');
+    expect(figures[1]?.querySelector('figcaption')).toBeNull();
+    // Never a figure inside a paragraph.
+    expect(container.querySelector('p figure')).toBeNull();
   });
 
   it('makes a heading line its own heading, at the level asked for', () => {

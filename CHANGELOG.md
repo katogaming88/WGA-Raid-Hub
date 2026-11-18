@@ -17,7 +17,7 @@ answers to.
 ### Project
 
 - News in the new app is a blog now. The News page has a Pinned post at the top, category filters (All, Features, Fixes, Changes, Announcements), a search box, and every post in a timeline by month. Each post opens on its own page, with its cover picture, headings, lists, bold, links and pictures, a Copy link button and a link to the next older post, so it can be shared in Discord. Guild home's "Latest news" and the front page link to the posts themselves (#1230).
-- Staff can write posts on the site: a New post button, an editor with Heading, Bold, List, Link and Picture buttons and a live preview beside it, a cover picture with a caption, Pin to the top of News, Save draft and Publish. Staff also get Edit and Delete on each post, and see drafts under "Not published yet". The "something new" dot on News follows the newest published post.
+- Staff can write posts on the site: a New post button, an editor with Heading, Bold, List, Link and Picture buttons and a live preview beside it, a cover picture with a caption, captions on the pictures in the post, Pin to the top of News, Save draft and Publish. Staff also get Edit and Delete on each post, and see drafts under "Not published yet". The "something new" dot on News follows the newest published post.
 - Page and browser tests for the News page, a post's page and the editor, light and dark. The new app no longer carries a copy of `news.json`; the current site keeps reading it until cutover.
 
 ## [3.290.0] - 2026-11-17

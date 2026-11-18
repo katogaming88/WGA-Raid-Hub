@@ -282,6 +282,20 @@
   padding-left: 22px;
 }
 
+.news-body .markdown-figure {
+  margin: var(--space-3) 0;
+}
+
+.news-body .markdown-figure .markdown-picture {
+  margin: 0;
+}
+
+.news-body figcaption {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
 .news-body .markdown-picture {
   display: block;
   max-width: 100%;

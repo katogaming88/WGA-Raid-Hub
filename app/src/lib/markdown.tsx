@@ -6,6 +6,7 @@ import { Fragment, type ReactNode } from 'react';
 // with https://.
 //
 // A news post (#1230) also takes pictures, `![what it shows](https://...)`,
+// with an optional caption in quotes after the address, `(https://... "Caption")`,
 // switched on with `pictures`: only from https:// (or this machine, for a
 // local stack), so a post can't pull in anything else.
 
@@ -13,10 +14,10 @@ const LINK = String.raw`\[[^\]]+\]\(https:\/\/[^\s)]+\)`;
 const PICTURE_URL = String.raw`(?:https:\/\/|http:\/\/(?:127\.0\.0\.1|localhost)[:/])[^\s)]+`;
 const INLINE = new RegExp(String.raw`(\*\*[^*]+\*\*|\*[^*]+\*|${LINK})`, 'g');
 const INLINE_WITH_PICTURES = new RegExp(
-  String.raw`(\*\*[^*]+\*\*|\*[^*]+\*|!\[[^\]]*\]\(${PICTURE_URL}\)|${LINK})`,
+  String.raw`(\*\*[^*]+\*\*|\*[^*]+\*|!\[[^\]]*\]\(${PICTURE_URL}(?: "[^"]*")?\)|${LINK})`,
   'g'
 );
-const PICTURE = new RegExp(String.raw`^!\[([^\]]*)\]\((${PICTURE_URL})\)$`);
+const PICTURE = new RegExp(String.raw`^!\[([^\]]*)\]\((${PICTURE_URL})(?: "([^"]*)")?\)$`);
 
 function inline(text: string, key: string, pictures: boolean): ReactNode[] {
   return text.split(pictures ? INLINE_WITH_PICTURES : INLINE).map((part, i) => {
@@ -69,6 +70,16 @@ export function Markdown({
                 <li key={j}>{inline(l.slice(2), `${i}-${j}`, pictures)}</li>
               ))}
             </ul>
+          );
+        }
+        // A picture on a line of its own is a figure, with its caption if it has one.
+        const figure = pictures && lines.length === 1 ? PICTURE.exec((lines[0] ?? '').trim()) : null;
+        if (figure) {
+          return (
+            <figure key={i} className="markdown-figure">
+              <img className="markdown-picture" src={figure[2]} alt={figure[1]} loading="lazy" />
+              {figure[3] && <figcaption>{figure[3]}</figcaption>}
+            </figure>
           );
         }
         const heading = /^#{1,3} (.+)$/.exec(lines[0] ?? '');

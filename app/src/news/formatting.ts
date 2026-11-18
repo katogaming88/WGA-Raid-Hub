@@ -58,13 +58,14 @@ export function link(text: string, start: number, end: number): Edit {
   return { text: splice(text, start, end, `[${label}](https://)`), start: at, end: at + 8 };
 }
 
-// A picture on a paragraph of its own, the cursor after it.
+// A picture on a paragraph of its own, with the word Caption in quotes after
+// its address selected, to type over or delete.
 export function picture(text: string, start: number, end: number, url: string, alt: string): Edit {
   const before = text.slice(0, start);
   const after = text.slice(end);
   const lead = before === '' || before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n';
   const trail = after === '' || after.startsWith('\n\n') ? '' : after.startsWith('\n') ? '\n' : '\n\n';
-  const snippet = `${lead}![${alt.replace(/[[\]]/g, '')}](${url})${trail}`;
-  const caret = start + snippet.length - trail.length;
-  return { text: splice(text, start, end, snippet), start: caret, end: caret };
+  const head = `${lead}![${alt.replace(/[[\]]/g, '')}](${url} "`;
+  const snippet = `${head}Caption")${trail}`;
+  return { text: splice(text, start, end, snippet), start: start + head.length, end: start + head.length + 7 };
 }
