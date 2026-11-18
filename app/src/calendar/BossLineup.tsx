@@ -485,24 +485,61 @@ function fillTone(t: BossTotal): string {
   return t.status.tone === 'good' ? 'good' : 'room';
 }
 
-// Hovering a boss shows the site's own tip at once (Kat, 2026-11-18): each
-// problem on its own line, missing buffs by name, where Needs a look only
-// counts them to stay on its three lines.
-type Tip = { title: string; lines: string[]; left: number; top: number };
+// Hovering a boss shows the site's own tip at once (Kat, 2026-11-18): a
+// small card of the boss's numbers, anything short in amber, and the missing
+// buffs by name, where Needs a look only counts them to stay on its three
+// lines. Board C of the tip options.
+type Tip = { total: BossTotal; pull: number; left: number; top?: number; bottom?: number };
 
-const tipLines = (t: BossTotal) => [
-  ...(t.missing.length ? t.brief.slice(0, -1) : t.brief),
-  ...(t.missing.length ? [`Missing: ${t.missing.join(', ')}`] : [])
-];
-
-// Fixed to the page, centered under what it describes and kept on screen;
-// portaled to the body so the grid's scroll box can't clip it.
+// Fixed to the page and portaled to the body, so the grid's scroll box can't
+// clip it. It opens above what it describes, so it never covers the raiders
+// under a boss (Kat, 2026-11-18), and below only when there isn't room above.
 const TIP_WIDTH = 300;
-function tipAt(el: HTMLElement, t: BossTotal): Tip {
+const TIP_ROOM = 290;
+function tipAt(el: HTMLElement, t: BossTotal, pull: number): Tip {
   const r = el.getBoundingClientRect();
   const half = TIP_WIDTH / 2 + 8;
   const left = Math.min(Math.max(r.left + r.width / 2, half), window.innerWidth - half);
-  return { title: t.boss.name, lines: tipLines(t), left, top: r.bottom + 6 };
+  return r.top > TIP_ROOM
+    ? { total: t, pull, left, bottom: window.innerHeight - r.top + 6 }
+    : { total: t, pull, left, top: r.bottom + 6 };
+}
+
+function TipBody({ tip, targets }: { tip: Tip; targets: RoleTargets }) {
+  const t = tip.total;
+  const row = (label: string, value: string, warn: boolean) => (
+    <tr key={label}>
+      <th scope="row">{label}</th>
+      <td className={warn ? 'blg-tip-warn' : undefined}>{value}</td>
+    </tr>
+  );
+  const against = (n: number, target: number) => (target ? `${n}/${target}` : String(n));
+  return (
+    <>
+      <strong>
+        {tip.pull}. {t.boss.name}
+      </strong>
+      <table className="blg-tip-table">
+        <tbody>
+          {row('Raiders', `${t.count}/${t.boss.cap}`, t.status.tone === 'warn' || t.status.tone === 'bad')}
+          {row('Tanks', against(t.tanks, targets.tanks), !!targets.tanks && t.tanks !== targets.tanks)}
+          {row('Healers', against(t.healers, targets.healers), !!targets.healers && t.healers !== targets.healers)}
+          {row('Melee', String(t.roles.Melee), false)}
+          {row('Ranged', String(t.roles.Ranged), false)}
+        </tbody>
+      </table>
+      {t.missing.length > 0 && (
+        <>
+          <span className="blg-tip-label">Missing buffs ({t.missing.length})</span>
+          <ul className="blg-tip-cols">
+            {t.missing.map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
+  );
 }
 
 const roleTarget = (role: Role, targets: RoleTargets) =>
@@ -552,7 +589,8 @@ function RaidGrid({
   const tipProps = (t: BossTotal | undefined) =>
     t?.problems.length
       ? {
-          onMouseEnter: (e: MouseEvent<HTMLElement>) => setTip(tipAt(e.currentTarget, t)),
+          onMouseEnter: (e: MouseEvent<HTMLElement>) =>
+            setTip(tipAt(e.currentTarget, t, raid.bosses.indexOf(t.boss) + 1)),
           onMouseLeave: () => setTip(null)
         }
       : {};
@@ -830,13 +868,12 @@ function RaidGrid({
 
       {tip &&
         createPortal(
-          <div className="blg-tip" role="tooltip" style={{ left: tip.left, top: tip.top, width: TIP_WIDTH }}>
-            <strong>{tip.title}</strong>
-            <ul>
-              {tip.lines.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
+          <div
+            className="blg-tip"
+            role="tooltip"
+            style={{ left: tip.left, top: tip.top, bottom: tip.bottom, width: TIP_WIDTH }}
+          >
+            <TipBody tip={tip} targets={targets} />
           </div>,
           document.body
         )}
