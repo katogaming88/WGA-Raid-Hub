@@ -484,6 +484,12 @@ function fillTone(t: BossTotal): string {
   return t.status.tone === 'good' ? 'good' : 'room';
 }
 
+// Hovering a boss names everything that needs a look, missing buffs by name
+// (Kat, 2026-11-18): Needs a look itself only counts them, to stay on its
+// three lines.
+const hoverText = (t: BossTotal | undefined) =>
+  t?.problems.length ? `${t.boss.name}: ${t.problems.join('; ')}` : undefined;
+
 const roleTarget = (role: Role, targets: RoleTargets) =>
   role === 'Tank' ? targets.tanks : role === 'Heal' ? targets.healers : 0;
 
@@ -528,15 +534,22 @@ function RaidGrid({
     ...gaps.map((t) => ({
       key: `boss-${t.boss.id}`,
       head: `${raid.bosses.indexOf(t.boss) + 1}. ${t.boss.short}`,
-      text: t.brief.join(' · ')
+      text: t.brief.join(' · '),
+      title: hoverText(t)
     })),
-    ...view.notComing.map((name) => ({ key: `out-${name}`, head: name, text: 'is in, but said they’re not coming' })),
+    ...view.notComing.map((name) => ({
+      key: `out-${name}`,
+      head: name,
+      text: 'is in, but said they’re not coming',
+      title: undefined
+    })),
     ...(view.benchOut.length
       ? [
           {
             key: 'bench',
             head: 'Bench',
-            text: `${view.benchOut.join(' and ')} ${view.benchOut.length === 1 ? 'is' : 'are'} out on every boss unless you put them in.`
+            text: `${view.benchOut.join(' and ')} ${view.benchOut.length === 1 ? 'is' : 'are'} out on every boss unless you put them in.`,
+            title: undefined
           }
         ]
       : [])
@@ -554,7 +567,10 @@ function RaidGrid({
             <ul>
               {looks.map((l) => (
                 <li key={l.key}>
-                  <strong>{l.head}</strong> <span className="text-muted">{l.text}</span>
+                  <strong title={l.title}>{l.head}</strong>{' '}
+                  <span className="text-muted" title={l.title}>
+                    {l.text}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -590,6 +606,7 @@ function RaidGrid({
                     className="blg-boss"
                     data-skipped={boss.skipped}
                     data-warn={(t?.problems.length ?? 0) > 0}
+                    title={hoverText(t)}
                     {...hotProps(boss.id)}
                   >
                     <ColumnSizer bosses={raid.bosses} />

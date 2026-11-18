@@ -565,6 +565,18 @@ describe('the boss lineup tab', () => {
     expect(look.getByText('Ed is out on every boss unless you put them in.')).toBeInTheDocument();
     expect(look.getByText('is in, but said they’re not coming')).toBeInTheDocument();
     expect(look.getByText('2. Sszorak')).toBeInTheDocument();
+    // Needs a look counts missing buffs; hovering the boss names them.
+    expect(
+      look.getByText(/^18 open spots · 1 tank, wants 2 · 1 healer, wants 4 · \d+ buffs missing$/)
+    ).toBeInTheDocument();
+    expect(look.getByText('2. Sszorak')).toHaveAttribute(
+      'title',
+      expect.stringMatching(/^Sszorak: 18 open spots; .*no Mark of the Wild/)
+    );
+    expect(g.getByRole('columnheader', { name: /^Sszorak, pull 2/ })).toHaveAttribute(
+      'title',
+      expect.stringMatching(/^Sszorak: 18 open spots; 1 tank, wants 2; 1 healer, wants 4; no Mark of the Wild/)
+    );
   });
 
   it('saves a change for tonight only', async () => {
