@@ -43,8 +43,18 @@ export type LineupTeam = {
   afterRaid: AfterRaid;
 };
 export type TeamLineup = { team: LineupTeam; setting: LineupSetting };
-// One boss on a night's list, in pull order, with who is in for it.
-export type LineupBoss = { name: string; position: number; playerIds: number[] };
+// Another character or spec a raider plays on one boss (#1873): the alt's
+// name (null on their own character) and the class and spec played.
+export type LineupPick = { character: string | null; className: string; spec: string };
+// One boss on a night's list, in pull order, with who is in for it and the
+// picks of those who play something other than their usual. A pick's class
+// or spec left null is the raider's usual one.
+export type LineupBoss = {
+  name: string;
+  position: number;
+  playerIds: number[];
+  picks?: Record<number, { character: string | null; className: string | null; spec: string | null }>;
+};
 // coversUntil: when the post's week ended as it was posted (#1825), so a
 // later change to the posting time can't cut short a week already up.
 export type WeekPost = { messageId: string | null; channelId: string | null; key: string; coversUntil?: string };
@@ -146,7 +156,16 @@ export async function weekNights(
 // -- The grid -----------------------------------------------------------------
 
 export type Cell = 'in' | 'out' | 'came' | 'went';
-export type GridRow = { name: string; className: string; role: string; cells: Cell[]; count: number };
+// picks: per boss, what the raider plays when it isn't their usual (#1873).
+// Left off a raider with none, so their row and the post's key stay as before.
+export type GridRow = {
+  name: string;
+  className: string;
+  role: string;
+  cells: Cell[];
+  count: number;
+  picks?: Array<LineupPick | null>;
+};
 export type Grid = {
   bosses: string[];
   groups: Array<{ label: string; rows: GridRow[] }>;
@@ -181,12 +200,23 @@ export function lineupGrid(roster: RosterRow[], bosses: LineupBoss[]): Grid {
       .filter((p) => p.role === role)
       .map((p) => {
         const cells = cellsOf(p.id);
+        const picks = ordered.map((b, i): LineupPick | null => {
+          const pick = sets[i].has(p.id) ? b.picks?.[p.id] : undefined;
+          return pick
+            ? {
+                character: pick.character,
+                className: pick.className ?? p.className ?? '',
+                spec: pick.spec ?? p.spec ?? ''
+              }
+            : null;
+        });
         return {
           name: nameOf(p),
           className: p.className ?? '',
           role,
           cells,
-          count: cells.filter((c) => c === 'in' || c === 'came').length
+          count: cells.filter((c) => c === 'in' || c === 'came').length,
+          ...(picks.some(Boolean) ? { picks } : {})
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name))
@@ -199,19 +229,38 @@ export function lineupGrid(roster: RosterRow[], bosses: LineupBoss[]): Grid {
   return { bosses: ordered.map((b) => b.name), groups, swaps };
 }
 
+// A pick in words: "on Kattotem (Restoration Shaman)" or "as Destruction".
+export const pickWords = (p: LineupPick) =>
+  p.character ? `on ${p.character} (${p.spec} ${p.className})` : `as ${p.spec}`;
+const pickKey = (p: LineupPick | null | undefined) => (p ? pickWords(p) : '');
+
 // The swaps in words, for the alt text and the text fallback: "3. Vashnik:
-// Bear, Luminouss in; Zuggz, Brooke out".
+// Bear, Luminouss in; Zuggz, Brooke out". A pick is named where it starts:
+// with the raider coming in, or on its own for one already in ("Katorri on
+// Kattotem (Restoration Shaman)"), and where it ends the same way (#1873).
 export function swapLines(grid: Grid): string[] {
-  return grid.swaps.flatMap((s, i) =>
-    s.came.length || s.went.length
-      ? [
-          `${i + 1}. ${grid.bosses[i]}: ` +
-            [s.came.length ? `${s.came.join(', ')} in` : '', s.went.length ? `${s.went.join(', ')} out` : '']
-              .filter(Boolean)
-              .join('; ')
-        ]
-      : []
-  );
+  const rows = grid.groups.flatMap((g) => g.rows);
+  return grid.bosses.flatMap((boss, i) => {
+    const now = (r: GridRow) => r.picks?.[i] ?? null;
+    const before = (r: GridRow) => (i ? (r.picks?.[i - 1] ?? null) : null);
+    const came = rows
+      .filter((r) => r.cells[i] === 'came')
+      .map((r) => (now(r) ? `${r.name} ${pickWords(now(r)!)}` : r.name));
+    const went = rows.filter((r) => r.cells[i] === 'went').map((r) => r.name);
+    const switched = rows
+      .filter((r) => r.cells[i] === 'in' && pickKey(now(r)) !== pickKey(before(r)))
+      .map((r) =>
+        now(r)
+          ? `${r.name} ${pickWords(now(r)!)}`
+          : `${r.name} ${before(r)?.character ? 'back on their main' : 'back to their usual spec'}`
+      );
+    const parts = [
+      came.length ? `${came.join(', ')} in` : '',
+      went.length ? `${went.join(', ')} out` : '',
+      switched.join(', ')
+    ].filter(Boolean);
+    return parts.length ? [`${i + 1}. ${boss}: ${parts.join('; ')}`] : [];
+  });
 }
 
 const escape = (s: string) =>
@@ -249,6 +298,13 @@ export function lineupSvg(grid: Grid): string {
       row.cells.forEach((cell, i) => {
         const x = PAD + NAME_W + i * CELL_W;
         const cx = x + CELL_W / 2;
+        // Another character or spec: a bar under the mark in the class played (#1873).
+        const picked = row.picks?.[i];
+        if (picked) {
+          parts.push(
+            `<rect x="${x + 14}" y="${y + ROW_H - 5}" width="${CELL_W - 28}" height="3" fill="${CLASS_COLORS[picked.className] ?? '#e8eaf0'}"/>`
+          );
+        }
         if (cell === 'out') {
           parts.push(`<rect x="${x}" y="${y}" width="${CELL_W}" height="${ROW_H}" fill="#161a22"/>`);
           parts.push(`<text x="${cx}" y="${y + 21}" font-size="16" fill="#3a4152" text-anchor="middle">–</text>`);
@@ -308,7 +364,13 @@ export function lineupSvg(grid: Grid): string {
     `<path d="M${lx} ${ly + 17} L${lx + 12} ${ly + 17} L${lx + 6} ${ly + 27} Z" fill="#ff6b6b"/><text x="${lx + 20}" y="${ly + 26}" font-size="14" fill="#9aa3b5">goes out for this boss</text>`,
     `<text x="${lx + 1}" y="${ly + 52}" font-size="14" fill="#9aa3b5">–<tspan dx="12">sitting out</tspan></text>`
   );
-  const height = Math.max(tableBottom, ly + 60) + PAD;
+  const anyPick = grid.groups.some((g) => g.rows.some((r) => r.picks));
+  if (anyPick) {
+    parts.push(
+      `<rect x="${lx}" y="${ly + 70}" width="12" height="3" fill="#e8eaf0"/><text x="${lx + 20}" y="${ly + 76}" font-size="14" fill="#9aa3b5">plays another character or spec</text>`
+    );
+  }
+  const height = Math.max(tableBottom, ly + (anyPick ? 86 : 60)) + PAD;
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="Onest">` +
     `<rect width="${width}" height="${height}" fill="#11141b"/>` +

@@ -78,18 +78,36 @@ export function lineupDb(client: () => SupabaseClient<any>): LineupDb {
           .eq('raid_date', raidDate),
         client()
           .from('raid_night_lineups')
-          .select('encounter_id, player_id')
+          .select(
+            'encounter_id, player_id, character_id, class_spec_id, characters(name, class_name, spec_name), classes_specs(class, spec)'
+          )
           .eq('team_id', teamId)
           .eq('raid_date', raidDate)
       ]);
       const rows = (must(bosses, 'raid_night_bosses') as any[] | null) ?? [];
       const ins = (must(lineup, 'raid_night_lineups') as any[] | null) ?? [];
+      // What a pick plays, as the site's grid works it out (#1873): the picked
+      // spec, else the alt's own; null falls back to the raider's usual.
+      const pickOf = (l: any) =>
+        l.character_id == null && l.class_spec_id == null
+          ? null
+          : {
+              character: l.character_id != null ? (l.characters?.name ?? 'an alt') : null,
+              className: l.classes_specs?.class ?? (l.character_id != null ? l.characters?.class_name : null) ?? null,
+              spec: l.classes_specs?.spec ?? (l.character_id != null ? l.characters?.spec_name : null) ?? null
+            };
       return rows
         .filter((b) => !b.skipped)
         .map((b) => ({
           name: b.raid_encounters?.name ?? `Boss ${b.encounter_id}`,
           position: b.position,
-          playerIds: ins.filter((l) => l.encounter_id === b.encounter_id).map((l) => l.player_id as number)
+          playerIds: ins.filter((l) => l.encounter_id === b.encounter_id).map((l) => l.player_id as number),
+          picks: Object.fromEntries(
+            ins.flatMap((l) => {
+              const pick = l.encounter_id === b.encounter_id ? pickOf(l) : null;
+              return pick ? [[l.player_id, pick]] : [];
+            })
+          )
         }))
         .sort((a, b) => a.position - b.position);
     },
