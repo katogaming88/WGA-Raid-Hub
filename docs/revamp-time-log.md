@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     57 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 42 h 32 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 44 h 37 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **218 h 20 m** |             |
+| **All revamp work**                | **220 h 25 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 7 h 45 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 9 h 50 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -803,6 +803,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:16-9:30 AM | PR #1870 (#1681) after it opened: the screenshots retaken with this season's real boss art from Warcraft Logs (a phone bug found: markers from cells under the pinned name column drew on top of it, fixed); CodeRabbit's two test findings (each write read back; another team's officer, a raider and a signed-out caller refused); the fresh-agent migration review (changes needed: the backup doc's account_preferences line; nice-to-haves done: the migration header, "each person" not "each officer", a failed style save goes back and says so); tests, this row | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1681) | 15 m | build; Kat's CodeRabbit trigger and questions not split | 459,000 | Tokens include the fresh agent's 89,300. Kat's design review and merge not yet counted. |
 | 9:34-9:58 AM | PR #1870 (#1681): the missing buffs named on hover (Kat's ask), then the site's own tip shown at once; three tip designs mocked on the page and Kat's pick (C, a card of the boss's numbers), opened above the boss so it never covers the raiders; Kat's merge (9:56 AM), cleanup, #1487 | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1681) | 25 m | build; Kat's design calls and merge not split | 110,800 | Added 2026-11-18 (in #1580's PR). |
 | 9:58-10:25 AM | #1580: officers pick a raider's alt or another spec per boss. `character_id` and `class_spec_id` on `raid_night_lineups` and `boss_groups`, checked and stored one way, copied by every fill, a deleted alt clearing its picks, teammates reading picked alts; Kat's two answers (Discord post as its own issue, filed as #1873; teammates see alt names); the ⇄ picker, picked cells with spec icons in class color, role counts and buffs following the pick, the raider's card; database, page, browser and accessibility tests, generated docs, RLS.md, backup guide, decision log, Help guide, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1580) | 25 m | build; Kat's answers not split | 235,900 | CodeRabbit, the fresh-agent review and Kat's design review and merge not yet counted. |
+| 10:25-11:15 AM | PR #1874 (#1580) after it opened: Kat's design OK; CodeRabbit's three rounds (lock order: the lineup lock first, then characters; picks held during a save; owner changes; omitted picks; a reload for a gone alt; alt picks dropped when a roster row changes person; lineup paths never wait on a character); the fresh-agent migration review and its fixes; two-session checks with a scratch script | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1580) | 50 m | build; Kat's CodeRabbit triggers not split | 353,800 | Added 2026-11-18 (in #1873's PR). Tokens include the fresh agent's 205,100. |
+| 5:50-6:20 PM | PR #1874 (#1580): CodeRabbit's last finding (the alt cleanup takes a team lock only if it's free, and stops the Battle.net save with a try again); Kat's merge (6:18 PM), cleanup | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1580) | 30 m | build; Kat's merge not split | 802,100 | Added 2026-11-18 (in #1873's PR). |
+| 6:20-7:05 PM | #1873: the weekly Discord lineup post names a character or spec picked for a boss: the swap lines and alt text ("Katorri on Kattotem (Restoration Shaman)", "as Destruction", "back on their main"), the spec's icon in the cell framed in the class played (Kat turned down a bar first, then picked icons without a written list from two drawn options); a raider with no picks leaves the post unchanged; Edge Function tests, stamp, changelog, these rows; PR | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1873) | 45 m | build; Kat's answers not split | 204,800 | Kat's review and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 

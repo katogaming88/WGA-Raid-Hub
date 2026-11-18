@@ -45,12 +45,11 @@ function dataUrl(data: Uint8Array): string {
   return 'data:image/jpeg;base64,' + btoa(binary);
 }
 
-// The icons this picture needs; one that can't be read is left out, which
-// only costs that raider's icon.
-async function iconsFor(fetcher: typeof fetch, picture: Picture): Promise<Map<string, string>> {
-  const keys = new Set(picture.groups.flatMap((g) => g.raiders.map((r) => specIconKey(r.className, r.spec))));
+// The icons asked for, read once per instance; one that can't be read is
+// left out, which only costs that raider's icon.
+async function loadIcons(fetcher: typeof fetch, keys: Iterable<string>): Promise<Map<string, string>> {
   await Promise.all(
-    [...keys]
+    [...new Set(keys)]
       .filter((k) => !icons.has(k))
       .map(async (k) => {
         try {
@@ -63,10 +62,29 @@ async function iconsFor(fetcher: typeof fetch, picture: Picture): Promise<Map<st
   return icons;
 }
 
+const iconsFor = (fetcher: typeof fetch, picture: Picture) =>
+  loadIcons(
+    fetcher,
+    picture.groups.flatMap((g) => g.raiders.map((r) => specIconKey(r.className, r.spec)))
+  );
+
+// A spec icon an SVG asks for as href="spec-icon:<key>" (the lineup grid,
+// #1873) is filled in; one that can't be read is left out.
+async function withIcons(svg: string, fetcher: typeof fetch): Promise<string> {
+  const found = await loadIcons(
+    fetcher,
+    [...svg.matchAll(/href="spec-icon:([a-z-]+)"/g)].map((m) => m[1])
+  );
+  return svg.replace(/<image href="spec-icon:([a-z-]+)"[^>]*\/>/g, (tag, k) =>
+    found.has(k) ? tag.replace(`spec-icon:${k}`, found.get(k)!) : ''
+  );
+}
+
 // Any of the bot's pictures as a PNG: the sheet's roster and the weekly
 // lineup's grid (#1709) both draw through here.
 export async function drawSvg(svg: string, fetcher: typeof fetch = fetch): Promise<Uint8Array> {
   const fonts = await start(fetcher);
+  svg = await withIcons(svg, fetcher);
   const resvg = new Resvg(svg, {
     font: { fontBuffers: fonts, defaultFontFamily: 'Onest', loadSystemFonts: false }
   });

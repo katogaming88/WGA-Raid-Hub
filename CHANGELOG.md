@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.294.0] - 2026-11-18
+
+### Functions
+
+- The weekly boss lineup post in Discord names a character or spec an officer picked for a boss (#1873). The swaps and the picture's description say "8. Ula'tek: Katorrí on Kattotem (Restoration Shaman)" or "4. Sszorak: Katorrí as Destruction", and "back on their main" where a pick ends. In the picture, that raider's cell shows the spec's icon in a frame of the class played, as on the site's grid; the bot reads spec icons the way the signup picture does. A raider with no picks shows exactly as before, and a post with no picks isn't edited.
+
+### Project
+
+- Edge Function tests for a pick on the first boss, an alt coming in, a return to the main, the drawing's spec icons, and a pick edited into a post already up. The revamp time log's rows for PR #1874 after it opened, and this one.
+
 ## [3.293.0] - 2026-11-18
 
 ### Backend

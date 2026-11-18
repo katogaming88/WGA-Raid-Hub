@@ -96,6 +96,45 @@ Deno.test(
   }
 );
 
+// Kat plays Destruction on the first boss; Noc comes in on their Restoration
+// Druid alt for the second and goes back to their main for the third (#1873).
+const PICKED: LineupBoss[] = [
+  { ...BOSSES[0], picks: { 2: { character: null, className: null, spec: 'Destruction' } } },
+  { ...BOSSES[1], picks: { 3: { character: 'Nocheal', className: 'Druid', spec: 'Restoration' } } },
+  { ...BOSSES[2], picks: {} }
+];
+
+Deno.test('the swaps name a character or spec picked for a boss, where it starts and ends (#1873)', () => {
+  assertEquals(swapLines(lineupGrid(ROSTER, PICKED)), [
+    "1. Nek'zali: Kat as Destruction",
+    '2. Sentinels: Noc on Nocheal (Restoration Druid) in; Kat out',
+    '3. Vashnik: Sub in; Noc back on their main'
+  ]);
+});
+
+Deno.test('a raider with no picks has the same row as before picks, so the post is unchanged (#1873)', () => {
+  const rows = lineupGrid(ROSTER, PICKED).groups.flatMap((g) => g.rows);
+  assertEquals(
+    rows.filter((r) => r.picks).map((r) => r.name),
+    ['Kat', 'Noc']
+  );
+  assertEquals(
+    lineupGrid(
+      ROSTER,
+      BOSSES.map((b) => ({ ...b, picks: {} }))
+    ),
+    lineupGrid(ROSTER, BOSSES)
+  );
+  assert(!lineupSvg(lineupGrid(ROSTER, BOSSES)).includes('spec-icon:'));
+});
+
+Deno.test('the drawing shows a picked cell as the spec’s icon framed in the class played (#1873)', () => {
+  const svg = lineupSvg(lineupGrid(ROSTER, PICKED));
+  assert(svg.includes('href="spec-icon:warlock-destruction"'));
+  assert(svg.includes('href="spec-icon:druid-restoration"'));
+  assert(svg.includes('stroke="#ff7c0a"'));
+});
+
 // -- Posting -------------------------------------------------------------------
 
 function fakeLineups(over: Partial<{ bosses: Record<string, LineupBoss[]>; nights: Record<string, Night> }> = {}) {
@@ -226,6 +265,15 @@ Deno.test('a changed lineup edits the post, pinging nobody, even one sent as tex
   assertEquals(edit.body.allowed_mentions, { parse: [] });
   assertEquals(edit.body.content, undefined);
   assert(changed.rows.get(WEEK)!.key !== key);
+});
+
+Deno.test('a character or spec picked after the post went up edits it, and the alt text names it (#1873)', async () => {
+  const key = await postedKey();
+  const changed = context({ bosses: { '2026-11-05': PICKED } });
+  changed.rows.set(WEEK, { messageId: 'm1', channelId: CHANNEL, key });
+  assertEquals(await syncLineup(changed.ctx, LINEUP), 'edited');
+  const edit = changed.calls.find((c) => c.key === `PATCH ${MSG}/m1`)!;
+  assert(edit.body.attachments[0].description.includes('Noc on Nocheal (Restoration Druid) in'));
 });
 
 Deno.test('a night moved to another time edits the post, with the same bosses and players', async () => {
