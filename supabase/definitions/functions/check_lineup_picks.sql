@@ -8,6 +8,8 @@ CREATE OR REPLACE FUNCTION public.check_lineup_picks(p_team_id integer, p_player
  STABLE
  SET search_path TO 'public'
 AS $function$
+declare
+  v_name text;
 begin
   if p_picks is null or jsonb_typeof(p_picks) <> 'array' then
     raise exception 'The picks must be a list.';
@@ -25,23 +27,24 @@ begin
     raise exception 'A raider has two picks for one boss.';
   end if;
 
-  if exists (
-    select 1
-    from jsonb_to_recordset(p_picks) as x(player_id integer, character_id integer)
-    where x.character_id is not null
-      and not exists (
-        select 1
-        from players p
-        join team_members tm on tm.id = p.team_member_id
-        join characters c on c.person_id = tm.person_id
-        where p.id = x.player_id and p.team_id = p_team_id and c.id = x.character_id
-      )
-  ) then
-    raise exception 'That character isn''t one of the raider''s own.';
+  -- Each refusal names the raider, so an officer knows whose pick to fix.
+  select coalesce(p.nickname, split_part(p.name_realm, '-', 1)) into v_name
+  from jsonb_to_recordset(p_picks) as x(player_id integer, character_id integer)
+  left join players p on p.id = x.player_id
+  where x.character_id is not null
+    and not exists (
+      select 1
+      from players p2
+      join team_members tm on tm.id = p2.team_member_id
+      join characters c on c.person_id = tm.person_id
+      where p2.id = x.player_id and p2.team_id = p_team_id and c.id = x.character_id
+    )
+  limit 1;
+  if found then
+    raise exception 'That character isn''t one of %''s own. Reload to see their characters.', v_name;
   end if;
 
-  if exists (
-    select 1
+  select coalesce(p.nickname, split_part(p.name_realm, '-', 1)) into v_name
     from jsonb_to_recordset(p_picks) as x(player_id integer, character_id integer, class_spec_id integer)
     join players p on p.id = x.player_id and p.team_id = p_team_id
     left join classes_specs main on main.id = p.class_spec_id
@@ -59,8 +62,9 @@ begin
                 else c.class_name
               end
       )
-  ) then
-    raise exception 'That spec isn''t one the character''s class has.';
+  limit 1;
+  if found then
+    raise exception 'That spec isn''t one %''s character''s class has.', v_name;
   end if;
 end;
 $function$;

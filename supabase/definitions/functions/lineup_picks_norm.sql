@@ -14,9 +14,6 @@ AS $function$
            case
              when x.class_spec_id is null then null
              when a.character_id is null and x.class_spec_id = p.class_spec_id then null
-             when a.character_id is not null and x.class_spec_id = (
-               select cs.id from classes_specs cs where cs.class = c.class_name and cs.spec = c.spec_name
-             ) then null
              else x.class_spec_id
            end as class_spec_id
     from jsonb_to_recordset(coalesce(p_picks, '[]'::jsonb)) as x(player_id integer, character_id integer, class_spec_id integer)

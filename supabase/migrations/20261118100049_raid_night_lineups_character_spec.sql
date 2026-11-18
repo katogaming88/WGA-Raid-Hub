@@ -53,7 +53,7 @@ create index boss_groups_character_id_idx on public.boss_groups (character_id)
 -- character. The cleanup takes the same locks again in team order, which is
 -- free when its caller already holds them.
 create or replace function public.clear_lineup_picks_for_character() returns trigger
-language plpgsql set search_path = public
+language plpgsql security definer set search_path = public
 as $$
 declare
   v_team integer;
@@ -92,9 +92,12 @@ create trigger characters_clear_lineup_picks_on_new_owner
 -- the alt was the old person's (CodeRabbit on PR #1874). A spec pick on the
 -- roster row's own class stays. Rows on the lineup tables only key-share the
 -- players row, which this update doesn't conflict with, so taking the
--- lineup lock here keeps the order above.
+-- lineup lock here keeps the order above. Both cleanups run as their owner:
+-- the current site's Roster tab clears team_member_id with a direct update
+-- as the officer, and nobody may update the lineup tables directly (fresh
+-- review on PR #1874).
 create or replace function public.clear_lineup_alts_for_player() returns trigger
-language plpgsql set search_path = public
+language plpgsql security definer set search_path = public
 as $$
 begin
   if new.team_member_id is not distinct from old.team_member_id
@@ -189,9 +192,12 @@ $$;
 
 -- The picks a save sends, as stored: an object per raider whose character or
 -- spec differs, {player_id, character_id, class_spec_id}. A pick naming the
--- raider's own roster character, or the character's usual spec, is stored as
--- null, so "the main in its usual spec" has one spelling and comparing a
--- night with its group stays exact.
+-- raider's own roster character, or the roster character's usual spec, is
+-- stored as null, so "the main in its usual spec" has one spelling and
+-- comparing a night with its group stays exact. An alt's spec is kept as
+-- picked: its "usual" is whatever Battle.net said at the raider's last save,
+-- so null would let the pick change spec on its own (fresh review on PR
+-- #1874).
 create or replace function public.lineup_picks_norm(p_team_id integer, p_picks jsonb)
 returns table (player_id integer, character_id integer, class_spec_id integer)
 language sql stable set search_path = public
@@ -202,9 +208,6 @@ as $$
            case
              when x.class_spec_id is null then null
              when a.character_id is null and x.class_spec_id = p.class_spec_id then null
-             when a.character_id is not null and x.class_spec_id = (
-               select cs.id from classes_specs cs where cs.class = c.class_name and cs.spec = c.spec_name
-             ) then null
              else x.class_spec_id
            end as class_spec_id
     from jsonb_to_recordset(coalesce(p_picks, '[]'::jsonb)) as x(player_id integer, character_id integer, class_spec_id integer)
@@ -228,6 +231,8 @@ create or replace function public.check_lineup_picks(p_team_id integer, p_player
 returns void
 language plpgsql stable set search_path = public
 as $$
+declare
+  v_name text;
 begin
   if p_picks is null or jsonb_typeof(p_picks) <> 'array' then
     raise exception 'The picks must be a list.';
@@ -245,23 +250,24 @@ begin
     raise exception 'A raider has two picks for one boss.';
   end if;
 
-  if exists (
-    select 1
-    from jsonb_to_recordset(p_picks) as x(player_id integer, character_id integer)
-    where x.character_id is not null
-      and not exists (
-        select 1
-        from players p
-        join team_members tm on tm.id = p.team_member_id
-        join characters c on c.person_id = tm.person_id
-        where p.id = x.player_id and p.team_id = p_team_id and c.id = x.character_id
-      )
-  ) then
-    raise exception 'That character isn''t one of the raider''s own.';
+  -- Each refusal names the raider, so an officer knows whose pick to fix.
+  select coalesce(p.nickname, split_part(p.name_realm, '-', 1)) into v_name
+  from jsonb_to_recordset(p_picks) as x(player_id integer, character_id integer)
+  left join players p on p.id = x.player_id
+  where x.character_id is not null
+    and not exists (
+      select 1
+      from players p2
+      join team_members tm on tm.id = p2.team_member_id
+      join characters c on c.person_id = tm.person_id
+      where p2.id = x.player_id and p2.team_id = p_team_id and c.id = x.character_id
+    )
+  limit 1;
+  if found then
+    raise exception 'That character isn''t one of %''s own. Reload to see their characters.', v_name;
   end if;
 
-  if exists (
-    select 1
+  select coalesce(p.nickname, split_part(p.name_realm, '-', 1)) into v_name
     from jsonb_to_recordset(p_picks) as x(player_id integer, character_id integer, class_spec_id integer)
     join players p on p.id = x.player_id and p.team_id = p_team_id
     left join classes_specs main on main.id = p.class_spec_id
@@ -279,8 +285,9 @@ begin
                 else c.class_name
               end
       )
-  ) then
-    raise exception 'That spec isn''t one the character''s class has.';
+  limit 1;
+  if found then
+    raise exception 'That spec isn''t one %''s character''s class has.', v_name;
   end if;
 end;
 $$;

@@ -5,6 +5,7 @@
 CREATE OR REPLACE FUNCTION public.clear_lineup_alts_for_player()
  RETURNS trigger
  LANGUAGE plpgsql
+ SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
 begin

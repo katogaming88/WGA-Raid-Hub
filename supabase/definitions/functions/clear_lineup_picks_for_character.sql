@@ -5,6 +5,7 @@
 CREATE OR REPLACE FUNCTION public.clear_lineup_picks_for_character()
  RETURNS trigger
  LANGUAGE plpgsql
+ SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
 declare

@@ -1156,7 +1156,12 @@ function PlayPicker({
                   className="button blg-pick-spec"
                   aria-pressed={chosen}
                   onClick={() =>
-                    onPick(ch.main && usual ? null : { characterId: ch.id, classSpecId: usual ? null : cs.id })
+                    // The main's usual spec is no pick; an alt's spec is
+                    // kept as picked, so it doesn't follow their next
+                    // Battle.net save.
+                    onPick(
+                      ch.main && usual ? null : { characterId: ch.id, classSpecId: ch.main && usual ? null : cs.id }
+                    )
                   }
                 >
                   {icon && <img src={icon} alt="" width={18} height={18} />}

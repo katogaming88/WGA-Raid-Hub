@@ -1122,7 +1122,7 @@ describe('character and spec picks', () => {
       )
     ).rows;
 
-  it('saves an alt and a spec for a night, and stores a pick of the usual one as nothing', async () => {
+  it("saves an alt and a spec for a night, keeping the alt's spec as picked", async () => {
     await withTxn(async ({ q, asUser }) => {
       const { p1, p4, spec, mateAlt } = await seedPicks(q);
       const night = await today(q, 1);
@@ -1139,8 +1139,9 @@ describe('character and spec picks', () => {
       );
       expect(await picksOf(q, 'raid_night_lineups', 'raid_date = $1 and encounter_id = $2', [night, FIRST])).toEqual([
         { player_id: p1, character_id: null, class_spec_id: spec.Fire },
-        // Restoration is the alt's own spec, so it is stored as its usual.
-        { player_id: p4, character_id: mateAlt, class_spec_id: null }
+        // Restoration is the alt's current spec, but it is kept: the alt's
+        // spec changes with the raider's next Battle.net save.
+        { player_id: p4, character_id: mateAlt, class_spec_id: spec.Restoration }
       ]);
     });
   });
@@ -1173,7 +1174,7 @@ describe('character and spec picks', () => {
         ],
         /two picks/
       ],
-      [({ p1, mateAlt }) => [{ player_id: p1, character_id: mateAlt, class_spec_id: null }], /raider's own/],
+      [({ p1, mateAlt }) => [{ player_id: p1, character_id: mateAlt, class_spec_id: null }], /isn't one of \S+'s own/],
       [({ p1, spec }) => [{ player_id: p1, character_id: null, class_spec_id: spec.Restoration }], /class has/],
       [({ p1, ownAlt }) => [{ player_id: p1, character_id: ownAlt, class_spec_id: 1 }], /class has/]
     ];
@@ -1358,6 +1359,23 @@ describe('character and spec picks', () => {
         ]);
       });
     }
+  });
+
+  it('clears picks when an officer unlinks a roster row directly, as the current site does', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p4, mateAlt } = await seedPicks(q);
+      const night = await today(q, 1);
+      const onAlt = [{ player_id: p4, character_id: mateAlt, class_spec_id: null }];
+      await setNightPicks(asUser, OFFICER_T1, night, FIRST, [p4], onAlt);
+      await setGroupPicks(asUser, OFFICER_T1, FIRST, [p4], onAlt);
+      await asUser(OFFICER_T1, 'update public.players set team_member_id = null where id = $1', [p4]);
+      expect(await picksOf(q, 'raid_night_lineups', 'raid_date = $1', [night])).toEqual([
+        { player_id: p4, character_id: null, class_spec_id: null }
+      ]);
+      expect(await picksOf(q, 'boss_groups', 'encounter_id = $1', [FIRST])).toEqual([
+        { player_id: p4, character_id: null, class_spec_id: null }
+      ]);
+    });
   });
 
   it('asks for a reload when the picked alt is already gone', async () => {

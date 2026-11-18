@@ -790,7 +790,7 @@ describe('the boss lineup tab', () => {
       }),
       expect.objectContaining({
         p_encounter_id: 102,
-        p_picks: [{ player_id: 2, character_id: BOSHAM.id, class_spec_id: null }],
+        p_picks: [{ player_id: 2, character_id: BOSHAM.id, class_spec_id: 3 }],
         p_expected_picks: []
       })
     ]);
