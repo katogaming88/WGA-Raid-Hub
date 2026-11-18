@@ -71,7 +71,11 @@ create policy "Claude readers read news_posts" on public.news_posts
 
 revoke all on table public.news_posts from public, anon, authenticated, service_role;
 grant select on table public.news_posts to anon, service_role;
-grant select, insert, update, delete on table public.news_posts to authenticated;
+-- Every column but written_by, so an edit (by any Staff member) keeps the
+-- post's author.
+grant select, insert, delete on table public.news_posts to authenticated;
+grant update (slug, title, category, summary, body, cover_path, cover_caption, version, pinned, published_at)
+  on table public.news_posts to authenticated;
 
 -- Pictures. Public: a post's pictures load from the bucket's public URL with
 -- no read rule. Storage itself refuses a file over 5 MB or of another type.

@@ -82,20 +82,64 @@ describe('news posts', () => {
   });
 
   it('leaves a post alone when someone else edits or deletes it', async () => {
-    await withTxn(async ({ q, asUser }) => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
       await published(q);
       await asUser(OFFICER_T1, "update public.news_posts set title = 'Hijacked' where slug = 'out-now'");
       await asUser(RAIDER_T1, "delete from public.news_posts where slug = 'out-now'");
+      await expect(
+        asAnon("update public.news_posts set title = 'Hijacked' where slug = 'out-now'")
+      ).rejects.toMatchObject({
+        code: RLS_DENIED
+      });
+      await expect(asAnon("delete from public.news_posts where slug = 'out-now'")).rejects.toMatchObject({
+        code: RLS_DENIED
+      });
       expect((await q("select title from public.news_posts where slug = 'out-now'")).rows[0].title).toBe('Out now');
     });
   });
 
-  it('takes a picture upload from Staff only', async () => {
-    await withTxn(async ({ asUser }) => {
+  it('keeps the author when Staff edit a post', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await published(q);
+      await asUser(SITE_ADMIN, "update public.news_posts set title = 'Edited' where slug = 'out-now'");
+      expect((await q("select title from public.news_posts where slug = 'out-now'")).rows[0].title).toBe('Edited');
+      const other = (await q('select id from public.people limit 1')).rows[0].id;
+      await expect(
+        asUser(SITE_ADMIN, `update public.news_posts set written_by = ${other} where slug = 'out-now'`)
+      ).rejects.toMatchObject({ code: RLS_DENIED });
+    });
+  });
+
+  it('lets Staff alone upload, replace and remove a picture', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
       const put = (name) =>
         `insert into storage.objects (bucket_id, name, owner_id) values ('news-pictures', '${name}', auth.uid()::text)`;
+      const replace =
+        "update storage.objects set metadata = '{\"v\":2}' where bucket_id = 'news-pictures' and name = 'cover.png'";
+      const remove = "delete from storage.objects where bucket_id = 'news-pictures' and name = 'cover.png'";
+      const cover = async () =>
+        (await q("select metadata from storage.objects where bucket_id = 'news-pictures' and name = 'cover.png'"))
+          .rows[0];
+
       await asUser(SITE_ADMIN, put('cover.png'));
+      expect(await cover()).toBeDefined();
       await expect(asUser(OFFICER_T1, put('mine.png'))).rejects.toMatchObject({ code: RLS_DENIED });
+      await expect(asAnon(put('anon.png'))).rejects.toMatchObject({ code: RLS_DENIED });
+
+      // Storage refuses any direct delete unless the Storage API's own switch
+      // is on; it is here, so the bucket's rule alone decides.
+      await q("select set_config('storage.allow_delete_query', 'true', true)");
+      // Someone else's replace or remove matches no row; the picture is unchanged.
+      await asUser(RAIDER_T1, replace);
+      await asUser(RAIDER_T1, remove);
+      await asAnon(replace);
+      await asAnon(remove);
+      expect((await cover()).metadata).not.toEqual({ v: 2 });
+
+      await asUser(SITE_ADMIN, replace);
+      expect((await cover()).metadata).toEqual({ v: 2 });
+      await asUser(SITE_ADMIN, remove);
+      expect(await cover()).toBeUndefined();
     });
   });
 });
