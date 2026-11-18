@@ -18,7 +18,7 @@ import {
   unpublishedPosts,
   type NewsPost
 } from './news';
-import { SEEN_KEY } from './useNews';
+import { SEEN_KEY, pictureProblem, uploadProblem } from './useNews';
 
 // News as a blog (#1102, #1230): the rules, the formatting buttons, and the
 // timeline, a post's page and Staff's editor. The pages are also checked in a
@@ -144,6 +144,34 @@ describe('formatting buttons', () => {
     expect(out.text).toBe('Before.\n\n![a shot](https://x.test/a.png "Caption")\n\nAfter.');
     expect(out.text.slice(out.start, out.end)).toBe('Caption');
     expect(formatting.picture('', 0, 0, 'https://x.test/a.png', 'a').text).toBe('![a](https://x.test/a.png "Caption")');
+  });
+});
+
+describe('why a picture did not upload', () => {
+  const file = (name: string, type: string, bytes = 1000) => new File([new Uint8Array(bytes)], name, { type });
+
+  it('says what is wrong with a file before it is sent', () => {
+    expect(pictureProblem(file('a.png', 'image/png'))).toBeNull();
+    expect(pictureProblem(file('notes.pdf', 'application/pdf'))).toBe(
+      '“notes.pdf” didn’t upload: it isn’t a picture type the site takes (PDF). Use a PNG, JPG, WebP or GIF.'
+    );
+    expect(pictureProblem(file('mystery', ''))).toBe(
+      '“mystery” didn’t upload: it isn’t a picture type the site takes. Use a PNG, JPG, WebP or GIF.'
+    );
+    expect(pictureProblem(file('big.png', 'image/png', 6 * 1024 * 1024))).toBe(
+      '“big.png” didn’t upload: it is 6.0 MB, and pictures can be up to 5 MB. Shrink it and try again.'
+    );
+  });
+
+  it('turns the server’s reason into a plain sentence naming the file', () => {
+    const f = file('shot.png', 'image/png', 2 * 1024 * 1024);
+    expect(uploadProblem({ message: 'The object exceeded the maximum allowed size' }, f)).toContain('it is 2.0 MB');
+    expect(uploadProblem({ message: 'mime type image/bmp is not supported' }, f)).toContain('only takes a PNG');
+    expect(uploadProblem({ message: 'new row violates row-level security policy' }, f)).toContain('only Staff');
+    expect(uploadProblem({ message: 'Failed to fetch' }, f)).toContain('connection');
+    expect(uploadProblem({ message: 'Something odd' }, f)).toBe(
+      '“shot.png” didn’t upload. The server said: “Something odd”.'
+    );
   });
 });
 

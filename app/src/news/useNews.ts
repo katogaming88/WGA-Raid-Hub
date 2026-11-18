@@ -98,11 +98,50 @@ export function useDeleteNewsPost(onDeleted: () => void) {
 // file, and one no post uses any more stays in the bucket.
 const PICTURE_BUCKET = 'news-pictures';
 
+const PICTURE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+const PICTURE_MAX_BYTES = 5 * 1024 * 1024;
+
+const megabytes = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+
+// What is wrong with a file before it is sent, said plainly, or null.
+export function pictureProblem(file: File): string | null {
+  const name = `“${file.name}”`;
+  if (!PICTURE_TYPES.includes(file.type)) {
+    const kind = file.type ? ` (${file.type.replace(/^.*\//, '').toUpperCase()})` : '';
+    return `${name} didn’t upload: it isn’t a picture type the site takes${kind}. Use a PNG, JPG, WebP or GIF.`;
+  }
+  if (file.size > PICTURE_MAX_BYTES) {
+    return `${name} didn’t upload: it is ${megabytes(file.size)}, and pictures can be up to 5 MB. Shrink it and try again.`;
+  }
+  return null;
+}
+
+// Why Storage refused a file, in plain words, from what it answered.
+export function uploadProblem(error: { message: string }, file: File): string {
+  const name = `“${file.name}”`;
+  const said = error.message;
+  if (/exceed|too large|maximum allowed size|payload/i.test(said)) {
+    return `${name} didn’t upload: it is ${megabytes(file.size)}, and pictures can be up to 5 MB. Shrink it and try again.`;
+  }
+  if (/mime|not supported|invalid.*type/i.test(said)) {
+    return `${name} didn’t upload: the server only takes a PNG, JPG, WebP or GIF.`;
+  }
+  if (/row-level security|unauthori[sz]ed|not authori[sz]ed|jwt|permission/i.test(said)) {
+    return `${name} didn’t upload: only Staff can add pictures, and this sign-in isn’t Staff or has expired. Sign in again and retry.`;
+  }
+  if (/failed to fetch|network|timed? ?out|load failed/i.test(said)) {
+    return `${name} didn’t upload: the connection to the server dropped. Check your connection and try again.`;
+  }
+  return `${name} didn’t upload. The server said: “${said}”.`;
+}
+
 export async function uploadNewsPicture(client: Client, file: File): Promise<string> {
+  const problem = pictureProblem(file);
+  if (problem) throw new Error(problem);
   const ext = /\.(png|jpe?g|gif|webp)$/i.exec(file.name)?.[1]?.toLowerCase() ?? 'png';
   const path = `${crypto.randomUUID()}.${ext}`;
   const { error } = await client.storage.from(PICTURE_BUCKET).upload(path, file, { upsert: false });
-  if (error) throw new Error('That picture didn’t upload (a PNG, JPG, WebP or GIF up to 5 MB). Try another.');
+  if (error) throw new Error(uploadProblem(error, file));
   return path;
 }
 
