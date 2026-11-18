@@ -54,20 +54,26 @@
   font-size: var(--text-sm);
 }
 
-/* Pinned: a coloured rule above it, no frame around it. */
+/* Pinned: a tinted band under a thick coloured rule, square-cornered, so it
+   is the first thing on the page without being a rounded box. */
 .news-pinned {
-  margin: var(--space-4) 0;
-  padding-top: var(--space-2);
-  border-top: 2px solid var(--brand);
+  margin: var(--space-5) 0;
+  padding: var(--space-4) var(--space-5) var(--space-3);
+  border-top: 4px solid var(--brand);
+  background: var(--brand-soft);
 }
 
+/* The one solid tag on the page, so the pin is seen before anything else. */
 .news-pinned-title {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  margin: 0;
-  color: var(--brand);
-  font-size: var(--text-xs);
+  margin: 0 0 var(--space-2);
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--badge);
+  color: var(--badge-text);
+  font-size: var(--text-sm);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -77,10 +83,14 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-5);
   padding: var(--space-3) 0;
   color: inherit;
   text-decoration: none;
+}
+
+.news-pinned-post + .news-pinned-post {
+  border-top: 1px solid var(--border-strong);
 }
 
 .news-pinned-post:hover .news-pinned-heading,
@@ -102,9 +112,16 @@
 }
 
 .news-pinned-heading {
-  font-size: var(--text-xl);
-  font-weight: 650;
-  line-height: 1.25;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+/* Plain text colour inside the tint, which keeps every word readable. */
+.news-pinned .news-category,
+.news-pinned .news-item-summary,
+.news-pinned .news-item-meta {
+  color: var(--text);
 }
 
 /* Category filters are plain words, the open one underlined. */

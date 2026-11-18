@@ -83,7 +83,7 @@ function NewsTimeline({ posts, staff }: { posts: NewsPost[]; staff: boolean }) {
       {pinned.length > 0 && (
         <section className="news-pinned" aria-labelledby="news-pinned-title">
           <h2 id="news-pinned-title" className="news-pinned-title">
-            <Icon name="pin" size={14} />
+            <Icon name="pin" size={16} />
             Pinned
           </h2>
           {pinned.map((post) => (
