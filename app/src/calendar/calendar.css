@@ -1694,6 +1694,9 @@ a.night-chip:hover {
 
 .blg-cell {
   position: relative;
+  /* Its markers and stripes stay inside it, under the pinned name column
+     when the grid scrolls. */
+  isolation: isolate;
   display: flex;
   align-items: center;
   box-sizing: border-box;
