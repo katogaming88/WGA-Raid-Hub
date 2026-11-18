@@ -8,7 +8,7 @@ One row per human (#942). auth_user_id is their sign-in account, null for a Disc
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer |  | false | [public.season_signups](public.season_signups.md) [public.team_members](public.team_members.md) [public.guild_grants](public.guild_grants.md) [public.characters](public.characters.md) [public.main_swap_requests](public.main_swap_requests.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.removal_reasons](public.removal_reasons.md) [public.team_raid_reports](public.team_raid_reports.md) [public.guild_ranks](public.guild_ranks.md) [public.discord_server_access](public.discord_server_access.md) [public.guild_recruiters](public.guild_recruiters.md) [public.recruit_applications](public.recruit_applications.md) [public.recruit_notes](public.recruit_notes.md) [public.recruit_events](public.recruit_events.md) [public.discord_find_ticket](public.discord_find_ticket.md) |  |  |
+| id | integer |  | false | [public.season_signups](public.season_signups.md) [public.team_members](public.team_members.md) [public.guild_grants](public.guild_grants.md) [public.characters](public.characters.md) [public.main_swap_requests](public.main_swap_requests.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.removal_reasons](public.removal_reasons.md) [public.team_raid_reports](public.team_raid_reports.md) [public.guild_ranks](public.guild_ranks.md) [public.discord_server_access](public.discord_server_access.md) [public.guild_recruiters](public.guild_recruiters.md) [public.recruit_applications](public.recruit_applications.md) [public.recruit_notes](public.recruit_notes.md) [public.recruit_events](public.recruit_events.md) [public.discord_find_ticket](public.discord_find_ticket.md) [public.news_posts](public.news_posts.md) |  |  |
 | auth_user_id | uuid |  | true |  |  |  |
 | discord_id | text |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
@@ -59,6 +59,7 @@ erDiagram
 "public.recruit_notes" }o--o| "public.people" : "FOREIGN KEY (author_person_id) REFERENCES people(id) ON DELETE SET NULL"
 "public.recruit_events" }o--o| "public.people" : "FOREIGN KEY (actor_person_id) REFERENCES people(id) ON DELETE SET NULL"
 "public.discord_find_ticket" }o--o| "public.people" : "FOREIGN KEY (updated_by) REFERENCES people(id) ON DELETE SET NULL"
+"public.news_posts" }o--o| "public.people" : "FOREIGN KEY (written_by) REFERENCES people(id) ON DELETE SET NULL"
 
 "public.people" {
   integer id
@@ -259,6 +260,22 @@ erDiagram
   text message_id
   integer guild_id FK
   integer updated_by FK
+  timestamp_with_time_zone updated_at
+}
+"public.news_posts" {
+  integer id
+  text slug
+  text title
+  text category
+  text summary
+  text body
+  text cover_path
+  text cover_caption
+  text version
+  boolean pinned
+  timestamp_with_time_zone published_at
+  integer written_by FK
+  timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
 }
 ```

@@ -14754,6 +14754,203 @@
           "def": "CREATE TRIGGER trg_raid_night_titles_updated_at BEFORE UPDATE ON public.raid_night_titles FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
+    },
+    {
+      "name": "public.news_posts",
+      "type": "BASE TABLE",
+      "comment": "News posts (#1523), site-wide. published_at null: a draft, which only Staff (is_site_admin()) read. Written by Staff on the site (#1230); the news.json entries were copied in by this table's migration.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "slug",
+          "type": "text",
+          "nullable": false,
+          "comment": "The post's address, /news/\u003cslug\u003e, for links from Discord. Lowercase words joined by hyphens; kept when the title changes."
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "summary",
+          "type": "text",
+          "nullable": false,
+          "comment": "One line for the News timeline and the Guild home teaser."
+        },
+        {
+          "name": "body",
+          "type": "text",
+          "nullable": false,
+          "default": "''::text",
+          "comment": "Simple formatting: ## headings, **bold**, - lists, [links](url) and ![pictures](url)."
+        },
+        {
+          "name": "cover_path",
+          "type": "text",
+          "nullable": true,
+          "comment": "The cover picture's path in the news-pictures bucket; null for none."
+        },
+        {
+          "name": "cover_caption",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "text",
+          "nullable": true,
+          "comment": "The site version the post went out with, for the copied news.json entries; optional on a new post."
+        },
+        {
+          "name": "pinned",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "When the post was published; null while it is a draft. The copied entries carry their news.json date at noon Eastern."
+        },
+        {
+          "name": "written_by",
+          "type": "integer",
+          "nullable": true,
+          "default": "my_person_id()",
+          "comment": "The person who wrote the post: the caller, set on insert."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()",
+          "comment": "The last edit."
+        }
+      ],
+      "indexes": [
+        {
+          "name": "news_posts_pkey",
+          "def": "CREATE UNIQUE INDEX news_posts_pkey ON public.news_posts USING btree (id)",
+          "table": "public.news_posts",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "news_posts_slug_key",
+          "def": "CREATE UNIQUE INDEX news_posts_slug_key ON public.news_posts USING btree (slug)",
+          "table": "public.news_posts",
+          "columns": [
+            "slug"
+          ]
+        },
+        {
+          "name": "news_posts_published_idx",
+          "def": "CREATE INDEX news_posts_published_idx ON public.news_posts USING btree (published_at DESC) WHERE (published_at IS NOT NULL)",
+          "table": "public.news_posts",
+          "columns": [
+            "published_at"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "news_posts_category_check",
+          "type": "CHECK",
+          "def": "CHECK ((category = ANY (ARRAY['Feature'::text, 'Fix'::text, 'Change'::text, 'Announcement'::text])))",
+          "table": "public.news_posts",
+          "referenced_table": "",
+          "columns": [
+            "category"
+          ]
+        },
+        {
+          "name": "news_posts_slug_check",
+          "type": "CHECK",
+          "def": "CHECK ((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text))",
+          "table": "public.news_posts",
+          "referenced_table": "",
+          "columns": [
+            "slug"
+          ]
+        },
+        {
+          "name": "news_posts_summary_check",
+          "type": "CHECK",
+          "def": "CHECK ((summary ~ '\\S'::text))",
+          "table": "public.news_posts",
+          "referenced_table": "",
+          "columns": [
+            "summary"
+          ]
+        },
+        {
+          "name": "news_posts_title_check",
+          "type": "CHECK",
+          "def": "CHECK ((title ~ '\\S'::text))",
+          "table": "public.news_posts",
+          "referenced_table": "",
+          "columns": [
+            "title"
+          ]
+        },
+        {
+          "name": "news_posts_written_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (written_by) REFERENCES people(id) ON DELETE SET NULL",
+          "table": "public.news_posts",
+          "referenced_table": "public.people",
+          "columns": [
+            "written_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "news_posts_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.news_posts",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "news_posts_slug_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (slug)",
+          "table": "public.news_posts",
+          "referenced_table": "",
+          "columns": [
+            "slug"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_news_posts_updated_at",
+          "def": "CREATE TRIGGER trg_news_posts_updated_at BEFORE UPDATE ON public.news_posts FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -17062,6 +17259,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.news_posts",
+      "columns": [
+        "written_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (written_by) REFERENCES people(id) ON DELETE SET NULL"
     }
   ],
   "functions": [

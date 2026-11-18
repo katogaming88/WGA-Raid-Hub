@@ -117,6 +117,7 @@
 | [public.attendance_log_names](public.attendance_log_names.md) | 5 | Characters in a team's Warcraft Logs raid night who matched nobody on the roster (#1845). Written by wcl-sync; first name only, lower case, as the sync matches names. Informational: never holds back the attendance commit. | BASE TABLE |
 | [public.team_attendance_posts](public.team_attendance_posts.md) | 6 | The officer-channel message wcl-sync's hourly run posted for each team and raid night with attendance items (#1847). content_key is what the message lists ('all set' once every item has a status). Written by wcl-sync with the service role; later runs edit this message as items are set. | BASE TABLE |
 | [public.raid_night_titles](public.raid_night_titles.md) | 4 | A title for one raid date (#1478): "Rename this night" on the night's page. It covers every night on that date and wins over raid_schedule.title; the next week goes back to the weekly title. Written by the officers who write raid_schedule. | BASE TABLE |
+| [public.news_posts](public.news_posts.md) | 14 | News posts (#1523), site-wide. published_at null: a draft, which only Staff (is_site_admin()) read. Written by Staff on the site (#1230); the news.json entries were copied in by this table's migration. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -602,6 +603,7 @@ erDiagram
 "public.attendance_log_names" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_attendance_posts" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.raid_night_titles" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.news_posts" }o--o| "public.people" : "FOREIGN KEY (written_by) REFERENCES people(id) ON DELETE SET NULL"
 
 "public.attendance" {
   integer id
@@ -1765,6 +1767,22 @@ erDiagram
   integer team_id FK
   date raid_date
   text title
+  timestamp_with_time_zone updated_at
+}
+"public.news_posts" {
+  integer id
+  text slug
+  text title
+  text category
+  text summary
+  text body
+  text cover_path
+  text cover_caption
+  text version
+  boolean pinned
+  timestamp_with_time_zone published_at
+  integer written_by FK
+  timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
 }
 ```

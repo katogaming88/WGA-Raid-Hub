@@ -1447,6 +1447,65 @@ export type Database = {
           },
         ]
       }
+      news_posts: {
+        Row: {
+          body: string
+          category: string
+          cover_caption: string | null
+          cover_path: string | null
+          created_at: string
+          id: number
+          pinned: boolean
+          published_at: string | null
+          slug: string
+          summary: string
+          title: string
+          updated_at: string
+          version: string | null
+          written_by: number | null
+        }
+        Insert: {
+          body?: string
+          category: string
+          cover_caption?: string | null
+          cover_path?: string | null
+          created_at?: string
+          id?: number
+          pinned?: boolean
+          published_at?: string | null
+          slug: string
+          summary: string
+          title: string
+          updated_at?: string
+          version?: string | null
+          written_by?: number | null
+        }
+        Update: {
+          body?: string
+          category?: string
+          cover_caption?: string | null
+          cover_path?: string | null
+          created_at?: string
+          id?: number
+          pinned?: boolean
+          published_at?: string | null
+          slug?: string
+          summary?: string
+          title?: string
+          updated_at?: string
+          version?: string | null
+          written_by?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_posts_written_by_fkey"
+            columns: ["written_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
