@@ -5,6 +5,8 @@ import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
 import { useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
+import { useTeamAlts } from '../characters/useCharacters';
+import { useClassSpecs } from '../characters/useMainSwaps';
 import { useTouchScreen } from '../lib/device';
 import { classColor, type PlayerRow, type Role } from '../roster/roster';
 import { specIcon } from '../roster/specIcons';
@@ -16,17 +18,32 @@ import {
   changeList,
   changes,
   current,
+  currentPicks,
   everyoneIn,
   lineupRaids,
   lineupView,
   onRoster,
+  pickChanges,
+  pickRows,
+  picksFor,
+  picksOf,
   placesFor,
   placesOf,
+  playOf,
+  playWords,
+  samePicks,
   sameSet,
   seasonOn,
+  setPick,
   toggle,
   wholeNight,
   type BossTotal,
+  type ClassSpecRow,
+  type Pick,
+  type PickEdits,
+  type PickedCharacter,
+  type Picks,
+  type PlayLookup,
   type EncounterRow,
   type LineupBoss,
   type LineupRaid,
@@ -129,6 +146,12 @@ function Lineup({
   const touch = useTouchScreen();
   const { announce } = useStatus();
   const [edits, setEdits] = useState<ReadonlyMap<number, ReadonlySet<number>>>(new Map());
+  const [pickEdits, setPickEdits] = useState<PickEdits>(new Map());
+  // The raider and boss whose character or spec is being picked (#1580).
+  const [picking, setPicking] = useState<{ boss: LineupBoss; player: PlayerRow } | null>(null);
+  const specs = useClassSpecs();
+  // Only officers pick, so only they read the team's alts.
+  const alts = useTeamAlts(team.id, canEdit);
   const [fresh, setFresh] = useState(false);
   const [shown, setShown] = useState<number | null>(null);
   const [stale, setStale] = useState<number[]>([]);
@@ -153,18 +176,44 @@ function Lineup({
   const bosses = raids.flatMap((r) => r.bosses);
   const places = current(saved, edits);
   const changed = changes(saved, edits);
-  const dirty = changed.cells > 0;
+  const savedPicks = picksOf(plan.places);
+  const usualPicks = picksOf(groups);
+  const picks = currentPicks(savedPicks, pickEdits);
   const live = bosses.filter((b) => !b.skipped);
-  const offGroup = live.filter((b) => !sameSet(placesFor(places, b.id), placesFor(usual, b.id)));
+  // Bosses whose picks changed for someone still in (#1580).
+  const pickChanged = live
+    .filter((b) => !samePicks(picksFor(savedPicks, b.id), picksFor(picks, b.id), placesFor(places, b.id)))
+    .map((b) => b.id);
+  const changedBosses = [...new Set([...changed.bosses, ...pickChanged])];
+  const dirty = changed.cells > 0 || pickChanged.length > 0;
+  const offGroup = live.filter(
+    (b) =>
+      !sameSet(placesFor(places, b.id), placesFor(usual, b.id)) ||
+      !samePicks(picksFor(picks, b.id), picksFor(usualPicks, b.id), placesFor(places, b.id))
+  );
+  // What a pick shows: the spec list, and every alt this page can name, from
+  // the lineup rows (anyone on the team) and the team's alts (officers).
+  const look: PlayLookup = {
+    specs: new Map((specs.data ?? []).map((cs) => [cs.id, cs as ClassSpecRow])),
+    characters: new Map<number, PickedCharacter>([
+      ...[...plan.places, ...groups].flatMap((r) => (r.character ? [[r.character.id, r.character] as const] : [])),
+      ...(alts.data?.characters ?? []).map(
+        (c) => [c.id, { id: c.id, name: c.name, class_name: c.class_name, spec_name: c.spec_name }] as const
+      )
+    ])
+  };
   const names = (ids: number[]) => ids.map((id) => bosses.find((b) => b.id === id)?.name ?? 'A boss').join(', ');
   const byId = new Map(players.map((p) => [p.id, p]));
   const nameOf = (id: number) => (byId.has(id) ? displayName(byId.get(id)!) : 'A raider');
-  const list = raids.flatMap((r) =>
-    changeList(saved, edits, r.bosses, nameOf, raids.length > 1 ? `for all of ${r.name}` : 'all night')
-  );
+  const list = [
+    ...raids.flatMap((r) =>
+      changeList(saved, edits, r.bosses, nameOf, raids.length > 1 ? `for all of ${r.name}` : 'all night')
+    ),
+    ...pickChanges(savedPicks, picks, places, bosses, players, look)
+  ];
   const day = weekdayOf(night.date);
 
-  const leaveDialog = useLeaveGuard(dirty, changed.cells, 'this night’s boss lineup');
+  const leaveDialog = useLeaveGuard(dirty, Math.max(changed.cells, list.length), 'this night’s boss lineup');
   // What a save sends: nobody who has left the roster since the night was filled.
   const toSave = onRoster(places, players);
 
@@ -237,15 +286,18 @@ function Lineup({
   // officer can compare.
   const settle = (result: SaveResult, done: string) => {
     setEdits((e) => new Map([...e].filter(([id]) => !result.saved.includes(id))));
+    setPickEdits((e) => new Map([...e].filter(([id]) => !result.saved.includes(id))));
     setStale(result.stale);
     setMessage(result.stale.length ? '' : done);
     if (!result.stale.length) announce('success', done);
   };
 
-  const nightSaves: BossSave[] = changed.bosses.map((id) => ({
+  const nightSaves: BossSave[] = changedBosses.map((id) => ({
     encounterId: id,
     players: toList(placesFor(toSave, id)),
-    expected: toList(placesFor(saved, id))
+    expected: toList(placesFor(saved, id)),
+    picks: pickRows(picksFor(picks, id), placesFor(toSave, id)),
+    expectedPicks: pickRows(picksFor(savedPicks, id), placesFor(saved, id))
   }));
 
   const onSaveTonight = () =>
@@ -258,7 +310,9 @@ function Lineup({
         groups: offGroup.map((b) => ({
           encounterId: b.id,
           players: toList(placesFor(toSave, b.id)),
-          expected: toList(placesFor(usual, b.id))
+          expected: toList(placesFor(usual, b.id)),
+          picks: pickRows(picksFor(picks, b.id), placesFor(toSave, b.id)),
+          expectedPicks: pickRows(picksFor(usualPicks, b.id), placesFor(usual, b.id))
         }))
       },
       {
@@ -276,6 +330,7 @@ function Lineup({
       {
         onSuccess: () => {
           setEdits((e) => new Map([...e].filter(([id]) => id !== boss.id)));
+          setPickEdits((e) => new Map([...e].filter(([id]) => id !== boss.id)));
           const done = boss.skipped
             ? `${boss.name} is back on ${shortDay(night.date)}, filled from its group.`
             : `${boss.name} is off ${shortDay(night.date)}.`;
@@ -321,6 +376,14 @@ function Lineup({
     else onSaveGroups();
   };
 
+  const onPickPlay = (boss: LineupBoss, player: PlayerRow, pick: Pick | null) => {
+    setPickEdits((e) => setPick(savedPicks, e, boss.id, player.id, pick));
+    if (!placesFor(places, boss.id).has(player.id)) setEdits((e) => toggle(saved, e, boss.id, player.id));
+    setMessage('');
+    setStale([]);
+    setPicking(null);
+  };
+
   // The grid switches at once; a save that fails goes back to what is saved,
   // and says so, rather than looking kept until the next visit.
   const pickStyle = (style: CellStyle) => {
@@ -347,6 +410,7 @@ function Lineup({
                 className="button"
                 onClick={() => {
                   setEdits((e) => new Map([...e].filter(([id]) => !stale.includes(id))));
+                  setPickEdits((e) => new Map([...e].filter(([id]) => !stale.includes(id))));
                   setStale([]);
                 }}
               >
@@ -359,6 +423,7 @@ function Lineup({
               disabled={busy || !dirty}
               onClick={() => {
                 setEdits(new Map());
+                setPickEdits(new Map());
                 setStale([]);
                 setFresh(false);
               }}
@@ -423,6 +488,10 @@ function Lineup({
         answers={answers}
         places={places}
         usual={usual}
+        picks={picks}
+        usualPicks={usualPicks}
+        look={look}
+        onPicking={(boss, player) => setPicking({ boss, player })}
         targets={targets}
         cellStyle={cellStyle}
         canEdit={canEdit}
@@ -438,6 +507,18 @@ function Lineup({
         }}
         onSkip={canEdit && planned && !touch ? onSkip : null}
       />
+
+      {picking && (
+        <PlayPicker
+          boss={picking.boss}
+          player={picking.player}
+          current={picksFor(picks, picking.boss.id).get(picking.player.id)}
+          look={look}
+          alts={alts.data ?? null}
+          onPick={(pick) => onPickPlay(picking.boss, picking.player, pick)}
+          onClose={() => setPicking(null)}
+        />
+      )}
 
       {asking && (
         <Dialog title="Save the boss lineup" onClose={() => setAsking(false)}>
@@ -552,6 +633,10 @@ function RaidGrid({
   answers,
   places,
   usual,
+  picks,
+  usualPicks,
+  look: plays,
+  onPicking,
   targets,
   cellStyle,
   canEdit,
@@ -566,6 +651,10 @@ function RaidGrid({
   answers: Answer[];
   places: ReadonlyMap<number, ReadonlySet<number>>;
   usual: ReadonlyMap<number, ReadonlySet<number>>;
+  picks: Picks;
+  usualPicks: Picks;
+  look: PlayLookup;
+  onPicking: (boss: LineupBoss, player: PlayerRow) => void;
   targets: RoleTargets;
   cellStyle: CellStyle;
   canEdit: boolean;
@@ -594,7 +683,7 @@ function RaidGrid({
           onMouseLeave: () => setTip(null)
         }
       : {};
-  const view = lineupView(players, night, answers, raid, places, usual, targets);
+  const view = lineupView(players, night, answers, raid, places, usual, targets, picks, plays, usualPicks);
   const totals = new Map(view.totals.map((t) => [t.boss.id, t]));
   const gaps = view.totals.filter((t) => t.problems.length);
   const liveCount = view.live.length;
@@ -805,21 +894,36 @@ function RaidGrid({
                       </th>
                       {r.cells.map((c) => {
                         const state = c.boss.skipped ? 'skipped tonight' : c.in ? 'in' : 'out';
+                        const usually =
+                          c.in !== c.usuallyIn
+                            ? c.usuallyIn
+                              ? 'in'
+                              : 'out'
+                            : c.usualPlay.swapped
+                              ? playWords(c.usualPlay)
+                              : `as ${c.usualPlay.spec}`;
                         const extra = [
+                          ...(c.in && c.play.swapped ? [playWords(c.play)] : []),
                           ...(c.conflict ? ['but said they’re not coming'] : []),
-                          ...(c.differs ? [`changed for tonight only, usually ${c.in ? 'out' : 'in'}`] : [])
+                          ...(c.differs ? [`changed for tonight only, usually ${usually}`] : [])
                         ];
                         const label = `${name}, ${c.boss.name}: ${[state, ...extra].join(', ')}`;
+                        // A pick shows its class's color and its spec's icon (#1680).
+                        const icon = c.in && c.play.swapped ? specIcon(c.play.class, c.play.spec) : null;
                         const look = {
                           className: 'blg-cell',
                           'data-in': c.in,
                           'data-tonight': c.differs || undefined,
                           'data-conflict': c.conflict || undefined,
-                          style: { '--cc': color } as CSSProperties
+                          'data-icon': icon ? true : undefined,
+                          style: { '--cc': c.in ? classColor(c.play.class) : color } as CSSProperties
                         };
                         const body = (
                           <>
-                            {cellStyle === 'names' && !c.boss.skipped && <span className="blg-cell-name">{name}</span>}
+                            {icon && <img className="blg-cell-icon" src={icon} alt="" width={18} height={18} />}
+                            {cellStyle === 'names' && !c.boss.skipped && (
+                              <span className="blg-cell-name">{c.in ? (c.play.character ?? name) : name}</span>
+                            )}
                             <span className="blg-marks" aria-hidden="true">
                               {c.differs && (
                                 <span className="blg-mark" data-kind="tonight">
@@ -839,15 +943,41 @@ function RaidGrid({
                         return (
                           <td key={c.boss.id} className="blg-td" {...hotProps(c.boss.id)}>
                             {canEdit ? (
-                              <button
-                                type="button"
-                                {...look}
-                                aria-label={label}
-                                disabled={busy || c.boss.skipped}
-                                onClick={() => onToggle(c.boss.id, r.row.player.id)}
-                              >
-                                {body}
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  {...look}
+                                  aria-label={label}
+                                  disabled={busy || c.boss.skipped}
+                                  onClick={() => onToggle(c.boss.id, r.row.player.id)}
+                                >
+                                  {body}
+                                </button>
+                                {!c.boss.skipped && (
+                                  <button
+                                    type="button"
+                                    className="blg-swap"
+                                    aria-label={`Change what ${name} plays on ${c.boss.name}`}
+                                    disabled={busy}
+                                    onClick={() => onPicking(c.boss, r.row.player)}
+                                  >
+                                    <svg
+                                      width="13"
+                                      height="13"
+                                      viewBox="0 0 16 16"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="1.6"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      aria-hidden="true"
+                                    >
+                                      <path d="M2 5h11M10 2l3 3-3 3" />
+                                      <path d="M14 11H3M6 8l-3 3 3 3" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </>
                             ) : (
                               <span {...look}>
                                 <span className="visually-hidden">{label}</span>
@@ -940,5 +1070,119 @@ function RaidGrid({
         </section>
       )}
     </>
+  );
+}
+
+// "What Katorrí plays on Sszorak" (#1580, Kat's #1680 design): each of the
+// raider's characters, their roster character first, then their alts, each
+// with every spec of its class and the usual one marked. Picking one swaps
+// them, or puts them in if they were out.
+function PlayPicker({
+  boss,
+  player,
+  current,
+  look,
+  alts,
+  onPick,
+  onClose
+}: {
+  boss: LineupBoss;
+  player: PlayerRow;
+  current: Pick | undefined;
+  look: PlayLookup;
+  alts: {
+    personByMember: Map<number, number>;
+    characters: {
+      id: number;
+      person_id: number;
+      name: string;
+      realm: string;
+      class_name: string | null;
+      spec_name: string | null;
+    }[];
+  } | null;
+  onPick: (pick: Pick | null) => void;
+  onClose: () => void;
+}) {
+  const name = displayName(player);
+  const main = player.classes_specs;
+  const person = player.team_member_id != null ? alts?.personByMember.get(player.team_member_id) : undefined;
+  const key = (nameRealm: string) => nameRealm.toLowerCase().replace(/\s+/g, '');
+  const own = (alts?.characters ?? [])
+    .filter((c) => c.person_id === person && c.class_name && key(`${c.name}-${c.realm}`) !== key(player.name_realm))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const specsOf = (cls: string) =>
+    [...look.specs.values()].filter((cs) => cs.class === cls).sort((a, b) => a.spec.localeCompare(b.spec));
+  const now = playOf(player, current, look);
+  const characters = [
+    {
+      id: null as number | null,
+      name: player.name_realm.split('-')[0]!,
+      cls: main?.class ?? '',
+      usual: main?.spec ?? '',
+      main: true
+    },
+    ...own.map((c) => ({
+      id: c.id as number | null,
+      name: c.name,
+      cls: c.class_name!,
+      usual: c.spec_name ?? '',
+      main: false
+    }))
+  ];
+
+  return (
+    <Dialog title={`What ${name} plays on ${boss.short}`} onClose={onClose}>
+      {characters.map((ch) => (
+        <section key={ch.id ?? 'main'} className="blg-pick" aria-label={ch.name}>
+          <h3>
+            <span style={{ color: classColor(ch.cls) }}>{ch.name}</span>{' '}
+            <span className="text-muted">
+              {ch.cls} · {ch.main ? 'main' : 'alt'}
+            </span>
+          </h3>
+          <div className="blg-pick-specs">
+            {specsOf(ch.cls).map((cs) => {
+              const chosen =
+                (ch.id === null ? now.character === null : current?.characterId === ch.id) &&
+                now.class === ch.cls &&
+                now.spec === cs.spec;
+              const icon = specIcon(ch.cls, cs.spec);
+              const usual = cs.spec === ch.usual;
+              return (
+                <button
+                  key={cs.id}
+                  type="button"
+                  className="button blg-pick-spec"
+                  aria-pressed={chosen}
+                  onClick={() =>
+                    // The main's usual spec is no pick; an alt's spec is
+                    // kept as picked, so it doesn't follow their next
+                    // Battle.net save.
+                    onPick(
+                      ch.main && usual ? null : { characterId: ch.id, classSpecId: ch.main && usual ? null : cs.id }
+                    )
+                  }
+                >
+                  {icon && <img src={icon} alt="" width={18} height={18} />}
+                  <span>
+                    {cs.spec}{' '}
+                    <span className="text-muted blg-pick-role">
+                      {cs.role === 'Heal' ? 'healer' : (cs.role ?? '').toLowerCase()}
+                      {usual ? ' · usual' : ''}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+      {own.length === 0 && (
+        <p className="text-muted blg-pick-note">
+          {name} has no alts on their profile. A raider adds them from their own profile.
+        </p>
+      )}
+    </Dialog>
   );
 }

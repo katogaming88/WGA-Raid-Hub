@@ -14,12 +14,16 @@ The plan for one raid night (#1216): one row per raider in for one boss. Filled 
 | encounter_id | integer |  | false |  | [public.raid_night_bosses](public.raid_night_bosses.md) |  |
 | player_id | integer |  | false |  | [public.players](public.players.md) |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
+| character_id | integer |  | true |  | [public.characters](public.characters.md) | The alt the raider plays on this boss (#1580); null = their roster character. |
+| class_spec_id | integer |  | true |  | [public.classes_specs](public.classes_specs.md) | The spec the raider plays on this boss (#1580); null = the character's usual spec. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| raid_night_lineups_class_spec_id_fkey | FOREIGN KEY | FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) |
 | raid_night_lineups_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
+| raid_night_lineups_character_id_fkey | FOREIGN KEY | FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL |
 | raid_night_lineups_team_id_raid_date_encounter_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE |
 | raid_night_lineups_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | raid_night_lineups_team_id_raid_date_encounter_id_player_id_key | UNIQUE | UNIQUE (team_id, raid_date, encounter_id, player_id) |
@@ -31,6 +35,7 @@ The plan for one raid night (#1216): one row per raider in for one boss. Filled 
 | raid_night_lineups_pkey | CREATE UNIQUE INDEX raid_night_lineups_pkey ON public.raid_night_lineups USING btree (id) |
 | raid_night_lineups_team_id_raid_date_encounter_id_player_id_key | CREATE UNIQUE INDEX raid_night_lineups_team_id_raid_date_encounter_id_player_id_key ON public.raid_night_lineups USING btree (team_id, raid_date, encounter_id, player_id) |
 | raid_night_lineups_player_id_idx | CREATE INDEX raid_night_lineups_player_id_idx ON public.raid_night_lineups USING btree (player_id) |
+| raid_night_lineups_character_id_idx | CREATE INDEX raid_night_lineups_character_id_idx ON public.raid_night_lineups USING btree (character_id) WHERE (character_id IS NOT NULL) |
 
 ## Triggers
 
@@ -45,6 +50,8 @@ erDiagram
 
 "public.raid_night_lineups" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
 "public.raid_night_lineups" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.raid_night_lineups" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
+"public.raid_night_lineups" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
 
 "public.raid_night_lineups" {
   integer id
@@ -53,6 +60,8 @@ erDiagram
   integer encounter_id FK
   integer player_id FK
   timestamp_with_time_zone created_at
+  integer character_id FK
+  integer class_spec_id FK
 }
 "public.raid_night_bosses" {
   integer id
@@ -91,6 +100,27 @@ erDiagram
   timestamp_with_time_zone bis_link_updated_at
   text url_code
   text name_realm_key
+}
+"public.characters" {
+  integer id
+  integer person_id FK
+  bigint blizzard_id
+  text name
+  text realm
+  text realm_slug
+  text name_realm
+  text name_realm_key
+  text class_name
+  text spec_name
+  integer level
+  integer item_level
+  timestamp_with_time_zone saved_at
+}
+"public.classes_specs" {
+  integer id
+  text class
+  text spec
+  text role
 }
 ```
 

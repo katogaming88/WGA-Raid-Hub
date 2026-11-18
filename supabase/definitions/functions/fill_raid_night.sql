@@ -16,6 +16,17 @@ begin
     return 0;
   end if;
 
+  -- The alts the groups pick, held without waiting (see the saves): one
+  -- being removed right now leaves this night for the next fill, an hour on
+  -- or an officer's Fill from the groups.
+  begin
+    perform 1 from characters
+    where id in (select g.character_id from boss_groups g where g.team_id = p_team_id and g.character_id is not null)
+    for key share nowait;
+  exception when lock_not_available then
+    return 0;
+  end;
+
   select i.difficulty into v_difficulty from raid_night_info(p_team_id, p_raid_date) i;
 
   insert into raid_night_bosses (team_id, raid_date, encounter_id, position, skipped, skipped_for_kill_id)
@@ -35,8 +46,8 @@ begin
 
   get diagnostics v_count = row_count;
 
-  insert into raid_night_lineups (team_id, raid_date, encounter_id, player_id)
-  select p_team_id, p_raid_date, b.encounter_id, g.player_id
+  insert into raid_night_lineups (team_id, raid_date, encounter_id, player_id, character_id, class_spec_id)
+  select p_team_id, p_raid_date, b.encounter_id, g.player_id, g.character_id, g.class_spec_id
   from raid_night_bosses b
   join boss_groups g on g.team_id = b.team_id and g.encounter_id = b.encounter_id
   join players p on p.id = g.player_id and p.archived_at is null and not p.is_bench

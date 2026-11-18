@@ -550,6 +550,21 @@ const CAL_LINEUP = {
   }
 };
 
+// The same night with a spec list, and one raider on another spec for the
+// first boss (#1580): Aur, a Protection Warrior, on Arms.
+const CAL_LINEUP_PICKED = {
+  ...CAL_LINEUP,
+  tables: {
+    ...CAL_LINEUP.tables,
+    classes_specs: [
+      { id: 901, class: 'Warrior', spec: 'Protection', role: 'Tank' },
+      { id: 902, class: 'Warrior', spec: 'Fury', role: 'Melee' },
+      { id: 903, class: 'Warrior', spec: 'Arms', role: 'Melee' }
+    ],
+    raid_night_lineups: CAL_LINEUP.tables.raid_night_lineups.map((r, i) => (i === 0 ? { ...r, class_spec_id: 903 } : r))
+  }
+};
+
 // The same night as a raider on the team sees it (#1681): the grid, read-only.
 const CAL_LINEUP_RAIDER = {
   ...CAL_LINEUP,
@@ -1858,6 +1873,16 @@ const STATES = [
     click: 'role=radio[name="Solid bars"]'
   },
   { label: 'calendar boss lineup, officer, asking how far to save', ...CAL_LINEUP, click: 'role=button[name="Save…"]' },
+  // #1580: the character and spec picker, and a saved pick on the grid.
+  { label: 'calendar boss lineup, officer, picking a spec', ...CAL_LINEUP, click: '.blg-swap >> nth=0' },
+  {
+    label: 'calendar boss lineup, officer, picking a spec, light',
+    ...CAL_LINEUP,
+    colorScheme: 'light',
+    click: '.blg-swap >> nth=0'
+  },
+  { label: 'calendar boss lineup, officer, a saved pick', ...CAL_LINEUP_PICKED },
+  { label: 'calendar boss lineup, officer, a saved pick, light', ...CAL_LINEUP_PICKED, colorScheme: 'light' },
   { label: 'calendar boss lineup, raider', ...CAL_LINEUP_RAIDER },
   { label: 'calendar boss lineup, raider, light', ...CAL_LINEUP_RAIDER, colorScheme: 'light' },
   { label: 'calendar night, your bosses', ...CAL_OWN_BOSSES },

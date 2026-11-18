@@ -9,6 +9,11 @@ import {
   capLabel,
   capStatus,
   changeList,
+  pickChanges,
+  pickRows,
+  picksOf,
+  playWords,
+  setPick,
   changes,
   comingNights,
   current,
@@ -88,11 +93,25 @@ const nightBoss = (encounter_id: number, position: number, extra: Partial<NightB
 
 const ROSTER = [
   player(1, 'Ana', 'Warrior', 'Tank'),
-  player(2, 'Bo', 'Priest', 'Heal'),
+  player(2, 'Bo', 'Priest', 'Heal', { team_member_id: 12 }),
   player(3, 'Cy', 'Mage', 'Ranged', { is_trial: true }),
   player(4, 'Di', 'Rogue', 'Melee'),
   player(5, 'Ed', 'Druid', 'Ranged', { is_bench: true })
 ];
+
+// The spec list (#1580): Bo is a Priest ("Spec", a healer) who can play
+// Shadow, and has a Restoration Shaman alt, Bosham.
+const SPECS = [
+  { id: 1, class: 'Priest', spec: 'Spec', role: 'Heal' },
+  { id: 2, class: 'Priest', spec: 'Shadow', role: 'Ranged' },
+  { id: 3, class: 'Shaman', spec: 'Restoration', role: 'Heal' },
+  { id: 4, class: 'Shaman', spec: 'Elemental', role: 'Ranged' }
+];
+const BOSHAM = { id: 501, name: 'Bosham', class_name: 'Shaman', spec_name: 'Restoration' };
+const LOOK = {
+  specs: new Map(SPECS.map((cs) => [cs.id, cs])),
+  characters: new Map([[BOSHAM.id, BOSHAM]])
+};
 
 const answer = (player_id: number, status: string): Answer => ({
   player_id,
@@ -371,6 +390,48 @@ describe('the lineup rules', () => {
     expect(total.problems.some((p) => /open|over/.test(p))).toBe(false);
   });
 
+  it('counts a raider as what they play on a boss, and names it (#1580)', () => {
+    const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1), nightBoss(102, 2)], { fresh: false, season: 'S1' })[0]!;
+    const all = placesOf(
+      places([
+        [101, [1, 2]],
+        [102, [1, 2]]
+      ])
+    );
+    // Bo plays Shadow on Nek'zali and their Shaman alt on Sszorak.
+    const picks = picksOf([
+      { encounter_id: 101, player_id: 2, character_id: null, class_spec_id: 2 },
+      { encounter_id: 102, player_id: 2, character_id: BOSHAM.id, class_spec_id: null }
+    ]);
+    const view = lineupView(ROSTER, NIGHT, [], raid, all, all, DEFAULT_ROLE_TARGETS, picks, LOOK);
+    const [nekzali, sszorak] = view.totals;
+    expect(nekzali!.roles).toEqual({ Tank: 1, Heal: 0, Melee: 0, Ranged: 1 });
+    expect(sszorak!.roles).toEqual({ Tank: 1, Heal: 1, Melee: 0, Ranged: 0 });
+    const bo = view.groups.find((g) => g.role === 'Heal')!.rows[0]!;
+    expect(bo.cells.map((c) => playWords(c.play))).toEqual(['as Shadow', 'on Bosham as Restoration Shaman']);
+    // Played differently from the usual group (no picks there): tonight only.
+    expect(bo.cells.map((c) => c.differs)).toEqual([true, true]);
+
+    expect(pickChanges(new Map(), picks, all, raid.bosses, ROSTER, LOOK)).toEqual([
+      'Bo as Shadow for Nek’zali'.replace('’', "'"),
+      'Bo on Bosham as Restoration Shaman for Sszorak'
+    ]);
+    expect(pickChanges(picks, new Map(), all, raid.bosses, ROSTER, LOOK)).toEqual([
+      "Bo back to Spec for Nek'zali",
+      'Bo back to Spec for Sszorak'
+    ]);
+  });
+
+  it('saves only the picks of raiders still in', () => {
+    const one = new Map([
+      [2, { characterId: null, classSpecId: 2 }],
+      [3, { characterId: BOSHAM.id, classSpecId: null }]
+    ]);
+    expect(pickRows(one, new Set([2]))).toEqual([{ player_id: 2, character_id: null, class_spec_id: 2 }]);
+    const edits = setPick(new Map(), new Map(), 101, 2, { characterId: null, classSpecId: 2 });
+    expect(setPick(new Map(), edits, 101, 2, null).size).toBe(0);
+  });
+
   it('lists what changed for the save bar, by raider', () => {
     const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1), nightBoss(102, 2)], { fresh: false, season: 'S1' })[0]!;
     const saved = placesOf(
@@ -446,7 +507,10 @@ function handlers(person: ReturnType<typeof who>, setup: Setup = PLANNED): FakeH
     raid_night_bosses: () => setup.bosses ?? [],
     raid_night_lineups: () => setup.tonight ?? [],
     boss_groups: () => setup.groups ?? [],
-    team_lineup_settings: (read) => (read.single ? (setup.targets ?? null) : setup.targets ? [setup.targets] : [])
+    team_lineup_settings: (read) => (read.single ? (setup.targets ?? null) : setup.targets ? [setup.targets] : []),
+    classes_specs: () => SPECS,
+    team_members: () => [{ id: 12, person_id: 7 }],
+    characters: () => [{ ...BOSHAM, person_id: 7, realm: 'Illidan', item_level: null }]
   };
   return seededHandlers({
     session: fakeSession({ battlenet: 'A#1', discord: { id: 'd', name: 'Ana' } }),
@@ -633,7 +697,9 @@ describe('the boss lineup tab', () => {
         p_raid_date: '2026-05-14',
         p_encounter_id: 101,
         p_player_ids: [1, 3],
-        p_expected_player_ids: [1, 2, 3]
+        p_expected_player_ids: [1, 2, 3],
+        p_picks: [],
+        p_expected_picks: []
       }
     ]);
     expect(rpcs(client, 'set_boss_group')).toEqual([]);
@@ -653,7 +719,14 @@ describe('the boss lineup tab', () => {
     expect(order).toEqual(['set_raid_night_lineup', 'set_boss_group']);
     // Sszorak's group had Cy too; what is on screen becomes the group.
     expect(rpcs(client, 'set_boss_group')).toEqual([
-      { p_team_id: 1, p_encounter_id: 102, p_player_ids: [2], p_expected_player_ids: [1, 2, 3] }
+      {
+        p_team_id: 1,
+        p_encounter_id: 102,
+        p_player_ids: [2],
+        p_expected_player_ids: [1, 2, 3],
+        p_picks: [],
+        p_expected_picks: []
+      }
     ]);
   });
 
@@ -680,6 +753,66 @@ describe('the boss lineup tab', () => {
     await user.click(screen.getByRole('button', { name: 'Show their version' }));
     expect(g.getByRole('button', { name: 'Ana, Sszorak: in' })).toBeInTheDocument();
     expect(screen.getByText('No unsaved changes.')).toBeInTheDocument();
+  });
+
+  it('lets an officer pick another spec or an alt for a raider on a boss (#1580)', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(LINEUP, handlers(who('officer')));
+    const g = await grid();
+    await user.click(g.getByRole('button', { name: "Change what Bo plays on Nek'zali the Soulcoiler" }));
+    let dialog = within(await screen.findByRole('dialog', { name: "What Bo plays on Nek'zali" }));
+    // Their roster character, then the alt, every spec of each class.
+    expect(dialog.getByRole('button', { name: 'Spec healer · usual' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(dialog.getByRole('button', { name: 'Shadow ranged' }));
+    expect(
+      g.getByRole('button', {
+        name: "Bo, Nek'zali the Soulcoiler: in, as Shadow, changed for tonight only, usually as Spec"
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Bo as Shadow for Nek'zali")).toBeInTheDocument();
+
+    await user.click(g.getByRole('button', { name: 'Change what Bo plays on Sszorak' }));
+    dialog = within(await screen.findByRole('dialog', { name: 'What Bo plays on Sszorak' }));
+    await user.click(
+      within(dialog.getByRole('region', { name: 'Bosham' })).getByRole('button', { name: 'Restoration healer · usual' })
+    );
+    // The alt's name is on the cell.
+    expect(g.getByRole('button', { name: /^Bo, Sszorak: in, on Bosham as Restoration Shaman/ })).toHaveTextContent(
+      'Bosham'
+    );
+
+    await save(user, 'Just Thursday');
+    expect(rpcs(client, 'set_raid_night_lineup')).toEqual([
+      expect.objectContaining({
+        p_encounter_id: 101,
+        p_picks: [{ player_id: 2, character_id: null, class_spec_id: 2 }],
+        p_expected_picks: []
+      }),
+      expect.objectContaining({
+        p_encounter_id: 102,
+        p_picks: [{ player_id: 2, character_id: BOSHAM.id, class_spec_id: 3 }],
+        p_expected_picks: []
+      })
+    ]);
+  });
+
+  it('shows a saved pick on the grid and counts its role (#1580)', async () => {
+    renderApp(
+      LINEUP,
+      handlers(who('officer'), {
+        ...PLANNED,
+        tonight: [
+          ...PLANNED.tonight!.filter((r) => !(r.encounter_id === 101 && r.player_id === 2)),
+          { encounter_id: 101, player_id: 2, character_id: BOSHAM.id, class_spec_id: 4, character: BOSHAM }
+        ]
+      })
+    );
+    const g = await grid();
+    expect(
+      g.getByRole('button', { name: /^Bo, Nek'zali the Soulcoiler: in, on Bosham as Elemental Shaman/ })
+    ).toBeInTheDocument();
+    const healers = g.getByRole('rowheader', { name: 'Healers · 1' }).closest('tr')!;
+    expect([...healers.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['0/4', '1/4']);
   });
 
   it('puts a raider in, or sits them out, on every boss from their name', async () => {
@@ -762,7 +895,9 @@ describe('the boss lineup tab', () => {
       p_team_id: 1,
       p_encounter_id: 101,
       p_player_ids: [1, 2, 3, 4],
-      p_expected_player_ids: []
+      p_expected_player_ids: [],
+      p_picks: [],
+      p_expected_picks: []
     });
   });
 });
@@ -899,8 +1034,22 @@ describe('the boss groups page', () => {
     await user.click(save);
 
     expect(rpcs(client, 'set_boss_group')).toEqual([
-      { p_team_id: 1, p_encounter_id: 102, p_player_ids: [1, 2, 4], p_expected_player_ids: [1, 2] },
-      { p_team_id: 1, p_encounter_id: 101, p_player_ids: [1, 3], p_expected_player_ids: [1, 2, 3, 99] }
+      {
+        p_team_id: 1,
+        p_encounter_id: 102,
+        p_player_ids: [1, 2, 4],
+        p_expected_player_ids: [1, 2],
+        p_picks: [],
+        p_expected_picks: []
+      },
+      {
+        p_team_id: 1,
+        p_encounter_id: 101,
+        p_player_ids: [1, 3],
+        p_expected_player_ids: [1, 2, 3, 99],
+        p_picks: [],
+        p_expected_picks: []
+      }
     ]);
     expect((await screen.findAllByText(/^Saved the boss groups\./)).length).toBeGreaterThan(0);
   });
@@ -996,7 +1145,9 @@ describe('the boss lineup, after someone leaves the roster', () => {
         p_raid_date: '2026-05-14',
         p_encounter_id: 101,
         p_player_ids: [1, 3],
-        p_expected_player_ids: [1, 2, 3, 99]
+        p_expected_player_ids: [1, 2, 3, 99],
+        p_picks: [],
+        p_expected_picks: []
       }
     ]);
   });
@@ -1015,8 +1166,22 @@ describe('the boss groups page, before any group is set', () => {
     expect(g.getByRole('button', { name: 'Ed, Sszorak: not in the group' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save groups' }));
     expect(rpcs(client, 'set_boss_group')).toEqual([
-      { p_team_id: 1, p_encounter_id: 101, p_player_ids: [1, 2, 3, 4], p_expected_player_ids: [] },
-      { p_team_id: 1, p_encounter_id: 102, p_player_ids: [1, 2, 3, 4], p_expected_player_ids: [] }
+      {
+        p_team_id: 1,
+        p_encounter_id: 101,
+        p_player_ids: [1, 2, 3, 4],
+        p_expected_player_ids: [],
+        p_picks: [],
+        p_expected_picks: []
+      },
+      {
+        p_team_id: 1,
+        p_encounter_id: 102,
+        p_player_ids: [1, 2, 3, 4],
+        p_expected_player_ids: [],
+        p_picks: [],
+        p_expected_picks: []
+      }
     ]);
   });
 });
@@ -1046,6 +1211,27 @@ describe('your bosses tonight', () => {
       [3, true]
     ]);
     expect(card.notFinal).toBeNull();
+  });
+
+  it('says what to bring where it is not their main in its usual spec (#1580)', () => {
+    const bo = ROSTER[1]!;
+    const card = yourBosses(
+      raids([nightBoss(101, 1, saved), nightBoss(102, 2, saved), nightBoss(103, 3, saved)]),
+      placesOf(
+        places([
+          [101, [2]],
+          [102, [2]],
+          [103, [2]]
+        ])
+      ),
+      bo,
+      picksOf([
+        { encounter_id: 102, player_id: 2, character_id: null, class_spec_id: 2 },
+        { encounter_id: 103, player_id: 2, character_id: BOSHAM.id, class_spec_id: null }
+      ]),
+      LOOK
+    )!;
+    expect(card.tiles.map((t) => t.play)).toEqual([null, 'Shadow', 'Your Restoration Shaman (Bosham)']);
   });
 
   it('marks a night filled from the groups as not final, boss by boss', () => {

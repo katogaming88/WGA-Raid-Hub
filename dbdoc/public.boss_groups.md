@@ -13,14 +13,18 @@ The standing group per boss for a team (#1216): one row per raider in the group 
 | encounter_id | integer |  | false |  | [public.raid_encounters](public.raid_encounters.md) |  |
 | player_id | integer |  | false |  | [public.players](public.players.md) |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
+| character_id | integer |  | true |  | [public.characters](public.characters.md) | The alt the raider usually plays on this boss (#1580); null = their roster character. |
+| class_spec_id | integer |  | true |  | [public.classes_specs](public.classes_specs.md) | The spec the raider usually plays on this boss (#1580); null = the character's usual spec. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| boss_groups_class_spec_id_fkey | FOREIGN KEY | FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) |
 | boss_groups_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
 | boss_groups_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | boss_groups_encounter_id_fkey | FOREIGN KEY | FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE |
+| boss_groups_character_id_fkey | FOREIGN KEY | FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL |
 | boss_groups_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | boss_groups_team_id_encounter_id_player_id_key | UNIQUE | UNIQUE (team_id, encounter_id, player_id) |
 
@@ -32,6 +36,7 @@ The standing group per boss for a team (#1216): one row per raider in the group 
 | boss_groups_team_id_encounter_id_player_id_key | CREATE UNIQUE INDEX boss_groups_team_id_encounter_id_player_id_key ON public.boss_groups USING btree (team_id, encounter_id, player_id) |
 | boss_groups_encounter_id_idx | CREATE INDEX boss_groups_encounter_id_idx ON public.boss_groups USING btree (encounter_id) |
 | boss_groups_player_id_idx | CREATE INDEX boss_groups_player_id_idx ON public.boss_groups USING btree (player_id) |
+| boss_groups_character_id_idx | CREATE INDEX boss_groups_character_id_idx ON public.boss_groups USING btree (character_id) WHERE (character_id IS NOT NULL) |
 
 ## Triggers
 
@@ -47,6 +52,8 @@ erDiagram
 "public.boss_groups" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.boss_groups" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.boss_groups" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.boss_groups" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
+"public.boss_groups" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
 
 "public.boss_groups" {
   integer id
@@ -54,6 +61,8 @@ erDiagram
   integer encounter_id FK
   integer player_id FK
   timestamp_with_time_zone created_at
+  integer character_id FK
+  integer class_spec_id FK
 }
 "public.teams" {
   integer id
@@ -97,6 +106,27 @@ erDiagram
   timestamp_with_time_zone bis_link_updated_at
   text url_code
   text name_realm_key
+}
+"public.characters" {
+  integer id
+  integer person_id FK
+  bigint blizzard_id
+  text name
+  text realm
+  text realm_slug
+  text name_realm
+  text name_realm_key
+  text class_name
+  text spec_name
+  integer level
+  integer item_level
+  timestamp_with_time_zone saved_at
+}
+"public.classes_specs" {
+  integer id
+  text class
+  text spec
+  text role
 }
 ```
 

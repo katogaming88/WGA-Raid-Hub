@@ -382,7 +382,9 @@ describe('Calendar (new app): the boss lineup', () => {
       p_raid_date: NIGHT,
       p_encounter_id: 102,
       p_player_ids: [1, 2, 3, 4],
-      p_expected_player_ids: [2, 3, 4]
+      p_expected_player_ids: [2, 3, 4],
+      p_picks: [],
+      p_expected_picks: []
     });
   });
 });

@@ -41,6 +41,17 @@ characters,Officers read characters on their teams,public,SELECT,PERMISSIVE,"((p
    FROM team_members tm
   WHERE (tm.team_id = ANY (( SELECT my_guild_permission_team_ids('view_every_team'::text) AS my_guild_permission_team_ids)::integer[])))) OR ( SELECT is_site_admin() AS is_site_admin))",
 characters,People read own characters,public,SELECT,PERMISSIVE,(person_id = ( SELECT my_person_id() AS my_person_id)),
+characters,Team raiders read characters picked in their team's lineups,public,SELECT,PERMISSIVE,"(id IN ( SELECT l.character_id
+   FROM raid_night_lineups l
+  WHERE ((l.character_id IS NOT NULL) AND (l.team_id IN ( SELECT p.team_id
+           FROM players p
+          WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])))))
+UNION
+ SELECT g.character_id
+   FROM boss_groups g
+  WHERE ((g.character_id IS NOT NULL) AND (g.team_id IN ( SELECT p.team_id
+           FROM players p
+          WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[])))))))",
 classes_specs,Claude readers read classes_specs,claude_readers,SELECT,PERMISSIVE,true,
 classes_specs,Public read classes_specs,public,SELECT,PERMISSIVE,true,
 discord_find_ticket,Claude readers read discord_find_ticket,claude_readers,SELECT,PERMISSIVE,true,

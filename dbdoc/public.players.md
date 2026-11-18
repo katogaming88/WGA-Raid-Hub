@@ -65,6 +65,7 @@
 | players_drop_live_priority_on_archive | CREATE TRIGGER players_drop_live_priority_on_archive AFTER UPDATE OF archived_at ON public.players FOR EACH ROW WHEN (((old.archived_at IS NULL) AND (new.archived_at IS NOT NULL))) EXECUTE FUNCTION drop_archived_player_live_priority() |
 | players_cancel_waiting_main_swaps_on_archive | CREATE TRIGGER players_cancel_waiting_main_swaps_on_archive AFTER UPDATE OF archived_at ON public.players FOR EACH ROW WHEN (((old.archived_at IS NULL) AND (new.archived_at IS NOT NULL))) EXECUTE FUNCTION cancel_waiting_main_swaps_on_archive() |
 | players_archived_at_through_functions | CREATE TRIGGER players_archived_at_through_functions BEFORE UPDATE OF archived_at ON public.players FOR EACH ROW EXECUTE FUNCTION players_archived_at_through_functions() |
+| players_clear_lineup_alts | CREATE TRIGGER players_clear_lineup_alts AFTER UPDATE OF team_member_id ON public.players FOR EACH ROW EXECUTE FUNCTION clear_lineup_alts_for_player() |
 
 ## Relations
 
@@ -389,6 +390,8 @@ erDiagram
   integer encounter_id FK
   integer player_id FK
   timestamp_with_time_zone created_at
+  integer character_id FK
+  integer class_spec_id FK
 }
 "public.raid_night_lineups" {
   integer id
@@ -397,6 +400,8 @@ erDiagram
   integer encounter_id FK
   integer player_id FK
   timestamp_with_time_zone created_at
+  integer character_id FK
+  integer class_spec_id FK
 }
 "public.raid_night_participation" {
   integer id

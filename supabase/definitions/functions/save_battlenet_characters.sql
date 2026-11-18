@@ -8,10 +8,30 @@ CREATE OR REPLACE FUNCTION public.save_battlenet_characters(p_person_id integer,
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
+declare
+  v_team integer;
 begin
   if not exists (select 1 from people where id = p_person_id) then
     raise exception 'No person with id %', p_person_id;
   end if;
+
+  for v_team in
+    with listed as (
+      select (x ->> 'blizzard_id')::bigint as blizzard_id
+      from jsonb_array_elements(coalesce(p_characters, '[]'::jsonb)) x
+    ),
+    touched as (
+      select c.id from characters c
+      where (c.person_id = p_person_id and c.blizzard_id not in (select blizzard_id from listed))
+         or (c.person_id <> p_person_id and c.blizzard_id in (select blizzard_id from listed))
+    )
+    select l.team_id from raid_night_lineups l where l.character_id in (select id from touched)
+    union
+    select g.team_id from boss_groups g where g.character_id in (select id from touched)
+    order by 1
+  loop
+    perform pg_advisory_xact_lock(hashtext('boss_lineup'), v_team);
+  end loop;
 
   delete from characters c
    where c.person_id = p_person_id

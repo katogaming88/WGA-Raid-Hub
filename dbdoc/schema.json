@@ -1418,6 +1418,10 @@
         {
           "name": "players_archived_at_through_functions",
           "def": "CREATE TRIGGER players_archived_at_through_functions BEFORE UPDATE OF archived_at ON public.players FOR EACH ROW EXECUTE FUNCTION players_archived_at_through_functions()"
+        },
+        {
+          "name": "players_clear_lineup_alts",
+          "def": "CREATE TRIGGER players_clear_lineup_alts AFTER UPDATE OF team_member_id ON public.players FOR EACH ROW EXECUTE FUNCTION clear_lineup_alts_for_player()"
         }
       ]
     },
@@ -7395,6 +7399,16 @@
             "blizzard_id"
           ]
         }
+      ],
+      "triggers": [
+        {
+          "name": "characters_clear_lineup_picks",
+          "def": "CREATE TRIGGER characters_clear_lineup_picks BEFORE DELETE ON public.characters FOR EACH ROW EXECUTE FUNCTION clear_lineup_picks_for_character()"
+        },
+        {
+          "name": "characters_clear_lineup_picks_on_new_owner",
+          "def": "CREATE TRIGGER characters_clear_lineup_picks_on_new_owner AFTER UPDATE OF person_id ON public.characters FOR EACH ROW EXECUTE FUNCTION clear_lineup_picks_for_character()"
+        }
       ]
     },
     {
@@ -7657,6 +7671,18 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "character_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The alt the raider usually plays on this boss (#1580); null = their roster character."
+        },
+        {
+          "name": "class_spec_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The spec the raider usually plays on this boss (#1580); null = the character's usual spec."
         }
       ],
       "indexes": [
@@ -7693,9 +7719,30 @@
           "columns": [
             "player_id"
           ]
+        },
+        {
+          "name": "boss_groups_character_id_idx",
+          "def": "CREATE INDEX boss_groups_character_id_idx ON public.boss_groups USING btree (character_id) WHERE (character_id IS NOT NULL)",
+          "table": "public.boss_groups",
+          "columns": [
+            "character_id"
+          ]
         }
       ],
       "constraints": [
+        {
+          "name": "boss_groups_class_spec_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)",
+          "table": "public.boss_groups",
+          "referenced_table": "public.classes_specs",
+          "columns": [
+            "class_spec_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
         {
           "name": "boss_groups_player_id_fkey",
           "type": "FOREIGN KEY",
@@ -7730,6 +7777,19 @@
           "referenced_table": "public.raid_encounters",
           "columns": [
             "encounter_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "boss_groups_character_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL",
+          "table": "public.boss_groups",
+          "referenced_table": "public.characters",
+          "columns": [
+            "character_id"
           ],
           "referenced_columns": [
             "id"
@@ -7992,6 +8052,18 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "character_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The alt the raider plays on this boss (#1580); null = their roster character."
+        },
+        {
+          "name": "class_spec_id",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The spec the raider plays on this boss (#1580); null = the character's usual spec."
         }
       ],
       "indexes": [
@@ -8021,9 +8093,30 @@
           "columns": [
             "player_id"
           ]
+        },
+        {
+          "name": "raid_night_lineups_character_id_idx",
+          "def": "CREATE INDEX raid_night_lineups_character_id_idx ON public.raid_night_lineups USING btree (character_id) WHERE (character_id IS NOT NULL)",
+          "table": "public.raid_night_lineups",
+          "columns": [
+            "character_id"
+          ]
         }
       ],
       "constraints": [
+        {
+          "name": "raid_night_lineups_class_spec_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)",
+          "table": "public.raid_night_lineups",
+          "referenced_table": "public.classes_specs",
+          "columns": [
+            "class_spec_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
         {
           "name": "raid_night_lineups_player_id_fkey",
           "type": "FOREIGN KEY",
@@ -8032,6 +8125,19 @@
           "referenced_table": "public.players",
           "columns": [
             "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_night_lineups_character_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL",
+          "table": "public.raid_night_lineups",
+          "referenced_table": "public.characters",
+          "columns": [
+            "character_id"
           ],
           "referenced_columns": [
             "id"
@@ -16245,6 +16351,19 @@
     {
       "table": "public.boss_groups",
       "columns": [
+        "class_spec_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.classes_specs",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
+    },
+    {
+      "table": "public.boss_groups",
+      "columns": [
         "player_id"
       ],
       "cardinality": "zero_or_more",
@@ -16280,6 +16399,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.boss_groups",
+      "columns": [
+        "character_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.characters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
     },
     {
       "table": "public.raid_night_bosses",
@@ -16336,6 +16468,19 @@
     {
       "table": "public.raid_night_lineups",
       "columns": [
+        "class_spec_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.classes_specs",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
+    },
+    {
+      "table": "public.raid_night_lineups",
+      "columns": [
         "player_id"
       ],
       "cardinality": "zero_or_more",
@@ -16345,6 +16490,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_night_lineups",
+      "columns": [
+        "character_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.characters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
     },
     {
       "table": "public.raid_night_lineups",
@@ -17835,21 +17993,9 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.set_boss_group",
-      "return_type": "int4",
-      "arguments": "p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[]",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.plan_raid_night",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_raid_date date",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.set_raid_night_lineup",
-      "return_type": "int4",
-      "arguments": "p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[]",
       "type": "FUNCTION"
     },
     {
@@ -18954,6 +19100,48 @@
       "name": "public.set_team_discord_after_raid",
       "return_type": "void",
       "arguments": "p_team_id integer, p_after_raid text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.clear_lineup_picks_for_character",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.clear_lineup_alts_for_player",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.lineup_picks_norm",
+      "return_type": "record",
+      "arguments": "p_team_id integer, p_picks jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.check_lineup_picks",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_player_ids integer[], p_picks jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.same_lineup_picks",
+      "return_type": "bool",
+      "arguments": "a jsonb, b jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_raid_night_lineup",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_boss_group",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb",
       "type": "FUNCTION"
     }
   ],

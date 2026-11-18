@@ -3852,3 +3852,36 @@ Shipped: `20261118001559_account_preferences_lineup_cell_style.sql`.
 **Guild-wide (`team_id` null),** so someone reading two teams' lineups sees one look. **The value is held to `"names"` or `"bars"`** by the same `account_preferences_known_key` CHECK, so a typo fails at the write instead of quietly showing the default. No row means Names. The own-rows rule already covers it: anyone signed in sets their own row and reads only theirs.
 
 [Full discussion -> #1681](https://github.com/katogaming88/WGA-Raid-Hub/issues/1681).
+
+## #1580 -- a boss lineup records which character and spec each raider plays
+
+Shipped: `20261118100049_raid_night_lineups_character_spec.sql`.
+
+**Two nullable columns on both lineup tables, not a new table.** `raid_night_lineups` and `boss_groups` gain `character_id` (an alt from `characters`) and `class_spec_id` (a spec from `classes_specs`). Null means the raider's roster character in its usual spec, so every row already saved keeps its meaning and nothing is backfilled. `player_id` stays the person on the roster, which is what attendance and loot read, as the issue says.
+
+**The usual group carries picks too.** Kat's #1680 design saves a swap with the same "just this night / every night after" choice, and "every night after" saves the group, so a raider who always plays Destruction on one boss is filled that way each week. Every path that copies a group onto a night copies the picks: `fill_raid_night()`, `set_boss_group()`'s coming nights, and `set_raid_night_boss_skipped()` putting a boss back.
+
+**One spelling for "the main in its usual spec".** `lineup_picks_norm()` stores a pick naming the raider's own roster character, or the roster character's usual spec, as null. An alt's spec is always kept as picked: its "usual" is whatever Battle.net said at the raider's last save, so storing it as null would let the pick change spec on its own (fresh review). The rule exists so comparing a night with its group and a save with what it read stay exact. `check_lineup_picks()` refuses a pick for someone not in the lineup, two picks for one raider, a character that isn't one of the raider's own (through their membership's person), or a spec the character's class doesn't have.
+
+**Both save functions take the picks and what was read.** `set_raid_night_lineup()` and `set_boss_group()` were dropped and recreated with `p_picks` and `p_expected_picks`. The new app is their only caller and ships with this. A save made after someone else changed the picks is refused like one made after a change to who is in. The Boss groups page, which doesn't edit picks, sends each group's picks back unchanged.
+
+**A deleted alt takes its picks with it.** A `before delete` trigger on `characters` clears both columns wherever the alt was picked, so the raider goes back to their main in its usual spec. The foreign key's own `on delete set null` would have left the alt's spec on the main.
+
+**Held together under concurrent writes (CodeRabbit on PR #1874).**
+
+- A save locks the picked characters before checking them, so removing an alt waits for the save, or the save is refused if the removal came first.
+- The cleanup takes each team's lineup lock in team order before touching either table, the order the saves use, so the two can't deadlock.
+- An alt that moves to another person's list (`save_battlenet_characters()` keeps its id) is cleared the same way.
+- A spec is checked against the class of the row it is stored on, so a character with the roster row's own name can't carry another class's spec onto it.
+- One lock order everywhere: a team's lineup lock first, then any character. `save_battlenet_characters()`, the one writer of `characters`, now takes the lineup lock of every team its change reaches before removing or moving a character, so its cleanup never holds a character that a save, a fill or putting a boss back is waiting for.
+- A save naming an alt that is already gone asks for a reload.
+- Nothing that writes a lineup waits on a character while holding the lineup lock: the saves, a fill and putting a boss back take their character locks with `nowait`. If an alt is being removed at that moment, a save asks for a reload, putting a boss back asks to try again, and a fill leaves the night for the next fill. The removal waits only for the team locks it took before touching a character; its cleanup never waits for one, so a team that gained a pick of that character in the meantime and is busy stops the Battle.net save with a "try again". No two writes can wait on each other. A save that picks an alt also holds that raider's roster row (`for share nowait`), so a change of person either waits for the save, whose pick the cleanup then clears, or makes the save ask for a reload. The roster trigger takes the lineup lock only when the row has an alt picked, so claims and joins elsewhere never wait on the Boss lineup.
+- Both cleanup triggers run as their owner (`security definer`): the current site's Roster tab clears `players.team_member_id` with a direct update as the officer, and nobody may update the lineup tables directly, so a trigger running as the officer would change nothing (fresh review). A refusal names the raider whose pick it is.
+- A roster row that moves to another person (`add_signup_to_roster()`, `claim_character()`, the joins) drops its alt picks through a trigger on `players.team_member_id`; a spec pick on the row's own class stays.
+- `p_picks` defaults to null rather than an empty list. A save that leaves picks out, as a page loaded before this shipped would, is refused when the boss has picks; an explicit empty list clears them.
+
+**Teammates read a picked alt (Kat, 2026-11-18).** A new read rule on `characters` lets a raider read an alt picked in their own team's lineups or groups, so the team's read-only grid names it. No other alt becomes readable.
+
+**Left for later.** The Discord lineup post naming the character and spec is its own issue (Kat). Attendance still matches Warcraft Logs names to the roster character (#1242), so a raider who brings an alt can read as absent until that issue is done.
+
+[Full discussion -> #1580](https://github.com/katogaming88/WGA-Raid-Hub/issues/1580).

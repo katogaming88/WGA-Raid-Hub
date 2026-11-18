@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('classes_specs_id_seq'::regclass) | false | [public.players](public.players.md) [public.season_signups](public.season_signups.md) [public.main_swap_requests](public.main_swap_requests.md) [public.team_recruiting_spots](public.team_recruiting_spots.md) |  |  |
+| id | integer | nextval('classes_specs_id_seq'::regclass) | false | [public.players](public.players.md) [public.season_signups](public.season_signups.md) [public.main_swap_requests](public.main_swap_requests.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_lineups](public.raid_night_lineups.md) [public.team_recruiting_spots](public.team_recruiting_spots.md) |  |  |
 | class | text |  | false |  |  |  |
 | spec | text |  | false |  |  |  |
 | role | text |  | true |  |  |  |
@@ -35,6 +35,8 @@ erDiagram
 "public.season_signups" }o--o| "public.classes_specs" : "FOREIGN KEY (swap_class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.season_signups" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.main_swap_requests" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
+"public.boss_groups" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
+"public.raid_night_lineups" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
 "public.team_recruiting_spots" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
 
 "public.classes_specs" {
@@ -109,6 +111,25 @@ erDiagram
   integer reviewed_by FK
   text officer_note
   integer approved_player_id FK
+}
+"public.boss_groups" {
+  integer id
+  integer team_id FK
+  integer encounter_id FK
+  integer player_id FK
+  timestamp_with_time_zone created_at
+  integer character_id FK
+  integer class_spec_id FK
+}
+"public.raid_night_lineups" {
+  integer id
+  integer team_id FK
+  date raid_date FK
+  integer encounter_id FK
+  integer player_id FK
+  timestamp_with_time_zone created_at
+  integer character_id FK
+  integer class_spec_id FK
 }
 "public.team_recruiting_spots" {
   integer id

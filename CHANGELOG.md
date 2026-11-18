@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.293.0] - 2026-11-18
+
+### Backend
+
+- A boss lineup and a boss's usual group record which character and spec each raider plays, not only who is in (#1580). Left alone, it is their roster character in its usual spec, so every lineup already saved is unchanged. A pick must be one of the raider's own characters, in a spec its class has. Filling a night from the groups, a group save reaching coming nights, and putting a skipped boss back all carry the picks. An alt someone takes off their character list puts them back on their main. Teammates can see an alt picked for their team's lineups, and no other alt.
+
+### Project
+
+- Boss Lineup: a ⇄ on every cell opens "What Katorrí plays on Sszorak", listing the raider's characters (their main first, then their alts) with every spec of each class and the usual one marked (#1580). Picking one swaps them, or puts them in if they were out. A swapped cell shows the spec's icon (before the alt's name in Names, centered in Solid bars) in that class's color. The role counts, buffs and Needs a look follow the pick, and the save bar lists it ("Bo as Shadow for Nek'zali"). Picks save with the same "just this night / every night after" choice, and a pick that differs from the usual group gets the tonight-only moon.
+- "Your bosses tonight" says what to bring where it isn't the raider's main in its usual spec: "Destruction", or "Your Restoration Shaman (Kattotem)".
+- The Boss groups page keeps the picks in each group when it saves.
+- Database, page, browser and accessibility tests for the picker and saved picks, light and dark; the Help guide mentions the ⇄.
+
 ## [3.292.0] - 2026-11-18
 
 ### Backend

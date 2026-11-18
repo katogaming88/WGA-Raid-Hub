@@ -372,7 +372,7 @@ export const GUIDES: Guide[] = [
       'Open the Calendar and pick the raid night.',
       'Choose the Boss lineup tab. It works on a phone too.',
       'If the night isn’t planned yet, choose Fill from the groups.',
-      'Click a cell to put someone in or sit them out for that boss. Click a name to do it for every boss.',
+      'Click a cell to put someone in or sit them out for that boss. Click a name to do it for every boss. The ⇄ on a cell picks another of their characters or another spec for that boss.',
       'Choose Save…, then Just that night, or that night and every night after, which also makes it the usual group.'
     ]
   },
