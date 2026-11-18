@@ -30,14 +30,28 @@ begin
 
   perform public.check_lineup_players(p_team_id, p_player_ids);
   perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
-  -- The picked alts stay put until this save is done (taken after the lineup
-  -- lock, the order everything here takes them in), and one already gone
-  -- asks for a reload: someone changed the characters since it was opened.
-  perform 1 from characters
-  where id in (
-    select x.character_id from jsonb_to_recordset(coalesce(p_picks, '[]'::jsonb)) as x(character_id integer)
-  )
-  for share;
+  -- The picked alts stay put until this save is done, and one already gone,
+  -- or being removed right now, asks for a reload. Nothing here waits on a
+  -- character while holding the lineup lock (nowait), so a removal, which
+  -- holds the character and then waits for the lineup lock, can never be
+  -- waited on in turn (CodeRabbit on PR #1874).
+  begin
+    perform 1 from characters
+    where id in (
+      select x.character_id from jsonb_to_recordset(coalesce(p_picks, '[]'::jsonb)) as x(character_id integer)
+    )
+    for share nowait;
+    -- And the roster rows given an alt, so a move to another person can't
+    -- land between the ownership check and the write.
+    perform 1 from players
+    where id in (
+      select x.player_id from jsonb_to_recordset(coalesce(p_picks, '[]'::jsonb)) as x(player_id integer, character_id integer)
+      where x.character_id is not null
+    )
+    for share nowait;
+  exception when lock_not_available then
+    raise exception 'Someone else changed this raider''s characters since you opened it. Reload to see their change.';
+  end;
   if exists (
     select 1 from jsonb_to_recordset(coalesce(p_picks, '[]'::jsonb)) as x(character_id integer)
     where x.character_id is not null and not exists (select 1 from characters c where c.id = x.character_id)

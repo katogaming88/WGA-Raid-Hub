@@ -26,6 +26,20 @@ begin
 
   perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
 
+  if not p_skipped then
+    -- The group's picked alts, held without waiting (see the saves).
+    begin
+      perform 1 from characters
+      where id in (
+        select g.character_id from boss_groups g
+        where g.team_id = p_team_id and g.encounter_id = p_encounter_id and g.character_id is not null
+      )
+      for key share nowait;
+    exception when lock_not_available then
+      raise exception 'A raider''s characters are being updated right now. Try again in a moment.';
+    end;
+  end if;
+
   update raid_night_bosses
      set skipped = p_skipped, skipped_for_kill_id = null, confirmed_at = null, confirmed_by = null
    where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id;
