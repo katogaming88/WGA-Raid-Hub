@@ -6,8 +6,8 @@ import { useAddress, useGuildDetails } from '../data/address';
 import { useGuildStreamers } from '../streams/StreamWidget';
 import { embedParent, embedSrc } from '../streams/streams';
 import { classColor } from '../roster/roster';
-import { newsShortDate, sortNews } from '../news/news';
-import { useNews } from '../news/useNews';
+import { livePosts, newsShortDate, postDate } from '../news/news';
+import { useNews, useNow } from '../news/useNews';
 import {
   attentionRows,
   guildIntro,
@@ -278,6 +278,7 @@ function Attention({ teams }: { teams: TeamInput[] }) {
 function News() {
   const titleId = useId();
   const news = useNews();
+  const now = useNow();
   return (
     <section className="card guild-side-card" aria-labelledby={titleId}>
       <div className="guild-section-head">
@@ -288,15 +289,18 @@ function News() {
       </div>
       <DataState query={news} label="the news">
         {(all) => {
-          const entries = sortNews(all).slice(0, 3);
-          if (!entries.length) return <p className="text-muted guild-empty">No news yet.</p>;
+          // The three newest that are out, each a link to its own page (#1230).
+          const posts = livePosts(all, now).slice(0, 3);
+          if (!posts.length) return <p className="text-muted guild-empty">No news yet.</p>;
           return (
             <ul className="guild-news">
-              {entries.map((entry) => (
-                <li key={entry.version}>
-                  <span className="guild-news-title">{entry.title}</span>
-                  <time className="text-dim guild-news-date" dateTime={entry.date}>
-                    {newsShortDate(entry.date)}
+              {posts.map((post) => (
+                <li key={post.id}>
+                  <Link className="guild-news-title" to={`/news/${post.slug}`}>
+                    {post.title}
+                  </Link>
+                  <time className="text-dim guild-news-date" dateTime={postDate(post)}>
+                    {newsShortDate(postDate(post))}
                   </time>
                 </li>
               ))}

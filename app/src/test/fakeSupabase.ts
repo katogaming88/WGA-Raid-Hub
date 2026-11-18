@@ -133,10 +133,15 @@ async function derivedPermissions(handlers: FakeHandlers, name: string, args: Re
   return { team, guild: args['p_team_id'] === undefined && args['p_guild_id'] === undefined ? [] : guild };
 }
 
-export function fakeClient(
-  handlers: FakeHandlers
-): Client & { reads: Read[]; writes: Write[]; rpcs: [string, unknown][]; authCalls: AuthCall[] } {
+export function fakeClient(handlers: FakeHandlers): Client & {
+  reads: Read[];
+  writes: Write[];
+  rpcs: [string, unknown][];
+  authCalls: AuthCall[];
+  uploads: { bucket: string; path: string }[];
+} {
   const reads: Read[] = [];
+  const uploads: { bucket: string; path: string }[] = [];
   const writes: Write[] = [];
   const rpcs: [string, unknown][] = [];
   const authCalls: AuthCall[] = [];
@@ -151,6 +156,17 @@ export function fakeClient(
     writes,
     rpcs,
     authCalls,
+    uploads,
+    // Storage: a picture's public address, and an upload that always lands.
+    storage: {
+      from: (bucket: string) => ({
+        getPublicUrl: (path: string) => ({ data: { publicUrl: `https://storage.test/${bucket}/${path}` } }),
+        upload: async (path: string) => {
+          uploads.push({ bucket, path });
+          return { data: { path }, error: null };
+        }
+      })
+    },
     auth: {
       getSession: () => Promise.resolve({ data: { session: handlers.session ?? null }, error: null }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
@@ -276,6 +292,7 @@ export function fakeClient(
     writes: Write[];
     rpcs: [string, unknown][];
     authCalls: AuthCall[];
+    uploads: { bucket: string; path: string }[];
   };
 }
 

@@ -1,4 +1,5 @@
 import { TEAMS, TEAM_SETTINGS, TEAM_SEASONS, STREAMS, OFFICER_BIOS } from '../behavior/guild.js';
+import { newsJsonRows } from './news-fixtures.js';
 
 // Guild home's reads (#1102) as the new app asks for them, shared by
 // guild.test.js and the accessibility states in app.test.js.
@@ -16,6 +17,8 @@ export const GUILD_TABLES = {
   team_settings: SETTINGS,
   team_seasons: TEAM_SEASONS,
   streamers: STREAMS,
+  // The site's real news, as news_posts rows (#1230).
+  news_posts: newsJsonRows(),
   guilds: [{ officer_bios: OFFICER_BIOS }],
   players: [
     { team_id: 1, classes_specs: { role: 'Tank' } },

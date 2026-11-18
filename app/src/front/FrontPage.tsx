@@ -4,8 +4,8 @@ import { LogoMark } from '../components/Icon';
 import { ADDON_URL, SUPPORT_DISCORD_URL } from '../config';
 import { useSeasons } from '../calendar/useCalendar';
 import { currentSeason } from '../profile/profile';
-import { useNews } from '../news/useNews';
-import { newestEntry } from '../news/news';
+import { useNews, useNow } from '../news/useNews';
+import { newestPost, postDate } from '../news/news';
 import { isoDateShort } from '../lib/dates';
 import { useGuildCreationOpen } from './useGuildCreation';
 import './front.css';
@@ -237,12 +237,13 @@ function SeasonBox() {
 
 function NewsBox() {
   const news = useNews();
-  const entry = news.data ? newestEntry(news.data) : null;
-  if (!entry) return null;
+  const now = useNow();
+  const post = news.data ? newestPost(news.data, now) : null;
+  if (!post) return null;
   return (
-    <Link className="front-box" to="/news">
-      <span className="front-kicker">Latest news · {isoDateShort(entry.date)}</span>
-      <strong>{entry.title}</strong>
+    <Link className="front-box" to={`/news/${post.slug}`}>
+      <span className="front-kicker">Latest news · {isoDateShort(postDate(post))}</span>
+      <strong>{post.title}</strong>
       <span className="front-box-more">Read it</span>
     </Link>
   );

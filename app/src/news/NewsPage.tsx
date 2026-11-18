@@ -1,89 +1,215 @@
 import { useEffect, useId, useState } from 'react';
+import { Link } from 'react-router';
+import { usePageCan } from '../auth/access';
 import { DataState } from '../components/DataState';
 import { Icon } from '../components/Icon';
-import { categoryKind, newestEntry, newsDate, openByDefault, sortNews, type NewsEntry } from './news';
-import { useNews, useNewsSeen } from './useNews';
+import { useSupabase } from '../data/DataProvider';
+import {
+  FILTERS,
+  categoryKind,
+  groupByMonth,
+  livePosts,
+  matchesFilter,
+  newsDate,
+  newsShortDate,
+  postDate,
+  seenKey,
+  unpublishedPosts,
+  type NewsFilter,
+  type NewsPost
+} from './news';
+import { newsPictureUrl, useNews, useNewsSeen, useNow } from './useNews';
 import './news.css';
 
-// The News page (#1102): what shipped on the site, newest first, checked
-// against the current site's News tab in tests/browser-app/news.test.js.
+// The News page (#1102, #1230): what shipped on the site, written by Staff on
+// the site itself. Pinned posts in a box at the top, then every post as a
+// timeline by month with a category filter and a search. A post opens on its
+// own page (NewsPostPage).
 export function NewsPage() {
   const news = useNews();
+  const { can } = usePageCan();
+  const staff = can('adminSite');
 
   return (
     <section className="page news-page" aria-labelledby="page-title">
-      <div className="page-header">
-        <h1 id="page-title">News</h1>
-        <p className="text-muted page-subtitle">What’s new on the site.</p>
+      <div className="page-header news-header">
+        <div>
+          <h1 id="page-title">News</h1>
+          <p className="text-muted page-subtitle">What’s new on the site. Each post opens on its own page.</p>
+        </div>
+        {staff && (
+          <Link className="button button-primary" to="/news/new">
+            New post
+          </Link>
+        )}
       </div>
       <DataState query={news} label="the news">
-        {(entries) => <NewsList entries={entries} />}
+        {(posts) => <NewsTimeline posts={posts} staff={staff} />}
       </DataState>
     </section>
   );
 }
 
-function NewsList({ entries }: { entries: NewsEntry[] }) {
-  const [, markSeen] = useNewsSeen();
-  const newest = newestEntry(entries);
-  // Opening News counts as seeing everything on it.
-  useEffect(() => {
-    if (newest) markSeen(newest.version);
-  }, [newest, markSeen]);
-  // The reader's own open and close choices, by version.
-  const [toggled, setToggled] = useState<Record<string, boolean>>({});
+// A symbol for each type of post, beside its name, so a type is told apart by
+// more than its colour.
+const CATEGORY_ICON = {
+  feature: 'sparkle',
+  fix: 'wrench',
+  change: 'refresh',
+  announcement: 'megaphone',
+  other: 'news'
+} as const;
 
-  if (!entries.length) return <p className="text-muted">No news yet.</p>;
-
+export function CategoryLabel({ category }: { category: string }) {
+  const kind = categoryKind(category);
   return (
-    <ol className="news-list">
-      {sortNews(entries).map((entry) => {
-        const open = toggled[entry.version] ?? openByDefault(entry, newest);
-        return (
-          <li key={entry.version}>
-            <NewsItem
-              entry={entry}
-              open={open}
-              onToggle={() => setToggled((t) => ({ ...t, [entry.version]: !open }))}
-            />
-          </li>
-        );
-      })}
-    </ol>
+    <span className={`news-category news-category-${kind}`}>
+      <Icon name={CATEGORY_ICON[kind]} size={14} />
+      {category}
+    </span>
   );
 }
 
-function NewsItem({ entry, open, onToggle }: { entry: NewsEntry; open: boolean; onToggle: () => void }) {
-  const bodyId = useId();
+function NewsTimeline({ posts, staff }: { posts: NewsPost[]; staff: boolean }) {
+  const now = useNow();
+  const [filter, setFilter] = useState<NewsFilter>('All');
+  const [search, setSearch] = useState('');
+  const searchId = useId();
+  const [, markSeen] = useNewsSeen();
+
+  const live = livePosts(posts, now);
+  const newest = live[0] ?? null;
+  const newestMark = newest ? seenKey(newest) : null;
+  // Opening News counts as seeing everything on it.
+  useEffect(() => {
+    if (newestMark) markSeen(newestMark);
+  }, [newestMark, markSeen]);
+
+  // A pinned post shows only in the box; unpinned, it goes back to its month.
+  const pinned = live.filter((p) => p.pinned);
+  const shown = live.filter((p) => !p.pinned && matchesFilter(p, filter, search));
+  const unpublished = staff ? unpublishedPosts(posts, now) : [];
+
+  if (!live.length && !unpublished.length) return <p className="text-muted">No news yet.</p>;
+
   return (
-    <article className={`card news-entry${entry.pinned ? ' news-entry-pinned' : ''}`} data-open={open}>
-      <h2 className="news-entry-heading">
-        <button
-          type="button"
-          className="news-entry-header"
-          aria-expanded={open}
-          aria-controls={bodyId}
-          onClick={onToggle}
-        >
-          <span className="news-entry-meta">
-            {entry.pinned && <span className="news-pinned">Pinned</span>}
-            <time className="news-entry-date" dateTime={entry.date}>
-              {newsDate(entry.date)}
-            </time>
-            <span className={`news-category news-category-${categoryKind(entry.category)}`}>{entry.category}</span>
-            <span className="news-entry-version text-dim">v{entry.version}</span>
-          </span>
-          <span className="news-entry-title">{entry.title}</span>
-          <Icon name="chevronDown" size={16} />
-        </button>
-      </h2>
-      {/* Always in the page so it can slide; closed, it is hidden from
-          everyone and out of the tab order. */}
-      <div id={bodyId} className="news-entry-body-wrap" inert={!open}>
-        <div className="news-entry-body-inner">
-          <p className="news-entry-body">{entry.body}</p>
+    <>
+      {unpublished.length > 0 && <Unpublished posts={unpublished} now={now} />}
+
+      {pinned.length > 0 && (
+        <section className="news-pinned" aria-labelledby="news-pinned-title">
+          <h2 id="news-pinned-title" className="news-pinned-title">
+            <Icon name="pin" size={16} />
+            Pinned
+          </h2>
+          {pinned.map((post) => (
+            <PinnedPost key={post.id} post={post} />
+          ))}
+        </section>
+      )}
+
+      <div className="news-controls">
+        <div role="group" aria-label="Category" className="news-filters">
+          {FILTERS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              className="news-filter"
+              aria-pressed={filter === f.value}
+              onClick={() => setFilter(f.value)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="news-search">
+          <label htmlFor={searchId} className="visually-hidden">
+            Search news
+          </label>
+          <input
+            id={searchId}
+            className="input"
+            type="search"
+            placeholder="Search news"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
       </div>
-    </article>
+
+      {shown.length === 0 ? (
+        <p className="text-muted news-none">No posts match.</p>
+      ) : (
+        groupByMonth(shown).map((month) => (
+          <section key={month.key} className="news-month" aria-labelledby={`news-month-${month.key}`}>
+            <h2 id={`news-month-${month.key}`} className="news-month-title">
+              {month.label}
+            </h2>
+            <ul className="news-items">
+              {month.posts.map((post) => (
+                <li key={post.id}>
+                  <Link className="news-item" to={`/news/${post.slug}`}>
+                    <time className="news-item-day" dateTime={postDate(post)}>
+                      {newsShortDate(postDate(post))}
+                    </time>
+                    <span className="news-item-main">
+                      <CategoryLabel category={post.category} />
+                      <span className="news-item-title">{post.title}</span>
+                      <span className="news-item-summary">{post.summary}</span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      )}
+    </>
+  );
+}
+
+function PinnedPost({ post }: { post: NewsPost }) {
+  const client = useSupabase();
+  return (
+    <Link className="news-pinned-post" to={`/news/${post.slug}`}>
+      {post.coverPath && <img className="news-pinned-cover" src={newsPictureUrl(client, post.coverPath)} alt="" />}
+      <span className="news-pinned-text">
+        <span className="news-item-meta">
+          <CategoryLabel category={post.category} />
+          <time dateTime={postDate(post)}>{newsDate(postDate(post))}</time>
+        </span>
+        <span className="news-pinned-heading">{post.title}</span>
+        <span className="news-item-summary">{post.summary}</span>
+      </span>
+    </Link>
+  );
+}
+
+// Drafts and posts dated later: only Staff are given them.
+function Unpublished({ posts, now }: { posts: NewsPost[]; now: number }) {
+  return (
+    <section className="news-unpublished" aria-labelledby="news-unpublished-title">
+      <h2 id="news-unpublished-title" className="news-month-title">
+        Not published yet
+      </h2>
+      <ul className="news-items">
+        {posts.map((post) => (
+          <li key={post.id}>
+            <Link className="news-item" to={`/news/${post.slug}`}>
+              <span className="news-item-day">
+                {post.publishedAt && Date.parse(post.publishedAt) > now ? newsShortDate(postDate(post)) : 'Draft'}
+              </span>
+              <span className="news-item-main">
+                <CategoryLabel category={post.category} />
+                <span className="news-item-title">{post.title}</span>
+                <span className="news-item-summary">
+                  {post.publishedAt ? `Goes out ${newsDate(postDate(post))}.` : 'A draft, only Staff can see it.'}
+                </span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

@@ -21,6 +21,13 @@ const PATHS = {
   chevronRight: '<path d="m6.5 4.5 3 3.5-3 3.5"/>',
   chevronLeft: '<path d="m9.5 4.5-3 3.5 3 3.5"/>',
   edit: '<path d="M10.5 2.5l3 3L6 13H3v-3z"/>',
+  pin: '<path d="M6 2h4l-.5 4 2.5 2.5H4L6.5 6zM8 8.5V14"/>',
+  // News post types: a feature, a fix, a change, an announcement.
+  sparkle: '<path d="M8 2l1.6 4.4L14 8l-4.4 1.6L8 14l-1.6-4.4L2 8l4.4-1.6z"/>',
+  wrench:
+    '<path d="M10.5 2.5a3 3 0 0 0-2.8 4L2.5 11.7a1.4 1.4 0 0 0 2 2L9.7 8.5a3 3 0 0 0 4-2.8l-1.9 1.9-1.7-.4-.4-1.7z"/>',
+  refresh: '<path d="M3 6.5A5 5 0 0 1 12.2 4.8M13 2v3h-3"/><path d="M13 9.5A5 5 0 0 1 3.8 11.2M3 14v-3h3"/>',
+  megaphone: '<path d="M2.5 6.5v3h2l5 3v-9l-5 3z"/><path d="M12 6a2.5 2.5 0 0 1 0 4"/>',
   sun: '<circle cx="8" cy="8" r="2.8"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/>',
   moon: '<path d="M13.2 9.6A5.5 5.5 0 0 1 6.4 2.8a5.5 5.5 0 1 0 6.8 6.8z"/>',
   menu: '<path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>',
