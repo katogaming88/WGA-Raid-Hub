@@ -208,11 +208,46 @@ describe('A news post', () => {
         'Loot history on every profile',
         'Welcome to the new Raid Hub'
       ]);
+      // Each shows its type, by symbol and name.
+      await expect(page.locator('.news-recent .news-category').allTextContents()).resolves.toEqual([
+        'Fix',
+        'Feature',
+        'Change',
+        'Announcement'
+      ]);
+      await expect(page.locator('.news-recent .news-category svg').count()).resolves.toBe(4);
+      // Titles are not underlined until pointed at.
+      await expect(
+        page
+          .locator('.news-recent-title')
+          .first()
+          .evaluate((el) => getComputedStyle(el).textDecorationLine)
+      ).resolves.toBe('none');
       // Older than Sep 7 is the pinned BoE post (Sep 3).
       await page.getByRole('link', { name: /^Older: / }).click();
       await page.waitForURL('**/news/report-a-boe');
       await page.getByRole('link', { name: 'All news' }).click();
       await page.waitForURL('**/news');
+    });
+  });
+
+  // A picture keeps its own shape: a portrait cover is shown whole, not cropped to 16:9.
+  it('shows a tall cover picture whole, on its page and in the pinned box', async () => {
+    const tall = POSTS.map((p) => (p.id === 1 ? { ...p, cover_path: 'tall.png' } : p));
+    const shown = (img) => img.clientWidth / img.clientHeight / (img.naturalWidth / img.naturalHeight);
+    await within(
+      { ...STATE, path: '/news/report-a-boe', sentinel: '.news-cover img', tables: { news_posts: tall } },
+      async ({ page }) => {
+        const ratio = await page.locator('.news-cover img').evaluate(shown);
+        expect(ratio).toBeGreaterThan(0.98);
+        expect(ratio).toBeLessThan(1.02);
+      }
+    );
+    await within({ ...STATE, sentinel: '.news-pinned-cover', tables: { news_posts: tall } }, async ({ page }) => {
+      await page.locator('.news-pinned-cover').evaluate((img) => img.decode());
+      const ratio = await page.locator('.news-pinned-cover').evaluate(shown);
+      expect(ratio).toBeGreaterThan(0.98);
+      expect(ratio).toBeLessThan(1.02);
     });
   });
 

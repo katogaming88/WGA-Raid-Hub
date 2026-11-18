@@ -48,6 +48,9 @@ const TEAMS = [
 const NEWS_PICTURE =
   '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#3a4a63"/></svg>';
 
+const NEWS_TALL_PICTURE =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800"><rect width="600" height="800" fill="#3a4a63"/></svg>';
+
 export const PEOPLE = {
   officer: {
     discordId: 'discord-officer-1',
@@ -316,7 +319,13 @@ export async function openApp(browser, port, state) {
       if (request.method() === 'OPTIONS') return route.fulfill({ status: 204 });
       // A picture from the news-pictures bucket (#1230): a plain 16:9 image.
       if (url.pathname.startsWith('/storage/v1/object/public/news-pictures/')) {
-        return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: NEWS_PICTURE });
+        // A name starting "tall" is a portrait picture, to check nothing is cropped.
+        const tall = url.pathname.split('/').pop().startsWith('tall');
+        return route.fulfill({
+          status: 200,
+          contentType: 'image/svg+xml',
+          body: tall ? NEWS_TALL_PICTURE : NEWS_PICTURE
+        });
       }
       const rest = url.pathname.split('/rest/v1/')[1];
       if (rest === 'rpc/resolve_address') {

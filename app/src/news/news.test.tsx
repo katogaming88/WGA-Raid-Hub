@@ -357,10 +357,14 @@ describe('A news post', () => {
     const recent = await screen.findByRole('complementary', { name: 'Recent news' });
     expect(
       within(recent)
-        .getAllByRole('link')
-        .map((a) => a.textContent)
-    ).toEqual(['Entry 7Aug 7', 'Entry 6Aug 6', 'Entry 5Aug 5', 'Entry 4Aug 4', 'Entry 3Aug 3']);
+        .getAllByText(/^Entry /)
+        .map((t) => t.textContent)
+    ).toEqual(['Entry 7', 'Entry 6', 'Entry 5', 'Entry 4', 'Entry 3']);
     expect(within(recent).getAllByRole('link')[0]).toHaveAttribute('href', '/news/entry-7');
+    // Each shows its type, symbol and name, and its date.
+    expect(within(recent).getAllByText('Feature')).toHaveLength(5);
+    expect(recent.querySelectorAll('.news-category svg')).toHaveLength(5);
+    expect(within(recent).getByText('Aug 7')).toBeInTheDocument();
   });
 
   it('leaves the list out when there is no other post', async () => {

@@ -50,8 +50,24 @@ export function NewsPage() {
   );
 }
 
+// A symbol for each type of post, beside its name, so a type is told apart by
+// more than its colour.
+const CATEGORY_ICON = {
+  feature: 'sparkle',
+  fix: 'wrench',
+  change: 'refresh',
+  announcement: 'megaphone',
+  other: 'news'
+} as const;
+
 export function CategoryLabel({ category }: { category: string }) {
-  return <span className={`news-category news-category-${categoryKind(category)}`}>{category}</span>;
+  const kind = categoryKind(category);
+  return (
+    <span className={`news-category news-category-${kind}`}>
+      <Icon name={CATEGORY_ICON[kind]} size={14} />
+      {category}
+    </span>
+  );
 }
 
 function NewsTimeline({ posts, staff }: { posts: NewsPost[]; staff: boolean }) {

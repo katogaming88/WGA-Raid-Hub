@@ -183,10 +183,13 @@ function RecentNews({ posts, current, now }: { posts: NewsPost[]; current: NewsP
         {recent.map((p) => (
           <li key={p.id}>
             <Link className="news-recent-item" to={`/news/${p.slug}`}>
+              <span className="news-recent-meta">
+                <CategoryLabel category={p.category} />
+                <time className="news-recent-date" dateTime={postDate(p)}>
+                  {newsShortDate(postDate(p))}
+                </time>
+              </span>
               <span className="news-recent-title">{p.title}</span>
-              <time className="news-recent-date" dateTime={postDate(p)}>
-                {newsShortDate(postDate(p))}
-              </time>
             </Link>
           </li>
         ))}

@@ -22,6 +22,9 @@
 /* A category is a colored word; the color is a second cue, the word is the
    first. */
 .news-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -98,11 +101,14 @@
   text-decoration: underline;
 }
 
+/* A picture keeps its own shape, never cropped: a tall one is shown whole,
+   shrunk to fit the height. */
 .news-pinned-cover {
   display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
+  max-width: 100%;
+  max-height: 320px;
+  width: auto;
+  height: auto;
 }
 
 .news-pinned-text {
@@ -235,7 +241,7 @@
   flex-direction: column;
   gap: 18px;
   min-width: 0;
-  max-width: 720px;
+  max-width: 900px;
 }
 
 .news-recent {
@@ -260,6 +266,13 @@
   text-decoration: underline;
 }
 
+.news-recent-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
 .news-recent-title {
   font-weight: 600;
   line-height: 1.35;
@@ -270,9 +283,9 @@
   font-size: var(--text-sm);
 }
 
-@media (min-width: 1360px) {
+@media (min-width: 1280px) {
   .page.news-post-layout {
-    grid-template-columns: minmax(0, 720px) 280px;
+    grid-template-columns: minmax(0, 900px) 280px;
     justify-content: start;
     align-items: start;
   }
@@ -310,9 +323,10 @@
 
 .news-cover img {
   display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
+  max-width: 100%;
+  max-height: 70vh;
+  width: auto;
+  height: auto;
 }
 
 .news-cover figcaption {
@@ -429,9 +443,10 @@
 
 .news-editor-thumb {
   display: block;
-  width: 192px;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
+  max-width: 192px;
+  max-height: 140px;
+  width: auto;
+  height: auto;
 }
 
 .news-editor-columns {
