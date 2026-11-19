@@ -453,6 +453,29 @@ describe('set_raid_night_boss_order()', () => {
     });
   });
 
+  it('puts a boss saved before but missing from a later save after the ones it lists (CodeRabbit on PR #1880)', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { tue, thu } = await twoNights(q, asUser);
+      await order(asUser, OFFICER_T1, tue, [FIRST, SECOND], [FIRST, SECOND], true);
+      // Thursday loses FIRST, then saves SECOND alone for every night after.
+      await q('delete from public.raid_night_bosses where team_id = 1 and raid_date = $1 and encounter_id = $2', [
+        thu,
+        FIRST
+      ]);
+      await order(asUser, OFFICER_T1, thu, [SECOND], [SECOND], true);
+      const { rows } = await q(
+        'select encounter_id, position from public.team_boss_order where team_id = 1 order by position'
+      );
+      expect(rows).toEqual([
+        { encounter_id: SECOND, position: 1 },
+        { encounter_id: FIRST, position: 2 }
+      ]);
+      const later = await today(q, 5);
+      await plan(asUser, OFFICER_T1, later);
+      expect(await ids(q, later)).toEqual([SECOND, FIRST]);
+    });
+  });
+
   it('refuses a stale order and one that leaves out or repeats a boss', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { tue } = await twoNights(q, asUser);

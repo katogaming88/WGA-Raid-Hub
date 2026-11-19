@@ -96,6 +96,19 @@ begin
     from unnest(p_encounter_ids) with ordinality as o(encounter_id, ord)
     on conflict (team_id, encounter_id) do update set position = excluded.position, updated_at = excluded.updated_at;
 
+    -- A boss saved before but not on this night goes after every one this
+    -- save lists, keeping its order among the others, so no older place ties
+    -- with or comes ahead of a newer one (CodeRabbit on PR #1880).
+    update team_boss_order t
+       set position = r.n
+      from (
+        select encounter_id,
+               row_number() over (order by array_position(p_encounter_ids, encounter_id) nulls last, position, encounter_id) as n
+        from team_boss_order
+        where team_id = p_team_id
+      ) r
+     where t.team_id = p_team_id and t.encounter_id = r.encounter_id and t.position <> r.n;
+
     -- Every coming night already filled, in the team's order; a boss the
     -- team order doesn't list keeps its place after the ones it does.
     update raid_night_bosses b
