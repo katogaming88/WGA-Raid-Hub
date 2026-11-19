@@ -122,6 +122,10 @@
   text-align: right;
 }
 
+.roster-table tbody tr:not(.role-row) > .col-check {
+  text-align: center;
+}
+
 .roster-table tbody tr:not(.role-row):hover > * {
   background: var(--hover);
 }

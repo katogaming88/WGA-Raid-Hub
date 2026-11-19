@@ -110,6 +110,41 @@ describe('Roster page (new app) layout', () => {
   });
 });
 
+describe('Projected Roster (new app), officer checkboxes', () => {
+  it('centers each checkbox under its heading (#1872)', async () => {
+    const opened = await openApp(browser, server.port, {
+      ...STATE,
+      session: storedSession({ battlenet: 'Kato#1499', discord: 'Phoenix Officer' }),
+      who: 'officer',
+      tables: {
+        ...ROSTER_TABLES,
+        season_signups: SCENARIO.incoming.map((r) => ({
+          id: r.signup_id,
+          is_trial: null,
+          is_backup_tank: false,
+          is_backup_healer: false
+        }))
+      }
+    });
+    try {
+      await opened.page.getByRole('tab', { name: `${SCENARIO.signupSeasonName} Projected Roster` }).click();
+      const centers = await opened.page.getByRole('table', { name: 'Projected roster' }).evaluate((table) => {
+        const mid = (el) => {
+          const r = el.getBoundingClientRect();
+          return r.left + r.width / 2;
+        };
+        const heads = [...table.querySelectorAll('thead th.col-check')];
+        const box = table.querySelector('tbody td.col-check input');
+        const cell = box.closest('td');
+        return { head: mid(heads[0]), box: mid(box), cell: mid(cell) };
+      });
+      expect(Math.abs(centers.box - centers.head)).toBeLessThan(2);
+    } finally {
+      await opened.context.close();
+    }
+  });
+});
+
 describe('Roster page (new app), without approved signups', () => {
   it('shows no next-season tab', async () => {
     const opened = await openApp(browser, server.port, { ...STATE, tables: { ...ROSTER_TABLES, incoming_roster: [] } });
