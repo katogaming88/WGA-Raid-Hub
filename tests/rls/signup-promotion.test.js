@@ -266,11 +266,18 @@ describe('promote_season_signups()', () => {
     });
   });
 
-  it('is refused to a plain officer', async () => {
-    await withTxn(async ({ q, asUser }) => {
+  it("is refused to a plain officer, another team's leader and a signed-out caller, changing nothing", async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
       const s = await scene(q);
+      const other = await seedTeam(q);
       const p = await preview(asUser, s.team.leader.uid, s);
       await expect(promote(asUser, s.team.officer.uid, s, p.expected, [])).rejects.toThrow(/Not authorized/);
+      await expect(promote(asUser, other.leader.uid, s, p.expected, [])).rejects.toThrow(/Not authorized/);
+      await expect(
+        asAnon('select public.promote_season_signups($1, $2, $3, $4)', [s.team.teamId, s.season, p.expected, []])
+      ).rejects.toThrow(/permission denied/);
+      expect((await player(q, s.n.old, s.team.teamId)).archived_at).toBeNull();
+      expect(await player(q, s.n.next, s.team.teamId)).toBeUndefined();
     });
   });
 
