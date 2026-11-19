@@ -85,7 +85,7 @@ begin
            set status = 'approved', reviewed_at = now(), reviewed_by = null
          where id = v_step.signup_id and status = 'pending';
         v_player_id := public.add_signup_to_roster(
-          v_step.signup_id, coalesce(v_step.is_trial, true), v_step.from_player_id,
+          v_step.signup_id, coalesce(v_step.is_trial, (select p.is_trial from public.players p where p.id = v_step.from_player_id), true), v_step.from_player_id,
           v_step.is_backup_tank, v_step.is_backup_healer
         );
 

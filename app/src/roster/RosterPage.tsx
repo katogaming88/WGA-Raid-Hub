@@ -76,13 +76,7 @@ export function RosterPage() {
 
   // Who is staying on a character they already play reads off the current
   // roster, so the tab waits for it.
-  const incomingGroups =
-    incoming.isSuccess && current.isSuccess
-      ? toProjected(
-          incoming.data[0],
-          current.data[0].map((p) => p.name_realm)
-        )
-      : [];
+  const incomingGroups = incoming.isSuccess && current.isSuccess ? toProjected(incoming.data[0], current.data[0]) : [];
   const hasIncoming = incomingGroups.length > 0;
   const tabs: { id: Tab; label: string }[] = [
     { id: 'current', label: 'Current Roster' },

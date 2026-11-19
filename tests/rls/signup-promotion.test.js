@@ -207,6 +207,36 @@ describe('promote_season_signups()', () => {
     });
   });
 
+  // #1871: a character change left blank keeps the old character's Trial.
+  it.each([
+    { label: 'a raider who is not a Trial stays off it', oldTrial: false, signup: null, expected: false },
+    { label: 'a raider who is a Trial stays one', oldTrial: true, signup: null, expected: true },
+    { label: "an officer's tick wins over the old character", oldTrial: false, signup: true, expected: true },
+    { label: "an officer's untick wins over the old character", oldTrial: true, signup: false, expected: false }
+  ])('on a character change, $label (#1871)', async ({ oldTrial, signup, expected }) => {
+    await withTxn(async ({ q, asUser }) => {
+      const s = await scene(q);
+      await q('update public.players set is_trial = $1 where id = $2', [oldTrial, s.ids.oldId]);
+      await q('update public.season_signups set is_trial = $1 where id = $2', [signup, s.signups.swap]);
+      const p = await preview(asUser, s.team.leader.uid, s);
+      await promote(asUser, s.team.leader.uid, s, p.expected, []);
+      expect((await player(q, s.n.next, s.team.teamId)).is_trial).toBe(expected);
+      // A first main, leaving no character, still starts as a Trial.
+      expect((await player(q, s.n.first, s.team.teamId)).is_trial).toBe(true);
+    });
+  });
+
+  it("a swap named on the signup (swap_from_name_realm) keeps that character's Trial too (#1871)", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const s = await scene(q);
+      await q('update public.players set is_trial = false where id = $1', [s.ids.goneId]);
+      await q('update public.season_signups set swap_from_name_realm = $1 where id = $2', [s.n.gone, s.signups.join]);
+      const p = await preview(asUser, s.team.leader.uid, s);
+      await promote(asUser, s.team.leader.uid, s, p.expected, []);
+      expect((await player(q, s.n.outsider, s.team.teamId)).is_trial).toBe(false);
+    });
+  });
+
   it('refuses a stale preview and changes nothing', async () => {
     await withTxn(async ({ q, asUser }) => {
       const s = await scene(q);
@@ -247,11 +277,18 @@ describe('promote_season_signups()', () => {
     });
   });
 
-  it('is refused to a plain officer', async () => {
-    await withTxn(async ({ q, asUser }) => {
+  it("is refused to a plain officer, another team's leader and a signed-out caller, changing nothing", async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
       const s = await scene(q);
+      const other = await seedTeam(q);
       const p = await preview(asUser, s.team.leader.uid, s);
       await expect(promote(asUser, s.team.officer.uid, s, p.expected, [])).rejects.toThrow(/Not authorized/);
+      await expect(promote(asUser, other.leader.uid, s, p.expected, [])).rejects.toThrow(/Not authorized/);
+      await expect(
+        asAnon('select public.promote_season_signups($1, $2, $3, $4)', [s.team.teamId, s.season, p.expected, []])
+      ).rejects.toThrow(/permission denied/);
+      expect((await player(q, s.n.old, s.team.teamId)).archived_at).toBeNull();
+      expect(await player(q, s.n.next, s.team.teamId)).toBeUndefined();
     });
   });
 

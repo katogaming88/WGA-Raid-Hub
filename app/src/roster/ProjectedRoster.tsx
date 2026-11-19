@@ -106,8 +106,10 @@ function ProjectedRow({
   const { announce } = useStatus();
   const [removing, setRemoving] = useState(false);
 
-  // An unset Trial means a trial, as the promotion reads it.
-  const checked = (flag: SignupFlag) => (flag === 'is_trial' ? (flags?.is_trial ?? true) : (flags?.[flag] ?? false));
+  // An unset Trial reads as closing signups reads it (#1871): a change of
+  // character keeps the old one's Trial; anyone else starts as a trial.
+  const checked = (flag: SignupFlag) =>
+    flag === 'is_trial' ? (flags?.is_trial ?? raider.swapFromTrial ?? true) : (flags?.[flag] ?? false);
 
   return (
     <tr>

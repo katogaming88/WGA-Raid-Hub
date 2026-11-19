@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.294.1] - 2026-11-18
+
+### Backend
+
+- A raider who signs up for next season on a different character keeps their own Trial status (#1871). Until now the new character went onto the roster as a Trial unless an officer unticked it, dropping the raider in loot priority. With Trial left unset, closing signups (by hand or when the season starts) now copies it from the character being left, as an approved main swap during the season already does. New people and first mains still start as Trial, and an officer's tick or untick still wins.
+
+### Project
+
+- The new site's Projected Roster ticks Trial on a "Changing from" row the same way closing signups will: unticked when the old character isn't a Trial.
+- Database tests for a swap from a non-Trial and a Trial character and for an officer's choice winning, in both ways of closing signups; a page test for the Projected Roster's box. The revamp time log's #1873 row corrected to its real times, and this one.
+
 ## [3.294.0] - 2026-11-18
 
 ### Functions
