@@ -18,21 +18,21 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     57 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 45 h 27 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 46 h 42 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **221 h 15 m** |             |
+| **All revamp work**                | **222 h 30 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Tester fixes | Phase 2 | 3 h 35 m | ~2 h |
+| Tester fixes | Phase 2 | 4 h 10 m | ~2 h |
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 9 h 35 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 10 h 15 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -809,6 +809,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 6:52-7:05 PM | #1871: a character change at season signup keeps the raider's own Trial status: both ways of closing signups read a blank Trial on a swap from the character being left (a follow-up migration), new people and first mains still start as Trial, an officer's tick still wins; the Projected Roster's Trial box shows the same; database and page tests, generated definitions, decision log, stamp, changelog, these rows; PR | Phase 2: Before the new site goes live / Tester fixes (#1871) | 15 m | build | 80,800 | Fresh-agent migration review and Kat's review and merge not yet counted. |
 | 10:16-10:52 PM | PR #1878 (#1871) after it opened: CodeRabbit's three comments (two test additions: another team's leader, a signed-out caller, a raider and another team's officer refused; one finding declined in its thread, since the preview never shows Trial); the fresh-agent migration review (approve) and its two nice-to-haves (a swap named on the signup keeps that character's Trial; the decision log and PR body name where the page can differ); Kat's merge (10:52 PM), cleanup, #1487 | Phase 2: Before the new site goes live / Tester fixes (#1871) | 35 m | build; Kat's CodeRabbit trigger and merge not split | 313,600 | Tokens include the fresh agent's 106,300. Added 2026-11-18 (in #1872's PR). |
 | 10:52-11:05 PM | #1872: the Projected Roster's Trial and backup checkboxes (and dashes) centered under their headings, a browser test that measures a box against its heading (fails by 20 px without the fix), stamp, changelog, these rows; PR | Phase 2: Before the new site goes live / Tester fixes (#1872) | 15 m | build | 190,000 | Kat's design review and merge not yet counted. |
+| 11:05-11:40 PM | PR #1879 (#1872) after it opened: screenshots at desktop and phone width (the phone one retaken after a reload, since the sidebar stayed open on a resize), the PR body; Kat's design review and merge (11:39 PM), cleanup, #1487 | Phase 2: Before the new site goes live / Tester fixes (#1872) | 35 m | build; Kat's review and merge not split | 15,300 | Added 2026-11-19 (in #1679's PR). |
+| 11:40 PM-12:17 AM | #1679: officers move bosses on Boss Lineup (board D from #1680): drag a heading or its ‹ › arrows, a blue line where it lands, pull numbers that renumber, the save bar's "to pull N" lines, Save… asking just that night or every night after; Kat's answer (every night after reorders every coming night, one set by hand too); `team_boss_order` and `set_raid_night_boss_order`, `fill_raid_night` filling in the team's order; database, page, browser and accessibility tests, generated docs, RLS.md, decision log, Help guide, stamp, changelog, these rows; PR | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1679) | 40 m | build; Kat's answer not split | 382,900 | Fresh-agent migration review and Kat's design review and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 
