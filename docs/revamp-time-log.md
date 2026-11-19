@@ -28,11 +28,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Tester fixes | Phase 2 | 2 h 30 m | ~2 h |
+| Tester fixes | Phase 2 | 2 h 45 m | ~2 h |
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 9 h 50 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 9 h 35 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -805,7 +805,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:58-10:25 AM | #1580: officers pick a raider's alt or another spec per boss. `character_id` and `class_spec_id` on `raid_night_lineups` and `boss_groups`, checked and stored one way, copied by every fill, a deleted alt clearing its picks, teammates reading picked alts; Kat's two answers (Discord post as its own issue, filed as #1873; teammates see alt names); the ⇄ picker, picked cells with spec icons in class color, role counts and buffs following the pick, the raider's card; database, page, browser and accessibility tests, generated docs, RLS.md, backup guide, decision log, Help guide, stamp, changelog, this row; PR | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1580) | 25 m | build; Kat's answers not split | 235,900 | CodeRabbit, the fresh-agent review and Kat's design review and merge not yet counted. |
 | 10:25-11:15 AM | PR #1874 (#1580) after it opened: Kat's design OK; CodeRabbit's three rounds (lock order: the lineup lock first, then characters; picks held during a save; owner changes; omitted picks; a reload for a gone alt; alt picks dropped when a roster row changes person; lineup paths never wait on a character); the fresh-agent migration review and its fixes; two-session checks with a scratch script | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1580) | 50 m | build; Kat's CodeRabbit triggers not split | 353,800 | Added 2026-11-18 (in #1873's PR). Tokens include the fresh agent's 205,100. |
 | 5:50-6:20 PM | PR #1874 (#1580): CodeRabbit's last finding (the alt cleanup takes a team lock only if it's free, and stops the Battle.net save with a try again); Kat's merge (6:18 PM), cleanup | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1580) | 30 m | build; Kat's merge not split | 802,100 | Added 2026-11-18 (in #1873's PR). |
-| 6:20-7:05 PM | #1873: the weekly Discord lineup post names a character or spec picked for a boss: the swap lines and alt text ("Katorri on Kattotem (Restoration Shaman)", "as Destruction", "back on their main"), the spec's icon in the cell framed in the class played (Kat turned down a bar first, then picked icons without a written list from two drawn options); a raider with no picks leaves the post unchanged; Edge Function tests, stamp, changelog, these rows; PR | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1873) | 45 m | build; Kat's answers not split | 204,800 | Kat's review and merge not yet counted. |
+| 6:20-6:51 PM | #1873: the weekly Discord lineup post names a character or spec picked for a boss: the swap lines and alt text ("Katorri on Kattotem (Restoration Shaman)", "as Destruction", "back on their main"), the spec's icon in the cell framed in the class played (Kat turned down a bar first, then picked icons without a written list from two drawn options); a raider with no picks leaves the post unchanged; Edge Function tests, stamp, changelog, these rows; PR #1876; Kat's merge (6:51 PM), cleanup, #1487 | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1873) | 30 m | build; Kat's answers and merge not split | 171,000 | Corrected 2026-11-18 (in #1871's PR): first logged as 6:20-7:05 PM before the merge time was known. |
+| 6:52-7:05 PM | #1871: a character change at season signup keeps the raider's own Trial status: both ways of closing signups read a blank Trial on a swap from the character being left (a follow-up migration), new people and first mains still start as Trial, an officer's tick still wins; the Projected Roster's Trial box shows the same; database and page tests, generated definitions, decision log, stamp, changelog, these rows; PR | Phase 2: Before the new site goes live / Tester fixes (#1871) | 15 m | build | 80,800 | Fresh-agent migration review and Kat's review and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 
