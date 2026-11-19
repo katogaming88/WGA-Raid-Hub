@@ -460,8 +460,8 @@ export function useLineupRoleTargets(teamId: number) {
   return useSupabaseQuery<RoleTargets>([...lineupKey(teamId), 'role-targets'], async (client) => {
     const [team, bosses] = await Promise.all([
       client.from('team_lineup_settings').select('tanks_wanted, healers_wanted').eq('team_id', teamId).maybeSingle(),
-      // One row per boss with its own targets: a season's bosses, far under
-      // the 1000-row page.
+      // team-read-guard: one row per boss with its own targets, at most the
+      // raid list's bosses, far under the 1000-row page.
       client.from('team_boss_role_targets').select('encounter_id, tanks, healers, melee, ranged').eq('team_id', teamId)
     ]);
     const error = team.error ?? bosses.error;
