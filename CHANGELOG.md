@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.294.2] - 2026-11-18
+
+### Project
+
+- The Projected Roster's Trial, Backup tank and Backup healer checkboxes (and the dashes for people keeping their character) sit centered under their headings, on desktop and at phone width (#1872). A browser test measures a box against its heading. The revamp time log's rows for PR #1878 after it opened, and this one.
+
 ## [3.294.1] - 2026-11-18
 
 ### Backend
