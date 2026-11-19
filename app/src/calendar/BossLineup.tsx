@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties, type DragEvent, type MouseEvent, type SyntheticEvent } from 'react';
 import { createPortal } from 'react-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
 import { useStatus } from '../components/Status';
@@ -20,6 +21,7 @@ import {
   current,
   currentPicks,
   everyoneIn,
+  isStaleSave,
   lineupRaids,
   lineupView,
   moveBoss,
@@ -60,6 +62,7 @@ import {
   useBossGroups,
   useCellStyle,
   useEncounters,
+  lineupKey,
   useLineupRoleTargets,
   useNightPlan,
   usePlanNight,
@@ -172,6 +175,7 @@ function Lineup({
   const saveNight = useSaveNight(team.id, night.date);
   const saveGroups = useSaveGroups(team.id, night.date);
   const saveOrder = useSaveOrder(team.id, night.date);
+  const queryClient = useQueryClient();
   const planNight = usePlanNight(team.id, night.date);
   const skip = useSkipBoss(team.id, night.date);
   const busy =
@@ -413,6 +417,17 @@ function Lineup({
           setMessage(done);
           announce('success', done);
           rest();
+        },
+        // Someone else saved an order first: theirs shows, with nothing of
+        // this officer's to undo it (fresh review on PR #1880).
+        onError: (e) => {
+          if (!isStaleSave(e.message)) return;
+          saveOrder.reset();
+          setOrderEdit(null);
+          void queryClient.invalidateQueries({ queryKey: lineupKey(team.id) });
+          const done = 'Someone else changed the pull order while you were editing. Theirs is showing now.';
+          setMessage(done);
+          announce('error', done);
         }
       }
     );
@@ -473,6 +488,7 @@ function Lineup({
                 setEdits(new Map());
                 setPickEdits(new Map());
                 setOrderEdit(null);
+                saveOrder.reset();
                 setStale([]);
                 setFresh(false);
               }}

@@ -32,6 +32,10 @@ begin
   from raid_night_bosses
   where team_id = p_team_id and raid_date = p_raid_date;
 
+  if cardinality(v_current) = 0 then
+    raise exception 'That night has no bosses planned yet.';
+  end if;
+
   if p_expected_ids is null or v_current <> p_expected_ids then
     raise exception 'Someone else changed this night''s pull order since you opened it. Reload to see their change.';
   end if;

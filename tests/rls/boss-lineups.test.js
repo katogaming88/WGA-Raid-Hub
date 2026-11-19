@@ -488,10 +488,24 @@ describe('set_raid_night_boss_order()', () => {
     });
   });
 
-  it("is refused to a raider, another team's officer and a signed-out caller", async () => {
+  it('lets a team leader and a site admin reorder, and refuses no expected order and a night with no bosses', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { tue } = await twoNights(q, asUser);
+      await order(asUser, TEAM_LEADER_T1, tue, [SECOND, FIRST], [FIRST, SECOND]);
+      await order(asUser, SITE_ADMIN, tue, [FIRST, SECOND], [SECOND, FIRST]);
+      expect(await ids(q, tue)).toEqual([FIRST, SECOND]);
+      await expect(order(asUser, OFFICER_T1, tue, [SECOND, FIRST], null)).rejects.toThrow(/Someone else changed/);
+      // A raid night nothing has planned yet.
+      const empty = await today(q, 2);
+      await expect(order(asUser, OFFICER_T1, empty, [], [], true)).rejects.toThrow(/no bosses planned/);
+      expect((await q('select count(*)::int as n from public.team_boss_order where team_id = 1')).rows[0].n).toBe(0);
+    });
+  });
+
+  it("is refused to a raider, another team's officer, a guild officer and a signed-out caller", async () => {
     await withTxn(async ({ q, asUser, asAnon }) => {
       const { tue } = await twoNights(q, asUser);
-      for (const uid of [RAIDER_T1, OFFICER_T2]) {
+      for (const uid of [RAIDER_T1, OFFICER_T2, GUILD_OFFICER]) {
         await expect(order(asUser, uid, tue, [SECOND, FIRST], [FIRST, SECOND], true)).rejects.toThrow(/Not authorized/);
       }
       await expect(

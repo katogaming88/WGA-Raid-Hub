@@ -869,6 +869,29 @@ describe('the boss lineup tab', () => {
     expect((await screen.findAllByText('Saved the pull order for Thu, May 14.')).length).toBeGreaterThan(0);
   });
 
+  it('drops an order someone else beat, and says so (#1679)', async () => {
+    const user = userEvent.setup();
+    renderApp(
+      LINEUP,
+      handlers(who('officer'), {
+        ...PLANNED,
+        rpc: (name) =>
+          name === 'set_raid_night_boss_order'
+            ? { error: { message: 'Someone else changed this night’s pull order since you opened it.' } }
+            : undefined
+      })
+    );
+    const g = await grid();
+    await user.click(g.getByRole('button', { name: 'Move Sszorak earlier' }));
+    await save(user, 'Just Thursday');
+    expect(
+      (await screen.findAllByText('Someone else changed the pull order while you were editing. Theirs is showing now.'))
+        .length
+    ).toBeGreaterThan(0);
+    expect(g.getByRole('columnheader', { name: /^Sszorak, pull 2/ })).toBeInTheDocument();
+    expect(screen.queryByText('That did not save.')).not.toBeInTheDocument();
+  });
+
   it('drags a boss onto another, and saves the order for every night after first (#1679)', async () => {
     const user = userEvent.setup();
     const { client } = renderApp(LINEUP, handlers(who('officer')));
