@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('raid_encounters_id_seq'::regclass) | false | [public.players](public.players.md) [public.team_raid_progress](public.team_raid_progress.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.team_raid_kills](public.team_raid_kills.md) |  |  |
+| id | integer | nextval('raid_encounters_id_seq'::regclass) | false | [public.players](public.players.md) [public.team_raid_progress](public.team_raid_progress.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.team_raid_kills](public.team_raid_kills.md) [public.team_boss_order](public.team_boss_order.md) |  |  |
 | zone_id | integer |  | false |  | [public.raid_zones](public.raid_zones.md) |  |
 | wcl_encounter_id | integer |  | false |  |  |  |
 | name | text |  | false |  |  |  |
@@ -37,6 +37,7 @@ erDiagram
 "public.boss_groups" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.raid_night_bosses" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.team_raid_kills" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+"public.team_boss_order" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.raid_encounters" }o--|| "public.raid_zones" : "FOREIGN KEY (zone_id) REFERENCES raid_zones(id) ON DELETE CASCADE"
 
 "public.raid_encounters" {
@@ -120,6 +121,12 @@ erDiagram
   date raid_date
   timestamp_with_time_zone report_started_at
   timestamp_with_time_zone created_at
+}
+"public.team_boss_order" {
+  integer team_id FK
+  integer encounter_id FK
+  integer position
+  timestamp_with_time_zone updated_at
 }
 "public.raid_zones" {
   integer id

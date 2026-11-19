@@ -3895,3 +3895,15 @@ Shipped: `20261118185319_promote_season_signups_swap_keeps_trial.sql`.
 **The functions read it at close, not the signup at submit.** Copying the old character's status onto the signup when it is made would freeze it; an officer who promotes the raider out of Trial before signups close should see that carried over.
 
 [Full discussion -> #1871](https://github.com/katogaming88/WGA-Raid-Hub/issues/1871).
+
+## #1679 -- officers set the order a team pulls its bosses in
+
+Shipped: `20261118234427_team_boss_order.sql`.
+
+**A night's order stays on `raid_night_bosses.position`; a new table, `team_boss_order`, holds the team's order.** Each night already kept a pull order, filled once in the game's order. Officers now move bosses on Boss Lineup (Kat's #1680 board D), and the save asks, as the lineup's does: just that night, or that night and every night after. The second needs an order to fill later nights from, and no table was keyed by team and boss, so `team_boss_order` holds one row per team and boss. `fill_raid_night` fills in that order; a boss with no row (a new season's) comes after, in the game's order.
+
+**"Every night after" reorders every coming night already filled, including one set by hand for that night alone** (Kat, 2026-11-18). Unlike a group save, which leaves a night an officer saved alone, there is no per-night "set by hand" flag to check; the officer asked for every night, so every night follows.
+
+**Saved through one function, `set_raid_night_boss_order`**, which takes the whole night's order and the order it was read as, and refuses when someone else changed it meanwhile, like the lineup saves. No one on the site reads `team_boss_order` directly: each night's order is on `raid_night_bosses`, which the team already reads.
+
+[Full discussion -> #1679](https://github.com/katogaming88/WGA-Raid-Hub/issues/1679).

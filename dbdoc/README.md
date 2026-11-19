@@ -118,6 +118,7 @@
 | [public.team_attendance_posts](public.team_attendance_posts.md) | 6 | The officer-channel message wcl-sync's hourly run posted for each team and raid night with attendance items (#1847). content_key is what the message lists ('all set' once every item has a status). Written by wcl-sync with the service role; later runs edit this message as items are set. | BASE TABLE |
 | [public.raid_night_titles](public.raid_night_titles.md) | 4 | A title for one raid date (#1478): "Rename this night" on the night's page. It covers every night on that date and wins over raid_schedule.title; the next week goes back to the weekly title. Written by the officers who write raid_schedule. | BASE TABLE |
 | [public.news_posts](public.news_posts.md) | 14 | News posts (#1523), site-wide. published_at null: a draft, which only Staff (is_site_admin()) read. Written by Staff on the site (#1230); the news.json entries were copied in by this table's migration. | BASE TABLE |
+| [public.team_boss_order](public.team_boss_order.md) | 4 | The order a team pulls its bosses in (#1679), saved from Boss Lineup with "every night after". New raid nights fill in this order; a boss with no row fills after, in the game's order. Written and read only by the lineup functions. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -408,6 +409,7 @@
 | public.same_lineup_picks | bool | a jsonb, b jsonb | FUNCTION |
 | public.set_raid_night_lineup | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb | FUNCTION |
 | public.set_boss_group | int4 | p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb | FUNCTION |
+| public.set_raid_night_boss_order | void | p_team_id integer, p_raid_date date, p_encounter_ids integer[], p_expected_ids integer[], p_every_night boolean DEFAULT false | FUNCTION |
 
 ## Enums
 
@@ -613,6 +615,8 @@ erDiagram
 "public.team_attendance_posts" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.raid_night_titles" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.news_posts" }o--o| "public.people" : "FOREIGN KEY (written_by) REFERENCES people(id) ON DELETE SET NULL"
+"public.team_boss_order" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_boss_order" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -1796,6 +1800,12 @@ erDiagram
   timestamp_with_time_zone published_at
   integer written_by FK
   timestamp_with_time_zone created_at
+  timestamp_with_time_zone updated_at
+}
+"public.team_boss_order" {
+  integer team_id FK
+  integer encounter_id FK
+  integer position
   timestamp_with_time_zone updated_at
 }
 ```

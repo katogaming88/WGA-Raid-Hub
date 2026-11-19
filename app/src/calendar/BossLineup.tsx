@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type MouseEvent, type SyntheticEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type DragEvent, type MouseEvent, type SyntheticEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { DataState } from '../components/DataState';
 import { Dialog } from '../components/Dialog';
@@ -22,6 +22,9 @@ import {
   everyoneIn,
   lineupRaids,
   lineupView,
+  moveBoss,
+  nightOrder,
+  orderChanges,
   onRoster,
   pickChanges,
   pickRows,
@@ -31,12 +34,14 @@ import {
   placesOf,
   playOf,
   playWords,
+  sameOrder,
   samePicks,
   sameSet,
   seasonOn,
   setPick,
   toggle,
   wholeNight,
+  withOrder,
   type BossTotal,
   type ClassSpecRow,
   type Pick,
@@ -61,6 +66,7 @@ import {
   useSaveCellStyle,
   useSaveGroups,
   useSaveNight,
+  useSaveOrder,
   useSeasons,
   useSkipBoss,
   type BossSave,
@@ -147,6 +153,8 @@ function Lineup({
   const { announce } = useStatus();
   const [edits, setEdits] = useState<ReadonlyMap<number, ReadonlySet<number>>>(new Map());
   const [pickEdits, setPickEdits] = useState<PickEdits>(new Map());
+  // An officer's unsaved pull order (#1679): every boss on the night, in order.
+  const [orderEdit, setOrderEdit] = useState<number[] | null>(null);
   // The raider and boss whose character or spec is being picked (#1580).
   const [picking, setPicking] = useState<{ boss: LineupBoss; player: PlayerRow } | null>(null);
   const specs = useClassSpecs();
@@ -163,16 +171,29 @@ function Lineup({
   const [picked, setPicked] = useState<CellStyle | null>(null);
   const saveNight = useSaveNight(team.id, night.date);
   const saveGroups = useSaveGroups(team.id, night.date);
+  const saveOrder = useSaveOrder(team.id, night.date);
   const planNight = usePlanNight(team.id, night.date);
   const skip = useSkipBoss(team.id, night.date);
-  const busy = saveNight.isPending || saveGroups.isPending || planNight.isPending || skip.isPending;
+  const busy =
+    saveNight.isPending || saveGroups.isPending || saveOrder.isPending || planNight.isPending || skip.isPending;
   const cellStyle = picked ?? savedStyle.data ?? 'names';
 
   const season = seasonOn(seasons, night.date);
   const planned = plan.bosses.length > 0;
   const saved = placesOf(plan.places);
   const usual = placesOf(groups);
-  const raids = lineupRaids(encounters, plan.bosses, { fresh: fresh && !planned, season });
+  const savedOrder = nightOrder(plan.bosses);
+  // An edit made before someone else added or took off a boss no longer fits.
+  const order =
+    orderEdit &&
+    sameOrder(
+      [...orderEdit].sort((a, b) => a - b),
+      [...savedOrder].sort((a, b) => a - b)
+    )
+      ? orderEdit
+      : null;
+  const orderDirty = order !== null && !sameOrder(order, savedOrder);
+  const raids = lineupRaids(encounters, withOrder(plan.bosses, order), { fresh: fresh && !planned, season });
   const bosses = raids.flatMap((r) => r.bosses);
   const places = current(saved, edits);
   const changed = changes(saved, edits);
@@ -185,7 +206,8 @@ function Lineup({
     .filter((b) => !samePicks(picksFor(savedPicks, b.id), picksFor(picks, b.id), placesFor(places, b.id)))
     .map((b) => b.id);
   const changedBosses = [...new Set([...changed.bosses, ...pickChanged])];
-  const dirty = changed.cells > 0 || pickChanged.length > 0;
+  const lineupDirty = changed.cells > 0 || pickChanged.length > 0;
+  const dirty = lineupDirty || orderDirty;
   const offGroup = live.filter(
     (b) =>
       !sameSet(placesFor(places, b.id), placesFor(usual, b.id)) ||
@@ -206,6 +228,7 @@ function Lineup({
   const byId = new Map(players.map((p) => [p.id, p]));
   const nameOf = (id: number) => (byId.has(id) ? displayName(byId.get(id)!) : 'A raider');
   const list = [
+    ...(orderDirty ? orderChanges(lineupRaids(encounters, plan.bosses, { fresh: false, season }), raids) : []),
     ...raids.flatMap((r) =>
       changeList(saved, edits, r.bosses, nameOf, raids.length > 1 ? `for all of ${r.name}` : 'all night')
     ),
@@ -347,7 +370,7 @@ function Lineup({
       ? `Every boss is saved for ${shortDay(night.date)}.`
       : `${confirmed} of ${plural(live.length, 'boss', 'bosses')} saved for ${shortDay(night.date)}; the rest follow their usual groups.`;
 
-  const error = saveNight.error ?? saveGroups.error ?? skip.error;
+  const error = saveOrder.error ?? saveNight.error ?? saveGroups.error ?? skip.error;
   const barState = stale.length ? 'stale' : error ? 'error' : dirty ? 'dirty' : 'clean';
   const barTitle =
     barState === 'stale'
@@ -372,8 +395,33 @@ function Lineup({
   };
   const onSave = () => {
     setAsking(false);
-    if (scope === 'night') onSaveTonight();
-    else onSaveGroups();
+    const rest = () => {
+      if (scope === 'night' && lineupDirty) onSaveTonight();
+      else if (scope === 'usual' && (lineupDirty || offGroup.length)) onSaveGroups();
+    };
+    if (!orderDirty) return rest();
+    // The order first, then the bosses' lineups (#1679).
+    const everyNight = scope === 'usual';
+    saveOrder.mutate(
+      { order: order!, expected: savedOrder, everyNight },
+      {
+        onSuccess: () => {
+          setOrderEdit(null);
+          const done = everyNight
+            ? `Saved the pull order for ${shortDay(night.date)} and every night after.`
+            : `Saved the pull order for ${shortDay(night.date)}.`;
+          setMessage(done);
+          announce('success', done);
+          rest();
+        }
+      }
+    );
+  };
+  // A boss dropped on another, or moved one place by its arrows.
+  const onMove = (id: number, onto: number) => {
+    setOrderEdit(moveBoss(order ?? savedOrder, id, onto));
+    setMessage('');
+    setStale([]);
   };
 
   const onPickPlay = (boss: LineupBoss, player: PlayerRow, pick: Pick | null) => {
@@ -424,6 +472,7 @@ function Lineup({
               onClick={() => {
                 setEdits(new Map());
                 setPickEdits(new Map());
+                setOrderEdit(null);
                 setStale([]);
                 setFresh(false);
               }}
@@ -436,7 +485,7 @@ function Lineup({
               disabled={busy || (!dirty && !offGroup.length)}
               onClick={openSave}
             >
-              {saveNight.isPending || saveGroups.isPending ? 'Saving…' : 'Save…'}
+              {saveNight.isPending || saveGroups.isPending || saveOrder.isPending ? 'Saving…' : 'Save…'}
             </button>
           </div>
         </div>
@@ -506,6 +555,7 @@ function Lineup({
           setMessage('');
         }}
         onSkip={canEdit && planned && !touch ? onSkip : null}
+        onMove={canEdit && planned && !touch && !busy ? onMove : null}
       />
 
       {picking && (
@@ -540,6 +590,7 @@ function Lineup({
               <strong>{day} and every night after</strong>
               <span className="text-muted">
                 Also becomes the usual group. Nights an officer already saved keep their own lineup.
+                {orderDirty && ' The pull order goes on every coming night, including ones already saved.'}
               </span>
             </label>
           </fieldset>
@@ -643,7 +694,8 @@ function RaidGrid({
   busy,
   onToggle,
   onWholeNight,
-  onSkip
+  onSkip,
+  onMove
 }: {
   raid: LineupRaid;
   night: RaidNight;
@@ -663,11 +715,17 @@ function RaidGrid({
   onWholeNight: (player: number, putIn: boolean) => void;
   // Null when this viewer can't skip bosses here.
   onSkip: ((boss: LineupBoss) => void) | null;
+  // Moves a boss onto another's place (#1679); null when this viewer can't.
+  onMove: ((id: number, onto: number) => void) | null;
 }) {
   const [showBuffs, setShowBuffs] = useState(false);
   // The column under the pointer, brightened top to bottom.
   const [hot, setHot] = useState<number | null>(null);
   const [tip, setTip] = useState<Tip | null>(null);
+  // The boss being dragged, and where it would land: a line before or after
+  // the boss under the pointer.
+  const [dragging, setDragging] = useState<number | null>(null);
+  const [drop, setDrop] = useState<{ id: number; side: 'before' | 'after' } | null>(null);
   // A scroll moves what the tip points at; it closes rather than drift.
   useEffect(() => {
     if (!tip) return;
@@ -768,12 +826,41 @@ function RaidGrid({
                     className="blg-boss"
                     data-skipped={boss.skipped}
                     data-warn={(t?.problems.length ?? 0) > 0}
+                    data-drop={drop?.id === boss.id ? drop.side : undefined}
+                    data-dragging={dragging === boss.id || undefined}
                     {...hotProps(boss.id)}
                     {...tipProps(t)}
                     onMouseEnter={(e) => {
                       setHot(boss.id);
                       tipProps(t).onMouseEnter?.(e);
                     }}
+                    {...(onMove
+                      ? {
+                          draggable: true,
+                          onDragStart: (e: DragEvent<HTMLElement>) => {
+                            e.dataTransfer.effectAllowed = 'move';
+                            e.dataTransfer.setData('text/plain', String(boss.id));
+                            setDragging(boss.id);
+                            setTip(null);
+                          },
+                          onDragOver: (e: DragEvent<HTMLElement>) => {
+                            if (dragging === null) return;
+                            e.preventDefault();
+                            const from = raid.bosses.findIndex((b) => b.id === dragging);
+                            setDrop(dragging === boss.id ? null : { id: boss.id, side: i > from ? 'after' : 'before' });
+                          },
+                          onDrop: (e: DragEvent<HTMLElement>) => {
+                            e.preventDefault();
+                            if (dragging !== null && dragging !== boss.id) onMove(dragging, boss.id);
+                            setDragging(null);
+                            setDrop(null);
+                          },
+                          onDragEnd: () => {
+                            setDragging(null);
+                            setDrop(null);
+                          }
+                        }
+                      : {})}
                   >
                     <ColumnSizer bosses={raid.bosses} />
                     <img className="blg-backdrop" src={boss.art} alt="" onError={hideBroken} />
@@ -810,6 +897,28 @@ function RaidGrid({
                       </>
                     ) : (
                       <span className="blg-count text-dim">Skipped tonight</span>
+                    )}
+                    {onMove && (
+                      <span className="blg-move">
+                        <button
+                          type="button"
+                          className="button"
+                          disabled={i === 0}
+                          aria-label={`Move ${boss.name} earlier`}
+                          onClick={() => onMove(boss.id, raid.bosses[i - 1]!.id)}
+                        >
+                          ‹
+                        </button>
+                        <button
+                          type="button"
+                          className="button"
+                          disabled={i === raid.bosses.length - 1}
+                          aria-label={`Move ${boss.name} later`}
+                          onClick={() => onMove(boss.id, raid.bosses[i + 1]!.id)}
+                        >
+                          ›
+                        </button>
+                      </span>
                     )}
                     {onSkip && (
                       <button

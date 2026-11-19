@@ -230,6 +230,37 @@ export function capLabel(bosses: LineupBoss[]): string {
 const byZone = (a: EncounterRow, b: EncounterRow) =>
   a.zone.sort_index - b.zone.sort_index || a.zone.id - b.zone.id || a.sort_index - b.sort_index || a.id - b.id;
 
+// A night's pull order (#1679): its bosses' ids, first pull first.
+export const nightOrder = (bosses: NightBossRow[]): number[] =>
+  [...bosses].sort((a, b) => a.position - b.position || a.encounter_id - b.encounter_id).map((b) => b.encounter_id);
+
+// The night's bosses with an officer's unsaved order, when there is one.
+export const withOrder = (bosses: NightBossRow[], order: number[] | null): NightBossRow[] =>
+  order ? bosses.map((b) => ({ ...b, position: order.indexOf(b.encounter_id) + 1 })) : bosses;
+
+// One boss dropped on another (Kat's #1680 board D): after it when moving
+// later, before it when moving earlier.
+export function moveBoss(order: number[], id: number, onto: number): number[] {
+  const from = order.indexOf(id);
+  const to = order.indexOf(onto);
+  if (from < 0 || to < 0 || from === to) return order;
+  const rest = order.filter((x) => x !== id);
+  const at = rest.indexOf(onto) + (to > from ? 1 : 0);
+  return [...rest.slice(0, at), id, ...rest.slice(at)];
+}
+
+export const sameOrder = (a: number[], b: number[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+
+// The save bar's lines for a new order: each boss whose pull number in its
+// raid changed, "Sentinels to pull 2".
+export function orderChanges(before: LineupRaid[], after: LineupRaid[]): string[] {
+  const pullOf = (raids: LineupRaid[]) => new Map(raids.flatMap((r) => r.bosses.map((b, i) => [b.id, i + 1] as const)));
+  const was = pullOf(before);
+  return after.flatMap((r) =>
+    r.bosses.flatMap((b, i) => (was.get(b.id) !== i + 1 ? [`${b.short} to pull ${i + 1}`] : []))
+  );
+}
+
 // The night's bosses as raids, in pull order. With no plan for the night yet,
 // `fresh` lists every boss of the night's season instead, for the very first
 // night a team plans before any group exists.

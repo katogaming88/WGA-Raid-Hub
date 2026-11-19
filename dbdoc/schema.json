@@ -15058,6 +15058,102 @@
           "def": "CREATE TRIGGER trg_news_posts_updated_at BEFORE UPDATE ON public.news_posts FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
+    },
+    {
+      "name": "public.team_boss_order",
+      "type": "BASE TABLE",
+      "comment": "The order a team pulls its bosses in (#1679), saved from Boss Lineup with \"every night after\". New raid nights fill in this order; a boss with no row fills after, in the game's order. Written and read only by the lineup functions.",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "encounter_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_boss_order_pkey",
+          "def": "CREATE UNIQUE INDEX team_boss_order_pkey ON public.team_boss_order USING btree (team_id, encounter_id)",
+          "table": "public.team_boss_order",
+          "columns": [
+            "team_id",
+            "encounter_id"
+          ]
+        },
+        {
+          "name": "team_boss_order_encounter_id_idx",
+          "def": "CREATE INDEX team_boss_order_encounter_id_idx ON public.team_boss_order USING btree (encounter_id)",
+          "table": "public.team_boss_order",
+          "columns": [
+            "encounter_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_boss_order_position_check",
+          "type": "CHECK",
+          "def": "CHECK ((\"position\" \u003e 0))",
+          "table": "public.team_boss_order",
+          "referenced_table": "",
+          "columns": [
+            "position"
+          ]
+        },
+        {
+          "name": "team_boss_order_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_boss_order",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_boss_order_encounter_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE",
+          "table": "public.team_boss_order",
+          "referenced_table": "public.raid_encounters",
+          "columns": [
+            "encounter_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_boss_order_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id, encounter_id)",
+          "table": "public.team_boss_order",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "encounter_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -17431,6 +17527,32 @@
       ],
       "parent_cardinality": "zero_or_one",
       "def": "FOREIGN KEY (written_by) REFERENCES people(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.team_boss_order",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_boss_order",
+      "columns": [
+        "encounter_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.raid_encounters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -19142,6 +19264,12 @@
       "name": "public.set_boss_group",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_raid_night_boss_order",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_raid_date date, p_encounter_ids integer[], p_expected_ids integer[], p_every_night boolean DEFAULT false",
       "type": "FUNCTION"
     }
   ],

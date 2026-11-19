@@ -395,6 +395,96 @@ const participation = async (q, date, encounter, team = 1) =>
     )
   ).rows[0].p;
 
+// #1679: officers set the order the team pulls its bosses in.
+describe('set_raid_night_boss_order()', () => {
+  const order = (asUser, uid, date, ids, expected, everyNight = false, team = 1) =>
+    asUser(uid, 'select public.set_raid_night_boss_order($1, $2, $3::int[], $4::int[], $5)', [
+      team,
+      date,
+      ids,
+      expected,
+      everyNight
+    ]);
+  const ids = async (q, date) => (await night(q, date)).map((b) => b.encounter_id);
+
+  // Two nights filled in the game's order (FIRST, then SECOND).
+  async function twoNights(q, asUser) {
+    const { p1 } = await seed(q);
+    await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+    await setGroup(asUser, OFFICER_T1, SECOND, [p1]);
+    const [tue, thu] = [await today(q, 1), await today(q, 3)];
+    await plan(asUser, OFFICER_T1, tue);
+    await plan(asUser, OFFICER_T1, thu);
+    return { tue, thu };
+  }
+
+  it('reorders one night, leaving the others and later fills as they were', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { tue, thu } = await twoNights(q, asUser);
+      await order(asUser, OFFICER_T1, tue, [SECOND, FIRST], [FIRST, SECOND]);
+      expect(await night(q, tue)).toMatchObject([
+        { encounter_id: SECOND, position: 1 },
+        { encounter_id: FIRST, position: 2 }
+      ]);
+      expect(await ids(q, thu)).toEqual([FIRST, SECOND]);
+      const later = await today(q, 5);
+      await plan(asUser, OFFICER_T1, later);
+      expect(await ids(q, later)).toEqual([FIRST, SECOND]);
+    });
+  });
+
+  it('with every night after, reorders every coming night, one set by hand too, and later fills follow', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { tue, thu } = await twoNights(q, asUser);
+      // Thursday's order set by hand for Thursday alone, then changed back by
+      // Tuesday's "every night after" (Kat, 2026-11-18).
+      await order(asUser, OFFICER_T1, thu, [SECOND, FIRST], [FIRST, SECOND]);
+      await order(asUser, OFFICER_T1, thu, [FIRST, SECOND], [SECOND, FIRST]);
+      await order(asUser, OFFICER_T1, tue, [SECOND, FIRST], [FIRST, SECOND], true);
+      expect(await ids(q, tue)).toEqual([SECOND, FIRST]);
+      expect(await ids(q, thu)).toEqual([SECOND, FIRST]);
+      const later = await today(q, 5);
+      await plan(asUser, OFFICER_T1, later);
+      expect(await ids(q, later)).toEqual([SECOND, FIRST]);
+      // A night already past keeps its order.
+      await plan(asUser, OFFICER_T1, PAST);
+      await order(asUser, OFFICER_T1, tue, [FIRST, SECOND], [SECOND, FIRST], true);
+      expect(await ids(q, PAST)).toEqual([SECOND, FIRST]);
+    });
+  });
+
+  it('refuses a stale order and one that leaves out or repeats a boss', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { tue } = await twoNights(q, asUser);
+      await expect(order(asUser, OFFICER_T1, tue, [SECOND, FIRST], [SECOND, FIRST])).rejects.toThrow(
+        /Someone else changed/
+      );
+      await expect(order(asUser, OFFICER_T1, tue, [SECOND], [FIRST, SECOND])).rejects.toThrow(/every boss/);
+      await expect(order(asUser, OFFICER_T1, tue, [SECOND, SECOND], [FIRST, SECOND])).rejects.toThrow(/every boss/);
+      expect(await ids(q, tue)).toEqual([FIRST, SECOND]);
+    });
+  });
+
+  it("is refused to a raider, another team's officer and a signed-out caller", async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      const { tue } = await twoNights(q, asUser);
+      for (const uid of [RAIDER_T1, OFFICER_T2]) {
+        await expect(order(asUser, uid, tue, [SECOND, FIRST], [FIRST, SECOND], true)).rejects.toThrow(/Not authorized/);
+      }
+      await expect(
+        asAnon('select public.set_raid_night_boss_order(1, $1, $2::int[], $3::int[], true)', [
+          tue,
+          [SECOND, FIRST],
+          [FIRST, SECOND]
+        ])
+      ).rejects.toThrow(/permission denied/);
+      expect(await ids(q, tue)).toEqual([FIRST, SECOND]);
+      // Nobody on the site reads the team order directly.
+      await expect(asUser(OFFICER_T1, 'select * from public.team_boss_order')).rejects.toThrow(/permission denied/);
+    });
+  });
+});
+
 describe('record_raid_night_participation()', () => {
   it('records who was in for a boss, and replaces it on the next call', async () => {
     await withTxn(async ({ q, asUser }) => {

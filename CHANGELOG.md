@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.295.0] - 2026-11-19
+
+### Backend
+
+- Officers can set the order a team pulls its bosses in (#1679). A night's order saves through a new function, `set_raid_night_boss_order`, that refuses a change made after someone else changed it. Saved for "that night and every night after", it also becomes the team's order, kept in a new table, `team_boss_order`. Every coming night already planned follows it, one set by hand too (Kat). New nights are planned in it, with a boss the order doesn't list after the rest, in the game's order.
+
+### Project
+
+- Boss Lineup: on a computer, an officer drags a boss heading to a new spot, or uses the ‹ › arrows that show when hovering or tabbing to it (#1679). A blue line marks where the boss will land, the pull numbers change as bosses move, and the save bar lists them ("Sszorak to pull 1"). Save… asks just that night or every night after, like a lineup change. A phone shows the order but can't change it. The Help guide says how.
+- Database, page, browser and accessibility tests for moving a boss, light and dark. The revamp time log's rows for PR #1879 after it opened, and this one.
+
 ## [3.294.2] - 2026-11-18
 
 ### Project
