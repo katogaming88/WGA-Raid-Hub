@@ -390,6 +390,38 @@ describe('Calendar (new app): the boss lineup', () => {
 });
 
 describe('Calendar (new app): on a phone', () => {
+  it('drags a boss onto another and saves the new pull order (#1679)', async () => {
+    const moved = await openApp(
+      browser,
+      server.port,
+      asOfficer(`${BASE}?date=${NIGHT}&view=lineup`, 'main:has(.blg-cell)', {
+        tables: { ...tables(), ...LINEUP_TABLES },
+        rpc: { ...signedIn(VIEWER, 'officer').rpc, set_raid_night_boss_order: null }
+      })
+    );
+    try {
+      const sent = [];
+      moved.page.on('request', (request) => {
+        if (new URL(request.url()).pathname.endsWith('/rpc/set_raid_night_boss_order')) {
+          sent.push(JSON.parse(request.postData()));
+        }
+      });
+      const head = (name) => moved.page.getByRole('columnheader', { name: new RegExp(`^${name}, pull`) });
+      await head("Nek'zali the Soulcoiler").dragTo(head('Sszorak'));
+      expect(await head('Sszorak').textContent()).toContain('1');
+      expect(await moved.page.getByRole('columnheader', { name: /^Sszorak, pull 1/ }).count()).toBe(1);
+      await moved.page.getByRole('button', { name: 'Save…' }).click();
+      const dialog = moved.page.getByRole('dialog', { name: 'Save the boss lineup' });
+      await dialog.getByRole('button', { name: 'Save' }).click();
+      await expect.poll(() => sent.length).toBe(1);
+      expect(sent[0]).toMatchObject({ p_encounter_ids: [102, 101], p_expected_ids: [101, 102], p_every_night: false });
+      expect(moved.unexpected).toEqual([]);
+      expect(moved.pageErrors).toEqual([]);
+    } finally {
+      await moved.context.close();
+    }
+  });
+
   it('lets an officer put raiders in and out of the boss lineup, but not skip a boss (#1681)', async () => {
     const lineup = await openApp(
       browser,

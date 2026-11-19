@@ -1443,6 +1443,52 @@ a.night-chip:hover {
   opacity: 0.32;
 }
 
+/* Moving bosses (#1679, Kat's #1680 board D): a heading drags, its arrows
+   show on hover or keyboard focus, and a blue line down the gap between
+   columns marks where it lands. */
+.blg-boss[draggable='true'] {
+  cursor: grab;
+}
+
+.blg-boss[data-dragging] {
+  opacity: 0.5;
+}
+
+.blg-boss[data-drop='before'] {
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.blg-boss[data-drop='after'] {
+  box-shadow: inset -3px 0 0 var(--brand);
+}
+
+.blg-boss > .blg-move {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  left: 4px;
+  display: flex;
+  justify-content: space-between;
+  opacity: 0;
+}
+
+.blg-boss:hover > .blg-move,
+.blg-boss:focus-within > .blg-move {
+  opacity: 1;
+}
+
+.blg-move .button {
+  min-width: 0;
+  min-height: 0;
+  padding: 0 6px;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.blg-move .button:disabled {
+  visibility: hidden;
+}
+
 .blg-art {
   display: inline-block;
   line-height: 0;

@@ -30,10 +30,12 @@ begin
   select i.difficulty into v_difficulty from raid_night_info(p_team_id, p_raid_date) i;
 
   insert into raid_night_bosses (team_id, raid_date, encounter_id, position, skipped, skipped_for_kill_id)
-  select p_team_id, p_raid_date, e.id, row_number() over (order by z.sort_index, z.id, e.sort_index, e.id),
+  select p_team_id, p_raid_date, e.id,
+         row_number() over (order by o.position nulls last, z.sort_index, z.id, e.sort_index, e.id),
          k.id is not null, k.id
   from raid_encounters e
   join raid_zones z on z.id = e.zone_id
+  left join team_boss_order o on o.team_id = p_team_id and o.encounter_id = e.id
   join seasons s on s.code = z.season
   left join lateral (
     select k.id

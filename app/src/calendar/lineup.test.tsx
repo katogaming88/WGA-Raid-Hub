@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers, type Read } from '../test/fakeSupabase';
 import type { PlayerRow } from '../roster/roster';
 import type { Answer, RaidNight } from './calendar';
 import {
+  moveBoss,
+  nightOrder,
+  withOrder,
   capLabel,
   capStatus,
   changeList,
@@ -422,6 +425,15 @@ describe('the lineup rules', () => {
     ]);
   });
 
+  it('moves a boss after the one it lands on going later, before it going earlier (#1679)', () => {
+    expect(moveBoss([1, 2, 3, 4], 1, 3)).toEqual([2, 3, 1, 4]);
+    expect(moveBoss([1, 2, 3, 4], 4, 2)).toEqual([1, 4, 2, 3]);
+    expect(moveBoss([1, 2, 3], 2, 2)).toEqual([1, 2, 3]);
+    const bosses = [nightBoss(102, 2), nightBoss(101, 1)];
+    expect(nightOrder(bosses)).toEqual([101, 102]);
+    expect(nightOrder(withOrder(bosses, [102, 101]))).toEqual([102, 101]);
+  });
+
   it('saves only the picks of raiders still in', () => {
     const one = new Map([
       [2, { characterId: null, classSpecId: 2 }],
@@ -522,7 +534,7 @@ function handlers(person: ReturnType<typeof who>, setup: Setup = PLANNED): FakeH
       if (name === 'team_rsvp_answers') return { data: [] };
       if (name === 'set_raid_night_lineup' || name === 'set_boss_group') return { data: 1 };
       if (name === 'plan_raid_night') return { data: 3 };
-      if (name === 'set_raid_night_boss_skipped') return { data: null };
+      if (name === 'set_raid_night_boss_skipped' || name === 'set_raid_night_boss_order') return { data: null };
       return base.rpc!(name, args);
     },
     from(read) {
@@ -832,6 +844,81 @@ describe('the boss lineup tab', () => {
     expect(
       screen.getByText('Ana out for all of The Venomous Abyss · Ed in for all of The Venomous Abyss')
     ).toBeInTheDocument();
+  });
+
+  it('moves a boss by its arrows and saves the order for tonight only (#1679)', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(LINEUP, handlers(who('officer')));
+    const g = await grid();
+    expect(g.getByRole('button', { name: "Move Nek'zali the Soulcoiler earlier" })).toBeDisabled();
+    await user.click(g.getByRole('button', { name: 'Move Sszorak earlier' }));
+    expect(g.getByRole('columnheader', { name: /^Sszorak, pull 1/ })).toBeInTheDocument();
+    expect(screen.getByText('2 unsaved changes:')).toBeInTheDocument();
+    expect(screen.getByText("Sszorak to pull 1 · Nek'zali to pull 2")).toBeInTheDocument();
+    await save(user, 'Just Thursday');
+    expect(rpcs(client, 'set_raid_night_boss_order')).toEqual([
+      {
+        p_team_id: 1,
+        p_raid_date: '2026-05-14',
+        p_encounter_ids: [102, 101, 103],
+        p_expected_ids: [101, 102, 103],
+        p_every_night: false
+      }
+    ]);
+    expect(rpcs(client, 'set_raid_night_lineup')).toEqual([]);
+    expect((await screen.findAllByText('Saved the pull order for Thu, May 14.')).length).toBeGreaterThan(0);
+  });
+
+  it('drops an order someone else beat, and says so (#1679)', async () => {
+    const user = userEvent.setup();
+    renderApp(
+      LINEUP,
+      handlers(who('officer'), {
+        ...PLANNED,
+        rpc: (name) =>
+          name === 'set_raid_night_boss_order'
+            ? { error: { message: 'Someone else changed this night’s pull order since you opened it.' } }
+            : undefined
+      })
+    );
+    const g = await grid();
+    await user.click(g.getByRole('button', { name: 'Move Sszorak earlier' }));
+    await save(user, 'Just Thursday');
+    expect(
+      (await screen.findAllByText('Someone else changed the pull order while you were editing. Theirs is showing now.'))
+        .length
+    ).toBeGreaterThan(0);
+    expect(g.getByRole('columnheader', { name: /^Sszorak, pull 2/ })).toBeInTheDocument();
+    expect(screen.queryByText('That did not save.')).not.toBeInTheDocument();
+  });
+
+  it('drags a boss onto another, and saves the order for every night after first (#1679)', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(LINEUP, handlers(who('officer')));
+    const g = await grid();
+    const first = g.getByRole('columnheader', { name: /^Nek'zali the Soulcoiler, pull 1/ });
+    const second = g.getByRole('columnheader', { name: /^Sszorak, pull 2/ });
+    const data = { effectAllowed: '', setData: () => undefined };
+    fireEvent.dragStart(first, { dataTransfer: data });
+    fireEvent.dragOver(second, { dataTransfer: data });
+    // Moving later: the line marks the far side of the boss it lands on.
+    expect(second).toHaveAttribute('data-drop', 'after');
+    fireEvent.drop(second, { dataTransfer: data });
+    expect(g.getByRole('columnheader', { name: /^Sszorak, pull 1/ })).toBeInTheDocument();
+
+    await user.click(g.getByRole('button', { name: 'Ana, Sszorak: in' }));
+    await user.click(screen.getByRole('button', { name: 'Save…' }));
+    const dialog = within(await screen.findByRole('dialog', { name: 'Save the boss lineup' }));
+    expect(dialog.getByText(/The pull order goes on every coming night/)).toBeInTheDocument();
+    await user.click(dialog.getByRole('radio', { name: /^Thursday and every night after/ }));
+    await user.click(dialog.getByRole('button', { name: 'Save' }));
+    await screen.findAllByText(/Saved to the usual groups/);
+    const order = client.rpcs.map(([n]) => n).filter((n) => n.startsWith('set_'));
+    expect(order).toEqual(['set_raid_night_boss_order', 'set_raid_night_lineup', 'set_boss_group']);
+    expect(rpcs(client, 'set_raid_night_boss_order')[0]).toMatchObject({
+      p_encounter_ids: [102, 101, 103],
+      p_every_night: true
+    });
   });
 
   it('skips a boss for the night', async () => {

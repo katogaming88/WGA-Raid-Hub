@@ -4245,6 +4245,42 @@ export type Database = {
           },
         ]
       }
+      team_boss_order: {
+        Row: {
+          encounter_id: number
+          position: number
+          team_id: number
+          updated_at: string
+        }
+        Insert: {
+          encounter_id: number
+          position: number
+          team_id: number
+          updated_at?: string
+        }
+        Update: {
+          encounter_id?: number
+          position?: number
+          team_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_boss_order_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "raid_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_boss_order_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_discord_config: {
         Row: {
           after_raid: string
@@ -6722,6 +6758,16 @@ export type Database = {
           p_note?: string
           p_raid_date: string
           p_status: string
+          p_team_id: number
+        }
+        Returns: undefined
+      }
+      set_raid_night_boss_order: {
+        Args: {
+          p_encounter_ids: number[]
+          p_every_night?: boolean
+          p_expected_ids: number[]
+          p_raid_date: string
           p_team_id: number
         }
         Returns: undefined

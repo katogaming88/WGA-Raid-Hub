@@ -1873,6 +1873,18 @@ const STATES = [
     click: 'role=radio[name="Solid bars"]'
   },
   { label: 'calendar boss lineup, officer, asking how far to save', ...CAL_LINEUP, click: 'role=button[name="Save…"]' },
+  // #1679: a boss moved by its arrows, which stay shown while focused.
+  {
+    label: 'calendar boss lineup, officer, moving a boss',
+    ...CAL_LINEUP,
+    click: 'role=button[name="Move Sszorak earlier"]'
+  },
+  {
+    label: 'calendar boss lineup, officer, moving a boss, light',
+    ...CAL_LINEUP,
+    colorScheme: 'light',
+    click: 'role=button[name="Move Sszorak earlier"]'
+  },
   // #1580: the character and spec picker, and a saved pick on the grid.
   { label: 'calendar boss lineup, officer, picking a spec', ...CAL_LINEUP, click: '.blg-swap >> nth=0' },
   {

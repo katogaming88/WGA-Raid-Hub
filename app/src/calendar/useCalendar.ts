@@ -410,6 +410,26 @@ export function useSaveBossGroups(teamId: number) {
   );
 }
 
+// A night's pull order (#1679): every boss on it, first pull first; with
+// everyNight, also the team's order, and every coming night follows it.
+export type OrderSave = { order: number[]; expected: number[]; everyNight: boolean };
+
+export function useSaveOrder(teamId: number, date: string) {
+  return useSupabaseMutation<null, OrderSave>(
+    async (client, s) => {
+      const { error } = await client.rpc('set_raid_night_boss_order', {
+        p_team_id: teamId,
+        p_raid_date: date,
+        p_encounter_ids: s.order,
+        p_expected_ids: s.expected,
+        p_every_night: s.everyNight
+      });
+      return { data: null, error };
+    },
+    { key: ['save-order', teamId], refreshes: [lineupKey(teamId)] }
+  );
+}
+
 // Fills a night from the groups now rather than waiting for the nightly job.
 export function usePlanNight(teamId: number, date: string) {
   return useSupabaseMutation<number, null>(
