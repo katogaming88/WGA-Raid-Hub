@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     57 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 47 h 17 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 47 h 22 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **223 h 5 m** |             |
+| **All revamp work**                | **223 h 10 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 10 h 50 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 10 h 55 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -812,7 +812,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:05-11:40 PM | PR #1879 (#1872) after it opened: screenshots at desktop and phone width (the phone one retaken after a reload, since the sidebar stayed open on a resize), the PR body; Kat's design review and merge (11:39 PM), cleanup, #1487 | Phase 2: Before the new site goes live / Tester fixes (#1872) | 35 m | build; Kat's review and merge not split | 15,300 | Added 2026-11-19 (in #1679's PR). |
 | 11:40 PM-12:17 AM | #1679: officers move bosses on Boss Lineup (board D from #1680): drag a heading or its ‹ › arrows, a blue line where it lands, pull numbers that renumber, the save bar's "to pull N" lines, Save… asking just that night or every night after; Kat's answer (every night after reorders every coming night, one set by hand too); `team_boss_order` and `set_raid_night_boss_order`, `fill_raid_night` filling in the team's order; database, page, browser and accessibility tests, generated docs, RLS.md, decision log, Help guide, stamp, changelog, these rows; PR | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1679) | 40 m | build; Kat's answer not split | 382,900 | Fresh-agent migration review, Kat's design review and merge in the next row. |
 | 8:46-8:58 AM | PR #1880 (#1679) after it opened: CodeRabbit's tie finding (a boss left out of an every-night save goes after the ones it lists) fixed with a test; the fresh-agent migration review (changes needed: backup-restore.md) and its fixes, with the nice-to-haves (a beaten order dropped and reloaded with a message, an empty night refused, more callers tested); the full database suite, the local database restored, the reply on the PR; Kat's design review and merge (12:34 PM), cleanup, #1487 | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1679) | 15 m | build; Kat's review and merge not split | 419,546 | Added 2026-11-19 (in #1682's PR). Includes the note at 9:53 AM and the 2 m of cleanup after the merge. |
-| 12:36-12:55 PM | #1682: officers set what each boss needs (board D's sliders button): "What Sszorak needs" with - and + for tanks, healers, melee and ranged, saved at once for every night; "Use team targets"; the blue "Wants 3 tanks" line; every role count, warning, fill bar, tip and Needs a look checked against the boss's own targets, short or over; `team_boss_role_targets` and `set_boss_role_targets`; database, page and accessibility tests, generated docs, RLS.md, backup-restore.md, decision log, Help guide, stamp, changelog, these rows; PR | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1682) | 20 m | build | 197,032 | Fresh-agent migration review and Kat's design review and merge not yet counted. |
+| 12:36-1:00 PM | #1682: officers set what each boss needs (board D's sliders button): "What Sszorak needs" with - and + for tanks, healers, melee and ranged, saved at once for every night; "Use team targets"; the blue "Wants 3 tanks" line; every role count, warning, fill bar, tip and Needs a look checked against the boss's own targets, short or over; `team_boss_role_targets` and `set_boss_role_targets`; database, page and accessibility tests, generated docs, RLS.md, backup-restore.md, decision log, Help guide, stamp, changelog, these rows; PR | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1682) | 25 m | build | 212,000 | Fresh-agent migration review and Kat's design review and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 
