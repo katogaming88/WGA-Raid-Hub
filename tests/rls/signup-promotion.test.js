@@ -226,6 +226,17 @@ describe('promote_season_signups()', () => {
     });
   });
 
+  it("a swap named on the signup (swap_from_name_realm) keeps that character's Trial too (#1871)", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const s = await scene(q);
+      await q('update public.players set is_trial = false where id = $1', [s.ids.goneId]);
+      await q('update public.season_signups set swap_from_name_realm = $1 where id = $2', [s.n.gone, s.signups.join]);
+      const p = await preview(asUser, s.team.leader.uid, s);
+      await promote(asUser, s.team.leader.uid, s, p.expected, []);
+      expect((await player(q, s.n.outsider, s.team.teamId)).is_trial).toBe(false);
+    });
+  });
+
   it('refuses a stale preview and changes nothing', async () => {
     await withTxn(async ({ q, asUser }) => {
       const s = await scene(q);
