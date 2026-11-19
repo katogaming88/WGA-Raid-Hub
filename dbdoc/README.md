@@ -119,6 +119,7 @@
 | [public.raid_night_titles](public.raid_night_titles.md) | 4 | A title for one raid date (#1478): "Rename this night" on the night's page. It covers every night on that date and wins over raid_schedule.title; the next week goes back to the weekly title. Written by the officers who write raid_schedule. | BASE TABLE |
 | [public.news_posts](public.news_posts.md) | 14 | News posts (#1523), site-wide. published_at null: a draft, which only Staff (is_site_admin()) read. Written by Staff on the site (#1230); the news.json entries were copied in by this table's migration. | BASE TABLE |
 | [public.team_boss_order](public.team_boss_order.md) | 4 | The order a team pulls its bosses in (#1679), saved from Boss Lineup with "every night after". New raid nights fill in this order; a boss with no row fills after, in the game's order. Written and read only by the lineup functions. | BASE TABLE |
+| [public.team_boss_role_targets](public.team_boss_role_targets.md) | 7 | What one boss needs for a team (#1682): tanks, healers, melee and ranged counts for the boss lineup's checks. A null tanks or healers uses the team's target (team_lineup_settings); a null melee or ranged means no target. A boss with no row uses the team's targets. Written only by set_boss_role_targets(). | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -410,6 +411,7 @@
 | public.set_raid_night_lineup | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb | FUNCTION |
 | public.set_boss_group | int4 | p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb | FUNCTION |
 | public.set_raid_night_boss_order | void | p_team_id integer, p_raid_date date, p_encounter_ids integer[], p_expected_ids integer[], p_every_night boolean DEFAULT false | FUNCTION |
+| public.set_boss_role_targets | void | p_team_id integer, p_encounter_id integer, p_tanks integer DEFAULT NULL::integer, p_healers integer DEFAULT NULL::integer, p_melee integer DEFAULT NULL::integer, p_ranged integer DEFAULT NULL::integer | FUNCTION |
 
 ## Enums
 
@@ -617,6 +619,8 @@ erDiagram
 "public.news_posts" }o--o| "public.people" : "FOREIGN KEY (written_by) REFERENCES people(id) ON DELETE SET NULL"
 "public.team_boss_order" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_boss_order" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+"public.team_boss_role_targets" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_boss_role_targets" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -1806,6 +1810,15 @@ erDiagram
   integer team_id FK
   integer encounter_id FK
   integer position
+  timestamp_with_time_zone updated_at
+}
+"public.team_boss_role_targets" {
+  integer team_id FK
+  integer encounter_id FK
+  integer tanks
+  integer healers
+  integer melee
+  integer ranged
   timestamp_with_time_zone updated_at
 }
 ```

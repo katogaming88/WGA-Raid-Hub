@@ -4281,6 +4281,51 @@ export type Database = {
           },
         ]
       }
+      team_boss_role_targets: {
+        Row: {
+          encounter_id: number
+          healers: number | null
+          melee: number | null
+          ranged: number | null
+          tanks: number | null
+          team_id: number
+          updated_at: string
+        }
+        Insert: {
+          encounter_id: number
+          healers?: number | null
+          melee?: number | null
+          ranged?: number | null
+          tanks?: number | null
+          team_id: number
+          updated_at?: string
+        }
+        Update: {
+          encounter_id?: number
+          healers?: number | null
+          melee?: number | null
+          ranged?: number | null
+          tanks?: number | null
+          team_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_boss_role_targets_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "raid_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_boss_role_targets_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_discord_config: {
         Row: {
           after_raid: string
@@ -6720,6 +6765,17 @@ export type Database = {
           p_team_id: number
         }
         Returns: number
+      }
+      set_boss_role_targets: {
+        Args: {
+          p_encounter_id: number
+          p_healers?: number
+          p_melee?: number
+          p_ranged?: number
+          p_tanks?: number
+          p_team_id: number
+        }
+        Returns: undefined
       }
       set_encounter_cap: {
         Args: { p_cap?: number; p_encounter_id: number }

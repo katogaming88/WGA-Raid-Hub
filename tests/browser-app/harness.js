@@ -278,6 +278,7 @@ export async function openApp(browser, port, state) {
     raid_night_bosses: [],
     raid_night_lineups: [],
     team_lineup_settings: [],
+    team_boss_role_targets: [],
     streamers: [],
     // News posts (#1230): empty unless a state lists them.
     news_posts: [],

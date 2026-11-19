@@ -3907,3 +3907,15 @@ Shipped: `20261118234427_team_boss_order.sql`.
 **Saved through one function, `set_raid_night_boss_order`**, which takes the whole night's order and the order it was read as, and refuses when someone else changed it meanwhile, like the lineup saves. No one on the site reads `team_boss_order` directly: each night's order is on `raid_night_bosses`, which the team already reads.
 
 [Full discussion -> #1679](https://github.com/katogaming88/WGA-Raid-Hub/issues/1679).
+
+## #1682 -- officers set what each boss needs
+
+Shipped: `20261119123705_team_boss_role_targets.sql`.
+
+**A boss's own targets live in a new table, `team_boss_role_targets`, one row per team and boss; `team_lineup_settings` stays the team's default.** Each of tanks, healers, melee and ranged is optional. A null tanks or healers means the team's target, so a boss that only wants a third tank still follows the team when the team changes its healers. A null melee or ranged means no target ("Any"), as today. A boss with nothing of its own has no row (a check refuses an all-null row).
+
+**Every role is checked for an exact count, short or over**, as board D's mockup does: a fight set to 3 healers flags a 4th, and one set to 6 ranged flags a 7th. A target of 0 still means the role isn't counted, as for the team's targets.
+
+**A standing setting, saved at once through `set_boss_role_targets`** (Kat, 2026-10-27): every - or + on Boss Lineup writes it, for every night, and it is never part of the lineup's Save. No stale check: the last press wins, as for the team's targets. Gated like `set_lineup_role_targets` (`edit_schedule` or site admin). The table is read by whoever reads the team's raid nights (`raid_night_bosses`' rules), not publicly like `team_lineup_settings`: since #1469 a new table is not public until #1286 sets the rule.
+
+[Full discussion -> #1682](https://github.com/katogaming88/WGA-Raid-Hub/issues/1682).

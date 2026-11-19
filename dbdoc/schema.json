@@ -15154,6 +15154,160 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.team_boss_role_targets",
+      "type": "BASE TABLE",
+      "comment": "What one boss needs for a team (#1682): tanks, healers, melee and ranged counts for the boss lineup's checks. A null tanks or healers uses the team's target (team_lineup_settings); a null melee or ranged means no target. A boss with no row uses the team's targets. Written only by set_boss_role_targets().",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "encounter_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "tanks",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "healers",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "melee",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "ranged",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_boss_role_targets_pkey",
+          "def": "CREATE UNIQUE INDEX team_boss_role_targets_pkey ON public.team_boss_role_targets USING btree (team_id, encounter_id)",
+          "table": "public.team_boss_role_targets",
+          "columns": [
+            "team_id",
+            "encounter_id"
+          ]
+        },
+        {
+          "name": "team_boss_role_targets_encounter_id_idx",
+          "def": "CREATE INDEX team_boss_role_targets_encounter_id_idx ON public.team_boss_role_targets USING btree (encounter_id)",
+          "table": "public.team_boss_role_targets",
+          "columns": [
+            "encounter_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_boss_role_targets_check",
+          "type": "CHECK",
+          "def": "CHECK ((num_nonnulls(tanks, healers, melee, ranged) \u003e 0))",
+          "table": "public.team_boss_role_targets",
+          "referenced_table": "",
+          "columns": [
+            "tanks",
+            "healers",
+            "melee",
+            "ranged"
+          ]
+        },
+        {
+          "name": "team_boss_role_targets_healers_check",
+          "type": "CHECK",
+          "def": "CHECK (((healers \u003e= 0) AND (healers \u003c= 30)))",
+          "table": "public.team_boss_role_targets",
+          "referenced_table": "",
+          "columns": [
+            "healers"
+          ]
+        },
+        {
+          "name": "team_boss_role_targets_melee_check",
+          "type": "CHECK",
+          "def": "CHECK (((melee \u003e= 0) AND (melee \u003c= 30)))",
+          "table": "public.team_boss_role_targets",
+          "referenced_table": "",
+          "columns": [
+            "melee"
+          ]
+        },
+        {
+          "name": "team_boss_role_targets_ranged_check",
+          "type": "CHECK",
+          "def": "CHECK (((ranged \u003e= 0) AND (ranged \u003c= 30)))",
+          "table": "public.team_boss_role_targets",
+          "referenced_table": "",
+          "columns": [
+            "ranged"
+          ]
+        },
+        {
+          "name": "team_boss_role_targets_tanks_check",
+          "type": "CHECK",
+          "def": "CHECK (((tanks \u003e= 0) AND (tanks \u003c= 30)))",
+          "table": "public.team_boss_role_targets",
+          "referenced_table": "",
+          "columns": [
+            "tanks"
+          ]
+        },
+        {
+          "name": "team_boss_role_targets_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_boss_role_targets",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_boss_role_targets_encounter_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE",
+          "table": "public.team_boss_role_targets",
+          "referenced_table": "public.raid_encounters",
+          "columns": [
+            "encounter_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_boss_role_targets_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id, encounter_id)",
+          "table": "public.team_boss_role_targets",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "encounter_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -17553,6 +17707,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_boss_role_targets",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_boss_role_targets",
+      "columns": [
+        "encounter_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.raid_encounters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -19270,6 +19450,12 @@
       "name": "public.set_raid_night_boss_order",
       "return_type": "void",
       "arguments": "p_team_id integer, p_raid_date date, p_encounter_ids integer[], p_expected_ids integer[], p_every_night boolean DEFAULT false",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_boss_role_targets",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_encounter_id integer, p_tanks integer DEFAULT NULL::integer, p_healers integer DEFAULT NULL::integer, p_melee integer DEFAULT NULL::integer, p_ranged integer DEFAULT NULL::integer",
       "type": "FUNCTION"
     }
   ],

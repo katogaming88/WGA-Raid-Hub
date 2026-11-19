@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers, type Read } from '../test/fakeSupabase';
@@ -7,6 +7,7 @@ import type { PlayerRow } from '../roster/roster';
 import type { Answer, RaidNight } from './calendar';
 import {
   moveBoss,
+  wantsText,
   nightOrder,
   withOrder,
   capLabel,
@@ -352,6 +353,38 @@ describe('the lineup rules', () => {
     expect(noTanksWanted.totals[0]!.problems.some((p) => p.includes('tank'))).toBe(false);
   });
 
+  it('checks a boss against its own targets, short or over, and the team’s where it has none (#1682)', () => {
+    const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1), nightBoss(102, 2)], { fresh: false, season: 'S1' })[0]!;
+    // Ana tanks, Bo heals, Cy is ranged, Di is melee, on both bosses.
+    const tonight = placesOf(
+      places([
+        [101, [1, 2, 3, 4]],
+        [102, [1, 2, 3, 4]]
+      ])
+    );
+    const targets = {
+      tanks: 1,
+      healers: 1,
+      bosses: new Map([[101, { tanks: 3, healers: null, melee: 2, ranged: null }]])
+    };
+    const view = lineupView(ROSTER, NIGHT, [], raid, tonight, tonight, targets);
+    const [own, team] = view.totals;
+    expect(own!.wants).toEqual({ Tank: 3, Heal: 1, Melee: 2, Ranged: null });
+    expect(own!.problems).toEqual(expect.arrayContaining(['1 tank, wants 3', '1 melee, wants 2']));
+    expect(own!.problems.some((p) => /healer|ranged/.test(p))).toBe(false);
+    // The other boss has nothing of its own: the team's 1 and 1, no melee count.
+    expect(team!.wants).toEqual({ Tank: 1, Heal: 1, Melee: null, Ranged: null });
+    expect(team!.problems.some((p) => /tank|healer|melee|ranged/.test(p))).toBe(false);
+    // Over a boss's own target is flagged too: one ranged, wanted none.
+    const over = lineupView(ROSTER, NIGHT, [], raid, tonight, tonight, {
+      ...targets,
+      bosses: new Map([[101, { tanks: null, healers: 2, melee: null, ranged: null }]])
+    });
+    expect(over.totals[0]!.problems).toContain('1 healer, wants 2');
+    expect(wantsText(targets, 101)).toBe('Wants 3 tanks, 2 melee');
+    expect(wantsText(targets, 102)).toBe('');
+  });
+
   it('leaves a skipped boss out of the counts and checks', () => {
     const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1), nightBoss(102, 2, { skipped: true })], {
       fresh: false,
@@ -489,6 +522,13 @@ type Setup = {
   groups?: PlaceRow[];
   answers?: Answer[];
   targets?: { tanks_wanted: number; healers_wanted: number };
+  bossTargets?: {
+    encounter_id: number;
+    tanks: number | null;
+    healers: number | null;
+    melee: number | null;
+    ranged: number | null;
+  }[];
   rpc?: (name: string, args: Record<string, unknown>) => { data?: unknown; error?: { message: string } } | undefined;
 };
 
@@ -520,6 +560,7 @@ function handlers(person: ReturnType<typeof who>, setup: Setup = PLANNED): FakeH
     raid_night_lineups: () => setup.tonight ?? [],
     boss_groups: () => setup.groups ?? [],
     team_lineup_settings: (read) => (read.single ? (setup.targets ?? null) : setup.targets ? [setup.targets] : []),
+    team_boss_role_targets: () => setup.bossTargets ?? [],
     classes_specs: () => SPECS,
     team_members: () => [{ id: 12, person_id: 7 }],
     characters: () => [{ ...BOSHAM, person_id: 7, realm: 'Illidan', item_level: null }]
@@ -534,7 +575,12 @@ function handlers(person: ReturnType<typeof who>, setup: Setup = PLANNED): FakeH
       if (name === 'team_rsvp_answers') return { data: [] };
       if (name === 'set_raid_night_lineup' || name === 'set_boss_group') return { data: 1 };
       if (name === 'plan_raid_night') return { data: 3 };
-      if (name === 'set_raid_night_boss_skipped' || name === 'set_raid_night_boss_order') return { data: null };
+      if (
+        name === 'set_raid_night_boss_skipped' ||
+        name === 'set_raid_night_boss_order' ||
+        name === 'set_boss_role_targets'
+      )
+        return { data: null };
       return base.rpc!(name, args);
     },
     from(read) {
@@ -649,6 +695,67 @@ describe('the boss lineup tab', () => {
     expect(
       look.getByText(/^18 open spots; 1 tank, wants 2; 1 healer, wants 4; no Mark of the Wild/)
     ).toBeInTheDocument();
+  });
+
+  it('lets an officer set what a boss needs, saved at once, never as an unsaved change (#1682)', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(LINEUP, handlers(who('officer')));
+    const g = await grid();
+    const saveWas = (screen.getByRole('button', { name: 'Save…' }) as HTMLButtonElement).disabled;
+    await user.click(g.getByRole('button', { name: 'What Sszorak needs' }));
+    const panel = within(await screen.findByRole('dialog', { name: 'What Sszorak needs' }));
+    expect(panel.getByText(/^Team targets: 2 tanks, 4 healers\./)).toBeInTheDocument();
+    expect(panel.getByText('up to 20')).toBeInTheDocument();
+    // Nothing of its own yet: nothing to reset.
+    expect(panel.getByRole('button', { name: 'Use team targets' })).toBeDisabled();
+
+    await user.click(panel.getByRole('button', { name: 'One more: tanks' }));
+    await waitFor(() =>
+      expect(rpcs(client, 'set_boss_role_targets')).toEqual([{ p_team_id: 1, p_encounter_id: 102, p_tanks: 3 }])
+    );
+    // Melee starts at Any; + sets a minimum of 1.
+    await user.click(panel.getByRole('button', { name: 'One more: melee' }));
+    await waitFor(() => expect(rpcs(client, 'set_boss_role_targets')).toHaveLength(2));
+    expect(rpcs(client, 'set_boss_role_targets')[1]).toEqual({ p_team_id: 1, p_encounter_id: 102, p_melee: 1 });
+    // A standing setting: the lineup's Save has nothing to save.
+    expect((screen.getByRole('button', { name: 'Save…' }) as HTMLButtonElement).disabled).toBe(saveWas);
+  });
+
+  it('checks a boss with its own targets against them, and shows what it wants (#1682)', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(
+      LINEUP,
+      handlers(who('officer'), {
+        ...PLANNED,
+        bossTargets: [{ encounter_id: 101, tanks: 3, healers: null, melee: 2, ranged: null }]
+      })
+    );
+    const g = await grid();
+    const tanks = g.getByRole('rowheader', { name: 'Tanks · 1' }).closest('tr')!;
+    const cells = [...tanks.querySelectorAll('td')];
+    expect(cells.map((td) => td.textContent)).toEqual(['1/3', '1/2']);
+    expect(cells[0]).toHaveAttribute('data-tone', 'warn');
+    const melee = g.getByRole('rowheader', { name: 'Melee · 1' }).closest('tr')!;
+    expect([...melee.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['0/2', '0']);
+
+    // The blue line reopens the panel, which can put the boss back.
+    await user.click(g.getByRole('button', { name: 'Wants 3 tanks, 2 melee' }));
+    const panel = within(await screen.findByRole('dialog', { name: "What Nek'zali needs" }));
+    await user.click(panel.getByRole('button', { name: 'Use team targets' }));
+    await waitFor(() => expect(rpcs(client, 'set_boss_role_targets')).toEqual([{ p_team_id: 1, p_encounter_id: 101 }]));
+  });
+
+  it('shows a raider what a boss wants, with nothing to change it (#1682)', async () => {
+    renderApp(
+      LINEUP,
+      handlers(who('raider'), {
+        ...PLANNED,
+        bossTargets: [{ encounter_id: 101, tanks: 3, healers: null, melee: null, ranged: null }]
+      })
+    );
+    const g = await grid();
+    expect(g.getByText('Wants 3 tanks')).toBeInTheDocument();
+    expect(g.queryByRole('button', { name: /needs$/ })).not.toBeInTheDocument();
   });
 
   it('names a boss’s missing buffs in the site’s own tip, at once, on hover (#1681)', async () => {

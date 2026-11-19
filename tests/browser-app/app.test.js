@@ -565,6 +565,16 @@ const CAL_LINEUP_PICKED = {
   }
 };
 
+// The same night with a boss that wants its own numbers (#1682): Sszorak
+// wants 3 tanks and 2 melee.
+const CAL_LINEUP_WANTS = {
+  ...CAL_LINEUP,
+  tables: {
+    ...CAL_LINEUP.tables,
+    team_boss_role_targets: [{ encounter_id: 102, tanks: 3, healers: null, melee: 2, ranged: null }]
+  }
+};
+
 // The same night as a raider on the team sees it (#1681): the grid, read-only.
 const CAL_LINEUP_RAIDER = {
   ...CAL_LINEUP,
@@ -1884,6 +1894,18 @@ const STATES = [
     ...CAL_LINEUP,
     colorScheme: 'light',
     click: 'role=button[name="Move Sszorak earlier"]'
+  },
+  // #1682: what a boss needs, its panel and the blue line under its count.
+  {
+    label: 'calendar boss lineup, officer, what a boss needs',
+    ...CAL_LINEUP_WANTS,
+    click: 'role=button[name="What Sszorak needs"]'
+  },
+  {
+    label: 'calendar boss lineup, officer, what a boss needs, light',
+    ...CAL_LINEUP_WANTS,
+    colorScheme: 'light',
+    click: 'role=button[name="What Sszorak needs"]'
   },
   // #1580: the character and spec picker, and a saved pick on the grid.
   { label: 'calendar boss lineup, officer, picking a spec', ...CAL_LINEUP, click: '.blg-swap >> nth=0' },
