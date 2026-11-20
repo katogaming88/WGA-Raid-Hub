@@ -26,6 +26,6 @@ include:
 # and its test were retired and the docs regenerated in tbls' own order.
 #
 # A trigger-order diff in CI now means the docs were regenerated with an
-# older tbls. The schema-docs workflow installs the latest release, so match
-# the local exe to it and regenerate.
+# older tbls. The schema-docs workflow pins tbls (1.96.0 since #1682), so
+# match the local exe to that pin and regenerate.
 sort: true
