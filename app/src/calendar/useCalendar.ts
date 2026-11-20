@@ -400,10 +400,16 @@ export function useRaiderOrder(teamId: number) {
   return useSupabaseQuery<RaiderOrder>([...lineupKey(teamId), 'raider-order'], async (client) => {
     // team-read-guard: at most one row per raider on the team, far under the
     // 1000-row page.
-    const { data, error } = await client.from('team_raider_order').select('player_id, position').eq('team_id', teamId);
+    const { data, error } = await client
+      .from('team_raider_order')
+      .select('player_id, role, position')
+      .eq('team_id', teamId);
     return error
       ? { data: null, error }
-      : { data: new Map((data ?? []).map((r) => [r.player_id, r.position])), error: null };
+      : {
+          data: new Map((data ?? []).map((r) => [r.player_id, { role: r.role as Role, position: r.position }])),
+          error: null
+        };
   });
 }
 

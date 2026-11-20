@@ -120,7 +120,7 @@
 | [public.news_posts](public.news_posts.md) | 14 | News posts (#1523), site-wide. published_at null: a draft, which only Staff (is_site_admin()) read. Written by Staff on the site (#1230); the news.json entries were copied in by this table's migration. | BASE TABLE |
 | [public.team_boss_order](public.team_boss_order.md) | 4 | The order a team pulls its bosses in (#1679), saved from Boss Lineup with "every night after". New raid nights fill in this order; a boss with no row fills after, in the game's order. Written and read only by the lineup functions. | BASE TABLE |
 | [public.team_boss_role_targets](public.team_boss_role_targets.md) | 7 | What one boss needs for a team (#1682): tanks, healers, melee and ranged counts for the boss lineup's checks. A null tanks or healers uses the team's target (team_lineup_settings); a null melee or ranged means no target. A boss with no row uses the team's targets. Written only by set_boss_role_targets(). | BASE TABLE |
-| [public.team_raider_order](public.team_raider_order.md) | 4 | The order a team lists its raiders in within a role section of Boss Lineup (#1683); position counts from 1 within the raider's role. A raider with no row lists after the placed ones, A-Z. Written only by set_lineup_raider_order(). | BASE TABLE |
+| [public.team_raider_order](public.team_raider_order.md) | 5 | The order a team lists its raiders in within a role section of Boss Lineup (#1683); role is the section the raider was placed in, and position counts from 1 within it. A raider with no row lists after the placed ones, A-Z. Written only by set_lineup_raider_order(). | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -1828,6 +1828,7 @@ erDiagram
 "public.team_raider_order" {
   integer team_id FK
   integer player_id FK
+  text role
   integer position
   timestamp_with_time_zone updated_at
 }

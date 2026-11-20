@@ -36,6 +36,66 @@ const orderOf = async (q, team = 1) =>
   ).rows.map((r) => [r.player_id, r.position]);
 
 describe('set_lineup_raider_order()', () => {
+  it('keeps the role a raider was placed in: a raider who changes role leaves a row the next save of either section clears', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { a, b, m } = await seed(q);
+      await setOrder(asUser, OFFICER_T1, 'Ranged', [a, b]);
+      const roles = async () =>
+        (await q('select player_id, role from public.team_raider_order order by position')).rows.map((r) => [
+          r.player_id,
+          r.role
+        ]);
+      expect((await roles()).sort()).toEqual(
+        [
+          [a, 'Ranged'],
+          [b, 'Ranged']
+        ].sort()
+      );
+      // a moves to Melee: the page ignores a's Ranged row; ordering Melee replaces it.
+      const melee = (await q('select class_spec_id from public.players where id = $1', [m])).rows[0].class_spec_id;
+      await q('update public.players set class_spec_id = $1 where id = $2', [melee, a]);
+      await setOrder(asUser, OFFICER_T1, 'Melee', [m, a]);
+      expect((await roles()).sort()).toEqual(
+        [
+          [b, 'Ranged'],
+          [m, 'Melee'],
+          [a, 'Melee']
+        ].sort()
+      );
+      // Ordering Ranged clears nothing of Melee's.
+      await setOrder(asUser, OFFICER_T1, 'Ranged', []);
+      expect((await roles()).sort()).toEqual(
+        [
+          [m, 'Melee'],
+          [a, 'Melee']
+        ].sort()
+      );
+    });
+  });
+
+  it('refuses an archived raider', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { a, b } = await seed(q);
+      await q('update public.players set archived_at = now() where id = $1', [b]);
+      await expect(setOrder(asUser, OFFICER_T1, 'Ranged', [a, b])).rejects.toThrow(/on the roster/);
+      expect(await orderOf(q)).toEqual([]);
+    });
+  });
+
+  it('writes the role and the raiders, in order, to the audit log', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { a, b } = await seed(q);
+      await setOrder(asUser, OFFICER_T1, 'Ranged', [b, a]);
+      const names = (
+        await q('select name_realm from public.players where id = any($1) order by array_position($1::int[], id)', [
+          [b, a]
+        ])
+      ).rows.map((r) => r.name_realm);
+      const detail = (await q("select detail from public.audit_log where action = 'Set Raider Order'")).rows[0].detail;
+      expect(detail).toEqual({ role: 'Ranged', raiders: names });
+    });
+  });
+
   it('lets the team officer, team leader and a site admin place a section, and an empty list puts it back to A-Z', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { a, b, c } = await seed(q);
@@ -71,8 +131,8 @@ describe('set_lineup_raider_order()', () => {
     await withTxn(async ({ q, asUser }) => {
       const { a, m, other } = await seed(q);
       await expect(setOrder(asUser, OFFICER_T1, 'Ranged', [a, a])).rejects.toThrow(/only once/);
-      await expect(setOrder(asUser, OFFICER_T1, 'Ranged', [a, other])).rejects.toThrow(/on this team and in the/);
-      await expect(setOrder(asUser, OFFICER_T1, 'Ranged', [a, m])).rejects.toThrow(/on this team and in the/);
+      await expect(setOrder(asUser, OFFICER_T1, 'Ranged', [a, other])).rejects.toThrow(/on this team, on the roster and in the/);
+      await expect(setOrder(asUser, OFFICER_T1, 'Ranged', [a, m])).rejects.toThrow(/on this team, on the roster and in the/);
       await expect(setOrder(asUser, OFFICER_T1, 'Bard', [a])).rejects.toThrow(/no such role/);
       await expect(setOrder(asUser, SITE_ADMIN, 'Ranged', [a], 999999)).rejects.toThrow(/no such team/);
       expect(await orderOf(q)).toEqual([]);
@@ -111,7 +171,11 @@ describe('set_lineup_raider_order()', () => {
       expect((await asUser(OFFICER_T2, read)).rows).toEqual([]);
       expect((await asAnon(read)).rows).toEqual([]);
       await expect(
-        asUser(OFFICER_T1, 'insert into public.team_raider_order (team_id, player_id, position) values (1, $1, 9)', [a])
+        asUser(
+          OFFICER_T1,
+          "insert into public.team_raider_order (team_id, player_id, role, position) values (1, $1, 'Ranged', 9)",
+          [a]
+        )
       ).rejects.toThrow(/permission denied/);
     });
   });

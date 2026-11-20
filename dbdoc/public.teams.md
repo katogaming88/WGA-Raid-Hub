@@ -717,6 +717,7 @@ erDiagram
 "public.team_raider_order" {
   integer team_id FK
   integer player_id FK
+  text role
   integer position
   timestamp_with_time_zone updated_at
 }

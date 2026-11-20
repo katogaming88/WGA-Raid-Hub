@@ -15312,7 +15312,7 @@
     {
       "name": "public.team_raider_order",
       "type": "BASE TABLE",
-      "comment": "The order a team lists its raiders in within a role section of Boss Lineup (#1683); position counts from 1 within the raider's role. A raider with no row lists after the placed ones, A-Z. Written only by set_lineup_raider_order().",
+      "comment": "The order a team lists its raiders in within a role section of Boss Lineup (#1683); role is the section the raider was placed in, and position counts from 1 within it. A raider with no row lists after the placed ones, A-Z. Written only by set_lineup_raider_order().",
       "columns": [
         {
           "name": "team_id",
@@ -15322,6 +15322,11 @@
         {
           "name": "player_id",
           "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "role",
+          "type": "text",
           "nullable": false
         },
         {
@@ -15364,6 +15369,16 @@
           "referenced_table": "",
           "columns": [
             "position"
+          ]
+        },
+        {
+          "name": "team_raider_order_role_check",
+          "type": "CHECK",
+          "def": "CHECK ((role = ANY (ARRAY['Tank'::text, 'Heal'::text, 'Melee'::text, 'Ranged'::text])))",
+          "table": "public.team_raider_order",
+          "referenced_table": "",
+          "columns": [
+            "role"
           ]
         },
         {

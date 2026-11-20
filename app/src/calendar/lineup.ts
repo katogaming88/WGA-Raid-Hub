@@ -249,13 +249,18 @@ export function moveBoss(order: number[], id: number, onto: number): number[] {
   return [...rest.slice(0, at), id, ...rest.slice(at)];
 }
 
-// The team's saved raider order (#1683): player id to place within its role.
-export type RaiderOrder = ReadonlyMap<number, number>;
+// The team's saved raider order (#1683): player id to the role section they
+// were placed in and their place there.
+export type RaiderOrder = ReadonlyMap<number, { role: Role; position: number }>;
 
 // A section's rows in the team's order: the placed raiders first, then the
 // rest in the order given (A-Z), so a raider who joined later lists last.
-export function inRaiderOrder<T>(rows: T[], idOf: (row: T) => number, order: RaiderOrder): T[] {
-  const place = (row: T) => order.get(idOf(row)) ?? Number.MAX_SAFE_INTEGER;
+// A place saved in another role (the raider changed role since) doesn't count.
+export function inRaiderOrder<T>(rows: T[], idOf: (row: T) => number, order: RaiderOrder, role: Role): T[] {
+  const place = (row: T) => {
+    const saved = order.get(idOf(row));
+    return saved?.role === role ? saved.position : Number.MAX_SAFE_INTEGER;
+  };
   return [...rows].sort((a, b) => place(a) - place(b));
 }
 
@@ -630,11 +635,12 @@ export function lineupView(
     groups: ROLE_ORDER.map((role) => ({
       role,
       label: ROLE_LABELS[role],
-      ordered: rows.some((r) => r.role === role && raiderOrder.has(r.player.id)),
+      ordered: rows.some((r) => r.role === role && raiderOrder.get(r.player.id)?.role === role),
       rows: inRaiderOrder(
         rows.filter((r) => r.role === role),
         (r) => r.player.id,
-        raiderOrder
+        raiderOrder,
+        role
       ).map(rowOf)
     })).filter((g) => g.rows.length),
     live,

@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers, type Read } from '../test/fakeSupabase';
-import type { PlayerRow } from '../roster/roster';
+import type { PlayerRow, Role } from '../roster/roster';
 import type { Answer, RaidNight } from './calendar';
 import {
   inRaiderOrder,
@@ -542,7 +542,7 @@ type Setup = {
     melee: number | null;
     ranged: number | null;
   }[];
-  raiderOrder?: { player_id: number; position: number }[];
+  raiderOrder?: { player_id: number; role: string; position: number }[];
   rpc?: (name: string, args: Record<string, unknown>) => { data?: unknown; error?: { message: string } } | undefined;
 };
 
@@ -993,7 +993,13 @@ describe('the boss lineup tab', () => {
   });
 
   it('lists a section A-Z, then in the team order with new raiders last (#1683)', () => {
-    const ids = (order: [number, number][]) => inRaiderOrder([3, 5, 7], (x) => x, new Map(order));
+    const ids = (order: [number, number][], role: Role = 'Ranged') =>
+      inRaiderOrder(
+        [3, 5, 7],
+        (x) => x,
+        new Map(order.map(([id, position]) => [id, { role: 'Ranged' as Role, position }])),
+        role
+      );
     expect(ids([])).toEqual([3, 5, 7]);
     expect(
       ids([
@@ -1002,6 +1008,8 @@ describe('the boss lineup tab', () => {
       ])
     ).toEqual([5, 3, 7]);
     expect(ids([[7, 1]])).toEqual([7, 3, 5]);
+    // A place saved in another role is ignored.
+    expect(ids([[7, 1]], 'Melee')).toEqual([3, 5, 7]);
   });
 
   it('moves a raider by the arrows within their section, saving at once for the team (#1683)', async () => {
@@ -1050,8 +1058,8 @@ describe('the boss lineup tab', () => {
       handlers(who('officer'), {
         ...PLANNED,
         raiderOrder: [
-          { player_id: 5, position: 1 },
-          { player_id: 3, position: 2 }
+          { player_id: 5, role: 'Ranged', position: 1 },
+          { player_id: 3, role: 'Ranged', position: 2 }
         ]
       })
     );
@@ -1070,8 +1078,8 @@ describe('the boss lineup tab', () => {
       handlers(who('raider'), {
         ...PLANNED,
         raiderOrder: [
-          { player_id: 5, position: 1 },
-          { player_id: 3, position: 2 }
+          { player_id: 5, role: 'Ranged', position: 1 },
+          { player_id: 3, role: 'Ranged', position: 2 }
         ]
       })
     );

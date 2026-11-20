@@ -4843,18 +4843,21 @@ export type Database = {
         Row: {
           player_id: number
           position: number
+          role: string
           team_id: number
           updated_at: string
         }
         Insert: {
           player_id: number
           position: number
+          role: string
           team_id: number
           updated_at?: string
         }
         Update: {
           player_id?: number
           position?: number
+          role?: string
           team_id?: number
           updated_at?: string
         }

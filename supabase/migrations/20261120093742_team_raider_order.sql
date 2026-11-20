@@ -5,21 +5,23 @@
 -- and raider, a standing setting that saves the moment it is moved (Kat,
 -- 2026-10-27), never part of the lineup's Save.
 --
--- team_raider_order: one row per team and raider that has been placed. A
--- section with no rows is A-Z; a raider with no row (joined after) lists
+-- team_raider_order: one row per team and raider that has been placed, with
+-- the role section it was placed in (a raider who changes role is no longer
+-- in that section, so the page ignores the row). A section with no rows is A-Z; a raider with no row (joined after) lists
 -- after the placed ones, A-Z among the other new raiders. Sort A-Z deletes
 -- the section's rows.
 
 create table public.team_raider_order (
   team_id integer not null references public.teams (id) on delete cascade,
   player_id integer not null references public.players (id) on delete cascade,
+  role text not null check (role in ('Tank', 'Heal', 'Melee', 'Ranged')),
   position integer not null check (position > 0),
   updated_at timestamp with time zone not null default now(),
   primary key (team_id, player_id)
 );
 
 comment on table public.team_raider_order is
-  'The order a team lists its raiders in within a role section of Boss Lineup (#1683); position counts from 1 within the raider''s role. A raider with no row lists after the placed ones, A-Z. Written only by set_lineup_raider_order().';
+  'The order a team lists its raiders in within a role section of Boss Lineup (#1683); role is the section the raider was placed in, and position counts from 1 within it. A raider with no row lists after the placed ones, A-Z. Written only by set_lineup_raider_order().';
 
 create index team_raider_order_player_id_idx on public.team_raider_order (player_id);
 
@@ -90,25 +92,25 @@ begin
       select 1
       from players p
       join classes_specs cs on cs.id = p.class_spec_id
-      where p.id = x and p.team_id = p_team_id and cs.role = p_role
+      where p.id = x and p.team_id = p_team_id and p.archived_at is null and cs.role = p_role
     )
   ) then
-    raise exception 'Every raider has to be on this team and in the % section.', p_role;
+    raise exception 'Every raider has to be on this team, on the roster and in the % section.', p_role;
   end if;
 
   -- Two officers moving at once: the later move wins, whole.
   perform pg_advisory_xact_lock(hashtext('raider_order'), p_team_id);
 
+  -- The section's old rows: those placed in it, and any raider now in it.
   delete from team_raider_order o
-  using players p, classes_specs cs
-  where o.team_id = p_team_id and p.id = o.player_id and cs.id = p.class_spec_id and cs.role = p_role;
+  where o.team_id = p_team_id
+    and (o.role = p_role
+         or exists (
+           select 1 from players p join classes_specs cs on cs.id = p.class_spec_id
+           where p.id = o.player_id and cs.role = p_role));
 
-  -- Also a raider who changed spec to another role since being placed.
-  delete from team_raider_order o
-  where o.team_id = p_team_id and o.player_id = any (p_player_ids);
-
-  insert into team_raider_order (team_id, player_id, position)
-  select p_team_id, o.player_id, o.ord
+  insert into team_raider_order (team_id, player_id, role, position)
+  select p_team_id, o.player_id, p_role, o.ord
   from unnest(p_player_ids) with ordinality as o(player_id, ord);
 
   perform public.write_audit_log(

@@ -42,25 +42,25 @@ begin
       select 1
       from players p
       join classes_specs cs on cs.id = p.class_spec_id
-      where p.id = x and p.team_id = p_team_id and cs.role = p_role
+      where p.id = x and p.team_id = p_team_id and p.archived_at is null and cs.role = p_role
     )
   ) then
-    raise exception 'Every raider has to be on this team and in the % section.', p_role;
+    raise exception 'Every raider has to be on this team, on the roster and in the % section.', p_role;
   end if;
 
   -- Two officers moving at once: the later move wins, whole.
   perform pg_advisory_xact_lock(hashtext('raider_order'), p_team_id);
 
+  -- The section's old rows: those placed in it, and any raider now in it.
   delete from team_raider_order o
-  using players p, classes_specs cs
-  where o.team_id = p_team_id and p.id = o.player_id and cs.id = p.class_spec_id and cs.role = p_role;
+  where o.team_id = p_team_id
+    and (o.role = p_role
+         or exists (
+           select 1 from players p join classes_specs cs on cs.id = p.class_spec_id
+           where p.id = o.player_id and cs.role = p_role));
 
-  -- Also a raider who changed spec to another role since being placed.
-  delete from team_raider_order o
-  where o.team_id = p_team_id and o.player_id = any (p_player_ids);
-
-  insert into team_raider_order (team_id, player_id, position)
-  select p_team_id, o.player_id, o.ord
+  insert into team_raider_order (team_id, player_id, role, position)
+  select p_team_id, o.player_id, p_role, o.ord
   from unnest(p_player_ids) with ordinality as o(player_id, ord);
 
   perform public.write_audit_log(

@@ -2,7 +2,7 @@
 
 ## Description
 
-The order a team lists its raiders in within a role section of Boss Lineup (#1683); position counts from 1 within the raider's role. A raider with no row lists after the placed ones, A-Z. Written only by set_lineup_raider_order().
+The order a team lists its raiders in within a role section of Boss Lineup (#1683); role is the section the raider was placed in, and position counts from 1 within it. A raider with no row lists after the placed ones, A-Z. Written only by set_lineup_raider_order().
 
 ## Columns
 
@@ -10,6 +10,7 @@ The order a team lists its raiders in within a role section of Boss Lineup (#168
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | player_id | integer |  | false |  | [public.players](public.players.md) |  |
+| role | text |  | false |  |  |  |
 | position | integer |  | false |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
 
@@ -18,6 +19,7 @@ The order a team lists its raiders in within a role section of Boss Lineup (#168
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | team_raider_order_position_check | CHECK | CHECK (("position" > 0)) |
+| team_raider_order_role_check | CHECK | CHECK ((role = ANY (ARRAY['Tank'::text, 'Heal'::text, 'Melee'::text, 'Ranged'::text]))) |
 | team_raider_order_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
 | team_raider_order_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | team_raider_order_pkey | PRIMARY KEY | PRIMARY KEY (team_id, player_id) |
@@ -40,6 +42,7 @@ erDiagram
 "public.team_raider_order" {
   integer team_id FK
   integer player_id FK
+  text role
   integer position
   timestamp_with_time_zone updated_at
 }
