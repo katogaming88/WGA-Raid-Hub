@@ -353,7 +353,7 @@ describe('the lineup rules', () => {
     expect(noTanksWanted.totals[0]!.problems.some((p) => p.includes('tank'))).toBe(false);
   });
 
-  it('checks a boss against its own targets, short or over, and the team’s where it has none (#1682)', () => {
+  it('checks a boss against its own targets, and the team’s where it has none (#1682)', () => {
     const raid = lineupRaids(ENCOUNTERS, [nightBoss(101, 1), nightBoss(102, 2)], { fresh: false, season: 'S1' })[0]!;
     // Ana tanks, Bo heals, Cy is ranged, Di is melee, on both bosses.
     const tonight = placesOf(
@@ -370,7 +370,7 @@ describe('the lineup rules', () => {
     const view = lineupView(ROSTER, NIGHT, [], raid, tonight, tonight, targets);
     const [own, team] = view.totals;
     expect(own!.wants).toEqual({ Tank: 3, Heal: 1, Melee: 2, Ranged: null });
-    expect(own!.problems).toEqual(expect.arrayContaining(['1 tank, wants 3', '1 melee, wants 2']));
+    expect(own!.problems).toEqual(expect.arrayContaining(['1 tank, wants 3', '1 melee, wants at least 2']));
     expect(own!.problems.some((p) => /healer|ranged/.test(p))).toBe(false);
     // The other boss has nothing of its own: the team's 1 and 1, no melee count.
     expect(team!.wants).toEqual({ Tank: 1, Heal: 1, Melee: null, Ranged: null });
@@ -381,6 +381,18 @@ describe('the lineup rules', () => {
       bosses: new Map([[101, { tanks: null, healers: 2, melee: null, ranged: null }]])
     });
     expect(over.totals[0]!.problems).toContain('1 healer, wants 2');
+    // Melee and ranged are a minimum: more than wanted is fine (Kat).
+    const plenty = lineupView(ROSTER, NIGHT, [], raid, tonight, tonight, {
+      ...targets,
+      bosses: new Map([[101, { tanks: null, healers: null, melee: null, ranged: 1 }]])
+    });
+    expect(plenty.totals[0]!.wants.Ranged).toBe(1);
+    expect(plenty.totals[0]!.problems.some((p) => p.includes('ranged'))).toBe(false);
+    const short = lineupView(ROSTER, NIGHT, [], raid, tonight, tonight, {
+      ...targets,
+      bosses: new Map([[101, { tanks: null, healers: null, melee: null, ranged: 3 }]])
+    });
+    expect(short.totals[0]!.problems).toContain('1 ranged, wants at least 3');
     expect(wantsText(targets, 101)).toBe('Wants 3 tanks, 2 melee');
     expect(wantsText(targets, 102)).toBe('');
   });

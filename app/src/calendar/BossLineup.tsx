@@ -59,6 +59,7 @@ import {
   type SeasonRow,
   type BossTargets,
   NO_BOSS_TARGETS,
+  roleOff,
   wantsOf,
   wantsText
 } from './lineup';
@@ -579,8 +580,8 @@ function Lineup({
         }}
         onSkip={canEdit && planned && !touch ? onSkip : null}
         onMove={canEdit && planned && !touch && !busy ? onMove : null}
-        // Saves at once, like Skip, so on a computer only.
-        onNeeds={canEdit && !touch ? setNeedsFor : null}
+        // On any device, though it saves at once (Kat, #1682).
+        onNeeds={canEdit ? setNeedsFor : null}
       />
 
       {needsFor && <BossNeeds boss={needsFor} targets={targets} onClose={() => setNeedsFor(null)} />}
@@ -674,7 +675,7 @@ function TipBody({ tip }: { tip: Tip }) {
   );
   const against = (n: number, target: number | null) => (target ? `${n}/${target}` : String(n));
   const role = (label: string, r: Role) =>
-    row(label, against(t.roles[r], t.wants[r]), !!t.wants[r] && t.roles[r] !== t.wants[r]);
+    row(label, against(t.roles[r], t.wants[r]), roleOff(r, t.roles[r], t.wants[r]));
   return (
     <>
       <strong>
@@ -1012,7 +1013,7 @@ function RaidGrid({
                     return (
                       <td
                         key={boss.id}
-                        data-tone={t && target && n !== target ? 'warn' : undefined}
+                        data-tone={t && roleOff(g.role, n, target ?? null) ? 'warn' : undefined}
                         {...hotProps(boss.id)}
                       >
                         {t ? (target ? `${n}/${target}` : n) : ''}
@@ -1250,7 +1251,7 @@ function RaidGrid({
 // them, or puts them in if they were out.
 // "What Ula'tek needs" (#1682, board D): a boss's standing tanks, healers,
 // melee and ranged, for every night. Each - or + saves at once, so it never
-// shows as an unsaved change (Kat, 2026-10-27). Tanks and healers start at the
+// shows as an unsaved change (Kat, 2026-10-27); melee and ranged are minimums. Tanks and healers start at the
 // team's targets and stop at 0; melee and ranged start at Any and step down to
 // it from 1.
 const NEEDS_ROWS: { label: string; role: Role; key: keyof BossTargets }[] = [

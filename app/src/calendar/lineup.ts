@@ -493,10 +493,19 @@ const providersOf = (buff: Buff, inn: Raider[]) =>
     .filter((r) => brings(buff, r.player.classes_specs?.class ?? '', r.player.classes_specs?.spec ?? ''))
     .map((r) => r.name);
 
-// "1 tank, wants 2": a role short of, or over, the boss's target. A target
-// of 0 or none means that role isn't counted.
+// Tanks and healers want an exact count, short or over; melee and ranged
+// are a minimum, so only short is a problem (Kat, #1682). A target of 0 or
+// none means that role isn't counted.
+export const roleOff = (role: Role, n: number, target: number | null) =>
+  !!target && (role === 'Melee' || role === 'Ranged' ? n < target : n !== target);
+
+// "1 tank, wants 2", "3 ranged, wants at least 6".
 const roleCheck = (n: number, target: number | null, role: Role) =>
-  !target || n === target ? [] : [`${n === 0 ? `no ${ROLE_WORDS[role][1]}` : count(n, role)}, wants ${target}`];
+  !roleOff(role, n, target)
+    ? []
+    : [
+        `${n === 0 ? `no ${ROLE_WORDS[role][1]}` : count(n, role)}, wants ${role === 'Melee' || role === 'Ranged' ? 'at least ' : ''}${target}`
+      ];
 
 // One boss's count, role mix, missing buffs and warnings, for whoever is in.
 function totalOf(boss: LineupBoss, inn: Raider[], targets: RoleTargets): BossTotal {
