@@ -131,8 +131,12 @@ describe('set_lineup_raider_order()', () => {
     await withTxn(async ({ q, asUser }) => {
       const { a, m, other } = await seed(q);
       await expect(setOrder(asUser, OFFICER_T1, 'Ranged', [a, a])).rejects.toThrow(/only once/);
-      await expect(setOrder(asUser, OFFICER_T1, 'Ranged', [a, other])).rejects.toThrow(/on this team, on the roster and in the/);
-      await expect(setOrder(asUser, OFFICER_T1, 'Ranged', [a, m])).rejects.toThrow(/on this team, on the roster and in the/);
+      await expect(setOrder(asUser, OFFICER_T1, 'Ranged', [a, other])).rejects.toThrow(
+        /on this team, on the roster and in the/
+      );
+      await expect(setOrder(asUser, OFFICER_T1, 'Ranged', [a, m])).rejects.toThrow(
+        /on this team, on the roster and in the/
+      );
       await expect(setOrder(asUser, OFFICER_T1, 'Bard', [a])).rejects.toThrow(/no such role/);
       await expect(setOrder(asUser, SITE_ADMIN, 'Ranged', [a], 999999)).rejects.toThrow(/no such team/);
       expect(await orderOf(q)).toEqual([]);
