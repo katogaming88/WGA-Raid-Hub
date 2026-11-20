@@ -20,6 +20,10 @@ begin
     raise exception 'Not authorized';
   end if;
 
+  if not exists (select 1 from teams where id = p_team_id) then
+    raise exception 'There is no such team.';
+  end if;
+
   if not exists (select 1 from raid_encounters where id = p_encounter_id) then
     raise exception 'There is no such boss.';
   end if;
