@@ -2539,14 +2539,30 @@ tr[data-dragging] .blg-raider-box {
   opacity: 0.5;
 }
 
-tr[data-drop='before'] > th,
-tr[data-drop='before'] > td {
-  box-shadow: inset 0 3px 0 var(--brand);
+tr[data-drop] > td {
+  position: relative;
 }
 
-tr[data-drop='after'] > th,
-tr[data-drop='after'] > td {
-  box-shadow: inset 0 -3px 0 var(--brand);
+tr[data-drop] > th::after,
+tr[data-drop] > td::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  height: 3px;
+  background: var(--brand);
+  pointer-events: none;
+}
+
+tr[data-drop='before'] > th::after,
+tr[data-drop='before'] > td::after {
+  top: 0;
+}
+
+tr[data-drop='after'] > th::after,
+tr[data-drop='after'] > td::after {
+  bottom: 0;
 }
 
 .blg-raider-move {
