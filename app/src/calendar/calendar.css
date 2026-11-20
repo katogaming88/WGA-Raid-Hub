@@ -2527,3 +2527,79 @@ button.blg-cell[data-in='false']:hover:not(:disabled) {
 .night-difficulty {
   font-size: var(--text-xs);
 }
+
+/* Ordering raiders within a role section (#1683, Kat's #1680 board D): a name
+   drags, its arrows show on hover or keyboard focus, and a blue line along
+   the row's edge marks where it lands. Sort A-Z sits in the section header. */
+.blg-raider-box[draggable='true'] {
+  cursor: grab;
+}
+
+tr[data-dragging] .blg-raider-box {
+  opacity: 0.5;
+}
+
+tr[data-drop] > td {
+  position: relative;
+}
+
+tr[data-drop] > th::after,
+tr[data-drop] > td::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  height: 3px;
+  background: var(--brand);
+  pointer-events: none;
+}
+
+tr[data-drop='before'] > th::after,
+tr[data-drop='before'] > td::after {
+  top: 0;
+}
+
+tr[data-drop='after'] > th::after,
+tr[data-drop='after'] > td::after {
+  bottom: 0;
+}
+
+.blg-raider-move {
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+}
+
+.blg-raider-box:hover .blg-raider-move,
+.blg-raider-box:focus-within .blg-raider-move {
+  opacity: 1;
+}
+
+.blg-raider-move button {
+  position: relative;
+  z-index: 1;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: 8px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.blg-raider-move button:disabled {
+  visibility: hidden;
+}
+
+.blg-sort {
+  margin-left: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  cursor: pointer;
+}

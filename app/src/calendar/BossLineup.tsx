@@ -36,6 +36,7 @@ import {
   placesOf,
   playOf,
   playWords,
+  type RaiderOrder,
   sameOrder,
   samePicks,
   sameSet,
@@ -74,7 +75,9 @@ import {
   useSaveCellStyle,
   useSaveGroups,
   useSaveNight,
+  useRaiderOrder,
   useSaveOrder,
+  useSaveRaiderOrder,
   useSeasons,
   useSetBossTargets,
   useSkipBoss,
@@ -107,11 +110,11 @@ export function BossLineup({
   const team = useTeam();
   const lookups = bothQueries(useSeasons(), useEncounters());
   const plan = bothQueries(useNightPlan(team.id, night.date), useBossGroups(team.id));
-  const targets = useLineupRoleTargets(team.id);
+  const targets = bothQueries(useLineupRoleTargets(team.id), useRaiderOrder(team.id));
 
   return (
     <DataState query={bothQueries(bothQueries(lookups, plan), targets)} label="the boss lineup">
-      {([[[seasons, encounters], [nightPlan, groups]], roleTargets]) => (
+      {([[[seasons, encounters], [nightPlan, groups]], [roleTargets, raiderOrder]]) => (
         <Lineup
           night={night}
           players={players}
@@ -121,6 +124,7 @@ export function BossLineup({
           plan={nightPlan}
           groups={groups}
           targets={roleTargets}
+          raiderOrder={raiderOrder}
           canEdit={canEdit}
         />
       )}
@@ -145,6 +149,7 @@ function Lineup({
   plan,
   groups,
   targets,
+  raiderOrder,
   canEdit
 }: {
   night: RaidNight;
@@ -155,6 +160,7 @@ function Lineup({
   plan: NightPlan;
   groups: PlaceRow[];
   targets: RoleTargets;
+  raiderOrder: RaiderOrder;
   canEdit: boolean;
 }) {
   const team = useTeam();
@@ -183,11 +189,17 @@ function Lineup({
   const saveNight = useSaveNight(team.id, night.date);
   const saveGroups = useSaveGroups(team.id, night.date);
   const saveOrder = useSaveOrder(team.id, night.date);
+  const saveRaiders = useSaveRaiderOrder(team.id);
   const queryClient = useQueryClient();
   const planNight = usePlanNight(team.id, night.date);
   const skip = useSkipBoss(team.id, night.date);
   const busy =
-    saveNight.isPending || saveGroups.isPending || saveOrder.isPending || planNight.isPending || skip.isPending;
+    saveNight.isPending ||
+    saveGroups.isPending ||
+    saveOrder.isPending ||
+    saveRaiders.isPending ||
+    planNight.isPending ||
+    skip.isPending;
   const cellStyle = picked ?? savedStyle.data ?? 'names';
 
   const season = seasonOn(seasons, night.date);
@@ -447,6 +459,14 @@ function Lineup({
     setStale([]);
   };
 
+  // A raider's place in their role section (#1683) saves at once, for the whole
+  // team; an empty list puts the section back to A-Z.
+  const onRaiders = (role: Role, playerIds: number[]) =>
+    saveRaiders.mutate(
+      { role, playerIds },
+      { onError: (e) => announce('error', `The raider order didn’t save: ${e.message}`) }
+    );
+
   const onPickPlay = (boss: LineupBoss, player: PlayerRow, pick: Pick | null) => {
     setPickEdits((e) => setPick(savedPicks, e, boss.id, player.id, pick));
     if (!placesFor(places, boss.id).has(player.id)) setEdits((e) => toggle(saved, e, boss.id, player.id));
@@ -580,6 +600,8 @@ function Lineup({
         }}
         onSkip={canEdit && planned && !touch ? onSkip : null}
         onMove={canEdit && planned && !touch && !busy ? onMove : null}
+        raiderOrder={raiderOrder}
+        onRaiders={canEdit && !touch && !busy ? onRaiders : null}
         // On any device, though it saves at once (Kat, #1682).
         onNeeds={canEdit ? setNeedsFor : null}
       />
@@ -723,6 +745,8 @@ function RaidGrid({
   onWholeNight,
   onSkip,
   onMove,
+  raiderOrder,
+  onRaiders,
   onNeeds
 }: {
   raid: LineupRaid;
@@ -745,6 +769,9 @@ function RaidGrid({
   onSkip: ((boss: LineupBoss) => void) | null;
   // Moves a boss onto another's place (#1679); null when this viewer can't.
   onMove: ((id: number, onto: number) => void) | null;
+  raiderOrder: RaiderOrder;
+  // Saves one role section's order (#1683); null when this viewer can't.
+  onRaiders: ((role: Role, playerIds: number[]) => void) | null;
   // Opens a boss's standing targets (#1682); null when this viewer can't.
   onNeeds: ((boss: LineupBoss) => void) | null;
 }) {
@@ -756,6 +783,9 @@ function RaidGrid({
   // the boss under the pointer.
   const [dragging, setDragging] = useState<number | null>(null);
   const [drop, setDrop] = useState<{ id: number; side: 'before' | 'after' } | null>(null);
+  // The raider being dragged and the one under it, within their section.
+  const [raiderDrag, setRaiderDrag] = useState<{ id: number; role: Role } | null>(null);
+  const [raiderDrop, setRaiderDrop] = useState<{ id: number; side: 'before' | 'after' } | null>(null);
   // A scroll moves what the tip points at; it closes rather than drift.
   useEffect(() => {
     if (!tip) return;
@@ -771,7 +801,7 @@ function RaidGrid({
           onMouseLeave: () => setTip(null)
         }
       : {};
-  const view = lineupView(players, night, answers, raid, places, usual, targets, picks, plays, usualPicks);
+  const view = lineupView(players, night, answers, raid, places, usual, targets, picks, plays, usualPicks, raiderOrder);
   const totals = new Map(view.totals.map((t) => [t.boss.id, t]));
   const gaps = view.totals.filter((t) => t.problems.length);
   const liveCount = view.live.length;
@@ -1005,6 +1035,16 @@ function RaidGrid({
                 <tr className="blg-group">
                   <th scope="rowgroup">
                     {g.label} · {g.rows.length}
+                    {onRaiders && g.ordered && (
+                      <button
+                        type="button"
+                        className="blg-sort"
+                        aria-label={`Sort ${g.label} A to Z`}
+                        onClick={() => onRaiders(g.role, [])}
+                      >
+                        Sort A–Z
+                      </button>
+                    )}
                   </th>
                   {raid.bosses.map((boss) => {
                     const t = totals.get(boss.id);
@@ -1027,12 +1067,55 @@ function RaidGrid({
                   const color = classColor(spec?.class ?? '');
                   const icon = specIcon(spec?.class ?? null, spec?.spec ?? null);
                   const off = r.count === 0;
+                  const id = r.row.player.id;
+                  const ids = g.rows.map((x) => x.row.player.id);
+                  const at = ids.indexOf(id);
+                  const move = (onto: number) => onRaiders?.(g.role, moveBoss(ids, id, onto));
+                  const dropOn = raiderDrag?.role === g.role && raiderDrop?.id === id ? raiderDrop.side : undefined;
                   return (
-                    <tr key={r.row.player.id}>
+                    <tr
+                      key={id}
+                      data-drop={dropOn}
+                      data-dragging={raiderDrag?.id === id || undefined}
+                      {...(onRaiders
+                        ? {
+                            onDragOver: (e: DragEvent<HTMLElement>) => {
+                              // Only within the section being dragged.
+                              if (raiderDrag?.role !== g.role) return;
+                              e.preventDefault();
+                              const from = ids.indexOf(raiderDrag.id);
+                              setRaiderDrop(raiderDrag.id === id ? null : { id, side: at > from ? 'after' : 'before' });
+                            },
+                            onDrop: (e: DragEvent<HTMLElement>) => {
+                              if (raiderDrag?.role !== g.role) return;
+                              e.preventDefault();
+                              if (raiderDrag.id !== id) onRaiders(g.role, moveBoss(ids, raiderDrag.id, id));
+                              setRaiderDrag(null);
+                              setRaiderDrop(null);
+                            }
+                          }
+                        : {})}
+                    >
                       <th scope="row" className="blg-raider" data-off={off}>
                         {/* Only the name is the button, so what it says matches
                             what it shows; it stretches over the whole box. */}
-                        <span className="blg-raider-box">
+                        <span
+                          className="blg-raider-box"
+                          {...(onRaiders
+                            ? {
+                                draggable: true,
+                                onDragStart: (e: DragEvent<HTMLElement>) => {
+                                  e.dataTransfer.effectAllowed = 'move';
+                                  e.dataTransfer.setData('text/plain', String(id));
+                                  setRaiderDrag({ id, role: g.role });
+                                },
+                                onDragEnd: () => {
+                                  setRaiderDrag(null);
+                                  setRaiderDrop(null);
+                                }
+                              }
+                            : {})}
+                        >
                           {icon && <img className="blg-spec-icon" src={icon} alt="" width={16} height={16} />}
                           {canEdit ? (
                             <button
@@ -1054,6 +1137,26 @@ function RaidGrid({
                           {r.tag && (
                             <span className="lineup-tag" data-tone={r.tagTone}>
                               {r.tag}
+                            </span>
+                          )}
+                          {onRaiders && ids.length > 1 && (
+                            <span className="blg-raider-move">
+                              <button
+                                type="button"
+                                disabled={at === 0}
+                                aria-label={`Move ${name} up`}
+                                onClick={() => move(ids[at - 1]!)}
+                              >
+                                ▲
+                              </button>
+                              <button
+                                type="button"
+                                disabled={at === ids.length - 1}
+                                aria-label={`Move ${name} down`}
+                                onClick={() => move(ids[at + 1]!)}
+                              >
+                                ▼
+                              </button>
                             </span>
                           )}
                           <span

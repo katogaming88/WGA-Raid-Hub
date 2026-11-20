@@ -12,6 +12,17 @@ answers to.
 
 ---
 
+## [3.297.0] - 2026-11-20
+
+### Backend
+
+- Officers can order the raiders within each role on Boss Lineup (#1683). The team's order is kept in a new table, `team_raider_order`, one row per team and raider, saved through a new function, `set_lineup_raider_order`, which takes one role's raiders in their new order (an empty list puts the role back to A-Z). A raider with no place yet lists after the placed ones, A-Z. Raiders on the team can read the order; only the team's officers and leader (or a site admin) can change it.
+
+### Project
+
+- Boss Lineup: each role starts A-Z, and on a computer an officer drags a raider's name, or uses the ▲ ▼ that show on hover or keyboard focus, to move them up or down within their own role (#1683). A blue line shows where they will land, below the raider you are over when moving down and above when moving up. It saves at once, for the whole team (every officer and raider sees it), and never shows as an unsaved change. A role with its own order shows Sort A-Z in its heading, which puts it back. A raider who joins later lists last in their role. Phones and raiders see the order but can't change it. The Help guide says how.
+- Database and page tests for the raider order.
+
 ## [3.296.0] - 2026-11-19
 
 ### Backend

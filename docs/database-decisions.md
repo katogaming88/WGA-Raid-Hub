@@ -3919,3 +3919,17 @@ Shipped: `20261119123705_team_boss_role_targets.sql`.
 **A standing setting, saved at once through `set_boss_role_targets`** (Kat, 2026-10-27): every - or + on Boss Lineup writes it, for every night, on any device (Kat, 2026-11-19), and it is never part of the lineup's Save. No stale check: the last press wins, as for the team's targets. Gated like `set_lineup_role_targets` (`edit_schedule` or site admin). The table is read by whoever reads the team's raid nights (`raid_night_bosses`' rules), not publicly like `team_lineup_settings`: since #1469 a new table is not public until #1286 sets the rule.
 
 [Full discussion -> #1682](https://github.com/katogaming88/WGA-Raid-Hub/issues/1682).
+
+## #1683 -- officers order raiders within each role section
+
+Shipped: `20261120093742_team_raider_order.sql`.
+
+**The order is a per-team table, `team_raider_order`, one row per team and raider, with a position within the raider's role.** The issue allowed a list of ids per section or a position per raider. A row per raider wins because a raider who joins later simply has no row and lists after the placed ones, A-Z, with nothing to repair; a list per section would need every join, leave and spec change to edit it. A section with no rows is A-Z, so "never ordered" needs no marker.
+
+**Saved through one function, `set_lineup_raider_order(team_id, role, player_ids)`, which takes the whole section in its new order.** Every raider has to be on the team and in that role, so the function cannot place a raider in a section they are not in. It deletes the section's rows and writes the new ones in one step, and an empty list is "Sort A-Z". One who is archived since just stops showing.
+
+**The row keeps the role it was placed in**, so a raider who later changes role is not read against their new role; the page ignores a place saved in another role, and the next save of either section clears it. Archived raiders are refused.
+
+**One order for the whole team, saved at once** (Kat, 2026-10-27): never part of the lineup's Save, and no stale check, so an officer on an old page can undo a move made a moment before. Two officers saving at the same moment queue on this function's own lock and the later whole list wins. Gated like the other lineup writes (`edit_schedule` or site admin); read by whoever reads the team's raid nights, like `team_boss_role_targets`.
+
+[Full discussion -> #1683](https://github.com/katogaming88/WGA-Raid-Hub/issues/1683).

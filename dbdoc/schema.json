@@ -15308,6 +15308,117 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.team_raider_order",
+      "type": "BASE TABLE",
+      "comment": "The order a team lists its raiders in within a role section of Boss Lineup (#1683); role is the section the raider was placed in, and position counts from 1 within it. A raider with no row lists after the placed ones, A-Z. Written only by set_lineup_raider_order().",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_raider_order_pkey",
+          "def": "CREATE UNIQUE INDEX team_raider_order_pkey ON public.team_raider_order USING btree (team_id, player_id)",
+          "table": "public.team_raider_order",
+          "columns": [
+            "team_id",
+            "player_id"
+          ]
+        },
+        {
+          "name": "team_raider_order_player_id_idx",
+          "def": "CREATE INDEX team_raider_order_player_id_idx ON public.team_raider_order USING btree (player_id)",
+          "table": "public.team_raider_order",
+          "columns": [
+            "player_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_raider_order_position_check",
+          "type": "CHECK",
+          "def": "CHECK ((\"position\" \u003e 0))",
+          "table": "public.team_raider_order",
+          "referenced_table": "",
+          "columns": [
+            "position"
+          ]
+        },
+        {
+          "name": "team_raider_order_role_check",
+          "type": "CHECK",
+          "def": "CHECK ((role = ANY (ARRAY['Tank'::text, 'Heal'::text, 'Melee'::text, 'Ranged'::text])))",
+          "table": "public.team_raider_order",
+          "referenced_table": "",
+          "columns": [
+            "role"
+          ]
+        },
+        {
+          "name": "team_raider_order_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.team_raider_order",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_raider_order_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_raider_order",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_raider_order_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id, player_id)",
+          "table": "public.team_raider_order",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "player_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -17733,6 +17844,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_raider_order",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_raider_order",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -19456,6 +19593,12 @@
       "name": "public.set_boss_role_targets",
       "return_type": "void",
       "arguments": "p_team_id integer, p_encounter_id integer, p_tanks integer DEFAULT NULL::integer, p_healers integer DEFAULT NULL::integer, p_melee integer DEFAULT NULL::integer, p_ranged integer DEFAULT NULL::integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_lineup_raider_order",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_role text, p_player_ids integer[]",
       "type": "FUNCTION"
     }
   ],
