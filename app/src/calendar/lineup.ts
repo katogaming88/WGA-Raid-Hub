@@ -249,6 +249,16 @@ export function moveBoss(order: number[], id: number, onto: number): number[] {
   return [...rest.slice(0, at), id, ...rest.slice(at)];
 }
 
+// The team's saved raider order (#1683): player id to place within its role.
+export type RaiderOrder = ReadonlyMap<number, number>;
+
+// A section's rows in the team's order: the placed raiders first, then the
+// rest in the order given (A-Z), so a raider who joined later lists last.
+export function inRaiderOrder<T>(rows: T[], idOf: (row: T) => number, order: RaiderOrder): T[] {
+  const place = (row: T) => order.get(idOf(row)) ?? Number.MAX_SAFE_INTEGER;
+  return [...rows].sort((a, b) => place(a) - place(b));
+}
+
 export const sameOrder = (a: number[], b: number[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 // The save bar's lines for a new order: each boss whose pull number in its
@@ -472,7 +482,8 @@ export type BossTotal = {
 export type BuffCell = { boss: LineupBoss; providers: string[] };
 
 export type LineupView = {
-  groups: { role: Role; label: string; rows: LineupRow[] }[];
+  // ordered: the team has placed someone in this section (#1683).
+  groups: { role: Role; label: string; ordered: boolean; rows: LineupRow[] }[];
   // Bosses on the plan tonight (not skipped).
   live: LineupBoss[];
   totals: BossTotal[];
@@ -548,7 +559,8 @@ export function lineupView(
   targets: RoleTargets = DEFAULT_ROLE_TARGETS,
   picks: Picks = new Map(),
   look: PlayLookup = NO_LOOKUP,
-  usualPicks: Picks = new Map()
+  usualPicks: Picks = new Map(),
+  raiderOrder: RaiderOrder = new Map()
 ): LineupView {
   const byPlayer = new Map(answers.filter((a) => a.raid_date === night.date).map((a) => [a.player_id, a]));
   const rows: NightRow[] = rosterOf(players)
@@ -618,7 +630,12 @@ export function lineupView(
     groups: ROLE_ORDER.map((role) => ({
       role,
       label: ROLE_LABELS[role],
-      rows: rows.filter((r) => r.role === role).map(rowOf)
+      ordered: rows.some((r) => r.role === role && raiderOrder.has(r.player.id)),
+      rows: inRaiderOrder(
+        rows.filter((r) => r.role === role),
+        (r) => r.player.id,
+        raiderOrder
+      ).map(rowOf)
     })).filter((g) => g.rows.length),
     live,
     totals: live.map((boss) => totalOf(boss, inFor(boss), targets)),

@@ -6,6 +6,7 @@ import { fakeSession, seededHandlers, type FakeHandlers, type Read } from '../te
 import type { PlayerRow } from '../roster/roster';
 import type { Answer, RaidNight } from './calendar';
 import {
+  inRaiderOrder,
   moveBoss,
   wantsText,
   nightOrder,
@@ -541,6 +542,7 @@ type Setup = {
     melee: number | null;
     ranged: number | null;
   }[];
+  raiderOrder?: { player_id: number; position: number }[];
   rpc?: (name: string, args: Record<string, unknown>) => { data?: unknown; error?: { message: string } } | undefined;
 };
 
@@ -573,6 +575,7 @@ function handlers(person: ReturnType<typeof who>, setup: Setup = PLANNED): FakeH
     boss_groups: () => setup.groups ?? [],
     team_lineup_settings: (read) => (read.single ? (setup.targets ?? null) : setup.targets ? [setup.targets] : []),
     team_boss_role_targets: () => setup.bossTargets ?? [],
+    team_raider_order: () => setup.raiderOrder ?? [],
     classes_specs: () => SPECS,
     team_members: () => [{ id: 12, person_id: 7 }],
     characters: () => [{ ...BOSHAM, person_id: 7, realm: 'Illidan', item_level: null }]
@@ -590,6 +593,7 @@ function handlers(person: ReturnType<typeof who>, setup: Setup = PLANNED): FakeH
       if (
         name === 'set_raid_night_boss_skipped' ||
         name === 'set_raid_night_boss_order' ||
+        name === 'set_lineup_raider_order' ||
         name === 'set_boss_role_targets'
       )
         return { data: null };
@@ -986,6 +990,96 @@ describe('the boss lineup tab', () => {
     ]);
     expect(rpcs(client, 'set_raid_night_lineup')).toEqual([]);
     expect((await screen.findAllByText('Saved the pull order for Thu, May 14.')).length).toBeGreaterThan(0);
+  });
+
+  it('lists a section A-Z, then in the team order with new raiders last (#1683)', () => {
+    const ids = (order: [number, number][]) => inRaiderOrder([3, 5, 7], (x) => x, new Map(order));
+    expect(ids([])).toEqual([3, 5, 7]);
+    expect(
+      ids([
+        [5, 1],
+        [3, 2]
+      ])
+    ).toEqual([5, 3, 7]);
+    expect(ids([[7, 1]])).toEqual([7, 3, 5]);
+  });
+
+  it('moves a raider by the arrows within their section, saving at once for the team (#1683)', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(LINEUP, handlers(who('officer')));
+    const g = await grid();
+    expect(g.getByRole('button', { name: 'Move Cy up' })).toBeDisabled();
+    expect(g.getByRole('button', { name: 'Move Ed down' })).toBeDisabled();
+    expect(g.queryByRole('button', { name: /^Sort Ranged A to Z/ })).not.toBeInTheDocument();
+    await user.click(g.getByRole('button', { name: 'Move Cy down' }));
+    await waitFor(() =>
+      expect(rpcs(client, 'set_lineup_raider_order')).toEqual([
+        { p_team_id: 1, p_role: 'Ranged', p_player_ids: [5, 3] }
+      ])
+    );
+    // Not part of the lineup's Save.
+    expect(screen.queryByText(/^[0-9]+ unsaved changes?:/)).not.toBeInTheDocument();
+  });
+
+  it('drags a raider onto another in their section only, with a line where they land (#1683)', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(LINEUP, handlers(who('officer')));
+    const g = await grid();
+    const cy = g.getByRole('rowheader', { name: /Cy/ });
+    const ed = g.getByRole('rowheader', { name: /Ed/ });
+    const ana = g.getByRole('rowheader', { name: /Ana/ });
+    const data = { effectAllowed: '', setData: () => undefined };
+    fireEvent.dragStart(cy.querySelector('.blg-raider-box')!, { dataTransfer: data });
+    fireEvent.dragOver(ana.closest('tr')!, { dataTransfer: data });
+    expect(ana.closest('tr')).not.toHaveAttribute('data-drop');
+    fireEvent.dragOver(ed.closest('tr')!, { dataTransfer: data });
+    expect(ed.closest('tr')).toHaveAttribute('data-drop', 'after');
+    fireEvent.drop(ed.closest('tr')!, { dataTransfer: data });
+    await waitFor(() =>
+      expect(rpcs(client, 'set_lineup_raider_order')).toEqual([
+        { p_team_id: 1, p_role: 'Ranged', p_player_ids: [5, 3] }
+      ])
+    );
+    expect(user).toBeDefined();
+  });
+
+  it('shows a section with its own order, and Sort A-Z puts it back (#1683)', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(
+      LINEUP,
+      handlers(who('officer'), {
+        ...PLANNED,
+        raiderOrder: [
+          { player_id: 5, position: 1 },
+          { player_id: 3, position: 2 }
+        ]
+      })
+    );
+    const g = await grid();
+    const names = g.getAllByRole('rowheader').map((r) => r.textContent ?? '');
+    expect(names.findIndex((n) => n.includes('Ed'))).toBeLessThan(names.findIndex((n) => n.includes('Cy')));
+    await user.click(g.getByRole('button', { name: 'Sort Ranged A to Z' }));
+    await waitFor(() =>
+      expect(rpcs(client, 'set_lineup_raider_order')).toEqual([{ p_team_id: 1, p_role: 'Ranged', p_player_ids: [] }])
+    );
+  });
+
+  it('shows the order to a raider, who cannot change it (#1683)', async () => {
+    renderApp(
+      LINEUP,
+      handlers(who('raider'), {
+        ...PLANNED,
+        raiderOrder: [
+          { player_id: 5, position: 1 },
+          { player_id: 3, position: 2 }
+        ]
+      })
+    );
+    const g = await grid();
+    const names = g.getAllByRole('rowheader').map((r) => r.textContent ?? '');
+    expect(names.findIndex((n) => n.includes('Ed'))).toBeLessThan(names.findIndex((n) => n.includes('Cy')));
+    expect(g.queryByRole('button', { name: /^Move Cy/ })).not.toBeInTheDocument();
+    expect(g.queryByRole('button', { name: /Sort Ranged/ })).not.toBeInTheDocument();
   });
 
   it('drops an order someone else beat, and says so (#1679)', async () => {

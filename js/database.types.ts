@@ -4839,6 +4839,56 @@ export type Database = {
           },
         ]
       }
+      team_raider_order: {
+        Row: {
+          player_id: number
+          position: number
+          team_id: number
+          updated_at: string
+        }
+        Insert: {
+          player_id: number
+          position: number
+          team_id: number
+          updated_at?: string
+        }
+        Update: {
+          player_id?: number
+          position?: number
+          team_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_raider_order_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_raider_order_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "priority_order_gaps"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "team_raider_order_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "rnlsi"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "team_raider_order_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_rank_permissions: {
         Row: {
           permission: string
@@ -6796,6 +6846,10 @@ export type Database = {
       set_guild_recruiter: {
         Args: { p_guild_id: number; p_on: boolean; p_person_id: number }
         Returns: string
+      }
+      set_lineup_raider_order: {
+        Args: { p_player_ids: number[]; p_role: string; p_team_id: number }
+        Returns: undefined
       }
       set_lineup_role_targets: {
         Args: { p_healers: number; p_tanks: number; p_team_id: number }

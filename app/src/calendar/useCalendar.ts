@@ -3,6 +3,7 @@ import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
 import { visibleSeasons } from '../profile/profile';
 import type { Answer, ScheduleChange, ScheduleRule } from './calendar';
+import type { Role } from '../roster/roster';
 import { asDifficulty, type Difficulty } from './schedule';
 import {
   DEFAULT_ROLE_TARGETS,
@@ -13,6 +14,7 @@ import {
   type NightBossRow,
   type PickRow,
   type PlaceRow,
+  type RaiderOrder,
   type BossTargets,
   type RoleTargets,
   type SeasonRow
@@ -389,6 +391,35 @@ export function useSaveGroups(teamId: number, date: string) {
       };
     },
     { key: ['save-groups', teamId], refreshes: [lineupKey(teamId)] }
+  );
+}
+
+// The team's order for raiders within each role section (#1683): player id to
+// place. A section with nothing here is A-Z.
+export function useRaiderOrder(teamId: number) {
+  return useSupabaseQuery<RaiderOrder>([...lineupKey(teamId), 'raider-order'], async (client) => {
+    // team-read-guard: at most one row per raider on the team, far under the
+    // 1000-row page.
+    const { data, error } = await client.from('team_raider_order').select('player_id, position').eq('team_id', teamId);
+    return error
+      ? { data: null, error }
+      : { data: new Map((data ?? []).map((r) => [r.player_id, r.position])), error: null };
+  });
+}
+
+// One section's order, saved the moment a raider is moved; an empty list puts
+// the section back to A-Z.
+export function useSaveRaiderOrder(teamId: number) {
+  return useSupabaseMutation<null, { role: Role; playerIds: number[] }>(
+    async (client, s) => {
+      const { error } = await client.rpc('set_lineup_raider_order', {
+        p_team_id: teamId,
+        p_role: s.role,
+        p_player_ids: s.playerIds
+      });
+      return { data: null, error };
+    },
+    { key: ['save-raider-order', teamId], refreshes: [lineupKey(teamId)] }
   );
 }
 
