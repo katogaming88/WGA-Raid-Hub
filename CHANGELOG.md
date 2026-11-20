@@ -12,6 +12,18 @@ answers to.
 
 ---
 
+## [3.296.0] - 2026-11-19
+
+### Backend
+
+- Officers can set what each boss needs: tanks, healers, melee and ranged (#1682). Kept in a new table, `team_boss_role_targets`, one row per team and boss, saved through a new function, `set_boss_role_targets`. A boss with nothing of its own uses the team's targets (2 tanks and 4 healers unless the team says otherwise), and no melee or ranged count, as before. Raiders on the team can read a boss's targets; only the team's officers and leader (or a site admin) can change them.
+
+### Project
+
+- Boss Lineup: on any device, an officer opens "What Ula'tek needs" from the sliders button under a boss and sets tanks, healers, melee and ranged with - and + (#1682). Each press saves at once, for every night, and never shows as an unsaved change. Melee and ranged start at Any. "Use team targets" puts the boss back. A boss with its own targets shows a blue line under its count ("Wants 3 tanks"), and its role counts, warning, fill bar, tip and Needs a look check against them: tanks and healers short or over, melee and ranged as a minimum (Kat). Raiders see the line but can't change it. The Help guide says how.
+- Database, page and accessibility tests for a boss's targets, light and dark. The revamp time log's rows for PR #1880 after it opened, and this one.
+- The schema-docs check pins tbls to 1.96.0, like the Supabase CLI. tbls 1.97.0 (2026-11-19) lists Supabase's own enum values in a different order, which failed every migration PR's schema docs check with nothing changed.
+
 ## [3.295.0] - 2026-11-19
 
 ### Backend

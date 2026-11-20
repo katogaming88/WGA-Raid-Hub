@@ -105,11 +105,13 @@ jobs:
         run: |
           supabase db advisors --local --type security --level warn --fail-on none --output-format json > advisors.json
           node scripts/ci/advisor-check.js advisors.json
-      # Installs the latest tbls release. Trigger order has been creation order
-      # on every platform since tbls 1.96.0, so a diff that is only a trigger
-      # swap means the docs were regenerated with an older tbls: match the local
-      # exe to the latest release and regenerate (see the comment in .tbls.yml).
+      # Pinned, like the Supabase CLI above: tbls 1.97.0 (2026-11-19) lists
+      # Supabase-internal enums in a different order and failed `tbls diff` on
+      # every PR with no schema change behind it (#1682). Match the local exe
+      # to this pin; bump it and regenerate dbdoc/ together, in one PR.
       - uses: k1LoW/setup-tbls@v1
+        with:
+          version: 1.96.0
       - name: Fail if dbdoc/ is stale
         run: tbls diff
       # Raw policy export; regenerated here and compared against the committed

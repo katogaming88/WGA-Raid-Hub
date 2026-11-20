@@ -13,6 +13,7 @@ import {
   type NightBossRow,
   type PickRow,
   type PlaceRow,
+  type BossTargets,
   type RoleTargets,
   type SeasonRow
 } from './lineup';
@@ -453,20 +454,43 @@ export function useSkipBoss(teamId: number, date: string) {
 }
 
 // A team's tanks-wanted and healers-wanted counts for the lineup's "Needs a
-// look" check (#1244). A team with no row yet uses today's default.
+// look" check (#1244), and each boss's own (#1682). A team with no row yet
+// uses today's default.
 export function useLineupRoleTargets(teamId: number) {
   return useSupabaseQuery<RoleTargets>([...lineupKey(teamId), 'role-targets'], async (client) => {
-    const { data, error } = await client
-      .from('team_lineup_settings')
-      .select('tanks_wanted, healers_wanted')
-      .eq('team_id', teamId)
-      .maybeSingle();
+    const [team, bosses] = await Promise.all([
+      client.from('team_lineup_settings').select('tanks_wanted, healers_wanted').eq('team_id', teamId).maybeSingle(),
+      // team-read-guard: one row per boss with its own targets, at most the
+      // raid list's bosses, far under the 1000-row page.
+      client.from('team_boss_role_targets').select('encounter_id, tanks, healers, melee, ranged').eq('team_id', teamId)
+    ]);
+    const error = team.error ?? bosses.error;
     if (error) return { data: null, error };
+    const base = team.data
+      ? { tanks: team.data.tanks_wanted, healers: team.data.healers_wanted }
+      : DEFAULT_ROLE_TARGETS;
     return {
-      data: data ? { tanks: data.tanks_wanted, healers: data.healers_wanted } : DEFAULT_ROLE_TARGETS,
+      data: { ...base, bosses: new Map((bosses.data ?? []).map(({ encounter_id, ...own }) => [encounter_id, own])) },
       error: null
     };
   });
+}
+
+// One boss's standing targets (#1682), saved the moment an officer presses
+// - or +; all null puts the boss back on the team's targets.
+export function useSetBossTargets(teamId: number) {
+  return useSupabaseMutation<void, { encounterId: number; targets: BossTargets }>(
+    (client, s) =>
+      client.rpc('set_boss_role_targets', {
+        p_team_id: teamId,
+        p_encounter_id: s.encounterId,
+        ...(s.targets.tanks !== null && { p_tanks: s.targets.tanks }),
+        ...(s.targets.healers !== null && { p_healers: s.targets.healers }),
+        ...(s.targets.melee !== null && { p_melee: s.targets.melee }),
+        ...(s.targets.ranged !== null && { p_ranged: s.targets.ranged })
+      }),
+    { key: ['save-boss-targets', teamId], refreshes: [lineupKey(teamId)] }
+  );
 }
 
 // The Boss groups page's "Role targets" editor.

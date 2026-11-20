@@ -56,7 +56,12 @@ import {
   type LineupRaid,
   type PlaceRow,
   type RoleTargets,
-  type SeasonRow
+  type SeasonRow,
+  type BossTargets,
+  NO_BOSS_TARGETS,
+  roleOff,
+  wantsOf,
+  wantsText
 } from './lineup';
 import {
   useBossGroups,
@@ -71,6 +76,7 @@ import {
   useSaveNight,
   useSaveOrder,
   useSeasons,
+  useSetBossTargets,
   useSkipBoss,
   type BossSave,
   type CellStyle,
@@ -160,6 +166,8 @@ function Lineup({
   const [orderEdit, setOrderEdit] = useState<number[] | null>(null);
   // The raider and boss whose character or spec is being picked (#1580).
   const [picking, setPicking] = useState<{ boss: LineupBoss; player: PlayerRow } | null>(null);
+  // The boss whose standing targets are open (#1682).
+  const [needsFor, setNeedsFor] = useState<LineupBoss | null>(null);
   const specs = useClassSpecs();
   // Only officers pick, so only they read the team's alts.
   const alts = useTeamAlts(team.id, canEdit);
@@ -572,7 +580,11 @@ function Lineup({
         }}
         onSkip={canEdit && planned && !touch ? onSkip : null}
         onMove={canEdit && planned && !touch && !busy ? onMove : null}
+        // On any device, though it saves at once (Kat, #1682).
+        onNeeds={canEdit ? setNeedsFor : null}
       />
+
+      {needsFor && <BossNeeds boss={needsFor} targets={targets} onClose={() => setNeedsFor(null)} />}
 
       {picking && (
         <PlayPicker
@@ -653,7 +665,7 @@ function tipAt(el: HTMLElement, t: BossTotal, pull: number): Tip {
     : { total: t, pull, left, top: r.bottom + 6 };
 }
 
-function TipBody({ tip, targets }: { tip: Tip; targets: RoleTargets }) {
+function TipBody({ tip }: { tip: Tip }) {
   const t = tip.total;
   const row = (label: string, value: string, warn: boolean) => (
     <tr key={label}>
@@ -661,7 +673,9 @@ function TipBody({ tip, targets }: { tip: Tip; targets: RoleTargets }) {
       <td className={warn ? 'blg-tip-warn' : undefined}>{value}</td>
     </tr>
   );
-  const against = (n: number, target: number) => (target ? `${n}/${target}` : String(n));
+  const against = (n: number, target: number | null) => (target ? `${n}/${target}` : String(n));
+  const role = (label: string, r: Role) =>
+    row(label, against(t.roles[r], t.wants[r]), roleOff(r, t.roles[r], t.wants[r]));
   return (
     <>
       <strong>
@@ -670,10 +684,10 @@ function TipBody({ tip, targets }: { tip: Tip; targets: RoleTargets }) {
       <table className="blg-tip-table">
         <tbody>
           {row('Raiders', `${t.count}/${t.boss.cap}`, t.status.tone === 'warn' || t.status.tone === 'bad')}
-          {row('Tanks', against(t.tanks, targets.tanks), !!targets.tanks && t.tanks !== targets.tanks)}
-          {row('Healers', against(t.healers, targets.healers), !!targets.healers && t.healers !== targets.healers)}
-          {row('Melee', String(t.roles.Melee), false)}
-          {row('Ranged', String(t.roles.Ranged), false)}
+          {role('Tanks', 'Tank')}
+          {role('Healers', 'Heal')}
+          {role('Melee', 'Melee')}
+          {role('Ranged', 'Ranged')}
         </tbody>
       </table>
       {t.missing.length > 0 && (
@@ -689,9 +703,6 @@ function TipBody({ tip, targets }: { tip: Tip; targets: RoleTargets }) {
     </>
   );
 }
-
-const roleTarget = (role: Role, targets: RoleTargets) =>
-  role === 'Tank' ? targets.tanks : role === 'Heal' ? targets.healers : 0;
 
 function RaidGrid({
   raid,
@@ -711,7 +722,8 @@ function RaidGrid({
   onToggle,
   onWholeNight,
   onSkip,
-  onMove
+  onMove,
+  onNeeds
 }: {
   raid: LineupRaid;
   night: RaidNight;
@@ -733,6 +745,8 @@ function RaidGrid({
   onSkip: ((boss: LineupBoss) => void) | null;
   // Moves a boss onto another's place (#1679); null when this viewer can't.
   onMove: ((id: number, onto: number) => void) | null;
+  // Opens a boss's standing targets (#1682); null when this viewer can't.
+  onNeeds: ((boss: LineupBoss) => void) | null;
 }) {
   const [showBuffs, setShowBuffs] = useState(false);
   // The column under the pointer, brightened top to bottom.
@@ -914,6 +928,39 @@ function RaidGrid({
                     ) : (
                       <span className="blg-count text-dim">Skipped tonight</span>
                     )}
+                    {wantsText(targets, boss.id) &&
+                      (onNeeds ? (
+                        <button type="button" className="blg-wants" onClick={() => onNeeds(boss)}>
+                          {wantsText(targets, boss.id)}
+                        </button>
+                      ) : (
+                        <span className="blg-wants">{wantsText(targets, boss.id)}</span>
+                      ))}
+                    {onNeeds && (
+                      <button
+                        type="button"
+                        className="blg-needs"
+                        aria-label={`What ${boss.name} needs`}
+                        title="What this boss needs"
+                        onClick={() => onNeeds(boss)}
+                      >
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.6"
+                          strokeLinecap="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M2 4h7M13 4h1M2 8h2M8 8h6M2 12h9M13 12h1" />
+                          <circle cx="11" cy="4" r="1.8" />
+                          <circle cx="6" cy="8" r="1.8" />
+                          <circle cx="11" cy="12" r="1.8" />
+                        </svg>
+                      </button>
+                    )}
                     {onMove && (
                       <span className="blg-move">
                         <button
@@ -953,7 +1000,6 @@ function RaidGrid({
             </tr>
           </thead>
           {view.groups.map((g) => {
-            const target = roleTarget(g.role, targets);
             return (
               <tbody key={g.role}>
                 <tr className="blg-group">
@@ -963,10 +1009,11 @@ function RaidGrid({
                   {raid.bosses.map((boss) => {
                     const t = totals.get(boss.id);
                     const n = t?.roles[g.role] ?? 0;
+                    const target = t?.wants[g.role];
                     return (
                       <td
                         key={boss.id}
-                        data-tone={t && target && n !== target ? 'warn' : undefined}
+                        data-tone={t && roleOff(g.role, n, target ?? null) ? 'warn' : undefined}
                         {...hotProps(boss.id)}
                       >
                         {t ? (target ? `${n}/${target}` : n) : ''}
@@ -1128,7 +1175,7 @@ function RaidGrid({
             role="tooltip"
             style={{ left: tip.left, top: tip.top, bottom: tip.bottom, width: TIP_WIDTH }}
           >
-            <TipBody tip={tip} targets={targets} />
+            <TipBody tip={tip} />
           </div>,
           document.body
         )}
@@ -1202,6 +1249,115 @@ function RaidGrid({
 // raider's characters, their roster character first, then their alts, each
 // with every spec of its class and the usual one marked. Picking one swaps
 // them, or puts them in if they were out.
+// "What Ula'tek needs" (#1682, board D): a boss's standing tanks, healers,
+// melee and ranged, for every night. Each - or + saves at once, so it never
+// shows as an unsaved change (Kat, 2026-10-27); melee and ranged are minimums. Tanks and healers start at the
+// team's targets and stop at 0; melee and ranged start at Any and step down to
+// it from 1.
+const NEEDS_ROWS: { label: string; role: Role; key: keyof BossTargets }[] = [
+  { label: 'Tanks', role: 'Tank', key: 'tanks' },
+  { label: 'Healers', role: 'Heal', key: 'healers' },
+  { label: 'Melee', role: 'Melee', key: 'melee' },
+  { label: 'Ranged', role: 'Ranged', key: 'ranged' }
+];
+
+function BossNeeds({ boss, targets, onClose }: { boss: LineupBoss; targets: RoleTargets; onClose: () => void }) {
+  const team = useTeam();
+  const { announce } = useStatus();
+  const save = useSetBossTargets(team.id);
+  const wants = wantsOf(targets, boss.id);
+  const teamWants = wantsOf({ tanks: targets.tanks, healers: targets.healers }, boss.id);
+  const own = targets.bosses?.get(boss.id) ?? NO_BOSS_TARGETS;
+
+  const put = (next: BossTargets) => {
+    if (save.isPending) return;
+    const text = wantsText({ ...targets, bosses: new Map([[boss.id, next]]) }, boss.id);
+    save.mutate(
+      { encounterId: boss.id, targets: next },
+      {
+        onSuccess: () =>
+          announce(
+            'success',
+            `Saved: ${boss.short} ${text ? text.replace(/^Wants/, 'wants') : 'uses the team’s targets'}.`
+          ),
+        onError: (e) => announce('error', `That did not save: ${e.message}`)
+      }
+    );
+  };
+  const step = (role: Role, d: number) => {
+    const floor = teamWants[role] === null ? 1 : 0;
+    const v = wants[role];
+    const value = v === null ? (d > 0 ? 1 : null) : v + d < floor ? (floor ? null : 0) : Math.min(v + d, 30);
+    // Only what differs from the team's is the boss's own.
+    const next = { ...NO_BOSS_TARGETS };
+    for (const r of NEEDS_ROWS) {
+      const w = r.role === role ? value : wants[r.role];
+      next[r.key] = w === teamWants[r.role] ? null : w;
+    }
+    put(next);
+  };
+
+  return (
+    <Dialog title={`What ${boss.short} needs`} onClose={onClose}>
+      <p className="text-muted">
+        Team targets: {plural(targets.tanks, 'tank')}, {plural(targets.healers, 'healer')}. This is the boss’s standing
+        setting, used every night. Changes save right away.
+      </p>
+      <table className="blg-needs-table">
+        <tbody>
+          {NEEDS_ROWS.map(({ label, role }) => (
+            <tr key={role}>
+              <th scope="row">{label}</th>
+              <td>
+                <span className="blg-step">
+                  <button
+                    type="button"
+                    className="button"
+                    aria-label={`One fewer: ${label.toLowerCase()}`}
+                    aria-disabled={save.isPending || undefined}
+                    onClick={() => step(role, -1)}
+                  >
+                    −
+                  </button>
+                  <output className="num" data-own={wants[role] !== teamWants[role] || undefined}>
+                    {wants[role] ?? 'Any'}
+                  </output>
+                  <button
+                    type="button"
+                    className="button"
+                    aria-label={`One more: ${label.toLowerCase()}`}
+                    aria-disabled={save.isPending || undefined}
+                    onClick={() => step(role, 1)}
+                  >
+                    +
+                  </button>
+                </span>
+              </td>
+            </tr>
+          ))}
+          <tr className="text-dim">
+            <th scope="row">Raiders</th>
+            <td>up to {boss.cap}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div className="dialog-actions">
+        <button
+          type="button"
+          className="button button-quiet"
+          disabled={Object.values(own).every((v) => v === null)}
+          onClick={() => put(NO_BOSS_TARGETS)}
+        >
+          Use team targets
+        </button>
+        <button type="button" className="button button-primary" onClick={onClose}>
+          Done
+        </button>
+      </div>
+    </Dialog>
+  );
+}
+
 function PlayPicker({
   boss,
   player,

@@ -4,7 +4,16 @@
 // (#1324); no team or guild role does. Role targets are per-team, gated the same way set_boss_group()
 // is.
 import { describe, it, expect } from 'vitest';
-import { withTxn, RAIDER_T1, OFFICER_T1, OFFICER_T2, GUILD_OFFICER, SITE_ADMIN } from './helpers.js';
+import {
+  withTxn,
+  seedPlayer,
+  RAIDER_T1,
+  OFFICER_T1,
+  TEAM_LEADER_T1,
+  OFFICER_T2,
+  GUILD_OFFICER,
+  SITE_ADMIN
+} from './helpers.js';
 
 const FIRST = 9102;
 
@@ -137,6 +146,98 @@ describe('set_lineup_role_targets()', () => {
       );
       expect(result.rowCount).toBe(0);
       expect(await targetsOf(q)).toEqual({ tanks_wanted: 3, healers_wanted: 5 });
+    });
+  });
+});
+
+// #1682: one boss's own targets, a standing setting per team and boss.
+describe('set_boss_role_targets()', () => {
+  const setBoss = (asUser, uid, [tanks, healers, melee, ranged], team = 1, boss = FIRST) =>
+    asUser(uid, 'select public.set_boss_role_targets($1, $2, $3, $4, $5, $6)', [
+      team,
+      boss,
+      tanks,
+      healers,
+      melee,
+      ranged
+    ]);
+  const bossOf = async (q, team = 1) =>
+    (
+      await q(
+        'select tanks, healers, melee, ranged from public.team_boss_role_targets where team_id = $1 and encounter_id = $2',
+        [team, FIRST]
+      )
+    ).rows[0];
+
+  it('lets the team officer, team leader and a site admin set a boss, and all-null clears it', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seed(q);
+      await setBoss(asUser, OFFICER_T1, [3, null, 2, null]);
+      expect(await bossOf(q)).toEqual({ tanks: 3, healers: null, melee: 2, ranged: null });
+      await setBoss(asUser, TEAM_LEADER_T1, [null, 5, null, 6]);
+      expect(await bossOf(q)).toEqual({ tanks: null, healers: 5, melee: null, ranged: 6 });
+      await setBoss(asUser, SITE_ADMIN, [null, null, null, null]);
+      expect(await bossOf(q)).toBeUndefined();
+      const audit = (
+        await q("select detail from public.audit_log where action = 'Set Boss Role Targets' order by id")
+      ).rows.map((r) => r.detail);
+      expect(audit[0]).toEqual({ boss: 'First Boss', tanks: 3, healers: null, melee: 2, ranged: null });
+    });
+  });
+
+  it('refuses a number outside 0 to 30 and a boss that does not exist', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seed(q);
+      await expect(setBoss(asUser, OFFICER_T1, [31, null, null, null])).rejects.toThrow(/between 0 and 30/);
+      await expect(setBoss(asUser, OFFICER_T1, [null, null, -1, null])).rejects.toThrow(/between 0 and 30/);
+      await expect(setBoss(asUser, OFFICER_T1, [3, null, null, null], 1, 999999)).rejects.toThrow(/no such boss/);
+      await expect(setBoss(asUser, SITE_ADMIN, [3, null, null, null], 999999)).rejects.toThrow(/no such team/);
+      expect(await bossOf(q)).toBeUndefined();
+    });
+  });
+
+  it("is refused to a raider, another team's officer, a guild officer and a signed-out caller, saving or clearing", async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      await seed(q);
+      for (const uid of [RAIDER_T1, OFFICER_T2, GUILD_OFFICER]) {
+        await expect(setBoss(asUser, uid, [3, null, null, null])).rejects.toThrow(/Not authorized/);
+      }
+      await expect(asAnon('select public.set_boss_role_targets(1, $1, 3, null, null, null)', [FIRST])).rejects.toThrow(
+        /permission denied/
+      );
+      expect(await bossOf(q)).toBeUndefined();
+      // Clearing a saved boss is refused the same way, and the row stays.
+      await setBoss(asUser, OFFICER_T1, [3, null, 2, null]);
+      for (const uid of [RAIDER_T1, OFFICER_T2, GUILD_OFFICER]) {
+        await expect(setBoss(asUser, uid, [null, null, null, null])).rejects.toThrow(/Not authorized/);
+      }
+      await expect(
+        asAnon('select public.set_boss_role_targets(1, $1, null, null, null, null)', [FIRST])
+      ).rejects.toThrow(/permission denied/);
+      expect(await bossOf(q)).toEqual({ tanks: 3, healers: null, melee: 2, ranged: null });
+    });
+  });
+
+  it("is read by the team's raiders and officers, not another team's or a signed-out caller, and never written directly", async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      await seed(q);
+      await seedPlayer(q, { memberId: 3 });
+      await setBoss(asUser, OFFICER_T1, [3, null, null, null]);
+      const read = 'select tanks from public.team_boss_role_targets where team_id = 1';
+      expect((await asUser(RAIDER_T1, read)).rows).toEqual([{ tanks: 3 }]);
+      expect((await asUser(OFFICER_T1, read)).rows).toEqual([{ tanks: 3 }]);
+      expect((await asUser(OFFICER_T2, read)).rows).toEqual([]);
+      expect((await asAnon(read)).rows).toEqual([]);
+      await expect(
+        asUser(OFFICER_T1, 'update public.team_boss_role_targets set tanks = 9 where team_id = 1')
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        asUser(
+          OFFICER_T1,
+          'insert into public.team_boss_role_targets (team_id, encounter_id, tanks) values (1, $1, 9)',
+          [FIRST]
+        )
+      ).rejects.toThrow(/permission denied/);
     });
   });
 });

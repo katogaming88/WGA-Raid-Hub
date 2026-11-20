@@ -390,8 +390,41 @@ export function capStatus(count: number, cap: number, base = cap): CapStatus {
 
 // A Mythic boss wants two tanks and four healers by default (the A2 mockup's
 // check); a team can say otherwise (#1244, team_lineup_settings).
-export type RoleTargets = { tanks: number; healers: number };
+// A boss can want its own numbers (#1682, team_boss_role_targets): a null
+// tanks or healers uses the team's, a null melee or ranged means no target.
+export type BossTargets = { tanks: number | null; healers: number | null; melee: number | null; ranged: number | null };
+export type RoleTargets = { tanks: number; healers: number; bosses?: ReadonlyMap<number, BossTargets> };
 export const DEFAULT_ROLE_TARGETS: RoleTargets = { tanks: 2, healers: 4 };
+export const NO_BOSS_TARGETS: BossTargets = { tanks: null, healers: null, melee: null, ranged: null };
+
+// What a boss wants of each role; null (or 0) is not counted.
+export type Wants = Record<Role, number | null>;
+export function wantsOf(targets: RoleTargets, bossId: number): Wants {
+  const own = targets.bosses?.get(bossId) ?? NO_BOSS_TARGETS;
+  return {
+    Tank: own.tanks ?? targets.tanks,
+    Heal: own.healers ?? targets.healers,
+    Melee: own.melee,
+    Ranged: own.ranged
+  };
+}
+
+const ROLE_WORDS: Record<Role, [string, string]> = {
+  Tank: ['tank', 'tanks'],
+  Heal: ['healer', 'healers'],
+  Melee: ['melee', 'melee'],
+  Ranged: ['ranged', 'ranged']
+};
+const count = (n: number, role: Role) => `${n} ${ROLE_WORDS[role][n === 1 ? 0 : 1]}`;
+
+// "Wants 3 tanks, 6 ranged": only what the boss sets for itself, unlike the
+// team's targets; '' when it has nothing of its own.
+export function wantsText(targets: RoleTargets, bossId: number): string {
+  const team = wantsOf({ tanks: targets.tanks, healers: targets.healers }, bossId);
+  const mine = wantsOf(targets, bossId);
+  const parts = ROLE_ORDER.filter((r) => mine[r] !== team[r]).map((r) => count(mine[r]!, r));
+  return parts.length ? `Wants ${parts.join(', ')}` : '';
+}
 
 export type LineupCell = {
   boss: LineupBoss;
@@ -423,6 +456,8 @@ export type BossTotal = {
   healers: number;
   damage: number;
   roles: Record<Role, number>;
+  // What the boss wants of each role (#1682).
+  wants: Wants;
   // Buffs nobody in brings.
   missing: string[];
   // The one warning under the boss's count: the cap first, then buffs.
@@ -458,13 +493,23 @@ const providersOf = (buff: Buff, inn: Raider[]) =>
     .filter((r) => brings(buff, r.player.classes_specs?.class ?? '', r.player.classes_specs?.spec ?? ''))
     .map((r) => r.name);
 
-// "1 tank, wants 2": a role short of, or over, the team's target. A target
-// of 0 means the team doesn't count that role.
-const roleCheck = (n: number, target: number, word: string) =>
-  target === 0 || n === target ? [] : [`${n === 0 ? `no ${word}s` : plural(n, word)}, wants ${target}`];
+// Tanks and healers want an exact count, short or over; melee and ranged
+// are a minimum, so only short is a problem (Kat, #1682). A target of 0 or
+// none means that role isn't counted.
+export const roleOff = (role: Role, n: number, target: number | null) =>
+  !!target && (role === 'Melee' || role === 'Ranged' ? n < target : n !== target);
+
+// "1 tank, wants 2", "3 ranged, wants at least 6".
+const roleCheck = (n: number, target: number | null, role: Role) =>
+  !roleOff(role, n, target)
+    ? []
+    : [
+        `${n === 0 ? `no ${ROLE_WORDS[role][1]}` : count(n, role)}, wants ${role === 'Melee' || role === 'Ranged' ? 'at least ' : ''}${target}`
+      ];
 
 // One boss's count, role mix, missing buffs and warnings, for whoever is in.
 function totalOf(boss: LineupBoss, inn: Raider[], targets: RoleTargets): BossTotal {
+  const wants = wantsOf(targets, boss.id);
   const n = (role: Role) => inn.filter((r) => r.role === role).length;
   const roles = { Tank: n('Tank'), Heal: n('Heal'), Melee: n('Melee'), Ranged: n('Ranged') };
   const status = capStatus(inn.length, boss.cap, boss.base);
@@ -472,8 +517,7 @@ function totalOf(boss: LineupBoss, inn: Raider[], targets: RoleTargets): BossTot
   const missing = LINEUP_BUFFS.filter((b) => !providersOf(b, inn).length).map((b) => b.name);
   const checks = [
     ...(fine ? [] : [status.text]),
-    ...roleCheck(roles.Tank, targets.tanks, 'tank'),
-    ...roleCheck(roles.Heal, targets.healers, 'healer')
+    ...ROLE_ORDER.flatMap((role) => roleCheck(roles[role], wants[role], role))
   ];
   return {
     boss,
@@ -483,6 +527,7 @@ function totalOf(boss: LineupBoss, inn: Raider[], targets: RoleTargets): BossTot
     healers: roles.Heal,
     damage: roles.Melee + roles.Ranged,
     roles,
+    wants,
     missing,
     warn: !fine ? status.text : missing.length ? plural(missing.length, 'buff') : '',
     problems: [...checks, ...(missing.length ? [`no ${missing.join(', no ')}`] : [])],
