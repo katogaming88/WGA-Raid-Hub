@@ -516,27 +516,50 @@ async function getReportParticipants(token: Wcl, reportCode: string): Promise<Se
 // lineup (no raid_night_bosses rows) keeps the old first-pull rule exactly,
 // via getFirstPullParticipants further down.
 
-export type LineupBossRow = { encounterId: number; wclEncounterId: number; position: number; skipped: boolean };
+// #1688: a night is planned in halves, Heroic and Mythic. A Heroic into
+// Mythic night has both, the Heroic half raided first.
+export type Plan = 'heroic' | 'mythic';
+export type LineupBossRow = {
+  encounterId: number;
+  wclEncounterId: number;
+  position: number;
+  skipped: boolean;
+  plan: Plan;
+};
 
-// The night's bosses in pull order, skipped ones left out: a skipped boss
-// carries no lineup of its own and cannot be anyone's "first assigned boss".
+// One boss on one half of the night: "mythic:3".
+export const halfKey = (plan: Plan, id: number) => `${plan}:${id}`;
+export const asPlan = (value: unknown): Plan => (value === 'heroic' ? 'heroic' : 'mythic');
+
+// The half a Warcraft Logs fight counts toward: a Mythic fight (difficulty 5)
+// the Mythic half, any other the Heroic half (Normal nights use the Heroic
+// plan).
+export const fightPlan = (difficulty: number): Plan => (difficulty === 5 ? 'mythic' : 'heroic');
+
+// The night's bosses in pull order, the Heroic half first, skipped ones left
+// out: a skipped boss carries no lineup of its own and cannot be anyone's
+// "first assigned boss".
 export function orderedLineupBosses(bosses: LineupBossRow[]): LineupBossRow[] {
+  const half = (b: LineupBossRow) => (b.plan === 'heroic' ? 0 : 1);
   return bosses
     .filter((b) => !b.skipped)
     .slice()
-    .sort((a, b) => a.position - b.position);
+    .sort((a, b) => half(a) - half(b) || a.position - b.position);
 }
 
-// The WCL encounter id of the first boss (in pull order) a raider is listed
-// in for that night, or null if they are on the roster but assigned to no
-// boss at all -- a full night's rest in a 24-on-20 rotation.
+// The first boss (in pull order) a raider is listed in for that night, as
+// halfKey(its half, its WCL encounter id), or null if they are on the roster
+// but assigned to no boss at all -- a full night's rest in a 24-on-20
+// rotation. lineupPlayerIds is keyed by halfKey(plan, encounterId).
 export function firstAssignedWclEncounter(
   ordered: LineupBossRow[],
-  lineupPlayerIds: ReadonlyMap<number, ReadonlySet<number>>,
+  lineupPlayerIds: ReadonlyMap<string, ReadonlySet<number>>,
   playerId: number
-): number | null {
+): string | null {
   for (const boss of ordered) {
-    if (lineupPlayerIds.get(boss.encounterId)?.has(playerId)) return boss.wclEncounterId;
+    if (lineupPlayerIds.get(halfKey(boss.plan, boss.encounterId))?.has(playerId)) {
+      return halfKey(boss.plan, boss.wclEncounterId);
+    }
   }
   return null;
 }
@@ -549,7 +572,7 @@ export function firstAssignedWclEncounter(
 // their own lineup starts them on is the same flag as a missed first pull
 // always was: status stays unset for an officer to fill in.
 export function decideLineupStatus(
-  firstAssignedWclId: number | null,
+  firstAssignedWclId: string | null,
   presentAtFirstAssigned: boolean
 ): { status: 'Present' | null; source: 'WCL' | 'WCL (Late?)' } {
   if (firstAssignedWclId === null || presentAtFirstAssigned) return { status: 'Present', source: 'WCL' };
@@ -605,12 +628,18 @@ export function uniqueFirstNameIndex<T extends { firstName: string; playerId: nu
 // "queried fine, this boss had nobody" -- so a caller can fail open on it the
 // same way getFirstPullParticipants' null already does, instead of reading a
 // failure as "absent from every boss" and flagging the whole roster.
+// Keyed by halfKey(plan, WCL encounter id) (#1688): on a night with one half,
+// every pull counts toward it, whatever its difficulty (a Heroic farm pull on
+// a Mythic night, as before #1688); on a two-half night, a pull counts toward
+// the half run at its difficulty.
 async function getReportParticipationByEncounter(
   token: Wcl,
   reportCode: string,
-  wclEncounterIds: ReadonlySet<number>
-): Promise<Map<number, Set<string>> | null> {
-  const byEncounter = new Map<number, Set<string>>();
+  wclEncounterIds: ReadonlySet<number>,
+  nightPlans: ReadonlySet<Plan>
+): Promise<Map<string, Set<string>> | null> {
+  const onlyPlan = nightPlans.size === 1 ? [...nightPlans][0] : null;
+  const byEncounter = new Map<string, Set<string>>();
   if (wclEncounterIds.size === 0) return byEncounter;
 
   const query = `
@@ -637,8 +666,9 @@ async function getReportParticipationByEncounter(
   for (const fight of report.fights || []) {
     if (fight.difficulty == null) continue;
     if (!wclEncounterIds.has(fight.encounterID)) continue;
-    if (!byEncounter.has(fight.encounterID)) byEncounter.set(fight.encounterID, new Set());
-    const names = byEncounter.get(fight.encounterID)!;
+    const key = halfKey(onlyPlan ?? fightPlan(fight.difficulty), fight.encounterID);
+    if (!byEncounter.has(key)) byEncounter.set(key, new Set());
+    const names = byEncounter.get(key)!;
     for (const actorId of fight.friendlyPlayers || []) {
       const name = nameByActorId.get(actorId);
       if (name) names.add(name);
@@ -744,10 +774,10 @@ async function getNightLineup(
   supabase: SupabaseClient<any>,
   teamId: number,
   date: string
-): Promise<{ bosses: LineupBossRow[]; lineupPlayerIds: Map<number, Set<number>> }> {
+): Promise<{ bosses: LineupBossRow[]; lineupPlayerIds: Map<string, Set<number>> }> {
   const { data: bossRows, error: bossError } = await supabase
     .from('raid_night_bosses')
-    .select('encounter_id, position, skipped, raid_encounters(wcl_encounter_id)')
+    .select('encounter_id, plan, position, skipped, raid_encounters(wcl_encounter_id)')
     .eq('team_id', teamId)
     .eq('raid_date', date);
   if (bossError) throw new Error(bossError.message);
@@ -755,20 +785,22 @@ async function getNightLineup(
     encounterId: r.encounter_id,
     wclEncounterId: r.raid_encounters?.wcl_encounter_id,
     position: r.position,
-    skipped: !!r.skipped
+    skipped: !!r.skipped,
+    plan: asPlan(r.plan)
   }));
   if (bosses.length === 0) return { bosses: [], lineupPlayerIds: new Map() };
 
   const { data: lineupRows, error: lineupError } = await supabase
     .from('raid_night_lineups')
-    .select('encounter_id, player_id')
+    .select('encounter_id, plan, player_id')
     .eq('team_id', teamId)
     .eq('raid_date', date);
   if (lineupError) throw new Error(lineupError.message);
-  const lineupPlayerIds = new Map<number, Set<number>>();
+  const lineupPlayerIds = new Map<string, Set<number>>();
   for (const row of (lineupRows || []) as any[]) {
-    if (!lineupPlayerIds.has(row.encounter_id)) lineupPlayerIds.set(row.encounter_id, new Set());
-    lineupPlayerIds.get(row.encounter_id)!.add(row.player_id);
+    const key = halfKey(asPlan(row.plan), row.encounter_id);
+    if (!lineupPlayerIds.has(key)) lineupPlayerIds.set(key, new Set());
+    lineupPlayerIds.get(key)!.add(row.player_id);
   }
   return { bosses, lineupPlayerIds };
 }
@@ -927,7 +959,7 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
   // #1242: one lineup fetch per calendar date, not per report -- two reports
   // landing on the same date (rare, but the same case rowsToUpsert's own Map
   // is keyed against) would otherwise re-fetch it.
-  const lineupByDate = new Map<string, { bosses: LineupBossRow[]; lineupPlayerIds: Map<number, Set<number>> }>();
+  const lineupByDate = new Map<string, { bosses: LineupBossRow[]; lineupPlayerIds: Map<string, Set<number>> }>();
   const playerIdByFirstName = uniqueFirstNameIndex(roster);
   const rosterNames = new Set(roster.map((p) => p.firstName));
   const logNames = new Map<string, { team_id: number; raid_date: string; character_name: string; report_id: string }>();
@@ -941,10 +973,10 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
   // only returns entries for encounters it actually saw a real fight for, so
   // merging (rather than replacing) is what keeps a boss neither report
   // touches this run untouched, instead of overwritten with an empty guess.
-  const participationByDate = new Map<string, Map<number, Set<string>>>();
+  const participationByDate = new Map<string, Map<string, Set<string>>>();
   const datesTouchedThisRun = new Set<string>();
 
-  function mergeParticipation(date: string, byEncounter: Map<number, Set<string>>) {
+  function mergeParticipation(date: string, byEncounter: Map<string, Set<string>>) {
     datesTouchedThisRun.add(date);
     if (!participationByDate.has(date)) participationByDate.set(date, new Map());
     const forDate = participationByDate.get(date)!;
@@ -983,7 +1015,12 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
           const wclIds = new Set(
             nightBosses.map((b) => b.wclEncounterId).filter((id): id is number => typeof id === 'number')
           );
-          const byEncounter = await getReportParticipationByEncounter(token, report.code, wclIds);
+          const byEncounter = await getReportParticipationByEncounter(
+            token,
+            report.code,
+            wclIds,
+            new Set(nightBosses.map((b) => b.plan))
+          );
           if (byEncounter) mergeParticipation(date, byEncounter);
         }
       }
@@ -1044,12 +1081,17 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
     // never both, so a lineup night costs no extra WCL round trip over what
     // this already made.
     let firstPullParticipants: Set<string> | null = null;
-    let perEncounterParticipants: Map<number, Set<string>> | null = null;
+    let perEncounterParticipants: Map<string, Set<string>> | null = null;
     if (lineupExists) {
       const wclIds = new Set(
         nightBosses.map((b) => b.wclEncounterId).filter((id): id is number => typeof id === 'number')
       );
-      perEncounterParticipants = await getReportParticipationByEncounter(token, report.code, wclIds);
+      perEncounterParticipants = await getReportParticipationByEncounter(
+        token,
+        report.code,
+        wclIds,
+        new Set(nightBosses.map((b) => b.plan))
+      );
       if (perEncounterParticipants) mergeParticipation(date, perEncounterParticipants);
     } else {
       // null (not an empty set) means detection failed/found no real pulls --
@@ -1138,11 +1180,14 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
   // than discarding every attendance row this whole run already computed.
   for (const date of datesTouchedThisRun) {
     const { bosses: nightBosses } = lineupByDate.get(date) ?? { bosses: [] as LineupBossRow[] };
-    const wclToLocalEncounterId = new Map(nightBosses.map((b) => [b.wclEncounterId, b.encounterId]));
-    const forDate = participationByDate.get(date) ?? new Map<number, Set<string>>();
-    for (const [wclEncounterId, names] of forDate) {
-      const encounterId = wclToLocalEncounterId.get(wclEncounterId);
-      if (encounterId === undefined) continue;
+    // Keys already name a half this night has (see
+    // getReportParticipationByEncounter).
+    const localBoss = new Map(nightBosses.map((b) => [halfKey(b.plan, b.wclEncounterId), b] as const));
+    const forDate = participationByDate.get(date) ?? new Map<string, Set<string>>();
+    for (const [key, names] of forDate) {
+      const boss = localBoss.get(key);
+      if (boss === undefined) continue;
+      const encounterId = boss.encounterId;
       const playerIds = [...names]
         .map((name) => playerIdByFirstName.get(name))
         .filter((id): id is number => typeof id === 'number');
@@ -1150,7 +1195,8 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
         p_team_id: teamId,
         p_raid_date: date,
         p_encounter_id: encounterId,
-        p_player_ids: playerIds
+        p_player_ids: playerIds,
+        p_plan: boss.plan
       });
       if (participationError) {
         console.error('record_raid_night_participation failed:', date, encounterId, participationError.message);

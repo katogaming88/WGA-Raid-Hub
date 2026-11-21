@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.record_raid_night_participation(p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[])
+CREATE OR REPLACE FUNCTION public.record_raid_night_participation(p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_plan text DEFAULT 'mythic'::text)
  RETURNS integer
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -24,7 +24,7 @@ begin
 
   if not exists (
     select 1 from raid_night_bosses
-    where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id
+    where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id and plan = p_plan
   ) then
     return 0;
   end if;
@@ -32,9 +32,9 @@ begin
   perform public.check_lineup_players(p_team_id, p_player_ids);
 
   delete from raid_night_participation
-  where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id;
-  insert into raid_night_participation (team_id, raid_date, encounter_id, player_id)
-  select p_team_id, p_raid_date, p_encounter_id, x from unnest(p_player_ids) x;
+  where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id and plan = p_plan;
+  insert into raid_night_participation (team_id, raid_date, encounter_id, plan, player_id)
+  select p_team_id, p_raid_date, p_encounter_id, p_plan, x from unnest(p_player_ids) x;
 
   return cardinality(p_player_ids);
 end;

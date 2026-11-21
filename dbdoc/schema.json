@@ -7683,6 +7683,13 @@
           "type": "integer",
           "nullable": true,
           "comment": "The spec the raider usually plays on this boss (#1580); null = the character's usual spec."
+        },
+        {
+          "name": "plan",
+          "type": "text",
+          "nullable": false,
+          "default": "'mythic'::text",
+          "comment": "Which plan this group belongs to (#1688): heroic (Normal and Heroic nights) or mythic."
         }
       ],
       "indexes": [
@@ -7692,16 +7699,6 @@
           "table": "public.boss_groups",
           "columns": [
             "id"
-          ]
-        },
-        {
-          "name": "boss_groups_team_id_encounter_id_player_id_key",
-          "def": "CREATE UNIQUE INDEX boss_groups_team_id_encounter_id_player_id_key ON public.boss_groups USING btree (team_id, encounter_id, player_id)",
-          "table": "public.boss_groups",
-          "columns": [
-            "team_id",
-            "encounter_id",
-            "player_id"
           ]
         },
         {
@@ -7727,9 +7724,30 @@
           "columns": [
             "character_id"
           ]
+        },
+        {
+          "name": "boss_groups_team_encounter_plan_player_key",
+          "def": "CREATE UNIQUE INDEX boss_groups_team_encounter_plan_player_key ON public.boss_groups USING btree (team_id, encounter_id, plan, player_id)",
+          "table": "public.boss_groups",
+          "columns": [
+            "team_id",
+            "encounter_id",
+            "plan",
+            "player_id"
+          ]
         }
       ],
       "constraints": [
+        {
+          "name": "boss_groups_plan_check",
+          "type": "CHECK",
+          "def": "CHECK ((plan = ANY (ARRAY['heroic'::text, 'mythic'::text])))",
+          "table": "public.boss_groups",
+          "referenced_table": "",
+          "columns": [
+            "plan"
+          ]
+        },
         {
           "name": "boss_groups_class_spec_id_fkey",
           "type": "FOREIGN KEY",
@@ -7806,14 +7824,15 @@
           ]
         },
         {
-          "name": "boss_groups_team_id_encounter_id_player_id_key",
+          "name": "boss_groups_team_encounter_plan_player_key",
           "type": "UNIQUE",
-          "def": "UNIQUE (team_id, encounter_id, player_id)",
+          "def": "UNIQUE (team_id, encounter_id, plan, player_id)",
           "table": "public.boss_groups",
           "referenced_table": "",
           "columns": [
             "team_id",
             "encounter_id",
+            "plan",
             "player_id"
           ]
         }
@@ -7883,6 +7902,13 @@
           "type": "integer",
           "nullable": true,
           "comment": "The kill that took this boss off the night (#1246): the team killed it earlier in the lockout at the night's difficulty. Null when an officer skipped it, and when it is not skipped."
+        },
+        {
+          "name": "plan",
+          "type": "text",
+          "nullable": false,
+          "default": "'mythic'::text",
+          "comment": "Which half of the night this boss is on (#1688): heroic or mythic. A Heroic into Mythic night lists each boss once per half."
         }
       ],
       "indexes": [
@@ -7892,16 +7918,6 @@
           "table": "public.raid_night_bosses",
           "columns": [
             "id"
-          ]
-        },
-        {
-          "name": "raid_night_bosses_team_id_raid_date_encounter_id_key",
-          "def": "CREATE UNIQUE INDEX raid_night_bosses_team_id_raid_date_encounter_id_key ON public.raid_night_bosses USING btree (team_id, raid_date, encounter_id)",
-          "table": "public.raid_night_bosses",
-          "columns": [
-            "team_id",
-            "raid_date",
-            "encounter_id"
           ]
         },
         {
@@ -7927,6 +7943,17 @@
           "columns": [
             "skipped_for_kill_id"
           ]
+        },
+        {
+          "name": "raid_night_bosses_team_date_encounter_plan_key",
+          "def": "CREATE UNIQUE INDEX raid_night_bosses_team_date_encounter_plan_key ON public.raid_night_bosses USING btree (team_id, raid_date, encounter_id, plan)",
+          "table": "public.raid_night_bosses",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id",
+            "plan"
+          ]
         }
       ],
       "constraints": [
@@ -7939,6 +7966,16 @@
           "columns": [
             "skipped",
             "skipped_for_kill_id"
+          ]
+        },
+        {
+          "name": "raid_night_bosses_plan_check",
+          "type": "CHECK",
+          "def": "CHECK ((plan = ANY (ARRAY['heroic'::text, 'mythic'::text])))",
+          "table": "public.raid_night_bosses",
+          "referenced_table": "",
+          "columns": [
+            "plan"
           ]
         },
         {
@@ -7991,18 +8028,6 @@
           ]
         },
         {
-          "name": "raid_night_bosses_team_id_raid_date_encounter_id_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (team_id, raid_date, encounter_id)",
-          "table": "public.raid_night_bosses",
-          "referenced_table": "",
-          "columns": [
-            "team_id",
-            "raid_date",
-            "encounter_id"
-          ]
-        },
-        {
           "name": "raid_night_bosses_skipped_for_kill_id_fkey",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (skipped_for_kill_id) REFERENCES team_raid_kills(id) ON DELETE SET NULL",
@@ -8013,6 +8038,19 @@
           ],
           "referenced_columns": [
             "id"
+          ]
+        },
+        {
+          "name": "raid_night_bosses_team_date_encounter_plan_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, raid_date, encounter_id, plan)",
+          "table": "public.raid_night_bosses",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id",
+            "plan"
           ]
         }
       ]
@@ -8064,6 +8102,13 @@
           "type": "integer",
           "nullable": true,
           "comment": "The spec the raider plays on this boss (#1580); null = the character's usual spec."
+        },
+        {
+          "name": "plan",
+          "type": "text",
+          "nullable": false,
+          "default": "'mythic'::text",
+          "comment": "The half of the night this place is in (#1688), matching its raid_night_bosses row."
         }
       ],
       "indexes": [
@@ -8073,17 +8118,6 @@
           "table": "public.raid_night_lineups",
           "columns": [
             "id"
-          ]
-        },
-        {
-          "name": "raid_night_lineups_team_id_raid_date_encounter_id_player_id_key",
-          "def": "CREATE UNIQUE INDEX raid_night_lineups_team_id_raid_date_encounter_id_player_id_key ON public.raid_night_lineups USING btree (team_id, raid_date, encounter_id, player_id)",
-          "table": "public.raid_night_lineups",
-          "columns": [
-            "team_id",
-            "raid_date",
-            "encounter_id",
-            "player_id"
           ]
         },
         {
@@ -8101,9 +8135,31 @@
           "columns": [
             "character_id"
           ]
+        },
+        {
+          "name": "raid_night_lineups_team_date_encounter_plan_player_key",
+          "def": "CREATE UNIQUE INDEX raid_night_lineups_team_date_encounter_plan_player_key ON public.raid_night_lineups USING btree (team_id, raid_date, encounter_id, plan, player_id)",
+          "table": "public.raid_night_lineups",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id",
+            "plan",
+            "player_id"
+          ]
         }
       ],
       "constraints": [
+        {
+          "name": "raid_night_lineups_plan_check",
+          "type": "CHECK",
+          "def": "CHECK ((plan = ANY (ARRAY['heroic'::text, 'mythic'::text])))",
+          "table": "public.raid_night_lineups",
+          "referenced_table": "",
+          "columns": [
+            "plan"
+          ]
+        },
         {
           "name": "raid_night_lineups_class_spec_id_fkey",
           "type": "FOREIGN KEY",
@@ -8144,23 +8200,6 @@
           ]
         },
         {
-          "name": "raid_night_lineups_team_id_raid_date_encounter_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE",
-          "table": "public.raid_night_lineups",
-          "referenced_table": "public.raid_night_bosses",
-          "columns": [
-            "team_id",
-            "raid_date",
-            "encounter_id"
-          ],
-          "referenced_columns": [
-            "team_id",
-            "raid_date",
-            "encounter_id"
-          ]
-        },
-        {
           "name": "raid_night_lineups_pkey",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
@@ -8171,15 +8210,35 @@
           ]
         },
         {
-          "name": "raid_night_lineups_team_id_raid_date_encounter_id_player_id_key",
+          "name": "raid_night_lineups_night_boss_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id, raid_date, encounter_id, plan) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id, plan) ON DELETE CASCADE",
+          "table": "public.raid_night_lineups",
+          "referenced_table": "public.raid_night_bosses",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id",
+            "plan"
+          ],
+          "referenced_columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id",
+            "plan"
+          ]
+        },
+        {
+          "name": "raid_night_lineups_team_date_encounter_plan_player_key",
           "type": "UNIQUE",
-          "def": "UNIQUE (team_id, raid_date, encounter_id, player_id)",
+          "def": "UNIQUE (team_id, raid_date, encounter_id, plan, player_id)",
           "table": "public.raid_night_lineups",
           "referenced_table": "",
           "columns": [
             "team_id",
             "raid_date",
             "encounter_id",
+            "plan",
             "player_id"
           ]
         }
@@ -8599,6 +8658,13 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "plan",
+          "type": "text",
+          "nullable": false,
+          "default": "'mythic'::text",
+          "comment": "The half of the night the fight was in (#1688): mythic for a Mythic fight, heroic for any other."
         }
       ],
       "indexes": [
@@ -8611,26 +8677,37 @@
           ]
         },
         {
-          "name": "raid_night_participation_team_id_raid_date_encounter_id_pla_key",
-          "def": "CREATE UNIQUE INDEX raid_night_participation_team_id_raid_date_encounter_id_pla_key ON public.raid_night_participation USING btree (team_id, raid_date, encounter_id, player_id)",
-          "table": "public.raid_night_participation",
-          "columns": [
-            "team_id",
-            "raid_date",
-            "encounter_id",
-            "player_id"
-          ]
-        },
-        {
           "name": "raid_night_participation_player_id_idx",
           "def": "CREATE INDEX raid_night_participation_player_id_idx ON public.raid_night_participation USING btree (player_id)",
           "table": "public.raid_night_participation",
           "columns": [
             "player_id"
           ]
+        },
+        {
+          "name": "raid_night_participation_team_date_encounter_plan_player_key",
+          "def": "CREATE UNIQUE INDEX raid_night_participation_team_date_encounter_plan_player_key ON public.raid_night_participation USING btree (team_id, raid_date, encounter_id, plan, player_id)",
+          "table": "public.raid_night_participation",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id",
+            "plan",
+            "player_id"
+          ]
         }
       ],
       "constraints": [
+        {
+          "name": "raid_night_participation_plan_check",
+          "type": "CHECK",
+          "def": "CHECK ((plan = ANY (ARRAY['heroic'::text, 'mythic'::text])))",
+          "table": "public.raid_night_participation",
+          "referenced_table": "",
+          "columns": [
+            "plan"
+          ]
+        },
         {
           "name": "raid_night_participation_player_id_fkey",
           "type": "FOREIGN KEY",
@@ -8645,23 +8722,6 @@
           ]
         },
         {
-          "name": "raid_night_participation_team_id_raid_date_encounter_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE",
-          "table": "public.raid_night_participation",
-          "referenced_table": "public.raid_night_bosses",
-          "columns": [
-            "team_id",
-            "raid_date",
-            "encounter_id"
-          ],
-          "referenced_columns": [
-            "team_id",
-            "raid_date",
-            "encounter_id"
-          ]
-        },
-        {
           "name": "raid_night_participation_pkey",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
@@ -8672,15 +8732,35 @@
           ]
         },
         {
-          "name": "raid_night_participation_team_id_raid_date_encounter_id_pla_key",
+          "name": "raid_night_participation_night_boss_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id, raid_date, encounter_id, plan) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id, plan) ON DELETE CASCADE",
+          "table": "public.raid_night_participation",
+          "referenced_table": "public.raid_night_bosses",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id",
+            "plan"
+          ],
+          "referenced_columns": [
+            "team_id",
+            "raid_date",
+            "encounter_id",
+            "plan"
+          ]
+        },
+        {
+          "name": "raid_night_participation_team_date_encounter_plan_player_key",
           "type": "UNIQUE",
-          "def": "UNIQUE (team_id, raid_date, encounter_id, player_id)",
+          "def": "UNIQUE (team_id, raid_date, encounter_id, plan, player_id)",
           "table": "public.raid_night_participation",
           "referenced_table": "",
           "columns": [
             "team_id",
             "raid_date",
             "encounter_id",
+            "plan",
             "player_id"
           ]
         }
@@ -16870,17 +16950,19 @@
       "columns": [
         "team_id",
         "raid_date",
-        "encounter_id"
+        "encounter_id",
+        "plan"
       ],
       "cardinality": "zero_or_more",
       "parent_table": "public.raid_night_bosses",
       "parent_columns": [
         "team_id",
         "raid_date",
-        "encounter_id"
+        "encounter_id",
+        "plan"
       ],
       "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
+      "def": "FOREIGN KEY (team_id, raid_date, encounter_id, plan) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id, plan) ON DELETE CASCADE"
     },
     {
       "table": "public.team_lineup_settings",
@@ -16978,17 +17060,19 @@
       "columns": [
         "team_id",
         "raid_date",
-        "encounter_id"
+        "encounter_id",
+        "plan"
       ],
       "cardinality": "zero_or_more",
       "parent_table": "public.raid_night_bosses",
       "parent_columns": [
         "team_id",
         "raid_date",
-        "encounter_id"
+        "encounter_id",
+        "plan"
       ],
       "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
+      "def": "FOREIGN KEY (team_id, raid_date, encounter_id, plan) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id, plan) ON DELETE CASCADE"
     },
     {
       "table": "public.season_track_floors",
@@ -18438,12 +18522,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.set_raid_night_boss_skipped",
-      "return_type": "void",
-      "arguments": "p_team_id integer, p_raid_date date, p_encounter_id integer, p_skipped boolean",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.set_encounter_cap",
       "return_type": "void",
       "arguments": "p_encounter_id integer, p_cap integer DEFAULT NULL::integer",
@@ -18549,12 +18627,6 @@
       "name": "public.also_on_teams",
       "return_type": "record",
       "arguments": "p_team_id integer",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.record_raid_night_participation",
-      "return_type": "int4",
-      "arguments": "p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[]",
       "type": "FUNCTION"
     },
     {
@@ -19572,18 +19644,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.set_raid_night_lineup",
-      "return_type": "int4",
-      "arguments": "p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.set_boss_group",
-      "return_type": "int4",
-      "arguments": "p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.set_raid_night_boss_order",
       "return_type": "void",
       "arguments": "p_team_id integer, p_raid_date date, p_encounter_ids integer[], p_expected_ids integer[], p_every_night boolean DEFAULT false",
@@ -19599,6 +19659,36 @@
       "name": "public.set_lineup_raider_order",
       "return_type": "void",
       "arguments": "p_team_id integer, p_role text, p_player_ids integer[]",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.raid_night_plans",
+      "return_type": "_text",
+      "arguments": "p_team_id integer, p_raid_date date",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_boss_group",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb, p_plan text DEFAULT 'mythic'::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_raid_night_lineup",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb, p_plan text DEFAULT 'mythic'::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_raid_night_boss_skipped",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_raid_date date, p_encounter_id integer, p_skipped boolean, p_plan text DEFAULT 'mythic'::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.record_raid_night_participation",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_plan text DEFAULT 'mythic'::text",
       "type": "FUNCTION"
     }
   ],

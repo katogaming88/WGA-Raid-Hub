@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.set_boss_group(p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb)
+CREATE OR REPLACE FUNCTION public.set_boss_group(p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb, p_plan text DEFAULT 'mythic'::text)
  RETURNS integer
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -22,6 +22,10 @@ begin
     or public.is_site_admin()
   ) then
     raise exception 'Not authorized';
+  end if;
+
+  if p_plan is null or p_plan not in ('heroic', 'mythic') then
+    raise exception 'Pick the Heroic or the Mythic plan.';
   end if;
 
   if not exists (select 1 from raid_encounters where id = p_encounter_id) then
@@ -65,7 +69,7 @@ begin
                                                'class_spec_id', class_spec_id))
                     filter (where character_id is not null or class_spec_id is not null), '[]'::jsonb)
     into v_current, v_current_picks
-  from boss_groups where team_id = p_team_id and encounter_id = p_encounter_id;
+  from boss_groups where team_id = p_team_id and encounter_id = p_encounter_id and plan = p_plan;
 
   if (p_expected_player_ids is not null and not public.same_player_set(v_current, p_expected_player_ids))
      or (p_expected_picks is not null and not public.same_lineup_picks(v_current_picks, p_expected_picks))
@@ -73,25 +77,26 @@ begin
     raise exception 'Someone else changed this group since you opened it. Reload to see their change.';
   end if;
 
-  delete from boss_groups where team_id = p_team_id and encounter_id = p_encounter_id;
-  insert into boss_groups (team_id, encounter_id, player_id, character_id, class_spec_id)
-  select p_team_id, p_encounter_id, x, n.character_id, n.class_spec_id
+  delete from boss_groups where team_id = p_team_id and encounter_id = p_encounter_id and plan = p_plan;
+  insert into boss_groups (team_id, encounter_id, plan, player_id, character_id, class_spec_id)
+  select p_team_id, p_encounter_id, p_plan, x, n.character_id, n.class_spec_id
   from unnest(p_player_ids) x
   left join public.lineup_picks_norm(p_team_id, p_picks) n on n.player_id = x;
 
+  -- Coming nights still on the automatic copy of this plan follow it.
   select coalesce(array_agg(raid_date order by raid_date), '{}') into v_nights
   from raid_night_bosses
-  where team_id = p_team_id and encounter_id = p_encounter_id
+  where team_id = p_team_id and encounter_id = p_encounter_id and plan = p_plan
     and raid_date >= public.raid_today() and confirmed_at is null and not skipped;
 
   delete from raid_night_lineups
-  where team_id = p_team_id and encounter_id = p_encounter_id and raid_date = any (v_nights);
-  insert into raid_night_lineups (team_id, raid_date, encounter_id, player_id, character_id, class_spec_id)
-  select p_team_id, d, p_encounter_id, g.player_id, g.character_id, g.class_spec_id
+  where team_id = p_team_id and encounter_id = p_encounter_id and plan = p_plan and raid_date = any (v_nights);
+  insert into raid_night_lineups (team_id, raid_date, encounter_id, plan, player_id, character_id, class_spec_id)
+  select p_team_id, d, p_encounter_id, p_plan, g.player_id, g.character_id, g.class_spec_id
   from unnest(v_nights) d
   cross join boss_groups g
   join players p on p.id = g.player_id and not p.is_bench
-  where g.team_id = p_team_id and g.encounter_id = p_encounter_id;
+  where g.team_id = p_team_id and g.encounter_id = p_encounter_id and g.plan = p_plan;
 
   perform public.write_audit_log(
     p_team_id,
@@ -100,6 +105,7 @@ begin
     p_encounter_id,
     jsonb_build_object(
       'boss', (select name from raid_encounters where id = p_encounter_id),
+      'plan', p_plan,
       'player_ids', to_jsonb(p_player_ids),
       'picks', coalesce(p_picks, '[]'::jsonb),
       'nights_following', to_jsonb(v_nights)

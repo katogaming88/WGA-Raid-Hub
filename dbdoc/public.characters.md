@@ -121,6 +121,7 @@ erDiagram
   timestamp_with_time_zone created_at
   integer character_id FK
   integer class_spec_id FK
+  text plan
 }
 "public.raid_night_lineups" {
   integer id
@@ -131,6 +132,7 @@ erDiagram
   timestamp_with_time_zone created_at
   integer character_id FK
   integer class_spec_id FK
+  text plan FK
 }
 "public.recruit_applications" {
   integer id

@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     58 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 48 h 22 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 49 h 17 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **224 h 10 m** |             |
+| **All revamp work**                | **225 h 05 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 11 h 55 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 12 h 50 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -827,6 +827,14 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:15-9:35 AM | PR #1881 (#1682): CodeRabbit's findings (a missing team gets a plain error; a refused clear and a signed-out read tested; the guild-officer note declined in its thread), the fresh-agent migration review, tbls pinned to 1.96.0 in the schema docs check, Kat's merge (9:34 AM), cleanup | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1682) | 20 m | build | 92,000 | Everything between 1:00 PM on 11-19 and 9:15 AM had no session activity (review and CodeRabbit waits). |
 | 9:36-10:02 AM | #1683: officers order raiders within each Boss Lineup role: drag a name or use ▲ ▼ inside the role, a blue drop line, Sort A-Z in the role's heading, one saved order for the whole team (`team_raider_order`, `set_lineup_raider_order`); new raiders last; computer only; database and page tests, generated docs, RLS.md, decision log, Help guide, stamp, changelog, these rows; PR #1882, its four screenshots (a drop line hidden behind the cells found and fixed), CodeRabbit (no comments), the fresh-agent migration review launched | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1683) | 25 m | build | 252,100 | The fresh agent's own run (about 114,300 tokens, 4 minutes) is not in the tokens. Kat's design review and merge not yet counted. |
 | 10:23-10:33 AM | PR #1882 (#1683) after the fresh-agent review (changes needed): backup-restore.md entry; the saved place keeps its role so a raider who changes role isn't pinned in the new one; archived raiders refused; one delete instead of two; decision-log wording; three new database tests; migration re-applied, docs regenerated, a fresh reset for the full RLS run, backup restored; PR comment | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1683) | 10 m | build | 41,200 | Kat's design review and merge not yet counted. |
+| 10:33-10:44 AM | PR #1882 (#1683): Kat's design review and merge | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1683) | 10 m | Kat | 14,400 | Logged in the next PR, as the 11-20 handoff said. |
+
+### 2026-11-21
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 11:06-11:11 AM | /resume; #1688 picked: the real Boss Groups read, a first mockup (a "Planning for" switch on both pages), three questions | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1688) | 5 m | build | 174,100 | Kat away 11:11 AM-3:47 PM, not counted. |
+| 3:47-4:25 PM | #1688 reworked with Kat: two plans (Heroic, Mythic) instead of one switch, mockup redrawn, #1688 rewritten, #1884 filed (one shared grid for Boss Groups and Boss Lineup), #1487 updated; split into two PRs; part 1 built: the plan column on four tables, seven functions, `raid_night_plans`, the sync per half, the Discord post and bot, database and Edge Function tests, generated docs, RLS.md, decision log, stamp, changelog, these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1688) | 40 m | build (Kat's answers inline) | 340,000 | Review and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 

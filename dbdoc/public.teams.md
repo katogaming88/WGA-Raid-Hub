@@ -526,6 +526,7 @@ erDiagram
   timestamp_with_time_zone created_at
   integer character_id FK
   integer class_spec_id FK
+  text plan
 }
 "public.raid_night_bosses" {
   integer id
@@ -538,6 +539,7 @@ erDiagram
   integer confirmed_by FK
   timestamp_with_time_zone created_at
   integer skipped_for_kill_id FK
+  text plan
 }
 "public.team_lineup_settings" {
   integer team_id FK

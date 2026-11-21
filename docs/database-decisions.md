@@ -3933,3 +3933,21 @@ Shipped: `20261120093742_team_raider_order.sql`.
 **One order for the whole team, saved at once** (Kat, 2026-10-27): never part of the lineup's Save, and no stale check, so an officer on an old page can undo a move made a moment before. Two officers saving at the same moment queue on this function's own lock and the later whole list wins. Gated like the other lineup writes (`edit_schedule` or site admin); read by whoever reads the team's raid nights, like `team_boss_role_targets`.
 
 [Full discussion -> #1683](https://github.com/katogaming88/WGA-Raid-Hub/issues/1683).
+
+## #1688 -- a Heroic plan and a Mythic plan
+
+Shipped: `20261121160423_lineup_heroic_mythic_plans.sql`.
+
+**A `plan` column, `heroic` or `mythic`, on `boss_groups`, `raid_night_bosses`, `raid_night_lineups` and `raid_night_participation`, and in each of their keys** (Kat, 2026-11-21). A team keeps one usual group per boss per plan, and a night holds one lineup per boss per half. Normal nights use the Heroic plan: both take 10 to 30, and few teams plan Normal on its own. A column on the existing tables rather than new tables, so every reader, rule and trigger keeps working and only the keys widen.
+
+**A night copies the plan for its difficulty, read by `raid_night_plans()`:** Heroic the Heroic plan, Heroic into Mythic both (two lineups per boss, Kat's pick over planning the Mythic half only), anything else, a night with no difficulty included, the Mythic plan. It reads the night's own difficulty rather than `raid_night_info()`, which reports Heroic into Mythic as Mythic.
+
+**Every row already there became `mythic`, and `mythic` stays the default**, so nothing changes until an officer fills a Heroic plan, and a write that names no plan is the Mythic one, as before. The other plan starts empty (Kat's pick over copying the groups).
+
+**The pull order, role targets and raider order stay one per team, shared by both plans.** A night's pull order is shared by its halves: `set_raid_night_boss_order()` moves a boss on both.
+
+**A kill skips the boss on the half run at its difficulty only**, through `kills_before_night(..., plan)`. A Heroic into Mythic night used to check only Mythic kills; now a Heroic kill skips its Heroic half. A night with no difficulty set is still never skipped.
+
+**Who was actually in is kept per half:** on a Heroic into Mythic night `wcl-sync` sends a Mythic fight to the Mythic half and any other to the Heroic half; on a night with one half every pull of the boss counts toward it, as before (a Heroic farm pull on a Mythic night still counts). It judges lateness against a raider's first boss across both halves, the Heroic half first.
+
+[Full discussion -> #1688](https://github.com/katogaming88/WGA-Raid-Hub/issues/1688).

@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.set_raid_night_lineup(p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb)
+CREATE OR REPLACE FUNCTION public.set_raid_night_lineup(p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb, p_plan text DEFAULT 'mythic'::text)
  RETURNS integer
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -25,6 +25,15 @@ begin
 
   if p_raid_date is null or not coalesce((select i.exists from public.raid_night_info(p_team_id, p_raid_date) i), false) then
     raise exception 'There is no raid that night.';
+  end if;
+
+  -- A half the night is raided at, or one it already has (its difficulty
+  -- changed after it was filled), so what is planned can still be edited.
+  if p_plan is null
+     or not (p_plan = any (public.raid_night_plans(p_team_id, p_raid_date))
+             or exists (select 1 from raid_night_bosses
+                        where team_id = p_team_id and raid_date = p_raid_date and plan = p_plan)) then
+    raise exception 'That night isn''t raided on that difficulty.';
   end if;
 
   if not exists (select 1 from raid_encounters where id = p_encounter_id) then
@@ -69,7 +78,7 @@ begin
                     filter (where character_id is not null or class_spec_id is not null), '[]'::jsonb)
     into v_current, v_current_picks
   from raid_night_lineups
-  where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id;
+  where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id and plan = p_plan;
 
   if (p_expected_player_ids is not null and not public.same_player_set(v_current, p_expected_player_ids))
      or (p_expected_picks is not null and not public.same_lineup_picks(v_current_picks, p_expected_picks))
@@ -77,19 +86,28 @@ begin
     raise exception 'Someone else changed this boss''s lineup since you opened it. Reload to see their change.';
   end if;
 
-  insert into raid_night_bosses (team_id, raid_date, encounter_id, position, confirmed_at, confirmed_by)
+  -- A boss new to this half takes its place from the other half, else goes
+  -- last.
+  insert into raid_night_bosses (team_id, raid_date, encounter_id, plan, position, confirmed_at, confirmed_by)
   values (
-    p_team_id, p_raid_date, p_encounter_id,
-    coalesce((select max(position) from raid_night_bosses where team_id = p_team_id and raid_date = p_raid_date), 0) + 1,
+    p_team_id, p_raid_date, p_encounter_id, p_plan,
+    coalesce(
+      (select min(position) from raid_night_bosses
+        where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id),
+      (select max(position) from raid_night_bosses where team_id = p_team_id and raid_date = p_raid_date),
+      0
+    ) + case when exists (select 1 from raid_night_bosses
+                           where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id)
+             then 0 else 1 end,
     now(), public.my_person_id()
   )
-  on conflict (team_id, raid_date, encounter_id)
+  on conflict (team_id, raid_date, encounter_id, plan)
   do update set skipped = false, skipped_for_kill_id = null, confirmed_at = now(), confirmed_by = public.my_person_id();
 
   delete from raid_night_lineups
-  where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id;
-  insert into raid_night_lineups (team_id, raid_date, encounter_id, player_id, character_id, class_spec_id)
-  select p_team_id, p_raid_date, p_encounter_id, x, n.character_id, n.class_spec_id
+  where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id and plan = p_plan;
+  insert into raid_night_lineups (team_id, raid_date, encounter_id, plan, player_id, character_id, class_spec_id)
+  select p_team_id, p_raid_date, p_encounter_id, p_plan, x, n.character_id, n.class_spec_id
   from unnest(p_player_ids) x
   left join public.lineup_picks_norm(p_team_id, p_picks) n on n.player_id = x;
 
@@ -101,6 +119,7 @@ begin
     jsonb_build_object(
       'raid_date', p_raid_date,
       'boss', (select name from raid_encounters where id = p_encounter_id),
+      'plan', p_plan,
       'player_ids', to_jsonb(p_player_ids),
       'was', to_jsonb(v_current),
       'picks', coalesce(p_picks, '[]'::jsonb),

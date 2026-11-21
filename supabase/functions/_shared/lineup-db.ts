@@ -73,19 +73,24 @@ export function lineupDb(client: () => SupabaseClient<any>): LineupDb {
       const [bosses, lineup] = await Promise.all([
         client()
           .from('raid_night_bosses')
-          .select('encounter_id, position, skipped, raid_encounters(name)')
+          .select('encounter_id, plan, position, skipped, raid_encounters(name)')
           .eq('team_id', teamId)
           .eq('raid_date', raidDate),
         client()
           .from('raid_night_lineups')
           .select(
-            'encounter_id, player_id, character_id, class_spec_id, characters(name, class_name, spec_name), classes_specs(class, spec)'
+            'encounter_id, plan, player_id, character_id, class_spec_id, characters(name, class_name, spec_name), classes_specs(class, spec)'
           )
           .eq('team_id', teamId)
           .eq('raid_date', raidDate)
       ]);
-      const rows = (must(bosses, 'raid_night_bosses') as any[] | null) ?? [];
-      const ins = (must(lineup, 'raid_night_lineups') as any[] | null) ?? [];
+      const all = (must(bosses, 'raid_night_bosses') as any[] | null) ?? [];
+      // One half per post (#1688): a Heroic into Mythic night posts its
+      // Mythic half, the one raiders sit out of.
+      const plan = all.some((b) => b.plan !== 'heroic') ? 'mythic' : 'heroic';
+      const half = (r: any) => (r.plan === 'heroic' ? 'heroic' : 'mythic') === plan;
+      const rows = all.filter(half);
+      const ins = ((must(lineup, 'raid_night_lineups') as any[] | null) ?? []).filter(half);
       // What a pick plays, as the site's grid works it out (#1873): the picked
       // spec, else the alt's own; null falls back to the raider's usual.
       const pickOf = (l: any) =>

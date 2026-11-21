@@ -65,14 +65,14 @@
 | [public.boe_managers](public.boe_managers.md) | 5 | Read-only view of guild_grants (#942), dropped at cutover (#1105). | VIEW |
 | [public.characters](public.characters.md) | 13 | Characters a person chose to show from their Battle.net account (#942 step 5, #1162). Written only by save_battlenet_characters() from the battlenet-characters Edge Function. A character here is an alt unless the same name_realm_key is a roster row linked to the person. | BASE TABLE |
 | [public.main_swap_requests](public.main_swap_requests.md) | 14 | A raider's request to make one of their alts their roster character, outside a signup window (#631, #942 step 5c). Written only by request_main_swap(), cancel_main_swap_request() and review_main_swap_request(), and by the trigger that closes a waiting swap when its character leaves the roster (cancel_waiting_main_swaps_on_archive, #1428). name_realm and class_spec_id are what they asked for, kept here so the request still reads right after the character row changes. | BASE TABLE |
-| [public.boss_groups](public.boss_groups.md) | 7 | The standing group per boss for a team (#1216): one row per raider in the group that kills that boss. A new raid night is filled from these. Written only through set_boss_group(). | BASE TABLE |
-| [public.raid_night_bosses](public.raid_night_bosses.md) | 10 | The bosses on one raid night's list for a team (#1216), in pull order. skipped keeps a boss the team is not pulling that night on the list. confirmed_at and confirmed_by say an officer saved that boss's lineup for the night; until then it follows the boss's standing group. No rows for a night means it is not planned yet. | BASE TABLE |
-| [public.raid_night_lineups](public.raid_night_lineups.md) | 8 | The plan for one raid night (#1216): one row per raider in for one boss. Filled from boss_groups ahead of the night, then edited through set_raid_night_lineup(). Kept after the night, so it still says who was planned in. | BASE TABLE |
+| [public.boss_groups](public.boss_groups.md) | 8 | The standing group per boss for a team (#1216): one row per raider in the group that kills that boss. A new raid night is filled from these. Written only through set_boss_group(). | BASE TABLE |
+| [public.raid_night_bosses](public.raid_night_bosses.md) | 11 | The bosses on one raid night's list for a team (#1216), in pull order. skipped keeps a boss the team is not pulling that night on the list. confirmed_at and confirmed_by say an officer saved that boss's lineup for the night; until then it follows the boss's standing group. No rows for a night means it is not planned yet. | BASE TABLE |
+| [public.raid_night_lineups](public.raid_night_lineups.md) | 9 | The plan for one raid night (#1216): one row per raider in for one boss. Filled from boss_groups ahead of the night, then edited through set_raid_night_lineup(). Kept after the night, so it still says who was planned in. | BASE TABLE |
 | [public.team_lineup_settings](public.team_lineup_settings.md) | 4 | A team's own tanks-wanted and healers-wanted counts for the boss lineup's "Needs a look" check (#1244), defaulting to 2 and 4 when a team has no row. Written only by set_lineup_role_targets(). | BASE TABLE |
 | [public.team_seasons](public.team_seasons.md) | 6 | A team's two switches per tier (#939): whether raiders can sign up and whether they can edit their wishlist. No row means both closed. Written only by set_team_season(). | BASE TABLE |
 | [public.team_invite_links](public.team_invite_links.md) | 5 | One active invite code per team (#1264). Resetting overwrites the row, so the old code stops resolving immediately. | BASE TABLE |
 | [public.item_seasons](public.item_seasons.md) | 2 | The seasons a dungeon or crafted item is offered in (#1166). A raid item has no row: its season comes from raid_zones. Filled by scripts/dungeon-items-sql.js, never by a client. | BASE TABLE |
-| [public.raid_night_participation](public.raid_night_participation.md) | 6 | Who was actually in for a real pull of one boss on one raid night (#1242), one row per raider present. Written only by record_raid_night_participation(), called from the attendance sync once a night has a lineup (raid_night_bosses). Compare against raid_night_lineups for planned-vs-actual. | BASE TABLE |
+| [public.raid_night_participation](public.raid_night_participation.md) | 7 | Who was actually in for a real pull of one boss on one raid night (#1242), one row per raider present. Written only by record_raid_night_participation(), called from the attendance sync once a night has a lineup (raid_night_bosses). Compare against raid_night_lineups for planned-vs-actual. | BASE TABLE |
 | [public.season_track_floors](public.season_track_floors.md) | 4 | The lowest item level of each gear upgrade track in a tier (#1267). blizzard-gear-sync grades equipped gear that carries no track bonus id against the current tier's floors, highest track first. Added by the migration that adds the tier. | BASE TABLE |
 | [public.team_raid_kills](public.team_raid_kills.md) | 9 | Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), alt runs included as on team_raid_progress, one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. Each insert takes the bosses it killed off the team's later nights that lockout (skip_killed_bosses()). | BASE TABLE |
 | [public.team_raid_kills_this_week](public.team_raid_kills_this_week.md) | 7 | Each boss a team has killed since this week's Tuesday reset, once per difficulty, with its first kill of the week (#1246). | VIEW |
@@ -220,7 +220,6 @@
 | public.fill_raid_night | int4 | p_team_id integer, p_raid_date date | FUNCTION |
 | public.fill_upcoming_raid_nights | int4 |  | FUNCTION |
 | public.plan_raid_night | int4 | p_team_id integer, p_raid_date date | FUNCTION |
-| public.set_raid_night_boss_skipped | void | p_team_id integer, p_raid_date date, p_encounter_id integer, p_skipped boolean | FUNCTION |
 | public.set_encounter_cap | void | p_encounter_id integer, p_cap integer DEFAULT NULL::integer | FUNCTION |
 | public.set_lineup_role_targets | void | p_team_id integer, p_tanks integer, p_healers integer | FUNCTION |
 | public.current_season | text | p_on date DEFAULT ((now() AT TIME ZONE 'America/New_York'::text))::date | FUNCTION |
@@ -239,7 +238,6 @@
 | public.create_guild | record | p_name text, p_region text, p_realm text, p_team_name text DEFAULT NULL::text | FUNCTION |
 | public.restrict_item_preferences_to_open_wishlist | trigger |  | FUNCTION |
 | public.also_on_teams | record | p_team_id integer | FUNCTION |
-| public.record_raid_night_participation | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[] | FUNCTION |
 | public.wishlist_setup_status | record | p_team_id integer | FUNCTION |
 | public.drop_archived_player_live_priority | trigger |  | FUNCTION |
 | public.lockout_week_start | date | p_raid_date date | FUNCTION |
@@ -409,11 +407,14 @@
 | public.lineup_picks_norm | record | p_team_id integer, p_picks jsonb | FUNCTION |
 | public.check_lineup_picks | void | p_team_id integer, p_player_ids integer[], p_picks jsonb | FUNCTION |
 | public.same_lineup_picks | bool | a jsonb, b jsonb | FUNCTION |
-| public.set_raid_night_lineup | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb | FUNCTION |
-| public.set_boss_group | int4 | p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb | FUNCTION |
 | public.set_raid_night_boss_order | void | p_team_id integer, p_raid_date date, p_encounter_ids integer[], p_expected_ids integer[], p_every_night boolean DEFAULT false | FUNCTION |
 | public.set_boss_role_targets | void | p_team_id integer, p_encounter_id integer, p_tanks integer DEFAULT NULL::integer, p_healers integer DEFAULT NULL::integer, p_melee integer DEFAULT NULL::integer, p_ranged integer DEFAULT NULL::integer | FUNCTION |
 | public.set_lineup_raider_order | void | p_team_id integer, p_role text, p_player_ids integer[] | FUNCTION |
+| public.raid_night_plans | _text | p_team_id integer, p_raid_date date | FUNCTION |
+| public.set_boss_group | int4 | p_team_id integer, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb, p_plan text DEFAULT 'mythic'::text | FUNCTION |
+| public.set_raid_night_lineup | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb, p_plan text DEFAULT 'mythic'::text | FUNCTION |
+| public.set_raid_night_boss_skipped | void | p_team_id integer, p_raid_date date, p_encounter_id integer, p_skipped boolean, p_plan text DEFAULT 'mythic'::text | FUNCTION |
+| public.record_raid_night_participation | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_plan text DEFAULT 'mythic'::text | FUNCTION |
 
 ## Enums
 
@@ -549,7 +550,7 @@ erDiagram
 "public.raid_night_lineups" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
 "public.raid_night_lineups" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.raid_night_lineups" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
-"public.raid_night_lineups" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
+"public.raid_night_lineups" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id, plan) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id, plan) ON DELETE CASCADE"
 "public.team_lineup_settings" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_seasons" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_seasons" }o--|| "public.seasons" : "FOREIGN KEY (season_code) REFERENCES seasons(code)"
@@ -557,7 +558,7 @@ erDiagram
 "public.item_seasons" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.item_seasons" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.raid_night_participation" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
-"public.raid_night_participation" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
+"public.raid_night_participation" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id, plan) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id, plan) ON DELETE CASCADE"
 "public.season_track_floors" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.team_raid_kills" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_raid_kills" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
@@ -1299,6 +1300,7 @@ erDiagram
   timestamp_with_time_zone created_at
   integer character_id FK
   integer class_spec_id FK
+  text plan
 }
 "public.raid_night_bosses" {
   integer id
@@ -1311,6 +1313,7 @@ erDiagram
   integer confirmed_by FK
   timestamp_with_time_zone created_at
   integer skipped_for_kill_id FK
+  text plan
 }
 "public.raid_night_lineups" {
   integer id
@@ -1321,6 +1324,7 @@ erDiagram
   timestamp_with_time_zone created_at
   integer character_id FK
   integer class_spec_id FK
+  text plan FK
 }
 "public.team_lineup_settings" {
   integer team_id FK
@@ -1354,6 +1358,7 @@ erDiagram
   integer encounter_id FK
   integer player_id FK
   timestamp_with_time_zone created_at
+  text plan FK
 }
 "public.season_track_floors" {
   text season FK

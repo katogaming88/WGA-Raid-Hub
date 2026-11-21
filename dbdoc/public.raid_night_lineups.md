@@ -16,26 +16,28 @@ The plan for one raid night (#1216): one row per raider in for one boss. Filled 
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | character_id | integer |  | true |  | [public.characters](public.characters.md) | The alt the raider plays on this boss (#1580); null = their roster character. |
 | class_spec_id | integer |  | true |  | [public.classes_specs](public.classes_specs.md) | The spec the raider plays on this boss (#1580); null = the character's usual spec. |
+| plan | text | 'mythic'::text | false |  | [public.raid_night_bosses](public.raid_night_bosses.md) | The half of the night this place is in (#1688), matching its raid_night_bosses row. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| raid_night_lineups_plan_check | CHECK | CHECK ((plan = ANY (ARRAY['heroic'::text, 'mythic'::text]))) |
 | raid_night_lineups_class_spec_id_fkey | FOREIGN KEY | FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) |
 | raid_night_lineups_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
 | raid_night_lineups_character_id_fkey | FOREIGN KEY | FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL |
-| raid_night_lineups_team_id_raid_date_encounter_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE |
 | raid_night_lineups_pkey | PRIMARY KEY | PRIMARY KEY (id) |
-| raid_night_lineups_team_id_raid_date_encounter_id_player_id_key | UNIQUE | UNIQUE (team_id, raid_date, encounter_id, player_id) |
+| raid_night_lineups_night_boss_fkey | FOREIGN KEY | FOREIGN KEY (team_id, raid_date, encounter_id, plan) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id, plan) ON DELETE CASCADE |
+| raid_night_lineups_team_date_encounter_plan_player_key | UNIQUE | UNIQUE (team_id, raid_date, encounter_id, plan, player_id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | raid_night_lineups_pkey | CREATE UNIQUE INDEX raid_night_lineups_pkey ON public.raid_night_lineups USING btree (id) |
-| raid_night_lineups_team_id_raid_date_encounter_id_player_id_key | CREATE UNIQUE INDEX raid_night_lineups_team_id_raid_date_encounter_id_player_id_key ON public.raid_night_lineups USING btree (team_id, raid_date, encounter_id, player_id) |
 | raid_night_lineups_player_id_idx | CREATE INDEX raid_night_lineups_player_id_idx ON public.raid_night_lineups USING btree (player_id) |
 | raid_night_lineups_character_id_idx | CREATE INDEX raid_night_lineups_character_id_idx ON public.raid_night_lineups USING btree (character_id) WHERE (character_id IS NOT NULL) |
+| raid_night_lineups_team_date_encounter_plan_player_key | CREATE UNIQUE INDEX raid_night_lineups_team_date_encounter_plan_player_key ON public.raid_night_lineups USING btree (team_id, raid_date, encounter_id, plan, player_id) |
 
 ## Triggers
 
@@ -48,7 +50,7 @@ The plan for one raid night (#1216): one row per raider in for one boss. Filled 
 ```mermaid
 erDiagram
 
-"public.raid_night_lineups" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
+"public.raid_night_lineups" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id, plan) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id, plan) ON DELETE CASCADE"
 "public.raid_night_lineups" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.raid_night_lineups" }o--o| "public.characters" : "FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL"
 "public.raid_night_lineups" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
@@ -62,6 +64,7 @@ erDiagram
   timestamp_with_time_zone created_at
   integer character_id FK
   integer class_spec_id FK
+  text plan FK
 }
 "public.raid_night_bosses" {
   integer id
@@ -74,6 +77,7 @@ erDiagram
   integer confirmed_by FK
   timestamp_with_time_zone created_at
   integer skipped_for_kill_id FK
+  text plan
 }
 "public.players" {
   integer id

@@ -12,7 +12,9 @@ import {
   currentTierStartMs,
   decideLineupStatus,
   type Deps,
+  fightPlan,
   firstAssignedWclEncounter,
+  halfKey,
   handle,
   type LineupBossRow,
   orderedLineupBosses,
@@ -214,15 +216,16 @@ const BOSSES: LineupBossRow[] = Array.from({ length: 8 }, (_, i) => ({
   encounterId: i + 1,
   wclEncounterId: 100 + i,
   position: i + 1,
-  skipped: false
+  skipped: false,
+  plan: 'mythic' as const
 }));
 const COTY = 1;
 
 Deno.test('orderedLineupBosses: sorted by position, skipped bosses left out', () => {
   const shuffled: LineupBossRow[] = [
-    { encounterId: 3, wclEncounterId: 103, position: 3, skipped: false },
-    { encounterId: 1, wclEncounterId: 101, position: 1, skipped: true },
-    { encounterId: 2, wclEncounterId: 102, position: 2, skipped: false }
+    { encounterId: 3, wclEncounterId: 103, position: 3, skipped: false, plan: 'mythic' },
+    { encounterId: 1, wclEncounterId: 101, position: 1, skipped: true, plan: 'mythic' },
+    { encounterId: 2, wclEncounterId: 102, position: 2, skipped: false, plan: 'mythic' }
   ];
   assertEquals(
     orderedLineupBosses(shuffled).map((b) => b.encounterId),
@@ -230,13 +233,44 @@ Deno.test('orderedLineupBosses: sorted by position, skipped bosses left out', ()
   );
 });
 
+Deno.test('orderedLineupBosses: a Heroic into Mythic night lists the Heroic half first (#1688)', () => {
+  const night: LineupBossRow[] = [
+    { encounterId: 1, wclEncounterId: 100, position: 1, skipped: false, plan: 'mythic' },
+    { encounterId: 2, wclEncounterId: 101, position: 2, skipped: false, plan: 'heroic' },
+    { encounterId: 1, wclEncounterId: 100, position: 1, skipped: false, plan: 'heroic' }
+  ];
+  assertEquals(
+    orderedLineupBosses(night).map((b) => halfKey(b.plan, b.encounterId)),
+    ['heroic:1', 'heroic:2', 'mythic:1']
+  );
+});
+
 Deno.test('firstAssignedWclEncounter: the earliest boss (by position) a raider is lined up for', () => {
   const ordered = orderedLineupBosses(BOSSES);
-  const lineup = new Map<number, Set<number>>([
-    [1, new Set([2])], // Coty sits out boss 1
-    [2, new Set([COTY, 2])]
+  const lineup = new Map<string, Set<number>>([
+    ['mythic:1', new Set([2])], // Coty sits out boss 1
+    ['mythic:2', new Set([COTY, 2])]
   ]);
-  assertEquals(firstAssignedWclEncounter(ordered, lineup, COTY), 101); // boss 2's wcl id
+  assertEquals(firstAssignedWclEncounter(ordered, lineup, COTY), 'mythic:101'); // boss 2's wcl id
+});
+
+Deno.test(
+  'firstAssignedWclEncounter: in for Mythic only on a Heroic into Mythic night, starts at the Mythic half (#1688)',
+  () => {
+    const night: LineupBossRow[] = [
+      { encounterId: 1, wclEncounterId: 100, position: 1, skipped: false, plan: 'heroic' },
+      { encounterId: 1, wclEncounterId: 100, position: 1, skipped: false, plan: 'mythic' }
+    ];
+    const lineup = new Map<string, Set<number>>([
+      ['heroic:1', new Set([2])],
+      ['mythic:1', new Set([COTY])]
+    ]);
+    assertEquals(firstAssignedWclEncounter(orderedLineupBosses(night), lineup, COTY), 'mythic:100');
+  }
+);
+
+Deno.test('fightPlan: a Mythic fight is the Mythic half, Heroic and Normal the Heroic half (#1688)', () => {
+  assertEquals([fightPlan(5), fightPlan(4), fightPlan(3)], ['mythic', 'heroic', 'heroic']);
 });
 
 Deno.test('firstAssignedWclEncounter: null when the raider is assigned to no boss that night', () => {
@@ -246,12 +280,12 @@ Deno.test('firstAssignedWclEncounter: null when the raider is assigned to no bos
 
 Deno.test('decideLineupStatus: assigned to boss 2 and there for it is Present, no question asked', () => {
   // Boss 2's wcl id (101), present.
-  assertEquals(decideLineupStatus(101, true), { status: 'Present', source: 'WCL' });
+  assertEquals(decideLineupStatus('mythic:101', true), { status: 'Present', source: 'WCL' });
 });
 
 Deno.test('decideLineupStatus: assigned to boss 1 and absent from it is still flagged', () => {
   // Boss 1's wcl id (100), not there for it (arrived later, elsewhere in the report).
-  assertEquals(decideLineupStatus(100, false), { status: null, source: 'WCL (Late?)' });
+  assertEquals(decideLineupStatus('mythic:100', false), { status: null, source: 'WCL (Late?)' });
 });
 
 Deno.test('decideLineupStatus: assigned to nothing scores Present, the same 1.0 as anyone on time', () => {

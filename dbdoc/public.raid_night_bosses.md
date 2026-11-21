@@ -18,28 +18,30 @@ The bosses on one raid night's list for a team (#1216), in pull order. skipped k
 | confirmed_by | integer |  | true |  | [public.people](public.people.md) |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | skipped_for_kill_id | integer |  | true |  | [public.team_raid_kills](public.team_raid_kills.md) | The kill that took this boss off the night (#1246): the team killed it earlier in the lockout at the night's difficulty. Null when an officer skipped it, and when it is not skipped. |
+| plan | text | 'mythic'::text | false | [public.raid_night_lineups](public.raid_night_lineups.md) [public.raid_night_participation](public.raid_night_participation.md) |  | Which half of the night this boss is on (#1688): heroic or mythic. A Heroic into Mythic night lists each boss once per half. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | raid_night_bosses_kill_only_when_skipped | CHECK | CHECK ((skipped OR (skipped_for_kill_id IS NULL))) |
+| raid_night_bosses_plan_check | CHECK | CHECK ((plan = ANY (ARRAY['heroic'::text, 'mythic'::text]))) |
 | raid_night_bosses_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | raid_night_bosses_encounter_id_fkey | FOREIGN KEY | FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE |
 | raid_night_bosses_confirmed_by_fkey | FOREIGN KEY | FOREIGN KEY (confirmed_by) REFERENCES people(id) ON DELETE SET NULL |
 | raid_night_bosses_pkey | PRIMARY KEY | PRIMARY KEY (id) |
-| raid_night_bosses_team_id_raid_date_encounter_id_key | UNIQUE | UNIQUE (team_id, raid_date, encounter_id) |
 | raid_night_bosses_skipped_for_kill_id_fkey | FOREIGN KEY | FOREIGN KEY (skipped_for_kill_id) REFERENCES team_raid_kills(id) ON DELETE SET NULL |
+| raid_night_bosses_team_date_encounter_plan_key | UNIQUE | UNIQUE (team_id, raid_date, encounter_id, plan) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | raid_night_bosses_pkey | CREATE UNIQUE INDEX raid_night_bosses_pkey ON public.raid_night_bosses USING btree (id) |
-| raid_night_bosses_team_id_raid_date_encounter_id_key | CREATE UNIQUE INDEX raid_night_bosses_team_id_raid_date_encounter_id_key ON public.raid_night_bosses USING btree (team_id, raid_date, encounter_id) |
 | raid_night_bosses_encounter_id_idx | CREATE INDEX raid_night_bosses_encounter_id_idx ON public.raid_night_bosses USING btree (encounter_id) |
 | raid_night_bosses_confirmed_by_idx | CREATE INDEX raid_night_bosses_confirmed_by_idx ON public.raid_night_bosses USING btree (confirmed_by) |
 | raid_night_bosses_skipped_for_kill_id_idx | CREATE INDEX raid_night_bosses_skipped_for_kill_id_idx ON public.raid_night_bosses USING btree (skipped_for_kill_id) |
+| raid_night_bosses_team_date_encounter_plan_key | CREATE UNIQUE INDEX raid_night_bosses_team_date_encounter_plan_key ON public.raid_night_bosses USING btree (team_id, raid_date, encounter_id, plan) |
 
 ## Relations
 
@@ -47,8 +49,8 @@ The bosses on one raid night's list for a team (#1216), in pull order. skipped k
 erDiagram
 
 "public.raid_night_bosses" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
-"public.raid_night_lineups" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
-"public.raid_night_participation" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
+"public.raid_night_lineups" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id, plan) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id, plan) ON DELETE CASCADE"
+"public.raid_night_participation" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id, plan) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id, plan) ON DELETE CASCADE"
 "public.raid_night_bosses" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.raid_night_bosses" }o--o| "public.people" : "FOREIGN KEY (confirmed_by) REFERENCES people(id) ON DELETE SET NULL"
 "public.raid_night_bosses" }o--o| "public.team_raid_kills" : "FOREIGN KEY (skipped_for_kill_id) REFERENCES team_raid_kills(id) ON DELETE SET NULL"
@@ -64,6 +66,7 @@ erDiagram
   integer confirmed_by FK
   timestamp_with_time_zone created_at
   integer skipped_for_kill_id FK
+  text plan
 }
 "public.teams" {
   integer id
@@ -83,6 +86,7 @@ erDiagram
   timestamp_with_time_zone created_at
   integer character_id FK
   integer class_spec_id FK
+  text plan FK
 }
 "public.raid_night_participation" {
   integer id
@@ -91,6 +95,7 @@ erDiagram
   integer encounter_id FK
   integer player_id FK
   timestamp_with_time_zone created_at
+  text plan FK
 }
 "public.raid_encounters" {
   integer id

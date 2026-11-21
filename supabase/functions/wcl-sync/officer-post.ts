@@ -96,25 +96,32 @@ async function firstBosses(supabase: SupabaseClient<any>, teamId: number, date: 
   const bosses = check(
     await supabase
       .from('raid_night_bosses')
-      .select('encounter_id, position, skipped, raid_encounters(name)')
+      .select('encounter_id, plan, position, skipped, raid_encounters(name)')
       .eq('team_id', teamId)
       .eq('raid_date', date)
   ) as any[];
-  const order = new Map<number, { position: number; name: string }>();
+  // Each boss on each half of the night (#1688), the Heroic half pulled first.
+  const half = (r: any) => (r.plan === 'heroic' ? 'heroic' : 'mythic');
+  const order = new Map<string, { position: number; name: string }>();
   for (const b of bosses || []) {
-    if (!b.skipped) order.set(b.encounter_id, { position: b.position, name: b.raid_encounters?.name ?? '' });
+    if (!b.skipped) {
+      order.set(`${half(b)}:${b.encounter_id}`, {
+        position: (half(b) === 'heroic' ? 0 : 1000) + b.position,
+        name: b.raid_encounters?.name ?? ''
+      });
+    }
   }
   const first = new Map<number, { position: number; name: string }>();
   if (!order.size) return first;
   const places = check(
     await supabase
       .from('raid_night_lineups')
-      .select('encounter_id, player_id')
+      .select('encounter_id, plan, player_id')
       .eq('team_id', teamId)
       .eq('raid_date', date)
   ) as any[];
   for (const p of places || []) {
-    const boss = order.get(p.encounter_id);
+    const boss = order.get(`${half(p)}:${p.encounter_id}`);
     const seen = first.get(p.player_id);
     if (boss && (!seen || boss.position < seen.position)) first.set(p.player_id, boss);
   }

@@ -14,23 +14,25 @@ Who was actually in for a real pull of one boss on one raid night (#1242), one r
 | encounter_id | integer |  | false |  | [public.raid_night_bosses](public.raid_night_bosses.md) |  |
 | player_id | integer |  | false |  | [public.players](public.players.md) |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
+| plan | text | 'mythic'::text | false |  | [public.raid_night_bosses](public.raid_night_bosses.md) | The half of the night the fight was in (#1688): mythic for a Mythic fight, heroic for any other. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| raid_night_participation_plan_check | CHECK | CHECK ((plan = ANY (ARRAY['heroic'::text, 'mythic'::text]))) |
 | raid_night_participation_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
-| raid_night_participation_team_id_raid_date_encounter_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE |
 | raid_night_participation_pkey | PRIMARY KEY | PRIMARY KEY (id) |
-| raid_night_participation_team_id_raid_date_encounter_id_pla_key | UNIQUE | UNIQUE (team_id, raid_date, encounter_id, player_id) |
+| raid_night_participation_night_boss_fkey | FOREIGN KEY | FOREIGN KEY (team_id, raid_date, encounter_id, plan) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id, plan) ON DELETE CASCADE |
+| raid_night_participation_team_date_encounter_plan_player_key | UNIQUE | UNIQUE (team_id, raid_date, encounter_id, plan, player_id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | raid_night_participation_pkey | CREATE UNIQUE INDEX raid_night_participation_pkey ON public.raid_night_participation USING btree (id) |
-| raid_night_participation_team_id_raid_date_encounter_id_pla_key | CREATE UNIQUE INDEX raid_night_participation_team_id_raid_date_encounter_id_pla_key ON public.raid_night_participation USING btree (team_id, raid_date, encounter_id, player_id) |
 | raid_night_participation_player_id_idx | CREATE INDEX raid_night_participation_player_id_idx ON public.raid_night_participation USING btree (player_id) |
+| raid_night_participation_team_date_encounter_plan_player_key | CREATE UNIQUE INDEX raid_night_participation_team_date_encounter_plan_player_key ON public.raid_night_participation USING btree (team_id, raid_date, encounter_id, plan, player_id) |
 
 ## Triggers
 
@@ -43,7 +45,7 @@ Who was actually in for a real pull of one boss on one raid night (#1242), one r
 ```mermaid
 erDiagram
 
-"public.raid_night_participation" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id) ON DELETE CASCADE"
+"public.raid_night_participation" }o--|| "public.raid_night_bosses" : "FOREIGN KEY (team_id, raid_date, encounter_id, plan) REFERENCES raid_night_bosses(team_id, raid_date, encounter_id, plan) ON DELETE CASCADE"
 "public.raid_night_participation" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 
 "public.raid_night_participation" {
@@ -53,6 +55,7 @@ erDiagram
   integer encounter_id FK
   integer player_id FK
   timestamp_with_time_zone created_at
+  text plan FK
 }
 "public.raid_night_bosses" {
   integer id
@@ -65,6 +68,7 @@ erDiagram
   integer confirmed_by FK
   timestamp_with_time_zone created_at
   integer skipped_for_kill_id FK
+  text plan
 }
 "public.players" {
   integer id
