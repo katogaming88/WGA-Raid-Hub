@@ -393,6 +393,7 @@ erDiagram
   timestamp_with_time_zone created_at
   integer character_id FK
   integer class_spec_id FK
+  text plan
 }
 "public.raid_night_lineups" {
   integer id
@@ -403,6 +404,7 @@ erDiagram
   timestamp_with_time_zone created_at
   integer character_id FK
   integer class_spec_id FK
+  text plan FK
 }
 "public.raid_night_participation" {
   integer id
@@ -411,6 +413,7 @@ erDiagram
   integer encounter_id FK
   integer player_id FK
   timestamp_with_time_zone created_at
+  text plan FK
 }
 "public.removal_reasons" {
   bigint id

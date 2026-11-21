@@ -157,7 +157,7 @@ describe('set_boss_group()', () => {
         {
           team_id: 1,
           target_id: FIRST,
-          detail: { boss: 'First Boss', player_ids: [p2, p1], picks: [], nights_following: [] }
+          detail: { boss: 'First Boss', plan: 'mythic', player_ids: [p2, p1], picks: [], nights_following: [] }
         }
       ]);
     });
@@ -1566,6 +1566,170 @@ describe('character and spec picks', () => {
       expect((await read(RAIDER_T1)).rows).toEqual([{ id: mateAlt }]);
       // Another team's raider still doesn't.
       expect((await read(RAIDER_T2)).rows).toEqual([]);
+    });
+  });
+});
+
+describe('a Heroic plan and a Mythic plan (#1688)', () => {
+  const setPlanGroup = (asUser, uid, encounter, players, plan) =>
+    asUser(uid, 'select public.set_boss_group($1, $2, $3::int[], null, null, null, $4) as n', [
+      1,
+      encounter,
+      players,
+      plan
+    ]);
+
+  // Each boss on a night, by half, with its lineup as sorted player ids.
+  const halves = async (q, date) =>
+    (
+      await q(
+        `select b.plan, b.encounter_id, b.position, b.skipped,
+                coalesce((select array_agg(l.player_id order by l.player_id) from public.raid_night_lineups l
+                          where l.team_id = b.team_id and l.raid_date = b.raid_date
+                            and l.encounter_id = b.encounter_id and l.plan = b.plan), '{}') as players
+           from public.raid_night_bosses b
+          where b.team_id = 1 and b.raid_date = $1
+          order by b.plan, b.position`,
+        [date]
+      )
+    ).rows;
+
+  const planGroup = async (q, encounter, plan) =>
+    (
+      await q(
+        `select coalesce(array_agg(player_id order by player_id), '{}') as p from public.boss_groups
+          where team_id = 1 and encounter_id = $1 and plan = $2`,
+        [encounter, plan]
+      )
+    ).rows[0].p;
+
+  it('keeps each plan’s group apart, and refuses a plan that is neither', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, p2 } = await seed(q);
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1, p2]);
+      await setPlanGroup(asUser, OFFICER_T1, FIRST, [p2], 'heroic');
+      expect(await planGroup(q, FIRST, 'mythic')).toEqual([p1, p2]);
+      expect(await planGroup(q, FIRST, 'heroic')).toEqual([p2]);
+      await expect(setPlanGroup(asUser, OFFICER_T1, FIRST, [p1], 'normal')).rejects.toThrow(
+        'Pick the Heroic or the Mythic plan.'
+      );
+    });
+  });
+
+  it('fills a Heroic into Mythic night with both halves, each from its own plan', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, p2 } = await seed(q);
+      await setTeamDifficulty(q, 'heroic_into_mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      await setGroup(asUser, OFFICER_T1, SECOND, [p1]);
+      await setPlanGroup(asUser, OFFICER_T1, FIRST, [p1, p2], 'heroic');
+      const date = await today(q, 1);
+      await plan(asUser, OFFICER_T1, date);
+      expect(await halves(q, date)).toEqual([
+        { plan: 'heroic', encounter_id: FIRST, position: 1, skipped: false, players: [p1, p2] },
+        { plan: 'mythic', encounter_id: FIRST, position: 1, skipped: false, players: [p1] },
+        { plan: 'mythic', encounter_id: SECOND, position: 2, skipped: false, players: [p1] }
+      ]);
+    });
+  });
+
+  it('fills a Heroic night from the Heroic plan only, and a Mythic night from the Mythic plan only', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, p2 } = await seed(q);
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      await setPlanGroup(asUser, OFFICER_T1, SECOND, [p2], 'heroic');
+      await setTeamDifficulty(q, 'heroic');
+      const heroic = await today(q, 1);
+      await plan(asUser, OFFICER_T1, heroic);
+      expect(await halves(q, heroic)).toEqual([
+        { plan: 'heroic', encounter_id: SECOND, position: 1, skipped: false, players: [p2] }
+      ]);
+      await setTeamDifficulty(q, 'mythic');
+      const mythic = await today(q, 2);
+      await plan(asUser, OFFICER_T1, mythic);
+      expect(await halves(q, mythic)).toEqual([
+        { plan: 'mythic', encounter_id: FIRST, position: 1, skipped: false, players: [p1] }
+      ]);
+    });
+  });
+
+  it('saves one half of a night without touching the other, and refuses a half the night is not raided at', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, p2 } = await seed(q);
+      await setTeamDifficulty(q, 'heroic_into_mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      const date = await today(q, 1);
+      await plan(asUser, OFFICER_T1, date);
+      await asUser(
+        OFFICER_T1,
+        'select public.set_raid_night_lineup(1, $1, $2, $3::int[], null, null, null, $4)',
+        [date, FIRST, [p1, p2], 'heroic']
+      );
+      expect(await halves(q, date)).toEqual([
+        { plan: 'heroic', encounter_id: FIRST, position: 1, skipped: false, players: [p1, p2] },
+        { plan: 'mythic', encounter_id: FIRST, position: 1, skipped: false, players: [p1] }
+      ]);
+
+      await setTeamDifficulty(q, 'mythic');
+      const mythic = await today(q, 2);
+      await expect(
+        asUser(OFFICER_T1, 'select public.set_raid_night_lineup(1, $1, $2, $3::int[], null, null, null, $4)', [
+          mythic,
+          FIRST,
+          [p1],
+          'heroic'
+        ])
+      ).rejects.toThrow("That night isn't raided on that difficulty.");
+    });
+  });
+
+  it('skips a boss on the half run at the kill’s difficulty only', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1 } = await seed(q);
+      await setTeamDifficulty(q, 'heroic_into_mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      await setPlanGroup(asUser, OFFICER_T1, FIRST, [p1], 'heroic');
+      const tuesday = await day(q, 0);
+      await pinToday(q, tuesday);
+      const monday = await day(q, 6);
+      await plan(asUser, OFFICER_T1, monday);
+      await kill(q, { difficulty: 'heroic', report: 'r1', date: tuesday });
+      expect((await halves(q, monday)).map((b) => [b.plan, b.skipped, b.players])).toEqual([
+        ['heroic', true, []],
+        ['mythic', false, [p1]]
+      ]);
+    });
+  });
+
+  it('records who was in for each half apart', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, p2 } = await seed(q);
+      await setTeamDifficulty(q, 'heroic_into_mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      await setPlanGroup(asUser, OFFICER_T1, FIRST, [p1], 'heroic');
+      const date = await today(q, 1);
+      await plan(asUser, OFFICER_T1, date);
+      await asUser(OFFICER_T1, 'select public.record_raid_night_participation(1, $1, $2, $3::int[], $4)', [
+        date,
+        FIRST,
+        [p1, p2],
+        'heroic'
+      ]);
+      await asUser(OFFICER_T1, 'select public.record_raid_night_participation(1, $1, $2, $3::int[], $4)', [
+        date,
+        FIRST,
+        [p1],
+        'mythic'
+      ]);
+      const rows = await q(
+        `select plan, array_agg(player_id order by player_id) as p from public.raid_night_participation
+          where team_id = 1 and raid_date = $1 group by plan order by plan`,
+        [date]
+      );
+      expect(rows.rows).toEqual([
+        { plan: 'heroic', p: [p1, p2] },
+        { plan: 'mythic', p: [p1] }
+      ]);
     });
   });
 });

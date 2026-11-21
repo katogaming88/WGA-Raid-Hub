@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.set_raid_night_boss_skipped(p_team_id integer, p_raid_date date, p_encounter_id integer, p_skipped boolean)
+CREATE OR REPLACE FUNCTION public.set_raid_night_boss_skipped(p_team_id integer, p_raid_date date, p_encounter_id integer, p_skipped boolean, p_plan text DEFAULT 'mythic'::text)
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -32,7 +32,8 @@ begin
       perform 1 from characters
       where id in (
         select g.character_id from boss_groups g
-        where g.team_id = p_team_id and g.encounter_id = p_encounter_id and g.character_id is not null
+        where g.team_id = p_team_id and g.encounter_id = p_encounter_id and g.plan = p_plan
+          and g.character_id is not null
       )
       for key share nowait;
     exception when lock_not_available then
@@ -42,21 +43,21 @@ begin
 
   update raid_night_bosses
      set skipped = p_skipped, skipped_for_kill_id = null, confirmed_at = null, confirmed_by = null
-   where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id;
+   where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id and plan = p_plan;
 
   if not found then
     raise exception 'That boss is not on this night''s plan.';
   end if;
 
   delete from raid_night_lineups
-  where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id;
+  where team_id = p_team_id and raid_date = p_raid_date and encounter_id = p_encounter_id and plan = p_plan;
 
   if not p_skipped then
-    insert into raid_night_lineups (team_id, raid_date, encounter_id, player_id, character_id, class_spec_id)
-    select p_team_id, p_raid_date, p_encounter_id, g.player_id, g.character_id, g.class_spec_id
+    insert into raid_night_lineups (team_id, raid_date, encounter_id, plan, player_id, character_id, class_spec_id)
+    select p_team_id, p_raid_date, p_encounter_id, p_plan, g.player_id, g.character_id, g.class_spec_id
     from boss_groups g
     join players p on p.id = g.player_id and p.archived_at is null and not p.is_bench
-    where g.team_id = p_team_id and g.encounter_id = p_encounter_id;
+    where g.team_id = p_team_id and g.encounter_id = p_encounter_id and g.plan = p_plan;
   end if;
 
   perform public.write_audit_log(
@@ -64,7 +65,8 @@ begin
     case when p_skipped then 'Skip Raid Night Boss' else 'Unskip Raid Night Boss' end,
     'raid_night_bosses',
     p_encounter_id,
-    jsonb_build_object('raid_date', p_raid_date, 'boss', (select name from raid_encounters where id = p_encounter_id))
+    jsonb_build_object('raid_date', p_raid_date, 'boss', (select name from raid_encounters where id = p_encounter_id),
+                       'plan', p_plan)
   );
 end;
 $function$;

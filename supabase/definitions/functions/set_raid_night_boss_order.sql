@@ -28,9 +28,14 @@ begin
 
   perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
 
+  -- Each boss once, at its earliest place on either half.
   select coalesce(array_agg(encounter_id order by position, encounter_id), '{}') into v_current
-  from raid_night_bosses
-  where team_id = p_team_id and raid_date = p_raid_date;
+  from (
+    select encounter_id, min(position) as position
+    from raid_night_bosses
+    where team_id = p_team_id and raid_date = p_raid_date
+    group by encounter_id
+  ) b;
 
   if cardinality(v_current) = 0 then
     raise exception 'That night has no bosses planned yet.';
@@ -70,13 +75,15 @@ begin
       ) r
      where t.team_id = p_team_id and t.encounter_id = r.encounter_id and t.position <> r.n;
 
-    -- Every coming night already filled, in the team's order; a boss the
-    -- team order doesn't list keeps its place after the ones it does.
+    -- Every coming night already filled, in the team's order, each half on
+    -- its own; a boss the team order doesn't list keeps its place after the
+    -- ones it does.
     update raid_night_bosses b
        set position = r.ord
       from (
         select n.id,
-               row_number() over (partition by n.raid_date order by o.position nulls last, n.position, n.encounter_id) as ord
+               row_number() over (partition by n.raid_date, n.plan
+                                  order by o.position nulls last, n.position, n.encounter_id) as ord
         from raid_night_bosses n
         left join team_boss_order o on o.team_id = n.team_id and o.encounter_id = n.encounter_id
         where n.team_id = p_team_id and n.raid_date > p_raid_date and n.raid_date >= public.raid_today()

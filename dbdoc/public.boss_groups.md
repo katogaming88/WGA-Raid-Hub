@@ -15,28 +15,30 @@ The standing group per boss for a team (#1216): one row per raider in the group 
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | character_id | integer |  | true |  | [public.characters](public.characters.md) | The alt the raider usually plays on this boss (#1580); null = their roster character. |
 | class_spec_id | integer |  | true |  | [public.classes_specs](public.classes_specs.md) | The spec the raider usually plays on this boss (#1580); null = the character's usual spec. |
+| plan | text | 'mythic'::text | false |  |  | Which plan this group belongs to (#1688): heroic (Normal and Heroic nights) or mythic. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| boss_groups_plan_check | CHECK | CHECK ((plan = ANY (ARRAY['heroic'::text, 'mythic'::text]))) |
 | boss_groups_class_spec_id_fkey | FOREIGN KEY | FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) |
 | boss_groups_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
 | boss_groups_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | boss_groups_encounter_id_fkey | FOREIGN KEY | FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE |
 | boss_groups_character_id_fkey | FOREIGN KEY | FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL |
 | boss_groups_pkey | PRIMARY KEY | PRIMARY KEY (id) |
-| boss_groups_team_id_encounter_id_player_id_key | UNIQUE | UNIQUE (team_id, encounter_id, player_id) |
+| boss_groups_team_encounter_plan_player_key | UNIQUE | UNIQUE (team_id, encounter_id, plan, player_id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | boss_groups_pkey | CREATE UNIQUE INDEX boss_groups_pkey ON public.boss_groups USING btree (id) |
-| boss_groups_team_id_encounter_id_player_id_key | CREATE UNIQUE INDEX boss_groups_team_id_encounter_id_player_id_key ON public.boss_groups USING btree (team_id, encounter_id, player_id) |
 | boss_groups_encounter_id_idx | CREATE INDEX boss_groups_encounter_id_idx ON public.boss_groups USING btree (encounter_id) |
 | boss_groups_player_id_idx | CREATE INDEX boss_groups_player_id_idx ON public.boss_groups USING btree (player_id) |
 | boss_groups_character_id_idx | CREATE INDEX boss_groups_character_id_idx ON public.boss_groups USING btree (character_id) WHERE (character_id IS NOT NULL) |
+| boss_groups_team_encounter_plan_player_key | CREATE UNIQUE INDEX boss_groups_team_encounter_plan_player_key ON public.boss_groups USING btree (team_id, encounter_id, plan, player_id) |
 
 ## Triggers
 
@@ -63,6 +65,7 @@ erDiagram
   timestamp_with_time_zone created_at
   integer character_id FK
   integer class_spec_id FK
+  text plan
 }
 "public.teams" {
   integer id

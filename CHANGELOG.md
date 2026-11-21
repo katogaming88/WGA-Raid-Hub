@@ -12,6 +12,21 @@ answers to.
 
 ---
 
+## [3.298.0] - 2026-11-21
+
+### Backend
+
+- Boss groups and each night's lineup now come in two plans, Heroic and Mythic (#1688, part 1 of 2). Every group, night boss, night lineup and "who was actually in" row carries a `plan` (`heroic` or `mythic`). A Heroic night copies the Heroic plan, a Mythic night (or one with no difficulty set) the Mythic plan, and a Heroic into Mythic night both, so it has a Heroic and a Mythic lineup for each boss. Every row there today became Mythic, and the Heroic plan starts empty, so nothing anyone sees changes until the page lets officers fill it (part 2). `set_boss_group`, `set_raid_night_lineup`, `set_raid_night_boss_skipped` and `record_raid_night_participation` take the plan (Mythic when left out); a new `raid_night_plans` says which plans a night copies. A boss killed earlier in the lockout is now skipped on the half of the night run at the kill's difficulty only, so a Heroic kill takes a Heroic into Mythic night's boss off its Heroic half.
+
+### Functions
+
+- `wcl-sync`: who was in for each boss is recorded per half of the night, a Mythic fight to the Mythic half and any other to the Heroic half, and lateness is judged against a raider's first boss across both halves, the Heroic half first (#1688). The officer channel's late flags follow the same order.
+- `discord-bot-webhook` and `discord-interactions`: the weekly lineup post shows one half of a Heroic into Mythic night, the Mythic one (#1688).
+
+### Project
+
+- Database and Edge Function tests for the two plans; the time log rows.
+
 ## [3.297.0] - 2026-11-20
 
 ### Backend

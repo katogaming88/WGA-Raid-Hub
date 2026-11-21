@@ -471,6 +471,7 @@ export type Database = {
           created_at: string
           encounter_id: number
           id: number
+          plan: string
           player_id: number
           team_id: number
         }
@@ -480,6 +481,7 @@ export type Database = {
           created_at?: string
           encounter_id: number
           id?: never
+          plan?: string
           player_id: number
           team_id: number
         }
@@ -489,6 +491,7 @@ export type Database = {
           created_at?: string
           encounter_id?: number
           id?: never
+          plan?: string
           player_id?: number
           team_id?: number
         }
@@ -2224,6 +2227,7 @@ export type Database = {
           created_at: string
           encounter_id: number
           id: number
+          plan: string
           position: number
           raid_date: string
           skipped: boolean
@@ -2236,6 +2240,7 @@ export type Database = {
           created_at?: string
           encounter_id: number
           id?: never
+          plan?: string
           position: number
           raid_date: string
           skipped?: boolean
@@ -2248,6 +2253,7 @@ export type Database = {
           created_at?: string
           encounter_id?: number
           id?: never
+          plan?: string
           position?: number
           raid_date?: string
           skipped?: boolean
@@ -2292,6 +2298,7 @@ export type Database = {
           created_at: string
           encounter_id: number
           id: number
+          plan: string
           player_id: number
           raid_date: string
           team_id: number
@@ -2302,6 +2309,7 @@ export type Database = {
           created_at?: string
           encounter_id: number
           id?: never
+          plan?: string
           player_id: number
           raid_date: string
           team_id: number
@@ -2312,6 +2320,7 @@ export type Database = {
           created_at?: string
           encounter_id?: number
           id?: never
+          plan?: string
           player_id?: number
           raid_date?: string
           team_id?: number
@@ -2332,6 +2341,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "raid_night_lineups_night_boss_fkey"
+            columns: ["team_id", "raid_date", "encounter_id", "plan"]
+            isOneToOne: false
+            referencedRelation: "raid_night_bosses"
+            referencedColumns: ["team_id", "raid_date", "encounter_id", "plan"]
+          },
+          {
             foreignKeyName: "raid_night_lineups_player_id_fkey"
             columns: ["player_id"]
             isOneToOne: false
@@ -2351,13 +2367,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rnlsi"
             referencedColumns: ["player_id"]
-          },
-          {
-            foreignKeyName: "raid_night_lineups_team_id_raid_date_encounter_id_fkey"
-            columns: ["team_id", "raid_date", "encounter_id"]
-            isOneToOne: false
-            referencedRelation: "raid_night_bosses"
-            referencedColumns: ["team_id", "raid_date", "encounter_id"]
           },
         ]
       }
@@ -2366,6 +2375,7 @@ export type Database = {
           created_at: string
           encounter_id: number
           id: number
+          plan: string
           player_id: number
           raid_date: string
           team_id: number
@@ -2374,6 +2384,7 @@ export type Database = {
           created_at?: string
           encounter_id: number
           id?: never
+          plan?: string
           player_id: number
           raid_date: string
           team_id: number
@@ -2382,11 +2393,19 @@ export type Database = {
           created_at?: string
           encounter_id?: number
           id?: never
+          plan?: string
           player_id?: number
           raid_date?: string
           team_id?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "raid_night_participation_night_boss_fkey"
+            columns: ["team_id", "raid_date", "encounter_id", "plan"]
+            isOneToOne: false
+            referencedRelation: "raid_night_bosses"
+            referencedColumns: ["team_id", "raid_date", "encounter_id", "plan"]
+          },
           {
             foreignKeyName: "raid_night_participation_player_id_fkey"
             columns: ["player_id"]
@@ -2407,13 +2426,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rnlsi"
             referencedColumns: ["player_id"]
-          },
-          {
-            foreignKeyName: "raid_night_participation_team_id_raid_date_encounter_id_fkey"
-            columns: ["team_id", "raid_date", "encounter_id"]
-            isOneToOne: false
-            referencedRelation: "raid_night_bosses"
-            referencedColumns: ["team_id", "raid_date", "encounter_id"]
           },
         ]
       }
@@ -6528,10 +6540,15 @@ export type Database = {
           timezone: string
         }[]
       }
+      raid_night_plans: {
+        Args: { p_raid_date: string; p_team_id: number }
+        Returns: string[]
+      }
       raid_today: { Args: never; Returns: string }
       record_raid_night_participation: {
         Args: {
           p_encounter_id: number
+          p_plan?: string
           p_player_ids: number[]
           p_raid_date: string
           p_team_id: number
@@ -6814,6 +6831,7 @@ export type Database = {
           p_expected_picks?: Json
           p_expected_player_ids?: number[]
           p_picks?: Json
+          p_plan?: string
           p_player_ids: number[]
           p_team_id: number
         }
@@ -6888,6 +6906,7 @@ export type Database = {
       set_raid_night_boss_skipped: {
         Args: {
           p_encounter_id: number
+          p_plan?: string
           p_raid_date: string
           p_skipped: boolean
           p_team_id: number
@@ -6900,6 +6919,7 @@ export type Database = {
           p_expected_picks?: Json
           p_expected_player_ids?: number[]
           p_picks?: Json
+          p_plan?: string
           p_player_ids: number[]
           p_raid_date: string
           p_team_id: number

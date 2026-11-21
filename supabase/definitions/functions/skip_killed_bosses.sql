@@ -19,12 +19,14 @@ begin
   end loop;
 
   -- A night already under way is left alone: tonight counts until its
-  -- scheduled start, and a night with no start time counts as started.
+  -- scheduled start, and a night with no start time counts as started. A
+  -- night with no difficulty set is never skipped.
   with nights as (
-    select b.id, b.team_id, b.raid_date, b.encounter_id, i.difficulty
+    select b.id, b.team_id, b.raid_date, b.encounter_id, b.plan
     from raid_night_bosses b
     cross join lateral raid_night_info(b.team_id, b.raid_date) i
-    where (b.team_id, b.encounter_id) in (select team_id, encounter_id from new_kills)
+    where i.difficulty is not null
+      and (b.team_id, b.encounter_id) in (select team_id, encounter_id from new_kills)
       and (b.raid_date > raid_today()
            or (b.raid_date = raid_today() and now() < (b.raid_date + i.start_time) at time zone i.timezone))
       and b.confirmed_at is null
@@ -35,7 +37,7 @@ begin
     -- insert: another log of a kill already counted changes nothing.
     select n.id as night_id, (array_agg(k.id order by k.report_started_at, k.fight_id))[1] as kill_id
     from nights n
-    cross join lateral kills_before_night(n.team_id, n.encounter_id, n.raid_date, n.difficulty) k
+    cross join lateral kills_before_night(n.team_id, n.encounter_id, n.raid_date, n.plan) k
     left join new_kills nk on nk.id = k.id
     group by n.id
     having bool_and(nk.id is not null)
@@ -52,7 +54,7 @@ begin
   delete from raid_night_lineups l
   using raid_night_bosses b
   where b.id = any (v_skipped)
-    and l.team_id = b.team_id and l.raid_date = b.raid_date and l.encounter_id = b.encounter_id;
+    and l.team_id = b.team_id and l.raid_date = b.raid_date and l.encounter_id = b.encounter_id and l.plan = b.plan;
 
   perform log_killed_boss_skips(v_skipped);
 
