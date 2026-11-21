@@ -1660,11 +1660,12 @@ describe('a Heroic plan and a Mythic plan (#1688)', () => {
       await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
       const date = await today(q, 1);
       await plan(asUser, OFFICER_T1, date);
-      await asUser(
-        OFFICER_T1,
-        'select public.set_raid_night_lineup(1, $1, $2, $3::int[], null, null, null, $4)',
-        [date, FIRST, [p1, p2], 'heroic']
-      );
+      await asUser(OFFICER_T1, 'select public.set_raid_night_lineup(1, $1, $2, $3::int[], null, null, null, $4)', [
+        date,
+        FIRST,
+        [p1, p2],
+        'heroic'
+      ]);
       expect(await halves(q, date)).toEqual([
         { plan: 'heroic', encounter_id: FIRST, position: 1, skipped: false, players: [p1, p2] },
         { plan: 'mythic', encounter_id: FIRST, position: 1, skipped: false, players: [p1] }
