@@ -628,12 +628,17 @@ export function uniqueFirstNameIndex<T extends { firstName: string; playerId: nu
 // "queried fine, this boss had nobody" -- so a caller can fail open on it the
 // same way getFirstPullParticipants' null already does, instead of reading a
 // failure as "absent from every boss" and flagging the whole roster.
-// Keyed by halfKey(fightPlan(difficulty), WCL encounter id) (#1688).
+// Keyed by halfKey(plan, WCL encounter id) (#1688): on a night with one half,
+// every pull counts toward it, whatever its difficulty (a Heroic farm pull on
+// a Mythic night, as before #1688); on a two-half night, a pull counts toward
+// the half run at its difficulty.
 async function getReportParticipationByEncounter(
   token: Wcl,
   reportCode: string,
-  wclEncounterIds: ReadonlySet<number>
+  wclEncounterIds: ReadonlySet<number>,
+  nightPlans: ReadonlySet<Plan>
 ): Promise<Map<string, Set<string>> | null> {
+  const onlyPlan = nightPlans.size === 1 ? [...nightPlans][0] : null;
   const byEncounter = new Map<string, Set<string>>();
   if (wclEncounterIds.size === 0) return byEncounter;
 
@@ -661,7 +666,7 @@ async function getReportParticipationByEncounter(
   for (const fight of report.fights || []) {
     if (fight.difficulty == null) continue;
     if (!wclEncounterIds.has(fight.encounterID)) continue;
-    const key = halfKey(fightPlan(fight.difficulty), fight.encounterID);
+    const key = halfKey(onlyPlan ?? fightPlan(fight.difficulty), fight.encounterID);
     if (!byEncounter.has(key)) byEncounter.set(key, new Set());
     const names = byEncounter.get(key)!;
     for (const actorId of fight.friendlyPlayers || []) {
@@ -1010,7 +1015,12 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
           const wclIds = new Set(
             nightBosses.map((b) => b.wclEncounterId).filter((id): id is number => typeof id === 'number')
           );
-          const byEncounter = await getReportParticipationByEncounter(token, report.code, wclIds);
+          const byEncounter = await getReportParticipationByEncounter(
+            token,
+            report.code,
+            wclIds,
+            new Set(nightBosses.map((b) => b.plan))
+          );
           if (byEncounter) mergeParticipation(date, byEncounter);
         }
       }
@@ -1076,7 +1086,12 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
       const wclIds = new Set(
         nightBosses.map((b) => b.wclEncounterId).filter((id): id is number => typeof id === 'number')
       );
-      perEncounterParticipants = await getReportParticipationByEncounter(token, report.code, wclIds);
+      perEncounterParticipants = await getReportParticipationByEncounter(
+        token,
+        report.code,
+        wclIds,
+        new Set(nightBosses.map((b) => b.plan))
+      );
       if (perEncounterParticipants) mergeParticipation(date, perEncounterParticipants);
     } else {
       // null (not an empty set) means detection failed/found no real pulls --
@@ -1165,8 +1180,8 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
   // than discarding every attendance row this whole run already computed.
   for (const date of datesTouchedThisRun) {
     const { bosses: nightBosses } = lineupByDate.get(date) ?? { bosses: [] as LineupBossRow[] };
-    // A fight on a half the night has no plan for (a Heroic pull on a Mythic
-    // night) is not recorded: there is no lineup to set it beside.
+    // Keys already name a half this night has (see
+    // getReportParticipationByEncounter).
     const localBoss = new Map(nightBosses.map((b) => [halfKey(b.plan, b.wclEncounterId), b] as const));
     const forDate = participationByDate.get(date) ?? new Map<string, Set<string>>();
     for (const [key, names] of forDate) {

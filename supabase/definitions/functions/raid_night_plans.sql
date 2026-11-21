@@ -16,9 +16,11 @@ AS $function$
              when exists (select 1 from raid_schedule_exceptions
                           where team_id = p_team_id and raid_date = p_raid_date and exception_type = 'added')
                then (select coalesce(e.difficulty, def.d) from raid_schedule_exceptions e
-                     where e.team_id = p_team_id and e.raid_date = p_raid_date and e.exception_type = 'added')
+                     where e.team_id = p_team_id and e.raid_date = p_raid_date and e.exception_type = 'added'
+                     order by e.id limit 1)
              else (select coalesce(r.difficulty, def.d) from raid_schedule r
-                   where r.team_id = p_team_id and r.active and r.weekday = extract(dow from p_raid_date))
+                   where r.team_id = p_team_id and r.active and r.weekday = extract(dow from p_raid_date)
+                   order by r.start_time, r.id limit 1)
            end as difficulty
     from def
   )

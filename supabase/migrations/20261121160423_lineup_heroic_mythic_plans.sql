@@ -86,9 +86,11 @@ as $$
              when exists (select 1 from raid_schedule_exceptions
                           where team_id = p_team_id and raid_date = p_raid_date and exception_type = 'added')
                then (select coalesce(e.difficulty, def.d) from raid_schedule_exceptions e
-                     where e.team_id = p_team_id and e.raid_date = p_raid_date and e.exception_type = 'added')
+                     where e.team_id = p_team_id and e.raid_date = p_raid_date and e.exception_type = 'added'
+                     order by e.id limit 1)
              else (select coalesce(r.difficulty, def.d) from raid_schedule r
-                   where r.team_id = p_team_id and r.active and r.weekday = extract(dow from p_raid_date))
+                   where r.team_id = p_team_id and r.active and r.weekday = extract(dow from p_raid_date)
+                   order by r.start_time, r.id limit 1)
            end as difficulty
     from def
   )
@@ -592,6 +594,9 @@ begin
 end;
 $$;
 
+comment on function public.set_raid_night_boss_skipped(integer, date, integer, boolean, text) is
+  'Takes a boss off one half (plan) of a raid night ("not tonight") or puts it back refilled from that plan''s standing group (#1216, #1688), for the team''s officers and leader, guild officers and site admins.';
+
 revoke all on function public.set_raid_night_boss_skipped(integer, date, integer, boolean, text) from public, anon;
 grant execute on function public.set_raid_night_boss_skipped(integer, date, integer, boolean, text) to authenticated;
 
@@ -756,6 +761,9 @@ begin
   return cardinality(p_player_ids);
 end;
 $$;
+
+comment on function public.record_raid_night_participation(integer, date, integer, integer[], text) is
+  'Replaces one boss''s actual-participation rows on one half (plan) of a raid night (#1242, #1688), for the team''s officers and leader, guild officers and site admins. A no-op returning 0 when the boss is not on that half of the night. Refuses archived raiders and other teams'' raiders (check_lineup_players). Called from wcl-sync''s attendance refresh, not directly by any page.';
 
 revoke all on function public.record_raid_night_participation(integer, date, integer, integer[], text) from public, anon;
 grant execute on function public.record_raid_night_participation(integer, date, integer, integer[], text) to authenticated, service_role;

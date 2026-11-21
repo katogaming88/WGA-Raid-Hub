@@ -3948,6 +3948,6 @@ Shipped: `20261121160423_lineup_heroic_mythic_plans.sql`.
 
 **A kill skips the boss on the half run at its difficulty only**, through `kills_before_night(..., plan)`. A Heroic into Mythic night used to check only Mythic kills; now a Heroic kill skips its Heroic half. A night with no difficulty set is still never skipped.
 
-**Who was actually in is kept per half:** `wcl-sync` sends a Mythic fight to the Mythic half and any other to the Heroic half, and judges lateness against a raider's first boss across both halves, the Heroic half first.
+**Who was actually in is kept per half:** on a Heroic into Mythic night `wcl-sync` sends a Mythic fight to the Mythic half and any other to the Heroic half; on a night with one half every pull of the boss counts toward it, as before (a Heroic farm pull on a Mythic night still counts). It judges lateness against a raider's first boss across both halves, the Heroic half first.
 
 [Full discussion -> #1688](https://github.com/katogaming88/WGA-Raid-Hub/issues/1688).
