@@ -141,8 +141,9 @@ begin
   -- lockout starts skipped, on a night with a difficulty set.
   insert into raid_night_bosses (team_id, raid_date, encounter_id, plan, position, skipped, skipped_for_kill_id)
   select p_team_id, p_raid_date, e.id, pl.plan,
-         row_number() over (partition by pl.plan
-                            order by o.position nulls last, z.sort_index, z.id, e.sort_index, e.id),
+         -- One shared place per boss across both halves, so a half without
+         -- a boss keeps the others' places (CodeRabbit on PR #1885).
+         dense_rank() over (order by o.position nulls last, z.sort_index, z.id, e.sort_index, e.id),
          k.id is not null, k.id
   from unnest(v_plans) as pl(plan)
   cross join raid_encounters e
@@ -675,14 +676,14 @@ begin
       ) r
      where t.team_id = p_team_id and t.encounter_id = r.encounter_id and t.position <> r.n;
 
-    -- Every coming night already filled, in the team's order, each half on
-    -- its own; a boss the team order doesn't list keeps its place after the
-    -- ones it does.
+    -- Every coming night already filled, in the team's order, one place per
+    -- boss shared by both halves; a boss the team order doesn't list keeps
+    -- its place after the ones it does.
     update raid_night_bosses b
        set position = r.ord
       from (
         select n.id,
-               row_number() over (partition by n.raid_date, n.plan
+               dense_rank() over (partition by n.raid_date
                                   order by o.position nulls last, n.position, n.encounter_id) as ord
         from raid_night_bosses n
         left join team_boss_order o on o.team_id = n.team_id and o.encounter_id = n.encounter_id

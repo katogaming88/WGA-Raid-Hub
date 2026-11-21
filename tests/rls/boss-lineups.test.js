@@ -1733,4 +1733,54 @@ describe('a Heroic plan and a Mythic plan (#1688)', () => {
       ]);
     });
   });
+
+  it("refuses a raider, another team's officer and a signed-out caller on the Heroic half", async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      const { p1, p2 } = await seed(q);
+      await setTeamDifficulty(q, 'heroic_into_mythic');
+      await setPlanGroup(asUser, OFFICER_T1, FIRST, [p1], 'heroic');
+      const date = await today(q, 1);
+      await plan(asUser, OFFICER_T1, date);
+      const sql = 'select public.record_raid_night_participation(1, $1, $2, $3::int[], $4)';
+      await asUser(OFFICER_T1, sql, [date, FIRST, [p1], 'heroic']);
+      for (const uid of [RAIDER_T1, OFFICER_T2]) {
+        await expect(asUser(uid, sql, [date, FIRST, [p1, p2], 'heroic'])).rejects.toThrow(/Not authorized/);
+      }
+      await expect(asAnon(sql, [date, FIRST, [p1, p2], 'heroic'])).rejects.toThrow(/permission denied/);
+      const rows = await q(
+        `select array_agg(player_id) as p from public.raid_night_participation
+          where team_id = 1 and raid_date = $1 and plan = 'heroic'`,
+        [date]
+      );
+      expect(rows.rows[0].p).toEqual([p1]);
+    });
+  });
+
+  it('keeps one pull order when a half has no group for a boss', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1 } = await seed(q);
+      await setTeamDifficulty(q, 'heroic_into_mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      await setGroup(asUser, OFFICER_T1, SECOND, [p1]);
+      // Heroic has the second boss only: it keeps place 2, not 1.
+      await setPlanGroup(asUser, OFFICER_T1, SECOND, [p1], 'heroic');
+      const date = await today(q, 1);
+      await plan(asUser, OFFICER_T1, date);
+      expect((await halves(q, date)).map((b) => [b.plan, b.encounter_id, b.position])).toEqual([
+        ['heroic', SECOND, 2],
+        ['mythic', FIRST, 1],
+        ['mythic', SECOND, 2]
+      ]);
+      await asUser(OFFICER_T1, 'select public.set_raid_night_boss_order(1, $1, $2::int[], $3::int[])', [
+        date,
+        [SECOND, FIRST],
+        [FIRST, SECOND]
+      ]);
+      expect((await halves(q, date)).map((b) => [b.plan, b.encounter_id, b.position])).toEqual([
+        ['heroic', SECOND, 1],
+        ['mythic', SECOND, 1],
+        ['mythic', FIRST, 2]
+      ]);
+    });
+  });
 });
