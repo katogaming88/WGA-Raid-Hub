@@ -27,7 +27,9 @@ export type LootHistory = { locked: boolean; drops: HistoryDrop[]; tokenIds: Set
 export function useLootHistory(teamId: number) {
   return useSupabaseQuery<LootHistory>(['loot', 'history', teamId], async (client) => {
     const [read, tokens] = await Promise.all([
-      readAll<HistoryRow>((from, to) => client.rpc('team_loot_history', { p_team_id: teamId }).range(from, to)),
+      readAll<HistoryRow>((from, to) =>
+        client.rpc('team_loot_history', { p_team_id: teamId }).order('id').range(from, to)
+      ),
       // team-read-guard: the tier token map, a few rows per season, no team
       client.from('tier_token_map').select('token_item_id')
     ]);
