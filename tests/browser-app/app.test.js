@@ -615,7 +615,7 @@ const CAL_OWN_BOSSES = {
 const BOSS_GROUPS = {
   ...CAL_LINEUP,
   path: '/g/wga/t/phoenix/officer/groups',
-  sentinel: 'main:has(.lineup-toggle)'
+  sentinel: 'main:has(.blg-cell)'
 };
 
 // A site admin, for the Boss groups page's "Edit cap" control (#1244): the
@@ -1923,7 +1923,7 @@ const STATES = [
   { label: 'calendar night, your bosses, light', ...CAL_OWN_BOSSES, colorScheme: 'light' },
   { label: 'boss groups, officer', ...BOSS_GROUPS },
   { label: 'boss groups, officer, light', ...BOSS_GROUPS, colorScheme: 'light' },
-  { label: 'boss groups, officer, a change not saved yet', ...BOSS_GROUPS, click: '.lineup-toggle:not(.is-in)' },
+  { label: 'boss groups, officer, a change not saved yet', ...BOSS_GROUPS, click: '.blg-cell[data-in="false"]' },
   {
     label: 'boss groups, officer, none set yet',
     ...BOSS_GROUPS,
@@ -2872,8 +2872,8 @@ const HELP_SHOT_STATES = {
   bench: { state: CAL_OWN_BOSSES, markers: [null, '.your-bosses:visible h2', null], frame: '.your-bosses:visible' },
   'boss-groups': {
     state: BOSS_GROUPS,
-    markers: [null, '.lineup-toggle', 'role=button[name="Save groups"]'],
-    frame: 'table:has(.lineup-toggle)',
+    markers: [null, '.blg-cell >> nth=0', 'role=button[name="Save groups"]'],
+    frame: 'table:has(.blg-cell)',
     viewport: { width: 700, height: 900 }
   },
   lineup: {

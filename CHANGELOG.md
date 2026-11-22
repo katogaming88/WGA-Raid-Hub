@@ -12,6 +12,13 @@ answers to.
 
 ---
 
+## [3.300.0] - 2026-11-22
+
+### Project
+
+- Boss groups uses the same grid as a night's Boss lineup (#1884): boss pictures, pull numbers, the count and fill bar under each boss, role counts, hover details and the Names / Solid bars choice. Both pages render one component from one file (`RaidGrid.tsx`), so a change to it reaches both. Boss groups leaves out what belongs to one night (RSVPs, Skip, picks, the night's Needs a look strip) and keeps its own Needs a look and Coming nights panels, "In no group", Edit cap and a "Not saved yet" mark on changed cells. The old Boss groups grid and its styles are gone.
+- The Boss groups Help picture retaken, and the Boss groups and Boss lineup guides mention the Heroic / Mythic switches (#1688).
+
 ## [3.299.0] - 2026-11-22
 
 ### Backend

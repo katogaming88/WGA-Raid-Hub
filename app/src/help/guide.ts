@@ -354,7 +354,7 @@ export const GUIDES: Guide[] = [
     menu: 'officer-boss-groups',
     steps: [
       'In the Officer menu, open Attendance, then Boss groups. It needs a computer.',
-      'Click a cell to put someone in a boss’s group or take them out. Needs a look lists anything short, such as a buff nobody brings.',
+      'Pick the plan at the top: Heroic (Normal nights use it too) or Mythic. Click a cell to put someone in a boss’s group or take them out. Needs a look lists anything short, such as a missing tank.',
       'Choose Save groups. Coming nights nobody has saved for those bosses follow the new groups.'
     ]
   },
@@ -370,7 +370,7 @@ export const GUIDES: Guide[] = [
     menu: 'calendar',
     steps: [
       'Open the Calendar and pick the raid night.',
-      'Choose the Boss lineup tab. It works on a phone too.',
+      'Choose the Boss lineup tab. It works on a phone too. On a Heroic into Mythic night, the Lineup switch shows the Heroic or the Mythic half.',
       'If the night isn’t planned yet, choose Fill from the groups.',
       'Click a cell to put someone in or sit them out for that boss. Click a name to do it for every boss. The ⇄ on a cell picks another of their characters or another spec for that boss. On a computer, drag a boss’s heading, or use its ‹ › arrows, to change the order you pull them in. Drag a raider’s name, or use its ▲ ▼ arrows, to move them up or down within their role; it saves at once for the whole team, and Sort A–Z in the role’s heading puts it back. The sliders button under a boss sets what it needs (tanks, healers, melee, ranged), saved at once for every night.',
       'Choose Save…, then Just that night, or that night and every night after, which also makes it the usual group.'

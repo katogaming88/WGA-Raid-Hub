@@ -8,11 +8,12 @@ import { useAddress, useTeam } from '../data/address';
 import { bothQueries } from '../data/query';
 import { calendarDay } from '../lib/dates';
 import { useTouchScreen } from '../lib/device';
-import { classColor, type PlayerRow } from '../roster/roster';
+import type { PlayerRow } from '../roster/roster';
+import { useClassSpecs } from '../characters/useMainSwaps';
 import { useRosterPlayers } from '../roster/useRoster';
-import { ColumnSizer } from './ColumnSizer';
+import { CellStyleChoice, RaidGrid, useCellStyleChoice } from './RaidGrid';
 import { useLeaveGuard } from './leaveGuard';
-import { shortDay } from './calendar';
+import { shortDay, type RaidNight } from './calendar';
 import {
   capLabel,
   changes,
@@ -35,7 +36,11 @@ import {
   type EncounterRow,
   type LeaverRow,
   type LineupBoss,
+  type ClassSpecRow,
   type LineupRaid,
+  type PickedCharacter,
+  type Picks,
+  type PlayLookup,
   type Places,
   type Plan,
   type RoleTargets,
@@ -48,6 +53,7 @@ import {
   useComingNights,
   useEncounters,
   useLineupRoleTargets,
+  useRaiderOrder,
   useSaveBossGroups,
   useSchedule,
   useSeasons,
@@ -112,6 +118,7 @@ export function BossGroupsPage() {
 }
 
 const plural = (n: number, word: string, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
+const NO_ORDER = new Map();
 const toList = (set: ReadonlySet<number>) => [...set].sort((a, b) => a - b);
 
 function Groups({
@@ -338,10 +345,12 @@ function Groups({
         </section>
       ) : (
         <GroupsGrid
+          today={today}
           raid={raid}
           players={players}
           places={places}
           saved={saved}
+          picks={storedPicks}
           groups={groups}
           coming={coming}
           changedBosses={changed.bosses}
@@ -363,10 +372,12 @@ function Groups({
 }
 
 function GroupsGrid({
+  today,
   raid,
   players,
   places,
   saved,
+  picks,
   groups,
   coming,
   changedBosses,
@@ -376,10 +387,12 @@ function GroupsGrid({
   onToggle,
   onEditCap
 }: {
+  today: string;
   raid: LineupRaid;
   players: PlayerRow[];
   places: Places;
   saved: Places;
+  picks: Picks;
   groups: LeaverRow[];
   coming: ComingBossRow[];
   changedBosses: number[];
@@ -389,8 +402,20 @@ function GroupsGrid({
   onToggle: (boss: number, player: number) => void;
   onEditCap: (boss: LineupBoss) => void;
 }) {
+  const team = useTeam();
   const view = groupsView(players, raid, places, saved, groups, targets);
-  const columns = raid.bosses.length + 2;
+  const [cellStyle, pickStyle] = useCellStyleChoice();
+  const raiderOrder = useRaiderOrder(team.id).data ?? NO_ORDER;
+  const specs = useClassSpecs();
+  // The same grid as a night's (#1884), read as no night in particular.
+  const night: RaidNight = { date: today, start: null, durationMinutes: null, optional: false, extra: false, note: '' };
+  // What a pick shows: the spec list, and the alts the groups name.
+  const look: PlayLookup = {
+    specs: new Map((specs.data ?? []).map((cs) => [cs.id, cs as ClassSpecRow])),
+    characters: new Map<number, PickedCharacter>(
+      groups.flatMap((r) => (r.character ? [[r.character.id, r.character] as const] : []))
+    )
+  };
   const gaps = view.totals.filter((t) => t.problems.length);
   const nights = comingNights(coming, raid.bosses, changedBosses);
   const roster = [
@@ -402,89 +427,37 @@ function GroupsGrid({
 
   return (
     <div className="lineup-layout">
-      <div className="card lineup-card">
-        <table className="lineup-grid">
-          <caption className="visually-hidden">
-            {raid.name} boss groups, up to {capLabel(raid.bosses)}
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col" className="lineup-name-col">
-                Raider
-              </th>
-              {view.totals.map((t) => (
-                <th key={t.boss.id} scope="col" className="lineup-boss">
-                  <ColumnSizer bosses={raid.bosses} />
-                  <span className="lineup-boss-name" aria-hidden="true">
-                    {t.boss.short}
-                  </span>
-                  <span className="visually-hidden">{t.boss.name}</span>
-                  <span className="lineup-total num" data-tone={t.status.tone}>
-                    {t.count}/{t.boss.cap}
-                  </span>
-                  <span className="lineup-warn">{t.warn}</span>
-                  <span className="visually-hidden">
-                    {plural(t.tanks, 'tank')}, {plural(t.healers, 'healer')}, {t.damage} damage
-                  </span>
-                  {canEditCap && (
-                    <button type="button" className="button lineup-skip" onClick={() => onEditCap(t.boss)}>
-                      Edit cap
-                    </button>
-                  )}
-                </th>
-              ))}
-              <th scope="col" className="lineup-count-col">
-                <span className="visually-hidden">Groups in</span>
-              </th>
-            </tr>
-          </thead>
-          {view.groups.map((g) => (
-            <tbody key={g.role}>
-              <tr className="lineup-group">
-                <th colSpan={columns} scope="colgroup">
-                  {g.label}
-                </th>
-              </tr>
-              {g.rows.map((r) => {
-                const { player, name } = r.raider;
-                return (
-                  <tr key={player.id}>
-                    <th scope="row" className="lineup-raider">
-                      <span
-                        className="lineup-raider-name"
-                        style={{ color: classColor(player.classes_specs?.class ?? '') }}
-                      >
-                        {name}
-                      </span>{' '}
-                      <span className="text-dim lineup-spec">{player.classes_specs?.spec}</span>
-                      {r.tag && (
-                        <span className="lineup-tag" data-tone={r.tagTone}>
-                          {r.tag}
-                        </span>
-                      )}
-                    </th>
-                    {r.cells.map((c) => (
-                      <td key={c.boss.id} className="lineup-cell">
-                        <button
-                          type="button"
-                          className={`lineup-toggle${c.in ? ' is-in' : ''}${c.changed ? ' is-changed' : ''}`}
-                          aria-label={`${name}, ${c.boss.name}: ${c.in ? 'in the group' : 'not in the group'}${c.changed ? ', not saved yet' : ''}`}
-                          disabled={busy}
-                          onClick={() => onToggle(c.boss.id, player.id)}
-                        >
-                          <span aria-hidden="true">{c.in ? '✓' : '–'}</span>
-                        </button>
-                      </td>
-                    ))}
-                    <td className="lineup-count num text-muted">
-                      {r.count}/{raid.bosses.length}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          ))}
-        </table>
+      <div className="lineup-grid-col">
+        <div className="blg-tools">
+          <CellStyleChoice value={cellStyle} onPick={pickStyle} />
+        </div>
+        <RaidGrid
+          kind="groups"
+          halfLabel={null}
+          otherLooks={[]}
+          raid={raid}
+          night={night}
+          players={players}
+          answers={[]}
+          places={places}
+          usual={saved}
+          picks={picks}
+          usualPicks={picks}
+          look={look}
+          onPicking={null}
+          targets={targets}
+          cellStyle={cellStyle}
+          canEdit
+          busy={busy}
+          onToggle={onToggle}
+          onWholeNight={null}
+          onSkip={null}
+          onMove={null}
+          raiderOrder={raiderOrder}
+          onRaiders={null}
+          onNeeds={null}
+          onEditCap={canEditCap ? onEditCap : null}
+        />
       </div>
 
       <aside className="lineup-side" aria-label="Group checks">

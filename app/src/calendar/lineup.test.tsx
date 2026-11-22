@@ -1331,6 +1331,21 @@ describe('the boss groups page', () => {
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
   });
 
+  it('uses the same grid as a night’s Boss lineup (#1884)', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(GROUPS, handlers(who('officer'), GROUPED));
+    const g = await groupsGrid();
+    // The grid's own parts: the corner hint, the Names / Solid bars choice, the key.
+    expect(g.getByText('Click a cell to put someone in a group or take them out.')).toBeInTheDocument();
+    expect(screen.getByText('Not saved yet')).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'Solid bars' }));
+    expect(screen.getByRole('table', { name: /boss groups/ })).toHaveAttribute('data-style', 'bars');
+    expect(client.writes.filter((w) => w.table === 'account_preferences')).toHaveLength(1);
+    // Nothing that belongs to one night.
+    expect(screen.queryByRole('button', { name: /^Skip / })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Change what / })).not.toBeInTheDocument();
+  });
+
   it('shows the usual groups with the checks and what saving changes', async () => {
     renderApp(GROUPS, handlers(who('officer'), GROUPED));
     const g = await groupsGrid();
