@@ -180,6 +180,21 @@ export const playWords = (play: Play) =>
 // Mythic allows 20 raiders per boss; a lair or mini raid allows 25 (Kat).
 export const MYTHIC_CAP = 20;
 export const MINI_RAID_CAP = 25;
+// Heroic (and Normal) flex from 10 to 30 raiders on every boss (#1688).
+export const FLEX_MIN = 10;
+export const FLEX_CAP = 30;
+
+// The team's two plans (#1688): Heroic, which Normal nights use too, and
+// Mythic. A Heroic into Mythic night has a half of each, Heroic first; a night
+// with no difficulty set uses the Mythic plan.
+export type Plan = 'heroic' | 'mythic';
+export const PLAN_LABELS: Record<Plan, string> = { heroic: 'Heroic', mythic: 'Mythic' };
+export const nightPlans = (night: { difficulty?: string | null | undefined }): Plan[] =>
+  night.difficulty === 'heroic'
+    ? ['heroic']
+    : night.difficulty === 'heroic_into_mythic'
+      ? ['heroic', 'mythic']
+      : ['mythic'];
 
 // A boss's name short enough for a grid column: "Nek'zali the Soulcoiler" is
 // "Nek'zali" and "The Lost Explorers" is "Lost Explorers". Only a one-word
@@ -223,7 +238,7 @@ export type LineupRaid = { zoneId: number; name: string; cap: number; bosses: Li
 // "20 per boss", or "20-25 per boss" when a flex fight inside the raid (a
 // Nymrissa Wavecaller, a Kith'ix) allows more than the rest (#1244).
 export function capLabel(bosses: LineupBoss[]): string {
-  const caps = [...new Set(bosses.map((b) => b.cap))].sort((a, b) => a - b);
+  const caps = [...new Set(bosses.flatMap((b) => [b.base, b.cap]))].sort((a, b) => a - b);
   return caps.length === 1 ? `${caps[0]} per boss` : `${caps[0]}-${caps.at(-1)} per boss`;
 }
 
@@ -282,8 +297,9 @@ export function orderChanges(before: LineupRaid[], after: LineupRaid[]): string[
 export function lineupRaids(
   encounters: EncounterRow[],
   nightBosses: NightBossRow[],
-  opts: { fresh: boolean; season: string | null }
+  opts: { fresh: boolean; season: string | null; plan?: Plan }
 ): LineupRaid[] {
+  const flex = opts.plan === 'heroic';
   const byId = new Map(encounters.map((e) => [e.id, e]));
   const listed: { e: EncounterRow; boss: NightBossRow | null }[] = opts.fresh
     ? encounters
@@ -301,7 +317,7 @@ export function lineupRaids(
       raid = {
         zoneId: e.zone.id,
         name: e.zone.name,
-        cap: e.zone.is_mini_raid ? MINI_RAID_CAP : MYTHIC_CAP,
+        cap: flex ? FLEX_CAP : e.zone.is_mini_raid ? MINI_RAID_CAP : MYTHIC_CAP,
         bosses: []
       };
       raids.push(raid);
@@ -312,8 +328,9 @@ export function lineupRaids(
       short: shortBossName(e.name),
       skipped: boss?.skipped ?? false,
       confirmed: !!boss?.confirmed_at,
-      cap: e.cap ?? raid.cap,
-      base: raid.cap,
+      // A boss's own cap is a Mythic one; Heroic is 10 to 30 on every boss.
+      cap: flex ? FLEX_CAP : (e.cap ?? raid.cap),
+      base: flex ? FLEX_MIN : raid.cap,
       art: bossArt(e.wcl_encounter_id)
     });
   }

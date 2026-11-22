@@ -55,8 +55,8 @@ export function useLastRun(teamId: number) {
   });
 }
 
-type BossRow = { raid_date: string; encounter_id: number; position: number; skipped: boolean };
-type PlaceRow = { raid_date: string; encounter_id: number; player_id: number };
+type BossRow = { raid_date: string; encounter_id: number; plan: string; position: number; skipped: boolean };
+type PlaceRow = { raid_date: string; encounter_id: number; plan: string; player_id: number };
 
 // One night per call, as wcl-sync asks: raid_rsvps is unique on (team,
 // player, night), so each answer holds at most one row per team player, far
@@ -86,7 +86,7 @@ export function useLookDetails(teamId: number, lateDates: string[], dates: strin
           ? readAll<BossRow>((from, to) =>
               client
                 .from('raid_night_bosses')
-                .select('raid_date, encounter_id, position, skipped')
+                .select('raid_date, encounter_id, plan, position, skipped')
                 .eq('team_id', teamId)
                 .in('raid_date', lateDates)
                 .order('raid_date')
@@ -98,7 +98,7 @@ export function useLookDetails(teamId: number, lateDates: string[], dates: strin
           ? readAll<PlaceRow>((from, to) =>
               client
                 .from('raid_night_lineups')
-                .select('raid_date, encounter_id, player_id')
+                .select('raid_date, encounter_id, plan, player_id')
                 .eq('team_id', teamId)
                 .in('raid_date', lateDates)
                 .order('id')

@@ -164,7 +164,7 @@ export function useLineupReport(teamId: number, start: string, end: string) {
       readAll<SeatRow>((from, to) =>
         client
           .from(table)
-          .select('raid_date, encounter_id, player_id')
+          .select('raid_date, encounter_id, plan, player_id')
           .eq('team_id', teamId)
           .gte('raid_date', start)
           .lte('raid_date', end)
@@ -175,7 +175,7 @@ export function useLineupReport(teamId: number, start: string, end: string) {
       readAll<NightBossRow>((from, to) =>
         client
           .from('raid_night_bosses')
-          .select('raid_date, encounter_id, position, skipped')
+          .select('raid_date, encounter_id, plan, position, skipped')
           .eq('team_id', teamId)
           .gte('raid_date', start)
           .lte('raid_date', end)

@@ -543,6 +543,8 @@ type Setup = {
     ranged: number | null;
   }[];
   raiderOrder?: { player_id: number; role: string; position: number }[];
+  // The weekly nights' difficulty (#1688); none reads as Mythic.
+  difficulty?: string;
   rpc?: (name: string, args: Record<string, unknown>) => { data?: unknown; error?: { message: string } } | undefined;
 };
 
@@ -560,19 +562,32 @@ const PLANNED: Setup = {
   ])
 };
 
+// Rows on the Heroic plan (#1688); rows without a plan are Mythic.
+const heroic = <T,>(rows: T[]): T[] => rows.map((r) => ({ ...r, plan: 'heroic' }));
+const byPlan = <T,>(rows: T[], read: Read): T[] => {
+  const want = read.filters.find(([op, column]) => op === 'eq' && column === 'plan')?.[2];
+  return want ? rows.filter((r) => ((r as { plan?: string }).plan ?? 'mythic') === want) : rows;
+};
+
 function handlers(person: ReturnType<typeof who>, setup: Setup = PLANNED): FakeHandlers {
   const base = seededHandlers();
   const tables: Record<string, (read: Read) => unknown> = {
     raid_schedule: () =>
-      [2, 4].map((weekday) => ({ weekday, start_time: '21:00:00', duration_minutes: 180, is_optional: false })),
+      [2, 4].map((weekday) => ({
+        weekday,
+        start_time: '21:00:00',
+        duration_minutes: 180,
+        is_optional: false,
+        difficulty: setup.difficulty ?? null
+      })),
     raid_schedule_exceptions: () => [],
     players: () => ROSTER,
     raid_rsvps: () => setup.answers ?? [],
     seasons: () => SEASONS,
     raid_encounters: () => ENCOUNTERS,
-    raid_night_bosses: () => setup.bosses ?? [],
-    raid_night_lineups: () => setup.tonight ?? [],
-    boss_groups: () => setup.groups ?? [],
+    raid_night_bosses: (read) => byPlan(setup.bosses ?? [], read),
+    raid_night_lineups: (read) => byPlan(setup.tonight ?? [], read),
+    boss_groups: (read) => byPlan(setup.groups ?? [], read),
     team_lineup_settings: (read) => (read.single ? (setup.targets ?? null) : setup.targets ? [setup.targets] : []),
     team_boss_role_targets: () => setup.bossTargets ?? [],
     team_raider_order: () => setup.raiderOrder ?? [],
@@ -834,7 +849,8 @@ describe('the boss lineup tab', () => {
         p_player_ids: [1, 3],
         p_expected_player_ids: [1, 2, 3],
         p_picks: [],
-        p_expected_picks: []
+        p_expected_picks: [],
+        p_plan: 'mythic'
       }
     ]);
     expect(rpcs(client, 'set_boss_group')).toEqual([]);
@@ -860,7 +876,8 @@ describe('the boss lineup tab', () => {
         p_player_ids: [2],
         p_expected_player_ids: [1, 2, 3],
         p_picks: [],
-        p_expected_picks: []
+        p_expected_picks: [],
+        p_plan: 'mythic'
       }
     ]);
   });
@@ -921,12 +938,14 @@ describe('the boss lineup tab', () => {
       expect.objectContaining({
         p_encounter_id: 101,
         p_picks: [{ player_id: 2, character_id: null, class_spec_id: 2 }],
-        p_expected_picks: []
+        p_expected_picks: [],
+        p_plan: 'mythic'
       }),
       expect.objectContaining({
         p_encounter_id: 102,
         p_picks: [{ player_id: 2, character_id: BOSHAM.id, class_spec_id: 3 }],
-        p_expected_picks: []
+        p_expected_picks: [],
+        p_plan: 'mythic'
       })
     ]);
   });
@@ -985,7 +1004,8 @@ describe('the boss lineup tab', () => {
         p_raid_date: '2026-05-14',
         p_encounter_ids: [102, 101, 103],
         p_expected_ids: [101, 102, 103],
-        p_every_night: false
+        p_every_night: false,
+        p_plan: 'mythic'
       }
     ]);
     expect(rpcs(client, 'set_raid_night_lineup')).toEqual([]);
@@ -1138,7 +1158,8 @@ describe('the boss lineup tab', () => {
     expect(order).toEqual(['set_raid_night_boss_order', 'set_raid_night_lineup', 'set_boss_group']);
     expect(rpcs(client, 'set_raid_night_boss_order')[0]).toMatchObject({
       p_encounter_ids: [102, 101, 103],
-      p_every_night: true
+      p_every_night: true,
+      p_plan: 'mythic'
     });
   });
 
@@ -1148,7 +1169,7 @@ describe('the boss lineup tab', () => {
     await grid();
     await user.click(screen.getByRole('button', { name: 'Skip Sszorak tonight' }));
     expect(rpcs(client, 'set_raid_night_boss_skipped')).toEqual([
-      { p_team_id: 1, p_raid_date: '2026-05-14', p_encounter_id: 102, p_skipped: true }
+      { p_team_id: 1, p_raid_date: '2026-05-14', p_encounter_id: 102, p_skipped: true, p_plan: 'mythic' }
     ]);
   });
 
@@ -1188,7 +1209,7 @@ describe('the boss lineup tab', () => {
   it('starts the very first night with everyone in but the bench', async () => {
     const user = userEvent.setup();
     const { client } = renderApp(LINEUP, handlers(who('officer'), {}));
-    expect(await screen.findByRole('heading', { name: 'No boss has a usual group yet.' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'No boss has a usual Mythic group yet.' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Start with everyone in' }));
     const g = await grid();
     expect(
@@ -1205,7 +1226,8 @@ describe('the boss lineup tab', () => {
       p_player_ids: [1, 2, 3, 4],
       p_expected_player_ids: [],
       p_picks: [],
-      p_expected_picks: []
+      p_expected_picks: [],
+      p_plan: 'mythic'
     });
   });
 });
@@ -1348,7 +1370,8 @@ describe('the boss groups page', () => {
         p_player_ids: [1, 2, 4],
         p_expected_player_ids: [1, 2],
         p_picks: [],
-        p_expected_picks: []
+        p_expected_picks: [],
+        p_plan: 'mythic'
       },
       {
         p_team_id: 1,
@@ -1356,7 +1379,8 @@ describe('the boss groups page', () => {
         p_player_ids: [1, 3],
         p_expected_player_ids: [1, 2, 3, 99],
         p_picks: [],
-        p_expected_picks: []
+        p_expected_picks: [],
+        p_plan: 'mythic'
       }
     ]);
     expect((await screen.findAllByText(/^Saved the boss groups\./)).length).toBeGreaterThan(0);
@@ -1455,7 +1479,8 @@ describe('the boss lineup, after someone leaves the roster', () => {
         p_player_ids: [1, 3],
         p_expected_player_ids: [1, 2, 3, 99],
         p_picks: [],
-        p_expected_picks: []
+        p_expected_picks: [],
+        p_plan: 'mythic'
       }
     ]);
   });
@@ -1466,7 +1491,7 @@ describe('the boss groups page, before any group is set', () => {
     const user = userEvent.setup();
     const { client } = renderApp(GROUPS, handlers(who('officer'), {}));
     expect(
-      await screen.findByRole('heading', { name: 'No boss in The Venomous Abyss has a usual group yet.' })
+      await screen.findByRole('heading', { name: 'No boss in The Venomous Abyss has a usual Mythic group yet.' })
     ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Start with everyone in' }));
     const g = await groupsGrid();
@@ -1480,7 +1505,8 @@ describe('the boss groups page, before any group is set', () => {
         p_player_ids: [1, 2, 3, 4],
         p_expected_player_ids: [],
         p_picks: [],
-        p_expected_picks: []
+        p_expected_picks: [],
+        p_plan: 'mythic'
       },
       {
         p_team_id: 1,
@@ -1488,7 +1514,8 @@ describe('the boss groups page, before any group is set', () => {
         p_player_ids: [1, 2, 3, 4],
         p_expected_player_ids: [],
         p_picks: [],
-        p_expected_picks: []
+        p_expected_picks: [],
+        p_plan: 'mythic'
       }
     ]);
   });
@@ -1598,5 +1625,72 @@ describe('the night page for a raider', () => {
     renderApp(NIGHT_PAGE, handlers(who('raider'), {}));
     expect(await screen.findByRole('region', { name: 'Heads up' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Your bosses tonight' })).not.toBeInTheDocument();
+  });
+});
+
+describe('a Heroic plan and a Mythic plan (#1688)', () => {
+  const TWO_PLANS: Setup = {
+    ...GROUPED,
+    groups: [...(GROUPED.groups ?? []), ...heroic(places([[101, [1, 4]]]))]
+  };
+
+  it('switches Boss groups to the Heroic plan, 10 to 30 a boss, and saves it there', async () => {
+    const user = userEvent.setup();
+    const { client } = renderApp(GROUPS, handlers(who('officer'), TWO_PLANS));
+    await groupsGrid();
+    expect(screen.getByRole('radio', { name: 'Mythic (team default)' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'Heroic (Normal too)' }));
+    const g = within(
+      await screen.findByRole('table', { name: /The Venomous Abyss boss groups, up to 10-30 per boss/ })
+    );
+    expect(g.getByRole('button', { name: "Di, Nek'zali the Soulcoiler: in the group" })).toBeInTheDocument();
+    expect(g.getByRole('button', { name: "Bo, Nek'zali the Soulcoiler: not in the group" })).toBeInTheDocument();
+    await user.click(g.getByRole('button', { name: 'Ana, Sszorak: not in the group' }));
+    // Switching now would drop the change.
+    expect(screen.getByRole('radio', { name: 'Mythic (team default)' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Save groups' }));
+    expect(rpcs(client, 'set_boss_group')).toEqual([
+      expect.objectContaining({ p_encounter_id: 102, p_player_ids: [1], p_plan: 'heroic' })
+    ]);
+  });
+
+  it('shows a Heroic into Mythic night one half at a time, Heroic first, and saves each to its own half', async () => {
+    const user = userEvent.setup();
+    const setup: Setup = {
+      ...PLANNED,
+      difficulty: 'heroic_into_mythic',
+      bosses: [...(PLANNED.bosses ?? []), ...heroic([nightBoss(101, 1)])],
+      tonight: [...(PLANNED.tonight ?? []), ...heroic(places([[101, [4]]]))]
+    };
+    const { client } = renderApp(LINEUP, handlers(who('officer'), setup));
+    let g = await grid();
+    expect(screen.getByRole('radio', { name: 'Heroic' })).toBeChecked();
+    expect(g.getByRole('button', { name: /^Di, Nek'zali the Soulcoiler: in/ })).toBeInTheDocument();
+    expect(g.queryByText('Sszorak')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'Mythic' }));
+    g = await grid();
+    expect(g.getByRole('button', { name: "Ana, Nek'zali the Soulcoiler: in" })).toBeInTheDocument();
+    await user.click(g.getByRole('button', { name: "Ana, Nek'zali the Soulcoiler: in" }));
+    expect(screen.getByRole('radio', { name: 'Heroic' })).toBeDisabled();
+    await save(user, 'Just Thursday');
+    expect(rpcs(client, 'set_raid_night_lineup')).toEqual([
+      expect.objectContaining({ p_encounter_id: 101, p_player_ids: [2, 3], p_plan: 'mythic' })
+    ]);
+  });
+
+  it('shows no switch on a night with one difficulty', async () => {
+    renderApp(LINEUP, handlers(who('officer')));
+    await grid();
+    expect(screen.queryByRole('group', { name: 'Lineup' })).not.toBeInTheDocument();
+  });
+
+  it('counts Heroic from 10 to 30 on every boss, a boss of its own cap or not', () => {
+    const raids = lineupRaids(FLEX_ENCOUNTERS, [], { fresh: true, season: 'S1', plan: 'heroic' });
+    expect(raids.map((r) => capLabel(r.bosses))).toEqual(['10-30 per boss', '10-30 per boss']);
+    const mythic = lineupRaids(FLEX_ENCOUNTERS, [], { fresh: true, season: 'S1' });
+    expect(mythic.map((r) => capLabel(r.bosses))).toEqual(['20-25 per boss', '25 per boss']);
+    expect(capStatus(8, 30, 10)).toEqual({ text: '2 open spots', tone: 'warn' });
+    expect(capStatus(26, 30, 10).tone).toBe('room');
+    expect(capStatus(31, 30, 10)).toEqual({ text: '1 over', tone: 'bad' });
   });
 });

@@ -132,15 +132,19 @@ export function needsALook(
 // The first boss, in pull order and not skipped, each raider was lined up for
 // on each night: the same reference the sync's Late? check uses.
 export function firstLineupBoss(
-  bosses: { raid_date: string; encounter_id: number; position: number; skipped: boolean }[],
-  places: { raid_date: string; encounter_id: number; player_id: number }[],
+  bosses: { raid_date: string; encounter_id: number; plan?: string; position: number; skipped: boolean }[],
+  places: { raid_date: string; encounter_id: number; plan?: string; player_id: number }[],
   bossName: (encounterId: number) => string | undefined
 ): Map<string, string> {
+  // Each half of a Heroic into Mythic night apart (#1688), the Heroic half
+  // first, as the logs sync judges lateness.
+  const half = (r: { raid_date: string; encounter_id: number; plan?: string }) =>
+    `${r.raid_date}|${r.encounter_id}|${r.plan ?? 'mythic'}`;
   const order = new Map<string, number>();
-  for (const b of bosses) if (!b.skipped) order.set(`${b.raid_date}|${b.encounter_id}`, b.position);
+  for (const b of bosses) if (!b.skipped) order.set(half(b), b.position + (b.plan === 'heroic' ? 0 : 1000));
   const best = new Map<string, { position: number; encounterId: number }>();
   for (const p of places) {
-    const position = order.get(`${p.raid_date}|${p.encounter_id}`);
+    const position = order.get(half(p));
     if (position === undefined) continue;
     const key = `${p.player_id}|${p.raid_date}`;
     const seen = best.get(key);

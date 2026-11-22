@@ -19644,12 +19644,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.set_raid_night_boss_order",
-      "return_type": "void",
-      "arguments": "p_team_id integer, p_raid_date date, p_encounter_ids integer[], p_expected_ids integer[], p_every_night boolean DEFAULT false",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.set_boss_role_targets",
       "return_type": "void",
       "arguments": "p_team_id integer, p_encounter_id integer, p_tanks integer DEFAULT NULL::integer, p_healers integer DEFAULT NULL::integer, p_melee integer DEFAULT NULL::integer, p_ranged integer DEFAULT NULL::integer",
@@ -19689,6 +19683,12 @@
       "name": "public.record_raid_night_participation",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_plan text DEFAULT 'mythic'::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_raid_night_boss_order",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_raid_date date, p_encounter_ids integer[], p_expected_ids integer[], p_every_night boolean DEFAULT false, p_plan text DEFAULT 'mythic'::text",
       "type": "FUNCTION"
     }
   ],

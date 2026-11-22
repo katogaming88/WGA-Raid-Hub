@@ -85,6 +85,27 @@ describe('slotsOf', () => {
   });
 });
 
+describe('a Heroic into Mythic night (#1688)', () => {
+  it('counts each half of a boss as its own pull, planned and played apart', () => {
+    const data = {
+      nightBosses: [
+        { raid_date: '2026-08-05', encounter_id: 10, plan: 'heroic', position: 1, skipped: false },
+        { raid_date: '2026-08-05', encounter_id: 10, plan: 'mythic', position: 1, skipped: false }
+      ],
+      planned: [
+        { raid_date: '2026-08-05', encounter_id: 10, plan: 'heroic', player_id: 1 },
+        { raid_date: '2026-08-05', encounter_id: 10, plan: 'mythic', player_id: 2 }
+      ],
+      played: [{ raid_date: '2026-08-05', encounter_id: 10, plan: 'mythic', player_id: 2 }],
+      kills: [{ raid_date: '2026-08-05', encounter_id: 10 }]
+    };
+    // The Heroic half had nobody recorded on a logged night, so it wasn't pulled.
+    expect(slotsOf(data, TODAY).map((s) => [s.bossId, [...s.planned], [...(s.played ?? [])], s.killed])).toEqual([
+      [10, [2], [2], true]
+    ]);
+  });
+});
+
 describe('raiderLineups', () => {
   const raiders = raiderLineups(slotsOf(DATA, TODAY), GROUPS, new Map([[2, 20]]));
   const of = (id: number) => raiders.find((r) => r.playerId === id)!;

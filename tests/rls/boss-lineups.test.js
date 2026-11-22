@@ -1756,6 +1756,59 @@ describe('a Heroic plan and a Mythic plan (#1688)', () => {
     });
   });
 
+  it('adds a missing half to a night already filled, in its pull order, counting bosses once', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, p2 } = await seed(q);
+      await setTeamDifficulty(q, 'heroic_into_mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      await setGroup(asUser, OFFICER_T1, SECOND, [p1]);
+      const date = await today(q, 1);
+      expect((await plan(asUser, OFFICER_T1, date)).rows[0].n).toBe(2);
+      // The night's order is changed, then the Heroic plan gets its groups.
+      await asUser(OFFICER_T1, 'select public.set_raid_night_boss_order(1, $1, $2::int[], $3::int[])', [
+        date,
+        [SECOND, FIRST],
+        [FIRST, SECOND]
+      ]);
+      await setPlanGroup(asUser, OFFICER_T1, FIRST, [p2], 'heroic');
+      await setPlanGroup(asUser, OFFICER_T1, SECOND, [p2], 'heroic');
+      expect((await plan(asUser, OFFICER_T1, date)).rows[0].n).toBe(2);
+      expect((await halves(q, date)).map((b) => [b.plan, b.encounter_id, b.position, b.players])).toEqual([
+        ['heroic', SECOND, 1, [p2]],
+        ['heroic', FIRST, 2, [p2]],
+        ['mythic', SECOND, 1, [p1]],
+        ['mythic', FIRST, 2, [p1]]
+      ]);
+      // Nothing left to add.
+      expect((await plan(asUser, OFFICER_T1, date)).rows[0].n).toBe(0);
+    });
+  });
+
+  it('saves a pull order from one half, a boss only on the other half keeping its place', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1 } = await seed(q);
+      await setTeamDifficulty(q, 'heroic_into_mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1]);
+      await setPlanGroup(asUser, OFFICER_T1, FIRST, [p1], 'heroic');
+      await setPlanGroup(asUser, OFFICER_T1, SECOND, [p1], 'heroic');
+      const date = await today(q, 1);
+      await plan(asUser, OFFICER_T1, date);
+      const sql = 'select public.set_raid_night_boss_order(1, $1, $2::int[], $3::int[], false, $4)';
+      // The Mythic half lists only its own boss.
+      await asUser(OFFICER_T1, sql, [date, [FIRST], [FIRST], 'mythic']);
+      await asUser(OFFICER_T1, sql, [date, [SECOND, FIRST], [FIRST, SECOND], 'heroic']);
+      expect((await halves(q, date)).map((b) => [b.plan, b.encounter_id, b.position])).toEqual([
+        ['heroic', SECOND, 1],
+        ['heroic', FIRST, 2],
+        ['mythic', FIRST, 2]
+      ]);
+      await expect(asUser(OFFICER_T1, sql, [date, [FIRST], [FIRST], 'normal'])).rejects.toThrow(/Heroic or the Mythic/);
+      await expect(asUser(OFFICER_T1, sql, [date, [FIRST, SECOND], [SECOND, FIRST], 'mythic'])).rejects.toThrow(
+        /changed this night/
+      );
+    });
+  });
+
   it('keeps one pull order when a half has no group for a boss', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { p1 } = await seed(q);

@@ -3951,3 +3951,11 @@ Shipped: `20261121160423_lineup_heroic_mythic_plans.sql`.
 **Who was actually in is kept per half:** on a Heroic into Mythic night `wcl-sync` sends a Mythic fight to the Mythic half and any other to the Heroic half; on a night with one half every pull of the boss counts toward it, as before (a Heroic farm pull on a Mythic night still counts). It judges lateness against a raider's first boss across both halves, the Heroic half first.
 
 [Full discussion -> #1688](https://github.com/katogaming88/WGA-Raid-Hub/issues/1688).
+
+### Part 2: a night gains a missing half (`20261122093224_lineup_fill_missing_half.sql`)
+
+**Each half is filled while it has no rows**, not the night as a whole. A team that fills its Heroic plan after its Mythic one, or moves a night to Heroic into Mythic, gets the Heroic half on nights already filled within the hour (the pg_cron fill), or at once from "Fill from the groups", instead of only by saving each boss by hand (the fresh-agent review on PR #1885). A half added beside one already there follows its pull order; a boss new to the night goes after the rest in the team's order. `fill_raid_night()` returns bosses, not rows, so a night with both halves isn't counted twice in "Filled 10 bosses" or the Plan Raid Night audit entry.
+
+**A pull-order save is one half's**, because Boss Lineup shows one half at a time: `set_raid_night_boss_order(..., p_plan)` takes that half's bosses, and they swap places among the places they hold, on both halves. A boss only on the other half keeps its place. Asking for every boss on the night, as before, would have refused a save from a half missing one of the other half's bosses as stale.
+
+**The site reads each half apart.** Boss groups and Boss lineup read one plan at a time; Attendance's "first boss" reason and the Boss lineups report key every row by its half, the Heroic half first, as the logs sync does.

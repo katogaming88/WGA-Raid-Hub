@@ -8,11 +8,20 @@
 // is in (it has any participation row), a boss nobody was recorded for was not
 // pulled, so it is not a slot either. A night with no log yet counts from its
 // plan alone: who was in is who was planned, and nobody missed anything.
+//
+// A Heroic into Mythic night has a Heroic and a Mythic half (#1688): each
+// half's boss is a slot of its own. A kill counts for the boss either way.
 
 import type { RoleGroup } from '../roster/roster';
 
-export type NightBossRow = { raid_date: string; encounter_id: number; position: number; skipped: boolean };
-export type SeatRow = { raid_date: string; encounter_id: number; player_id: number };
+export type NightBossRow = {
+  raid_date: string;
+  encounter_id: number;
+  plan?: string;
+  position: number;
+  skipped: boolean;
+};
+export type SeatRow = { raid_date: string; encounter_id: number; plan?: string; player_id: number };
 export type KillRow = { raid_date: string; encounter_id: number };
 export type BossInfo = { id: number; name: string; short: string };
 
@@ -33,12 +42,12 @@ type Slot = {
   killed: boolean;
 };
 
-const seatKey = (date: string, bossId: number) => `${date}|${bossId}`;
+const seatKey = (date: string, bossId: number, plan = 'mythic') => `${date}|${bossId}|${plan}`;
 
 function seatsBy(rows: SeatRow[]): Map<string, Set<number>> {
   const map = new Map<string, Set<number>>();
   for (const r of rows) {
-    const k = seatKey(r.raid_date, r.encounter_id);
+    const k = seatKey(r.raid_date, r.encounter_id, r.plan);
     if (!map.has(k)) map.set(k, new Set());
     map.get(k)!.add(r.player_id);
   }
@@ -58,14 +67,14 @@ function nightsOf(data: LineupData, today: string) {
     .filter((b) => b.raid_date <= today)
     .sort((a, b) => (a.raid_date < b.raid_date ? -1 : a.raid_date > b.raid_date ? 1 : a.position - b.position));
   return rows.map((b) => {
-    const k = seatKey(b.raid_date, b.encounter_id);
+    const k = seatKey(b.raid_date, b.encounter_id, b.plan);
     const slot: Slot = {
       date: b.raid_date,
       bossId: b.encounter_id,
       position: b.position,
       planned: planned.get(k) ?? NONE,
       played: logged.has(b.raid_date) ? (played.get(k) ?? NONE) : null,
-      killed: kills.has(k)
+      killed: kills.has(seatKey(b.raid_date, b.encounter_id))
     };
     const pulled = !b.skipped && (slot.played === null || slot.played.size > 0);
     return { slot, skipped: b.skipped, pulled };

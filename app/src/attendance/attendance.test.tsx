@@ -3,7 +3,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type FakeHandlers, type Read, type Write } from '../test/fakeSupabase';
-import { needsALook, nightLabel } from './attendance';
+import { firstLineupBoss, needsALook, nightLabel } from './attendance';
 
 // Manage attendance's Needs a look list (#1846): what the hourly refresh left
 // for an officer, set right in the list, with the refresh and the scores'
@@ -202,5 +202,25 @@ describe('needsALook', () => {
 
   it('labels a night by its calendar day', () => {
     expect(nightLabel('2026-11-10')).toBe('Tue Nov 10');
+  });
+});
+
+describe('firstLineupBoss on a Heroic into Mythic night (#1688)', () => {
+  it('names the first boss a raider is in across both halves, the Heroic half first', () => {
+    const d = '2026-08-05';
+    const bosses = [
+      { raid_date: d, encounter_id: 10, plan: 'heroic', position: 1, skipped: false },
+      { raid_date: d, encounter_id: 20, plan: 'heroic', position: 2, skipped: false },
+      { raid_date: d, encounter_id: 10, plan: 'mythic', position: 1, skipped: false }
+    ];
+    const places = [
+      // In the Mythic half's first boss and the Heroic half's second: the Heroic one comes first.
+      { raid_date: d, encounter_id: 10, plan: 'mythic', player_id: 1 },
+      { raid_date: d, encounter_id: 20, plan: 'heroic', player_id: 1 },
+      { raid_date: d, encounter_id: 10, plan: 'mythic', player_id: 2 }
+    ];
+    const names = firstLineupBoss(bosses, places, (id) => (id === 10 ? 'Nek' : 'Sszorak'));
+    expect(names.get(`1|${d}`)).toBe('Sszorak');
+    expect(names.get(`2|${d}`)).toBe('Nek');
   });
 });

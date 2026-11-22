@@ -407,7 +407,6 @@
 | public.lineup_picks_norm | record | p_team_id integer, p_picks jsonb | FUNCTION |
 | public.check_lineup_picks | void | p_team_id integer, p_player_ids integer[], p_picks jsonb | FUNCTION |
 | public.same_lineup_picks | bool | a jsonb, b jsonb | FUNCTION |
-| public.set_raid_night_boss_order | void | p_team_id integer, p_raid_date date, p_encounter_ids integer[], p_expected_ids integer[], p_every_night boolean DEFAULT false | FUNCTION |
 | public.set_boss_role_targets | void | p_team_id integer, p_encounter_id integer, p_tanks integer DEFAULT NULL::integer, p_healers integer DEFAULT NULL::integer, p_melee integer DEFAULT NULL::integer, p_ranged integer DEFAULT NULL::integer | FUNCTION |
 | public.set_lineup_raider_order | void | p_team_id integer, p_role text, p_player_ids integer[] | FUNCTION |
 | public.raid_night_plans | _text | p_team_id integer, p_raid_date date | FUNCTION |
@@ -415,6 +414,7 @@
 | public.set_raid_night_lineup | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_expected_player_ids integer[] DEFAULT NULL::integer[], p_picks jsonb DEFAULT NULL::jsonb, p_expected_picks jsonb DEFAULT NULL::jsonb, p_plan text DEFAULT 'mythic'::text | FUNCTION |
 | public.set_raid_night_boss_skipped | void | p_team_id integer, p_raid_date date, p_encounter_id integer, p_skipped boolean, p_plan text DEFAULT 'mythic'::text | FUNCTION |
 | public.record_raid_night_participation | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_plan text DEFAULT 'mythic'::text | FUNCTION |
+| public.set_raid_night_boss_order | void | p_team_id integer, p_raid_date date, p_encounter_ids integer[], p_expected_ids integer[], p_every_night boolean DEFAULT false, p_plan text DEFAULT 'mythic'::text | FUNCTION |
 
 ## Enums
 
