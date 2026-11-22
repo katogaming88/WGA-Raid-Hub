@@ -837,6 +837,10 @@
         {
           "name": "trg_rclc_loot_team_id_check",
           "def": "CREATE TRIGGER trg_rclc_loot_team_id_check BEFORE INSERT OR UPDATE ON public.rclc_loot FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        },
+        {
+          "name": "trg_rclc_loot_team_id_fixed",
+          "def": "CREATE TRIGGER trg_rclc_loot_team_id_fixed BEFORE UPDATE OF team_id ON public.rclc_loot FOR EACH ROW EXECUTE FUNCTION rclc_loot_team_id_fixed()"
         }
       ]
     },
@@ -19707,6 +19711,12 @@
       "name": "public.team_loot_history",
       "return_type": "record",
       "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.rclc_loot_team_id_fixed",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],

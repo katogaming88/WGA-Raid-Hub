@@ -16,7 +16,7 @@ answers to.
 
 ### Backend
 
-- Two loot access settings per team (#1560), both starting on today's access. **Who can open loot history:** everyone on the team, or officers only. The Loot history page now reads through `team_loot_history()`, which refuses raiders when the team keeps it to officers; the loot rows stay readable for Home, profiles and Priority. **Who can import RCLootCouncil exports:** officers, or the team leader only. The loot table's officer write rule is split so adding rows follows the setting, while officers can still reassign and fix rows.
+- Two loot access settings per team (#1560), both starting on today's access. **Who can open loot history:** everyone on the team, or officers only. The Loot history page now reads through `team_loot_history()`, which refuses raiders when the team keeps it to officers; the loot rows stay readable for Home, profiles and Priority. **Who can import RCLootCouncil exports:** officers, or the team leader only. The loot table's officer write rule is split so adding rows follows the setting, while officers can still reassign and fix rows. A loot row can no longer be moved to another team except by a site admin.
 
 ### Project
 

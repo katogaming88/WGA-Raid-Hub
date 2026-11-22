@@ -126,3 +126,26 @@ create policy "Importer insert loot" on public.rclc_loot
   for insert
   with check (team_id = any ((select my_loot_import_team_ids())::integer[])
               or (select is_site_admin()));
+
+-- A row rule sees only the new row, so it can't stop an officer on two teams
+-- adding a row on one and moving it to a team set to leader only. Nothing
+-- moves loot between teams (Reassign changes the player), so only a site admin
+-- or a direct database session (no signed-in caller) may change team_id.
+create function public.rclc_loot_team_id_fixed()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.team_id is distinct from old.team_id and auth.uid() is not null and not public.is_site_admin() then
+    raise exception 'A loot row stays on its team' using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.rclc_loot_team_id_fixed() from public, anon, authenticated;
+
+create trigger trg_rclc_loot_team_id_fixed
+  before update of team_id on public.rclc_loot
+  for each row execute function public.rclc_loot_team_id_fixed();

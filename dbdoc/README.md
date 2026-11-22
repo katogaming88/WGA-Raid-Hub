@@ -418,6 +418,7 @@
 | public.loot_history_open | bool | p_team_id integer | FUNCTION |
 | public.my_loot_import_team_ids | _int4 |  | FUNCTION |
 | public.team_loot_history | record | p_team_id integer | FUNCTION |
+| public.rclc_loot_team_id_fixed | trigger |  | FUNCTION |
 
 ## Enums
 

@@ -3,7 +3,17 @@
 // read) answers; lootImportAccess decides who may add loot rows, which is
 // what import_rclc_loot() does. Both default to today's access.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1, SITE_ADMIN, RLS_DENIED, seedSeason } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  OFFICER_T1,
+  OFFICER_T2,
+  TEAM_LEADER_T1,
+  RAIDER_T1,
+  SITE_ADMIN,
+  RLS_DENIED,
+  seedSeason
+} from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -52,6 +62,12 @@ describe('loot history access (#1560)', () => {
       await expect(history(t, RAIDER_T1)).rejects.toThrow(/Not authorized/);
       expect((await history(t, OFFICER_T1)).rows).toHaveLength(1);
       expect((await history(t, SITE_ADMIN)).rows).toHaveLength(1);
+    }));
+
+  it('refuses another team’s officer once the team locks it to officers', () =>
+    withTxn(async (t) => {
+      await seed(t, { lootHistoryAccess: 'officers' });
+      await expect(history(t, OFFICER_T2)).rejects.toThrow(/Not authorized/);
     }));
 
   it('keeps the loot rows themselves readable (only the page is locked)', () =>
@@ -136,5 +152,74 @@ describe('loot import access (#1560)', () => {
       expect(upd.rowCount).toBe(1);
       const del = await t.asUser(OFFICER_T1, 'delete from public.rclc_loot where item_id = $1', [ITEM_ID]);
       expect(del.rowCount).toBe(1);
+    }));
+
+  it('refuses an import from another team’s officer and from a signed-out visitor', () =>
+    withTxn(async (t) => {
+      await seed(t);
+      await expect(addRow(t, OFFICER_T2)).rejects.toMatchObject({ code: RLS_DENIED });
+      await expect(
+        t.asAnon("insert into public.rclc_loot (team_id, item_id, track, season) values (1, $1, 'Hero', $2)", [
+          ITEM_ID,
+          SEASON
+        ])
+      ).rejects.toMatchObject({ code: RLS_DENIED });
+    }));
+
+  it('changes and removes nothing for a raider, another team’s officer or a visitor', () =>
+    withTxn(async (t) => {
+      await seed(t, { lootImportAccess: 'leader' });
+      const callers = [
+        (sql, args) => t.asUser(RAIDER_T1, sql, args),
+        (sql, args) => t.asUser(OFFICER_T2, sql, args),
+        t.asAnon
+      ];
+      for (const run of callers) {
+        const upd = await run("update public.rclc_loot set track = 'Hero' where item_id = $1", [ITEM_ID]).catch(
+          (e) => e
+        );
+        expect(upd.rowCount ?? 0).toBe(0);
+        const del = await run('delete from public.rclc_loot where item_id = $1', [ITEM_ID]).catch((e) => e);
+        expect(del.rowCount ?? 0).toBe(0);
+      }
+      const { rows } = await t.q('select track from public.rclc_loot where item_id = $1', [ITEM_ID]);
+      expect(rows).toEqual([{ track: 'Myth' }]);
+    }));
+});
+
+describe('a loot row stays on its team (#1560, CodeRabbit)', () => {
+  it('stops an officer on two teams moving a row into a team set to leader only', () =>
+    withTxn(async (t) => {
+      await seed(t);
+      await t.q(
+        `insert into public.team_settings (team_id, config) values (2, '{"lootImportAccess":"leader"}'::jsonb)
+         on conflict (team_id) do update set config = public.team_settings.config || excluded.config`
+      );
+      // OFFICER_T1 is made an officer of team 2 as well, so both rules let them in.
+      await t.q(
+        `insert into public.team_members (team_id, discord_id, role, person_id)
+         select 2, discord_id || '-t2', 'officer', person_id from public.team_members
+          where team_id = 1 and person_id = (select id from public.people where auth_user_id = $1)`,
+        [OFFICER_T1]
+      );
+      const { rows } = await t.asUser(
+        OFFICER_T1,
+        "insert into public.rclc_loot (team_id, item_id, track, season) values (1, $1, 'Hero', $2) returning id",
+        [ITEM_ID, SEASON]
+      );
+      await expect(
+        t.asUser(OFFICER_T1, 'update public.rclc_loot set team_id = 2 where id = $1', [rows[0].id])
+      ).rejects.toMatchObject({ code: RLS_DENIED, message: 'A loot row stays on its team' });
+    }));
+
+  it('still lets a site admin move a row', () =>
+    withTxn(async (t) => {
+      await seed(t);
+      const upd = await t.asUser(
+        SITE_ADMIN,
+        'update public.rclc_loot set team_id = 2, player_id = null where item_id = $1',
+        [ITEM_ID]
+      );
+      expect(upd.rowCount).toBe(1);
     }));
 });
