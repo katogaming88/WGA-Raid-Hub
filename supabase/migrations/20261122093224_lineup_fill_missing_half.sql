@@ -35,13 +35,15 @@ declare
   v_had boolean;
   v_difficulty text;
 begin
-  -- The plans this night copies that it has no rows for yet.
+  -- The plans this night copies that it has no rows for yet and the team
+  -- has groups for (so the hourly job skips a half with nothing to fill).
   select array_agg(pl.plan) into v_plans
   from unnest(public.raid_night_plans(p_team_id, p_raid_date)) as pl(plan)
   where not exists (
     select 1 from raid_night_bosses b
     where b.team_id = p_team_id and b.raid_date = p_raid_date and b.plan = pl.plan
-  );
+  )
+    and exists (select 1 from boss_groups g where g.team_id = p_team_id and g.plan = pl.plan);
   if coalesce(cardinality(v_plans), 0) = 0 then
     return 0;
   end if;

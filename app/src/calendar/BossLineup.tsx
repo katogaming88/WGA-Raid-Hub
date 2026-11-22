@@ -118,6 +118,10 @@ export function BossLineup({
   const [picked, setPicked] = useState<Plan>(halves[0]!);
   const half = halves.includes(picked) ? picked : halves[0]!;
   const [dirty, setDirty] = useState(false);
+  // The other half, saved, for Needs a look on a two-half night (Kat,
+  // 2026-11-22); on a one-half night this reads the same half again, cached.
+  const other = halves.find((h) => h !== half) ?? null;
+  const otherPlan = useNightPlan(team.id, night.date, other ?? half);
   const lookups = bothQueries(useSeasons(), useEncounters());
   const plan = bothQueries(useNightPlan(team.id, night.date, half), useBossGroups(team.id, half));
   const targets = bothQueries(useLineupRoleTargets(team.id), useRaiderOrder(team.id));
@@ -132,6 +136,7 @@ export function BossLineup({
           <Lineup
             key={half}
             half={half}
+            otherHalf={other && otherPlan.data ? { plan: other, night: otherPlan.data } : null}
             onDirty={setDirty}
             night={night}
             players={players}
@@ -160,6 +165,7 @@ const hideBroken = (e: SyntheticEvent<HTMLImageElement>) => {
 
 function Lineup({
   half,
+  otherHalf,
   onDirty,
   night,
   players,
@@ -173,6 +179,7 @@ function Lineup({
   canEdit
 }: {
   half: Plan;
+  otherHalf: { plan: Plan; night: NightPlan } | null;
   onDirty: (dirty: boolean) => void;
   night: RaidNight;
   players: PlayerRow[];
@@ -358,6 +365,39 @@ function Lineup({
   }
 
   const raid = raids.find((r) => r.zoneId === shown) ?? raids[0]!;
+  // The other half's bosses in this raid that need a look, as saved.
+  const otherLooks = (() => {
+    if (!otherHalf) return [];
+    const otherRaid = lineupRaids(encounters, otherHalf.night.bosses, {
+      fresh: false,
+      season,
+      plan: otherHalf.plan
+    }).find((r) => r.zoneId === raid.zoneId);
+    if (!otherRaid) return [];
+    const otherSaved = placesOf(otherHalf.night.places);
+    const view = lineupView(
+      players,
+      night,
+      answers,
+      otherRaid,
+      otherSaved,
+      otherSaved,
+      targets,
+      picksOf(otherHalf.night.places),
+      look,
+      new Map(),
+      raiderOrder
+    );
+    return view.totals
+      .filter((t) => t.problems.length)
+      .map((t) => ({
+        key: `other-${t.boss.id}`,
+        head: `${PLAN_LABELS[otherHalf.plan]} ${otherRaid.bosses.indexOf(t.boss) + 1}. ${t.boss.short}`,
+        text: t.brief.join(' · '),
+        full: `${t.problems.join('; ')}.`,
+        total: undefined
+      }));
+  })();
 
   // After a save: saved bosses drop their edits, refused ones keep them so the
   // officer can compare.
@@ -605,6 +645,8 @@ function Lineup({
       </div>
 
       <RaidGrid
+        halfLabel={otherHalf ? PLAN_LABELS[half] : null}
+        otherLooks={otherLooks}
         raid={raid}
         night={night}
         players={players}
@@ -756,7 +798,12 @@ function TipBody({ tip }: { tip: Tip }) {
   );
 }
 
+// A Needs a look line.
+type Look = { key: string; head: string; text: string; full: string | null; total: BossTotal | undefined };
+
 function RaidGrid({
+  halfLabel,
+  otherLooks,
   raid,
   night,
   players,
@@ -779,6 +826,10 @@ function RaidGrid({
   onRaiders,
   onNeeds
 }: {
+  // On a two-half night (#1688): the half on screen, named on its lines, and
+  // the other half's bosses that need a look, listed after them.
+  halfLabel: string | null;
+  otherLooks: Look[];
   raid: LineupRaid;
   night: RaidNight;
   players: PlayerRow[];
@@ -835,10 +886,10 @@ function RaidGrid({
   const totals = new Map(view.totals.map((t) => [t.boss.id, t]));
   const gaps = view.totals.filter((t) => t.problems.length);
   const liveCount = view.live.length;
-  const looks = [
+  const looks: Look[] = [
     ...gaps.map((t) => ({
       key: `boss-${t.boss.id}`,
-      head: `${raid.bosses.indexOf(t.boss) + 1}. ${t.boss.short}`,
+      head: `${halfLabel ? `${halfLabel} ` : ''}${raid.bosses.indexOf(t.boss) + 1}. ${t.boss.short}`,
       text: t.brief.join(' · '),
       // Read out in full, since the tip is for the pointer only.
       full: `${t.problems.join('; ')}.`,
@@ -861,7 +912,8 @@ function RaidGrid({
             total: undefined
           }
         ]
-      : [])
+      : []),
+    ...otherLooks
   ];
   const hotProps = (id: number) => ({ 'data-hot': hot === id || undefined, onMouseEnter: () => setHot(id) });
 

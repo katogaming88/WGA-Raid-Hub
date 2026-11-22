@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     58 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 49 h 57 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 50 h 40 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **225 h 45 m** |             |
+| **All revamp work**                | **226 h 28 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 13 h 30 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 14 h 13 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -843,6 +843,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 9:28-9:54 AM | #1688 part 2: one Heroic / Mythic switch on Boss groups and on a Heroic into Mythic night's Boss lineup, Heroic counted 10 to 30 a boss, every lineup read and save per half, Your bosses per half, Attendance and the lineup report per half; a migration so a night gains a missing half and a pull-order save is one half's; page, report, attendance, browser and database tests, generated docs, RLS.md, decision log, stamp, changelog, these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1688) | 26 m | build | 300,000 | Screenshots, the fresh-agent review, Kat's review and merge not yet counted. |
+| 9:54-10:37 AM | PR #1887 (#1688): PR opened, six screenshots; Kat's calls (role targets stay one set; on Heroic only a count outside 10-30 or a short role needs a look, buffs shown but not flagged; Needs a look lists both halves); CodeRabbit's finding fixed (the team order from the whole night) with a regression test; the fresh-agent review (approve) and its two nits; screenshots retaken | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1688) | 43 m | build (Kat's answers inline) | 93,300 | Kat's design review and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 

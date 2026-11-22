@@ -1666,6 +1666,11 @@ describe('a Heroic plan and a Mythic plan (#1688)', () => {
     let g = await grid();
     expect(screen.getByRole('radio', { name: 'Heroic' })).toBeChecked();
     expect(g.getByRole('button', { name: /^Di, Nek'zali the Soulcoiler: in/ })).toBeInTheDocument();
+    // Needs a look lists both halves, each named (Kat, 2026-11-22).
+    const look = within(screen.getByRole('region', { name: 'Needs a look' }));
+    expect(look.getByText("Heroic 1. Nek'zali")).toBeInTheDocument();
+    expect(await look.findByText("Mythic 1. Nek'zali")).toBeInTheDocument();
+    expect(look.getByText('Mythic 2. Sszorak')).toBeInTheDocument();
     expect(g.queryByText('Sszorak')).not.toBeInTheDocument();
     await user.click(screen.getByRole('radio', { name: 'Mythic' }));
     g = await grid();

@@ -21,7 +21,7 @@ answers to.
 ### Project
 
 - Boss groups has a Plan switch, Heroic (Normal nights use it too) or Mythic, opening on the team default's (#1688). Heroic counts 10 to 30 raiders on every boss: under 10 shows open spots, over 30 over. On Heroic only that and a role short of its target (fewer than 2 tanks, say) need a look; more of a role than its target, or a missing buff, doesn't (Kat, 2026-11-22). The buff row still shows what's missing. A boss's own cap stays a Mythic setting.
-- A Heroic into Mythic night's Boss lineup has a Lineup switch between its Heroic and Mythic halves, the same switch component as Boss groups, Heroic first; a night with one difficulty shows its half with no switch. Both switches are off while there are unsaved changes. Each half saves, skips and orders on its own.
+- A Heroic into Mythic night's Boss lineup has a Lineup switch between its Heroic and Mythic halves, the same switch component as Boss groups, Heroic first; a night with one difficulty shows its half with no switch. Both switches are off while there are unsaved changes. Each half saves, skips and orders on its own. Needs a look lists both halves' bosses, each named Heroic or Mythic.
 - "Your bosses tonight" shows a card per half on a Heroic into Mythic night. Attendance's "first boss" reason and the Boss lineups report read each half apart, the Heroic half first.
 - Page, report, attendance and database tests for the two plans.
 
