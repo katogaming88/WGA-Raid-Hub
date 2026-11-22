@@ -1481,6 +1481,28 @@ const HISTORY = {
   tables: { team_settings: [{ team_id: 1, history: [HISTORY_ENTRY] }] }
 };
 
+// Loot history (#814): opens on every item and its count.
+const LOOT_HISTORY = {
+  path: '/g/wga/t/phoenix/loot',
+  sentinel: 'main:has(.loot-history-count)',
+  tables: {
+    rclc_loot: [
+      {
+        id: 1,
+        team_id: 1,
+        track: 'Myth',
+        season: 'MID2',
+        awarded_at: '2026-11-10T02:00:00Z',
+        boss: 'Warden',
+        response: 'BiS',
+        item_id: 10,
+        items: { name: 'Venomwoven Effigy', slot: 'Head', armor_type: 'Cloth' }
+      }
+    ],
+    tier_token_map: [{ token_item_id: 10 }]
+  }
+};
+
 // Sign Up (#1102): signed in, one season open, no existing signup -- the
 // fresh wizard's step 1. A separate state for the "Your signup" summary,
 // which is the page's other real shape.
@@ -1835,6 +1857,9 @@ const STATES = [
   { label: 'guild settings, rank permissions, an Admin reading', ...GUILD_GRID_ADMIN },
   { label: 'history', ...HISTORY },
   { label: 'history, light', ...HISTORY, colorScheme: 'light' },
+  { label: 'loot history', ...LOOT_HISTORY },
+  { label: 'loot history, light', ...LOOT_HISTORY, colorScheme: 'light' },
+  { label: 'loot history, on a phone', ...LOOT_HISTORY, viewport: NARROW },
   { label: 'signup', ...SIGNUP },
   { label: 'signup, light', ...SIGNUP, colorScheme: 'light' },
   { label: 'signup summary', ...SIGNUP_SUMMARY },

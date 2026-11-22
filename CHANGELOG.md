@@ -12,6 +12,13 @@ answers to.
 
 ---
 
+## [3.302.0] - 2026-11-22
+
+### Project
+
+- The team menu's Loot history page is built (#814): the team's loot from every season, counted, with no player anywhere. It opens on every item and how many times it has dropped. Filters: item name, tier tokens (every token, or one armor type's), season, track, boss, slot, armor type and a date range. The count comes first; Show picks By item, By boss, By season or Every drop. Responses the team hides from loot history (Settings > Loot) are left out. Anyone on the team can open it until #1560's access setting exists.
+- Item links across the new app show Wowhead's hover tooltip: the app now loads Wowhead's tooltip script, with its own link colors and icons off.
+
 ## [3.301.0] - 2026-11-22
 
 ### Project

@@ -319,6 +319,10 @@ export async function openApp(browser, port, state) {
     if (url.hostname.endsWith('twitch.tv') || url.hostname.endsWith('ttvnw.net')) {
       return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>stream</title>' });
     }
+    // Wowhead's tooltip script and item icons: answered empty, never fetched.
+    if (url.hostname.endsWith('zamimg.com') || url.hostname.endsWith('wowhead.com')) {
+      return route.fulfill({ status: 200, body: '' });
+    }
     // A crash is reported to Sentry (#1477); accepted here, never sent.
     if (url.hostname.endsWith('.sentry.io')) return route.fulfill({ status: 200, body: '' });
     if (url.hostname === 'assets.rpglogs.com') {
