@@ -14,6 +14,7 @@ import {
   type NightBossRow,
   type PickRow,
   type PlaceRow,
+  type Plan,
   type RaiderOrder,
   type BossTargets,
   type RoleTargets,
@@ -239,11 +240,11 @@ export function useEncounters() {
 // alt picked for their team, an officer every alt on it.
 const PICK_COLUMNS = 'character_id, class_spec_id, character:characters(id, name, class_name, spec_name)';
 
-// One night's plan: its bosses and who is in for each.
+// One night's plan: its bosses and who is in for each, on one half.
 export type NightPlan = { bosses: NightBossRow[]; places: PlaceRow[] };
 
-export function useNightPlan(teamId: number, date: string) {
-  return useSupabaseQuery<NightPlan>([...lineupKey(teamId), 'night', date], async (client) => {
+export function useNightPlan(teamId: number, date: string, plan: Plan) {
+  return useSupabaseQuery<NightPlan>([...lineupKey(teamId), 'night', date, plan], async (client) => {
     const [bosses, places] = await Promise.all([
       // team-read-guard: one raid night, one row per boss
       client
@@ -251,6 +252,7 @@ export function useNightPlan(teamId: number, date: string) {
         .select('raid_date, encounter_id, position, skipped, confirmed_at')
         .eq('team_id', teamId)
         .eq('raid_date', date)
+        .eq('plan', plan)
         .order('position'),
       // team-read-guard: one raid night, one row per boss and raider in the lineup, a few hundred at most
       client
@@ -258,6 +260,7 @@ export function useNightPlan(teamId: number, date: string) {
         .select(`encounter_id, player_id, ${PICK_COLUMNS}`)
         .eq('team_id', teamId)
         .eq('raid_date', date)
+        .eq('plan', plan)
         .order('id')
     ]);
     const error = bosses.error ?? places.error;
@@ -271,25 +274,28 @@ export function useNightPlan(teamId: number, date: string) {
 
 // The team's usual group for every boss, with each raider's name so the Boss
 // groups page can name someone who left the roster but is still in a group.
-export function useBossGroups(teamId: number) {
-  return useSupabaseQuery<LeaverRow[]>([...lineupKey(teamId), 'groups'], (client) =>
+export function useBossGroups(teamId: number, plan: Plan) {
+  return useSupabaseQuery<LeaverRow[]>([...lineupKey(teamId), 'groups', plan], (client) =>
     // team-read-guard: one row per boss and raider in the usual groups, a few hundred at most
     client
       .from('boss_groups')
       .select(`encounter_id, player_id, ${PICK_COLUMNS}, player:players(name_realm, nickname)`)
       .eq('team_id', teamId)
+      .eq('plan', plan)
       .order('id')
   );
 }
 
-// Every boss on the team's coming raid nights, for what a group save changes.
-export function useComingNights(teamId: number, today: string) {
-  return useSupabaseQuery<ComingBossRow[]>([...lineupKey(teamId), 'coming', today], (client) =>
+// Every boss on the team's coming raid nights, on one plan's half, for what a
+// group save changes.
+export function useComingNights(teamId: number, today: string, plan: Plan) {
+  return useSupabaseQuery<ComingBossRow[]>([...lineupKey(teamId), 'coming', today, plan], (client) =>
     // team-read-guard: coming nights that already have a boss plan, one row per boss
     client
       .from('raid_night_bosses')
       .select('raid_date, encounter_id, skipped, confirmed_at')
       .eq('team_id', teamId)
+      .eq('plan', plan)
       .gte('raid_date', today)
       .order('raid_date')
       .order('position')
@@ -327,7 +333,7 @@ async function saveEach(
 
 // Save, "Just this night": each changed boss's lineup for the night, one boss at a time,
 // so two officers on different bosses never get in each other's way.
-export function useSaveNight(teamId: number, date: string) {
+export function useSaveNight(teamId: number, date: string, plan: Plan) {
   return useSupabaseMutation<SaveResult, BossSave[]>(
     (client, saves) =>
       saveEach(saves, (s) =>
@@ -338,7 +344,8 @@ export function useSaveNight(teamId: number, date: string) {
           p_player_ids: s.players,
           p_expected_player_ids: s.expected,
           p_picks: s.picks,
-          p_expected_picks: s.expectedPicks
+          p_expected_picks: s.expectedPicks,
+          p_plan: plan
         })
       ),
     { key: ['save-night', teamId], refreshes: [lineupKey(teamId)] }
@@ -351,7 +358,7 @@ export function useSaveNight(teamId: number, date: string) {
 // what the officer set.
 export type GroupSave = { night: BossSave[]; groups: BossSave[] };
 
-export function useSaveGroups(teamId: number, date: string) {
+export function useSaveGroups(teamId: number, date: string, plan: Plan) {
   return useSupabaseMutation<SaveResult, GroupSave>(
     async (client, s) => {
       const night = await saveEach(s.night, (b) =>
@@ -362,7 +369,8 @@ export function useSaveGroups(teamId: number, date: string) {
           p_player_ids: b.players,
           p_expected_player_ids: b.expected,
           p_picks: b.picks,
-          p_expected_picks: b.expectedPicks
+          p_expected_picks: b.expectedPicks,
+          p_plan: plan
         })
       );
       if (night.error) return night;
@@ -376,7 +384,8 @@ export function useSaveGroups(teamId: number, date: string) {
             p_player_ids: b.players,
             p_expected_player_ids: b.expected,
             p_picks: b.picks,
-            p_expected_picks: b.expectedPicks
+            p_expected_picks: b.expectedPicks,
+            p_plan: plan
           })
       );
       if (groups.error) return groups;
@@ -431,7 +440,7 @@ export function useSaveRaiderOrder(teamId: number) {
 
 // "Save groups" on the Boss groups page: each changed boss's usual group, one
 // boss at a time, like a night's save.
-export function useSaveBossGroups(teamId: number) {
+export function useSaveBossGroups(teamId: number, plan: Plan) {
   return useSupabaseMutation<SaveResult, BossSave[]>(
     (client, saves) =>
       saveEach(saves, (s) =>
@@ -441,7 +450,8 @@ export function useSaveBossGroups(teamId: number) {
           p_player_ids: s.players,
           p_expected_player_ids: s.expected,
           p_picks: s.picks,
-          p_expected_picks: s.expectedPicks
+          p_expected_picks: s.expectedPicks,
+          p_plan: plan
         })
       ),
     { key: ['save-boss-groups', teamId], refreshes: [lineupKey(teamId)] }
@@ -452,7 +462,7 @@ export function useSaveBossGroups(teamId: number) {
 // everyNight, also the team's order, and every coming night follows it.
 export type OrderSave = { order: number[]; expected: number[]; everyNight: boolean };
 
-export function useSaveOrder(teamId: number, date: string) {
+export function useSaveOrder(teamId: number, date: string, plan: Plan) {
   return useSupabaseMutation<null, OrderSave>(
     async (client, s) => {
       const { error } = await client.rpc('set_raid_night_boss_order', {
@@ -460,7 +470,8 @@ export function useSaveOrder(teamId: number, date: string) {
         p_raid_date: date,
         p_encounter_ids: s.order,
         p_expected_ids: s.expected,
-        p_every_night: s.everyNight
+        p_every_night: s.everyNight,
+        p_plan: plan
       });
       return { data: null, error };
     },
@@ -477,14 +488,15 @@ export function usePlanNight(teamId: number, date: string) {
 }
 
 // "Skip" takes a boss off the night; "Put back" refills it from its group.
-export function useSkipBoss(teamId: number, date: string) {
+export function useSkipBoss(teamId: number, date: string, plan: Plan) {
   return useSupabaseMutation<undefined, { encounterId: number; skipped: boolean }>(
     (client, s) =>
       client.rpc('set_raid_night_boss_skipped', {
         p_team_id: teamId,
         p_raid_date: date,
         p_encounter_id: s.encounterId,
-        p_skipped: s.skipped
+        p_skipped: s.skipped,
+        p_plan: plan
       }),
     { key: ['skip-boss', teamId], refreshes: [lineupKey(teamId)] }
   );

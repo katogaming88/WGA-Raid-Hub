@@ -180,6 +180,21 @@ export const playWords = (play: Play) =>
 // Mythic allows 20 raiders per boss; a lair or mini raid allows 25 (Kat).
 export const MYTHIC_CAP = 20;
 export const MINI_RAID_CAP = 25;
+// Heroic (and Normal) flex from 10 to 30 raiders on every boss (#1688).
+export const FLEX_MIN = 10;
+export const FLEX_CAP = 30;
+
+// The team's two plans (#1688): Heroic, which Normal nights use too, and
+// Mythic. A Heroic into Mythic night has a half of each, Heroic first; a night
+// with no difficulty set uses the Mythic plan.
+export type Plan = 'heroic' | 'mythic';
+export const PLAN_LABELS: Record<Plan, string> = { heroic: 'Heroic', mythic: 'Mythic' };
+export const nightPlans = (night: { difficulty?: string | null | undefined }): Plan[] =>
+  night.difficulty === 'heroic'
+    ? ['heroic']
+    : night.difficulty === 'heroic_into_mythic'
+      ? ['heroic', 'mythic']
+      : ['mythic'];
 
 // A boss's name short enough for a grid column: "Nek'zali the Soulcoiler" is
 // "Nek'zali" and "The Lost Explorers" is "Lost Explorers". Only a one-word
@@ -210,6 +225,9 @@ export type LineupBoss = {
   cap: number;
   // The raid's own cap: below `cap` a flex boss can take more but isn't short.
   base: number;
+  // On the Heroic plan (#1688): only too few or too many raiders, or a role
+  // short of its target, needs a look (Kat, 2026-11-22).
+  flex?: boolean;
   art: string;
 };
 
@@ -223,7 +241,7 @@ export type LineupRaid = { zoneId: number; name: string; cap: number; bosses: Li
 // "20 per boss", or "20-25 per boss" when a flex fight inside the raid (a
 // Nymrissa Wavecaller, a Kith'ix) allows more than the rest (#1244).
 export function capLabel(bosses: LineupBoss[]): string {
-  const caps = [...new Set(bosses.map((b) => b.cap))].sort((a, b) => a - b);
+  const caps = [...new Set(bosses.flatMap((b) => [b.base, b.cap]))].sort((a, b) => a - b);
   return caps.length === 1 ? `${caps[0]} per boss` : `${caps[0]}-${caps.at(-1)} per boss`;
 }
 
@@ -282,8 +300,9 @@ export function orderChanges(before: LineupRaid[], after: LineupRaid[]): string[
 export function lineupRaids(
   encounters: EncounterRow[],
   nightBosses: NightBossRow[],
-  opts: { fresh: boolean; season: string | null }
+  opts: { fresh: boolean; season: string | null; plan?: Plan }
 ): LineupRaid[] {
+  const flex = opts.plan === 'heroic';
   const byId = new Map(encounters.map((e) => [e.id, e]));
   const listed: { e: EncounterRow; boss: NightBossRow | null }[] = opts.fresh
     ? encounters
@@ -301,7 +320,7 @@ export function lineupRaids(
       raid = {
         zoneId: e.zone.id,
         name: e.zone.name,
-        cap: e.zone.is_mini_raid ? MINI_RAID_CAP : MYTHIC_CAP,
+        cap: flex ? FLEX_CAP : e.zone.is_mini_raid ? MINI_RAID_CAP : MYTHIC_CAP,
         bosses: []
       };
       raids.push(raid);
@@ -312,8 +331,10 @@ export function lineupRaids(
       short: shortBossName(e.name),
       skipped: boss?.skipped ?? false,
       confirmed: !!boss?.confirmed_at,
-      cap: e.cap ?? raid.cap,
-      base: raid.cap,
+      // A boss's own cap is a Mythic one; Heroic is 10 to 30 on every boss.
+      cap: flex ? FLEX_CAP : (e.cap ?? raid.cap),
+      base: flex ? FLEX_MIN : raid.cap,
+      ...(flex ? { flex } : {}),
       art: bossArt(e.wcl_encounter_id)
     });
   }
@@ -510,17 +531,19 @@ const providersOf = (buff: Buff, inn: Raider[]) =>
     .map((r) => r.name);
 
 // Tanks and healers want an exact count, short or over; melee and ranged
-// are a minimum, so only short is a problem (Kat, #1682). A target of 0 or
-// none means that role isn't counted.
-export const roleOff = (role: Role, n: number, target: number | null) =>
-  !!target && (role === 'Melee' || role === 'Ranged' ? n < target : n !== target);
+// are a minimum, so only short is a problem (Kat, #1682). On Heroic every
+// role is a minimum (Kat, 2026-11-22). A target of 0 or none means that role
+// isn't counted.
+const atLeast = (role: Role, flex: boolean) => flex || role === 'Melee' || role === 'Ranged';
+export const roleOff = (role: Role, n: number, target: number | null, flex = false) =>
+  !!target && (atLeast(role, flex) ? n < target : n !== target);
 
 // "1 tank, wants 2", "3 ranged, wants at least 6".
-const roleCheck = (n: number, target: number | null, role: Role) =>
-  !roleOff(role, n, target)
+const roleCheck = (n: number, target: number | null, role: Role, flex: boolean) =>
+  !roleOff(role, n, target, flex)
     ? []
     : [
-        `${n === 0 ? `no ${ROLE_WORDS[role][1]}` : count(n, role)}, wants ${role === 'Melee' || role === 'Ranged' ? 'at least ' : ''}${target}`
+        `${n === 0 ? `no ${ROLE_WORDS[role][1]}` : count(n, role)}, wants ${atLeast(role, flex) ? 'at least ' : ''}${target}`
       ];
 
 // One boss's count, role mix, missing buffs and warnings, for whoever is in.
@@ -531,10 +554,13 @@ function totalOf(boss: LineupBoss, inn: Raider[], targets: RoleTargets): BossTot
   const status = capStatus(inn.length, boss.cap, boss.base);
   const fine = status.tone === 'good' || status.tone === 'room';
   const missing = LINEUP_BUFFS.filter((b) => !providersOf(b, inn).length).map((b) => b.name);
+  const flex = !!boss.flex;
   const checks = [
     ...(fine ? [] : [status.text]),
-    ...ROLE_ORDER.flatMap((role) => roleCheck(roles[role], wants[role], role))
+    ...ROLE_ORDER.flatMap((role) => roleCheck(roles[role], wants[role], role, flex))
   ];
+  // Heroic still lists missing buffs on the grid, but they don't need a look.
+  const flagged = flex ? [] : missing;
   return {
     boss,
     count: inn.length,
@@ -545,9 +571,9 @@ function totalOf(boss: LineupBoss, inn: Raider[], targets: RoleTargets): BossTot
     roles,
     wants,
     missing,
-    warn: !fine ? status.text : missing.length ? plural(missing.length, 'buff') : '',
-    problems: [...checks, ...(missing.length ? [`no ${missing.join(', no ')}`] : [])],
-    brief: [...checks, ...(missing.length ? [`${plural(missing.length, 'buff')} missing`] : [])]
+    warn: !fine ? status.text : flagged.length ? plural(flagged.length, 'buff') : '',
+    problems: [...checks, ...(flagged.length ? [`no ${flagged.join(', no ')}`] : [])],
+    brief: [...checks, ...(flagged.length ? [`${plural(flagged.length, 'buff')} missing`] : [])]
   };
 }
 

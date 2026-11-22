@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.299.0] - 2026-11-22
+
+### Backend
+
+- A raid night gains a half it is missing (#1688, part 2 of 2): each plan a night copies is filled while that half has no rows, so a team that fills its Heroic plan after its Mythic one, or moves a night to Heroic into Mythic, gets the Heroic half on nights already filled within the hour, or at once from "Fill from the groups". A half added beside one already there follows its pull order. `set_raid_night_boss_order` takes the half (`p_plan`, Mythic when left out): the listed bosses swap places on both halves and a boss only on the other half keeps its place; saved for every night after, the team's order is the whole night's, so that boss keeps its place on later nights too. `fill_raid_night` returns bosses rather than rows, so a two-half night isn't counted twice.
+
+### Project
+
+- Boss groups has a Plan switch, Heroic (Normal nights use it too) or Mythic, opening on the team default's (#1688). Heroic counts 10 to 30 raiders on every boss: under 10 shows open spots, over 30 over. On Heroic only that and a role short of its target (fewer than 2 tanks, say) need a look; more of a role than its target, or a missing buff, doesn't (Kat, 2026-11-22). The buff row still shows what's missing. A boss's own cap stays a Mythic setting.
+- A Heroic into Mythic night's Boss lineup has a Lineup switch between its Heroic and Mythic halves, the same switch component as Boss groups, Heroic first; a night with one difficulty shows its half with no switch. Both switches are off while there are unsaved changes. Each half saves, skips and orders on its own. Needs a look lists both halves' bosses, each named Heroic or Mythic.
+- "Your bosses tonight" shows a card per half on a Heroic into Mythic night. Attendance's "first boss" reason and the Boss lineups report read each half apart, the Heroic half first.
+- Page, report, attendance and database tests for the two plans.
+
 ## [3.298.0] - 2026-11-21
 
 ### Backend

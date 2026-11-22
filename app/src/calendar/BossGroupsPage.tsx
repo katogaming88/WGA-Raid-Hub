@@ -23,6 +23,7 @@ import {
   joinNames,
   lineupRaids,
   onRoster,
+  PLAN_LABELS,
   placesFor,
   pickRows,
   picksFor,
@@ -36,16 +37,19 @@ import {
   type LineupBoss,
   type LineupRaid,
   type Places,
+  type Plan,
   type RoleTargets,
   type SeasonRow
 } from './lineup';
 import { isoDate } from './nights';
+import { PlanSwitch } from './PlanSwitch';
 import {
   useBossGroups,
   useComingNights,
   useEncounters,
   useLineupRoleTargets,
   useSaveBossGroups,
+  useSchedule,
   useSeasons,
   useSetEncounterCap,
   useSetLineupRoleTargets,
@@ -60,8 +64,12 @@ export function BossGroupsPage() {
   const team = useTeam();
   const touch = useTouchScreen();
   const [today] = useState(() => isoDate(new Date()));
+  // Which plan is open (#1688): the team default's until an officer switches.
+  const teamDefault = useSchedule(team.id).data?.teamDefault;
+  const [picked, setPicked] = useState<Plan | null>(null);
+  const plan: Plan = picked ?? (teamDefault === 'heroic' ? 'heroic' : 'mythic');
   const lookups = bothQueries(useSeasons(), useEncounters());
-  const saved = bothQueries(useBossGroups(team.id), useComingNights(team.id, today));
+  const saved = bothQueries(useBossGroups(team.id, plan), useComingNights(team.id, today, plan));
   const page = bothQueries(
     bothQueries(bothQueries(lookups, useRosterPlayers(team.id)), saved),
     useLineupRoleTargets(team.id)
@@ -72,8 +80,9 @@ export function BossGroupsPage() {
       <div className="page-header">
         <h1 id="page-title">Boss groups</h1>
         <p className="text-muted page-subtitle">
-          The usual group for each boss. Every raid night starts as a copy of these, and you change a single night on
-          its Boss lineup tab. Bench raiders start out on raid nights even if they’re in a group.
+          The usual group for each boss, one plan for Heroic (Normal uses it too) and one for Mythic. Every raid night
+          starts as a copy of the plan for its difficulty, and you change a single night on its Boss lineup tab. Bench
+          raiders start out on raid nights even if they’re in a group.
         </p>
       </div>
       {touch ? (
@@ -83,6 +92,10 @@ export function BossGroupsPage() {
         <DataState query={page} label="the boss groups">
           {([[[[seasons, encounters], players], [groups, coming]], targets]) => (
             <Groups
+              key={plan}
+              plan={plan}
+              teamDefault={teamDefault === 'heroic' ? 'heroic' : 'mythic'}
+              onPlan={setPicked}
               today={today}
               seasons={seasons}
               encounters={encounters}
@@ -102,6 +115,9 @@ const plural = (n: number, word: string, many = `${word}s`) => `${n} ${n === 1 ?
 const toList = (set: ReadonlySet<number>) => [...set].sort((a, b) => a - b);
 
 function Groups({
+  plan,
+  teamDefault,
+  onPlan,
   today,
   seasons,
   encounters,
@@ -110,6 +126,9 @@ function Groups({
   coming,
   targets
 }: {
+  plan: Plan;
+  teamDefault: Plan;
+  onPlan: (plan: Plan) => void;
   today: string;
   seasons: SeasonRow[];
   encounters: EncounterRow[];
@@ -128,7 +147,7 @@ function Groups({
   const [shown, setShown] = useState<number | null>(null);
   const [stale, setStale] = useState<number[]>([]);
   const [message, setMessage] = useState('');
-  const save = useSaveBossGroups(team.id);
+  const save = useSaveBossGroups(team.id, plan);
   // A guild Admin on another team reads the groups; edit_schedule changes them (#1703).
   const readOnly = !can('editSchedule');
 
@@ -143,7 +162,7 @@ function Groups({
   const places = current(saved, edits);
   const changed = changes(saved, edits);
   const dirty = changed.cells > 0;
-  const raids = lineupRaids(encounters, [], { fresh: true, season: seasonOn(seasons, today) });
+  const raids = lineupRaids(encounters, [], { fresh: true, season: seasonOn(seasons, today), plan });
   const bosses = raids.flatMap((r) => r.bosses);
   const names = (ids: number[]) => ids.map((id) => bosses.find((b) => b.id === id)?.name ?? 'A boss').join(', ');
   const leaveDialog = useLeaveGuard(dirty, changed.cells, 'the boss groups');
@@ -203,6 +222,17 @@ function Groups({
 
   return (
     <div className="lineup">
+      <PlanSwitch
+        legend="Plan"
+        plans={['heroic', 'mythic']}
+        value={plan}
+        onChange={onPlan}
+        disabled={dirty || save.isPending}
+        note={{
+          heroic: teamDefault === 'heroic' ? '(Normal too, team default)' : '(Normal too)',
+          mythic: teamDefault === 'mythic' ? '(team default)' : ''
+        }}
+      />
       <div className="boss-groups-top">
         {raids.length > 1 ? (
           <div className="lineup-raids" role="group" aria-label="Raid">
@@ -283,13 +313,17 @@ function Groups({
       )}
 
       {unset && readOnly ? (
-        <p className="card calendar-note">No boss in {raid.name} has a usual group yet.</p>
+        <p className="card calendar-note">
+          No boss in {raid.name} has a usual {PLAN_LABELS[plan]} group yet.
+        </p>
       ) : unset ? (
         <section className="card lineup-empty" aria-labelledby="groups-empty-title">
-          <h2 id="groups-empty-title">No boss in {raid.name} has a usual group yet.</h2>
+          <h2 id="groups-empty-title">
+            No boss in {raid.name} has a usual {PLAN_LABELS[plan]} group yet.
+          </h2>
           <p className="text-muted">
             Start with everyone on the roster in (bench raiders out), take people out boss by boss, then press{' '}
-            <strong>Save groups</strong>. Every raid night starts from these groups after that.
+            <strong>Save groups</strong>. Every {PLAN_LABELS[plan]} raid night starts from these groups after that.
           </p>
           <button
             type="button"
@@ -312,7 +346,8 @@ function Groups({
           coming={coming}
           changedBosses={changed.bosses}
           targets={targets}
-          canEditCap={can('manageRaidReference')}
+          // A boss's own cap is a Mythic one; Heroic is 10 to 30 on every boss.
+          canEditCap={can('manageRaidReference') && plan === 'mythic'}
           busy={save.isPending || readOnly}
           onToggle={(boss, id) => {
             setEdits((e) => toggle(saved, e, boss, id));

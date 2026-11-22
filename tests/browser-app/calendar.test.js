@@ -384,7 +384,8 @@ describe('Calendar (new app): the boss lineup', () => {
       p_player_ids: [1, 2, 3, 4],
       p_expected_player_ids: [2, 3, 4],
       p_picks: [],
-      p_expected_picks: []
+      p_expected_picks: [],
+      p_plan: 'mythic'
     });
   });
 });

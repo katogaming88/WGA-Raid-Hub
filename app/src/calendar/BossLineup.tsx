@@ -13,6 +13,7 @@ import { classColor, type PlayerRow, type Role } from '../roster/roster';
 import { specIcon } from '../roster/specIcons';
 import { displayName, shortDay, weekdayOf, type Answer, type RaidNight } from './calendar';
 import { ColumnSizer } from './ColumnSizer';
+import { PlanSwitch } from './PlanSwitch';
 import { useLeaveGuard } from './leaveGuard';
 import {
   capLabel,
@@ -26,6 +27,8 @@ import {
   lineupView,
   moveBoss,
   nightOrder,
+  nightPlans,
+  PLAN_LABELS,
   orderChanges,
   onRoster,
   pickChanges,
@@ -56,6 +59,7 @@ import {
   type LineupBoss,
   type LineupRaid,
   type PlaceRow,
+  type Plan,
   type RoleTargets,
   type SeasonRow,
   type BossTargets,
@@ -108,27 +112,46 @@ export function BossLineup({
   canEdit: boolean;
 }) {
   const team = useTeam();
+  // A Heroic into Mythic night has a Heroic and a Mythic lineup per boss
+  // (#1688), shown one half at a time, Heroic first.
+  const halves = nightPlans(night);
+  const [picked, setPicked] = useState<Plan>(halves[0]!);
+  const half = halves.includes(picked) ? picked : halves[0]!;
+  const [dirty, setDirty] = useState(false);
+  // The other half, saved, for Needs a look on a two-half night (Kat,
+  // 2026-11-22); on a one-half night this reads the same half again, cached.
+  const other = halves.find((h) => h !== half) ?? null;
+  const otherPlan = useNightPlan(team.id, night.date, other ?? half);
   const lookups = bothQueries(useSeasons(), useEncounters());
-  const plan = bothQueries(useNightPlan(team.id, night.date), useBossGroups(team.id));
+  const plan = bothQueries(useNightPlan(team.id, night.date, half), useBossGroups(team.id, half));
   const targets = bothQueries(useLineupRoleTargets(team.id), useRaiderOrder(team.id));
 
   return (
-    <DataState query={bothQueries(bothQueries(lookups, plan), targets)} label="the boss lineup">
-      {([[[seasons, encounters], [nightPlan, groups]], [roleTargets, raiderOrder]]) => (
-        <Lineup
-          night={night}
-          players={players}
-          answers={answers}
-          seasons={seasons}
-          encounters={encounters}
-          plan={nightPlan}
-          groups={groups}
-          targets={roleTargets}
-          raiderOrder={raiderOrder}
-          canEdit={canEdit}
-        />
+    <>
+      {halves.length > 1 && (
+        <PlanSwitch legend="Lineup" plans={halves} value={half} onChange={setPicked} disabled={dirty} />
       )}
-    </DataState>
+      <DataState query={bothQueries(bothQueries(lookups, plan), targets)} label="the boss lineup">
+        {([[[seasons, encounters], [nightPlan, groups]], [roleTargets, raiderOrder]]) => (
+          <Lineup
+            key={half}
+            half={half}
+            otherHalf={other && otherPlan.data ? { plan: other, night: otherPlan.data } : null}
+            onDirty={setDirty}
+            night={night}
+            players={players}
+            answers={answers}
+            seasons={seasons}
+            encounters={encounters}
+            plan={nightPlan}
+            groups={groups}
+            targets={roleTargets}
+            raiderOrder={raiderOrder}
+            canEdit={canEdit}
+          />
+        )}
+      </DataState>
+    </>
   );
 }
 
@@ -141,6 +164,9 @@ const hideBroken = (e: SyntheticEvent<HTMLImageElement>) => {
 };
 
 function Lineup({
+  half,
+  otherHalf,
+  onDirty,
   night,
   players,
   answers,
@@ -152,6 +178,9 @@ function Lineup({
   raiderOrder,
   canEdit
 }: {
+  half: Plan;
+  otherHalf: { plan: Plan; night: NightPlan } | null;
+  onDirty: (dirty: boolean) => void;
   night: RaidNight;
   players: PlayerRow[];
   answers: Answer[];
@@ -186,13 +215,13 @@ function Lineup({
   const savedStyle = useCellStyle();
   const saveStyle = useSaveCellStyle();
   const [picked, setPicked] = useState<CellStyle | null>(null);
-  const saveNight = useSaveNight(team.id, night.date);
-  const saveGroups = useSaveGroups(team.id, night.date);
-  const saveOrder = useSaveOrder(team.id, night.date);
+  const saveNight = useSaveNight(team.id, night.date, half);
+  const saveGroups = useSaveGroups(team.id, night.date, half);
+  const saveOrder = useSaveOrder(team.id, night.date, half);
   const saveRaiders = useSaveRaiderOrder(team.id);
   const queryClient = useQueryClient();
   const planNight = usePlanNight(team.id, night.date);
-  const skip = useSkipBoss(team.id, night.date);
+  const skip = useSkipBoss(team.id, night.date, half);
   const busy =
     saveNight.isPending ||
     saveGroups.isPending ||
@@ -217,7 +246,11 @@ function Lineup({
       ? orderEdit
       : null;
   const orderDirty = order !== null && !sameOrder(order, savedOrder);
-  const raids = lineupRaids(encounters, withOrder(plan.bosses, order), { fresh: fresh && !planned, season });
+  const raids = lineupRaids(encounters, withOrder(plan.bosses, order), {
+    fresh: fresh && !planned,
+    season,
+    plan: half
+  });
   const bosses = raids.flatMap((r) => r.bosses);
   const places = current(saved, edits);
   const changed = changes(saved, edits);
@@ -252,7 +285,9 @@ function Lineup({
   const byId = new Map(players.map((p) => [p.id, p]));
   const nameOf = (id: number) => (byId.has(id) ? displayName(byId.get(id)!) : 'A raider');
   const list = [
-    ...(orderDirty ? orderChanges(lineupRaids(encounters, plan.bosses, { fresh: false, season }), raids) : []),
+    ...(orderDirty
+      ? orderChanges(lineupRaids(encounters, plan.bosses, { fresh: false, season, plan: half }), raids)
+      : []),
     ...raids.flatMap((r) =>
       changeList(saved, edits, r.bosses, nameOf, raids.length > 1 ? `for all of ${r.name}` : 'all night')
     ),
@@ -261,6 +296,8 @@ function Lineup({
   const day = weekdayOf(night.date);
 
   const leaveDialog = useLeaveGuard(dirty, Math.max(changed.cells, list.length), 'this night’s boss lineup');
+  // The page's Heroic / Mythic switch stays off while this half has unsaved changes.
+  useEffect(() => onDirty(dirty), [dirty, onDirty]);
   // What a save sends: nobody who has left the roster since the night was filled.
   const toSave = onRoster(places, players);
 
@@ -307,7 +344,7 @@ function Lineup({
     }
     return (
       <section className="card lineup-empty" aria-labelledby="lineup-empty-title">
-        <h2 id="lineup-empty-title">No boss has a usual group yet.</h2>
+        <h2 id="lineup-empty-title">No boss has a usual {PLAN_LABELS[half]} group yet.</h2>
         <p className="text-muted">
           Start this night with everyone on the roster in (bench raiders out), set each boss the way you want, then save
           it for {day} and every night after. Every night after this one starts from those groups.
@@ -316,7 +353,7 @@ function Lineup({
           type="button"
           className="button button-primary"
           onClick={() => {
-            const all = lineupRaids(encounters, [], { fresh: true, season }).flatMap((r) => r.bosses);
+            const all = lineupRaids(encounters, [], { fresh: true, season, plan: half }).flatMap((r) => r.bosses);
             setEdits(everyoneIn(players, all));
             setFresh(true);
           }}
@@ -328,6 +365,39 @@ function Lineup({
   }
 
   const raid = raids.find((r) => r.zoneId === shown) ?? raids[0]!;
+  // The other half's bosses in this raid that need a look, as saved.
+  const otherLooks = (() => {
+    if (!otherHalf) return [];
+    const otherRaid = lineupRaids(encounters, otherHalf.night.bosses, {
+      fresh: false,
+      season,
+      plan: otherHalf.plan
+    }).find((r) => r.zoneId === raid.zoneId);
+    if (!otherRaid) return [];
+    const otherSaved = placesOf(otherHalf.night.places);
+    const view = lineupView(
+      players,
+      night,
+      answers,
+      otherRaid,
+      otherSaved,
+      otherSaved,
+      targets,
+      picksOf(otherHalf.night.places),
+      look,
+      new Map(),
+      raiderOrder
+    );
+    return view.totals
+      .filter((t) => t.problems.length)
+      .map((t) => ({
+        key: `other-${t.boss.id}`,
+        head: `${PLAN_LABELS[otherHalf.plan]} ${otherRaid.bosses.indexOf(t.boss) + 1}. ${t.boss.short}`,
+        text: t.brief.join(' · '),
+        full: `${t.problems.join('; ')}.`,
+        total: undefined
+      }));
+  })();
 
   // After a save: saved bosses drop their edits, refused ones keep them so the
   // officer can compare.
@@ -575,6 +645,8 @@ function Lineup({
       </div>
 
       <RaidGrid
+        halfLabel={otherHalf ? PLAN_LABELS[half] : null}
+        otherLooks={otherLooks}
         raid={raid}
         night={night}
         players={players}
@@ -697,7 +769,7 @@ function TipBody({ tip }: { tip: Tip }) {
   );
   const against = (n: number, target: number | null) => (target ? `${n}/${target}` : String(n));
   const role = (label: string, r: Role) =>
-    row(label, against(t.roles[r], t.wants[r]), roleOff(r, t.roles[r], t.wants[r]));
+    row(label, against(t.roles[r], t.wants[r]), roleOff(r, t.roles[r], t.wants[r], t.boss.flex));
   return (
     <>
       <strong>
@@ -726,7 +798,12 @@ function TipBody({ tip }: { tip: Tip }) {
   );
 }
 
+// A Needs a look line.
+type Look = { key: string; head: string; text: string; full: string | null; total: BossTotal | undefined };
+
 function RaidGrid({
+  halfLabel,
+  otherLooks,
   raid,
   night,
   players,
@@ -749,6 +826,10 @@ function RaidGrid({
   onRaiders,
   onNeeds
 }: {
+  // On a two-half night (#1688): the half on screen, named on its lines, and
+  // the other half's bosses that need a look, listed after them.
+  halfLabel: string | null;
+  otherLooks: Look[];
   raid: LineupRaid;
   night: RaidNight;
   players: PlayerRow[];
@@ -805,10 +886,10 @@ function RaidGrid({
   const totals = new Map(view.totals.map((t) => [t.boss.id, t]));
   const gaps = view.totals.filter((t) => t.problems.length);
   const liveCount = view.live.length;
-  const looks = [
+  const looks: Look[] = [
     ...gaps.map((t) => ({
       key: `boss-${t.boss.id}`,
-      head: `${raid.bosses.indexOf(t.boss) + 1}. ${t.boss.short}`,
+      head: `${halfLabel ? `${halfLabel} ` : ''}${raid.bosses.indexOf(t.boss) + 1}. ${t.boss.short}`,
       text: t.brief.join(' · '),
       // Read out in full, since the tip is for the pointer only.
       full: `${t.problems.join('; ')}.`,
@@ -831,7 +912,8 @@ function RaidGrid({
             total: undefined
           }
         ]
-      : [])
+      : []),
+    ...otherLooks
   ];
   const hotProps = (id: number) => ({ 'data-hot': hot === id || undefined, onMouseEnter: () => setHot(id) });
 
@@ -1053,7 +1135,7 @@ function RaidGrid({
                     return (
                       <td
                         key={boss.id}
-                        data-tone={t && roleOff(g.role, n, target ?? null) ? 'warn' : undefined}
+                        data-tone={t && roleOff(g.role, n, target ?? null, t.boss.flex) ? 'warn' : undefined}
                         {...hotProps(boss.id)}
                       >
                         {t ? (target ? `${n}/${target}` : n) : ''}

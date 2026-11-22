@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.set_raid_night_boss_order(p_team_id integer, p_raid_date date, p_encounter_ids integer[], p_expected_ids integer[], p_every_night boolean DEFAULT false)
+CREATE OR REPLACE FUNCTION public.set_raid_night_boss_order(p_team_id integer, p_raid_date date, p_encounter_ids integer[], p_expected_ids integer[], p_every_night boolean DEFAULT false, p_plan text DEFAULT 'mythic'::text)
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -10,6 +10,8 @@ CREATE OR REPLACE FUNCTION public.set_raid_night_boss_order(p_team_id integer, p
 AS $function$
 declare
   v_current integer[];
+  v_places integer[];
+  v_night integer[];
 begin
   if auth.uid() is null then
     raise exception 'Not signed in';
@@ -22,20 +24,22 @@ begin
     raise exception 'Not authorized';
   end if;
 
+  if p_plan is null or p_plan not in ('heroic', 'mythic') then
+    raise exception 'Pick the Heroic or the Mythic plan.';
+  end if;
+
   if p_raid_date is null or not coalesce((select i.exists from public.raid_night_info(p_team_id, p_raid_date) i), false) then
     raise exception 'There is no raid that night.';
   end if;
 
   perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
 
-  -- Each boss once, at its earliest place on either half.
-  select coalesce(array_agg(encounter_id order by position, encounter_id), '{}') into v_current
-  from (
-    select encounter_id, min(position) as position
-    from raid_night_bosses
-    where team_id = p_team_id and raid_date = p_raid_date
-    group by encounter_id
-  ) b;
+  -- The half's bosses in pull order, and the places they hold.
+  select coalesce(array_agg(encounter_id order by position, encounter_id), '{}'),
+         coalesce(array_agg(position order by position, encounter_id), '{}')
+    into v_current, v_places
+  from raid_night_bosses
+  where team_id = p_team_id and raid_date = p_raid_date and plan = p_plan;
 
   if cardinality(v_current) = 0 then
     raise exception 'That night has no bosses planned yet.';
@@ -51,25 +55,38 @@ begin
     raise exception 'The order has to list every boss on the night once.';
   end if;
 
+  -- The listed bosses swap places among the places they hold, on both
+  -- halves; a boss only on the other half keeps its place.
   update raid_night_bosses b
-     set position = o.ord
+     set position = v_places[o.ord]
     from unnest(p_encounter_ids) with ordinality as o(encounter_id, ord)
    where b.team_id = p_team_id and b.raid_date = p_raid_date and b.encounter_id = o.encounter_id;
 
   if coalesce(p_every_night, false) then
+    -- The team's order is the whole night's after this save, both halves,
+    -- so a boss only on the other half keeps its place on later nights too
+    -- (CodeRabbit on PR #1887).
+    select array_agg(encounter_id order by position, encounter_id) into v_night
+    from (
+      select encounter_id, min(position) as position
+      from raid_night_bosses
+      where team_id = p_team_id and raid_date = p_raid_date
+      group by encounter_id
+    ) b;
+
     insert into team_boss_order (team_id, encounter_id, position, updated_at)
     select p_team_id, o.encounter_id, o.ord, now()
-    from unnest(p_encounter_ids) with ordinality as o(encounter_id, ord)
+    from unnest(v_night) with ordinality as o(encounter_id, ord)
     on conflict (team_id, encounter_id) do update set position = excluded.position, updated_at = excluded.updated_at;
 
-    -- A boss saved before but not on this night goes after every one this
-    -- save lists, keeping its order among the others, so no older place ties
-    -- with or comes ahead of a newer one (CodeRabbit on PR #1880).
+    -- A boss saved before but not on this night goes after every one on it,
+    -- keeping its order among the others, so no older place ties with or
+    -- comes ahead of a newer one (CodeRabbit on PR #1880).
     update team_boss_order t
        set position = r.n
       from (
         select encounter_id,
-               row_number() over (order by array_position(p_encounter_ids, encounter_id) nulls last, position, encounter_id) as n
+               row_number() over (order by array_position(v_night, encounter_id) nulls last, position, encounter_id) as n
         from team_boss_order
         where team_id = p_team_id
       ) r
@@ -98,6 +115,7 @@ begin
     null,
     jsonb_build_object(
       'raid_date', p_raid_date,
+      'plan', p_plan,
       'bosses', (select jsonb_agg(e.name order by o.ord)
                    from unnest(p_encounter_ids) with ordinality as o(encounter_id, ord)
                    join raid_encounters e on e.id = o.encounter_id),

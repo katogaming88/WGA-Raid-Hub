@@ -6898,6 +6898,7 @@ export type Database = {
           p_encounter_ids: number[]
           p_every_night?: boolean
           p_expected_ids: number[]
+          p_plan?: string
           p_raid_date: string
           p_team_id: number
         }
