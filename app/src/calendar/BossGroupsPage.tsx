@@ -32,6 +32,7 @@ import {
   placesOf,
   seasonOn,
   toggle,
+  wholeNight,
   type ComingBossRow,
   type EncounterRow,
   type LeaverRow,
@@ -219,7 +220,7 @@ function Groups({
           : message ||
             (unset
               ? 'Nothing to save yet.'
-              : 'No unsaved changes. Click a cell to put someone in a group or take them out.');
+              : 'No unsaved changes. Click a cell to put someone in a group or take them out. Click a name for every boss.');
   const barHelp =
     barState === 'stale'
       ? 'Someone else changed that group while you were editing, and saving yours would have undone theirs. Your other groups saved.'
@@ -363,6 +364,15 @@ function Groups({
             setMessage('');
             setStale([]);
           }}
+          onWholeNight={
+            readOnly
+              ? null
+              : (id, putIn) => {
+                  setEdits((e) => wholeNight(saved, e, raid.bosses, id, putIn));
+                  setMessage('');
+                  setStale([]);
+                }
+          }
           onEditCap={setCapBoss}
         />
       )}
@@ -385,6 +395,7 @@ function GroupsGrid({
   canEditCap,
   busy,
   onToggle,
+  onWholeNight,
   onEditCap
 }: {
   today: string;
@@ -400,6 +411,7 @@ function GroupsGrid({
   canEditCap: boolean;
   busy: boolean;
   onToggle: (boss: number, player: number) => void;
+  onWholeNight: ((player: number, putIn: boolean) => void) | null;
   onEditCap: (boss: LineupBoss) => void;
 }) {
   const team = useTeam();
@@ -450,7 +462,7 @@ function GroupsGrid({
           canEdit
           busy={busy}
           onToggle={onToggle}
-          onWholeNight={null}
+          onWholeNight={onWholeNight}
           onSkip={null}
           onMove={null}
           raiderOrder={raiderOrder}
