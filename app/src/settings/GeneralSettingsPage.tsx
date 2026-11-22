@@ -107,8 +107,8 @@ export function SeasonViewCard({
     <div className="card settings-card">
       <h2>Season View</h2>
       <p className="text-muted">
-        The season your team is planning items/BiS/Wishlist for. Leave on Live season and the Priority tab, BiS Lists,
-        and Wishlist reflect the current raiding season automatically. This does not affect signups.
+        The season your team is planning items and Wishlist for. Leave on Live season and the Priority tab and Wishlist
+        reflect the current raiding season automatically. This does not affect signups.
       </p>
       <div className="settings-row">
         <label className="visually-hidden" htmlFor="season-view-select">
