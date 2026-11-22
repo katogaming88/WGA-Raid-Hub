@@ -6452,7 +6452,6 @@ export type Database = {
         Returns: undefined
       }
       loot_history_open: { Args: { p_team_id: number }; Returns: boolean }
-      loot_import_open: { Args: { p_team_id: number }; Returns: boolean }
       loot_response_counts_as: {
         Args: { p_response: string; p_team_id: number }
         Returns: string
@@ -6474,6 +6473,7 @@ export type Database = {
         Returns: number[]
       }
       my_leader_team_ids: { Args: never; Returns: number[] }
+      my_loot_import_team_ids: { Args: never; Returns: number[] }
       my_officer_team_ids: { Args: never; Returns: number[] }
       my_permission_team_ids: {
         Args: { p_permission: string }

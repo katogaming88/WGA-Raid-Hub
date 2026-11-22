@@ -19698,9 +19698,9 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.loot_import_open",
-      "return_type": "bool",
-      "arguments": "p_team_id integer",
+      "name": "public.my_loot_import_team_ids",
+      "return_type": "_int4",
+      "arguments": "",
       "type": "FUNCTION"
     },
     {

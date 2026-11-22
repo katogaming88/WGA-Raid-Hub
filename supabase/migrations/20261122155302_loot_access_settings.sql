@@ -12,7 +12,8 @@
 --   lootImportAccess   'officers' (default) | 'leader'
 --     Who can add loot rows, which only import_rclc_loot() does. With
 --     'leader', only the team leader or a site admin may. Enforced by the
---     table's insert rule, so the import (security invoker) is refused too.
+--     table's insert rule through my_loot_import_team_ids(), so the import
+--     (security invoker) is refused too.
 --
 -- Anything else in either key counts as the default, so every team, We Go
 -- Again's included, keeps today's access until its leader changes it.
@@ -36,24 +37,26 @@ $$;
 comment on function public.loot_history_open(integer) is
   'True when the caller may open the team''s Loot history page (#1560): always, unless the team set lootHistoryAccess to officers.';
 
--- Whether the caller may add loot rows (import) for the team.
-create function public.loot_import_open(p_team_id integer)
-returns boolean
+-- The teams the caller may add loot rows (import) for. Argument-free so the
+-- insert rule runs it once per query (#1106).
+create function public.my_loot_import_team_ids()
+returns integer[]
 language sql
 stable
 set search_path = public
 as $$
-  select (p_team_id = any (public.my_permission_team_ids('manage_loot'))
+  select coalesce(array_agg(t.id), '{}')
+    from public.teams t
+   where (t.id = any (public.my_permission_team_ids('manage_loot'))
           and coalesce(
-                (select config ->> 'lootImportAccess' from public.team_settings where team_id = p_team_id),
+                (select s.config ->> 'lootImportAccess' from public.team_settings s where s.team_id = t.id),
                 'officers'
               ) <> 'leader')
-      or p_team_id = any (public.my_leader_team_ids())
-      or public.is_site_admin();
+      or t.id = any (public.my_leader_team_ids());
 $$;
 
-comment on function public.loot_import_open(integer) is
-  'True when the caller may import loot for the team (#1560): officers with manage_loot, unless the team set lootImportAccess to leader; the team leader and site admins always.';
+comment on function public.my_loot_import_team_ids() is
+  'The teams the caller may import loot for (#1560): officers with manage_loot, unless the team set lootImportAccess to leader, and the team leader always. Site admins are let in by the rule itself.';
 
 -- The Loot history page's read: every loot row of the team with its item, no
 -- player. Refused when the page is locked to officers.
@@ -96,10 +99,10 @@ comment on function public.team_loot_history(integer) is
   'The team''s loot rows with their items and no player, for the Loot history page (#814). Refused unless loot_history_open() (#1560).';
 
 revoke all on function public.loot_history_open(integer) from public, anon;
-revoke all on function public.loot_import_open(integer) from public, anon;
+revoke all on function public.my_loot_import_team_ids() from public, anon;
 revoke all on function public.team_loot_history(integer) from public, anon;
 grant execute on function public.loot_history_open(integer) to authenticated, service_role;
-grant execute on function public.loot_import_open(integer) to authenticated, service_role;
+grant execute on function public.my_loot_import_team_ids() to authenticated, service_role;
 grant execute on function public.team_loot_history(integer) to authenticated, service_role;
 
 -- The officers' write rule covered every command. Split it so adding rows
@@ -121,4 +124,5 @@ create policy "Officer delete loot" on public.rclc_loot
 
 create policy "Importer insert loot" on public.rclc_loot
   for insert
-  with check (public.loot_import_open(team_id));
+  with check (team_id = any ((select my_loot_import_team_ids())::integer[])
+              or (select is_site_admin()));

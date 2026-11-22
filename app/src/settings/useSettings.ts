@@ -228,7 +228,7 @@ export function useSaveLootSystem(teamId: number) {
 }
 
 // Settings > Loot's access card (#1560). Anything but the restrictive value
-// reads as the default, as loot_history_open() and loot_import_open() do.
+// reads as the default, as loot_history_open() and my_loot_import_team_ids() do.
 export type LootAccess = { history: 'team' | 'officers'; import: 'officers' | 'leader' };
 
 const lootAccessKey = (teamId: number) => ['loot-access', teamId] as const;
