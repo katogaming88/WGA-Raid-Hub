@@ -4,7 +4,8 @@
 --   lootHistoryAccess  'team' (default) | 'officers'
 --     Who can open the team's Loot history page (#814). With 'officers', the
 --     page's read, team_loot_history(), refuses anyone without the team's
---     view_loot permission, a guild "See every team" reader or a site admin.
+--     view_loot or manage_loot (the app's viewLoot ability; a guild "See every
+--     team" reader holds view_loot through my_permission_team_ids) or site admin.
 --     The loot rows themselves stay publicly readable: Home's Recent loot,
 --     profiles and the Priority page read them (Kat, 2026-11-22, "lock the
 --     page").
@@ -30,7 +31,7 @@ as $$
            'team'
          ) <> 'officers'
       or p_team_id = any (public.my_permission_team_ids('view_loot'))
-      or p_team_id = any (public.my_guild_permission_team_ids('view_every_team'))
+      or p_team_id = any (public.my_permission_team_ids('manage_loot'))
       or public.is_site_admin();
 $$;
 

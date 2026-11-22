@@ -13,6 +13,6 @@ AS $function$
            'team'
          ) <> 'officers'
       or p_team_id = any (public.my_permission_team_ids('view_loot'))
-      or p_team_id = any (public.my_guild_permission_team_ids('view_every_team'))
+      or p_team_id = any (public.my_permission_team_ids('manage_loot'))
       or public.is_site_admin();
 $function$;

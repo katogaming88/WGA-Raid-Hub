@@ -62,6 +62,7 @@ describe('loot history access (#1560)', () => {
       await expect(history(t, RAIDER_T1)).rejects.toThrow(/Not authorized/);
       expect((await history(t, OFFICER_T1)).rows).toHaveLength(1);
       expect((await history(t, SITE_ADMIN)).rows).toHaveLength(1);
+      expect((await history(t, TEAM_LEADER_T1)).rows).toHaveLength(1);
     }));
 
   it('refuses another team’s officer once the team locks it to officers', () =>
@@ -130,6 +131,30 @@ describe('loot import access (#1560)', () => {
         JSON.stringify(rows)
       ]);
       expect(res.import_rclc_loot.inserted).toBe(1);
+    }));
+
+  it('lets the team leader’s own import through when set to leader', () =>
+    withTxn(async (t) => {
+      await seed(t, { lootImportAccess: 'leader' });
+      const rows = [
+        { player: 'Nobody-Test', id: 'rclc-access-2', itemID: 295000, date: '2026/11/20', time: '21:00:00' }
+      ];
+      const {
+        rows: [res]
+      } = await t.asUser(TEAM_LEADER_T1, 'select public.import_rclc_loot(1, $1, $2::jsonb)', [
+        SEASON,
+        JSON.stringify(rows)
+      ]);
+      expect(res.import_rclc_loot.inserted).toBe(1);
+    }));
+
+  it('opens locked loot history to an officer who manages loot without view_loot', () =>
+    withTxn(async (t) => {
+      await seed(t, { lootHistoryAccess: 'officers' });
+      await t.q(
+        `delete from public.team_rank_permissions where team_id = 1 and rank = 'officer' and permission = 'view_loot'`
+      );
+      expect((await history(t, OFFICER_T1)).rows).toHaveLength(1);
     }));
 
   it('refuses an officer’s import as a whole when set to leader', () =>
