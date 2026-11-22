@@ -948,19 +948,16 @@ a.night-chip:hover {
   max-width: 1200px;
 }
 
-.lineup-layout > .lineup-card {
+/* Boss groups' grid (#1884, the same one as a night's), beside its panels. */
+.lineup-grid-col {
   flex: 0 1 auto;
+  min-width: 0;
   max-width: 100%;
 }
 
 .lineup-side {
   flex: 1 1 300px;
   max-width: 420px;
-}
-
-.lineup-card {
-  overflow-x: auto;
-  padding: 0;
 }
 
 .lineup-grid {
@@ -978,20 +975,9 @@ a.night-chip:hover {
   vertical-align: bottom;
 }
 
-.lineup-grid .lineup-name-col {
-  padding-left: var(--space-4);
-  color: var(--text-dim);
-  text-align: left;
-}
-
 /* Every boss column is the same width (Kat, 2026-09-18), set by the longest
    word in any boss name through ColumnSizer, 60px at the least so the count
-   and the Skip button fit. The visible name takes no part in sizing, so it
-   wraps between words to that width and never splits one. */
-.lineup-boss {
-  text-align: center;
-}
-
+   and the Skip button fit. */
 .lineup-boss-sizer {
   display: block;
   overflow: hidden;
@@ -1005,15 +991,6 @@ a.night-chip:hover {
   white-space: nowrap;
 }
 
-.lineup-boss-name {
-  display: block;
-  contain: inline-size;
-}
-
-.lineup-boss[data-skipped='true'] .lineup-boss-name {
-  color: var(--text-dim);
-}
-
 .button.lineup-skip {
   min-height: 0;
   margin-top: 6px;
@@ -1022,69 +999,8 @@ a.night-chip:hover {
   font-size: 11px;
 }
 
-.lineup-total {
-  display: block;
-  margin-top: var(--space-1);
-  color: var(--tone);
-  font-size: var(--text-md);
-  font-weight: 700;
-}
-
-.lineup-total[data-tone='good'] {
-  --tone: var(--good);
-}
-
-.lineup-total[data-tone='warn'] {
-  --tone: var(--warn);
-}
-
-.lineup-total[data-tone='bad'] {
-  --tone: var(--bad);
-}
-
-.lineup-total[data-tone='room'] {
-  --tone: var(--brand);
-}
-
-.lineup-warn {
-  display: block;
-  min-height: 15px;
-  color: var(--bad);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.lineup-count-col {
-  width: 44px;
-}
-
-.lineup-group th {
-  padding: var(--space-3) var(--space-4) var(--space-1);
-  color: var(--text-dim);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-align: left;
-  text-transform: uppercase;
-}
-
 .lineup-grid tbody tr + tr {
   border-top: 1px solid var(--raised);
-}
-
-.lineup-raider {
-  padding: var(--space-1) var(--space-4);
-  font-weight: 400;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.lineup-raider-name {
-  font-weight: 600;
-}
-
-.lineup-spec {
-  font-size: var(--text-xs);
 }
 
 .lineup-tag {
@@ -1099,54 +1015,6 @@ a.night-chip:hover {
 .lineup-tag[data-tone='out'] {
   border-color: color-mix(in srgb, var(--bad) 50%, transparent);
   color: var(--bad);
-}
-
-.lineup-cell {
-  padding: 3px var(--space-1);
-}
-
-.lineup-toggle {
-  position: relative;
-  width: 100%;
-  height: 26px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--text-dim);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.lineup-toggle.is-in {
-  border-color: color-mix(in srgb, var(--brand) 40%, transparent);
-  background: var(--brand-soft);
-  color: var(--brand);
-}
-
-.lineup-toggle.is-conflict {
-  border-color: var(--bad);
-  background: color-mix(in srgb, var(--bad) 14%, transparent);
-  color: var(--bad);
-}
-
-.lineup-toggle:hover:not(:disabled) {
-  border-color: var(--brand);
-}
-
-.lineup-toggle:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 1px;
-}
-
-.lineup-toggle:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.lineup-count {
-  padding: var(--space-1) var(--space-3) var(--space-1) 0;
-  text-align: right;
 }
 
 .lineup-side {
@@ -2048,6 +1916,12 @@ button.blg-cell[data-in='false']:hover:not(:disabled) {
   vertical-align: middle;
 }
 
+/* Boss groups: a cell changed but not saved yet (#1884). */
+.blg-mark[data-kind='unsaved'] {
+  border-color: var(--button);
+  color: var(--button);
+}
+
 .blg-mark[data-kind='conflict'] {
   border-color: #f0b44c;
   color: #f0b44c;
@@ -2204,10 +2078,6 @@ button.blg-cell[data-in='false']:hover:not(:disabled) {
 .boss-groups-targets .link-button {
   margin-left: 4px;
   font-size: inherit;
-}
-
-.lineup-toggle.is-changed {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--button) 55%, transparent);
 }
 
 .lineup-tag[data-tone='warn'] {
