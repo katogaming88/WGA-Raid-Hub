@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.301.0] - 2026-11-22
+
+### Project
+
+- The new app no longer mentions a BiS source or the officer BiS lists (#1343): Archive season (Settings > Danger zone) stops saying every player's submitted BiS source is cleared, and Season View (Settings > General) stops naming "BiS Lists". The current site is not being changed, and the database half stays #1890, after cutover.
+
 ## [3.300.0] - 2026-11-22
 
 ### Project
