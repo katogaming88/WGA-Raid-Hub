@@ -6451,6 +6451,8 @@ export type Database = {
         Args: { p_boss_ids: number[] }
         Returns: undefined
       }
+      loot_history_open: { Args: { p_team_id: number }; Returns: boolean }
+      loot_import_open: { Args: { p_team_id: number }; Returns: boolean }
       loot_response_counts_as: {
         Args: { p_response: string; p_team_id: number }
         Returns: string
@@ -7156,6 +7158,25 @@ export type Database = {
       team_invite_link_revoke: {
         Args: { p_team_id: number }
         Returns: undefined
+      }
+      team_loot_history: {
+        Args: { p_team_id: number }
+        Returns: {
+          armor_type: string
+          awarded_at: string
+          boss: string
+          icon: string
+          id: number
+          is_ptr: boolean
+          item_id: number
+          item_name: string
+          response: string
+          season: string
+          slot: string
+          team_id: number
+          track: string
+          wow_item_id: number
+        }[]
       }
       team_member_accounts: {
         Args: { p_team_id: number }

@@ -8,6 +8,7 @@ import { formatInstant, localTimeZoneNote } from '../lib/dates';
 import { useCurrentSeason } from '../profile/useProfile';
 import { importSeasons, importSummary, parseRclcPaste, UNKNOWN_SEASON } from './lootImport';
 import { useImportHistory, useImportLoot, type ImportHistory } from './useLootImport';
+import { useLootAccess } from '../settings/useSettings';
 import '../settings/settings.css';
 import './loot.css';
 
@@ -18,6 +19,10 @@ export function ImportLootPage() {
   const team = useTeam();
   const { can } = usePageCan();
   const history = useImportHistory(team.id);
+  // Settings > Loot can leave importing to the team leader (#1560); the
+  // database refuses anyone else's import either way.
+  const access = useLootAccess(team.id);
+  const leaderOnly = access.data?.import === 'leader' && !can('leadTeam');
 
   return (
     <section className="page settings-page" aria-labelledby="page-title">
@@ -28,7 +33,9 @@ export function ImportLootPage() {
           several nights at once: awards already on file are skipped.
         </p>
       </div>
-      {can('manageLoot') ? (
+      {can('manageLoot') && leaderOnly ? (
+        <p className="card settings-card">This team leaves importing loot to the team leader.</p>
+      ) : can('manageLoot') ? (
         <ImportCard teamId={team.id} />
       ) : (
         // #607: the import's duplicate check is per team, so only the team's

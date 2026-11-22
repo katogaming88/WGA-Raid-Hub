@@ -1485,8 +1485,8 @@ const HISTORY = {
 const LOOT_HISTORY = {
   path: '/g/wga/t/phoenix/loot',
   sentinel: 'main:has(.loot-history-count)',
-  tables: {
-    rclc_loot: [
+  rpc: {
+    team_loot_history: [
       {
         id: 1,
         team_id: 1,
@@ -1496,11 +1496,16 @@ const LOOT_HISTORY = {
         boss: 'Warden',
         response: 'BiS',
         item_id: 10,
-        items: { name: 'Venomwoven Effigy', slot: 'Head', armor_type: 'Cloth' }
+        item_name: 'Venomwoven Effigy',
+        slot: 'Head',
+        armor_type: 'Cloth',
+        wow_item_id: null,
+        is_ptr: false,
+        icon: null
       }
-    ],
-    tier_token_map: [{ token_item_id: 10 }]
-  }
+    ]
+  },
+  tables: { tier_token_map: [{ token_item_id: 10 }] }
 };
 
 // Sign Up (#1102): signed in, one season open, no existing signup -- the

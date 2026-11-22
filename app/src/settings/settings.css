@@ -726,3 +726,16 @@
 .audit-check > :last-child {
   grid-column: 2;
 }
+
+/* Settings > Loot's access card (#1560): two choices, each under its own legend. */
+.loot-access-group {
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.loot-access-group legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  font-weight: 600;
+}

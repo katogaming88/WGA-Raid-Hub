@@ -3959,3 +3959,15 @@ Shipped: `20261121160423_lineup_heroic_mythic_plans.sql`.
 **A pull-order save is one half's**, because Boss Lineup shows one half at a time: `set_raid_night_boss_order(..., p_plan)` takes that half's bosses, and they swap places among the places they hold, on both halves. A boss only on the other half keeps its place, and with "every night after" the team's order is the whole night's after the save, so it keeps its place on later nights too (CodeRabbit on PR #1887). Asking for every boss on the night, as before, would have refused a save from a half missing one of the other half's bosses as stale.
 
 **The site reads each half apart.** Boss groups and Boss lineup read one plan at a time; Attendance's "first boss" reason and the Boss lineups report key every row by its half, the Heroic half first, as the logs sync does.
+
+## #1560 -- who can open loot history and who can import
+
+Shipped: `20261122155302_loot_access_settings.sql`.
+
+**Two team settings in `team_settings.config`, saved by the team leader through `set_team_setting()`:** `lootHistoryAccess` (`team`, the default, or `officers`) and `lootImportAccess` (`officers`, the default, or `leader`). Every team, We Go Again's included, starts on today's access (Kat, 2026-11-22). Any other value reads as the default.
+
+**"Officers only" locks the Loot history page, not the loot rows** (Kat, 2026-11-22). The page reads through `team_loot_history()`, which refuses a caller `loot_history_open()` says no to: anyone without the team's `view_loot`, a guild "See every team" reader or a site admin. `rclc_loot` keeps its public read, because Home's Recent loot, profiles and the Priority page read the same rows; locking those would have meant reworking each for raiders. Someone technical can still count raw rows, as anyone can today. `team_loot_history()` is security invoker and returns no player column.
+
+**"Team leader only" is enforced on the rows.** The officers' write rule on `rclc_loot` covered every command; it is split into update and delete (unchanged, `manage_loot`) and an insert rule that asks `loot_import_open()`: `manage_loot` while the team allows officers, and the team leader and site admins always. `import_rclc_loot()` is security invoker and the only thing that adds loot rows, so an officer's import is refused as a whole (`42501`) without changing the function. Reassign and row fixes stay with officers.
+
+[Full discussion -> #1560](https://github.com/katogaming88/WGA-Raid-Hub/issues/1560).
