@@ -18,7 +18,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     58 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 51 h 31 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 51 h 49 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
@@ -848,6 +848,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 10:50-11:05 AM | #1884: the boss grid moved to its own file (`RaidGrid.tsx`) and Boss groups switched to it in a groups mode (its own labels, Edit cap, Not saved yet), the Names / Solid bars choice shared, the old GroupsGrid and its CSS deleted, the Help picture retaken and both guides given the Heroic / Mythic switches; tests, stamp, changelog, these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1884) | 15 m | build | 65,000 | Screenshots, Kat's design review and merge not yet counted. |
 | 11:05-11:14 AM | PR #1892 (#1884): the four screenshots, Kat's design review and merge; cleanup, #1884 closed and ticked, #1487 updated | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1884) | 9 m | Kat review, build | 17,700 | |
 | 11:14-11:29 AM | #1343: re-read #1487 after Kat's edits, found the current site's BiS pieces tangled with the Wishlist Editing switch, Kat dropped the current-site removal; the new app's two BiS wording mentions reworded, #1343 and #1487 rewritten, stamp, changelog, these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1343) | 15 m | build (Kat's answers inline) | 412,400 | Tokens include the context reload after switching models. Kat's design review and merge not yet counted. |
+| 11:29-11:32 AM | PR #1893 (#1343): Kat's review and merge; cleanup, #1343 closed and ticked, #1487 updated, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1343) | 3 m | Kat review, build | 85,900 | |
+| 11:32-11:47 AM | #814: the team menu's Loot history page (every season of the team's loot, counted, no player; By item / boss / season / every drop; item, tier token, season, track, boss, slot, armor type and date filters) read straight from rclc_loot and tier_token_map, no new view; Kat found item hover tooltips missing, so the new app now loads Wowhead's tooltip script; unit, page and browser tests, screenshots, stamp, changelog, these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#814) | 15 m | build (Kat's note inline) | 144,534 | Kat's design review and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 

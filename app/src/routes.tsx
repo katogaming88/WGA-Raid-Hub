@@ -29,6 +29,7 @@ import { StreamsPage } from './streams/StreamsPage';
 import { HelpPage } from './help/HelpPage';
 import { AboutPage } from './about/AboutPage';
 import { HistoryPage } from './history/HistoryPage';
+import { LootHistoryPage } from './loot/LootHistoryPage';
 import { SignUpPage } from './signup/SignUpPage';
 import { GuildOfficersPage } from './officers/GuildOfficersPage';
 import { GuildSettingsIndex, GuildSettingsPage } from './guildsettings/GuildSettingsPage';
@@ -87,6 +88,7 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   'officer/reports/priority-health': <PriorityHealthPage />,
   'officer/reports/wishlist-completeness': <WishlistCompletenessPage />,
   'officer/reports/unclaimed': <UnclaimedPage />,
+  loot: <LootHistoryPage />,
   history: <HistoryPage />,
   officers: <TeamOfficersPage />,
   signup: <SignUpPage />,

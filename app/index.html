@@ -38,6 +38,12 @@
         document.documentElement.dataset.theme = theme;
       })();
     </script>
+    <!-- Wowhead's hover tooltips for every item link (ItemLink). Its own colors
+         and icons stay off: ItemLink draws the icon, and the theme picks the color. -->
+    <script>
+      window.whTooltips = { colorLinks: false, iconizeLinks: false, renameLinks: false };
+    </script>
+    <script src="https://wow.zamimg.com/widgets/power.js" async></script>
   </head>
   <body>
     <div id="root"></div>
