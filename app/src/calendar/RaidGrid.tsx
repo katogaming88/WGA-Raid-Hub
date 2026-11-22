@@ -310,7 +310,7 @@ export function RaidGrid({
                 {canEdit && (
                   <span className="text-dim" aria-hidden="true">
                     {kind === 'groups'
-                      ? 'Click a cell to put someone in a group or take them out.'
+                      ? 'Click a cell to put someone in a group or take them out. Click a name for every boss.'
                       : 'Click a cell to put someone in or sit them out. Click a name for every boss.'}
                   </span>
                 )}

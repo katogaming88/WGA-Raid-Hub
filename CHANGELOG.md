@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.303.0] - 2026-11-22
+
+### Project
+
+- Boss groups: click a raider's name to put them in, or take them out, on every boss at once, as on a night's Boss lineup (#1894). Nothing is saved until Save groups; the cells show the "not saved yet" mark. The name is plain text for anyone who can't change the groups. The grid's corner hint and the Boss groups Help guide mention it.
+
 ## [3.302.0] - 2026-11-22
 
 ### Project

@@ -1336,7 +1336,9 @@ describe('the boss groups page', () => {
     const { client } = renderApp(GROUPS, handlers(who('officer'), GROUPED));
     const g = await groupsGrid();
     // The grid's own parts: the corner hint, the Names / Solid bars choice, the key.
-    expect(g.getByText('Click a cell to put someone in a group or take them out.')).toBeInTheDocument();
+    expect(
+      g.getByText('Click a cell to put someone in a group or take them out. Click a name for every boss.')
+    ).toBeInTheDocument();
     expect(screen.getByText('Not saved yet')).toBeInTheDocument();
     await user.click(screen.getByRole('radio', { name: 'Solid bars' }));
     expect(screen.getByRole('table', { name: /boss groups/ })).toHaveAttribute('data-style', 'bars');
@@ -1344,6 +1346,38 @@ describe('the boss groups page', () => {
     // Nothing that belongs to one night.
     expect(screen.queryByRole('button', { name: /^Skip / })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Change what / })).not.toBeInTheDocument();
+  });
+
+  it('puts a raider in every group, or takes them out of all, from their name (#1894)', async () => {
+    const user = userEvent.setup();
+    renderApp(GROUPS, handlers(who('officer'), GROUPED));
+    const g = await groupsGrid();
+    await user.click(g.getByRole('button', { name: 'Sit Ana out on every boss' }));
+    expect(
+      g.getByRole('button', { name: "Ana, Nek'zali the Soulcoiler: not in the group, not saved yet" })
+    ).toBeInTheDocument();
+    expect(g.getByRole('button', { name: 'Ana, Sszorak: not in the group, not saved yet' })).toBeInTheDocument();
+    // Back in on both is what was saved, so nothing is left to save.
+    await user.click(g.getByRole('button', { name: 'Put Ana back in on every boss' }));
+    expect(g.getByRole('button', { name: "Ana, Nek'zali the Soulcoiler: in the group" })).toBeInTheDocument();
+    // Di is in no group: one click puts them in both.
+    await user.click(g.getByRole('button', { name: 'Put Di back in on every boss' }));
+    expect(g.getByRole('button', { name: 'Di, Sszorak: in the group, not saved yet' })).toBeInTheDocument();
+    expect(
+      g.getByRole('button', { name: "Di, Nek'zali the Soulcoiler: in the group, not saved yet" })
+    ).toBeInTheDocument();
+  });
+
+  it('leaves a read-only viewer�s names as plain text (#1894)', async () => {
+    renderApp(
+      GROUPS,
+      handlers(who('raider'), {
+        ...GROUPED,
+        rpc: (name) => (name === 'my_permissions' ? { data: { team: [], guild: ['view_every_team'] } } : undefined)
+      })
+    );
+    const g = await groupsGrid();
+    expect(g.queryByRole('button', { name: /on every boss$/ })).not.toBeInTheDocument();
   });
 
   it('shows the usual groups with the checks and what saving changes', async () => {
