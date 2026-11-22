@@ -61,6 +61,23 @@ describe('loot history access (#1560)', () => {
       expect(rows).toHaveLength(1);
     }));
 
+  it('leaves Home’s Recent loot feed alone: its own read still answers a raider and a visitor', () =>
+    withTxn(async (t) => {
+      await seed(t, { lootHistoryAccess: 'officers' });
+      // The same read as app/src/home/useHome.ts useSeasonLoot(): rclc_loot
+      // with the item and the player, filtered to the team and season.
+      const feed = `select l.id, i.name, p.name_realm
+                      from public.rclc_loot l
+                      left join public.items i on i.id = l.item_id
+                      left join public.players p on p.id = l.player_id
+                     where l.team_id = 1 and l.season = $1`;
+      for (const run of [(sql, args) => t.asUser(RAIDER_T1, sql, args), t.asAnon]) {
+        const { rows } = await run(feed, [SEASON]);
+        expect(rows).toHaveLength(1);
+        expect(rows[0].name).toBe('Seed Access Ring');
+      }
+    }));
+
   it('is not open to anon', () =>
     withTxn(async (t) => {
       await seed(t);
