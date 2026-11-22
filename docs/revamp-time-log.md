@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     58 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 51 h 07 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 51 h 31 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **226 h 55 m** |             |
+| **All revamp work**                | **227 h 19 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 14 h 40 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 15 h 04 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -846,6 +846,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:54-10:37 AM | PR #1887 (#1688): PR opened, six screenshots; Kat's calls (role targets stay one set; on Heroic only a count outside 10-30 or a short role needs a look, buffs shown but not flagged; Needs a look lists both halves); CodeRabbit's finding fixed (the team order from the whole night) with a regression test; the fresh-agent review (approve) and its two nits; screenshots retaken | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1688) | 43 m | build (Kat's answers inline) | 93,300 | Kat's design review and merge not yet counted. |
 | 10:37-10:49 AM | PR #1887 (#1688): Kat's design review and merge; cleanup, #1688 closed and ticked, #1487 updated (the #1688 row out, the area total re-summed), handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1688) | 12 m | Kat review, build | 49,200 | |
 | 10:50-11:05 AM | #1884: the boss grid moved to its own file (`RaidGrid.tsx`) and Boss groups switched to it in a groups mode (its own labels, Edit cap, Not saved yet), the Names / Solid bars choice shared, the old GroupsGrid and its CSS deleted, the Help picture retaken and both guides given the Heroic / Mythic switches; tests, stamp, changelog, these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1884) | 15 m | build | 65,000 | Screenshots, Kat's design review and merge not yet counted. |
+| 11:05-11:14 AM | PR #1892 (#1884): the four screenshots, Kat's design review and merge; cleanup, #1884 closed and ticked, #1487 updated | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1884) | 9 m | Kat review, build | 17,700 | |
+| 11:14-11:29 AM | #1343: re-read #1487 after Kat's edits, found the current site's BiS pieces tangled with the Wishlist Editing switch, Kat dropped the current-site removal; the new app's two BiS wording mentions reworded, #1343 and #1487 rewritten, stamp, changelog, these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1343) | 15 m | build (Kat's answers inline) | 412,400 | Tokens include the context reload after switching models. Kat's design review and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 
