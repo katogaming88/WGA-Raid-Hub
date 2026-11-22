@@ -225,6 +225,9 @@ export type LineupBoss = {
   cap: number;
   // The raid's own cap: below `cap` a flex boss can take more but isn't short.
   base: number;
+  // On the Heroic plan (#1688): only too few or too many raiders, or a role
+  // short of its target, needs a look (Kat, 2026-11-22).
+  flex?: boolean;
   art: string;
 };
 
@@ -331,6 +334,7 @@ export function lineupRaids(
       // A boss's own cap is a Mythic one; Heroic is 10 to 30 on every boss.
       cap: flex ? FLEX_CAP : (e.cap ?? raid.cap),
       base: flex ? FLEX_MIN : raid.cap,
+      ...(flex ? { flex } : {}),
       art: bossArt(e.wcl_encounter_id)
     });
   }
@@ -527,17 +531,19 @@ const providersOf = (buff: Buff, inn: Raider[]) =>
     .map((r) => r.name);
 
 // Tanks and healers want an exact count, short or over; melee and ranged
-// are a minimum, so only short is a problem (Kat, #1682). A target of 0 or
-// none means that role isn't counted.
-export const roleOff = (role: Role, n: number, target: number | null) =>
-  !!target && (role === 'Melee' || role === 'Ranged' ? n < target : n !== target);
+// are a minimum, so only short is a problem (Kat, #1682). On Heroic every
+// role is a minimum (Kat, 2026-11-22). A target of 0 or none means that role
+// isn't counted.
+const atLeast = (role: Role, flex: boolean) => flex || role === 'Melee' || role === 'Ranged';
+export const roleOff = (role: Role, n: number, target: number | null, flex = false) =>
+  !!target && (atLeast(role, flex) ? n < target : n !== target);
 
 // "1 tank, wants 2", "3 ranged, wants at least 6".
-const roleCheck = (n: number, target: number | null, role: Role) =>
-  !roleOff(role, n, target)
+const roleCheck = (n: number, target: number | null, role: Role, flex: boolean) =>
+  !roleOff(role, n, target, flex)
     ? []
     : [
-        `${n === 0 ? `no ${ROLE_WORDS[role][1]}` : count(n, role)}, wants ${role === 'Melee' || role === 'Ranged' ? 'at least ' : ''}${target}`
+        `${n === 0 ? `no ${ROLE_WORDS[role][1]}` : count(n, role)}, wants ${atLeast(role, flex) ? 'at least ' : ''}${target}`
       ];
 
 // One boss's count, role mix, missing buffs and warnings, for whoever is in.
@@ -548,10 +554,13 @@ function totalOf(boss: LineupBoss, inn: Raider[], targets: RoleTargets): BossTot
   const status = capStatus(inn.length, boss.cap, boss.base);
   const fine = status.tone === 'good' || status.tone === 'room';
   const missing = LINEUP_BUFFS.filter((b) => !providersOf(b, inn).length).map((b) => b.name);
+  const flex = !!boss.flex;
   const checks = [
     ...(fine ? [] : [status.text]),
-    ...ROLE_ORDER.flatMap((role) => roleCheck(roles[role], wants[role], role))
+    ...ROLE_ORDER.flatMap((role) => roleCheck(roles[role], wants[role], role, flex))
   ];
+  // Heroic still lists missing buffs on the grid, but they don't need a look.
+  const flagged = flex ? [] : missing;
   return {
     boss,
     count: inn.length,
@@ -562,9 +571,9 @@ function totalOf(boss: LineupBoss, inn: Raider[], targets: RoleTargets): BossTot
     roles,
     wants,
     missing,
-    warn: !fine ? status.text : missing.length ? plural(missing.length, 'buff') : '',
-    problems: [...checks, ...(missing.length ? [`no ${missing.join(', no ')}`] : [])],
-    brief: [...checks, ...(missing.length ? [`${plural(missing.length, 'buff')} missing`] : [])]
+    warn: !fine ? status.text : flagged.length ? plural(flagged.length, 'buff') : '',
+    problems: [...checks, ...(flagged.length ? [`no ${flagged.join(', no ')}`] : [])],
+    brief: [...checks, ...(flagged.length ? [`${plural(flagged.length, 'buff')} missing`] : [])]
   };
 }
 

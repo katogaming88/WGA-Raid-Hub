@@ -727,7 +727,7 @@ function TipBody({ tip }: { tip: Tip }) {
   );
   const against = (n: number, target: number | null) => (target ? `${n}/${target}` : String(n));
   const role = (label: string, r: Role) =>
-    row(label, against(t.roles[r], t.wants[r]), roleOff(r, t.roles[r], t.wants[r]));
+    row(label, against(t.roles[r], t.wants[r]), roleOff(r, t.roles[r], t.wants[r], t.boss.flex));
   return (
     <>
       <strong>
@@ -1083,7 +1083,7 @@ function RaidGrid({
                     return (
                       <td
                         key={boss.id}
-                        data-tone={t && roleOff(g.role, n, target ?? null) ? 'warn' : undefined}
+                        data-tone={t && roleOff(g.role, n, target ?? null, t.boss.flex) ? 'warn' : undefined}
                         {...hotProps(boss.id)}
                       >
                         {t ? (target ? `${n}/${target}` : n) : ''}

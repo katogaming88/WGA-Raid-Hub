@@ -1684,6 +1684,19 @@ describe('a Heroic plan and a Mythic plan (#1688)', () => {
     expect(screen.queryByRole('group', { name: 'Lineup' })).not.toBeInTheDocument();
   });
 
+  it('needs a look on Heroic only for too few or too many raiders, or a role short (Kat, 2026-11-22)', () => {
+    const [raid] = lineupRaids(ENCOUNTERS, [nightBoss(101, 1)], { fresh: false, season: 'S1', plan: 'heroic' });
+    const boss = raid!.bosses[0]!;
+    const many = Array.from({ length: 12 }, (_, i) =>
+      player(100 + i, `R${i}`, 'Mage', i < 1 ? 'Tank' : i < 7 ? 'Heal' : 'Ranged')
+    );
+    const inn = placesOf(places([[101, many.map((p) => p.id)]]));
+    const view = lineupView(many, NIGHT, [], raid!, inn, inn, DEFAULT_ROLE_TARGETS);
+    // One tank of two is short; six healers of four is fine on Heroic; no buffs flagged.
+    expect(view.totals[0]!.problems).toEqual(['1 tank, wants at least 2']);
+    expect(boss.flex).toBe(true);
+  });
+
   it('counts Heroic from 10 to 30 on every boss, a boss of its own cap or not', () => {
     const raids = lineupRaids(FLEX_ENCOUNTERS, [], { fresh: true, season: 'S1', plan: 'heroic' });
     expect(raids.map((r) => capLabel(r.bosses))).toEqual(['10-30 per boss', '10-30 per boss']);

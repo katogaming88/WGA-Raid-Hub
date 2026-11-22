@@ -1809,6 +1809,39 @@ describe('a Heroic plan and a Mythic plan (#1688)', () => {
     });
   });
 
+  it('keeps a boss only on the other half in place on later nights when the order is for every night', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1 } = await seed(q);
+      await setTeamDifficulty(q, 'heroic_into_mythic');
+      // FIRST is on the Heroic half only; SECOND on both.
+      await setPlanGroup(asUser, OFFICER_T1, FIRST, [p1], 'heroic');
+      await setPlanGroup(asUser, OFFICER_T1, SECOND, [p1], 'heroic');
+      await setGroup(asUser, OFFICER_T1, SECOND, [p1]);
+      const date = await today(q, 1);
+      const later = await today(q, 8);
+      await plan(asUser, OFFICER_T1, date);
+      await plan(asUser, OFFICER_T1, later);
+      // A Mythic save of its one boss, for every night, leaves FIRST first.
+      await asUser(OFFICER_T1, 'select public.set_raid_night_boss_order(1, $1, $2::int[], $3::int[], true, $4)', [
+        date,
+        [SECOND],
+        [SECOND],
+        'mythic'
+      ]);
+      const order = async (d) =>
+        (
+          await q(
+            `select array_agg(encounter_id order by position, encounter_id) as ids
+               from (select encounter_id, min(position) as position from public.raid_night_bosses
+                      where team_id = 1 and raid_date = $1 group by encounter_id) b`,
+            [d]
+          )
+        ).rows[0].ids;
+      expect(await order(date)).toEqual([FIRST, SECOND]);
+      expect(await order(later)).toEqual([FIRST, SECOND]);
+    });
+  });
+
   it('keeps one pull order when a half has no group for a boss', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { p1 } = await seed(q);
