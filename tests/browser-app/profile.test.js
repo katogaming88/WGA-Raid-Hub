@@ -280,6 +280,7 @@ describe('Profile (new app), equipped gear', () => {
 
   for (const [label, viewport] of [
     ['desktop', { width: 1280, height: 800 }],
+    ['wide desktop', { width: 1680, height: 900 }],
     ['phone', { width: 480, height: 800 }]
   ]) {
     it(`never scrolls, sideways or up and down, on ${label}`, async () => {
@@ -301,6 +302,31 @@ describe('Profile (new app), equipped gear', () => {
           [...document.querySelectorAll('main .gear-group')].map((el) => getComputedStyle(el).overflowX)
         );
         expect(new Set(overflowX)).toEqual(new Set(['visible']));
+      } finally {
+        await opened.context.close();
+      }
+    });
+  }
+
+  // #1907: the side column starts at the top of the Overview, beside the stats
+  // and the gear, not below them; on a phone it stacks underneath.
+  for (const [label, viewport, beside] of [
+    ['desktop', { width: 1280, height: 800 }, true],
+    ['phone', { width: 480, height: 800 }, false]
+  ]) {
+    it(`puts the side column ${beside ? 'beside' : 'under'} the gear on ${label}`, async () => {
+      const opened = await openApp(browser, server.port, {
+        path: '/g/wga/t/phoenix/me',
+        sentinel: 'main .gear-table',
+        viewport,
+        tables: { ...tablesFor(TORBJORN, 'torbjorn'), player_equipped_gear: longGear, items: longItems },
+        ...signedIn('torbjorn')
+      });
+      try {
+        const [side, gear] = await opened.page.evaluate(() =>
+          ['.profile-side', '.gear-columns'].map((q) => document.querySelector(`main ${q}`).getBoundingClientRect().top)
+        );
+        expect(side < gear).toBe(beside);
       } finally {
         await opened.context.close();
       }
