@@ -16,6 +16,7 @@ import {
 } from '../data/address';
 import { NotFoundPage, NotInTestPage, wayOn } from '../pages/NotFoundPage';
 import { AccountPanel } from '../auth/AccountPanel';
+import { useTeamMainSwaps } from '../characters/useMainSwaps';
 import { ConnectPrompt } from '../auth/ConnectPrompt';
 import { AltsPickerProvider } from '../characters/AltsPicker';
 import { SignupBanner } from '../signup/SignupButton';
@@ -134,6 +135,9 @@ export function AppShell() {
   const recruits = useTeamRecruits(navTeam?.id ?? 0, !!navTeam && can('seeRecruits'));
   // Attendance items needing a look (#1846): only for someone who can set them.
   const attendanceWaiting = useAttendanceWaiting(navTeam?.id ?? 0, !!navTeam && can('manageAttendance'));
+  // Main swap requests waiting (#1908): the roster's own read, so a review
+  // there clears the count. Only for someone who can answer them.
+  const swaps = useTeamMainSwaps(navTeam?.id ?? 0, !!navTeam && can('editRoster'));
   // The apply pages (#1546) are open to anyone: no team or guild rank needed.
   const applyPage = /^\/g\/[^/]+\/(apply|applications)(\/|$)/.test(location.pathname);
   const visitor = !hasGuildRank && !teams.some((t) => onTeamIds.has(t.id));
@@ -150,7 +154,8 @@ export function AppShell() {
     liveCount: streamers.isSuccess ? liveCount(streamers.data) : 0,
     council,
     recruitsWaiting: recruits.data ? waitingOnOfficers(recruits.data.recruits) : 0,
-    attendanceWaiting: attendanceWaiting.data ?? 0
+    attendanceWaiting: attendanceWaiting.data ?? 0,
+    swapsWaiting: swaps.data?.length ?? 0
   });
 
   // Officer menu: one group open at a time. On a page change the group holding

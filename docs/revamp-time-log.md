@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     58 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 52 h 51 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 52 h 58 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **227 h 19 m** |             |
+| **All revamp work**                | **227 h 26 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 15 h 04 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 16 h 31 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -857,6 +857,12 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 4:05-4:17 PM | PR #1898 (#1560): the full RLS suite (six parallel-only failures pass alone; the rule-shape test caught a per-row helper, replaced by an argument-free one), the team-read guard's `.order()`, preflight, four screenshots, PR opened, status comment, local database restored | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1560) | 12 m | build | 29,700 | |
 | 4:18-4:24 PM | PR #1898 (#1560): Kat's check that the setting leaves Home's Recent loot alone; a database test running Home's read as a raider and a visitor with loot history locked | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1560) | 6 m | build (Kat's question inline) | 8,700 | |
 | 6:03-6:15 PM | PR #1898 (#1560): CodeRabbit's three points (a loot row can't change team except for a site admin, refused-case tests; the paging nit declined), replies in its threads; the fresh-agent migration review (approve) and its fixes (`manage_loot` officers count for loot history, the redundant guild arm out, two more tests); local database restored; these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1560) | 12 m | build | 431,800 | Tokens include the fresh-agent review (123,000). Kat's design review and merge not yet counted. |
+
+### 2026-11-23
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 11:13-11:20 AM | #1908 (filed 10:42 AM from Kat's note): Team > Roster in the sidebar counts main swap requests waiting, for officers who can change the roster, through the roster's own read so a review clears it; Kat's call: swap requests only, not all of Needs a look; page tests (fail without the change), stamp, changelog, this row | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1908) | 7 m | build (Kat's answer inline) | 35,700 | Kat's design review and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 
