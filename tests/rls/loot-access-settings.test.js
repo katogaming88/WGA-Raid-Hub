@@ -48,6 +48,19 @@ const addRow = (t, uid) =>
     SEASON
   ]);
 
+// A refused write either matches no row (the rule hides the row) or is denied
+// outright (42501, a role with no grant); any other error fails the test.
+async function changesNothing(write) {
+  let result;
+  try {
+    result = await write;
+  } catch (err) {
+    expect(err.code).toBe(RLS_DENIED);
+    return;
+  }
+  expect(result.rowCount).toBe(0);
+}
+
 describe('loot history access (#1560)', () => {
   it('answers everyone by default, with the item and no player', () =>
     withTxn(async (t) => {
@@ -200,12 +213,8 @@ describe('loot import access (#1560)', () => {
         t.asAnon
       ];
       for (const run of callers) {
-        const upd = await run("update public.rclc_loot set track = 'Hero' where item_id = $1", [ITEM_ID]).catch(
-          (e) => e
-        );
-        expect(upd.rowCount ?? 0).toBe(0);
-        const del = await run('delete from public.rclc_loot where item_id = $1', [ITEM_ID]).catch((e) => e);
-        expect(del.rowCount ?? 0).toBe(0);
+        await changesNothing(run("update public.rclc_loot set track = 'Hero' where item_id = $1", [ITEM_ID]));
+        await changesNothing(run('delete from public.rclc_loot where item_id = $1', [ITEM_ID]));
       }
       const { rows } = await t.q('select track from public.rclc_loot where item_id = $1', [ITEM_ID]);
       expect(rows).toEqual([{ track: 'Myth' }]);

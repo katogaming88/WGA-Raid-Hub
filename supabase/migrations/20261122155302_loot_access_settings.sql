@@ -147,6 +147,9 @@ $$;
 
 revoke all on function public.rclc_loot_team_id_fixed() from public, anon, authenticated;
 
+-- Every update, not only one that names team_id, so a team_id changed by an
+-- earlier BEFORE trigger is caught too. Triggers run in name order, and this
+-- name sorts after trg_rclc_loot_team_id_check. Inserts are the insert rule's.
 create trigger trg_rclc_loot_team_id_fixed
-  before update of team_id on public.rclc_loot
+  before update on public.rclc_loot
   for each row execute function public.rclc_loot_team_id_fixed();
