@@ -227,6 +227,46 @@ export function useSaveLootSystem(teamId: number) {
   );
 }
 
+// Settings > Loot's access card (#1560). Anything but the restrictive value
+// reads as the default, as loot_history_open() and my_loot_import_team_ids() do.
+export type LootAccess = { history: 'team' | 'officers'; import: 'officers' | 'leader' };
+
+const lootAccessKey = (teamId: number) => ['loot-access', teamId] as const;
+
+export function useLootAccess(teamId: number) {
+  return useSupabaseQuery<LootAccess>(lootAccessKey(teamId), async (client) => {
+    const result = await client
+      .from('team_settings')
+      .select('history:config->>lootHistoryAccess, import:config->>lootImportAccess')
+      .eq('team_id', teamId)
+      .maybeSingle();
+    if (result.error) return { data: null, error: result.error };
+    const row = result.data as { history?: unknown; import?: unknown } | null;
+    return {
+      data: {
+        history: row?.history === 'officers' ? 'officers' : 'team',
+        import: row?.import === 'leader' ? 'leader' : 'officers'
+      },
+      error: null
+    };
+  });
+}
+
+// Team leader only, by set_team_setting(); its audit entry names what changed.
+export function useSaveLootAccess(teamId: number) {
+  return useSupabaseMutation<null, LootAccess>(
+    async (client, access) => {
+      const result = await setTeamSetting(client, teamId, {
+        lootHistoryAccess: access.history,
+        lootImportAccess: access.import
+      });
+      if (result.error) return { data: null, error: result.error };
+      return { data: null, error: null };
+    },
+    { key: ['save-loot-access', teamId], refreshes: [lootAccessKey(teamId), ['loot']] }
+  );
+}
+
 // What gets counted as loot received (#1561): the saved button list (null
 // until an officer saves one) and every response the team's imports used.
 // rclc_loot passes 1000 rows per team, so the read is paged.

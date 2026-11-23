@@ -199,7 +199,11 @@ export function fakeClient(handlers: FakeHandlers): Client & {
         };
         return settle(grid());
       }
-      return settle(handlers.rpc ? handlers.rpc(name, args) : { data: null });
+      // A set-returning function is ordered and paged, as a table read is;
+      // the fake answers every page the same, so a test returns under 1000 rows.
+      const answer = settle(handlers.rpc ? handlers.rpc(name, args) : { data: null });
+      const paged = Object.assign(answer, { range: () => answer, order: () => paged });
+      return paged;
     },
     from(table: string) {
       const read: Read = { table, columns: undefined, options: undefined, filters: [], single: false };

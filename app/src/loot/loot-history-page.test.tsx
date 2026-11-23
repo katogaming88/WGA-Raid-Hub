@@ -54,15 +54,28 @@ const LOOT = [
   }
 ];
 
-function handlers() {
+// team_loot_history() answers flat rows: the item's fields beside the award's.
+const ROWS = LOOT.map(({ items, ...row }) => ({
+  ...row,
+  item_name: items.name,
+  slot: items.slot,
+  armor_type: items.armor_type,
+  wow_item_id: 'wow_item_id' in items ? items.wow_item_id : null,
+  is_ptr: 'is_ptr' in items ? items.is_ptr : false,
+  icon: null
+}));
+
+function handlers({ locked = false } = {}) {
   const base = seededHandlers();
   return asMember(
     seededHandlers({
-      from: (read) => {
-        if (read.table === 'rclc_loot') return { data: LOOT };
-        if (read.table === 'tier_token_map') return { data: [{ token_item_id: 10 }] };
-        return base.from!(read);
-      }
+      rpc: (name, args) =>
+        name === 'team_loot_history'
+          ? locked
+            ? { error: { message: 'Not authorized' } }
+            : { data: ROWS }
+          : base.rpc!(name, args),
+      from: (read) => (read.table === 'tier_token_map' ? { data: [{ token_item_id: 10 }] } : base.from!(read))
     })
   );
 }
@@ -89,5 +102,11 @@ describe('Loot history', () => {
     expect(within(table).getAllByRole('rowheader')).toHaveLength(2);
     await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
     expect(screen.getByText('drops').parentElement).toHaveTextContent('3 drops');
+  });
+
+  it('says so when the team keeps loot history to its officers (#1560)', async () => {
+    renderApp('/g/wga/t/phoenix/loot', handlers({ locked: true }));
+    expect(await screen.findByText('This team keeps loot history to its officers.')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 });

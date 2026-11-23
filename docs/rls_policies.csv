@@ -173,7 +173,9 @@ raid_zones,Public read raid_zones,public,SELECT,PERMISSIVE,true,
 rank_permissions,Anyone reads rank_permissions,anon;authenticated,SELECT,PERMISSIVE,true,
 rank_permissions,Claude readers read rank_permissions,claude_readers,SELECT,PERMISSIVE,true,
 rclc_loot,Claude readers read rclc_loot,claude_readers,SELECT,PERMISSIVE,true,
-rclc_loot,Officer write loot,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
+rclc_loot,Importer insert loot,public,INSERT,PERMISSIVE,,((team_id = ANY (( SELECT my_loot_import_team_ids() AS my_loot_import_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
+rclc_loot,Officer delete loot,public,DELETE,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
+rclc_loot,Officer update loot,public,UPDATE,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 rclc_loot,Public read loot,public,SELECT,PERMISSIVE,true,
 recruit_applications,Claude readers read recruit_applications,claude_readers,SELECT,PERMISSIVE,true,
 recruit_events,Claude readers read recruit_events,claude_readers,SELECT,PERMISSIVE,true,

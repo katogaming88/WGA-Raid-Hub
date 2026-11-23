@@ -55,7 +55,8 @@ export function LootHistoryPage() {
         <p className="text-muted page-subtitle">Every item the team has handed out, counted. Pick what to count.</p>
       </div>
       <DataState query={history} label="the loot history">
-        {({ drops, tokenIds }) => {
+        {({ locked, drops, tokenIds }) => {
+          if (locked) return <p className="text-muted">This team keeps loot history to its officers.</p>;
           const shown = filterDrops(drops, filters, tokenIds);
           const { by, column, label } = VIEWS.find((v) => v.value === view)!;
           return (

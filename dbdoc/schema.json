@@ -837,6 +837,10 @@
         {
           "name": "trg_rclc_loot_team_id_check",
           "def": "CREATE TRIGGER trg_rclc_loot_team_id_check BEFORE INSERT OR UPDATE ON public.rclc_loot FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        },
+        {
+          "name": "trg_rclc_loot_team_id_fixed",
+          "def": "CREATE TRIGGER trg_rclc_loot_team_id_fixed BEFORE INSERT OR UPDATE ON public.rclc_loot FOR EACH ROW EXECUTE FUNCTION rclc_loot_team_id_fixed()"
         }
       ]
     },
@@ -19689,6 +19693,30 @@
       "name": "public.set_raid_night_boss_order",
       "return_type": "void",
       "arguments": "p_team_id integer, p_raid_date date, p_encounter_ids integer[], p_expected_ids integer[], p_every_night boolean DEFAULT false, p_plan text DEFAULT 'mythic'::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.loot_history_open",
+      "return_type": "bool",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.my_loot_import_team_ids",
+      "return_type": "_int4",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.team_loot_history",
+      "return_type": "record",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.rclc_loot_team_id_fixed",
+      "return_type": "trigger",
+      "arguments": "",
       "type": "FUNCTION"
     }
   ],

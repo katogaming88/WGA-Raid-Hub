@@ -160,4 +160,12 @@ describe('Import loot page', () => {
     expect(await screen.findByText('This page is for officers of Phoenix.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Import' })).not.toBeInTheDocument();
   });
+  it('tells an officer the team leaves importing to its leader (#1560)', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/officer/import',
+      handlers(OFFICER_PERSON, { team_settings: { history: null, import: 'leader' } as unknown as unknown[] })
+    );
+    expect(await screen.findByText('This team leaves importing loot to the team leader.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Import' })).not.toBeInTheDocument();
+  });
 });

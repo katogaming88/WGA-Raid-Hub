@@ -415,6 +415,10 @@
 | public.set_raid_night_boss_skipped | void | p_team_id integer, p_raid_date date, p_encounter_id integer, p_skipped boolean, p_plan text DEFAULT 'mythic'::text | FUNCTION |
 | public.record_raid_night_participation | int4 | p_team_id integer, p_raid_date date, p_encounter_id integer, p_player_ids integer[], p_plan text DEFAULT 'mythic'::text | FUNCTION |
 | public.set_raid_night_boss_order | void | p_team_id integer, p_raid_date date, p_encounter_ids integer[], p_expected_ids integer[], p_every_night boolean DEFAULT false, p_plan text DEFAULT 'mythic'::text | FUNCTION |
+| public.loot_history_open | bool | p_team_id integer | FUNCTION |
+| public.my_loot_import_team_ids | _int4 |  | FUNCTION |
+| public.team_loot_history | record | p_team_id integer | FUNCTION |
+| public.rclc_loot_team_id_fixed | trigger |  | FUNCTION |
 
 ## Enums
 

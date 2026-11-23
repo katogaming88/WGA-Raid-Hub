@@ -601,6 +601,43 @@ describe('Loot settings', () => {
     await expect.poll(() => calls.length).toBe(1);
     expect(calls[0]).toMatchObject({ p_team_id: 1, p_updates: { lootSystem: 'wishlist' }, p_skip_audit: true });
   });
+
+  it('starts every team on today’s access, read-only for an officer', async () => {
+    renderApp('/g/wga/t/phoenix/officer/settings/loot', officerHandlers({ from: lootRow(null) }));
+    const history = within(await screen.findByRole('group', { name: 'Who can open loot history' }));
+    expect(history.getByRole('radio', { name: /Everyone on the team/ })).toBeChecked();
+    expect(history.getByRole('radio', { name: /Officers only/ })).toBeDisabled();
+    const imports = within(screen.getByRole('group', { name: 'Who can import RCLootCouncil exports' }));
+    expect(imports.getByRole('radio', { name: /^Officers/ })).toBeChecked();
+    expect(screen.getByText('Only the team leader can change who has access.')).toBeInTheDocument();
+  });
+
+  it('lets the team leader keep loot history to officers and import to themselves (#1560)', async () => {
+    const calls: unknown[] = [];
+    renderApp(
+      '/g/wga/t/phoenix/officer/settings/loot',
+      officerHandlers({
+        person: LEADER_PERSON,
+        from: lootRow('priority'),
+        rpc: (name, args) => {
+          if (name === 'set_team_setting') {
+            calls.push(args);
+            return { data: {} };
+          }
+          return undefined;
+        }
+      })
+    );
+    await userEvent.click(await screen.findByRole('radio', { name: /Officers only/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Team leader only/ }));
+    const card = screen.getByRole('heading', { name: 'Access' }).closest('.card') as HTMLElement;
+    await userEvent.click(within(card).getByRole('button', { name: 'Save' }));
+    await expect.poll(() => calls.length).toBe(1);
+    expect(calls[0]).toMatchObject({
+      p_team_id: 1,
+      p_updates: { lootHistoryAccess: 'officers', lootImportAccess: 'leader' }
+    });
+  });
 });
 
 describe('What gets counted as loot received (#1561)', () => {
