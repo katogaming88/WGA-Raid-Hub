@@ -40,7 +40,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | trg_rclc_loot_team_id_check | CREATE TRIGGER trg_rclc_loot_team_id_check BEFORE INSERT OR UPDATE ON public.rclc_loot FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player() |
-| trg_rclc_loot_team_id_fixed | CREATE TRIGGER trg_rclc_loot_team_id_fixed BEFORE UPDATE ON public.rclc_loot FOR EACH ROW EXECUTE FUNCTION rclc_loot_team_id_fixed() |
+| trg_rclc_loot_team_id_fixed | CREATE TRIGGER trg_rclc_loot_team_id_fixed BEFORE INSERT OR UPDATE ON public.rclc_loot FOR EACH ROW EXECUTE FUNCTION rclc_loot_team_id_fixed() |
 
 ## Relations
 

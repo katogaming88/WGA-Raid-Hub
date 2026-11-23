@@ -138,7 +138,8 @@ language plpgsql
 set search_path = public
 as $$
 begin
-  if new.team_id is distinct from old.team_id and auth.uid() is not null and not public.is_site_admin() then
+  if tg_op = 'UPDATE' and new.team_id is distinct from old.team_id
+     and auth.uid() is not null and not public.is_site_admin() then
     raise exception 'A loot row stays on its team' using errcode = '42501';
   end if;
   return new;
@@ -147,9 +148,11 @@ $$;
 
 revoke all on function public.rclc_loot_team_id_fixed() from public, anon, authenticated;
 
--- Every update, not only one that names team_id, so a team_id changed by an
--- earlier BEFORE trigger is caught too. Triggers run in name order, and this
--- name sorts after trg_rclc_loot_team_id_check. Inserts are the insert rule's.
+-- Every insert and update (the repo's trigger-guard rule), not only an update
+-- that names team_id, so a team_id changed by an earlier BEFORE trigger is
+-- caught too. Triggers run in name order, and this name sorts after
+-- trg_rclc_loot_team_id_check. An insert has no old team and passes here: who
+-- may add a row to a team is the insert rule's job.
 create trigger trg_rclc_loot_team_id_fixed
-  before update on public.rclc_loot
+  before insert or update on public.rclc_loot
   for each row execute function public.rclc_loot_team_id_fixed();
