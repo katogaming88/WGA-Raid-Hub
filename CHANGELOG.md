@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.305.1] - 2026-11-23
+
+### Project
+
+- My profile: the side column (Characters, Wishlist, Attendance, M+ exclusion) is back on the right from the top of the Overview, beside Your week, the stats, Equipped gear and loot priority, instead of starting below them (#1907). Equipped gear stacks its two columns into one when the main column is too narrow for both, so it still never scrolls. Phones are unchanged.
+
 ## [3.305.0] - 2026-11-23
 
 ### Project

@@ -483,31 +483,32 @@ function Profile({
       >
         {tab === '' && (
           <>
-            {own && !signup && <OwnWeekCard teamId={teamId} playerId={player.id} />}
-
-            <dl className="profile-stats">
-              <Stat label="Item level" value={itemLevel === null ? '–' : itemLevel.toFixed(1)} />
-              <Stat label="Attendance" value={attend ? formatPct(attend.pct) : '–'} />
-              <Stat
-                label="Tier pieces"
-                value={player.tier_pieces_equipped === null ? '–' : `${player.tier_pieces_equipped}/5`}
-              />
-              <Stat label="Items this season" value={seasonAwards ? String(seasonAwards.count) : '–'} />
-            </dl>
-
-            {/* Equipped gear on the Overview, full width so both columns fit without
-                wrapping (Kat, 2026-09-14), laid out like the character pane. */}
-            <section className="card profile-card" aria-labelledby="gear-title">
-              <h2 id="gear-title" className="card-title">
-                Equipped gear
-              </h2>
-              <DataState query={gear} label="equipped gear">
-                {({ rows, names }) => <EquippedGear rows={rows} names={names} />}
-              </DataState>
-            </section>
-
             <div className="profile-layout">
               <div className="profile-main">
+                {own && !signup && <OwnWeekCard teamId={teamId} playerId={player.id} />}
+
+                <dl className="profile-stats">
+                  <Stat label="Item level" value={itemLevel === null ? '–' : itemLevel.toFixed(1)} />
+                  <Stat label="Attendance" value={attend ? formatPct(attend.pct) : '–'} />
+                  <Stat
+                    label="Tier pieces"
+                    value={player.tier_pieces_equipped === null ? '–' : `${player.tier_pieces_equipped}/5`}
+                  />
+                  <Stat label="Items this season" value={seasonAwards ? String(seasonAwards.count) : '–'} />
+                </dl>
+
+                {/* Equipped gear on the Overview, laid out like the character pane. It
+                    sits beside the side column (#1907) and stacks into one
+                    column when the main column is narrow, so it never scrolls. */}
+                <section className="card profile-card" aria-labelledby="gear-title">
+                  <h2 id="gear-title" className="card-title">
+                    Equipped gear
+                  </h2>
+                  <DataState query={gear} label="equipped gear">
+                    {({ rows, names }) => <EquippedGear rows={rows} names={names} />}
+                  </DataState>
+                </section>
+
                 {council ? (
                   <CouncilCard />
                 ) : (
