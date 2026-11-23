@@ -525,14 +525,14 @@ describe('Roster page, officer columns', () => {
 
 // One box for everything waiting on an officer (#1360 part 2).
 describe('Roster page, Needs a look', () => {
-  const handlers = (role: string, trial: boolean) => {
+  const handlers = (role: string, trial: boolean, swaps: unknown[] = []) => {
     const base = rosterHandlers({
       players: [
         player(1, 'Torbjorn-Illidan', 'Death Knight', 'Frost', 'Melee', { join_date: '2026-08-10', is_trial: trial })
       ],
       seasons: SEASON_ROWS,
       team_settings: { trialWeeks: 4, trialAttend: 75 },
-      main_swap_requests: [],
+      main_swap_requests: swaps,
       attendance: [{ player_id: 1, raid_date: '2026-08-12', status: 'Present', report_excluded: false }],
       rclc_loot: []
     });
@@ -570,6 +570,36 @@ describe('Roster page, Needs a look', () => {
     renderApp('/g/wga/t/phoenix/roster', handlers('officer', false));
     await screen.findByRole('columnheader', { name: 'Attendance' });
     expect(screen.queryByRole('region', { name: /Needs a look/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Roster' })).toBeInTheDocument();
+  });
+
+  // #1908: a raider asking to raid on another character puts a count on Roster.
+  const SWAP = {
+    id: 1,
+    team_id: 1,
+    person_id: 7,
+    from_player_id: 1,
+    character_id: 9,
+    name_realm: 'Grihzy-Illidan',
+    class_spec_id: 1,
+    note: null,
+    status: 'pending',
+    requested_at: '2026-09-14T18:00:00Z',
+    officer_note: null,
+    from_player: { name_realm: 'Torbjorn-Illidan' },
+    classes_specs: { class: 'Evoker', spec: 'Preservation', role: 'Heal' }
+  };
+
+  it('counts main swap requests waiting on the Roster menu item for an officer', async () => {
+    renderApp('/g/wga/t/phoenix/roster', handlers('officer', false, [SWAP]));
+    expect(await screen.findByRole('link', { name: 'Roster, 1 waiting' })).toBeInTheDocument();
+  });
+
+  it('shows a raider no count, and does not read the requests', async () => {
+    const { client } = renderApp('/g/wga/t/phoenix/roster', handlers('raider', false, [SWAP]));
+    await screen.findByRole('columnheader', { name: 'Item level' });
+    expect(screen.getByRole('link', { name: 'Roster' })).toBeInTheDocument();
+    expect(client.reads.filter((r) => r.table === 'main_swap_requests')).toEqual([]);
   });
 });
 

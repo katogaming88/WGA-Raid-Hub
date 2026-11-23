@@ -43,6 +43,8 @@ export function navGroups(
     recruitsWaiting?: number;
     // Attendance items needing an officer's look (#1846), on Manage and its group.
     attendanceWaiting?: number;
+    // Main swap requests waiting on officers (#1908), on Roster.
+    swapsWaiting?: number;
     // Someone with no team and no guild rank here (#1546): the apply pages
     // are all the guild offers them, so the rest of the menu is left out.
     visitor?: boolean;
@@ -93,7 +95,7 @@ export function navGroups(
       heading: 'Team',
       items: [
         { label: 'Home', icon: 'home', to: base.team, end: true },
-        { label: 'Roster', icon: 'roster', to: `${base.team}/roster` },
+        { label: 'Roster', icon: 'roster', to: `${base.team}/roster`, count: show.swapsWaiting ?? 0 },
         { label: 'Audit', icon: 'chart', to: `${base.team}/audit` },
         { label: 'Calendar', icon: 'calendar', to: `${base.team}/calendar` },
         { label: 'Loot history', icon: 'loot', to: `${base.team}/loot` },

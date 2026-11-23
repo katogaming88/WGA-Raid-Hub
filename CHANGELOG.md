@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.305.0] - 2026-11-23
+
+### Project
+
+- Officers who can change the roster see a count on Team > Roster in the sidebar while raiders are waiting on an answer to "Ask to raid on this one" (#1908), as Attendance and Recruiting already show what's waiting. It clears once each request is approved, refused or cancelled. Raiders see no count. Only these requests count, not the rest of the roster's Needs a look box.
+
 ## [3.304.0] - 2026-11-22
 
 ### Backend
