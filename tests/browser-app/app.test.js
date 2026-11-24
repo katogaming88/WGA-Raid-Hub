@@ -2432,6 +2432,51 @@ const STATES = [
     sentinel: 'main .wishlist-summary',
     colorScheme: 'light'
   }),
+  // #1443: one sim up to date, one out of date (greyed), and the add form.
+  ...['', ', light'].map((suffix) =>
+    profileState(`my profile, sims tab${suffix}`, 'torbjorn', 'torbjorn', {
+      path: '/g/wga/t/phoenix/me/sims',
+      sentinel: 'main .sims-table',
+      ...(suffix ? { colorScheme: 'light' } : {}),
+      tables: {
+        ...profileState('', 'torbjorn', 'torbjorn').tables,
+        character_sims: [
+          { difficulty: 'mythic', simmed_at: new Date().toISOString(), source: 'raidbots' },
+          { difficulty: 'heroic', simmed_at: '2026-01-01T00:00:00Z', source: 'qe_live' }
+        ].map((s, i) => ({
+          id: i + 1,
+          report_id: `report${i}`,
+          fight_style: s.source === 'raidbots' ? 'Patchwerk' : null,
+          target_count: s.source === 'raidbots' ? 1 : null,
+          ...s,
+          character_sim_results: [
+            {
+              id: 10 * i + 1,
+              wow_item_id: 268252,
+              item_name: 'Band of the Abyss',
+              slot: s.source === 'raidbots' ? 'finger1' : null,
+              item_level: 334,
+              pct_gain: 1.98,
+              dps_gain: null,
+              encounter_id: null,
+              catalyst_from: null
+            },
+            {
+              id: 10 * i + 2,
+              wow_item_id: 270170,
+              item_name: 'Font of Venomous Rage',
+              slot: s.source === 'raidbots' ? 'trinket1' : null,
+              item_level: 334,
+              pct_gain: 0.84,
+              dps_gain: null,
+              encounter_id: null,
+              catalyst_from: null
+            }
+          ]
+        }))
+      }
+    })
+  ),
   wishlistEditorState('my profile, wishlist editor, a slot open'),
   wishlistEditorState('my profile, wishlist editor, a slot open, light', { colorScheme: 'light' }),
   wishlistEditorState('my profile, wishlist editor, on a phone', { touch: true, viewport: NARROW }),

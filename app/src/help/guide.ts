@@ -268,6 +268,19 @@ export const GUIDES: Guide[] = [
     ]
   },
   {
+    id: 'sims',
+    topic: 'loot',
+    title: 'Add your sim',
+    quick: 'Paste a Raidbots droptimizer or QE Live upgrade report link on My profile’s Sims tab.',
+    place: { label: 'My profile, Sims', to: (b) => `${b.team}/me/sims` },
+    menu: 'my-profile',
+    steps: [
+      'Run a droptimizer on Raidbots for the raid, or the Upgrade Finder on QE Live if you heal. Copy the report’s address when it finishes.',
+      'Open My profile, then the Sims tab, paste the link and choose Add sim. A new sim replaces your one at the same difficulty.',
+      'Each item that’s an upgrade is listed, biggest first. After the number of days your team set, the sim is out of date: add a new one.'
+    ]
+  },
+  {
     id: 'priority',
     topic: 'loot',
     title: 'Check your priority and attendance',

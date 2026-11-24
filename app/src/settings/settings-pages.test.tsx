@@ -638,6 +638,45 @@ describe('Loot settings', () => {
       p_updates: { lootHistoryAccess: 'officers', lootImportAccess: 'leader' }
     });
   });
+
+  it('starts sims at 14 days (#1443), read-only for an officer', async () => {
+    renderApp('/g/wga/t/phoenix/officer/settings/loot', officerHandlers({ from: lootRow(null) }));
+    const days = await screen.findByRole('spinbutton', { name: 'A sim goes out of date after' });
+    expect(days).toHaveValue(14);
+    expect(days).toBeDisabled();
+    const card = screen.getByRole('heading', { name: 'Sims' }).closest('.card') as HTMLElement;
+    expect(within(card).getByText('Only the team leader can change this.')).toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+  });
+
+  it('lets the team leader set how many days a sim stays up to date (#1443)', async () => {
+    const calls: unknown[] = [];
+    renderApp(
+      '/g/wga/t/phoenix/officer/settings/loot',
+      officerHandlers({
+        person: LEADER_PERSON,
+        from: lootRow('priority'),
+        rpc: (name, args) => {
+          if (name === 'set_team_setting') {
+            calls.push(args);
+            return { data: {} };
+          }
+          return undefined;
+        }
+      })
+    );
+    const days = await screen.findByRole('spinbutton', { name: 'A sim goes out of date after' });
+    const card = screen.getByRole('heading', { name: 'Sims' }).closest('.card') as HTMLElement;
+    await userEvent.clear(days);
+    await userEvent.type(days, '0');
+    expect(within(card).getByText('Enter a whole number of days, from 1 to 365.')).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'Save' })).toBeDisabled();
+    await userEvent.clear(days);
+    await userEvent.type(days, '5');
+    await userEvent.click(within(card).getByRole('button', { name: 'Save' }));
+    await expect.poll(() => calls.length).toBe(1);
+    expect(calls[0]).toMatchObject({ p_team_id: 1, p_updates: { simStaleDays: 5 } });
+  });
 });
 
 describe('What gets counted as loot received (#1561)', () => {

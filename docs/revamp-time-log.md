@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     58 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 53 h 57 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 54 h 29 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **228 h 25 m** |             |
+| **All revamp work**                | **228 h 57 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 17 h 30 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 18 h 2 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -875,6 +875,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 11:31-11:42 AM | #1442: Kat's call to build the server part now, before the Sync link (#1452); `upload_rclc_loot()` hands only the entries on the team's roster to `import_rclc_loot()`; database tests (roster filter, sent twice, raider and other-team officer refused); generated docs, RLS.md, decision log, stamp, changelog, these rows and the two owed from #1898 | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1442) | 11 m | build (Kat's answer inline) | 93,900 | Fresh-agent review, preflight, PR and merge not yet counted. |
 | 11:42-11:48 AM, 11:56-12:02 PM | PR #1913 (#1442): preflight, PR opened; CodeRabbit's point (a signed-out caller is refused, test added, reply in its thread); the fresh-agent migration review (changes needed) and its fix: the upload checks the team's import setting up front, so a "Team leader only" officer is refused even with nothing on the roster, test added; local database reset, definitions regenerated, this row | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1442) | 12 m | build | 109,800 | Tokens include the fresh-agent review (86,000). Kat's review and merge not yet counted. |
+| 12:13-12:15 PM | PR #1913 (#1442): Kat's merge; cleanup, #1442 closed with a status comment, its row out of #1487, local database restored, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1442) | 2 m | Kat review, build | 7,900 | |
+| 12:15-12:45 PM | #1443 part 1 of 2: Kat's sample reports and four calls (raiders and officers add, a new sim replaces the old, QE Live's fully upgraded gain, two PRs); both sites' report data read and checked readable from a browser; tables and the save and remove functions, database tests; link and report parsing with tests on trimmed real reports; the profile's Sims tab, Settings > Loot's Sims card, a Help guide, page and browser accessibility tests; generated docs, RLS.md, decision log, stamp, changelog, these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1443) | 30 m | build (Kat's answers inline) | 203,400 | Kat's wait to paste the links not counted. Preflight, PR, reviews and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 

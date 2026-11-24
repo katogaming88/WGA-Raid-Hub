@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.307.0] - 2026-11-24
+
+### Backend
+
+- Raiders' droptimizer sims are stored (#1443): one sim per character per difficulty, Raidbots or QE Live, with every result in it (each item, slot and item level, and the gain). `save_character_sim()` and `delete_character_sim()` write them, for the raider, an officer who manages loot, or a site admin. A new sim replaces the one at the same difficulty. Anyone can read them, like the rest of a profile.
+
+### Project
+
+- My profile has a Sims tab (#1443). A raider, or an officer who manages loot, pastes a Raidbots droptimizer or QE Live upgrade report link and the page reads the report, checks it's for this character, and saves it. Each upgrade is listed once, biggest first, with its best slot, its item level and its wishlist mark. QE Live shows the fully upgraded gain. A sim older than the team's setting says Out of date and is greyed out.
+- Settings > Loot has a Sims card: the team leader sets how many days a sim stays up to date, 14 until changed (#1443).
+- Help has an "Add your sim" guide (#1443).
+- The Access card's Save button on Settings > Loot reads "Saving…" while it saves, instead of a broken character.
+
 ## [3.306.0] - 2026-11-24
 
 ### Backend

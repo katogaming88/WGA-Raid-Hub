@@ -6,6 +6,7 @@ import { fakeSession, filterValue, seededHandlers, type Read } from '../test/fak
 import { attendance, characterLinks, equippedGear, formatJoinDate, seasonLoot, timeAgoLabel } from './profile';
 import { latestSelfReceivedUpdate, lootPriority } from './lootPriority';
 import { wishlistSummary } from './wishlist';
+import raidbotsReport from '../sims/fixtures/raidbots-droptimizer.json';
 
 const SEASON = { name: 'Midnight Season 2', code: 'MID2', start: '2026-08-01', end: '2026-12-31' };
 
@@ -298,7 +299,7 @@ describe('Profile page', () => {
       within(tabs)
         .getAllByRole('tab')
         .map((t) => t.textContent)
-    ).toEqual(['Overview', 'Loot']);
+    ).toEqual(['Overview', 'Loot', 'Sims']);
     expect(screen.queryByRole('heading', { name: /Loot priority/ })).not.toBeInTheDocument();
   });
 
@@ -1056,5 +1057,125 @@ describe('Profile, the character signed up for next season', () => {
     expect(screen.queryByText('Counts from when it joins the roster.')).not.toBeInTheDocument();
     await userEvent.click(roster);
     expect(await screen.findByRole('heading', { level: 1, name: 'Raz' })).toBeInTheDocument();
+  });
+});
+
+// #1443: the Sims tab. The report is read from the site with fetch (stubbed
+// here with a real report trimmed to a few items), then saved per difficulty.
+describe('Profile > Sims', () => {
+  const report = (name: string, server: string) => {
+    const copy = structuredClone(raidbotsReport);
+    copy.simbot.meta.player = name;
+    copy.simbot.meta.rawFormData.text = copy.simbot.meta.rawFormData.text.replace(/^server=.*$/m, `server=${server}`);
+    return copy;
+  };
+  const stubFetch = (body: unknown) => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify(body), { status: 200 }));
+    vi.stubGlobal('fetch', fetch);
+    return fetch;
+  };
+  const LINK = 'https://www.raidbots.com/simbot/report/4fa37C7DkwEgoJQTLTFS9L';
+  const SAVED = {
+    id: 7,
+    difficulty: 'mythic',
+    source: 'raidbots',
+    report_id: 'abc',
+    simmed_at: '2026-11-20T12:00:00Z',
+    fight_style: 'Patchwerk',
+    target_count: 1,
+    character_sim_results: [
+      {
+        id: 1,
+        wow_item_id: 268252,
+        item_name: 'Band of the Abyss',
+        slot: 'finger1',
+        item_level: 334,
+        pct_gain: 1.98,
+        dps_gain: 4335,
+        encounter_id: 2871,
+        catalyst_from: null
+      },
+      {
+        id: 2,
+        wow_item_id: 268252,
+        item_name: 'Band of the Abyss',
+        slot: 'finger2',
+        item_level: 334,
+        pct_gain: 1.9,
+        dps_gain: 4100,
+        encounter_id: 2871,
+        catalyst_from: null
+      },
+      {
+        id: 3,
+        wow_item_id: 268236,
+        item_name: 'Old Legs',
+        slot: 'legs',
+        item_level: 334,
+        pct_gain: -5.7,
+        dps_gain: -12000,
+        encounter_id: 2888,
+        catalyst_from: null
+      }
+    ]
+  };
+  const withSims = (sims: unknown[], config: Record<string, unknown> = {}) =>
+    profileHandlers(person('raider', 11), {
+      character_sims: () => ({ data: sims }),
+      items: () => ({ data: [] }),
+      team_settings: (read) => ({
+        data: /simStaleDays/.test(read.columns ?? '') ? { days: config.simStaleDays ?? null } : []
+      })
+    });
+
+  it('reads the pasted report and saves it for the raider’s own character', async () => {
+    const fetch = stubFetch(report('Torbjorn', 'illidan'));
+    const { client } = renderApp('/g/wga/t/phoenix/me/sims', withSims([]));
+    await userEvent.type(await screen.findByLabelText(/Raidbots droptimizer or QE Live/), LINK);
+    await userEvent.click(screen.getByRole('button', { name: 'Add sim' }));
+    await waitFor(() => expect(client.rpcs.some(([name]) => name === 'save_character_sim')).toBe(true));
+    expect(fetch).toHaveBeenCalledWith('https://www.raidbots.com/reports/4fa37C7DkwEgoJQTLTFS9L/data.json');
+    const [, args] = client.rpcs.find(([name]) => name === 'save_character_sim')!;
+    expect(args).toMatchObject({
+      p_player_id: 11,
+      p_difficulty: 'mythic',
+      p_source: 'raidbots',
+      p_report_id: '4fa37C7DkwEgoJQTLTFS9L'
+    });
+    expect((args as { p_results: unknown[] }).p_results).toHaveLength(6);
+    expect(await screen.findByText('Added the Mythic sim from Raidbots.')).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it('turns away a report for another character, saving nothing', async () => {
+    stubFetch(report('Katorrí', 'stormrage'));
+    const { client } = renderApp('/g/wga/t/phoenix/me/sims', withSims([]));
+    await userEvent.type(await screen.findByLabelText(/Raidbots droptimizer or QE Live/), LINK);
+    await userEvent.click(screen.getByRole('button', { name: 'Add sim' }));
+    expect(await screen.findByText('That report is for Katorrí-stormrage, not Torbjorn-Illidan.')).toBeInTheDocument();
+    expect(client.rpcs.some(([name]) => name === 'save_character_sim')).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  it('lists each upgrade once, in its best slot, and says when the sim is out of date', async () => {
+    vi.useFakeTimers({ now: new Date('2026-11-24T12:00:00Z'), toFake: ['Date'] });
+    renderApp('/g/wga/t/phoenix/me/sims', withSims([SAVED], { simStaleDays: 3 }));
+    const row = await screen.findByRole('row', { name: /Band of the Abyss/ });
+    expect(within(row).getByText('Ring 1')).toBeInTheDocument();
+    expect(within(row).getByText('+1.98%')).toBeInTheDocument();
+    // A downgrade isn't listed.
+    expect(screen.queryByText('Old Legs')).not.toBeInTheDocument();
+    expect(screen.getByText('Out of date')).toBeInTheDocument();
+    expect(screen.getByText('simmed 4 days ago')).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('removes a sim', async () => {
+    const { client } = renderApp('/g/wga/t/phoenix/me/sims', withSims([SAVED]));
+    await screen.findByRole('row', { name: /Band of the Abyss/ });
+    await userEvent.click(screen.getByRole('button', { name: 'Remove the Mythic sim' }));
+    await waitFor(() =>
+      expect(client.rpcs).toContainEqual(['delete_character_sim', { p_player_id: 11, p_difficulty: 'mythic' }])
+    );
   });
 });
