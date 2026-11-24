@@ -86,10 +86,25 @@ describe('save_character_sim()', () => {
       ]);
     }));
 
-  it('lets an officer who manages loot save one for a raider', () =>
+  it('lets an officer who manages loot save one for a raider, logged through write_audit_log()', () =>
     withTxn(async ({ q, asUser }) => {
       const { team, playerId } = await raiderWithCharacter(q);
       expect(await save(asUser, team.officer.uid, playerId)).toBe(2);
+      const audit = await q(`select actor_id from public.audit_log where action = 'Sim Added' and target_id = $1`, [
+        playerId
+      ]);
+      expect(audit.rows).toEqual([{ actor_id: team.officer.uid }]);
+    }));
+
+  // CodeRabbit on PR #1914: an officer must not act on the team leader.
+  it('refuses an officer on the team leader’s character, and lets the leader save their own', () =>
+    withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const leaderPlayer = await seedPlayer(q, { memberId: team.leader.memberId, nameRealm: 'Leaderly-Illidan' });
+      await expect(save(asUser, team.officer.uid, leaderPlayer)).rejects.toThrow(/not authorized/i);
+      expect(await save(asUser, team.leader.uid, leaderPlayer)).toBe(2);
+      await expect(remove(asUser, team.officer.uid, leaderPlayer)).rejects.toThrow(/not authorized/i);
+      expect(await simsOf(q, leaderPlayer)).toHaveLength(1);
     }));
 
   it('refuses another raider on the team, an officer of another team, and a signed-out caller', () =>
@@ -141,14 +156,21 @@ describe('save_character_sim()', () => {
 });
 
 describe('delete_character_sim()', () => {
-  it('removes the sim at one difficulty for the raider or an officer, not another team’s officer', () =>
-    withTxn(async ({ q, asUser }) => {
+  it('removes one difficulty’s sim for the raider or an officer, not another team’s officer, a teammate or a signed-out caller', () =>
+    withTxn(async ({ q, asUser, asAnon }) => {
       const { team, playerId } = await raiderWithCharacter(q);
       const other = await seedTeam(q);
       await save(asUser, team.raider.uid, playerId);
       await save(asUser, team.raider.uid, playerId, { difficulty: 'heroic' });
+      const { uid: teammate } = await seedMember(q, { teamId: team.teamId });
       await expect(remove(asUser, other.officer.uid, playerId)).rejects.toThrow(/not authorized/i);
+      await expect(remove(asUser, teammate, playerId)).rejects.toThrow(/not authorized/i);
+      await expect(asAnon('select public.delete_character_sim($1, $2)', [playerId, 'mythic'])).rejects.toMatchObject({
+        code: RLS_DENIED
+      });
+      expect((await simsOf(q, playerId)).map((s) => s.difficulty)).toEqual(['heroic', 'mythic']);
       await remove(asUser, team.raider.uid, playerId);
+      expect((await simsOf(q, playerId)).map((s) => s.difficulty)).toEqual(['heroic']);
       await remove(asUser, team.officer.uid, playerId, 'heroic');
       expect(await simsOf(q, playerId)).toEqual([]);
     }));

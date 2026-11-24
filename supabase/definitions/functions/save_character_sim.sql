@@ -12,16 +12,22 @@ declare
   v_team_id integer;
   v_sim_id bigint;
   v_count integer;
+  v_leader boolean;
+  v_own boolean;
+  v_detail jsonb;
 begin
   if auth.uid() is null then
     raise exception 'Not signed in';
   end if;
 
-  select team_id into v_team_id from public.players
-   where id = p_player_id and archived_at is null;
+  select p.team_id, coalesce(tm.role = 'team_leader', false) into v_team_id, v_leader
+    from public.players p
+    left join public.team_members tm on tm.id = p.team_member_id and tm.archived_at is null
+   where p.id = p_player_id and p.archived_at is null;
+  v_own := coalesce(public.is_own_player(p_player_id), false);
   if v_team_id is null
-     or not (coalesce(public.is_own_player(p_player_id), false)
-             or public.has_team_permission(v_team_id, 'manage_loot')
+     or not (v_own
+             or (public.has_team_permission(v_team_id, 'manage_loot') and not v_leader)
              or public.is_site_admin()) then
     raise exception 'Not authorized';
   end if;
@@ -63,13 +69,15 @@ begin
            pct_gain numeric, dps_gain numeric, encounter_id integer, catalyst_from integer);
   get diagnostics v_count = row_count;
 
-  -- Written here, not through write_audit_log(), which only officers may
-  -- call; a raider adds their own sims (set_own_missing_spec() does the same).
-  insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
-  values (v_team_id, auth.uid(), 'Sim Added', 'players', p_player_id,
-    jsonb_build_object('summary', initcap(p_difficulty) || ' sim from '
-      || case p_source when 'raidbots' then 'Raidbots' else 'QE Live' end
-      || ', ' || v_count || ' results'));
+  v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' sim from '
+    || case p_source when 'raidbots' then 'Raidbots' else 'QE Live' end
+    || ', ' || v_count || ' results');
+  if v_own then
+    insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+    values (v_team_id, auth.uid(), 'Sim Added', 'players', p_player_id, v_detail);
+  else
+    perform public.write_audit_log(v_team_id, 'Sim Added', 'players', p_player_id, v_detail);
+  end if;
   return v_count;
 end;
 $function$;

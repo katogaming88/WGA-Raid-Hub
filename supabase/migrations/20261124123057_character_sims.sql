@@ -19,7 +19,12 @@
 -- team_settings.config (default 14), read by the app; nothing here expires.
 --
 -- Anyone can read sims, like the rest of a profile. Nobody writes the tables
--- directly: save_character_sim() and delete_character_sim() do.
+-- directly: save_character_sim() and delete_character_sim() do, for the
+-- character's own raider, an officer with manage_loot (but not on the team
+-- leader's character, CodeRabbit on PR #1914), or a site admin. A raider's
+-- own change writes its audit row itself, since write_audit_log() refuses
+-- raiders (set_own_missing_spec() does the same); anyone else's goes through
+-- write_audit_log().
 
 create table public.character_sims (
   id bigint generated always as identity primary key,
@@ -94,16 +99,22 @@ declare
   v_team_id integer;
   v_sim_id bigint;
   v_count integer;
+  v_leader boolean;
+  v_own boolean;
+  v_detail jsonb;
 begin
   if auth.uid() is null then
     raise exception 'Not signed in';
   end if;
 
-  select team_id into v_team_id from public.players
-   where id = p_player_id and archived_at is null;
+  select p.team_id, coalesce(tm.role = 'team_leader', false) into v_team_id, v_leader
+    from public.players p
+    left join public.team_members tm on tm.id = p.team_member_id and tm.archived_at is null
+   where p.id = p_player_id and p.archived_at is null;
+  v_own := coalesce(public.is_own_player(p_player_id), false);
   if v_team_id is null
-     or not (coalesce(public.is_own_player(p_player_id), false)
-             or public.has_team_permission(v_team_id, 'manage_loot')
+     or not (v_own
+             or (public.has_team_permission(v_team_id, 'manage_loot') and not v_leader)
              or public.is_site_admin()) then
     raise exception 'Not authorized';
   end if;
@@ -145,19 +156,21 @@ begin
            pct_gain numeric, dps_gain numeric, encounter_id integer, catalyst_from integer);
   get diagnostics v_count = row_count;
 
-  -- Written here, not through write_audit_log(), which only officers may
-  -- call; a raider adds their own sims (set_own_missing_spec() does the same).
-  insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
-  values (v_team_id, auth.uid(), 'Sim Added', 'players', p_player_id,
-    jsonb_build_object('summary', initcap(p_difficulty) || ' sim from '
-      || case p_source when 'raidbots' then 'Raidbots' else 'QE Live' end
-      || ', ' || v_count || ' results'));
+  v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' sim from '
+    || case p_source when 'raidbots' then 'Raidbots' else 'QE Live' end
+    || ', ' || v_count || ' results');
+  if v_own then
+    insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+    values (v_team_id, auth.uid(), 'Sim Added', 'players', p_player_id, v_detail);
+  else
+    perform public.write_audit_log(v_team_id, 'Sim Added', 'players', p_player_id, v_detail);
+  end if;
   return v_count;
 end;
 $$;
 
 comment on function public.save_character_sim(integer, text, text, text, timestamp with time zone, text, integer, jsonb) is
-  'Saves a raider''s sim at one difficulty, replacing the one there (#1443). The raider, an officer with manage_loot, or a site admin.';
+  'Saves a raider''s sim at one difficulty, replacing the one there (#1443). The raider, an officer with manage_loot (not on the team leader''s character), or a site admin.';
 
 -- Removes a character's sim at one difficulty. Same people as saving.
 create function public.delete_character_sim(p_player_id integer, p_difficulty text)
@@ -168,30 +181,41 @@ set search_path = public
 as $$
 declare
   v_team_id integer;
+  v_leader boolean;
+  v_own boolean;
+  v_detail jsonb;
 begin
   if auth.uid() is null then
     raise exception 'Not signed in';
   end if;
 
-  select team_id into v_team_id from public.players where id = p_player_id;
+  select p.team_id, coalesce(tm.role = 'team_leader', false) into v_team_id, v_leader
+    from public.players p
+    left join public.team_members tm on tm.id = p.team_member_id and tm.archived_at is null
+   where p.id = p_player_id;
+  v_own := coalesce(public.is_own_player(p_player_id), false);
   if v_team_id is null
-     or not (coalesce(public.is_own_player(p_player_id), false)
-             or public.has_team_permission(v_team_id, 'manage_loot')
+     or not (v_own
+             or (public.has_team_permission(v_team_id, 'manage_loot') and not v_leader)
              or public.is_site_admin()) then
     raise exception 'Not authorized';
   end if;
 
   delete from public.character_sims where player_id = p_player_id and difficulty = p_difficulty;
   if found then
-    insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
-    values (v_team_id, auth.uid(), 'Sim Removed', 'players', p_player_id,
-      jsonb_build_object('summary', initcap(p_difficulty) || ' sim removed'));
+    v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' sim removed');
+    if v_own then
+      insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+      values (v_team_id, auth.uid(), 'Sim Removed', 'players', p_player_id, v_detail);
+    else
+      perform public.write_audit_log(v_team_id, 'Sim Removed', 'players', p_player_id, v_detail);
+    end if;
   end if;
 end;
 $$;
 
 comment on function public.delete_character_sim(integer, text) is
-  'Removes a raider''s sim at one difficulty (#1443). The raider, an officer with manage_loot, or a site admin.';
+  'Removes a raider''s sim at one difficulty (#1443). The raider, an officer with manage_loot (not on the team leader''s character), or a site admin.';
 
 revoke all on function public.save_character_sim(integer, text, text, text, timestamp with time zone, text, integer, jsonb) from public, anon;
 revoke all on function public.delete_character_sim(integer, text) from public, anon;

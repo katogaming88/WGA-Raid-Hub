@@ -3996,7 +3996,7 @@ Shipped: `20261124123057_character_sims.sql`.
 
 **When a sim goes out of date is `simStaleDays` in `team_settings.config`**, 14 until the team leader changes it on Settings > Loot, saved by `set_team_setting()` like the other loot settings. Nothing expires in the database; readers compare the sim's date.
 
-**Raiders and officers both write** (Kat, 2026-11-24): the character's own raider (`is_own_player()`), an officer with `manage_loot`, or a site admin, through the two SECURITY DEFINER functions. Each writes its audit row itself rather than through `write_audit_log()`, which refuses raiders, as `set_own_missing_spec()` does.
+**Raiders and officers both write** (Kat, 2026-11-24): the character's own raider (`is_own_player()`), an officer with `manage_loot`, or a site admin, through the two SECURITY DEFINER functions. An officer can't add or remove a sim on the team leader's character; the leader manages their own (CodeRabbit on PR #1914, the repo's rule that an officer must not act on the team leader). A raider's own change writes its audit row directly, since `write_audit_log()` refuses raiders (as `set_own_missing_spec()` does); an officer's or site admin's goes through `write_audit_log()`.
 
 **Anyone reads sims**, like the rest of a profile and unlike `item_preferences`: a sim is a public link on Raidbots or QE Live already.
 
