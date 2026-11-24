@@ -630,6 +630,25 @@
   overflow-wrap: anywhere;
 }
 
+/* Each item's sim gains (#1443), pushed right, before the mark buttons. */
+.wishlist-gains {
+  display: flex;
+  gap: var(--space-3);
+  margin-left: auto;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.wishlist-gain abbr {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.wishlist-gain.is-down,
+.wishlist-gain.is-stale {
+  color: var(--text-muted);
+}
+
 .source-tag {
   margin-left: var(--space-2);
   padding: 1px 6px;

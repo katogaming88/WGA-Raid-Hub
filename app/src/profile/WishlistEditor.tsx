@@ -22,6 +22,9 @@ import {
 } from './useProfile';
 import { sourceTag } from './lootPriority';
 import { WishlistSummaryCard } from './LootPriorityCard';
+import { SimsCard } from '../sims/SimsCard';
+import { usePlayerSims, useSimStaleDays } from '../sims/useSims';
+import { DIFFICULTY_LABELS, DIFFICULTY_SHORT, formatGain, gainsByItem, type ItemGain } from '../sims/sims';
 import {
   editorSeason,
   editorSlots,
@@ -123,6 +126,8 @@ export function WishlistTab({
         season={season}
         seasonOf={{ reads: tiers, code: planned, name: planned && nameOf(planned) }}
       />
+      {/* Sims sit here, each item's gain beside its marks (Kat, 2026-11-24, #1443). */}
+      <SimsCard player={player} teamId={teamId} own={own} upgrades={false} />
       <WishlistEditor player={player} teamId={teamId} season={season} tiers={tiers} planned={planned} own={own} />
     </div>
   );
@@ -156,6 +161,9 @@ function WishlistEditor({
   const tokens = useSeasonTierTokens(planned);
   // Not on a phone or tablet, where a stray tap marks the wrong item.
   const touch = useTouchScreen();
+  const sims = usePlayerSims(player.id);
+  const staleDays = useSimStaleDays(teamId);
+  const gains = sims.isSuccess ? gainsByItem(sims.data.sims, staleDays.isSuccess ? staleDays.data : null) : undefined;
 
   return (
     <section className="card profile-card" aria-labelledby="wishlist-editor-title">
@@ -184,6 +192,7 @@ function WishlistEditor({
                 editable={own && planned != null && (open || player.wishlist_allowed) && !touch}
                 closed={own && (planned == null || (!open && !player.wishlist_allowed))}
                 touch={own && touch}
+                gains={gains}
               />
             )}
           </DataState>
@@ -274,7 +283,8 @@ function Editor({
   owner,
   editable,
   closed,
-  touch
+  touch,
+  gains
 }: {
   input: EditorInput;
   teamId: number;
@@ -282,6 +292,8 @@ function Editor({
   editable: boolean;
   closed: boolean;
   touch: boolean;
+  // Each item's sim gains, by Wowhead id (#1443); none for a signup.
+  gains?: Map<number, ItemGain[]> | undefined;
 }) {
   const mark = useMarkWishlist(owner);
   const saveNote = useSaveWishlistNote(owner);
@@ -324,6 +336,7 @@ function Editor({
           editable={editable}
           onMark={set}
           onNote={(ids, note) => saveNote.mutate({ ids, note })}
+          gains={gains}
         />
       )}
     </>
@@ -345,13 +358,15 @@ function SlotTabs({
   disabled,
   editable,
   onMark,
-  onNote
+  onNote,
+  gains
 }: {
   slots: EditorSlot[];
   disabled: boolean;
   editable: boolean;
   onMark: (slot: string, itemId: number, next: Mark | null) => void;
   onNote: (ids: number[], note: string) => void;
+  gains?: Map<number, ItemGain[]> | undefined;
 }) {
   const [chosen, setChosen] = useState(slots[0]!.slot);
   // The item whose note box is open: one at a time, opened by its note button.
@@ -437,6 +452,7 @@ function SlotTabs({
                 <ItemLink link={item.link}>{item.name}</ItemLink>
                 {sourceTag(item.source) && <span className="source-tag">{sourceTag(item.source)}</span>}
               </span>
+              {gains && <SimGains gains={(item.link && gains.get(item.link.wowId)) || []} />}
               {item.takenBy ? (
                 <span className="wishlist-taken">Your {item.takenBy} BiS</span>
               ) : (
@@ -542,5 +558,29 @@ function NoteField({
         }
       }}
     />
+  );
+}
+
+// An item's gain in each of the raider's sims (#1443), Mythic first: "M +1.98%
+// H +1.20%". An out-of-date sim's gain is greyed; a dash when no sim has it.
+function SimGains({ gains }: { gains: ItemGain[] }) {
+  if (!gains.length) {
+    return (
+      <span className="wishlist-gains text-muted">
+        <span aria-hidden="true">–</span>
+        <span className="visually-hidden">No sim</span>
+      </span>
+    );
+  }
+  return (
+    <span className="wishlist-gains">
+      {gains.map((g) => (
+        <span key={g.difficulty} className={`wishlist-gain${g.stale ? ' is-stale' : ''}${g.pct < 0 ? ' is-down' : ''}`}>
+          <abbr title={DIFFICULTY_LABELS[g.difficulty]}>{DIFFICULTY_SHORT[g.difficulty]}</abbr>{' '}
+          <span className="num">{formatGain(g.pct)}</span>
+          {g.stale && <span className="visually-hidden"> (out of date)</span>}
+        </span>
+      ))}
+    </span>
   );
 }

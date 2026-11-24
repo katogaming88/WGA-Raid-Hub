@@ -20,7 +20,7 @@ answers to.
 
 ### Project
 
-- My profile has a Sims tab (#1443). A raider, or an officer who manages loot, pastes a Raidbots droptimizer or QE Live upgrade report link and the page reads the report, checks it's for this character, and saves it. Each upgrade is listed once, biggest first, with its best slot, its item level and its wishlist mark. QE Live shows the fully upgraded gain. A sim older than the team's setting says Out of date and is greyed out.
+- My profile's Wishlist tab shows each item's sim gain beside its marks, one per difficulty ("M +1.98%  H +1.20%"), and lists the raider's sims above the slots (#1443). A raider, or an officer who manages loot, pastes a Raidbots droptimizer or QE Live upgrade report link there; the page reads the report, checks it's for this character, and saves it. A tier token shows the gain of the piece it becomes. QE Live shows the fully upgraded gain. A sim older than the team's setting says Out of date and its gains are greyed. A Loot council team, which has no Wishlist tab, gets a Sims tab listing each sim's upgrades instead.
 - Settings > Loot has a Sims card: the team leader sets how many days a sim stays up to date, 14 until changed (#1443).
 - Help has an "Add your sim" guide (#1443).
 - The Access card's Save button on Settings > Loot reads "Saving…" while it saves, instead of a broken character.

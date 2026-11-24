@@ -258,6 +258,8 @@ export async function openApp(browser, port, state) {
     // An officer's note on a character (#1360's player settings): none unless
     // a state lists one.
     player_officer_notes: [],
+    // A raider's sims (#1443), read by the Wishlist tab: none unless a state lists them.
+    character_sims: [],
     classes_specs: [],
     // Home (#1102): the loot feed, raid progression, the calendar, and the
     // stream widget every team page carries.

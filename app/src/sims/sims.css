@@ -62,3 +62,25 @@
 .sims-stale .sims-table .item-link {
   color: var(--text-muted);
 }
+
+/* The Wishlist tab's list: difficulty and details on one line per sim. */
+.sims-compact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-3);
+  padding-top: var(--space-2);
+}
+
+.sims-compact + .sims-compact {
+  margin-top: var(--space-2);
+}
+
+.sims-compact .sims-title,
+.sims-compact .sims-meta {
+  margin: 0;
+}
+
+.sims-compact .sims-meta {
+  flex: 1 1 auto;
+}

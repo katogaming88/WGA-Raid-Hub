@@ -1128,6 +1128,55 @@ describe('Profile > Sims', () => {
       })
     });
 
+  // Kat, 2026-11-24: a team with wishlists shows each item's gain on the
+  // Wishlist tab, with the sims listed above it, and has no Sims tab.
+  it('shows each difficulty’s gain beside the item on the Wishlist tab, and no Sims tab', async () => {
+    const HEROIC = {
+      ...SAVED,
+      id: 8,
+      difficulty: 'heroic',
+      source: 'qe_live',
+      simmed_at: '2026-01-01T00:00:00Z',
+      character_sim_results: [{ ...SAVED.character_sim_results[0], id: 9, slot: null, pct_gain: 1.2 }]
+    };
+    renderApp(
+      '/g/wga/t/phoenix/me/wishlist',
+      profileHandlers(person('raider', 11), {
+        character_sims: () => ({ data: [SAVED, HEROIC] }),
+        team_settings: () => ({ data: [] }),
+        team_seasons: () => ({ data: [{ season_code: 'MID2', wishlist_open: true }] }),
+        item_preferences: () => ({ data: [] }),
+        raid_zones: () => ({ data: [{ wcl_zone_id: 99, season: 'MID2' }] }),
+        tier_token_map: () => ({ data: [] }),
+        items: () => ({
+          data: [
+            {
+              id: 10,
+              name: 'Band of the Abyss',
+              slot: 'Head',
+              wcl_zone_id: 99,
+              is_placeholder: false,
+              armor_type: null,
+              main_stats: null,
+              weapon_subtype: null,
+              source: null,
+              wow_item_id: 268252,
+              is_ptr: false,
+              icon: null,
+              item_seasons: []
+            }
+          ]
+        })
+      })
+    );
+    const band = (await screen.findByRole('group', { name: 'Band of the Abyss, Head' })).closest('li')!;
+    expect(band.querySelector('.wishlist-gains')).toHaveTextContent('M +1.98%H +1.20% (out of date)');
+    expect(screen.getByRole('heading', { name: 'Sims' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Sims' })).not.toBeInTheDocument();
+    // The list above names each sim but leaves the upgrades to the slots below.
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
   it('reads the pasted report and saves it for the raider’s own character', async () => {
     const fetch = stubFetch(report('Torbjorn', 'illidan'));
     const { client } = renderApp('/g/wga/t/phoenix/me/sims', withSims([]));

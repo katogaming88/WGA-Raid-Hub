@@ -3,6 +3,7 @@ import raidbots from './fixtures/raidbots-droptimizer.json';
 import qeLive from './fixtures/qe-live-upgrade-report.json';
 import {
   asStaleDays,
+  gainsByItem,
   bestPerItem,
   isCharacter,
   isStale,
@@ -143,5 +144,44 @@ describe('out of date', () => {
     const now = Date.parse('2026-11-24T12:00:00Z');
     expect(isStale('2026-11-19T12:00:00Z', 5, now)).toBe(false);
     expect(isStale('2026-11-19T11:00:00Z', 5, now)).toBe(true);
+  });
+});
+
+describe('gainsByItem', () => {
+  const result = (o: Partial<SavedResult>): SavedResult => ({
+    id: 1,
+    wow_item_id: 1,
+    item_name: null,
+    slot: null,
+    item_level: 334,
+    pct_gain: 1,
+    dps_gain: null,
+    encounter_id: null,
+    catalyst_from: null,
+    ...o
+  });
+  it('lists each item’s gain per sim, Mythic first, marking an old sim', () => {
+    const now = Date.parse('2026-11-24T12:00:00Z');
+    const gains = gainsByItem(
+      [
+        { difficulty: 'heroic', simmed_at: '2026-11-01T00:00:00Z', character_sim_results: [result({ pct_gain: 1.2 })] },
+        {
+          difficulty: 'mythic',
+          simmed_at: '2026-11-23T00:00:00Z',
+          character_sim_results: [
+            result({ pct_gain: 1.5, item_level: 321 }),
+            result({ pct_gain: 1.98 }),
+            result({ wow_item_id: 2, pct_gain: -1 })
+          ]
+        }
+      ],
+      14,
+      now
+    );
+    expect(gains.get(1)).toEqual([
+      { difficulty: 'mythic', pct: 1.98, stale: false },
+      { difficulty: 'heroic', pct: 1.2, stale: true }
+    ]);
+    expect(gains.get(2)).toEqual([{ difficulty: 'mythic', pct: -1, stale: false }]);
   });
 });

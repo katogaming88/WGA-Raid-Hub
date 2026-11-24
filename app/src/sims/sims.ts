@@ -294,3 +294,27 @@ const SLOT_LABELS: Record<string, string> = {
 };
 export const slotLabel = (slot: string | null) => (slot ? (SLOT_LABELS[slot] ?? slot) : '');
 export const formatGain = (pct: number) => `${pct > 0 ? '+' : ''}${pct.toFixed(2)}%`;
+
+// The Wishlist tab's gains (Kat, 2026-11-24): for each item, by Wowhead id,
+// its gain in each saved sim, highest difficulty first, each at its fully
+// upgraded level and best slot. A tier token's row asks for the piece it
+// becomes, so it shows that piece's gain.
+export type ItemGain = { difficulty: Difficulty; pct: number; stale: boolean };
+export function gainsByItem(
+  sims: { difficulty: Difficulty; simmed_at: string; character_sim_results: SavedResult[] }[],
+  staleDays: number | null,
+  now = Date.now()
+): Map<number, ItemGain[]> {
+  const gains = new Map<number, ItemGain[]>();
+  for (const difficulty of DIFFICULTY_ORDER) {
+    for (const sim of sims.filter((s) => s.difficulty === difficulty)) {
+      const stale = staleDays !== null && isStale(sim.simmed_at, staleDays, now);
+      for (const r of bestPerItem(sim.character_sim_results)) {
+        gains.set(r.wow_item_id, [...(gains.get(r.wow_item_id) ?? []), { difficulty, pct: Number(r.pct_gain), stale }]);
+      }
+    }
+  }
+  return gains;
+}
+
+export const DIFFICULTY_SHORT: Record<Difficulty, string> = { lfr: 'LFR', normal: 'N', heroic: 'H', mythic: 'M' };
