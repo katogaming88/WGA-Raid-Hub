@@ -33,12 +33,15 @@ begin
   delete from public.character_sims where player_id = p_player_id and difficulty = p_difficulty;
   if found then
     v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' sim removed');
-    if v_own and not (public.has_team_permission(v_team_id, 'manage_loot') or public.is_site_admin()) then
+    begin
+      perform public.write_audit_log(v_team_id, 'Sim Removed', 'players', p_player_id, v_detail);
+    exception when raise_exception then
+      if not v_own then
+        raise;
+      end if;
       insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
       values (v_team_id, auth.uid(), 'Sim Removed', 'players', p_player_id, v_detail);
-    else
-      perform public.write_audit_log(v_team_id, 'Sim Removed', 'players', p_player_id, v_detail);
-    end if;
+    end;
   end if;
 end;
 $function$;

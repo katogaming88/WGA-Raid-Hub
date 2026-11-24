@@ -72,12 +72,17 @@ begin
   v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' sim from '
     || case p_source when 'raidbots' then 'Raidbots' else 'QE Live' end
     || ', ' || v_count || ' results');
-  if v_own and not (public.has_team_permission(v_team_id, 'manage_loot') or public.is_site_admin()) then
+  -- write_audit_log() for everyone it accepts; it raises for a raider with
+  -- no officer permission, whose own change is then logged directly.
+  begin
+    perform public.write_audit_log(v_team_id, 'Sim Added', 'players', p_player_id, v_detail);
+  exception when raise_exception then
+    if not v_own then
+      raise;
+    end if;
     insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
     values (v_team_id, auth.uid(), 'Sim Added', 'players', p_player_id, v_detail);
-  else
-    perform public.write_audit_log(v_team_id, 'Sim Added', 'players', p_player_id, v_detail);
-  end if;
+  end;
   return v_count;
 end;
 $function$;

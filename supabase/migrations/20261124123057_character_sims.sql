@@ -22,10 +22,11 @@
 -- directly: save_character_sim() and delete_character_sim() do, for the
 -- character's own raider, an officer with manage_loot (but not on the team
 -- leader's character, CodeRabbit on PR #1914), or a site admin, on an active
--- character. A raider's own change writes its audit row itself, since
--- write_audit_log() refuses raiders (set_own_missing_spec() does the same);
--- an officer's or site admin's, their own included, goes through
--- write_audit_log().
+-- character. Every change is logged through write_audit_log(); only when it
+-- refuses the caller (a raider with no officer permission, changing their own
+-- sim) is the row written directly, as set_own_missing_spec() does. Asking
+-- write_audit_log() rather than copying its permission list keeps the two in
+-- step (CodeRabbit on PR #1914).
 
 create table public.character_sims (
   id bigint generated always as identity primary key,
@@ -161,12 +162,17 @@ begin
   v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' sim from '
     || case p_source when 'raidbots' then 'Raidbots' else 'QE Live' end
     || ', ' || v_count || ' results');
-  if v_own and not (public.has_team_permission(v_team_id, 'manage_loot') or public.is_site_admin()) then
+  -- write_audit_log() for everyone it accepts; it raises for a raider with
+  -- no officer permission, whose own change is then logged directly.
+  begin
+    perform public.write_audit_log(v_team_id, 'Sim Added', 'players', p_player_id, v_detail);
+  exception when raise_exception then
+    if not v_own then
+      raise;
+    end if;
     insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
     values (v_team_id, auth.uid(), 'Sim Added', 'players', p_player_id, v_detail);
-  else
-    perform public.write_audit_log(v_team_id, 'Sim Added', 'players', p_player_id, v_detail);
-  end if;
+  end;
   return v_count;
 end;
 $$;
@@ -206,12 +212,15 @@ begin
   delete from public.character_sims where player_id = p_player_id and difficulty = p_difficulty;
   if found then
     v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' sim removed');
-    if v_own and not (public.has_team_permission(v_team_id, 'manage_loot') or public.is_site_admin()) then
+    begin
+      perform public.write_audit_log(v_team_id, 'Sim Removed', 'players', p_player_id, v_detail);
+    exception when raise_exception then
+      if not v_own then
+        raise;
+      end if;
       insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
       values (v_team_id, auth.uid(), 'Sim Removed', 'players', p_player_id, v_detail);
-    else
-      perform public.write_audit_log(v_team_id, 'Sim Removed', 'players', p_player_id, v_detail);
-    end if;
+    end;
   end if;
 end;
 $$;
