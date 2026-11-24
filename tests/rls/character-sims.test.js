@@ -66,8 +66,10 @@ describe('save_character_sim()', () => {
       expect(await simsOf(q, playerId)).toEqual([
         { difficulty: 'mythic', source: 'raidbots', report_id: 'abc123', results: 2 }
       ]);
-      const audit = await q(`select 1 from public.audit_log where action = 'Sim Added' and target_id = $1`, [playerId]);
-      expect(audit.rowCount).toBe(1);
+      const audit = await q(`select actor_id from public.audit_log where action = 'Sim Added' and target_id = $1`, [
+        playerId
+      ]);
+      expect(audit.rows).toEqual([{ actor_id: team.raider.uid }]);
     }));
 
   it('replaces the sim at the same difficulty and keeps the other difficulties', () =>
@@ -160,6 +162,32 @@ describe('save_character_sim()', () => {
         own
       ]);
       expect(audit.rows).toEqual([{ actor_id: team.officer.uid }]);
+    }));
+
+  // CodeRabbit on PR #1914: an officer whose rank edits the roster but doesn't
+  // manage loot changes their own sim through write_audit_log(), which accepts
+  // edit_roster, like any officer; one row each for the save and the removal.
+  it('logs an officer without manage_loot changing their own sim, save and removal', () =>
+    withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      await q(
+        "delete from public.team_rank_permissions where team_id = $1 and rank = 'officer' and permission = 'manage_loot'",
+        [team.teamId]
+      );
+      const own = await seedPlayer(q, { memberId: team.officer.memberId, nameRealm: 'Rosterly-Illidan' });
+      const other = await seedPlayer(q, { memberId: team.raider.memberId, nameRealm: 'Notmine-Illidan' });
+      // Without manage_loot the officer can't change a raider's sim.
+      await expect(save(asUser, team.officer.uid, other)).rejects.toThrow(/not authorized/i);
+      expect(await save(asUser, team.officer.uid, own)).toBe(2);
+      await remove(asUser, team.officer.uid, own);
+      const audit = await q(
+        `select action, actor_id from public.audit_log where target_id = $1 and action like 'Sim %' order by id`,
+        [own]
+      );
+      expect(audit.rows).toEqual([
+        { action: 'Sim Added', actor_id: team.officer.uid },
+        { action: 'Sim Removed', actor_id: team.officer.uid }
+      ]);
     }));
 
   it('cannot be written directly, and anyone can read it', () =>
