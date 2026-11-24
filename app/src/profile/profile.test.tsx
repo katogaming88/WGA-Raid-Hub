@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, filterValue, seededHandlers, type Read } from '../test/fakeSupabase';
@@ -1217,6 +1217,28 @@ describe('Profile > Sims', () => {
     expect(screen.getByText('Out of date')).toBeInTheDocument();
     expect(screen.getByText('simmed 4 days ago')).toBeInTheDocument();
     vi.useRealTimers();
+  });
+
+  // The database refuses an officer on the team leader's character (CodeRabbit
+  // on PR #1914), so the page doesn't offer it there.
+  it('offers an officer Add sim on a raider’s profile, not on the team leader’s', async () => {
+    const asOfficer = (role: string) =>
+      profileHandlers(person('officer', null), {
+        character_sims: () => ({ data: [SAVED] }),
+        items: () => ({ data: [] }),
+        team_settings: () => ({ data: [] }),
+        players: (read) =>
+          /team_members\(role/.test(read.columns ?? '')
+            ? { data: { team_members: { role, archived_at: null } } }
+            : { data: TORBJORN }
+      });
+    renderApp('/g/wga/t/phoenix/p/tb000011/sims', asOfficer('raider'));
+    expect(await screen.findByRole('button', { name: 'Add sim' })).toBeInTheDocument();
+    cleanup();
+    renderApp('/g/wga/t/phoenix/p/tb000011/sims', asOfficer('team_leader'));
+    await screen.findByRole('row', { name: /Band of the Abyss/ });
+    expect(screen.queryByRole('button', { name: 'Add sim' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove the Mythic sim' })).not.toBeInTheDocument();
   });
 
   it('removes a sim', async () => {

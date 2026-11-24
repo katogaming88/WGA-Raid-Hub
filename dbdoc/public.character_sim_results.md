@@ -24,8 +24,10 @@ Each result in a sim (#1443): the item, the slot simmed into (Raidbots only), it
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | character_sim_results_catalyst_from_check | CHECK | CHECK ((catalyst_from > 0)) |
+| character_sim_results_dps_gain_check | CHECK | CHECK (((dps_gain >= ('-100000000'::integer)::numeric) AND (dps_gain <= (100000000)::numeric))) |
 | character_sim_results_item_level_check | CHECK | CHECK (((item_level >= 1) AND (item_level <= 2000))) |
 | character_sim_results_item_name_check | CHECK | CHECK ((char_length(item_name) <= 200)) |
+| character_sim_results_pct_gain_check | CHECK | CHECK (((pct_gain >= ('-100'::integer)::numeric) AND (pct_gain <= (1000)::numeric))) |
 | character_sim_results_slot_check | CHECK | CHECK ((char_length(slot) <= 20)) |
 | character_sim_results_wow_item_id_check | CHECK | CHECK ((wow_item_id > 0)) |
 | character_sim_results_sim_id_fkey | FOREIGN KEY | FOREIGN KEY (sim_id) REFERENCES character_sims(id) ON DELETE CASCADE |

@@ -48,6 +48,23 @@ export function usePlayerSims(playerId: number) {
   });
 }
 
+// Whether the character is the team leader's: an officer can't add or remove
+// the leader's sims (save_character_sim(), CodeRabbit on PR #1914), so the
+// page doesn't offer it.
+export function useIsLeaderCharacter(playerId: number) {
+  return useSupabaseQuery<boolean>(['sims-leader', playerId], async (client) => {
+    const result = await client
+      .from('players')
+      .select('team_members(role, archived_at)')
+      .eq('id', playerId)
+      .maybeSingle();
+    if (result.error) return { data: null, error: result.error };
+    const member = (result.data as { team_members: { role: string; archived_at: string | null } | null } | null)
+      ?.team_members;
+    return { data: member?.role === 'team_leader' && !member.archived_at, error: null };
+  });
+}
+
 // Reads the report from Raidbots or QE Live. Both sites let a browser read
 // it; a failure here is theirs (or the network's), said in plain words.
 export async function readReport(link: SimLink): Promise<ParsedReport | { error: string }> {

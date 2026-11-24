@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     58 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 55 h 0 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 55 h 20 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **229 h 28 m** |             |
+| **All revamp work**                | **229 h 48 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 18 h 33 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 18 h 53 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -878,6 +878,7 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 12:13-12:15 PM | PR #1913 (#1442): Kat's merge; cleanup, #1442 closed with a status comment, its row out of #1487, local database restored, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1442) | 2 m | Kat review, build | 7,900 | |
 | 12:15-12:45 PM | #1443 part 1 of 2: Kat's sample reports and four calls (raiders and officers add, a new sim replaces the old, QE Live's fully upgraded gain, two PRs); both sites' report data read and checked readable from a browser; tables and the save and remove functions, database tests; link and report parsing with tests on trimmed real reports; the profile's Sims tab, Settings > Loot's Sims card, a Help guide, page and browser accessibility tests; generated docs, RLS.md, decision log, stamp, changelog, these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1443) | 30 m | build (Kat's answers inline) | 203,400 | Kat's wait to paste the links not counted. Preflight, PR, reviews and merge not yet counted. |
 | 12:45-12:58 PM, 1:00-1:18 PM | PR #1914 (#1443 part 1): preflight (three check notes fixed, RLS reset after stray local data), PR opened, screenshots (the days field fixed on the way); Kat's call to put the gains on the Wishlist tab, not a Sims tab, and two more (a Sims tab for Loot council teams only, each difficulty's gain): gains beside each item, the sims list above the slots, Help, tests, accessibility states and screenshots redone, this row | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1443) | 31 m | build, Kat review (answers inline) | 105,900 | Reviews and merge not yet counted. |
+| 1:18-1:38 PM | PR #1914 (#1443 part 1): CodeRabbit's four points (an officer can't change the team leader's sims, officer changes log through write_audit_log(), more delete refusals and checks) and its follow-up (an officer's own sim logs the same way), replies in its threads; the fresh-agent migration review (changes needed) and its fixes: bounded gains refuse NaN and infinity, the page hides Add sim on the leader's profile for officers, backup-restore.md, delete skips archived characters; a CI test that failed once (passes locally three times), this row | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1443) | 20 m | build | 177,800 | Tokens include the fresh-agent review (116,600). Kat's review and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 

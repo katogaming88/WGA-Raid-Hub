@@ -16,7 +16,7 @@ answers to.
 
 ### Backend
 
-- Raiders' droptimizer sims are stored (#1443): one sim per character per difficulty, Raidbots or QE Live, with every result in it (each item, slot and item level, and the gain). `save_character_sim()` and `delete_character_sim()` write them, for the raider, an officer who manages loot, or a site admin. A new sim replaces the one at the same difficulty. Anyone can read them, like the rest of a profile.
+- Raiders' droptimizer sims are stored (#1443): one sim per character per difficulty, Raidbots or QE Live, with every result in it (each item, slot and item level, and the gain). `save_character_sim()` and `delete_character_sim()` write them, for the raider, an officer who manages loot (not on the team leader's character, whose sims are the leader's own), or a site admin. A new sim replaces the one at the same difficulty. Anyone can read them, like the rest of a profile.
 
 ### Project
 

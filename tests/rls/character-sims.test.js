@@ -137,6 +137,31 @@ describe('save_character_sim()', () => {
       expect(await simsOf(q, playerId)).toEqual([]);
     }));
 
+  // The fresh-agent review on PR #1914: gains are bounded, which also turns
+  // away NaN and infinity, since the Priority page sorts by them.
+  it('refuses a gain that is not a number or out of bounds', () =>
+    withTxn(async ({ q, asUser }) => {
+      const { team, playerId } = await raiderWithCharacter(q);
+      for (const bad of [{ pct_gain: 'NaN' }, { pct_gain: 'Infinity' }, { pct_gain: 5000 }, { dps_gain: 1e12 }]) {
+        await expect(save(asUser, team.raider.uid, playerId, { results: [result(bad)] })).rejects.toThrow(
+          /check constraint/i
+        );
+      }
+      expect(await simsOf(q, playerId)).toEqual([]);
+    }));
+
+  // CodeRabbit on PR #1914: an officer's own sim is logged through write_audit_log() too.
+  it('lets an officer save a sim on their own character', () =>
+    withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const own = await seedPlayer(q, { memberId: team.officer.memberId, nameRealm: 'Officerly-Illidan' });
+      expect(await save(asUser, team.officer.uid, own)).toBe(2);
+      const audit = await q(`select actor_id from public.audit_log where action = 'Sim Added' and target_id = $1`, [
+        own
+      ]);
+      expect(audit.rows).toEqual([{ actor_id: team.officer.uid }]);
+    }));
+
   it('cannot be written directly, and anyone can read it', () =>
     withTxn(async ({ q, asUser, asAnon }) => {
       const { team, playerId } = await raiderWithCharacter(q);

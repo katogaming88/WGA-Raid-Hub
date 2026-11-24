@@ -21,7 +21,7 @@ begin
   select p.team_id, coalesce(tm.role = 'team_leader', false) into v_team_id, v_leader
     from public.players p
     left join public.team_members tm on tm.id = p.team_member_id and tm.archived_at is null
-   where p.id = p_player_id;
+   where p.id = p_player_id and p.archived_at is null;
   v_own := coalesce(public.is_own_player(p_player_id), false);
   if v_team_id is null
      or not (v_own
@@ -33,7 +33,7 @@ begin
   delete from public.character_sims where player_id = p_player_id and difficulty = p_difficulty;
   if found then
     v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' sim removed');
-    if v_own then
+    if v_own and not (public.has_team_permission(v_team_id, 'manage_loot') or public.is_site_admin()) then
       insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
       values (v_team_id, auth.uid(), 'Sim Removed', 'players', p_player_id, v_detail);
     else

@@ -72,7 +72,7 @@ begin
   v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' sim from '
     || case p_source when 'raidbots' then 'Raidbots' else 'QE Live' end
     || ', ' || v_count || ' results');
-  if v_own then
+  if v_own and not (public.has_team_permission(v_team_id, 'manage_loot') or public.is_site_admin()) then
     insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
     values (v_team_id, auth.uid(), 'Sim Added', 'players', p_player_id, v_detail);
   else

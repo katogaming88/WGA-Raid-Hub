@@ -21,9 +21,10 @@
 -- Anyone can read sims, like the rest of a profile. Nobody writes the tables
 -- directly: save_character_sim() and delete_character_sim() do, for the
 -- character's own raider, an officer with manage_loot (but not on the team
--- leader's character, CodeRabbit on PR #1914), or a site admin. A raider's
--- own change writes its audit row itself, since write_audit_log() refuses
--- raiders (set_own_missing_spec() does the same); anyone else's goes through
+-- leader's character, CodeRabbit on PR #1914), or a site admin, on an active
+-- character. A raider's own change writes its audit row itself, since
+-- write_audit_log() refuses raiders (set_own_missing_spec() does the same);
+-- an officer's or site admin's, their own included, goes through
 -- write_audit_log().
 
 create table public.character_sims (
@@ -53,8 +54,9 @@ create table public.character_sim_results (
   item_name text check (char_length(item_name) <= 200),
   slot text check (char_length(slot) <= 20),
   item_level integer not null check (item_level between 1 and 2000),
-  pct_gain numeric not null,
-  dps_gain numeric,
+  -- Bounded, which also refuses NaN and infinity: the Priority page sorts by these.
+  pct_gain numeric not null check (pct_gain between -100 and 1000),
+  dps_gain numeric check (dps_gain between -100000000 and 100000000),
   encounter_id integer,
   catalyst_from integer check (catalyst_from > 0)
 );
@@ -159,7 +161,7 @@ begin
   v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' sim from '
     || case p_source when 'raidbots' then 'Raidbots' else 'QE Live' end
     || ', ' || v_count || ' results');
-  if v_own then
+  if v_own and not (public.has_team_permission(v_team_id, 'manage_loot') or public.is_site_admin()) then
     insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
     values (v_team_id, auth.uid(), 'Sim Added', 'players', p_player_id, v_detail);
   else
@@ -192,7 +194,7 @@ begin
   select p.team_id, coalesce(tm.role = 'team_leader', false) into v_team_id, v_leader
     from public.players p
     left join public.team_members tm on tm.id = p.team_member_id and tm.archived_at is null
-   where p.id = p_player_id;
+   where p.id = p_player_id and p.archived_at is null;
   v_own := coalesce(public.is_own_player(p_player_id), false);
   if v_team_id is null
      or not (v_own
@@ -204,7 +206,7 @@ begin
   delete from public.character_sims where player_id = p_player_id and difficulty = p_difficulty;
   if found then
     v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' sim removed');
-    if v_own then
+    if v_own and not (public.has_team_permission(v_team_id, 'manage_loot') or public.is_site_admin()) then
       insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
       values (v_team_id, auth.uid(), 'Sim Removed', 'players', p_player_id, v_detail);
     else

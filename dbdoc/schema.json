@@ -15792,6 +15792,16 @@
           ]
         },
         {
+          "name": "character_sim_results_dps_gain_check",
+          "type": "CHECK",
+          "def": "CHECK (((dps_gain \u003e= ('-100000000'::integer)::numeric) AND (dps_gain \u003c= (100000000)::numeric)))",
+          "table": "public.character_sim_results",
+          "referenced_table": "",
+          "columns": [
+            "dps_gain"
+          ]
+        },
+        {
           "name": "character_sim_results_item_level_check",
           "type": "CHECK",
           "def": "CHECK (((item_level \u003e= 1) AND (item_level \u003c= 2000)))",
@@ -15809,6 +15819,16 @@
           "referenced_table": "",
           "columns": [
             "item_name"
+          ]
+        },
+        {
+          "name": "character_sim_results_pct_gain_check",
+          "type": "CHECK",
+          "def": "CHECK (((pct_gain \u003e= ('-100'::integer)::numeric) AND (pct_gain \u003c= (1000)::numeric)))",
+          "table": "public.character_sim_results",
+          "referenced_table": "",
+          "columns": [
+            "pct_gain"
           ]
         },
         {

@@ -19,6 +19,7 @@ import {
 import {
   readReport,
   usePlayerSims,
+  useIsLeaderCharacter,
   useRemoveSim,
   useSaveSims,
   useSimStaleDays,
@@ -46,7 +47,8 @@ export function SimsCard({
   upgrades: boolean;
 }) {
   const { can } = usePageCan();
-  const canAdd = own || can('manageLoot');
+  const leader = useIsLeaderCharacter(player.id);
+  const canAdd = own || (can('manageLoot') && leader.isSuccess && !leader.data);
   const sims = usePlayerSims(player.id);
   const staleDays = useSimStaleDays(teamId);
   return (
