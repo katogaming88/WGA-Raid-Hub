@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useTeam } from '../data/address';
 import { usePageCan } from '../auth/access';
 import { DataState } from '../components/DataState';
@@ -14,6 +14,7 @@ import {
   type LootAccess
 } from './useSettings';
 import { LootReceivedCard } from './LootReceivedCard';
+import { useSaveSimStaleDays, useSimStaleDays } from '../sims/useSims';
 import './settings.css';
 
 // Settings > Loot (#1560): the team leader picks how the team hands out loot;
@@ -29,6 +30,7 @@ export function LootSettingsPage() {
   const canEdit = can('leadTeam');
   const responses = useLootResponses(team.id);
   const access = useLootAccess(team.id);
+  const staleDays = useSimStaleDays(team.id);
 
   return (
     <section className="page settings-page" aria-labelledby="page-title">
@@ -52,8 +54,73 @@ export function LootSettingsPage() {
         <DataState query={access} label="loot access">
           {(saved) => <LootAccessCard key={JSON.stringify(saved)} teamId={team.id} saved={saved} canEdit={canEdit} />}
         </DataState>
+        <DataState query={staleDays} label="sim settings">
+          {(saved) => <SimsCard key={saved} teamId={team.id} saved={saved} canEdit={canEdit} />}
+        </DataState>
       </div>
     </section>
+  );
+}
+
+// How many days a raider's sim stays up to date (#1443), 14 until the team
+// leader changes it. After that it is greyed out and counts as no sim.
+function SimsCard({ teamId, saved, canEdit }: { teamId: number; saved: number; canEdit: boolean }) {
+  const id = useId();
+  const { announce } = useStatus();
+  const [days, setDays] = useState(String(saved));
+  const save = useSaveSimStaleDays(teamId);
+  const n = Number(days);
+  const valid = Number.isInteger(n) && n >= 1 && n <= 365;
+
+  const onSave = () =>
+    save.mutate(n, {
+      onSuccess: () => announce('success', 'Saved!'),
+      onError: (error) => announce('error', errorMessage(error))
+    });
+
+  return (
+    <div className="card settings-card">
+      <h2>Sims</h2>
+      <p className="text-muted">
+        Raiders add a Raidbots droptimizer or QE Live upgrade report on their profile. An old sim is greyed out and
+        counts as no sim.
+      </p>
+      <div className="field">
+        <label className="field-label" htmlFor={id}>
+          A sim goes out of date after
+        </label>
+        <div className="settings-row">
+          <input
+            id={id}
+            className="input settings-number"
+            type="number"
+            min={1}
+            max={365}
+            step={1}
+            value={days}
+            disabled={!canEdit}
+            aria-describedby={`${id}-unit`}
+            onChange={(e) => setDays(e.target.value)}
+          />
+          <span id={`${id}-unit`}>days</span>
+        </div>
+        {!valid && <p className="form-error">Enter a whole number of days, from 1 to 365.</p>}
+      </div>
+      {canEdit ? (
+        <div className="settings-row">
+          <button
+            type="button"
+            className="button button-primary"
+            onClick={onSave}
+            disabled={save.isPending || !valid || n === saved}
+          >
+            {save.isPending ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      ) : (
+        <p className="text-muted">Only the team leader can change this.</p>
+      )}
+    </div>
   );
 }
 
@@ -113,7 +180,7 @@ function LootAccessCard({ teamId, saved, canEdit }: { teamId: number; saved: Loo
             onClick={onSave}
             disabled={save.isPending || !changed}
           >
-            {save.isPending ? 'Saving�' : 'Save'}
+            {save.isPending ? 'Saving…' : 'Save'}
           </button>
         </div>
       )}

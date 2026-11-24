@@ -547,6 +547,131 @@ export type Database = {
           },
         ]
       }
+      character_sim_results: {
+        Row: {
+          catalyst_from: number | null
+          dps_gain: number | null
+          encounter_id: number | null
+          id: number
+          item_level: number
+          item_name: string | null
+          pct_gain: number
+          sim_id: number
+          slot: string | null
+          wow_item_id: number
+        }
+        Insert: {
+          catalyst_from?: number | null
+          dps_gain?: number | null
+          encounter_id?: number | null
+          id?: never
+          item_level: number
+          item_name?: string | null
+          pct_gain: number
+          sim_id: number
+          slot?: string | null
+          wow_item_id: number
+        }
+        Update: {
+          catalyst_from?: number | null
+          dps_gain?: number | null
+          encounter_id?: number | null
+          id?: never
+          item_level?: number
+          item_name?: string | null
+          pct_gain?: number
+          sim_id?: number
+          slot?: string | null
+          wow_item_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "character_sim_results_sim_id_fkey"
+            columns: ["sim_id"]
+            isOneToOne: false
+            referencedRelation: "character_sims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      character_sims: {
+        Row: {
+          added_at: string
+          added_by: number | null
+          difficulty: string
+          fight_style: string | null
+          id: number
+          player_id: number
+          report_id: string
+          simmed_at: string
+          source: string
+          target_count: number | null
+          team_id: number
+        }
+        Insert: {
+          added_at?: string
+          added_by?: number | null
+          difficulty: string
+          fight_style?: string | null
+          id?: never
+          player_id: number
+          report_id: string
+          simmed_at: string
+          source: string
+          target_count?: number | null
+          team_id: number
+        }
+        Update: {
+          added_at?: string
+          added_by?: number | null
+          difficulty?: string
+          fight_style?: string | null
+          id?: never
+          player_id?: number
+          report_id?: string
+          simmed_at?: string
+          source?: string
+          target_count?: number | null
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "character_sims_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "character_sims_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "character_sims_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "priority_order_gaps"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "character_sims_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "rnlsi"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "character_sims_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       character_weeks: {
         Row: {
           best_item_level: number | null
@@ -6248,6 +6373,10 @@ export type Database = {
         }
         Returns: number
       }
+      delete_character_sim: {
+        Args: { p_difficulty: string; p_player_id: number }
+        Returns: undefined
+      }
       delete_self_received_request: {
         Args: { p_id: number }
         Returns: undefined
@@ -6763,6 +6892,19 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      save_character_sim: {
+        Args: {
+          p_difficulty: string
+          p_fight_style: string
+          p_player_id: number
+          p_report_id: string
+          p_results: Json
+          p_simmed_at: string
+          p_source: string
+          p_target_count: number
+        }
+        Returns: number
       }
       save_priority_order: {
         Args: {

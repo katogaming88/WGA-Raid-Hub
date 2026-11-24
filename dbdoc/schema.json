@@ -15503,6 +15503,378 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.character_sims",
+      "type": "BASE TABLE",
+      "comment": "A raider's latest droptimizer sim per difficulty (#1443): Raidbots or QE Live, written by save_character_sim().",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "difficulty",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "report_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "simmed_at",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "fight_style",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "target_count",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "added_by",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "added_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "character_sims_pkey",
+          "def": "CREATE UNIQUE INDEX character_sims_pkey ON public.character_sims USING btree (id)",
+          "table": "public.character_sims",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "character_sims_player_id_difficulty_key",
+          "def": "CREATE UNIQUE INDEX character_sims_player_id_difficulty_key ON public.character_sims USING btree (player_id, difficulty)",
+          "table": "public.character_sims",
+          "columns": [
+            "player_id",
+            "difficulty"
+          ]
+        },
+        {
+          "name": "character_sims_team_id_idx",
+          "def": "CREATE INDEX character_sims_team_id_idx ON public.character_sims USING btree (team_id)",
+          "table": "public.character_sims",
+          "columns": [
+            "team_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "character_sims_difficulty_check",
+          "type": "CHECK",
+          "def": "CHECK ((difficulty = ANY (ARRAY['lfr'::text, 'normal'::text, 'heroic'::text, 'mythic'::text])))",
+          "table": "public.character_sims",
+          "referenced_table": "",
+          "columns": [
+            "difficulty"
+          ]
+        },
+        {
+          "name": "character_sims_fight_style_check",
+          "type": "CHECK",
+          "def": "CHECK ((char_length(fight_style) \u003c= 40))",
+          "table": "public.character_sims",
+          "referenced_table": "",
+          "columns": [
+            "fight_style"
+          ]
+        },
+        {
+          "name": "character_sims_report_id_check",
+          "type": "CHECK",
+          "def": "CHECK ((report_id ~ '^[A-Za-z0-9_-]{1,64}$'::text))",
+          "table": "public.character_sims",
+          "referenced_table": "",
+          "columns": [
+            "report_id"
+          ]
+        },
+        {
+          "name": "character_sims_source_check",
+          "type": "CHECK",
+          "def": "CHECK ((source = ANY (ARRAY['raidbots'::text, 'qe_live'::text])))",
+          "table": "public.character_sims",
+          "referenced_table": "",
+          "columns": [
+            "source"
+          ]
+        },
+        {
+          "name": "character_sims_target_count_check",
+          "type": "CHECK",
+          "def": "CHECK (((target_count \u003e= 1) AND (target_count \u003c= 100)))",
+          "table": "public.character_sims",
+          "referenced_table": "",
+          "columns": [
+            "target_count"
+          ]
+        },
+        {
+          "name": "character_sims_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.character_sims",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "character_sims_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.character_sims",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "character_sims_added_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (added_by) REFERENCES people(id) ON DELETE SET NULL",
+          "table": "public.character_sims",
+          "referenced_table": "public.people",
+          "columns": [
+            "added_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "character_sims_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.character_sims",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "character_sims_player_id_difficulty_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (player_id, difficulty)",
+          "table": "public.character_sims",
+          "referenced_table": "",
+          "columns": [
+            "player_id",
+            "difficulty"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.character_sim_results",
+      "type": "BASE TABLE",
+      "comment": "Each result in a sim (#1443): the item, the slot simmed into (Raidbots only), its item level and the gain in percent (and DPS for Raidbots).",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "sim_id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "wow_item_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "item_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "slot",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "item_level",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "pct_gain",
+          "type": "numeric",
+          "nullable": false
+        },
+        {
+          "name": "dps_gain",
+          "type": "numeric",
+          "nullable": true
+        },
+        {
+          "name": "encounter_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "catalyst_from",
+          "type": "integer",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "character_sim_results_pkey",
+          "def": "CREATE UNIQUE INDEX character_sim_results_pkey ON public.character_sim_results USING btree (id)",
+          "table": "public.character_sim_results",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "character_sim_results_sim_id_idx",
+          "def": "CREATE INDEX character_sim_results_sim_id_idx ON public.character_sim_results USING btree (sim_id)",
+          "table": "public.character_sim_results",
+          "columns": [
+            "sim_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "character_sim_results_catalyst_from_check",
+          "type": "CHECK",
+          "def": "CHECK ((catalyst_from \u003e 0))",
+          "table": "public.character_sim_results",
+          "referenced_table": "",
+          "columns": [
+            "catalyst_from"
+          ]
+        },
+        {
+          "name": "character_sim_results_dps_gain_check",
+          "type": "CHECK",
+          "def": "CHECK (((dps_gain \u003e= ('-100000000'::integer)::numeric) AND (dps_gain \u003c= (100000000)::numeric)))",
+          "table": "public.character_sim_results",
+          "referenced_table": "",
+          "columns": [
+            "dps_gain"
+          ]
+        },
+        {
+          "name": "character_sim_results_item_level_check",
+          "type": "CHECK",
+          "def": "CHECK (((item_level \u003e= 1) AND (item_level \u003c= 2000)))",
+          "table": "public.character_sim_results",
+          "referenced_table": "",
+          "columns": [
+            "item_level"
+          ]
+        },
+        {
+          "name": "character_sim_results_item_name_check",
+          "type": "CHECK",
+          "def": "CHECK ((char_length(item_name) \u003c= 200))",
+          "table": "public.character_sim_results",
+          "referenced_table": "",
+          "columns": [
+            "item_name"
+          ]
+        },
+        {
+          "name": "character_sim_results_pct_gain_check",
+          "type": "CHECK",
+          "def": "CHECK (((pct_gain \u003e= ('-100'::integer)::numeric) AND (pct_gain \u003c= (1000)::numeric)))",
+          "table": "public.character_sim_results",
+          "referenced_table": "",
+          "columns": [
+            "pct_gain"
+          ]
+        },
+        {
+          "name": "character_sim_results_slot_check",
+          "type": "CHECK",
+          "def": "CHECK ((char_length(slot) \u003c= 20))",
+          "table": "public.character_sim_results",
+          "referenced_table": "",
+          "columns": [
+            "slot"
+          ]
+        },
+        {
+          "name": "character_sim_results_wow_item_id_check",
+          "type": "CHECK",
+          "def": "CHECK ((wow_item_id \u003e 0))",
+          "table": "public.character_sim_results",
+          "referenced_table": "",
+          "columns": [
+            "wow_item_id"
+          ]
+        },
+        {
+          "name": "character_sim_results_sim_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (sim_id) REFERENCES character_sims(id) ON DELETE CASCADE",
+          "table": "public.character_sim_results",
+          "referenced_table": "public.character_sims",
+          "columns": [
+            "sim_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "character_sim_results_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.character_sim_results",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -17958,6 +18330,58 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.character_sims",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.character_sims",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.character_sims",
+      "columns": [
+        "added_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.people",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (added_by) REFERENCES people(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.character_sim_results",
+      "columns": [
+        "sim_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.character_sims",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (sim_id) REFERENCES character_sims(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -19723,6 +20147,18 @@
       "name": "public.upload_rclc_loot",
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_season text, p_rows jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.save_character_sim",
+      "return_type": "int4",
+      "arguments": "p_player_id integer, p_difficulty text, p_source text, p_report_id text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.delete_character_sim",
+      "return_type": "void",
+      "arguments": "p_player_id integer, p_difficulty text",
       "type": "FUNCTION"
     }
   ],

@@ -1,0 +1,86 @@
+/* Profile > Sims (#1443). Plain rules between sims, no boxes. */
+.sims-add {
+  margin-bottom: var(--space-4);
+}
+
+.sims-hint {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.sims-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.sims-link {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.sims-sim {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.sims-sim + .sims-sim {
+  margin-top: var(--space-4);
+}
+
+.sims-title {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.sims-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-1);
+  margin: var(--space-1) 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.sims-fresh {
+  color: var(--good);
+}
+
+.sims-old {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.sims-remove {
+  margin-left: auto;
+}
+
+/* An out-of-date sim stays readable, greyed back (muted text keeps contrast). */
+.sims-stale .sims-table td,
+.sims-stale .sims-table th,
+.sims-stale .sims-table .item-link {
+  color: var(--text-muted);
+}
+
+/* The Wishlist tab's list: difficulty and details on one line per sim. */
+.sims-compact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-3);
+  padding-top: var(--space-2);
+}
+
+.sims-compact + .sims-compact {
+  margin-top: var(--space-2);
+}
+
+.sims-compact .sims-title,
+.sims-compact .sims-meta {
+  margin: 0;
+}
+
+.sims-compact .sims-meta {
+  flex: 1 1 auto;
+}

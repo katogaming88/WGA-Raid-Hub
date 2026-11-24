@@ -1,0 +1,91 @@
+{
+  "timestamp": 1795540996,
+  "sim": {
+    "players": [
+      {
+        "name": "Katorrí",
+        "collected_data": {
+          "dps": {
+            "mean": 218987.38372298155
+          }
+        }
+      }
+    ],
+    "profilesets": {
+      "metric": "Damage per Second",
+      "results": [
+        {
+          "name": "1320/2888/raid-vault-mythic/268248/334/0/back////",
+          "mean": 220247.91757398492
+        },
+        {
+          "name": "1320/2887/raid-vault-mythic/270170/334/0/trinket1////",
+          "mean": 217134.56150645186
+        },
+        {
+          "name": "1320/2888/raid-vault-mythic/271545/334/7935/legs////268236",
+          "mean": 216293.28739216473
+        },
+        {
+          "name": "1320/2871/raid-vault-mythic/268252/334/7967/finger1////",
+          "mean": 223321.98291961825
+        },
+        {
+          "name": "1320/2887/raid-vault-mythic/270170/334/0/trinket1///swap_doubleonuse/",
+          "mean": 215394.1520241931
+        },
+        {
+          "name": "1320/2888/raid-vault-mythic/268236/334/7935/legs////",
+          "mean": 206385.30013802781
+        },
+        {
+          "name": "1320/2871/raid-vault-mythic/268252/334/7967/finger2////",
+          "mean": 223144.26380577064
+        }
+      ]
+    }
+  },
+  "simbot": {
+    "simType": "droptimizer",
+    "player": "Katorrí",
+    "meta": {
+      "type": "droptimizer",
+      "player": "Katorrí",
+      "fightStyle": "Patchwerk",
+      "enemyCount": 1,
+      "itemLibrary": [
+        {
+          "id": 268236,
+          "name": "Initiate's Sacrificial Tights"
+        },
+        {
+          "id": 271545,
+          "name": "Damned Necrolyte's Leg Bindings"
+        },
+        {
+          "id": 271545,
+          "name": "Damned Necrolyte's Leg Bindings"
+        },
+        {
+          "id": 268252,
+          "name": "Apex Brute's Claw Ring"
+        },
+        {
+          "id": 270170,
+          "name": "Vexhul's Everflowing Gland"
+        },
+        {
+          "id": 268248,
+          "name": "Amani Summoning Shawl"
+        },
+        {
+          "id": 271545,
+          "name": "Damned Necrolyte's Leg Bindings"
+        }
+      ],
+      "rawFormData": {
+        "text": "# Katorrí - Affliction - 2026-11-24 12:20 - US/Stormrage\nwarlock=\"Katorrí\"\nlevel=90\nregion=us\nserver=stormrage"
+      }
+    }
+  }
+}

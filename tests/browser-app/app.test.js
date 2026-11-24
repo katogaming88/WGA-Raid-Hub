@@ -132,6 +132,33 @@ const wishlistEditorState = (label, extra = {}) =>
     }
   });
 
+// #1443: a raider's Mythic sim from today and an out-of-date Heroic one, both
+// naming the two rings the wishlist editor offers (Finger 1 and 2).
+const SIMS = [
+  { difficulty: 'mythic', simmed_at: new Date().toISOString(), source: 'raidbots' },
+  { difficulty: 'heroic', simmed_at: '2026-01-01T00:00:00Z', source: 'qe_live' }
+].map((sim, i) => ({
+  id: i + 1,
+  report_id: `report${i}`,
+  fight_style: sim.source === 'raidbots' ? 'Patchwerk' : null,
+  target_count: sim.source === 'raidbots' ? 1 : null,
+  ...sim,
+  character_sim_results: [
+    [213008, 'Band of the Hollow Choir', 1.98],
+    [213009, 'Signet of Coiled Ash', -0.4]
+  ].map(([wow, name, pct], j) => ({
+    id: 10 * i + j,
+    wow_item_id: wow,
+    item_name: name,
+    slot: sim.source === 'raidbots' ? 'finger1' : null,
+    item_level: 334,
+    pct_gain: pct,
+    dps_gain: null,
+    encounter_id: null,
+    catalyst_from: null
+  }))
+}));
+
 const TWO_SEASONS_OPEN = {
   sentinel: 'main select#wishlist-season',
   tables: {
@@ -2431,6 +2458,27 @@ const STATES = [
     path: '/g/wga/t/phoenix/me/wishlist',
     sentinel: 'main .wishlist-summary',
     colorScheme: 'light'
+  }),
+  // #1443: sims sit on the Wishlist tab, each item's gain beside its marks
+  // (one sim up to date, one greyed out of date); a Loot council team, with no
+  // Wishlist tab, gets a Sims tab listing each sim's upgrades.
+  wishlistEditorState('my profile, wishlist tab with sims', {
+    sentinel: 'main .wishlist-gains',
+    tables: { character_sims: SIMS }
+  }),
+  wishlistEditorState('my profile, wishlist tab with sims, light', {
+    sentinel: 'main .wishlist-gains',
+    colorScheme: 'light',
+    tables: { character_sims: SIMS }
+  }),
+  profileState('my profile, a Loot council team, sims tab', 'torbjorn', 'torbjorn', {
+    path: '/g/wga/t/phoenix/me/sims',
+    sentinel: 'main .sims-table',
+    tables: {
+      ...profileState('', 'torbjorn', 'torbjorn').tables,
+      team_settings: [{ lootSystem: 'council' }],
+      character_sims: SIMS
+    }
   }),
   wishlistEditorState('my profile, wishlist editor, a slot open'),
   wishlistEditorState('my profile, wishlist editor, a slot open, light', { colorScheme: 'light' }),

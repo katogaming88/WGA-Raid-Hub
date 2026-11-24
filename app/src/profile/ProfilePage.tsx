@@ -41,6 +41,7 @@ import { useAlsoOnTeams, useEarlierLoot } from '../characters/useCharacters';
 import { OwnWeekCard } from '../audit/OwnWeek';
 import './profile.css';
 import { SignupButton } from '../signup/SignupButton';
+import { SimsCard } from '../sims/SimsCard';
 
 // A profile opens for the raider it belongs to and for the team's officers
 // (Kat, 2026-09-14: same as the current site). The data is public to read;
@@ -51,7 +52,8 @@ import { SignupButton } from '../signup/SignupButton';
 export const PROFILE_TABS = [
   { key: '', label: 'Overview' },
   { key: 'loot', label: 'Loot' },
-  { key: 'wishlist', label: 'Wishlist' }
+  { key: 'wishlist', label: 'Wishlist' },
+  { key: 'sims', label: 'Sims' }
 ] as const;
 
 type Tab = (typeof PROFILE_TABS)[number];
@@ -379,7 +381,12 @@ function Profile({
   const requests = useRequestSettings(teamId);
   // A Loot council team doesn't use wishlists (#1563).
   const council = useLootCouncil(teamId);
-  const tabs = council ? PROFILE_TABS.filter((t) => t.key !== 'wishlist') : PROFILE_TABS;
+  // Sims sit on the Wishlist tab, beside each item's marks (Kat, 2026-11-24);
+  // a Loot council team has no Wishlist tab, so it gets a Sims tab instead.
+  // A signup not on the roster yet has no character to sim (#1443).
+  const tabs = PROFILE_TABS.filter((t) =>
+    t.key === 'wishlist' ? !council : t.key === 'sims' ? council && !signup : true
+  );
 
   const character = player.name_realm.split('-')[0]!.trim();
   const name = player.nickname?.trim() || character;
@@ -575,6 +582,7 @@ function Profile({
           </section>
         )}
 
+        {tab === 'sims' && !signup && <SimsCard player={player} teamId={teamId} own={own} upgrades />}
         {tab === 'wishlist' &&
           (council ? (
             <CouncilCard />

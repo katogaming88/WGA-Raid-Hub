@@ -3983,3 +3983,21 @@ Shipped: `20261124113716_upload_rclc_loot.sql`.
 **Built before the Sync link (#1452)** (Kat, 2026-11-24). The function takes the caller from the session like every other write; how the Sync app's device key turns into that session is #1452's to settle.
 
 [Full discussion -> #1442](https://github.com/katogaming88/WGA-Raid-Hub/issues/1442).
+
+## #1443 -- raiders' droptimizer sims
+
+Shipped: `20261124123057_character_sims.sql`.
+
+**The page reads the report, not the database.** Raidbots (`/reports/<id>/data.json`) and QE Live (`getUpgradeReport.php`) both let a browser read a report (checked 2026-11-24), so the app fetches and parses it and sends the results to `save_character_sim()`. No Edge Function. The results are what the raider's browser sent; a raider could send made-up gains, the same trust as a pasted RCLootCouncil export.
+
+**One sim per character per difficulty, a new one replacing the old** (Kat, 2026-11-24): `unique (player_id, difficulty)` and an upsert, so what officers see is always the latest. A QE Live report covering two difficulties saves as two sims. #1888's named setups (single target, several targets) may widen the key.
+
+**Every result is kept** (Viserio's lesson): one row per slot a ring, trinket or weapon was simmed into, one per item level QE Live gives (as dropped and fully upgraded; "bonus roll" is the same as fully upgraded and is dropped), and a catalyst piece names the item it is made from (`catalyst_from`). The app shows each item at its highest item level, which is QE Live's fully upgraded gain (Kat, 2026-11-24), and its best slot. The gains show beside each item on the Wishlist tab, one per difficulty, rather than on a Sims tab of their own (Kat, 2026-11-24); a Loot council team, which has no Wishlist tab, keeps a Sims tab. Results are keyed by Wowhead item id, not `items.id`: a sim names items the hub may not know (crafted, last season's), and the item name Raidbots sends is kept for those.
+
+**When a sim goes out of date is `simStaleDays` in `team_settings.config`**, 14 until the team leader changes it on Settings > Loot, saved by `set_team_setting()` like the other loot settings. Nothing expires in the database; readers compare the sim's date.
+
+**Raiders and officers both write** (Kat, 2026-11-24): the character's own raider (`is_own_player()`), an officer with `manage_loot`, or a site admin, through the two SECURITY DEFINER functions. An officer can't add or remove a sim on the team leader's character; the leader manages their own (CodeRabbit on PR #1914, the repo's rule that an officer must not act on the team leader). Every change is logged through `write_audit_log()`; only when it refuses the caller (a raider with no officer permission, changing their own sim) is the row written directly, as `set_own_missing_spec()` does. The functions ask `write_audit_log()` rather than copying its permission list, so the two can't drift apart (CodeRabbit on PR #1914).
+
+**Anyone reads sims**, like the rest of a profile and unlike `item_preferences`: a sim is a public link on Raidbots or QE Live already.
+
+[Full discussion -> #1443](https://github.com/katogaming88/WGA-Raid-Hub/issues/1443).

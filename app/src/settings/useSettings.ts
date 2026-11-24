@@ -34,7 +34,7 @@ async function writeAuditLog(client: Client, teamId: number, action: string, det
   }
 }
 
-function setTeamSetting(client: Client, teamId: number, updates: Record<string, unknown>, skipAudit = false) {
+export function setTeamSetting(client: Client, teamId: number, updates: Record<string, unknown>, skipAudit = false) {
   return client.rpc('set_team_setting', {
     p_team_id: teamId,
     p_updates: updates as unknown as Json,

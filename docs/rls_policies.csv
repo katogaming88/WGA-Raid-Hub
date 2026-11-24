@@ -32,6 +32,8 @@ boss_groups,Officers read boss_groups,public,SELECT,PERMISSIVE,((team_id = ANY (
 boss_groups,Team raiders read boss_groups,public,SELECT,PERMISSIVE,"(team_id IN ( SELECT p.team_id
    FROM players p
   WHERE (p.id = ANY (( SELECT my_active_player_ids() AS my_active_player_ids)::integer[]))))",
+character_sim_results,Anyone reads character_sim_results,public,SELECT,PERMISSIVE,true,
+character_sims,Anyone reads character_sims,public,SELECT,PERMISSIVE,true,
 character_weeks,Claude readers read character_weeks,claude_readers,SELECT,PERMISSIVE,true,
 character_weeks,Teams and owners read character_weeks,authenticated,SELECT,PERMISSIVE,((name_realm_key = ANY (( SELECT my_audit_character_keys() AS my_audit_character_keys)::text[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 characters,Claude readers read characters,claude_readers,SELECT,PERMISSIVE,true,

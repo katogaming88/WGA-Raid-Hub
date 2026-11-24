@@ -268,6 +268,20 @@ export const GUIDES: Guide[] = [
     ]
   },
   {
+    id: 'sims',
+    topic: 'loot',
+    title: 'Add your sim',
+    quick: 'Paste a Raidbots droptimizer or QE Live upgrade report link on My profile’s Wishlist tab.',
+    place: { label: 'My profile, Wishlist', to: (b) => `${b.team}/me/wishlist` },
+    marked: [1],
+    menu: 'my-profile',
+    steps: [
+      'Run a droptimizer on Raidbots for the raid, or the Upgrade Finder on QE Live if you heal. Copy the report’s address when it finishes.',
+      'Open My profile, then the Wishlist tab (the Sims tab on a Loot council team). Paste the link and choose Add sim. A new sim replaces your one at the same difficulty.',
+      'Each item shows its gain beside your marks, M for Mythic and H for Heroic. After the number of days your team set, the sim is out of date and greyed: add a new one.'
+    ]
+  },
+  {
     id: 'priority',
     topic: 'loot',
     title: 'Check your priority and attendance',
