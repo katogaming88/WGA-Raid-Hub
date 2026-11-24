@@ -19718,6 +19718,12 @@
       "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.upload_rclc_loot",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer, p_season text, p_rows jsonb",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

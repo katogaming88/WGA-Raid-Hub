@@ -419,6 +419,7 @@
 | public.my_loot_import_team_ids | _int4 |  | FUNCTION |
 | public.team_loot_history | record | p_team_id integer | FUNCTION |
 | public.rclc_loot_team_id_fixed | trigger |  | FUNCTION |
+| public.upload_rclc_loot | jsonb | p_team_id integer, p_season text, p_rows jsonb | FUNCTION |
 
 ## Enums
 

@@ -7265,6 +7265,10 @@ export type Database = {
         Args: { p_key: string; p_name: string; p_team_id: number }
         Returns: undefined
       }
+      upload_rclc_loot: {
+        Args: { p_rows: Json; p_season: string; p_team_id: number }
+        Returns: Json
+      }
       wishlist_setup_status: {
         Args: { p_team_id: number }
         Returns: {

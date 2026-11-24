@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     58 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 53 h 19 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 53 h 57 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **227 h 47 m** |             |
+| **All revamp work**                | **228 h 25 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 16 h 52 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 17 h 30 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -857,6 +857,8 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 4:05-4:17 PM | PR #1898 (#1560): the full RLS suite (six parallel-only failures pass alone; the rule-shape test caught a per-row helper, replaced by an argument-free one), the team-read guard's `.order()`, preflight, four screenshots, PR opened, status comment, local database restored | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1560) | 12 m | build | 29,700 | |
 | 4:18-4:24 PM | PR #1898 (#1560): Kat's check that the setting leaves Home's Recent loot alone; a database test running Home's read as a raider and a visitor with loot history locked | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1560) | 6 m | build (Kat's question inline) | 8,700 | |
 | 6:03-6:15 PM | PR #1898 (#1560): CodeRabbit's three points (a loot row can't change team except for a site admin, refused-case tests; the paging nit declined), replies in its threads; the fresh-agent migration review (approve) and its fixes (`manage_loot` officers count for loot history, the redundant guild arm out, two more tests); local database restored; these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1560) | 12 m | build | 431,800 | Tokens include the fresh-agent review (123,000). Kat's design review and merge not yet counted. |
+| 10:35-10:47 PM | PR #1898 (#1560): CodeRabbit's follow-ups (the team guard on every update, then on every insert and update per .coderabbit.yaml; refused writes assert the 42501 denial), replies in its threads, local database restored | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1560) | 12 m | build | 319,600 | |
+| 10:59-11:02 PM | PR #1898 (#1560): Kat's merge; cleanup, #1560 closed, its row out of #1487 (area ~21 h), handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1560) | 3 m | Kat review, build | 4,300 | Kat's design reviews of #1896-#1898 not counted. |
 
 ### 2026-11-23
 
@@ -866,6 +868,13 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:20-11:27 AM | PR #1909 (#1908): preflight (8 of 8), PR opened, the screenshot taken on made-up data | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1908) | 7 m | build | 22,900 | Kat's review wait, 11:27 AM-12:20 PM, not counted. |
 | 12:20-12:21 PM | PR #1909 (#1908): merged by Kat; cleanup, #1908 closed | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1908) | 1 m | Kat review, build | 1,100 | |
 | 12:37-12:50 PM | #1907: My profile's side column back beside the top of the Overview: Your week, the stats and Equipped gear moved into the main column; the gear's two columns stack by the main column's width (a container query) instead of the screen's, so it never scrolls; a browser test that the column sits beside the gear on desktop and under it on a phone (fails without the change), the no-scroll test at 1680 px too; stamp, changelog, these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1907) | 13 m | build | 45,000 | Kat's design review and merge not yet counted. |
+
+### 2026-11-24
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 11:31-11:42 AM | #1442: Kat's call to build the server part now, before the Sync link (#1452); `upload_rclc_loot()` hands only the entries on the team's roster to `import_rclc_loot()`; database tests (roster filter, sent twice, raider and other-team officer refused); generated docs, RLS.md, decision log, stamp, changelog, these rows and the two owed from #1898 | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1442) | 11 m | build (Kat's answer inline) | 93,900 | Fresh-agent review, preflight, PR and merge not yet counted. |
+| 11:42-11:48 AM, 11:56-12:02 PM | PR #1913 (#1442): preflight, PR opened; CodeRabbit's point (a signed-out caller is refused, test added, reply in its thread); the fresh-agent migration review (changes needed) and its fix: the upload checks the team's import setting up front, so a "Team leader only" officer is refused even with nothing on the roster, test added; local database reset, definitions regenerated, this row | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1442) | 12 m | build | 109,800 | Tokens include the fresh-agent review (86,000). Kat's review and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 
