@@ -3971,3 +3971,15 @@ Shipped: `20261122155302_loot_access_settings.sql`.
 **"Team leader only" is enforced on the rows.** The officers' write rule on `rclc_loot` covered every command; it is split into update and delete (unchanged, `manage_loot`) and an insert rule that asks `my_loot_import_team_ids()` (argument-free, so it runs once per query): `manage_loot` while the team allows officers, and the team leader and site admins always. `import_rclc_loot()` is security invoker and the only thing that adds loot rows, so an officer's import is refused as a whole (`42501`) without changing the function. Reassign and row fixes stay with officers. A row rule sees only the new row, so it couldn't stop an officer on two teams adding a row on one team and moving it into a leader-only one (CodeRabbit on PR #1898): `rclc_loot_team_id_fixed()`, a `BEFORE INSERT OR UPDATE` trigger (on an update it compares the old and new team; an insert is left to the insert rule), refuses a team change from anyone signed in but a site admin. Nothing moves loot between teams; Reassign changes the player.
 
 [Full discussion -> #1560](https://github.com/katogaming88/WGA-Raid-Hub/issues/1560).
+
+## #1442 -- the Sync app's loot upload
+
+Shipped: `20261124113716_upload_rclc_loot.sql`.
+
+**`upload_rclc_loot()` hands the entries to `import_rclc_loot()` rather than copying it.** The officer check, the team's import setting (#1560), the track parsing and the duplicate skip stay in one function, so the paste and the upload can't drift apart, and sending the same night twice adds nothing. Security invoker, like the import: the caller's own access decides, and a caller who may not import is refused even when no entry matches.
+
+**An entry whose player isn't on the team's roster is left out**, where the paste adds an archived stub for it. RCLootCouncil's saved history also holds raids from the officer's alts and other teams, and the Sync app sends all of it. "On the roster" means an unarchived character on the team, matched as the import matches (name and realm, ignoring case and spaces). The count comes back as `skipped_not_on_roster`.
+
+**Built before the Sync link (#1452)** (Kat, 2026-11-24). The function takes the caller from the session like every other write; how the Sync app's device key turns into that session is #1452's to settle.
+
+[Full discussion -> #1442](https://github.com/katogaming88/WGA-Raid-Hub/issues/1442).

@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.306.0] - 2026-11-24
+
+### Backend
+
+- The database can take loot from the Sync app (#1442): `upload_rclc_loot()` imports the same RCLootCouncil entries an officer pastes today, skipping any entry whose player isn't on the team's roster, since RCLootCouncil's history also holds raids from alts and other teams. Duplicates are skipped as before, so sending the same night twice adds nothing, and only someone who may import for the team can send it. Nothing calls it yet: the Sync app hooks in once it can be linked (#1452).
+
 ## [3.305.1] - 2026-11-23
 
 ### Project
