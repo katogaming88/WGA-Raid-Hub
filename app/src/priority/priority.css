@@ -809,6 +809,14 @@
   color: var(--text-muted);
 }
 
+.priority-missing-sims {
+  padding: var(--space-4);
+}
+
+.priority-missing-sims .card-title {
+  margin: 0 0 var(--space-1);
+}
+
 .priority-missing-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
