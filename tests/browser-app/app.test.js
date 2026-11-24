@@ -900,6 +900,32 @@ const PRIORITY_FLAGGED = {
   }
 };
 
+// #1443 part 2: sims for the first two raiders, one current and one out of
+// date, so the gains show beside the marks and Missing sims lists the rest.
+const PRIORITY_SIMS = {
+  ...PRIORITY,
+  tables: {
+    ...PRIORITY.tables,
+    items: PRIORITY.tables.items.map((i) => ({ ...i, wow_item_id: 9000 + i.id })),
+    character_sims: [
+      { id: 1, player_id: PRIORITY_IDS[0], difficulty: 'heroic', simmed_at: new Date().toISOString() },
+      { id: 2, player_id: PRIORITY_IDS[1], difficulty: 'heroic', simmed_at: '2026-01-01T00:00:00Z' }
+    ],
+    character_sim_results: [1, 2].map((sim_id) => ({
+      id: sim_id,
+      sim_id,
+      wow_item_id: 9001,
+      item_name: null,
+      slot: null,
+      item_level: 334,
+      pct_gain: sim_id === 1 ? 2.5 : 1.1,
+      dps_gain: null,
+      encounter_id: null,
+      catalyst_from: null
+    }))
+  }
+};
+
 // Part 5: saved scores for a few raiders, one with none, so the Scoring
 // table's every kind of row is on the page axe measures.
 const PRIORITY_SCORING = {
@@ -2026,6 +2052,14 @@ const STATES = [
     colorScheme: 'light',
     click: 'role=button[name="Suggest order"]',
     afterClick: 'main .priority-was'
+  },
+  { label: 'loot priority, with sims', ...PRIORITY_SIMS, sentinel: 'main .priority-gain' },
+  { label: 'loot priority, with sims, light', ...PRIORITY_SIMS, colorScheme: 'light', sentinel: 'main .priority-gain' },
+  {
+    label: 'loot priority, Missing sims',
+    ...PRIORITY_SIMS,
+    path: '/g/wga/t/phoenix/officer/priority?tab=sims',
+    sentinel: 'main .priority-missing-list'
   },
   {
     label: 'loot priority, Unmanaged',

@@ -1,5 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
+import { sortGain } from '../sims/sims';
+import type { GainOf } from './PriorityPage';
+import { TrackGainText } from './TrackGain';
 import { useStatus } from '../components/Status';
 import { errorMessage } from '../lib/errors';
 import type { CatalogItem } from '../profile/lootPriority';
@@ -54,7 +57,8 @@ export function ItemEditor({
   draft,
   onDraft,
   autoSuggest,
-  onAutoSuggested
+  onAutoSuggested,
+  gainOf
 }: {
   teamId: number;
   season: string;
@@ -69,6 +73,8 @@ export function ItemEditor({
   onDraft: (draft: Draft | null) => void;
   autoSuggest: boolean;
   onAutoSuggested: () => void;
+  // Each raider's sim gain (#1443 part 2); null when the team has no sims.
+  gainOf: GainOf | null;
 }) {
   const { announce } = useStatus();
   const suggest = useSuggestOrder(teamId);
@@ -192,7 +198,14 @@ export function ItemEditor({
     );
 
   const rows = rankedRows({ ...item, ranked: order }, track, data, players, catalog);
-  const pool = poolFor(item.itemId, order, data, players, wholeRoster);
+  const pool = poolFor(
+    item.itemId,
+    order,
+    data,
+    players,
+    wholeRoster,
+    gainOf ? (id) => sortGain(gainOf(id, item.itemId, track)) : undefined
+  );
   const marks = new Map(data.prefs.filter((p) => p.item_id === item.itemId).map((p) => [p.player_id, p.status]));
 
   return (
@@ -290,6 +303,7 @@ export function ItemEditor({
                   </span>
                   <span className={r.mark === 'bis' ? 'priority-mark priority-mark-bis' : 'priority-mark'}>
                     {r.mark ? (MARK_LABEL[r.mark] ?? r.mark) : <span className="text-dim">No mark</span>}
+                    {gainOf && <TrackGainText gain={gainOf(r.playerId, item.itemId, track)} />}
                   </span>
                   <span className="priority-score">
                     {score && score.score != null ? `Score ${outOf100(score.score)}` : ''}
@@ -371,6 +385,7 @@ export function ItemEditor({
                       {MARK_LABEL[mark] ?? mark}
                     </span>
                   )}
+                  {gainOf && <TrackGainText gain={gainOf(p.id, item.itemId, track)} />}
                   {out ? (
                     <span className="text-muted priority-pool-out">
                       {own.mythic ? 'Has Mythic, can’t be added' : 'Has Heroic, can’t be added to Heroic'}

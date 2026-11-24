@@ -54,6 +54,16 @@ import {
 } from './usePriority';
 // The Roster's toggle buttons, shared rather than restyled.
 import '../roster/roster.css';
+import { useSimStaleDays, useTeamSims } from '../sims/useSims';
+import {
+  DIFFICULTY_LABELS,
+  simAgeDays,
+  TRACK_DIFFICULTY,
+  trackGains,
+  type TeamSim,
+  type TrackGain
+} from '../sims/sims';
+import { TrackGainText } from './TrackGain';
 import './priority.css';
 
 // Loot priority (#1362): each item's saved order on one track, picked from a
@@ -121,7 +131,11 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
   const track: Track = params.get('track') === 'mythic' ? 'Myth' : 'Hero';
   const tabParam = params.get('tab');
   const tab =
-    tabParam === 'unmanaged' || tabParam === 'contested' || tabParam === 'notes' || tabParam === 'scoring'
+    tabParam === 'unmanaged' ||
+    tabParam === 'contested' ||
+    tabParam === 'notes' ||
+    tabParam === 'scoring' ||
+    tabParam === 'sims'
       ? tabParam
       : 'list';
   const picked = Number(params.get('item')) || null;
@@ -150,6 +164,10 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
   const change = (values: Record<string, string | null>) => setParams(withParams(values), { replace: true });
   const linkTo = (values: Record<string, string | null>) => `?${withParams(values).toString()}`;
 
+  // Each raider's sims (#1443 part 2): a gain beside every mark, and who is
+  // missing one. A failed read leaves the gains off rather than the page.
+  const teamSims = useTeamSims(teamId);
+  const staleDays = useSimStaleDays(teamId);
   const reads = bothQueries(
     bothQueries(usePriorityData(teamId, season), useCatalog()),
     bothQueries(bothQueries(useRaidZones(), useRosterPlayers(teamId)), useProgressionSettings(teamId))
@@ -165,6 +183,10 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
         const flagged = flaggedItemIds(items, track, data, players, catalog);
         const notes = wishlistNotes(data, catalog, players);
         const noteCount = notes.reduce((n, i) => n + i.notes.length, 0);
+        const sims = teamSims.isSuccess ? teamSims.data : [];
+        const days = staleDays.isSuccess ? staleDays.data : null;
+        const gainOf = sims.length ? simLookup(sims, days, data, catalog, players) : null;
+        const missing = teamSims.isSuccess ? missingSims(players, sims, days, track) : [];
         const managed = (id: number) =>
           [...data.order, ...data.empty].some((r) => r.item_id === id && r.track === track);
         const unsaved = new Set(
@@ -214,11 +236,21 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
               >
                 Notes {noteCount > 0 && <span className="count-badge">{noteCount}</span>}
               </Link>
+              <Link
+                to={linkTo({ tab: 'sims' })}
+                replace
+                aria-current={tab === 'sims' ? 'page' : undefined}
+                aria-label={missing.length ? `Missing sims, ${missing.length}` : undefined}
+              >
+                Missing sims {missing.length > 0 && <span className="count-badge">{missing.length}</span>}
+              </Link>
               <Link to={linkTo({ tab: 'scoring' })} replace aria-current={tab === 'scoring' ? 'page' : undefined}>
                 Scoring
               </Link>
             </nav>
-            {tab === 'scoring' ? (
+            {tab === 'sims' ? (
+              <MissingSimsList missing={missing} track={track} />
+            ) : tab === 'scoring' ? (
               <ScoringTab
                 teamId={teamId}
                 season={season}
@@ -269,9 +301,17 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
                     onDraft={(d) => setDraft(draftKey(item.itemId, track), d)}
                     autoSuggest={params.get('suggest') === '1'}
                     onAutoSuggested={() => change({ suggest: null })}
+                    gainOf={gainOf}
                   />
                 ) : item ? (
-                  <ItemPanel item={item} track={track} data={data} players={players} catalog={catalog} />
+                  <ItemPanel
+                    item={item}
+                    track={track}
+                    data={data}
+                    players={players}
+                    catalog={catalog}
+                    gainOf={gainOf}
+                  />
                 ) : (
                   <NeedsALook
                     items={items}
@@ -970,13 +1010,15 @@ function ItemPanel({
   track,
   data,
   players,
-  catalog
+  catalog,
+  gainOf
 }: {
   item: PriorityItem;
   track: Track;
   data: PriorityData;
   players: PlayerRow[];
   catalog: CatalogItem[];
+  gainOf: GainOf | null;
 }) {
   const rows = rankedRows(item, track, data, players, catalog);
   const sidegrade = sidegradeNames(item, data, players);
@@ -1004,6 +1046,7 @@ function ItemPanel({
               <span className="priority-rank-role">{r.role ?? ''}</span>
               <span className={r.mark === 'bis' ? 'priority-mark priority-mark-bis' : 'priority-mark'}>
                 {r.mark ? (MARK_LABEL[r.mark] ?? r.mark) : <span className="text-dim">No mark</span>}
+                {gainOf && <TrackGainText gain={gainOf(r.playerId, item.itemId, track)} />}
               </span>
               <span className="priority-flags">
                 {r.left && <span className="priority-flag">Left the roster</span>}
@@ -1023,6 +1066,74 @@ function ItemPanel({
         <p className="text-muted priority-panel-body priority-sidegrade">
           Sidegrade, not ranked: {sidegrade.join(', ')}
         </p>
+      )}
+    </section>
+  );
+}
+
+// -- Sims (#1443 part 2) ----------------------------------------------------
+
+export type GainOf = (playerId: number, itemId: number, track: Track) => TrackGain;
+
+// A raider's gain for an item: a tier token's is the piece it becomes for
+// their class (Kat: "a token shows the value of what it becomes").
+export function simLookup(
+  sims: TeamSim[],
+  staleDays: number | null,
+  data: PriorityData,
+  catalog: CatalogItem[],
+  players: PlayerRow[]
+): GainOf {
+  const wowOf = new Map(catalog.map((i) => [i.id, i.wow_item_id ?? null]));
+  const classOf = new Map(players.map((p) => [p.id, p.classes_specs?.class ?? null]));
+  return trackGains(sims, staleDays, (playerId, itemId) => {
+    const piece = data.tierPieces.find((t) => t.token_item_id === itemId && t.class === classOf.get(playerId));
+    return piece ? (piece.resolved?.wow_item_id ?? null) : (wowOf.get(itemId) ?? null);
+  });
+}
+
+export type MissingSim = { player: PlayerRow; simmedAt: string | null };
+
+// Raiders on the roster with no up-to-date sim at the track's difficulty.
+function missingSims(players: PlayerRow[], sims: TeamSim[], staleDays: number | null, track: Track): MissingSim[] {
+  const gainOf = trackGains(sims, staleDays, () => null);
+  return players
+    .map((player) => ({ player, gain: gainOf(player.id, 0, track) }))
+    .filter(({ gain }) => !gain.sim || gain.stale)
+    .map(({ player, gain }) => ({ player, simmedAt: gain.sim ? gain.simmedAt : null }))
+    .sort((a, b) => a.player.name_realm.localeCompare(b.player.name_realm));
+}
+
+function MissingSimsList({ missing, track }: { missing: MissingSim[]; track: Track }) {
+  const label = DIFFICULTY_LABELS[TRACK_DIFFICULTY[track]];
+  return (
+    <section className="card priority-missing-sims" aria-labelledby="missing-sims-title">
+      <h2 id="missing-sims-title" className="card-title">
+        Missing {label} sims
+      </h2>
+      {missing.length === 0 ? (
+        <p className="text-muted">Everyone on the roster has an up-to-date {label} sim.</p>
+      ) : (
+        <>
+          <p className="text-muted">
+            Raiders add a Raidbots droptimizer or QE Live upgrade report on their profile’s Wishlist tab.
+          </p>
+          <ul className="priority-missing-list">
+            {missing.map(({ player, simmedAt }) => (
+              <li key={player.id}>
+                <span
+                  className="priority-rank-name"
+                  style={player.classes_specs?.class ? { color: classColor(player.classes_specs.class) } : undefined}
+                >
+                  {player.nickname?.trim() || player.name_realm.split('-')[0]}
+                </span>
+                <span className="text-muted">
+                  {simmedAt ? `Out of date, simmed ${simAgeDays(simmedAt)} days ago` : `No ${label} sim`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </section>
   );

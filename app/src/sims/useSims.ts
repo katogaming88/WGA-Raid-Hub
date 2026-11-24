@@ -1,4 +1,4 @@
-import { useSupabaseMutation, useSupabaseQuery } from '../data/query';
+import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import { setTeamSetting } from '../settings/useSettings';
 import {
   asStaleDays,
@@ -8,7 +8,8 @@ import {
   type ParsedReport,
   type SavedResult,
   type SimLink,
-  type SimSource
+  type SimSource,
+  type TeamSim
 } from './sims';
 
 export type SavedSim = {
@@ -143,4 +144,39 @@ export function useSaveSimStaleDays(teamId: number) {
     },
     { key: ['save-sim-stale-days', teamId], refreshes: [staleKey(teamId)] }
   );
+}
+
+// Every raider's sims on the team, with their results, for the Priority page
+// (#1443 part 2). Both reads are paged: a team's results pass 1000 rows.
+export function useTeamSims(teamId: number) {
+  return useSupabaseQuery<TeamSim[]>(['team-sims', teamId], async (client) => {
+    const sims = await readAll<{ id: number; player_id: number; difficulty: string; simmed_at: string }>((from, to) =>
+      client
+        .from('character_sims')
+        .select('id, player_id, difficulty, simmed_at')
+        .eq('team_id', teamId)
+        .order('id')
+        .range(from, to)
+    );
+    if (sims.error) return { data: null, error: sims.error };
+    const ids = sims.data.map((s) => s.id);
+    if (!ids.length) return { data: [], error: null };
+    const results = await readAll<SavedResult & { sim_id: number }>((from, to) =>
+      client
+        .from('character_sim_results')
+        .select('id, sim_id, wow_item_id, item_name, slot, item_level, pct_gain, dps_gain, encounter_id, catalyst_from')
+        .in('sim_id', ids)
+        .order('id')
+        .range(from, to)
+    );
+    if (results.error) return { data: null, error: results.error };
+    return {
+      data: sims.data.map((s) => ({
+        ...s,
+        difficulty: s.difficulty as Difficulty,
+        character_sim_results: results.data.filter((r) => r.sim_id === s.id)
+      })),
+      error: null
+    };
+  });
 }

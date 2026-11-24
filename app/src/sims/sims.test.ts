@@ -4,6 +4,8 @@ import qeLive from './fixtures/qe-live-upgrade-report.json';
 import {
   asStaleDays,
   gainsByItem,
+  sortGain,
+  trackGains,
   bestPerItem,
   isCharacter,
   isStale,
@@ -183,5 +185,47 @@ describe('gainsByItem', () => {
       { difficulty: 'heroic', pct: 1.2, stale: true }
     ]);
     expect(gains.get(2)).toEqual([{ difficulty: 'mythic', pct: -1, stale: false }]);
+  });
+});
+
+describe('trackGains', () => {
+  const r = (wow: number, pct: number): SavedResult => ({
+    id: wow,
+    wow_item_id: wow,
+    item_name: null,
+    slot: null,
+    item_level: 334,
+    pct_gain: pct,
+    dps_gain: null,
+    encounter_id: null,
+    catalyst_from: null
+  });
+  const now = Date.parse('2026-11-24T12:00:00Z');
+  const gainOf = trackGains(
+    [
+      {
+        player_id: 1,
+        difficulty: 'mythic',
+        simmed_at: '2026-11-23T00:00:00Z',
+        character_sim_results: [r(500, 2.5), r(900, 1.1)]
+      },
+      { player_id: 2, difficulty: 'heroic', simmed_at: '2026-10-01T00:00:00Z', character_sim_results: [r(500, 3)] }
+    ],
+    14,
+    // Item 10 is a tier token: it becomes piece 900 for player 1.
+    (playerId, itemId) => (itemId === 10 ? (playerId === 1 ? 900 : null) : 500),
+    now
+  );
+  it('gives the gain at the track’s difficulty, a token as its piece, and says when there is no sim', () => {
+    expect(gainOf(1, 5, 'Myth')).toEqual({ sim: true, pct: 2.5, stale: false, simmedAt: '2026-11-23T00:00:00Z' });
+    expect(gainOf(1, 10, 'Myth')).toMatchObject({ pct: 1.1 });
+    expect(gainOf(1, 5, 'Hero')).toEqual({ sim: false });
+    expect(gainOf(2, 5, 'Hero')).toMatchObject({ pct: 3, stale: true });
+    expect(gainOf(2, 10, 'Hero')).toMatchObject({ sim: true, pct: null });
+  });
+  it('sorts an out-of-date or missing gain below every real one', () => {
+    expect(sortGain(gainOf(1, 5, 'Myth'))).toBe(2.5);
+    expect(sortGain(gainOf(2, 5, 'Hero'))).toBe(-Infinity);
+    expect(sortGain(gainOf(1, 5, 'Hero'))).toBe(-Infinity);
   });
 });

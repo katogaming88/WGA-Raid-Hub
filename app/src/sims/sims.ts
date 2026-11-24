@@ -318,3 +318,53 @@ export function gainsByItem(
 }
 
 export const DIFFICULTY_SHORT: Record<Difficulty, string> = { lfr: 'LFR', normal: 'N', heroic: 'H', mythic: 'M' };
+
+// -- The Priority page (#1443 part 2) -------------------------------------
+
+// The difficulty each loot track is simmed at.
+export const TRACK_DIFFICULTY: Record<'Hero' | 'Myth', Difficulty> = { Hero: 'heroic', Myth: 'mythic' };
+
+export type TeamSim = {
+  player_id: number;
+  difficulty: Difficulty;
+  simmed_at: string;
+  character_sim_results: SavedResult[];
+};
+
+// A raider's gain for an item on a track: no sim at that difficulty, or the
+// sim's gain (null when the sim didn't include the item) and whether it is
+// out of date.
+export type TrackGain = { sim: false } | { sim: true; pct: number | null; stale: boolean; simmedAt: string };
+
+// Looks up any raider's gain for any item on a track. `wowIdFor` gives the
+// item's Wowhead id for that raider: a tier token's is the piece it becomes
+// for their class, so a token shows the value of what it turns into.
+export function trackGains(
+  sims: TeamSim[],
+  staleDays: number | null,
+  wowIdFor: (playerId: number, itemId: number) => number | null,
+  now = Date.now()
+) {
+  const by = new Map<string, { gains: Map<number, number>; stale: boolean; simmedAt: string }>();
+  for (const sim of sims) {
+    by.set(`${sim.player_id}|${sim.difficulty}`, {
+      gains: new Map(bestPerItem(sim.character_sim_results).map((r) => [r.wow_item_id, Number(r.pct_gain)])),
+      stale: staleDays !== null && isStale(sim.simmed_at, staleDays, now),
+      simmedAt: sim.simmed_at
+    });
+  }
+  return (playerId: number, itemId: number, track: 'Hero' | 'Myth'): TrackGain => {
+    const sim = by.get(`${playerId}|${TRACK_DIFFICULTY[track]}`);
+    if (!sim) return { sim: false };
+    const wow = wowIdFor(playerId, itemId);
+    return {
+      sim: true,
+      pct: wow === null ? null : (sim.gains.get(wow) ?? null),
+      stale: sim.stale,
+      simmedAt: sim.simmedAt
+    };
+  };
+}
+
+// For sorting: an up-to-date gain, else below every real gain.
+export const sortGain = (g: TrackGain) => (g.sim && !g.stale && g.pct !== null ? g.pct : -Infinity);
