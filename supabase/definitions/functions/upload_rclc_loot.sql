@@ -11,6 +11,10 @@ declare
   v_rows jsonb := coalesce(p_rows, '[]'::jsonb);
   v_on_roster jsonb;
 begin
+  if not (p_team_id = any (public.my_loot_import_team_ids()) or public.is_site_admin()) then
+    raise exception 'Not authorized';
+  end if;
+
   if jsonb_typeof(v_rows) <> 'array' then
     raise exception 'Expected a list of loot entries';
   end if;

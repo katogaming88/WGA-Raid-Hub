@@ -3976,7 +3976,7 @@ Shipped: `20261122155302_loot_access_settings.sql`.
 
 Shipped: `20261124113716_upload_rclc_loot.sql`.
 
-**`upload_rclc_loot()` hands the entries to `import_rclc_loot()` rather than copying it.** The officer check, the team's import setting (#1560), the track parsing and the duplicate skip stay in one function, so the paste and the upload can't drift apart, and sending the same night twice adds nothing. Security invoker, like the import: the caller's own access decides, and a caller who may not import is refused even when no entry matches.
+**`upload_rclc_loot()` hands the entries to `import_rclc_loot()` rather than copying it.** The officer check, the team's import setting (#1560), the track parsing and the duplicate skip stay in one function, so the paste and the upload can't drift apart, and sending the same night twice adds nothing. Security invoker, like the import: the caller's own access decides, and a caller who may not import is refused up front, even when no entry is on the roster. That check names the team's import setting itself (`my_loot_import_team_ids()`), because the setting is otherwise checked only by the loot table's insert rule, which an upload with nothing to insert never reaches: an officer on a "Team leader only" team would have been told it worked (the fresh-agent review on PR #1913).
 
 **An entry whose player isn't on the team's roster is left out**, where the paste adds an archived stub for it. RCLootCouncil's saved history also holds raids from the officer's alts and other teams, and the Sync app sends all of it. "On the roster" means an unarchived character on the team, matched as the import matches (name and realm, ignoring case and spaces). The count comes back as `skipped_not_on_roster`.
 

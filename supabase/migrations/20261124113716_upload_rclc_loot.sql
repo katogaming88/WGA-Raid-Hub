@@ -14,7 +14,10 @@
 -- import's own: name_realm ignoring case and spaces.
 --
 -- Security invoker like import_rclc_loot(): the caller's own access decides.
--- A caller who may not import is refused even when no entry matches.
+-- A caller who may not import is refused up front, even when no entry is on
+-- the roster: the team's lootImportAccess (#1560) is otherwise only checked
+-- by the loot table's insert rule, which an upload with nothing to insert
+-- never reaches (the fresh-agent review on PR #1913).
 create function public.upload_rclc_loot(p_team_id integer, p_season text, p_rows jsonb)
 returns jsonb
 language plpgsql
@@ -24,6 +27,10 @@ declare
   v_rows jsonb := coalesce(p_rows, '[]'::jsonb);
   v_on_roster jsonb;
 begin
+  if not (p_team_id = any (public.my_loot_import_team_ids()) or public.is_site_admin()) then
+    raise exception 'Not authorized';
+  end if;
+
   if jsonb_typeof(v_rows) <> 'array' then
     raise exception 'Expected a list of loot entries';
   end if;

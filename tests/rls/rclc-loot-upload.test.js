@@ -2,7 +2,7 @@
 // entries whose player is on the team's roster to import_rclc_loot(), and
 // is refused for anyone who may not import for that team.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedPlayer, OFFICER_T1, OFFICER_T2, RAIDER_T1 } from './helpers.js';
+import { pool, withTxn, seedPlayer, OFFICER_T1, OFFICER_T2, RAIDER_T1, TEAM_LEADER_T1 } from './helpers.js';
 
 const ON_ROSTER = 'Fixtureupload-Illidan';
 const ARCHIVED = 'Fixtureoldalt-Illidan';
@@ -72,6 +72,21 @@ describe('upload_rclc_loot', () => {
       await expect(upload(t, OFFICER_T2, [row({ player: 'Someoneelse-Stormrage' })])).rejects.toThrow(
         /not authorized/i
       );
+    }));
+
+  // #1560's "Team leader only" is otherwise checked only when a row is
+  // inserted, so an upload with nothing on the roster must still be refused.
+  it('follows the team leader only import setting, even with no entry on the roster', () =>
+    withRoster(async (t) => {
+      await t.q(
+        `insert into public.team_settings (team_id, config) values (1, '{"lootImportAccess":"leader"}'::jsonb)
+         on conflict (team_id) do update set config = public.team_settings.config || excluded.config`
+      );
+      await expect(upload(t, OFFICER_T1, [row({})])).rejects.toThrow(/not authorized/i);
+      await expect(upload(t, OFFICER_T1, [row({ player: 'Someoneelse-Stormrage' })])).rejects.toThrow(
+        /not authorized/i
+      );
+      expect(await upload(t, TEAM_LEADER_T1, [row({ id: 'up-leader' })])).toMatchObject({ inserted: 1 });
     }));
 
   it('refuses a signed-out caller', () =>
