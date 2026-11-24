@@ -73,6 +73,13 @@ describe('upload_rclc_loot', () => {
         /not authorized/i
       );
     }));
+
+  it('refuses a signed-out caller', () =>
+    withRoster(async (t) => {
+      await expect(
+        t.asAnon('select public.upload_rclc_loot(1, $1, $2::jsonb)', ['MID1', JSON.stringify([row({})])])
+      ).rejects.toMatchObject({ code: '42501' });
+    }));
 });
 
 afterAll(() => pool.end());
