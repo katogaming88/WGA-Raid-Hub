@@ -15,7 +15,11 @@ const OTHER_SPACES = new Map([
   ['public.items.wow_item_id', "Blizzard's item id; the catalog's own column for it"],
   ['public.boe_listings.boe_item_id', 'a boe_items row, which the name says'],
   ['public.player_equipped_gear.wow_item_id', "Blizzard's item id, as the gear sync gets it"],
-  ['public.season_gems.wow_item_id', "Blizzard's item id for a gem, which the catalog doesn't hold"]
+  ['public.season_gems.wow_item_id', "Blizzard's item id for a gem, which the catalog doesn't hold"],
+  [
+    'public.character_sim_results.wow_item_id',
+    "Blizzard's item id, as the sim names it; the catalog may not hold it (#1443)"
+  ]
 ]);
 
 const pointsAtItems = (table, column) =>

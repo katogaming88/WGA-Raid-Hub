@@ -41,6 +41,7 @@ export function usePlayerSims(playerId: number) {
     const rows = (sims.data ?? []) as unknown as SavedSim[];
     const ids = [...new Set(rows.flatMap((s) => s.character_sim_results.map((r) => r.wow_item_id)))];
     if (!ids.length) return { data: { sims: rows, items: [] }, error: null };
+    // team-read-guard: one character's sims, a few hundred items at most
     const items = await client.from('items').select('id, wow_item_id, name, icon, is_ptr').in('wow_item_id', ids);
     if (items.error) return { data: null, error: items.error };
     return { data: { sims: rows, items: (items.data ?? []) as KnownItem[] }, error: null };

@@ -273,6 +273,7 @@ export const GUIDES: Guide[] = [
     title: 'Add your sim',
     quick: 'Paste a Raidbots droptimizer or QE Live upgrade report link on My profile’s Sims tab.',
     place: { label: 'My profile, Sims', to: (b) => `${b.team}/me/sims` },
+    marked: [1],
     menu: 'my-profile',
     steps: [
       'Run a droptimizer on Raidbots for the raid, or the Upgrade Finder on QE Live if you heal. Copy the report’s address when it finishes.',
