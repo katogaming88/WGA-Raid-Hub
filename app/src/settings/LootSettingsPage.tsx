@@ -92,7 +92,7 @@ function SimsCard({ teamId, saved, canEdit }: { teamId: number; saved: number; c
         <div className="settings-row">
           <input
             id={id}
-            className="input settings-days"
+            className="input settings-number"
             type="number"
             min={1}
             max={365}
