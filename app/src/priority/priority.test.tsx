@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { navGroups, reportTabs } from '../layout/nav';
 import { shownLoot } from '../settings/lootResponses';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import { simLookup } from './PriorityPage';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
 import { fakeSession, seededHandlers, type Read } from '../test/fakeSupabase';
@@ -982,5 +983,90 @@ describe('Loot priority page', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add Katorrí' }));
     expect(screen.getByText('Added Katorrí at position 1.')).toBeInTheDocument();
     expect(screen.getByRole('list', { name: 'Amulet of the Twin Fangs, Mythic order' })).toHaveTextContent('Katorrí');
+  });
+});
+
+// #1443 part 2: each raider's sim gain on the Priority page, and who is missing one.
+describe('sims on the Priority page', () => {
+  const result = (id: number, wow: number, pct: number) => ({
+    id,
+    sim_id: 0,
+    wow_item_id: wow,
+    item_name: null,
+    slot: null,
+    item_level: 334,
+    pct_gain: pct,
+    dps_gain: null,
+    encounter_id: null,
+    catalyst_from: null
+  });
+  const fresh = new Date().toISOString();
+  // Katorrí's Heroic sim is current; Bbldrizzy's is old; Amazon has none.
+  const SIMS = [
+    { id: 1, player_id: 10, difficulty: 'heroic', simmed_at: fresh },
+    { id: 2, player_id: 11, difficulty: 'heroic', simmed_at: '2026-01-01T00:00:00Z' }
+  ];
+  const RESULTS = [
+    { ...result(1, 9001, 2.5), sim_id: 1 },
+    { ...result(2, 9003, 4.2), sim_id: 1 },
+    { ...result(3, 9001, 1), sim_id: 2 },
+    { ...result(4, 9003, 6), sim_id: 2 }
+  ];
+  const WITH_SIMS = {
+    ...TABLES,
+    items: TABLES.items.map((i) => ({ ...i, wow_item_id: 9000 + i.id })),
+    // Bbldrizzy marked the amulet BiS too, so the pool has two to sort.
+    item_preferences: [...DATA.prefs, { player_id: 11, item_id: 3, status: 'bis' }],
+    character_sims: SIMS,
+    character_sim_results: RESULTS
+  };
+
+  it('shows each ranked raider’s gain beside their mark, greyed when old', async () => {
+    renderApp(`${PAGE}?item=1`, handlers(WITH_SIMS, 'guild'));
+    const ranks = await screen.findByRole('list', { name: 'Silken Voodoo Drape, Heroic order' });
+    await waitFor(() => expect(within(ranks).getAllByRole('listitem')[0]).toHaveTextContent('+2.50%'));
+    const rows = within(ranks).getAllByRole('listitem');
+    expect(rows[1]).toHaveTextContent('+1.00% (sim out of date)');
+    expect(rows[2]).toHaveTextContent('No sim');
+  });
+
+  it('sorts the unranked pool BiS first, biggest current gain first, an old sim last', async () => {
+    renderApp(`${PAGE}?item=3`, handlers(WITH_SIMS));
+    const pool = await screen.findByRole('heading', { name: 'Marked, not ranked' });
+    const list = pool.closest('section')!.querySelector('.priority-pool')!;
+    // Bbldrizzy's +6.00% is old, so Katorrí's current +4.20% goes first.
+    await waitFor(() =>
+      expect([...list.querySelectorAll('.priority-rank-name')].map((n) => n.textContent)).toEqual([
+        'Katorrí',
+        'Bbldrizzy'
+      ])
+    );
+    expect(list).toHaveTextContent('+4.20%');
+  });
+
+  it('counts and lists the raiders missing an up-to-date sim on the Missing sims tab', async () => {
+    renderApp(`${PAGE}?tab=sims`, handlers(WITH_SIMS));
+    expect(await screen.findByRole('link', { name: 'Missing sims, 2' })).toBeInTheDocument();
+    const card = screen.getByRole('heading', { name: 'Missing Heroic sims' }).closest('section')!;
+    expect(card).toHaveTextContent(/Bbldrizzy\s*Out of date, simmed \d+ days ago/);
+    expect(card).toHaveTextContent('AmazonNo Heroic sim');
+    expect(card).not.toHaveTextContent('Katorrí');
+  });
+
+  it('gives a tier token the gain of the piece it becomes for the raider’s class', () => {
+    const data = {
+      ...DATA,
+      tierPieces: [
+        { class: 'Warlock', token_item_id: 50, resolved_item_id: 6, resolved: { wow_item_id: 5006, slot: 'Shoulder' } }
+      ]
+    };
+    const gainOf = simLookup(
+      [{ player_id: 10, difficulty: 'heroic', simmed_at: fresh, character_sim_results: [result(1, 5006, 3.3)] }],
+      14,
+      data,
+      CATALOG,
+      PLAYERS
+    );
+    expect(gainOf(10, 50, 'Hero')).toMatchObject({ pct: 3.3 });
   });
 });

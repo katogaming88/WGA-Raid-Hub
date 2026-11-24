@@ -12,6 +12,14 @@ answers to.
 
 ---
 
+## [3.308.0] - 2026-11-24
+
+### Project
+
+- The Priority page shows each raider's sim gain beside their mark, for the track on screen: their Heroic sim on the Heroic track, their Mythic sim on Mythic (#1443). A tier token shows the gain of the piece it becomes for the raider's class. An out-of-date sim's gain is greyed, "No sim" means none at that difficulty, and a dash means their sim didn't include the item. In the editor, the raiders marked but not ranked are sorted BiS first, then 2nd Choice and Sidegrade, each biggest current gain first, with old sims and no sims last.
+- The Priority page has a **Missing sims** tab with a count: the raiders on the roster with no up-to-date sim at the track's difficulty, saying whether they have none or an old one.
+- Sims stay out of the RCLootCouncil string officers paste in game; they will reach the game only through the Sync app (#1441).
+
 ## [3.307.0] - 2026-11-24
 
 ### Backend

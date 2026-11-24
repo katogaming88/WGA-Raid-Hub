@@ -34,6 +34,8 @@ export type BossRow = { item_id: number; boss: string };
 export type ReceivedRow = { player_id: number | null; self_item_id: number | null; track: string | null };
 export type TierPieceRow = {
   class: string;
+  // The token that becomes this piece for the class (#1443: a token's sim gain is its piece's).
+  token_item_id?: number;
   resolved_item_id: number;
   resolved: { wow_item_id: number | null; slot: string } | null;
 };
@@ -522,22 +524,36 @@ export function owned(playerId: number, itemId: number, data: PriorityData): Own
 export const blocked = (o: Owned, track: Track) => o.mythic || (track === 'Hero' && o.heroic);
 
 // Raiders who marked the item BiS, 2nd Choice or Sidegrade and are not ranked
-// yet, or with `wholeRoster` everyone on the roster. Alphabetical.
+// yet, or with `wholeRoster` everyone on the roster. Alphabetical, or with the
+// team's sims (#1443 part 2) BiS first, then 2nd Choice, Sidegrade and
+// unmarked, each biggest gain first; an old sim or none sorts last.
 const POOL_MARKS = new Set(['bis', 'good', 'ok']);
+const POOL_ORDER = ['bis', 'good', 'ok'];
 
 export function poolFor(
   itemId: number,
   ranked: number[],
   data: PriorityData,
   players: PlayerRow[],
-  wholeRoster: boolean
+  wholeRoster: boolean,
+  gain?: (playerId: number) => number
 ): PlayerRow[] {
   const marked = new Set(
     data.prefs.filter((p) => p.item_id === itemId && POOL_MARKS.has(p.status)).map((p) => p.player_id)
   );
+  const markRank = (playerId: number) => {
+    const marks = data.prefs.filter((p) => p.player_id === playerId && p.item_id === itemId).map((p) => p.status);
+    const best = POOL_ORDER.findIndex((m) => marks.includes(m));
+    return best < 0 ? POOL_ORDER.length : best;
+  };
+  const byGain = (a: PlayerRow, b: PlayerRow) => {
+    if (!gain) return 0;
+    const [ga, gb] = [gain(a.id), gain(b.id)];
+    return markRank(a.id) - markRank(b.id) || (ga === gb ? 0 : gb > ga ? 1 : -1);
+  };
   return players
     .filter((p) => !ranked.includes(p.id) && (wholeRoster || marked.has(p.id)))
-    .sort((a, b) => a.name_realm.localeCompare(b.name_realm));
+    .sort((a, b) => byGain(a, b) || a.name_realm.localeCompare(b.name_realm));
 }
 
 export type Suggested = { player_id: number; weighted_total: number | null; status_label: string | null };

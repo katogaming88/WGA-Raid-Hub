@@ -70,7 +70,9 @@ export function usePriorityData(teamId: number, season: string) {
       ),
       client
         .from('tier_token_map')
-        .select('class, resolved_item_id, resolved:items!tier_token_map_resolved_item_id_fkey(wow_item_id, slot)')
+        .select(
+          'class, token_item_id, resolved_item_id, resolved:items!tier_token_map_resolved_item_id_fkey(wow_item_id, slot)'
+        )
         .eq('season', season),
       readAll<ReceivedRow>((from, to) =>
         client

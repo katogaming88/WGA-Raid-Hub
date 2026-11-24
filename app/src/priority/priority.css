@@ -186,7 +186,8 @@
 
 .priority-rank {
   display: grid;
-  grid-template-columns: 28px minmax(100px, 180px) 60px 90px 1fr;
+  /* The mark column holds the sim gain too (#1443 part 2). */
+  grid-template-columns: 28px minmax(100px, 180px) 60px 150px 1fr;
   align-items: center;
   gap: var(--space-2);
   padding: 6px var(--space-4);
@@ -792,4 +793,36 @@
 
 .priority-unmanaged-filters {
   max-width: 20rem;
+}
+
+/* A raider's sim gain beside their mark (#1443 part 2): normal weight, so the
+   mark still reads first; greyed when the sim is old or the item is a loss. */
+.priority-gain {
+  margin-left: var(--space-2);
+  font-weight: 400;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.priority-gain.is-stale,
+.priority-gain.is-down {
+  color: var(--text-muted);
+}
+
+.priority-missing-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.priority-missing-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  align-items: baseline;
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--border);
 }
