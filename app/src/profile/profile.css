@@ -633,10 +633,24 @@
 /* Each item's sim gains (#1443), pushed right, before the mark buttons. */
 .wishlist-gains {
   display: flex;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0 var(--space-3);
   margin-left: auto;
   font-size: var(--text-sm);
+}
+
+/* One spec's icon and gains (#1916), kept together on a line. */
+.wishlist-gain-spec {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   white-space: nowrap;
+}
+
+.wishlist-gain-spec .sim-spec-icon,
+.wishlist-gain-spec .sim-spec-name {
+  margin-right: 0;
 }
 
 .wishlist-gain abbr {
@@ -645,7 +659,8 @@
 }
 
 .wishlist-gain.is-down,
-.wishlist-gain.is-stale {
+.wishlist-gain.is-stale,
+.wishlist-gain.is-other {
   color: var(--text-muted);
 }
 

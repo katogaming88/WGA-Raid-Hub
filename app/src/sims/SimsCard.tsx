@@ -7,17 +7,19 @@ import { errorMessage } from '../lib/errors';
 import {
   bestPerItem,
   DIFFICULTY_LABELS,
-  DIFFICULTY_ORDER,
   formatGain,
   isCharacter,
   isStale,
+  matchSpec,
   parseSimLink,
   simAgeDays,
+  simOrder,
   slotLabel,
   SOURCE_LABELS
 } from './sims';
 import {
   readReport,
+  useClassSpecs,
   usePlayerSims,
   useIsLeaderCharacter,
   useRemoveSim,
@@ -30,18 +32,24 @@ import './sims.css';
 
 // A raider's sims (#1443): the raider, or an officer who manages loot, pastes
 // a Raidbots droptimizer or QE Live upgrade report link. One sim per
-// difficulty; a new one replaces the old. Out of date after the team's number
+// difficulty and spec (#1916); a new one replaces the old. Out of date after the team's number
 // of days. On a team with wishlists this sits on the Wishlist tab, which shows
 // each item's gain beside its marks (Kat, 2026-11-24), so it lists only the
 // sims; a Loot council team has no Wishlist tab, so its Sims tab shows each
 // sim's upgrades too.
+type Character = { id: number; name_realm: string; classes_specs: { class: string; spec: string } | null };
+
+// The character's class and roster spec, whose sim counts (#1916).
+const rosterOf = (player: Character) =>
+  player.classes_specs ? { className: player.classes_specs.class, spec: player.classes_specs.spec } : null;
+
 export function SimsCard({
   player,
   teamId,
   own,
   upgrades
 }: {
-  player: { id: number; name_realm: string };
+  player: Character;
   teamId: number;
   own: boolean;
   upgrades: boolean;
@@ -60,7 +68,7 @@ export function SimsCard({
       <DataState query={sims} label="sims">
         {({ sims: saved, items }) =>
           saved.length ? (
-            DIFFICULTY_ORDER.flatMap((d) => saved.filter((s) => s.difficulty === d)).map((sim) => (
+            simOrder(saved, rosterOf(player)).map((sim) => (
               <SimTable
                 key={sim.id}
                 sim={sim}
@@ -80,10 +88,11 @@ export function SimsCard({
   );
 }
 
-function AddSim({ player, own }: { player: { id: number; name_realm: string }; own: boolean }) {
+function AddSim({ player, own }: { player: Character; own: boolean }) {
   const id = useId();
   const { announce } = useStatus();
   const save = useSaveSims(player.id);
+  const specs = useClassSpecs();
   const [link, setLink] = useState('');
   const [reading, setReading] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -101,14 +110,28 @@ function AddSim({ player, own }: { player: { id: number; name_realm: string }; o
       const who = [report.character.name, report.character.realm].filter(Boolean).join('-');
       return setProblem(`That report is for ${who}, not ${player.name_realm}.`);
     }
-    save.mutate(report, {
-      onSuccess: () => {
-        setLink('');
-        const names = report.sims.map((s) => DIFFICULTY_LABELS[s.difficulty]).join(' and ');
-        announce('success', `Added the ${names} sim from ${SOURCE_LABELS[report.source]}.`);
-      },
-      onError: (error) => setProblem(errorMessage(error))
-    });
+    // The spec it was run as (#1916), which must be the character's class.
+    if (!specs.isSuccess) return setProblem('Couldn’t read the list of specs. Reload the page, then try again.');
+    const spec = matchSpec(report.spec, specs.data);
+    if (!spec) return setProblem(`The hub doesn’t know the spec “${report.spec}”.`);
+    const mine = player.classes_specs?.class;
+    if (!mine) return setProblem(`${player.name_realm} has no spec on the roster yet. An officer sets it first.`);
+    if (spec.class !== mine) {
+      return setProblem(
+        `That report was run as ${spec.spec} ${spec.class}, and ${player.name_realm}’s class is ${mine}.`
+      );
+    }
+    save.mutate(
+      { report, classSpecId: spec.id },
+      {
+        onSuccess: () => {
+          setLink('');
+          const names = report.sims.map((s) => DIFFICULTY_LABELS[s.difficulty]).join(' and ');
+          announce('success', `Added the ${names} ${spec.spec} sim from ${SOURCE_LABELS[report.source]}.`);
+        },
+        onError: (error) => setProblem(errorMessage(error))
+      }
+    );
   };
 
   return (
@@ -125,8 +148,8 @@ function AddSim({ player, own }: { player: { id: number; name_realm: string }; o
       <p className="text-muted sims-hint" id={`${id}-hint`}>
         DPS and tanks: a Raidbots droptimizer. Healers: QE Live’s Upgrade Finder.{' '}
         {own
-          ? 'A new sim replaces your one at the same difficulty.'
-          : 'A new sim replaces the one at the same difficulty.'}
+          ? 'A new sim replaces your one at the same difficulty and spec.'
+          : 'A new sim replaces the one at the same difficulty and spec.'}
       </p>
       <div className="sims-add-row">
         <input
@@ -178,7 +201,7 @@ function SimTable({
   const { announce } = useStatus();
   const remove = useRemoveSim(playerId);
   const byWowId = new Map(items.map((i) => [i.wow_item_id, i]));
-  const label = DIFFICULTY_LABELS[sim.difficulty];
+  const label = `${DIFFICULTY_LABELS[sim.difficulty]} ${sim.spec}`;
   const stale = staleDays !== null && isStale(sim.simmed_at, staleDays);
   const rows = bestPerItem(sim.character_sim_results).filter((r) => Number(r.pct_gain) > 0);
   const titleId = `sim-${sim.id}-title`;
@@ -217,10 +240,13 @@ function SimTable({
             disabled={remove.isPending}
             aria-label={`Remove the ${label} sim`}
             onClick={() =>
-              remove.mutate(sim.difficulty, {
-                onSuccess: () => announce('success', `Removed the ${label} sim.`),
-                onError: (error) => announce('error', errorMessage(error))
-              })
+              remove.mutate(
+                { difficulty: sim.difficulty, classSpecId: sim.class_spec_id },
+                {
+                  onSuccess: () => announce('success', `Removed the ${label} sim.`),
+                  onError: (error) => announce('error', errorMessage(error))
+                }
+              )
             }
           >
             Remove

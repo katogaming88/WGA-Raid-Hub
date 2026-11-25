@@ -1063,12 +1063,22 @@ describe('Profile, the character signed up for next season', () => {
 // #1443: the Sims tab. The report is read from the site with fetch (stubbed
 // here with a real report trimmed to a few items), then saved per difficulty.
 describe('Profile > Sims', () => {
-  const report = (name: string, server: string) => {
+  // Torbjorn is on the roster as Frost; this report is run as Unholy unless
+  // told otherwise (#1916).
+  const report = (name: string, server: string, profile = 'deathknight="x"\nspec=unholy') => {
     const copy = structuredClone(raidbotsReport);
     copy.simbot.meta.player = name;
-    copy.simbot.meta.rawFormData.text = copy.simbot.meta.rawFormData.text.replace(/^server=.*$/m, `server=${server}`);
+    copy.simbot.meta.rawFormData.text = copy.simbot.meta.rawFormData.text
+      .replace(/^server=.*$/m, `server=${server}`)
+      .replace(/^warlock=.*$/m, '')
+      .replace(/^spec=.*$/m, profile);
     return copy;
   };
+  const SPECS = [
+    { id: 2, class: 'Death Knight', spec: 'Frost' },
+    { id: 3, class: 'Death Knight', spec: 'Unholy' },
+    { id: 20, class: 'Warlock', spec: 'Affliction' }
+  ];
   const stubFetch = (body: unknown) => {
     const fetch = vi.fn(async () => new Response(JSON.stringify(body), { status: 200 }));
     vi.stubGlobal('fetch', fetch);
@@ -1078,6 +1088,8 @@ describe('Profile > Sims', () => {
   const SAVED = {
     id: 7,
     difficulty: 'mythic',
+    class_spec_id: 2,
+    classes_specs: { spec: 'Frost', class: 'Death Knight' },
     source: 'raidbots',
     report_id: 'abc',
     simmed_at: '2026-11-20T12:00:00Z',
@@ -1122,6 +1134,7 @@ describe('Profile > Sims', () => {
   const withSims = (sims: unknown[], config: Record<string, unknown> = {}) =>
     profileHandlers(person('raider', 11), {
       character_sims: () => ({ data: sims }),
+      classes_specs: () => ({ data: SPECS }),
       items: () => ({ data: [] }),
       team_settings: (read) => ({
         data: /simStaleDays/.test(read.columns ?? '') ? { days: config.simStaleDays ?? null } : []
@@ -1139,10 +1152,18 @@ describe('Profile > Sims', () => {
       simmed_at: '2026-01-01T00:00:00Z',
       character_sim_results: [{ ...SAVED.character_sim_results[0], id: 9, slot: null, pct_gain: 1.2 }]
     };
+    // Another spec's sim (#1916): its gain follows, greyed and named.
+    const UNHOLY = {
+      ...SAVED,
+      id: 11,
+      class_spec_id: 3,
+      classes_specs: { spec: 'Unholy', class: 'Death Knight' },
+      character_sim_results: [{ ...SAVED.character_sim_results[0], id: 12, pct_gain: 3 }]
+    };
     renderApp(
       '/g/wga/t/phoenix/me/wishlist',
       profileHandlers(person('raider', 11), {
-        character_sims: () => ({ data: [SAVED, HEROIC] }),
+        character_sims: () => ({ data: [UNHOLY, SAVED, HEROIC] }),
         team_settings: () => ({ data: [] }),
         team_seasons: () => ({ data: [{ season_code: 'MID2', wishlist_open: true }] }),
         item_preferences: () => ({ data: [] }),
@@ -1170,7 +1191,19 @@ describe('Profile > Sims', () => {
       })
     );
     const band = (await screen.findByRole('group', { name: 'Band of the Abyss, Head' })).closest('li')!;
-    expect(band.querySelector('.wishlist-gains')).toHaveTextContent('M +1.98%H +1.20% (out of date)');
+    expect(band.querySelector('.wishlist-gains')).toHaveTextContent('M +1.98%H +1.20% (out of date)M +3.00%');
+    const gains = band.querySelector('.wishlist-gains') as HTMLElement;
+    expect(
+      within(gains)
+        .getAllByRole('img')
+        .map((i) => i.getAttribute('alt'))
+    ).toEqual(['Frost', 'Unholy']);
+    // The list above names each sim's spec, the roster spec's first.
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual([
+      'Mythic Frost',
+      'Heroic Frost',
+      'Mythic Unholy'
+    ]);
     expect(screen.getByRole('heading', { name: 'Sims' })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'Sims' })).not.toBeInTheDocument();
     // The list above names each sim but leaves the upgrades to the slots below.
@@ -1188,11 +1221,14 @@ describe('Profile > Sims', () => {
     expect(args).toMatchObject({
       p_player_id: 11,
       p_difficulty: 'mythic',
+      p_class_spec_id: 3,
       p_source: 'raidbots',
-      p_report_id: '4fa37C7DkwEgoJQTLTFS9L'
+      p_report_id: '4fa37C7DkwEgoJQTLTFS9L',
+      p_character_name: 'Torbjorn',
+      p_character_realm: 'illidan'
     });
     expect((args as { p_results: unknown[] }).p_results).toHaveLength(6);
-    expect(await screen.findByText('Added the Mythic sim from Raidbots.')).toBeInTheDocument();
+    expect(await screen.findByText('Added the Mythic Unholy sim from Raidbots.')).toBeInTheDocument();
     vi.unstubAllGlobals();
   });
 
@@ -1202,6 +1238,20 @@ describe('Profile > Sims', () => {
     await userEvent.type(await screen.findByLabelText(/Raidbots droptimizer or QE Live/), LINK);
     await userEvent.click(screen.getByRole('button', { name: 'Add sim' }));
     expect(await screen.findByText('That report is for Katorrí-stormrage, not Torbjorn-Illidan.')).toBeInTheDocument();
+    expect(client.rpcs.some(([name]) => name === 'save_character_sim')).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  it('turns away a report run as another class, saving nothing', async () => {
+    stubFetch(report('Torbjorn', 'illidan', 'warlock="x"\nspec=affliction'));
+    const { client } = renderApp('/g/wga/t/phoenix/me/sims', withSims([]));
+    await userEvent.type(await screen.findByLabelText(/Raidbots droptimizer or QE Live/), LINK);
+    await userEvent.click(screen.getByRole('button', { name: 'Add sim' }));
+    expect(
+      await screen.findByText(
+        'That report was run as Affliction Warlock, and Torbjorn-Illidan’s class is Death Knight.'
+      )
+    ).toBeInTheDocument();
     expect(client.rpcs.some(([name]) => name === 'save_character_sim')).toBe(false);
     vi.unstubAllGlobals();
   });
@@ -1238,15 +1288,18 @@ describe('Profile > Sims', () => {
     renderApp('/g/wga/t/phoenix/p/tb000011/sims', asOfficer('team_leader'));
     await screen.findByRole('row', { name: /Band of the Abyss/ });
     expect(screen.queryByRole('button', { name: 'Add sim' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Remove the Mythic sim' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove the Mythic Frost sim' })).not.toBeInTheDocument();
   });
 
   it('removes a sim', async () => {
     const { client } = renderApp('/g/wga/t/phoenix/me/sims', withSims([SAVED]));
     await screen.findByRole('row', { name: /Band of the Abyss/ });
-    await userEvent.click(screen.getByRole('button', { name: 'Remove the Mythic sim' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove the Mythic Frost sim' }));
     await waitFor(() =>
-      expect(client.rpcs).toContainEqual(['delete_character_sim', { p_player_id: 11, p_difficulty: 'mythic' }])
+      expect(client.rpcs).toContainEqual([
+        'delete_character_sim',
+        { p_player_id: 11, p_difficulty: 'mythic', p_class_spec_id: 2 }
+      ])
     );
   });
 });

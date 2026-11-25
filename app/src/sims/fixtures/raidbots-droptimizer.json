@@ -84,7 +84,7 @@
         }
       ],
       "rawFormData": {
-        "text": "# Katorrí - Affliction - 2026-11-24 12:20 - US/Stormrage\nwarlock=\"Katorrí\"\nlevel=90\nregion=us\nserver=stormrage"
+        "text": "# Katorrí - Affliction - 2026-11-24 12:20 - US/Stormrage\nwarlock=\"Katorrí\"\nlevel=90\nregion=us\nserver=stormrage\nrole=spell\nspec=affliction"
       }
     }
   }

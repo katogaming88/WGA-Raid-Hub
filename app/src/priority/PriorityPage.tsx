@@ -1086,17 +1086,30 @@ export function simLookup(
 ): GainOf {
   const wowOf = new Map(catalog.map((i) => [i.id, i.wow_item_id ?? null]));
   const classOf = new Map(players.map((p) => [p.id, p.classes_specs?.class ?? null]));
-  return trackGains(sims, staleDays, (playerId, itemId) => {
+  return trackGains(sims, staleDays, rosterSpecOf(players), (playerId, itemId) => {
     const piece = data.tierPieces.find((t) => t.token_item_id === itemId && t.class === classOf.get(playerId));
     return piece ? (piece.resolved?.wow_item_id ?? null) : (wowOf.get(itemId) ?? null);
   });
 }
 
+// The spec a raider is on the roster as: its sim is the one that counts (#1916).
+function rosterSpecOf(players: PlayerRow[]) {
+  const specOf = new Map(
+    players.flatMap((p) =>
+      p.classes_specs?.class && p.classes_specs.spec
+        ? [[p.id, { className: p.classes_specs.class, spec: p.classes_specs.spec }] as const]
+        : []
+    )
+  );
+  return (playerId: number) => specOf.get(playerId) ?? null;
+}
+
 export type MissingSim = { player: PlayerRow; simmedAt: string | null };
 
-// Raiders on the roster with no up-to-date sim at the track's difficulty.
+// Raiders on the roster with no up-to-date sim for their roster spec at the
+// track's difficulty. Other specs' sims are optional (#1916).
 function missingSims(players: PlayerRow[], sims: TeamSim[], staleDays: number | null, track: Track): MissingSim[] {
-  const gainOf = trackGains(sims, staleDays, () => null);
+  const gainOf = trackGains(sims, staleDays, rosterSpecOf(players), () => null);
   return players
     .map((player) => ({ player, gain: gainOf(player.id, 0, track) }))
     .filter(({ gain }) => !gain.sim || gain.stale)

@@ -121,7 +121,7 @@
 | [public.team_boss_order](public.team_boss_order.md) | 4 | The order a team pulls its bosses in (#1679), saved from Boss Lineup with "every night after". New raid nights fill in this order; a boss with no row fills after, in the game's order. Written and read only by the lineup functions. | BASE TABLE |
 | [public.team_boss_role_targets](public.team_boss_role_targets.md) | 7 | What one boss needs for a team (#1682): tanks, healers, melee and ranged counts for the boss lineup's checks. A null tanks or healers uses the team's target (team_lineup_settings); a null melee or ranged means no target. A boss with no row uses the team's targets. Written only by set_boss_role_targets(). | BASE TABLE |
 | [public.team_raider_order](public.team_raider_order.md) | 5 | The order a team lists its raiders in within a role section of Boss Lineup (#1683); role is the section the raider was placed in, and position counts from 1 within it. A raider with no row lists after the placed ones, A-Z. Written only by set_lineup_raider_order(). | BASE TABLE |
-| [public.character_sims](public.character_sims.md) | 11 | A raider's latest droptimizer sim per difficulty (#1443): Raidbots or QE Live, written by save_character_sim(). | BASE TABLE |
+| [public.character_sims](public.character_sims.md) | 12 | A raider's latest droptimizer sim per difficulty and spec (#1443, #1916): Raidbots or QE Live, written by save_character_sim(). | BASE TABLE |
 | [public.character_sim_results](public.character_sim_results.md) | 10 | Each result in a sim (#1443): the item, the slot simmed into (Raidbots only), its item level and the gain in percent (and DPS for Raidbots). | BASE TABLE |
 
 ## Stored procedures and functions
@@ -422,8 +422,8 @@
 | public.team_loot_history | record | p_team_id integer | FUNCTION |
 | public.rclc_loot_team_id_fixed | trigger |  | FUNCTION |
 | public.upload_rclc_loot | jsonb | p_team_id integer, p_season text, p_rows jsonb | FUNCTION |
-| public.save_character_sim | int4 | p_player_id integer, p_difficulty text, p_source text, p_report_id text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb | FUNCTION |
-| public.delete_character_sim | void | p_player_id integer, p_difficulty text | FUNCTION |
+| public.save_character_sim | int4 | p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_character_name text, p_character_realm text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb | FUNCTION |
+| public.delete_character_sim | void | p_player_id integer, p_difficulty text, p_class_spec_id integer | FUNCTION |
 
 ## Enums
 
@@ -635,6 +635,7 @@ erDiagram
 "public.team_boss_role_targets" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.team_raider_order" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.team_raider_order" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.character_sims" }o--|| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
 "public.character_sims" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.character_sims" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.character_sims" }o--o| "public.people" : "FOREIGN KEY (added_by) REFERENCES people(id) ON DELETE SET NULL"
@@ -1862,6 +1863,7 @@ erDiagram
   integer target_count
   integer added_by FK
   timestamp_with_time_zone added_at
+  integer class_spec_id FK
 }
 "public.character_sim_results" {
   bigint id

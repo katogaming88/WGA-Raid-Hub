@@ -1001,16 +1001,46 @@ describe('sims on the Priority page', () => {
     catalyst_from: null
   });
   const fresh = new Date().toISOString();
-  // Katorrí's Heroic sim is current; Bbldrizzy's is old; Amazon has none.
+  // Katorrí's Heroic sim is current; Bbldrizzy's is old; Amazon has none for
+  // her roster spec. Katorrí's Affliction and Amazon's Beast Mastery sims are
+  // off specs (#1916): shown greyed, never counted.
   const SIMS = [
-    { id: 1, player_id: 10, difficulty: 'heroic', simmed_at: fresh },
-    { id: 2, player_id: 11, difficulty: 'heroic', simmed_at: '2026-01-01T00:00:00Z' }
+    {
+      id: 1,
+      player_id: 10,
+      difficulty: 'heroic',
+      classes_specs: { spec: 'Demonology', class: 'Warlock' },
+      simmed_at: fresh
+    },
+    {
+      id: 2,
+      player_id: 11,
+      difficulty: 'heroic',
+      classes_specs: { spec: 'Restoration', class: 'Druid' },
+      simmed_at: '2026-01-01T00:00:00Z'
+    },
+    {
+      id: 3,
+      player_id: 10,
+      difficulty: 'heroic',
+      classes_specs: { spec: 'Affliction', class: 'Warlock' },
+      simmed_at: fresh
+    },
+    {
+      id: 4,
+      player_id: 12,
+      difficulty: 'heroic',
+      classes_specs: { spec: 'Beast Mastery', class: 'Hunter' },
+      simmed_at: fresh
+    }
   ];
   const RESULTS = [
     { ...result(1, 9001, 2.5), sim_id: 1 },
     { ...result(2, 9003, 4.2), sim_id: 1 },
     { ...result(3, 9001, 1), sim_id: 2 },
-    { ...result(4, 9003, 6), sim_id: 2 }
+    { ...result(4, 9003, 6), sim_id: 2 },
+    { ...result(5, 9001, 7), sim_id: 3 },
+    { ...result(6, 9001, 9), sim_id: 4 }
   ];
   const WITH_SIMS = {
     ...TABLES,
@@ -1026,6 +1056,13 @@ describe('sims on the Priority page', () => {
     const ranks = await screen.findByRole('list', { name: 'Silken Voodoo Drape, Heroic order' });
     await waitFor(() => expect(within(ranks).getAllByRole('listitem')[0]).toHaveTextContent('+2.50%'));
     const rows = within(ranks).getAllByRole('listitem');
+    // Each gain leads with its spec's icon, the roster spec's first (#1916).
+    expect(rows[0]).toHaveTextContent('+2.50%+7.00%');
+    expect(
+      within(rows[0]!)
+        .getAllByRole('img')
+        .map((i) => i.getAttribute('alt'))
+    ).toEqual(['Demonology', 'Affliction']);
     expect(rows[1]).toHaveTextContent('+1.00% (sim out of date)');
     expect(rows[2]).toHaveTextContent('No sim');
   });
@@ -1061,7 +1098,16 @@ describe('sims on the Priority page', () => {
       ]
     };
     const gainOf = simLookup(
-      [{ player_id: 10, difficulty: 'heroic', simmed_at: fresh, character_sim_results: [result(1, 5006, 3.3)] }],
+      [
+        {
+          player_id: 10,
+          difficulty: 'heroic',
+          spec: 'Demonology',
+          className: 'Warlock',
+          simmed_at: fresh,
+          character_sim_results: [result(1, 5006, 3.3)]
+        }
+      ],
       14,
       data,
       CATALOG,

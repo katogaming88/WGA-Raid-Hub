@@ -736,6 +736,7 @@ erDiagram
   integer target_count
   integer added_by FK
   timestamp_with_time_zone added_at
+  integer class_spec_id FK
 }
 "public.guilds" {
   integer id

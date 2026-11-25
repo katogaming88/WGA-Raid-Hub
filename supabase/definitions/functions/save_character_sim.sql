@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.save_character_sim(p_player_id integer, p_difficulty text, p_source text, p_report_id text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb)
+CREATE OR REPLACE FUNCTION public.save_character_sim(p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_character_name text, p_character_realm text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb)
  RETURNS integer
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -10,6 +10,9 @@ CREATE OR REPLACE FUNCTION public.save_character_sim(p_player_id integer, p_diff
 AS $function$
 declare
   v_team_id integer;
+  v_name_realm text;
+  v_class text;
+  v_spec text;
   v_sim_id bigint;
   v_count integer;
   v_leader boolean;
@@ -20,9 +23,11 @@ begin
     raise exception 'Not signed in';
   end if;
 
-  select p.team_id, coalesce(tm.role = 'team_leader', false) into v_team_id, v_leader
+  select p.team_id, coalesce(tm.role = 'team_leader', false), mine.class, p.name_realm
+    into v_team_id, v_leader, v_class, v_name_realm
     from public.players p
     left join public.team_members tm on tm.id = p.team_member_id and tm.archived_at is null
+    left join public.classes_specs mine on mine.id = p.class_spec_id
    where p.id = p_player_id and p.archived_at is null;
   v_own := coalesce(public.is_own_player(p_player_id), false);
   if v_team_id is null
@@ -30,6 +35,28 @@ begin
              or (public.has_team_permission(v_team_id, 'manage_loot') and not v_leader)
              or public.is_site_admin()) then
     raise exception 'Not authorized';
+  end if;
+
+  -- A character with no roster spec has no class to check against, so it
+  -- takes no sims until an officer sets one (CodeRabbit on PR #1920).
+  if v_class is null then
+    raise exception 'Set the character''s spec on the roster first.';
+  end if;
+  select cs.spec into v_spec
+    from public.classes_specs cs
+   where cs.id = p_class_spec_id and cs.class = v_class;
+  if v_spec is null then
+    raise exception 'The sim isn''t for this character''s class.';
+  end if;
+
+  -- name_realm is "Name-Realm"; the realm may itself hold a dash.
+  if coalesce(regexp_replace(lower(p_character_name), '[[:space:]_''’-]', '', 'g'), '')
+       is distinct from regexp_replace(lower(split_part(v_name_realm, '-', 1)), '[[:space:]_''’-]', '', 'g')
+     or coalesce(regexp_replace(lower(p_character_realm), '[[:space:]_''’-]', '', 'g'), '') = ''
+     or regexp_replace(lower(p_character_realm), '[[:space:]_''’-]', '', 'g')
+       is distinct from regexp_replace(lower(substr(v_name_realm, strpos(v_name_realm, '-') + 1)), '[[:space:]_''’-]', '', 'g')
+  then
+    raise exception 'The sim is for another character.';
   end if;
 
   if jsonb_typeof(p_results) is distinct from 'array'
@@ -44,11 +71,11 @@ begin
   end if;
 
   insert into public.character_sims
-    (team_id, player_id, difficulty, source, report_id, simmed_at, fight_style, target_count, added_by)
+    (team_id, player_id, difficulty, class_spec_id, source, report_id, simmed_at, fight_style, target_count, added_by)
   values
-    (v_team_id, p_player_id, p_difficulty, p_source, p_report_id, p_simmed_at,
+    (v_team_id, p_player_id, p_difficulty, p_class_spec_id, p_source, p_report_id, p_simmed_at,
      nullif(trim(p_fight_style), ''), p_target_count, public.my_person_id())
-  on conflict (player_id, difficulty) do update
+  on conflict (player_id, difficulty, class_spec_id) do update
      set source = excluded.source,
          report_id = excluded.report_id,
          simmed_at = excluded.simmed_at,
@@ -69,7 +96,7 @@ begin
            pct_gain numeric, dps_gain numeric, encounter_id integer, catalyst_from integer);
   get diagnostics v_count = row_count;
 
-  v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' sim from '
+  v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' ' || v_spec || ' sim from '
     || case p_source when 'raidbots' then 'Raidbots' else 'QE Live' end
     || ', ' || v_count || ' results');
   -- write_audit_log() for everyone it accepts; it raises for a raider with

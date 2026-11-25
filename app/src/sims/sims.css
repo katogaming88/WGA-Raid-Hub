@@ -84,3 +84,22 @@
 .sims-compact .sims-meta {
   flex: 1 1 auto;
 }
+
+/* The spec a gain belongs to (#1916): its icon, or its name where there is
+   none. Another spec's icon is faded with its greyed gain. */
+.sim-spec-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: var(--space-1);
+  border-radius: var(--radius-sm);
+  vertical-align: -3px;
+}
+
+.sim-spec-name {
+  margin-right: var(--space-1);
+}
+
+.priority-gain-other .sim-spec-icon,
+.wishlist-gain-spec.is-other .sim-spec-icon {
+  opacity: 0.6;
+}
