@@ -373,8 +373,10 @@ export type TeamSim = {
 // difficulty, or the sim's gain (null when the sim didn't include the item)
 // and whether it is out of date. Their other specs' gains (#1916) are only
 // shown, never sorted by: loot follows the roster spec (Kat, 2026-11-24).
+// `roster` is the raider's class and roster spec, for the spec icons.
+export type RosterSpec = { className: string; spec: string };
 export type OtherSpecGain = { spec: string; pct: number; stale: boolean };
-export type TrackGain = { others: OtherSpecGain[] } & (
+export type TrackGain = { roster: RosterSpec | null; others: OtherSpecGain[] } & (
   { sim: false } | { sim: true; pct: number | null; stale: boolean; simmedAt: string }
 );
 
@@ -384,7 +386,7 @@ export type TrackGain = { others: OtherSpecGain[] } & (
 export function trackGains(
   sims: TeamSim[],
   staleDays: number | null,
-  rosterSpecOf: (playerId: number) => string | null,
+  rosterSpecOf: (playerId: number) => RosterSpec | null,
   wowIdFor: (playerId: number, itemId: number) => number | null,
   now = Date.now()
 ) {
@@ -404,7 +406,8 @@ export function trackGains(
   }
   return (playerId: number, itemId: number, track: 'Hero' | 'Myth'): TrackGain => {
     const all = by.get(`${playerId}|${TRACK_DIFFICULTY[track]}`) ?? [];
-    const rosterSpec = rosterSpecOf(playerId);
+    const roster = rosterSpecOf(playerId);
+    const rosterSpec = roster?.spec ?? null;
     const wow = wowIdFor(playerId, itemId);
     const others = all
       .filter((s) => s.spec !== rosterSpec)
@@ -414,12 +417,13 @@ export function trackGains(
       })
       .sort((a, b) => a.spec.localeCompare(b.spec));
     const sim = all.find((s) => s.spec === rosterSpec);
-    if (!sim) return { sim: false, others };
+    if (!sim) return { sim: false, roster, others };
     return {
       sim: true,
       pct: wow === null ? null : (sim.gains.get(wow) ?? null),
       stale: sim.stale,
       simmedAt: sim.simmedAt,
+      roster,
       others
     };
   };

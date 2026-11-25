@@ -257,7 +257,12 @@ describe('trackGains', () => {
       }
     ],
     14,
-    (playerId) => ({ 1: 'Demonology', 2: 'Fire', 3: 'Arcane' })[playerId] ?? null,
+    (playerId) =>
+      ({
+        1: { className: 'Warlock', spec: 'Demonology' },
+        2: { className: 'Mage', spec: 'Fire' },
+        3: { className: 'Mage', spec: 'Arcane' }
+      })[playerId] ?? null,
     // Item 10 is a tier token: it becomes piece 900 for player 1.
     (playerId: number, itemId: number) => (itemId === 10 ? (playerId === 1 ? 900 : null) : 500),
     now
@@ -268,13 +273,22 @@ describe('trackGains', () => {
       pct: 2.5,
       stale: false,
       simmedAt: '2026-11-23T00:00:00Z',
+      roster: { className: 'Warlock', spec: 'Demonology' },
       others: [{ spec: 'Affliction', pct: 4.1, stale: false }]
     });
     expect(gainOf(1, 10, 'Myth')).toMatchObject({ pct: 1.1 });
-    expect(gainOf(1, 5, 'Hero')).toEqual({ sim: false, others: [] });
+    expect(gainOf(1, 5, 'Hero')).toEqual({
+      sim: false,
+      roster: { className: 'Warlock', spec: 'Demonology' },
+      others: []
+    });
     // The off spec's sim didn't include the token's piece: nothing to show.
     expect(gainOf(1, 10, 'Myth').others).toEqual([]);
-    expect(gainOf(3, 5, 'Myth')).toEqual({ sim: false, others: [{ spec: 'Frost', pct: 9, stale: false }] });
+    expect(gainOf(3, 5, 'Myth')).toEqual({
+      sim: false,
+      roster: { className: 'Mage', spec: 'Arcane' },
+      others: [{ spec: 'Frost', pct: 9, stale: false }]
+    });
     expect(gainOf(2, 5, 'Hero')).toMatchObject({ pct: 3, stale: true });
     expect(gainOf(2, 10, 'Hero')).toMatchObject({ sim: true, pct: null });
   });

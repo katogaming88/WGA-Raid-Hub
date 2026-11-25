@@ -21,9 +21,9 @@ answers to.
 ### Project
 
 - Adding a sim reads the spec from the report, Raidbots' SimulationCraft profile or QE Live's report, and turns away a report that names none or one run as another class (#1916).
-- The Priority page's gain, and its sort, is the sim for the spec the raider is on the roster as. Other specs' gains show beside it greyed and named ("+2.50%  Affliction +4.10%"), for information only: a better gain on another spec doesn't move a raider up.
+- The Priority page's gain, and its sort, is the sim for the spec the raider is on the roster as. Each gain leads with its spec's icon, the roster spec's always first, even with no sim. Other specs' gains follow, greyed, for information only: a better gain on another spec doesn't move a raider up.
 - The Missing sims tab counts only the roster spec; other specs are optional.
-- The Wishlist tab shows every spec's gain for each item, the roster spec first, and the sims list names each sim's spec, with Remove taking away just that one. Help's "Add your sim" guide says so.
+- The Wishlist tab shows every spec's gain for each item behind its spec's icon, the roster spec always first, and the sims list names each sim's spec, with Remove taking away just that one. Help's "Add your sim" guide says so.
 
 ## [3.308.0] - 2026-11-24
 

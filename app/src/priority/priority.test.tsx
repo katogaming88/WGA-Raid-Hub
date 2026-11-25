@@ -1038,7 +1038,13 @@ describe('sims on the Priority page', () => {
     const ranks = await screen.findByRole('list', { name: 'Silken Voodoo Drape, Heroic order' });
     await waitFor(() => expect(within(ranks).getAllByRole('listitem')[0]).toHaveTextContent('+2.50%'));
     const rows = within(ranks).getAllByRole('listitem');
-    expect(rows[0]).toHaveTextContent('+2.50%Affliction +7.00%');
+    // Each gain leads with its spec's icon, the roster spec's first (#1916).
+    expect(rows[0]).toHaveTextContent('+2.50%+7.00%');
+    expect(
+      within(rows[0]!)
+        .getAllByRole('img')
+        .map((i) => i.getAttribute('alt'))
+    ).toEqual(['Demonology', 'Affliction']);
     expect(rows[1]).toHaveTextContent('+1.00% (sim out of date)');
     expect(rows[2]).toHaveTextContent('No sim');
   });

@@ -1191,7 +1191,13 @@ describe('Profile > Sims', () => {
       })
     );
     const band = (await screen.findByRole('group', { name: 'Band of the Abyss, Head' })).closest('li')!;
-    expect(band.querySelector('.wishlist-gains')).toHaveTextContent('M +1.98%H +1.20% (out of date)Unholy M +3.00%');
+    expect(band.querySelector('.wishlist-gains')).toHaveTextContent('M +1.98%H +1.20% (out of date)M +3.00%');
+    const gains = band.querySelector('.wishlist-gains') as HTMLElement;
+    expect(
+      within(gains)
+        .getAllByRole('img')
+        .map((i) => i.getAttribute('alt'))
+    ).toEqual(['Frost', 'Unholy']);
     // The list above names each sim's spec, the roster spec's first.
     expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual([
       'Mythic Frost',

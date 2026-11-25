@@ -1094,7 +1094,13 @@ export function simLookup(
 
 // The spec a raider is on the roster as: its sim is the one that counts (#1916).
 function rosterSpecOf(players: PlayerRow[]) {
-  const specOf = new Map(players.map((p) => [p.id, p.classes_specs?.spec ?? null]));
+  const specOf = new Map(
+    players.flatMap((p) =>
+      p.classes_specs?.class && p.classes_specs.spec
+        ? [[p.id, { className: p.classes_specs.class, spec: p.classes_specs.spec }] as const]
+        : []
+    )
+  );
   return (playerId: number) => specOf.get(playerId) ?? null;
 }
 
