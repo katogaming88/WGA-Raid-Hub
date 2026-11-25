@@ -378,10 +378,15 @@ describe('delete_character_sim()', () => {
     withTxn(async ({ q, asUser }) => {
       const { team, playerId } = await raiderWithCharacter(q);
       await save(asUser, team.raider.uid, playerId);
-      const id = (await q('select id from public.character_sims where player_id = $1', [playerId])).rows[0].id;
+      // Another setup's sim, same difficulty and spec, that must survive (CodeRabbit on PR #1921).
+      await save(asUser, team.raider.uid, playerId, { reportId: 'aoe', setup: ['Patchwerk', 3, 300] });
+      const id = (await q('select id from public.character_sims where player_id = $1 and target_count = 1', [playerId]))
+        .rows[0].id;
       await asUser(team.raider.uid, 'select public.delete_character_sim($1)', [id]);
       await asUser(team.raider.uid, 'select public.delete_character_sim($1)', [id]);
-      expect(await simsOf(q, playerId)).toEqual([]);
+      expect(await simsOf(q, playerId)).toEqual([
+        { difficulty: 'mythic', spec: 1, source: 'raidbots', report_id: 'aoe', results: 2 }
+      ]);
       const audit = await q(
         `select detail->>'summary' as s from public.audit_log where action = 'Sim Removed' and target_id = $1`,
         [playerId]

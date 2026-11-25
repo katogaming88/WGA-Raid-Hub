@@ -208,6 +208,11 @@ begin
   end if;
 
   delete from public.character_sims where id = p_sim_id;
+  -- Someone else removed it in the meantime: theirs is the one logged
+  -- (CodeRabbit on PR #1921).
+  if not found then
+    return;
+  end if;
   v_detail := jsonb_build_object('summary', v_summary);
   begin
     perform public.write_audit_log(v_team_id, 'Sim Removed', 'players', v_player_id, v_detail);
