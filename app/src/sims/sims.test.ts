@@ -20,7 +20,7 @@ import {
   type SavedResult
 } from './sims';
 
-import { asSimSettings, DEFAULT_SIM_SETTINGS, simProblems, type SimSettings } from './simSettings';
+import { asSimSettings, DEFAULT_SIM_SETTINGS, setupOf, simProblems, type SimSettings } from './simSettings';
 
 // The team's defaults: one setup, 14 days.
 const SETTINGS = DEFAULT_SIM_SETTINGS;
@@ -420,6 +420,7 @@ describe('setupGains', () => {
     ]
   };
   const sim = (targets: number, pct: number, simmedAt = fresh, dps: number | null = null) => ({
+    source: 'raidbots',
     fight_style: 'Patchwerk',
     target_count: targets,
     fight_length: 300,
@@ -431,10 +432,14 @@ describe('setupGains', () => {
     expect(setupGains([sim(1, 1), sim(3, 2)], SETUPS, 'mythic', now).gainOf(500)).toMatchObject({ pct: 1.3 });
     const one = setupGains([sim(1, 1)], SETUPS, 'mythic', now);
     expect(one.gainOf(500)).toMatchObject({ pct: 0.7, stale: false });
-    expect(one.missing.map((s) => s.name)).toEqual(['Several targets']);
+    expect(one.missing).toMatchObject([{ setup: { name: 'Several targets' }, stale: false }]);
   });
 
   it('counts an out-of-date setup as no gain, and shows the old ones greyed when nothing is current', () => {
+    // Missing sims tells an out-of-date setup from one never added.
+    expect(setupGains([sim(1, 1), sim(3, 2, old)], SETUPS, 'mythic', now).missing).toMatchObject([
+      { setup: { name: 'Several targets' }, stale: true }
+    ]);
     expect(setupGains([sim(1, 1), sim(3, 2, old)], SETUPS, 'mythic', now).gainOf(500)).toMatchObject({
       pct: 0.7,
       stale: false
@@ -467,6 +472,7 @@ describe('setupGains', () => {
   it('shows the team’s level: fully upgraded is the highest item level, as it drops the lowest', () => {
     const both = {
       ...sim(1, 0),
+      source: 'qe_live',
       fight_style: null,
       character_sim_results: [
         { ...r(1), item_level: 321 },
@@ -548,5 +554,45 @@ describe('asSimSettings', () => {
     expect(s.setups).toEqual(DEFAULT_SIM_SETTINGS.setups);
     expect(s.checks).toMatchObject({ sockets: true, buffs: true });
     expect(s.staleDays).toBe(14);
+  });
+});
+
+// The fresh-agent review on PR #1921: nothing unreadable gets through.
+describe('a Raidbots report the checks can’t read', () => {
+  it('is turned away with no fight length, or no upgrade level in its title', () => {
+    const meta = { ...raidbots.simbot.meta, fightLength: undefined };
+    const raw = { ...raidbots.simbot.meta.rawFormData, fightLength: undefined };
+    const noLength = { ...raidbots, simbot: { ...raidbots.simbot, meta: { ...meta, rawFormData: raw } } };
+    expect(parseRaidbots(noLength, 'abc')).toMatchObject({
+      error: expect.stringMatching(/fight style, targets and length/)
+    });
+    const renamed = {
+      ...raidbots,
+      simbot: {
+        ...raidbots.simbot,
+        meta: { ...raidbots.simbot.meta, rawFormData: { ...raidbots.simbot.meta.rawFormData, reportName: 'My sim' } }
+      }
+    };
+    expect(simProblems(ok(parseRaidbots(renamed, 'abc')), DEFAULT_SIM_SETTINGS)).toEqual([
+      'Its title doesn’t say what level its items were simmed at (like “Myth 6/6”). Run the droptimizer again without renaming the report.'
+    ]);
+  });
+
+  it('says the real length when it isn’t whole minutes', () => {
+    const meta = { ...raidbots.simbot.meta, fightLength: 270 };
+    const short = ok(parseRaidbots({ ...raidbots, simbot: { ...raidbots.simbot, meta } }, 'abc'));
+    expect(simProblems(short, DEFAULT_SIM_SETTINGS)[0]).toMatch(/^It was run as Patchwerk, 1 target, 4 min 30 s,/);
+  });
+
+  it('matches a saved Raidbots sim only on all three, and only QE Live as every setup', () => {
+    const setups = DEFAULT_SIM_SETTINGS.setups;
+    expect(setupOf({ source: 'raidbots', fight_style: null }, setups)).toBeNull();
+    expect(
+      setupOf({ source: 'raidbots', fight_style: 'Patchwerk', target_count: 1, fight_length: null }, setups)
+    ).toBeNull();
+    expect(setupOf({ source: 'raidbots', fight_style: 'Patchwerk', target_count: 1, fight_length: 300 }, setups)).toBe(
+      setups[0]
+    );
+    expect(setupOf({ source: 'qe_live', fight_style: null }, setups)).toBe('all');
   });
 });

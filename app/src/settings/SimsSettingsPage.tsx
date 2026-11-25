@@ -9,6 +9,7 @@ import {
   CHECKS,
   describeSetup,
   FIGHT_STYLES,
+  MAX_SETUPS,
   type SimSettings,
   type SimSetup,
   type UpgradeMode
@@ -51,6 +52,7 @@ const share = (setups: SimSetup[], s: SimSetup) => {
 export function simSettingsProblems(s: SimSettings): string[] {
   const problems: string[] = [];
   if (s.setups.some((x) => !x.name.trim())) problems.push('Give every setup a name.');
+  if (s.setups.length > MAX_SETUPS) problems.push(`A team can have at most ${MAX_SETUPS} setups.`);
   const names = s.setups.map((x) => x.name.trim().toLowerCase());
   if (new Set(names).size !== names.length) problems.push('Two setups have the same name.');
   const shapes = s.setups.map((x) => `${x.fightStyle}|${x.targets}|${x.minutes}`);
@@ -305,6 +307,7 @@ function SimsForm({ teamId, saved, canEdit }: { teamId: number; saved: SimSettin
           <button
             type="button"
             className="button"
+            disabled={s.setups.length >= MAX_SETUPS}
             onClick={() =>
               set({
                 setups: [

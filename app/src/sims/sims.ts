@@ -219,6 +219,10 @@ export function parseRaidbots(data: unknown, reportId: string): ParsedReport | {
   if (!spec.trim()) return { error: NO_SPEC };
   const stamp = Number(root.timestamp);
   const raw = obj(meta.rawFormData);
+  const fightLength = positiveInt(meta.fightLength ?? raw.fightLength);
+  if (typeof meta.fightStyle !== 'string' || !meta.fightStyle || !positiveInt(meta.enemyCount) || !fightLength) {
+    return { error: 'That Raidbots report doesn’t say its fight style, targets and length, so it can’t be checked.' };
+  }
   const options = obj(sim.options);
   const title = String(raw.reportName ?? simbot.title ?? '');
   const step = /(\d+)\/(\d+)\s*$/.exec(title);
@@ -244,7 +248,7 @@ export function parseRaidbots(data: unknown, reportId: string): ParsedReport | {
     simmedAt: new Date(Number.isFinite(stamp) && stamp > 0 ? stamp * 1000 : Date.now()).toISOString(),
     fightStyle: typeof meta.fightStyle === 'string' ? meta.fightStyle : null,
     targetCount: positiveInt(meta.enemyCount),
-    fightLength: positiveInt(meta.fightLength ?? raw.fightLength),
+    fightLength,
     raidbots,
     sims: grouped(rows)
   };
@@ -430,8 +434,9 @@ export function setupGains(sims: GainSim[], settings: SimSettings, difficulty: D
     has: dated.length > 0,
     stale: !anyFresh,
     simmedAt: dated.sort().at(-1) ?? null,
-    // The setups with no up-to-date sim, for Missing sims.
-    missing: picks.filter((p) => !p.fresh).map((p) => p.setup),
+    // The setups with no up-to-date sim, for Missing sims: none at all, or
+    // one that is out of date.
+    missing: picks.filter((p) => !p.fresh).map((p) => ({ setup: p.setup, stale: p.sim !== null })),
     gainOf(wowId: number): Gain | null {
       if (!picks.some((p, i) => used[i] && p.values.has(wowId))) return null;
       let pct = 0;
@@ -524,7 +529,7 @@ export type TrackGain = { roster: RosterSpec | null; others: OtherSpecGain[]; mo
       dps: number | null;
       stale: boolean;
       simmedAt: string;
-      missing: SimSetup[];
+      missing: { setup: SimSetup; stale: boolean }[];
     }
 );
 

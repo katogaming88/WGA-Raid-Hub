@@ -20206,6 +20206,12 @@
       "type": "FUNCTION"
     },
     {
+      "name": "public.sim_setup_label",
+      "return_type": "text",
+      "arguments": "p_fight_style text, p_target_count integer, p_fight_length integer",
+      "type": "FUNCTION"
+    },
+    {
       "name": "public.save_character_sim",
       "return_type": "int4",
       "arguments": "p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_character_name text, p_character_realm text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_fight_length integer, p_results jsonb",

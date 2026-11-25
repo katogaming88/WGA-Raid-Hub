@@ -146,6 +146,7 @@ const SIMS = [
   report_id: `report${i}`,
   fight_style: sim.source === 'raidbots' ? 'Patchwerk' : null,
   target_count: sim.source === 'raidbots' ? 1 : null,
+  fight_length: sim.source === 'raidbots' ? 300 : null,
   ...sim,
   character_sim_results: [
     [213008, 'Band of the Hollow Choir', 1.98],

@@ -178,6 +178,7 @@ export function useTeamSims(teamId: number) {
       id: number;
       player_id: number;
       difficulty: string;
+      source: string;
       simmed_at: string;
       fight_style: string | null;
       target_count: number | null;
@@ -187,7 +188,7 @@ export function useTeamSims(teamId: number) {
       client
         .from('character_sims')
         .select(
-          'id, player_id, difficulty, classes_specs(spec, class), simmed_at, fight_style, target_count, fight_length'
+          'id, player_id, difficulty, source, classes_specs(spec, class), simmed_at, fight_style, target_count, fight_length'
         )
         .eq('team_id', teamId)
         .order('id')

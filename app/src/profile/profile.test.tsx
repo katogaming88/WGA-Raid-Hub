@@ -1095,6 +1095,7 @@ describe('Profile > Sims', () => {
     simmed_at: '2026-11-20T12:00:00Z',
     fight_style: 'Patchwerk',
     target_count: 1,
+    fight_length: 300,
     character_sim_results: [
       {
         id: 1,

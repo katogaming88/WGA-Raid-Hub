@@ -1122,8 +1122,9 @@ function missingSims(players: PlayerRow[], sims: TeamSim[], settings: SimSetting
       if (!gain.sim) return [{ player, reason: `No ${label} sim` }];
       if (gain.stale) return [{ player, reason: `Out of date, simmed ${simAgeDays(gain.simmedAt)} days ago` }];
       if (gain.missing.length) {
-        const names = gain.missing.map((s) => s.name);
-        return [{ player, reason: `No ${names.join(' or ')} sim` }];
+        const parts = gain.missing.map((m) => (m.stale ? `${m.setup.name} sim out of date` : `no ${m.setup.name} sim`));
+        const reason = parts.join(' and ');
+        return [{ player, reason: reason.charAt(0).toUpperCase() + reason.slice(1) }];
       }
       return [];
     })

@@ -147,25 +147,42 @@ export const simSettingsConfig = (s: SimSettings) => ({
   simStaleDays: s.staleDays
 });
 
-// The setup a saved sim was run as (Kat, 2026-11-25): a sim with no fight
-// style (QE Live) counts as every setup; a Raidbots sim matches the setup
-// with its fight style, targets and length. A sim saved before lengths were
-// kept matches on style and targets alone. Null: it matches no setup now.
-export type SetupShape = { fight_style?: string | null; target_count?: number | null; fight_length?: number | null };
+// The setup a saved sim was run as (Kat, 2026-11-25): a QE Live sim counts
+// as every setup; a Raidbots sim matches the setup with its fight style,
+// targets and length, all three (the fresh-agent review on PR #1921). Null:
+// it matches no setup now. A sim with no source given (only in tests' older
+// samples) and no fight style is taken as QE Live.
+export type SetupShape = {
+  source?: string;
+  fight_style?: string | null;
+  target_count?: number | null;
+  fight_length?: number | null;
+};
 export function setupOf(sim: SetupShape, setups: SimSetup[]): SimSetup | 'all' | null {
-  if (!sim.fight_style) return 'all';
+  if (sim.source === 'qe_live' || (sim.source === undefined && !sim.fight_style)) return 'all';
+  if (!sim.fight_style || sim.fight_length == null) return null;
   return (
     setups.find(
       (s) =>
         s.fightStyle.toLowerCase() === sim.fight_style!.toLowerCase() &&
         s.targets === sim.target_count &&
-        (sim.fight_length == null || s.minutes * 60 === sim.fight_length)
+        s.minutes * 60 === sim.fight_length
     ) ?? null
   );
 }
 
+// A fight length in words: whole minutes, else minutes and seconds.
+export const lengthText = (seconds: number) =>
+  seconds % 60 === 0 ? `${seconds / 60} min` : `${Math.floor(seconds / 60)} min ${seconds % 60} s`;
+
+// At most ten setups: the database keeps at most ten sims per character,
+// difficulty and spec (the fresh-agent review on PR #1921).
+export const MAX_SETUPS = 10;
+
 export const describeSetup = (s: { fightStyle: string; targets: number; minutes: number }) =>
-  `${fightStyleLabel(s.fightStyle)}, ${s.targets} ${s.targets === 1 ? 'target' : 'targets'}, ${s.minutes} min`;
+  describeRun(s.fightStyle, s.targets, s.minutes * 60);
+const describeRun = (style: string, targets: number, seconds: number) =>
+  `${fightStyleLabel(style)}, ${targets} ${targets === 1 ? 'target' : 'targets'}, ${lengthText(seconds)}`;
 
 const DIFFICULTY_NAMES: Record<Difficulty, string> = {
   lfr: 'Raid Finder',
@@ -183,16 +200,16 @@ export function simProblems(report: ParsedReport, settings: SimSettings): string
   if (report.source !== 'raidbots' || !rb) return [];
   const problems: string[] = [];
   const shape = { fight_style: report.fightStyle, target_count: report.targetCount, fight_length: report.fightLength };
-  if (setupOf(shape, settings.setups) === null) {
-    const ran = describeSetup({
-      fightStyle: report.fightStyle ?? '',
-      targets: report.targetCount ?? 1,
-      minutes: Math.round((report.fightLength ?? 0) / 60)
-    });
+  if (setupOf({ source: 'raidbots', ...shape }, settings.setups) === null) {
+    const ran = describeRun(report.fightStyle ?? '', report.targetCount ?? 1, report.fightLength ?? 0);
     const want = settings.setups.map((s) => `${s.name} (${describeSetup(s)})`);
     problems.push(`It was run as ${ran}, which isn’t one of the team’s setups: ${list(want)}.`);
   }
-  if (rb.upgrade) {
+  if (!rb.upgrade) {
+    problems.push(
+      'Its title doesn’t say what level its items were simmed at (like “Myth 6/6”). Run the droptimizer again without renaming the report.'
+    );
+  } else {
     for (const sim of report.sims) {
       const want = settings.upgrade[sim.difficulty];
       const ok = want === 'max' ? rb.upgrade.step === rb.upgrade.of : rb.upgrade.step === 1;

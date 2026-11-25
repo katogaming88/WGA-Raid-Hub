@@ -28,6 +28,33 @@ alter table public.character_sims
 comment on table public.character_sims is
   'A raider''s latest droptimizer sim per difficulty, spec and setup (#1443, #1916, #1888): Raidbots or QE Live, written by save_character_sim().';
 
+-- A sim's setup in words for the audit log ("Hectic add cleave, 3 targets,
+-- 5 min"), as the page names it; empty for QE Live, which has none.
+create function public.sim_setup_label(p_fight_style text, p_target_count integer, p_fight_length integer)
+returns text
+language sql
+immutable
+set search_path = public
+as $$
+  select case when p_fight_style is null then '' else
+    ' (' || case p_fight_style
+              when 'CastingPatchwerk' then 'Casting Patchwerk'
+              when 'LightMovement' then 'Light movement'
+              when 'HeavyMovement' then 'Heavy movement'
+              when 'HecticAddCleave' then 'Hectic add cleave'
+              when 'DungeonSlice' then 'Dungeon slice'
+              else p_fight_style
+            end
+    || coalesce(', ' || p_target_count || case p_target_count when 1 then ' target' else ' targets' end, '')
+    || coalesce(', ' || case when p_fight_length % 60 = 0 then (p_fight_length / 60) || ' min'
+                             else p_fight_length || ' s' end, '')
+    || ')'
+  end
+$$;
+
+comment on function public.sim_setup_label(text, integer, integer) is
+  'A sim''s setup in words for the audit log (#1888): fight style, targets and length; empty for QE Live.';
+
 drop function public.save_character_sim(integer, text, integer, text, text, text, text, timestamp with time zone, text, integer, jsonb);
 drop function public.delete_character_sim(integer, text, integer);
 
@@ -115,6 +142,21 @@ begin
     raise exception 'The sim''s date is in the future.';
   end if;
 
+  -- At most ten sims per character, difficulty and spec, one per setup (the
+  -- settings page allows ten setups): a new setup past that is refused, so
+  -- nobody can fill the team's Priority page with thousands of results
+  -- (the fresh-agent review on PR #1921). Replacing a setup's sim is fine.
+  if not exists (
+       select 1 from public.character_sims
+        where player_id = p_player_id and difficulty = p_difficulty and class_spec_id = p_class_spec_id
+          and fight_style is not distinct from nullif(trim(p_fight_style), '')
+          and target_count is not distinct from p_target_count
+          and fight_length is not distinct from p_fight_length)
+     and (select count(*) from public.character_sims
+           where player_id = p_player_id and difficulty = p_difficulty and class_spec_id = p_class_spec_id) >= 10 then
+    raise exception 'This character already has ten sims at this difficulty and spec; remove one first.';
+  end if;
+
   insert into public.character_sims
     (team_id, player_id, difficulty, class_spec_id, source, report_id, simmed_at, fight_style, target_count,
      fight_length, added_by)
@@ -144,6 +186,7 @@ begin
 
   v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' ' || v_spec || ' sim from '
     || case p_source when 'raidbots' then 'Raidbots' else 'QE Live' end
+    || public.sim_setup_label(nullif(trim(p_fight_style), ''), p_target_count, p_fight_length)
     || ', ' || v_count || ' results');
   -- write_audit_log() for everyone it accepts; it raises for a raider with
   -- no officer permission, whose own change is then logged directly.
@@ -184,8 +227,7 @@ begin
   end if;
 
   select s.player_id, initcap(s.difficulty) || ' ' || cs.spec || ' sim removed'
-         || coalesce(' (' || s.fight_style || ', ' || s.target_count
-                     || case s.target_count when 1 then ' target)' else ' targets)' end, '')
+         || public.sim_setup_label(s.fight_style, s.target_count, s.fight_length)
     into v_player_id, v_summary
     from public.character_sims s
     join public.classes_specs cs on cs.id = s.class_spec_id

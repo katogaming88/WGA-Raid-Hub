@@ -134,9 +134,9 @@ describe('save_character_sim()', () => {
         [playerId]
       );
       expect(audit.rows.map((r) => r.s)).toEqual([
-        'Mythic Frost sim from Raidbots, 2 results',
-        'Mythic Fire sim from Raidbots, 2 results',
-        'Mythic Fire sim from Raidbots, 1 results'
+        'Mythic Frost sim from Raidbots (Patchwerk, 1 target, 5 min), 2 results',
+        'Mythic Fire sim from Raidbots (Patchwerk, 1 target, 5 min), 2 results',
+        'Mythic Fire sim from Raidbots (Patchwerk, 1 target, 5 min), 1 results'
       ]);
     }));
 
@@ -172,6 +172,25 @@ describe('save_character_sim()', () => {
         { report_id: 'qe2', fight_style: null, target_count: null, fight_length: null },
         { report_id: 'single2', fight_style: 'Patchwerk', target_count: 1, fight_length: 300 }
       ]);
+    }));
+
+  // The fresh-agent review on PR #1921: at most ten sims per difficulty and
+  // spec, so nobody can flood the team's Priority page. Replacing one is fine.
+  it('refuses an eleventh setup at one difficulty and spec, but replaces one already there', () =>
+    withTxn(async ({ q, asUser }) => {
+      const { team, playerId } = await raiderWithCharacter(q);
+      const uid = team.raider.uid;
+      for (let n = 1; n <= 10; n++)
+        await save(asUser, uid, playerId, { setup: ['Patchwerk', n, 300], results: [result()] });
+      await expect(save(asUser, uid, playerId, { setup: ['Patchwerk', 11, 300] })).rejects.toThrow(/ten sims/i);
+      expect(await save(asUser, uid, playerId, { setup: ['Patchwerk', 5, 300] })).toBe(2);
+      // Another difficulty has its own ten.
+      expect(await save(asUser, uid, playerId, { difficulty: 'heroic', setup: ['Patchwerk', 11, 300] })).toBe(2);
+      const audit = await q(
+        `select detail->>'summary' as s from public.audit_log where action = 'Sim Added' and target_id = $1 order by id desc limit 1`,
+        [playerId]
+      );
+      expect(audit.rows[0].s).toBe('Heroic Frost sim from Raidbots (Patchwerk, 11 targets, 5 min), 2 results');
     }));
 
   it('refuses a fight length out of bounds', () =>
@@ -391,7 +410,7 @@ describe('delete_character_sim()', () => {
         `select detail->>'summary' as s from public.audit_log where action = 'Sim Removed' and target_id = $1`,
         [playerId]
       );
-      expect(audit.rows.map((r) => r.s)).toEqual(['Mythic Frost sim removed (Patchwerk, 1 target)']);
+      expect(audit.rows.map((r) => r.s)).toEqual(['Mythic Frost sim removed (Patchwerk, 1 target, 5 min)']);
     }));
 
   it('removes only the named spec’s sim (#1916)', () =>

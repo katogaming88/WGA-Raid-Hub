@@ -21,8 +21,7 @@ begin
   end if;
 
   select s.player_id, initcap(s.difficulty) || ' ' || cs.spec || ' sim removed'
-         || coalesce(' (' || s.fight_style || ', ' || s.target_count
-                     || case s.target_count when 1 then ' target)' else ' targets)' end, '')
+         || public.sim_setup_label(s.fight_style, s.target_count, s.fight_length)
     into v_player_id, v_summary
     from public.character_sims s
     join public.classes_specs cs on cs.id = s.class_spec_id

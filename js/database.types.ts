@@ -7201,6 +7201,14 @@ export type Database = {
         Args: { p_signup_id: number }
         Returns: boolean
       }
+      sim_setup_label: {
+        Args: {
+          p_fight_length: number
+          p_fight_style: string
+          p_target_count: number
+        }
+        Returns: string
+      }
       start_recruit_trial: {
         Args: { p_application_id: number }
         Returns: number
