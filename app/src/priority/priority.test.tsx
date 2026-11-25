@@ -1005,16 +1005,34 @@ describe('sims on the Priority page', () => {
   // her roster spec. Katorrí's Affliction and Amazon's Beast Mastery sims are
   // off specs (#1916): shown greyed, never counted.
   const SIMS = [
-    { id: 1, player_id: 10, difficulty: 'heroic', classes_specs: { spec: 'Demonology' }, simmed_at: fresh },
+    {
+      id: 1,
+      player_id: 10,
+      difficulty: 'heroic',
+      classes_specs: { spec: 'Demonology', class: 'Warlock' },
+      simmed_at: fresh
+    },
     {
       id: 2,
       player_id: 11,
       difficulty: 'heroic',
-      classes_specs: { spec: 'Restoration' },
+      classes_specs: { spec: 'Restoration', class: 'Druid' },
       simmed_at: '2026-01-01T00:00:00Z'
     },
-    { id: 3, player_id: 10, difficulty: 'heroic', classes_specs: { spec: 'Affliction' }, simmed_at: fresh },
-    { id: 4, player_id: 12, difficulty: 'heroic', classes_specs: { spec: 'Beast Mastery' }, simmed_at: fresh }
+    {
+      id: 3,
+      player_id: 10,
+      difficulty: 'heroic',
+      classes_specs: { spec: 'Affliction', class: 'Warlock' },
+      simmed_at: fresh
+    },
+    {
+      id: 4,
+      player_id: 12,
+      difficulty: 'heroic',
+      classes_specs: { spec: 'Beast Mastery', class: 'Hunter' },
+      simmed_at: fresh
+    }
   ];
   const RESULTS = [
     { ...result(1, 9001, 2.5), sim_id: 1 },
@@ -1085,6 +1103,7 @@ describe('sims on the Priority page', () => {
           player_id: 10,
           difficulty: 'heroic',
           spec: 'Demonology',
+          className: 'Warlock',
           simmed_at: fresh,
           character_sim_results: [result(1, 5006, 3.3)]
         }

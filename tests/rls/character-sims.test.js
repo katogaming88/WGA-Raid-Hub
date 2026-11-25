@@ -3,7 +3,7 @@
 // character per difficulty, a new one replacing the old. Anyone reads them.
 // Each case mints its own team; everything is rolled back.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedTeam, seedPlayer, seedMember, RLS_DENIED } from './helpers.js';
+import { pool, withTxn, seedTeam, seedPlayer, seedMember, RLS_DENIED, SITE_ADMIN } from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -139,6 +139,15 @@ describe('save_character_sim()', () => {
       const havoc = await specId(q, 'Demon Hunter', 'Havoc');
       await expect(save(asUser, team.raider.uid, playerId, { spec: havoc })).rejects.toThrow(/another class|class/i);
       await expect(save(asUser, team.raider.uid, playerId, { spec: 99999 })).rejects.toThrow(/class/i);
+      expect(await simsOf(q, playerId)).toEqual([]);
+    }));
+
+  // The fresh-agent review on PR #1920: the site admin path had no test.
+  it('lets a site admin save and remove a raider’s sim', () =>
+    withTxn(async ({ q, asUser }) => {
+      const { playerId } = await raiderWithCharacter(q);
+      expect(await save(asUser, SITE_ADMIN, playerId)).toBe(2);
+      await remove(asUser, SITE_ADMIN, playerId);
       expect(await simsOf(q, playerId)).toEqual([]);
     }));
 

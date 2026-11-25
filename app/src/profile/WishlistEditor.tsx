@@ -29,6 +29,7 @@ import {
   DIFFICULTY_SHORT,
   formatGain,
   gainsByItem,
+  isRosterSim,
   type ItemGain,
   type RosterSpec
 } from '../sims/sims';
@@ -178,7 +179,7 @@ function WishlistEditor({
   const roster = cs?.class && cs.spec ? { className: cs.class, spec: cs.spec } : null;
   const gains: SimGainData | undefined = sims.isSuccess
     ? {
-        byItem: gainsByItem(sims.data.sims, roster?.spec ?? null, staleDays.isSuccess ? staleDays.data : null),
+        byItem: gainsByItem(sims.data.sims, roster, staleDays.isSuccess ? staleDays.data : null),
         roster
       }
     : undefined;
@@ -586,16 +587,18 @@ function NoteField({
 // H +1.20%"), then each other spec's icon and gains, greyed. An out-of-date
 // sim's gain is greyed; a dash where the spec has no gain for the item.
 function SimGains({ gains, roster }: { gains: ItemGain[]; roster: RosterSpec | null }) {
-  const specs = [...new Set([...(roster ? [roster.spec] : []), ...gains.map((g) => g.spec)])];
+  // Grouped by class and spec: spec names repeat across classes.
+  const key = (s: { className: string; spec: string }) => `${s.className}|${s.spec}`;
+  const specs = [...new Map([...(roster ? [roster] : []), ...gains].map((s) => [key(s), s])).values()];
   if (!specs.length) return <NoGain className="wishlist-gains text-muted" />;
   return (
     <span className="wishlist-gains">
       {specs.map((spec) => {
-        const mine = gains.filter((g) => g.spec === spec);
-        const other = spec !== roster?.spec;
+        const mine = gains.filter((g) => key(g) === key(spec));
+        const other = !isRosterSim(spec, roster);
         return (
-          <span key={spec} className={`wishlist-gain-spec${other ? ' is-other' : ''}`}>
-            <SpecMark className={roster?.className ?? null} spec={spec} />
+          <span key={key(spec)} className={`wishlist-gain-spec${other ? ' is-other' : ''}`}>
+            <SpecMark className={spec.className} spec={spec.spec} />
             {mine.length ? (
               mine.map((g) => (
                 <span

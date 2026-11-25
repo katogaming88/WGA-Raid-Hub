@@ -141,7 +141,7 @@ const SIMS = [
   { difficulty: 'mythic', simmed_at: new Date().toISOString(), source: 'raidbots', spec: 'Unholy' }
 ].map(({ spec = 'Frost', ...sim }, i) => ({
   class_spec_id: spec === 'Frost' ? 2 : 3,
-  classes_specs: { spec },
+  classes_specs: { spec, class: 'Death Knight' },
   id: i + 1,
   report_id: `report${i}`,
   fight_style: sim.source === 'raidbots' ? 'Patchwerk' : null,
@@ -917,14 +917,14 @@ const PRIORITY_SIMS = {
         id: 1,
         player_id: PRIORITY_IDS[0],
         difficulty: 'heroic',
-        classes_specs: { spec: 'Protection' },
+        classes_specs: { spec: 'Protection', class: 'Warrior' },
         simmed_at: new Date().toISOString()
       },
       {
         id: 2,
         player_id: PRIORITY_IDS[1],
         difficulty: 'heroic',
-        classes_specs: { spec: 'Holy' },
+        classes_specs: { spec: 'Holy', class: 'Paladin' },
         simmed_at: '2026-01-01T00:00:00Z'
       },
       // #1916: the first raider's other spec, shown greyed beside their gain.
@@ -932,7 +932,7 @@ const PRIORITY_SIMS = {
         id: 3,
         player_id: PRIORITY_IDS[0],
         difficulty: 'heroic',
-        classes_specs: { spec: 'Arms' },
+        classes_specs: { spec: 'Arms', class: 'Warrior' },
         simmed_at: new Date().toISOString()
       }
     ],

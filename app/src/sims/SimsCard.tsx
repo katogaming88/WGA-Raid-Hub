@@ -39,6 +39,10 @@ import './sims.css';
 // sim's upgrades too.
 type Character = { id: number; name_realm: string; classes_specs: { class: string; spec: string } | null };
 
+// The character's class and roster spec, whose sim counts (#1916).
+const rosterOf = (player: Character) =>
+  player.classes_specs ? { className: player.classes_specs.class, spec: player.classes_specs.spec } : null;
+
 export function SimsCard({
   player,
   teamId,
@@ -64,7 +68,7 @@ export function SimsCard({
       <DataState query={sims} label="sims">
         {({ sims: saved, items }) =>
           saved.length ? (
-            simOrder(saved, player.classes_specs?.spec ?? null).map((sim) => (
+            simOrder(saved, rosterOf(player)).map((sim) => (
               <SimTable
                 key={sim.id}
                 sim={sim}

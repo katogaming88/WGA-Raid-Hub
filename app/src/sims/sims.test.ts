@@ -8,6 +8,7 @@ import {
   trackGains,
   bestPerItem,
   isCharacter,
+  isRosterSim,
   isStale,
   matchSpec,
   simOrder,
@@ -178,12 +179,14 @@ describe('gainsByItem', () => {
         {
           difficulty: 'heroic',
           spec: 'Demonology',
+          className: 'Warlock',
           simmed_at: '2026-11-01T00:00:00Z',
           character_sim_results: [result({ pct_gain: 1.2 })]
         },
         {
           difficulty: 'mythic',
           spec: 'Demonology',
+          className: 'Warlock',
           simmed_at: '2026-11-23T00:00:00Z',
           character_sim_results: [
             result({ pct_gain: 1.5, item_level: 321 }),
@@ -194,21 +197,24 @@ describe('gainsByItem', () => {
         {
           difficulty: 'mythic',
           spec: 'Affliction',
+          className: 'Warlock',
           simmed_at: '2026-11-23T00:00:00Z',
           character_sim_results: [result({ pct_gain: 4.1 })]
         }
       ],
-      'Demonology',
+      { className: 'Warlock', spec: 'Demonology' },
       14,
       now
     );
     // The roster spec's first, then another spec's, named (#1916).
     expect(gains.get(1)).toEqual([
-      { difficulty: 'mythic', spec: 'Demonology', roster: true, pct: 1.98, stale: false },
-      { difficulty: 'heroic', spec: 'Demonology', roster: true, pct: 1.2, stale: true },
-      { difficulty: 'mythic', spec: 'Affliction', roster: false, pct: 4.1, stale: false }
+      { difficulty: 'mythic', spec: 'Demonology', className: 'Warlock', roster: true, pct: 1.98, stale: false },
+      { difficulty: 'heroic', spec: 'Demonology', className: 'Warlock', roster: true, pct: 1.2, stale: true },
+      { difficulty: 'mythic', spec: 'Affliction', className: 'Warlock', roster: false, pct: 4.1, stale: false }
     ]);
-    expect(gains.get(2)).toEqual([{ difficulty: 'mythic', spec: 'Demonology', roster: true, pct: -1, stale: false }]);
+    expect(gains.get(2)).toEqual([
+      { difficulty: 'mythic', spec: 'Demonology', className: 'Warlock', roster: true, pct: -1, stale: false }
+    ]);
   });
 });
 
@@ -231,6 +237,7 @@ describe('trackGains', () => {
         player_id: 1,
         difficulty: 'mythic',
         spec: 'Demonology',
+        className: 'Warlock',
         simmed_at: '2026-11-23T00:00:00Z',
         character_sim_results: [r(500, 2.5), r(900, 1.1)]
       },
@@ -239,6 +246,7 @@ describe('trackGains', () => {
         player_id: 1,
         difficulty: 'mythic',
         spec: 'Affliction',
+        className: 'Warlock',
         simmed_at: '2026-11-23T00:00:00Z',
         character_sim_results: [r(500, 4.1)]
       },
@@ -246,6 +254,7 @@ describe('trackGains', () => {
         player_id: 2,
         difficulty: 'heroic',
         spec: 'Fire',
+        className: 'Mage',
         simmed_at: '2026-10-01T00:00:00Z',
         character_sim_results: [r(500, 3)]
       },
@@ -254,6 +263,7 @@ describe('trackGains', () => {
         player_id: 3,
         difficulty: 'mythic',
         spec: 'Frost',
+        className: 'Mage',
         simmed_at: '2026-11-23T00:00:00Z',
         character_sim_results: [r(500, 9)]
       }
@@ -276,7 +286,7 @@ describe('trackGains', () => {
       stale: false,
       simmedAt: '2026-11-23T00:00:00Z',
       roster: { className: 'Warlock', spec: 'Demonology' },
-      others: [{ spec: 'Affliction', pct: 4.1, stale: false }]
+      others: [{ spec: 'Affliction', className: 'Warlock', pct: 4.1, stale: false }]
     });
     expect(gainOf(1, 10, 'Myth')).toMatchObject({ pct: 1.1 });
     expect(gainOf(1, 5, 'Hero')).toEqual({
@@ -289,7 +299,7 @@ describe('trackGains', () => {
     expect(gainOf(3, 5, 'Myth')).toEqual({
       sim: false,
       roster: { className: 'Mage', spec: 'Arcane' },
-      others: [{ spec: 'Frost', pct: 9, stale: false }]
+      others: [{ spec: 'Frost', className: 'Mage', pct: 9, stale: false }]
     });
     expect(gainOf(2, 5, 'Hero')).toMatchObject({ pct: 3, stale: true });
     expect(gainOf(2, 10, 'Hero')).toMatchObject({ sim: true, pct: null });
@@ -336,16 +346,46 @@ describe('a report with no spec', () => {
 describe('simOrder', () => {
   it('puts the roster spec first, highest difficulty first, then the others by name', () => {
     const sims = [
-      { difficulty: 'heroic' as const, spec: 'Destruction' },
-      { difficulty: 'heroic' as const, spec: 'Demonology' },
-      { difficulty: 'mythic' as const, spec: 'Affliction' },
-      { difficulty: 'mythic' as const, spec: 'Demonology' }
+      { difficulty: 'heroic' as const, spec: 'Destruction', className: 'Warlock' },
+      { difficulty: 'heroic' as const, spec: 'Demonology', className: 'Warlock' },
+      { difficulty: 'mythic' as const, spec: 'Affliction', className: 'Warlock' },
+      { difficulty: 'mythic' as const, spec: 'Demonology', className: 'Warlock' }
     ];
-    expect(simOrder(sims, 'Demonology').map((s) => `${s.difficulty} ${s.spec}`)).toEqual([
-      'mythic Demonology',
-      'heroic Demonology',
-      'mythic Affliction',
-      'heroic Destruction'
-    ]);
+    expect(
+      simOrder(sims, { className: 'Warlock', spec: 'Demonology' }).map((s) => `${s.difficulty} ${s.spec}`)
+    ).toEqual(['mythic Demonology', 'heroic Demonology', 'mythic Affliction', 'heroic Destruction']);
+  });
+});
+
+describe('the roster spec is matched on class and spec', () => {
+  it('doesn’t take another class’s same-named spec as the roster one', () => {
+    const r: SavedResult = {
+      id: 1,
+      wow_item_id: 500,
+      item_name: null,
+      slot: null,
+      item_level: 334,
+      pct_gain: 2,
+      dps_gain: null,
+      encounter_id: null,
+      catalyst_from: null
+    };
+    const gainOf = trackGains(
+      [
+        {
+          player_id: 1,
+          difficulty: 'mythic',
+          spec: 'Frost',
+          className: 'Mage',
+          simmed_at: new Date().toISOString(),
+          character_sim_results: [r]
+        }
+      ],
+      14,
+      () => ({ className: 'Death Knight', spec: 'Frost' }),
+      () => 500
+    );
+    expect(gainOf(1, 5, 'Myth')).toMatchObject({ sim: false, others: [{ spec: 'Frost', className: 'Mage', pct: 2 }] });
+    expect(isRosterSim({ spec: 'Frost', className: 'Mage' }, { className: 'Death Knight', spec: 'Frost' })).toBe(false);
   });
 });

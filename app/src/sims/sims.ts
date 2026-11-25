@@ -324,22 +324,29 @@ export const formatGain = (pct: number) => `${pct > 0 ? '+' : ''}${pct.toFixed(2
 // upgraded level and best slot. A tier token's row asks for the piece it
 // becomes, so it shows that piece's gain.
 // Every spec's gain shows (#1916), the roster spec's first; another spec's
-// names its spec.
-export type ItemGain = { difficulty: Difficulty; spec: string; roster: boolean; pct: number; stale: boolean };
+// shows its spec.
+export type ItemGain = {
+  difficulty: Difficulty;
+  spec: string;
+  className: string;
+  roster: boolean;
+  pct: number;
+  stale: boolean;
+};
 export function gainsByItem(
-  sims: { difficulty: Difficulty; spec: string; simmed_at: string; character_sim_results: SavedResult[] }[],
-  rosterSpec: string | null,
+  sims: (SimSpec & { difficulty: Difficulty; simmed_at: string; character_sim_results: SavedResult[] })[],
+  rosterSpec: RosterSpec | null,
   staleDays: number | null,
   now = Date.now()
 ): Map<number, ItemGain[]> {
   const gains = new Map<number, ItemGain[]>();
   for (const sim of simOrder(sims, rosterSpec)) {
     const stale = staleDays !== null && isStale(sim.simmed_at, staleDays, now);
-    const roster = sim.spec === rosterSpec;
+    const roster = isRosterSim(sim, rosterSpec);
     for (const r of bestPerItem(sim.character_sim_results)) {
       gains.set(r.wow_item_id, [
         ...(gains.get(r.wow_item_id) ?? []),
-        { difficulty: sim.difficulty, spec: sim.spec, roster, pct: Number(r.pct_gain), stale }
+        { difficulty: sim.difficulty, spec: sim.spec, className: sim.className, roster, pct: Number(r.pct_gain), stale }
       ]);
     }
   }
@@ -348,13 +355,22 @@ export function gainsByItem(
 
 // A character's sims in the order the page lists them (#1916): the roster
 // spec's first, highest difficulty first, then the other specs by name.
-export function simOrder<T extends { difficulty: Difficulty; spec: string }>(
+export function simOrder<T extends SimSpec & { difficulty: Difficulty }>(
   sims: T[],
-  rosterSpec: string | null
+  rosterSpec: RosterSpec | null
 ): T[] {
-  const rank = (s: T) => (s.spec === rosterSpec ? '0' : '1' + s.spec) + DIFFICULTY_ORDER.indexOf(s.difficulty);
+  const rank = (s: T) =>
+    (isRosterSim(s, rosterSpec) ? '0' : `1${s.spec}|${s.className}`) + DIFFICULTY_ORDER.indexOf(s.difficulty);
   return [...sims].sort((a, b) => rank(a).localeCompare(rank(b)));
 }
+
+// A sim's spec, with its class: spec names repeat across classes (Frost is a
+// Mage's and a Death Knight's), so the roster spec is matched on both
+// (the fresh-agent review on PR #1920).
+export type SimSpec = { spec: string; className: string };
+export type RosterSpec = { className: string; spec: string };
+export const isRosterSim = (sim: SimSpec, roster: RosterSpec | null) =>
+  !!roster && sim.spec === roster.spec && sim.className === roster.className;
 
 export const DIFFICULTY_SHORT: Record<Difficulty, string> = { lfr: 'LFR', normal: 'N', heroic: 'H', mythic: 'M' };
 
@@ -367,6 +383,7 @@ export type TeamSim = {
   player_id: number;
   difficulty: Difficulty;
   spec: string;
+  className: string;
   simmed_at: string;
   character_sim_results: SavedResult[];
 };
@@ -376,8 +393,7 @@ export type TeamSim = {
 // and whether it is out of date. Their other specs' gains (#1916) are only
 // shown, never sorted by: loot follows the roster spec (Kat, 2026-11-24).
 // `roster` is the raider's class and roster spec, for the spec icons.
-export type RosterSpec = { className: string; spec: string };
-export type OtherSpecGain = { spec: string; pct: number; stale: boolean };
+export type OtherSpecGain = { spec: string; className: string; pct: number; stale: boolean };
 export type TrackGain = { roster: RosterSpec | null; others: OtherSpecGain[] } & (
   { sim: false } | { sim: true; pct: number | null; stale: boolean; simmedAt: string }
 );
@@ -392,7 +408,7 @@ export function trackGains(
   wowIdFor: (playerId: number, itemId: number) => number | null,
   now = Date.now()
 ) {
-  type Read = { spec: string; gains: Map<number, number>; stale: boolean; simmedAt: string };
+  type Read = SimSpec & { gains: Map<number, number>; stale: boolean; simmedAt: string };
   const by = new Map<string, Read[]>();
   for (const sim of sims) {
     const key = `${sim.player_id}|${sim.difficulty}`;
@@ -400,6 +416,7 @@ export function trackGains(
       ...(by.get(key) ?? []),
       {
         spec: sim.spec,
+        className: sim.className,
         gains: new Map(bestPerItem(sim.character_sim_results).map((r) => [r.wow_item_id, Number(r.pct_gain)])),
         stale: staleDays !== null && isStale(sim.simmed_at, staleDays, now),
         simmedAt: sim.simmed_at
@@ -409,16 +426,15 @@ export function trackGains(
   return (playerId: number, itemId: number, track: 'Hero' | 'Myth'): TrackGain => {
     const all = by.get(`${playerId}|${TRACK_DIFFICULTY[track]}`) ?? [];
     const roster = rosterSpecOf(playerId);
-    const rosterSpec = roster?.spec ?? null;
     const wow = wowIdFor(playerId, itemId);
     const others = all
-      .filter((s) => s.spec !== rosterSpec)
+      .filter((s) => !isRosterSim(s, roster))
       .flatMap((s) => {
         const pct = wow === null ? undefined : s.gains.get(wow);
-        return pct === undefined ? [] : [{ spec: s.spec, pct, stale: s.stale }];
+        return pct === undefined ? [] : [{ spec: s.spec, className: s.className, pct, stale: s.stale }];
       })
       .sort((a, b) => a.spec.localeCompare(b.spec));
-    const sim = all.find((s) => s.spec === rosterSpec);
+    const sim = all.find((s) => isRosterSim(s, roster));
     if (!sim) return { sim: false, roster, others };
     return {
       sim: true,

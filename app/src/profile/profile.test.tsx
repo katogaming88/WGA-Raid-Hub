@@ -1089,7 +1089,7 @@ describe('Profile > Sims', () => {
     id: 7,
     difficulty: 'mythic',
     class_spec_id: 2,
-    classes_specs: { spec: 'Frost' },
+    classes_specs: { spec: 'Frost', class: 'Death Knight' },
     source: 'raidbots',
     report_id: 'abc',
     simmed_at: '2026-11-20T12:00:00Z',
@@ -1157,7 +1157,7 @@ describe('Profile > Sims', () => {
       ...SAVED,
       id: 11,
       class_spec_id: 3,
-      classes_specs: { spec: 'Unholy' },
+      classes_specs: { spec: 'Unholy', class: 'Death Knight' },
       character_sim_results: [{ ...SAVED.character_sim_results[0], id: 12, pct_gain: 3 }]
     };
     renderApp(

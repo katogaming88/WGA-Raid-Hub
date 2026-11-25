@@ -18,6 +18,7 @@ export type SavedSim = {
   difficulty: Difficulty;
   class_spec_id: number;
   spec: string;
+  className: string;
   source: SimSource;
   report_id: string;
   simmed_at: string;
@@ -33,10 +34,10 @@ export type PlayerSims = { sims: SavedSim[]; items: KnownItem[] };
 
 const simsKey = (playerId: number) => ['sims', playerId];
 
-// Each sim's spec name rides along with it (#1916).
-type WithSpec<T> = T & { classes_specs: { spec: string } | null };
+// Each sim's spec and class ride along with it (#1916).
+type WithSpec<T> = T & { classes_specs: { spec: string; class: string } | null };
 function flatSpec<T>({ classes_specs, ...sim }: WithSpec<T>) {
-  return { ...sim, spec: classes_specs?.spec ?? '' };
+  return { ...sim, spec: classes_specs?.spec ?? '', className: classes_specs?.class ?? '' };
 }
 
 export function usePlayerSims(playerId: number) {
@@ -44,11 +45,13 @@ export function usePlayerSims(playerId: number) {
     const sims = await client
       .from('character_sims')
       .select(
-        'id, difficulty, class_spec_id, classes_specs(spec), source, report_id, simmed_at, fight_style, target_count, character_sim_results(id, wow_item_id, item_name, slot, item_level, pct_gain, dps_gain, encounter_id, catalyst_from)'
+        'id, difficulty, class_spec_id, classes_specs(spec, class), source, report_id, simmed_at, fight_style, target_count, character_sim_results(id, wow_item_id, item_name, slot, item_level, pct_gain, dps_gain, encounter_id, catalyst_from)'
       )
       .eq('player_id', playerId);
     if (sims.error) return { data: null, error: sims.error };
-    const rows = ((sims.data ?? []) as unknown as WithSpec<Omit<SavedSim, 'spec'>>[]).map(flatSpec) as SavedSim[];
+    const rows = ((sims.data ?? []) as unknown as WithSpec<Omit<SavedSim, 'spec' | 'className'>>[]).map(
+      flatSpec
+    ) as SavedSim[];
     const ids = [...new Set(rows.flatMap((s) => s.character_sim_results.map((r) => r.wow_item_id)))];
     if (!ids.length) return { data: { sims: rows, items: [] }, error: null };
     // team-read-guard: one character's sims, a few hundred items at most
@@ -178,7 +181,7 @@ export function useTeamSims(teamId: number) {
       (from, to) =>
         client
           .from('character_sims')
-          .select('id, player_id, difficulty, classes_specs(spec), simmed_at')
+          .select('id, player_id, difficulty, classes_specs(spec, class), simmed_at')
           .eq('team_id', teamId)
           .order('id')
           .range(from, to)

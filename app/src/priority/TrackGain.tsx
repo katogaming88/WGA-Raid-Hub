@@ -15,8 +15,8 @@ export function TrackGainText({ gain }: { gain: TrackGain }) {
         <RosterGain gain={gain} />
       </span>
       {gain.others.map((o) => (
-        <span key={o.spec} className="priority-gain priority-gain-other num">
-          <SpecMark className={className} spec={o.spec} />
+        <span key={`${o.className}|${o.spec}`} className="priority-gain priority-gain-other num">
+          <SpecMark className={o.className} spec={o.spec} />
           {formatGain(o.pct)}
           {o.stale && <span className="visually-hidden"> (sim out of date)</span>}
         </span>
