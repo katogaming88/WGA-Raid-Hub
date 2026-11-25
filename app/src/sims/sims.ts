@@ -253,7 +253,9 @@ export function isCharacter(nameRealm: string, character: { name: string; realm:
   const at = nameRealm.indexOf('-');
   const name = at < 0 ? nameRealm : nameRealm.slice(0, at);
   const realm = at < 0 ? '' : nameRealm.slice(at + 1);
-  return squash(name) === squash(character.name) && (!character.realm || squash(realm) === squash(character.realm));
+  // A report with no realm is turned away (Kat, 2026-11-25): the name alone
+  // could be another realm's character.
+  return squash(name) === squash(character.name) && !!squash(realm) && squash(realm) === squash(character.realm);
 }
 
 // The hub's spec for the report's (#1916): "affliction warlock",

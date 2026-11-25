@@ -6909,6 +6909,8 @@ export type Database = {
       }
       save_character_sim: {
         Args: {
+          p_character_name: string
+          p_character_realm: string
           p_class_spec_id: number
           p_difficulty: string
           p_fight_style: string

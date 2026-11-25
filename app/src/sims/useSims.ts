@@ -115,6 +115,8 @@ export function useSaveSims(playerId: number) {
           p_class_spec_id: classSpecId,
           p_source: report.source,
           p_report_id: report.reportId,
+          p_character_name: report.character.name,
+          p_character_realm: report.character.realm,
           p_simmed_at: report.simmedAt,
           p_fight_style: report.fightStyle ?? '',
           p_target_count: report.targetCount as number,

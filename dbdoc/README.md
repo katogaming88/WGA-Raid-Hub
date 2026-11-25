@@ -422,7 +422,7 @@
 | public.team_loot_history | record | p_team_id integer | FUNCTION |
 | public.rclc_loot_team_id_fixed | trigger |  | FUNCTION |
 | public.upload_rclc_loot | jsonb | p_team_id integer, p_season text, p_rows jsonb | FUNCTION |
-| public.save_character_sim | int4 | p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb | FUNCTION |
+| public.save_character_sim | int4 | p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_character_name text, p_character_realm text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb | FUNCTION |
 | public.delete_character_sim | void | p_player_id integer, p_difficulty text, p_class_spec_id integer | FUNCTION |
 
 ## Enums

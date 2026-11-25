@@ -16,7 +16,7 @@ answers to.
 
 ### Backend
 
-- A raider keeps one sim per spec (#1916): each sim is saved for the spec it was run as, so a raider who plays three specs keeps three Mythic sims, and a new one replaces only its own spec's. `save_character_sim()` and `delete_character_sim()` take the spec and refuse one of another class than the character's. Sims saved before this are taken as the character's roster spec.
+- A raider keeps one sim per spec (#1916): each sim is saved for the spec it was run as, so a raider who plays three specs keeps three Mythic sims, and a new one replaces only its own spec's. `save_character_sim()` and `delete_character_sim()` take the spec and refuse one of another class than the character's. Sims saved before this are taken as the character's roster spec. Saving also checks the report is for this character: its name and realm must match, and a report with no realm is turned away. A character with no roster spec takes no sims until an officer sets one.
 
 ### Project
 

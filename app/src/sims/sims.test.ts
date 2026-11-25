@@ -115,6 +115,8 @@ describe('isCharacter', () => {
     expect(isCharacter('Somebody-Wyrmrest Accord', { name: 'somebody', realm: 'wyrmrest_accord' })).toBe(true);
     expect(isCharacter('Katorrí-Stormrage', { name: 'Katorria', realm: 'Stormrage' })).toBe(false);
     expect(isCharacter('Katorrí-Illidan', { name: 'Katorrí', realm: 'stormrage' })).toBe(false);
+    // No realm in the report: turned away (Kat, 2026-11-25).
+    expect(isCharacter('Katorrí-Stormrage', { name: 'Katorrí', realm: '' })).toBe(false);
   });
 });
 

@@ -39,7 +39,12 @@ drop function public.delete_character_sim(integer, text);
 -- Saves a sim for one character at one difficulty and spec, replacing the one
 -- there. The raider themself, an officer with manage_loot on the character's
 -- team (not on the team leader's character), or a site admin. The spec must
--- be of the character's class. p_results is a list of
+-- be of the character's class, and the report's character (p_character_name,
+-- p_character_realm, as the page read them from the report) must be this one:
+-- name and realm, ignoring case, spaces, underscores, dashes and apostrophes,
+-- as the page compares them (Kat, 2026-11-25). The page reads the report, so
+-- this catches a page bug or a pasted link for the wrong character, not
+-- someone forging what the page sends. p_results is a list of
 -- {wow_item_id, item_name, slot, item_level, pct_gain, dps_gain,
 --  encounter_id, catalyst_from}; returns how many were saved.
 create function public.save_character_sim(
@@ -48,6 +53,8 @@ create function public.save_character_sim(
   p_class_spec_id integer,
   p_source text,
   p_report_id text,
+  p_character_name text,
+  p_character_realm text,
   p_simmed_at timestamp with time zone,
   p_fight_style text,
   p_target_count integer,
@@ -60,6 +67,7 @@ set search_path = public
 as $$
 declare
   v_team_id integer;
+  v_name_realm text;
   v_class text;
   v_spec text;
   v_sim_id bigint;
@@ -72,8 +80,8 @@ begin
     raise exception 'Not signed in';
   end if;
 
-  select p.team_id, coalesce(tm.role = 'team_leader', false), mine.class
-    into v_team_id, v_leader, v_class
+  select p.team_id, coalesce(tm.role = 'team_leader', false), mine.class, p.name_realm
+    into v_team_id, v_leader, v_class, v_name_realm
     from public.players p
     left join public.team_members tm on tm.id = p.team_member_id and tm.archived_at is null
     left join public.classes_specs mine on mine.id = p.class_spec_id
@@ -96,6 +104,16 @@ begin
    where cs.id = p_class_spec_id and cs.class = v_class;
   if v_spec is null then
     raise exception 'The sim isn''t for this character''s class.';
+  end if;
+
+  -- name_realm is "Name-Realm"; the realm may itself hold a dash.
+  if coalesce(regexp_replace(lower(p_character_name), '[[:space:]_''’-]', '', 'g'), '')
+       is distinct from regexp_replace(lower(split_part(v_name_realm, '-', 1)), '[[:space:]_''’-]', '', 'g')
+     or coalesce(regexp_replace(lower(p_character_realm), '[[:space:]_''’-]', '', 'g'), '') = ''
+     or regexp_replace(lower(p_character_realm), '[[:space:]_''’-]', '', 'g')
+       is distinct from regexp_replace(lower(substr(v_name_realm, strpos(v_name_realm, '-') + 1)), '[[:space:]_''’-]', '', 'g')
+  then
+    raise exception 'The sim is for another character.';
   end if;
 
   if jsonb_typeof(p_results) is distinct from 'array'
@@ -153,7 +171,7 @@ begin
 end;
 $$;
 
-comment on function public.save_character_sim(integer, text, integer, text, text, timestamp with time zone, text, integer, jsonb) is
+comment on function public.save_character_sim(integer, text, integer, text, text, text, text, timestamp with time zone, text, integer, jsonb) is
   'Saves a raider''s sim at one difficulty and spec, replacing the one there (#1443, #1916). The raider, an officer with manage_loot (not on the team leader''s character), or a site admin.';
 
 -- Removes a character's sim at one difficulty and spec. Same people as saving.
@@ -207,7 +225,7 @@ $$;
 comment on function public.delete_character_sim(integer, text, integer) is
   'Removes a raider''s sim at one difficulty and spec (#1443, #1916). The raider, an officer with manage_loot (not on the team leader''s character), or a site admin.';
 
-revoke all on function public.save_character_sim(integer, text, integer, text, text, timestamp with time zone, text, integer, jsonb) from public, anon;
+revoke all on function public.save_character_sim(integer, text, integer, text, text, text, text, timestamp with time zone, text, integer, jsonb) from public, anon;
 revoke all on function public.delete_character_sim(integer, text, integer) from public, anon;
-grant execute on function public.save_character_sim(integer, text, integer, text, text, timestamp with time zone, text, integer, jsonb) to authenticated, service_role;
+grant execute on function public.save_character_sim(integer, text, integer, text, text, text, text, timestamp with time zone, text, integer, jsonb) to authenticated, service_role;
 grant execute on function public.delete_character_sim(integer, text, integer) to authenticated, service_role;

@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.save_character_sim(p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb)
+CREATE OR REPLACE FUNCTION public.save_character_sim(p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_character_name text, p_character_realm text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb)
  RETURNS integer
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -10,6 +10,7 @@ CREATE OR REPLACE FUNCTION public.save_character_sim(p_player_id integer, p_diff
 AS $function$
 declare
   v_team_id integer;
+  v_name_realm text;
   v_class text;
   v_spec text;
   v_sim_id bigint;
@@ -22,8 +23,8 @@ begin
     raise exception 'Not signed in';
   end if;
 
-  select p.team_id, coalesce(tm.role = 'team_leader', false), mine.class
-    into v_team_id, v_leader, v_class
+  select p.team_id, coalesce(tm.role = 'team_leader', false), mine.class, p.name_realm
+    into v_team_id, v_leader, v_class, v_name_realm
     from public.players p
     left join public.team_members tm on tm.id = p.team_member_id and tm.archived_at is null
     left join public.classes_specs mine on mine.id = p.class_spec_id
@@ -46,6 +47,16 @@ begin
    where cs.id = p_class_spec_id and cs.class = v_class;
   if v_spec is null then
     raise exception 'The sim isn''t for this character''s class.';
+  end if;
+
+  -- name_realm is "Name-Realm"; the realm may itself hold a dash.
+  if coalesce(regexp_replace(lower(p_character_name), '[[:space:]_''’-]', '', 'g'), '')
+       is distinct from regexp_replace(lower(split_part(v_name_realm, '-', 1)), '[[:space:]_''’-]', '', 'g')
+     or coalesce(regexp_replace(lower(p_character_realm), '[[:space:]_''’-]', '', 'g'), '') = ''
+     or regexp_replace(lower(p_character_realm), '[[:space:]_''’-]', '', 'g')
+       is distinct from regexp_replace(lower(substr(v_name_realm, strpos(v_name_realm, '-') + 1)), '[[:space:]_''’-]', '', 'g')
+  then
+    raise exception 'The sim is for another character.';
   end if;
 
   if jsonb_typeof(p_results) is distinct from 'array'

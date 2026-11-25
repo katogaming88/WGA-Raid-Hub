@@ -23,14 +23,23 @@ const save = (
   asUser,
   uid,
   playerId,
-  { difficulty = 'mythic', spec = 1, source = 'raidbots', reportId = 'abc123', results } = {}
+  {
+    difficulty = 'mythic',
+    spec = 1,
+    source = 'raidbots',
+    reportId = 'abc123',
+    // The report's character, as the page read it.
+    character = ['Simmer', 'illidan'],
+    results
+  } = {}
 ) =>
-  asUser(uid, 'select public.save_character_sim($1, $2, $3, $4, $5, now(), $6, $7, $8::jsonb) as n', [
+  asUser(uid, 'select public.save_character_sim($1, $2, $3, $4, $5, $6, $7, now(), $8, $9, $10::jsonb) as n', [
     playerId,
     difficulty,
     spec,
     source,
     reportId,
+    ...character,
     'Patchwerk',
     1,
     JSON.stringify(results ?? [result(), result({ slot: 'finger2', pct_gain: 1.9 })])
@@ -133,6 +142,34 @@ describe('save_character_sim()', () => {
       expect(await simsOf(q, playerId)).toEqual([]);
     }));
 
+  // Kat, 2026-11-25: the report's character must be this one, realm included,
+  // compared as the page compares (case, spaces, underscores, apostrophes).
+  it('refuses a report for another character, or with no realm', () =>
+    withTxn(async ({ q, asUser }) => {
+      const { team, playerId } = await raiderWithCharacter(q);
+      const uid = team.raider.uid;
+      for (const character of [
+        ['Other', 'Illidan'],
+        ['Simmer', 'Stormrage'],
+        ['Simmer', ''],
+        ['Simmer', null]
+      ]) {
+        await expect(save(asUser, uid, playerId, { character })).rejects.toThrow(/another character/i);
+      }
+      expect(await simsOf(q, playerId)).toEqual([]);
+      expect(await save(asUser, uid, playerId, { character: ["SIM'MER", ' illi_dan '] })).toBe(2);
+    }));
+
+  // A realm with a dash or a space in it still matches.
+  it('matches a realm with a dash or a space', () =>
+    withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const playerId = await seedPlayer(q, { memberId: team.raider.memberId, nameRealm: 'Ash-Azjol-Nerub' });
+      expect(await save(asUser, team.raider.uid, playerId, { character: ['Ash', 'azjol_nerub'] })).toBe(2);
+      const wyrm = await seedPlayer(q, { memberId: team.raider.memberId, nameRealm: 'Wyrm-Wyrmrest Accord' });
+      expect(await save(asUser, team.raider.uid, wyrm, { character: ['wyrm', 'wyrmrest_accord'] })).toBe(2);
+    }));
+
   // CodeRabbit on PR #1920: with no roster spec there is no class to check,
   // so any class's sim would pass; it is refused until a spec is set.
   it('refuses a sim for a character with no roster spec', () =>
@@ -165,7 +202,7 @@ describe('save_character_sim()', () => {
       const team = await seedTeam(q);
       const leaderPlayer = await seedPlayer(q, { memberId: team.leader.memberId, nameRealm: 'Leaderly-Illidan' });
       await expect(save(asUser, team.officer.uid, leaderPlayer)).rejects.toThrow(/not authorized/i);
-      expect(await save(asUser, team.leader.uid, leaderPlayer)).toBe(2);
+      expect(await save(asUser, team.leader.uid, leaderPlayer, { character: ['Leaderly', 'Illidan'] })).toBe(2);
       await expect(remove(asUser, team.officer.uid, leaderPlayer)).rejects.toThrow(/not authorized/i);
       expect(await simsOf(q, leaderPlayer)).toHaveLength(1);
     }));
@@ -178,13 +215,10 @@ describe('save_character_sim()', () => {
       await expect(save(asUser, teammate, playerId)).rejects.toThrow(/not authorized/i);
       await expect(save(asUser, other.officer.uid, playerId)).rejects.toThrow(/not authorized/i);
       await expect(
-        asAnon('select public.save_character_sim($1, $2, 1, $3, $4, now(), null, null, $5::jsonb)', [
-          playerId,
-          'mythic',
-          'raidbots',
-          'x',
-          JSON.stringify([result()])
-        ])
+        asAnon(
+          "select public.save_character_sim($1, $2, 1, $3, $4, 'Simmer', 'Illidan', now(), null, null, $5::jsonb)",
+          [playerId, 'mythic', 'raidbots', 'x', JSON.stringify([result()])]
+        )
       ).rejects.toMatchObject({ code: RLS_DENIED });
       expect(await simsOf(q, playerId)).toEqual([]);
     }));
@@ -218,7 +252,7 @@ describe('save_character_sim()', () => {
     withTxn(async ({ q, asUser }) => {
       const team = await seedTeam(q);
       const own = await seedPlayer(q, { memberId: team.officer.memberId, nameRealm: 'Officerly-Illidan' });
-      expect(await save(asUser, team.officer.uid, own)).toBe(2);
+      expect(await save(asUser, team.officer.uid, own, { character: ['Officerly', 'Illidan'] })).toBe(2);
       const audit = await q(`select actor_id from public.audit_log where action = 'Sim Added' and target_id = $1`, [
         own
       ]);
@@ -239,7 +273,7 @@ describe('save_character_sim()', () => {
       const other = await seedPlayer(q, { memberId: team.raider.memberId, nameRealm: 'Notmine-Illidan' });
       // Without manage_loot the officer can't change a raider's sim.
       await expect(save(asUser, team.officer.uid, other)).rejects.toThrow(/not authorized/i);
-      expect(await save(asUser, team.officer.uid, own)).toBe(2);
+      expect(await save(asUser, team.officer.uid, own, { character: ['Rosterly', 'Illidan'] })).toBe(2);
       await remove(asUser, team.officer.uid, own);
       const audit = await q(
         `select action, actor_id from public.audit_log where target_id = $1 and action like 'Sim %' order by id`,

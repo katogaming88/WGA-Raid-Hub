@@ -1223,7 +1223,9 @@ describe('Profile > Sims', () => {
       p_difficulty: 'mythic',
       p_class_spec_id: 3,
       p_source: 'raidbots',
-      p_report_id: '4fa37C7DkwEgoJQTLTFS9L'
+      p_report_id: '4fa37C7DkwEgoJQTLTFS9L',
+      p_character_name: 'Torbjorn',
+      p_character_realm: 'illidan'
     });
     expect((args as { p_results: unknown[] }).p_results).toHaveLength(6);
     expect(await screen.findByText('Added the Mythic Unholy sim from Raidbots.')).toBeInTheDocument();

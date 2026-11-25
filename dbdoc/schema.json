@@ -20186,7 +20186,7 @@
     {
       "name": "public.save_character_sim",
       "return_type": "int4",
-      "arguments": "p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb",
+      "arguments": "p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_character_name text, p_character_realm text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb",
       "type": "FUNCTION"
     },
     {
