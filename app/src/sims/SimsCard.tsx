@@ -111,7 +111,8 @@ function AddSim({ player, own }: { player: Character; own: boolean }) {
     const spec = matchSpec(report.spec, specs.data);
     if (!spec) return setProblem(`The hub doesn’t know the spec “${report.spec}”.`);
     const mine = player.classes_specs?.class;
-    if (mine && spec.class !== mine) {
+    if (!mine) return setProblem(`${player.name_realm} has no spec on the roster yet. An officer sets it first.`);
+    if (spec.class !== mine) {
       return setProblem(
         `That report was run as ${spec.spec} ${spec.class}, and ${player.name_realm}’s class is ${mine}.`
       );

@@ -133,6 +133,22 @@ describe('save_character_sim()', () => {
       expect(await simsOf(q, playerId)).toEqual([]);
     }));
 
+  // CodeRabbit on PR #1920: with no roster spec there is no class to check,
+  // so any class's sim would pass; it is refused until a spec is set.
+  it('refuses a sim for a character with no roster spec', () =>
+    withTxn(async ({ q, asUser }) => {
+      const team = await seedTeam(q);
+      const playerId = await seedPlayer(q, {
+        memberId: team.raider.memberId,
+        nameRealm: 'Nospec-Illidan',
+        classSpecId: null
+      });
+      const havoc = await specId(q, 'Demon Hunter', 'Havoc');
+      await expect(save(asUser, team.raider.uid, playerId, { spec: havoc })).rejects.toThrow(/spec on the roster/i);
+      await expect(save(asUser, team.raider.uid, playerId)).rejects.toThrow(/spec on the roster/i);
+      expect(await simsOf(q, playerId)).toEqual([]);
+    }));
+
   it('lets an officer who manages loot save one for a raider, logged through write_audit_log()', () =>
     withTxn(async ({ q, asUser }) => {
       const { team, playerId } = await raiderWithCharacter(q);

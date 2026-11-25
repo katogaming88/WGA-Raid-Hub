@@ -36,9 +36,14 @@ begin
     raise exception 'Not authorized';
   end if;
 
+  -- A character with no roster spec has no class to check against, so it
+  -- takes no sims until an officer sets one (CodeRabbit on PR #1920).
+  if v_class is null then
+    raise exception 'Set the character''s spec on the roster first.';
+  end if;
   select cs.spec into v_spec
     from public.classes_specs cs
-   where cs.id = p_class_spec_id and (v_class is null or cs.class = v_class);
+   where cs.id = p_class_spec_id and cs.class = v_class;
   if v_spec is null then
     raise exception 'The sim isn''t for this character''s class.';
   end if;
