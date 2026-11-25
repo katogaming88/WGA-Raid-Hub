@@ -11,8 +11,9 @@
 -- set_team_setting() like the other loot settings; no table here.
 --
 -- Nulls count as equal in the key, so two QE Live sims for the same spec and
--- difficulty still replace each other. Sims saved before this have no fight
--- length; the page matches them to a setup on style and targets alone.
+-- difficulty still replace each other. A Raidbots sim saved before this has
+-- no fight length and matches no setup until the raider adds it again (none
+-- on production when this was written).
 
 alter table public.character_sims
   add column fight_length integer check (fight_length between 1 and 3600);
@@ -47,7 +48,7 @@ as $$
             end
     || coalesce(', ' || p_target_count || case p_target_count when 1 then ' target' else ' targets' end, '')
     || coalesce(', ' || case when p_fight_length % 60 = 0 then (p_fight_length / 60) || ' min'
-                             else p_fight_length || ' s' end, '')
+                             else (p_fight_length / 60) || ' min ' || (p_fight_length % 60) || ' s' end, '')
     || ')'
   end
 $$;

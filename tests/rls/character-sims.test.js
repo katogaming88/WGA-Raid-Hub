@@ -184,6 +184,15 @@ describe('save_character_sim()', () => {
         await save(asUser, uid, playerId, { setup: ['Patchwerk', n, 300], results: [result()] });
       await expect(save(asUser, uid, playerId, { setup: ['Patchwerk', 11, 300] })).rejects.toThrow(/ten sims/i);
       expect(await save(asUser, uid, playerId, { setup: ['Patchwerk', 5, 300] })).toBe(2);
+      // The audit text says the length as the page does: 4 min 30 s.
+      await save(asUser, uid, playerId, { difficulty: 'normal', setup: ['HecticAddCleave', 3, 270] });
+      const label = await q(
+        "select detail->>'summary' as s from public.audit_log where action = 'Sim Added' and target_id = $1 and detail->>'summary' like 'Normal%'",
+        [playerId]
+      );
+      expect(label.rows[0].s).toBe(
+        'Normal Frost sim from Raidbots (Hectic add cleave, 3 targets, 4 min 30 s), 2 results'
+      );
       // Another difficulty has its own ten.
       expect(await save(asUser, uid, playerId, { difficulty: 'heroic', setup: ['Patchwerk', 11, 300] })).toBe(2);
       const audit = await q(

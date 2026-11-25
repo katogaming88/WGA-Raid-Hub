@@ -19,7 +19,7 @@ AS $function$
             end
     || coalesce(', ' || p_target_count || case p_target_count when 1 then ' target' else ' targets' end, '')
     || coalesce(', ' || case when p_fight_length % 60 = 0 then (p_fight_length / 60) || ' min'
-                             else p_fight_length || ' s' end, '')
+                             else (p_fight_length / 60) || ' min ' || (p_fight_length % 60) || ' s' end, '')
     || ')'
   end
 $function$;
