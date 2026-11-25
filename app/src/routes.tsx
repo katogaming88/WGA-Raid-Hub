@@ -16,6 +16,7 @@ import { PriorityPage } from './priority/PriorityPage';
 import { GeneralSettingsPage } from './settings/GeneralSettingsPage';
 import { SeasonSettingsPage } from './settings/SeasonSettingsPage';
 import { LootSettingsPage } from './settings/LootSettingsPage';
+import { SimsSettingsPage } from './settings/SimsSettingsPage';
 import { DiscordSettingsPage } from './settings/DiscordSettingsPage';
 import { AuditPage } from './audit/AuditPage';
 import { AuditLogPage } from './settings/AuditLogPage';
@@ -99,6 +100,7 @@ const BUILT_PAGES: Record<string, ReactElement> = {
   'officer/settings/rank-permissions': <GeneralSettingsPage />,
   'officer/settings/season': <SeasonSettingsPage />,
   'officer/settings/loot': <LootSettingsPage />,
+  'officer/settings/loot/sims': <SimsSettingsPage />,
   'officer/settings/discord': <DiscordSettingsPage />,
   'officer/settings/audit-log': <AuditLogPage />,
   'officer/settings/danger': <DangerZonePage />

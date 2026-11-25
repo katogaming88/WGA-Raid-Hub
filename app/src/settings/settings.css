@@ -739,3 +739,81 @@
   padding: 0;
   font-weight: 600;
 }
+
+/* Settings > Loot > Sims (#1888). Each card is a fieldset so the whole card
+   goes read-only for an officer; its groups are set off by hairlines. */
+.sims-settings {
+  border: 1px solid var(--border);
+  margin: 0;
+  min-width: 0;
+}
+
+.sims-legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+}
+
+.sims-legend h2 {
+  margin: 0;
+}
+
+.sims-legend + * {
+  clear: both;
+}
+
+.sims-group {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 0;
+  padding: var(--space-2) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.sims-group > legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+}
+
+.sims-group > legend + * {
+  clear: both;
+}
+
+.sims-row-label {
+  min-width: 7rem;
+}
+
+.sims-hint {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.sims-check {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.sims-setups td {
+  vertical-align: middle;
+}
+
+.sims-setups .input,
+.sims-setups .select {
+  min-width: 0;
+}
+
+.sims-save {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sims-problems {
+  margin: 0;
+  padding-left: var(--space-4);
+}

@@ -638,42 +638,113 @@ describe('Loot settings', () => {
       p_updates: { lootHistoryAccess: 'officers', lootImportAccess: 'leader' }
     });
   });
+});
 
-  it('starts sims at 14 days (#1443), read-only for an officer', async () => {
-    renderApp('/g/wga/t/phoenix/officer/settings/loot', officerHandlers({ from: lootRow(null) }));
+// Settings > Loot > Sims (#1888 part 1): the team's sim settings, one Save.
+describe('Sim settings', () => {
+  const LEADER_PERSON = {
+    ...OFFICER_PERSON,
+    teams: [{ ...OFFICER_PERSON.teams[0]!, role: 'team_leader' }]
+  };
+  const SIMS = '/g/wga/t/phoenix/officer/settings/loot/sims';
+  const simsRow =
+    (config: Record<string, unknown> = {}) =>
+    (read: Read) =>
+      read.table === 'team_settings' ? { data: { config } } : undefined;
+  const asLeader = (calls: unknown[], config: Record<string, unknown> = {}) =>
+    officerHandlers({
+      person: LEADER_PERSON,
+      from: simsRow(config),
+      rpc: (name, args) => {
+        if (name === 'set_team_setting') {
+          calls.push(args);
+          return { data: {} };
+        }
+        return undefined;
+      }
+    });
+
+  it('starts on the defaults, read-only for an officer', async () => {
+    renderApp(SIMS, officerHandlers({ from: simsRow() }));
     const days = await screen.findByRole('spinbutton', { name: 'A sim goes out of date after' });
     expect(days).toHaveValue(14);
     expect(days).toBeDisabled();
-    const card = screen.getByRole('heading', { name: 'Sims' }).closest('.card') as HTMLElement;
-    expect(within(card).getByText('Only the team leader can change this.')).toBeInTheDocument();
-    expect(within(card).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(screen.getByText('Only the team leader can change these.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Heroic' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Normal' })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Percent' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'As it is' })).toBeChecked();
+    expect(screen.getByRole('textbox', { name: 'Setup 1 name' })).toHaveValue('Single target');
+    expect(screen.getByRole('checkbox', { name: /Raid buffs on/ })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /High precision/ })).not.toBeChecked();
+    // The Loot and Sims tabs.
+    expect(screen.getByRole('link', { name: 'Sims' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('lets the team leader change them and saves every key at once', async () => {
+    const calls: unknown[] = [];
+    renderApp(SIMS, asLeader(calls));
+    const days = await screen.findByRole('spinbutton', { name: 'A sim goes out of date after' });
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await userEvent.clear(days);
+    await userEvent.type(days, '0');
+    expect(screen.getByText('Enter a whole number of days, from 1 to 365.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await userEvent.clear(days);
+    await userEvent.type(days, '5');
+    await userEvent.click(screen.getByRole('radio', { name: 'Raw numbers' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Fully upgraded' }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Mythic' }), 'As it drops');
+    await userEvent.click(screen.getByRole('checkbox', { name: /High precision/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add a setup' }));
+    expect(screen.getByText('Give every setup a name.')).toBeInTheDocument();
+    await userEvent.type(screen.getByRole('textbox', { name: 'Setup 2 name' }), 'Several targets');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await expect.poll(() => calls.length).toBe(1);
+    expect(calls[0]).toMatchObject({
+      p_team_id: 1,
+      p_updates: {
+        simStaleDays: 5,
+        simGainMode: 'raw',
+        simEquipped: 'upgraded',
+        simUpgrade: { mythic: 'drop', heroic: 'max' },
+        simChecks: { highPrecision: true, buffs: true },
+        simSetups: [
+          { name: 'Single target', fightStyle: 'Patchwerk', targets: 1, minutes: 5, weight: 1 },
+          { name: 'Several targets', fightStyle: 'Patchwerk', targets: 3, minutes: 5, weight: 1 }
+        ]
+      }
+    });
+  });
+
+  it('shows each setup’s share of the weight, and refuses two setups alike', async () => {
+    renderApp(
+      SIMS,
+      asLeader([], {
+        simSetups: [
+          { id: 'a', name: 'Single target', fightStyle: 'Patchwerk', targets: 1, minutes: 5, weight: 70 },
+          { id: 'b', name: 'Several targets', fightStyle: 'Patchwerk', targets: 3, minutes: 5, weight: 30 }
+        ]
+      })
+    );
+    expect(await screen.findByText('70%')).toBeInTheDocument();
+    expect(screen.getByText('30%')).toBeInTheDocument();
+    const targets = screen.getByRole('spinbutton', { name: 'Several targets targets' });
+    await userEvent.clear(targets);
+    await userEvent.type(targets, '1');
+    expect(screen.getByText('Two setups have the same fight, targets and length.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
   it('lets the team leader set how many days a sim stays up to date (#1443)', async () => {
     const calls: unknown[] = [];
-    renderApp(
-      '/g/wga/t/phoenix/officer/settings/loot',
-      officerHandlers({
-        person: LEADER_PERSON,
-        from: lootRow('priority'),
-        rpc: (name, args) => {
-          if (name === 'set_team_setting') {
-            calls.push(args);
-            return { data: {} };
-          }
-          return undefined;
-        }
-      })
-    );
+    renderApp(SIMS, asLeader(calls, { simStaleDays: 10 }));
     const days = await screen.findByRole('spinbutton', { name: 'A sim goes out of date after' });
-    const card = screen.getByRole('heading', { name: 'Sims' }).closest('.card') as HTMLElement;
-    await userEvent.clear(days);
-    await userEvent.type(days, '0');
-    expect(within(card).getByText('Enter a whole number of days, from 1 to 365.')).toBeInTheDocument();
-    expect(within(card).getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(days).toHaveValue(10);
     await userEvent.clear(days);
     await userEvent.type(days, '5');
-    await userEvent.click(within(card).getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     await expect.poll(() => calls.length).toBe(1);
     expect(calls[0]).toMatchObject({ p_team_id: 1, p_updates: { simStaleDays: 5 } });
   });

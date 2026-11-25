@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.save_character_sim(p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_character_name text, p_character_realm text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb)
+CREATE OR REPLACE FUNCTION public.save_character_sim(p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_character_name text, p_character_realm text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_fight_length integer, p_results jsonb)
  RETURNS integer
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -71,11 +71,12 @@ begin
   end if;
 
   insert into public.character_sims
-    (team_id, player_id, difficulty, class_spec_id, source, report_id, simmed_at, fight_style, target_count, added_by)
+    (team_id, player_id, difficulty, class_spec_id, source, report_id, simmed_at, fight_style, target_count,
+     fight_length, added_by)
   values
     (v_team_id, p_player_id, p_difficulty, p_class_spec_id, p_source, p_report_id, p_simmed_at,
-     nullif(trim(p_fight_style), ''), p_target_count, public.my_person_id())
-  on conflict (player_id, difficulty, class_spec_id) do update
+     nullif(trim(p_fight_style), ''), p_target_count, p_fight_length, public.my_person_id())
+  on conflict (player_id, difficulty, class_spec_id, fight_style, target_count, fight_length) do update
      set source = excluded.source,
          report_id = excluded.report_id,
          simmed_at = excluded.simmed_at,

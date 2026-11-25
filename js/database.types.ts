@@ -600,6 +600,7 @@ export type Database = {
           added_by: number | null
           class_spec_id: number
           difficulty: string
+          fight_length: number | null
           fight_style: string | null
           id: number
           player_id: number
@@ -614,6 +615,7 @@ export type Database = {
           added_by?: number | null
           class_spec_id: number
           difficulty: string
+          fight_length?: number | null
           fight_style?: string | null
           id?: never
           player_id: number
@@ -628,6 +630,7 @@ export type Database = {
           added_by?: number | null
           class_spec_id?: number
           difficulty?: string
+          fight_length?: number | null
           fight_style?: string | null
           id?: never
           player_id?: number
@@ -6383,14 +6386,7 @@ export type Database = {
         }
         Returns: number
       }
-      delete_character_sim: {
-        Args: {
-          p_class_spec_id: number
-          p_difficulty: string
-          p_player_id: number
-        }
-        Returns: undefined
-      }
+      delete_character_sim: { Args: { p_sim_id: number }; Returns: undefined }
       delete_self_received_request: {
         Args: { p_id: number }
         Returns: undefined
@@ -6913,6 +6909,7 @@ export type Database = {
           p_character_realm: string
           p_class_spec_id: number
           p_difficulty: string
+          p_fight_length: number
           p_fight_style: string
           p_player_id: number
           p_report_id: string

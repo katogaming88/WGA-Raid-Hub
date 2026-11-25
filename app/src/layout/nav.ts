@@ -294,7 +294,14 @@ function allMenu(
           tabs: GENERAL_SETTINGS_TABS.map((t) => ({ label: t.label, to: `${o}/${t.to.replace(/^officer\//, '')}` }))
         },
         { label: 'Discord', to: `${o}/settings/discord` },
-        { label: 'Loot', to: `${o}/settings/loot` },
+        {
+          label: 'Loot',
+          to: `${o}/settings/loot`,
+          tabs: [
+            { label: 'Loot', to: `${o}/settings/loot` },
+            { label: 'Sims', to: `${o}/settings/loot/sims` }
+          ]
+        },
         { label: 'Season', to: `${o}/settings/season` },
         { label: 'Audit log', to: `${o}/settings/audit-log` },
         { label: 'Danger zone', to: `${o}/settings/danger`, danger: true }
@@ -345,6 +352,7 @@ export const TEAM_PAGES: Record<string, string> = {
   'officer/settings/rank-permissions': 'Rank permissions',
   'officer/settings/season': 'Season settings',
   'officer/settings/loot': 'Loot settings',
+  'officer/settings/loot/sims': 'Sim settings',
   'officer/settings/discord': 'Discord settings',
   'officer/settings/audit-log': 'Audit log',
   'officer/settings/danger': 'Danger zone',

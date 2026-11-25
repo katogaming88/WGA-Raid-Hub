@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_SIM_SETTINGS } from '../sims/simSettings';
 import { navGroups, reportTabs } from '../layout/nav';
 import { shownLoot } from '../settings/lootResponses';
 import { screen, waitFor, within } from '@testing-library/react';
@@ -1108,7 +1109,7 @@ describe('sims on the Priority page', () => {
           character_sim_results: [result(1, 5006, 3.3)]
         }
       ],
-      14,
+      DEFAULT_SIM_SETTINGS,
       data,
       CATALOG,
       PLAYERS

@@ -4015,3 +4015,17 @@ Shipped: `20261125090858_character_sims_per_spec.sql`.
 **Sims saved before this are taken as the roster spec**, filled from `players.class_spec_id` in the migration; a sim whose character has no spec is removed. Production had none when this was written (2026-11-25), a day after #1443 shipped.
 
 [Full discussion -> #1916](https://github.com/katogaming88/WGA-Raid-Hub/issues/1916).
+
+## #1888 -- sim setups (part 1 of 2)
+
+Shipped: `20261125101552_sim_setups.sql`.
+
+**One sim per setup.** A team names its sim setups on Settings > Loot > Sims (Single target, Several targets), each a fight style, number of targets and fight length with a weight, and the gain officers see is the average by weight; a setup a raider hasn't added, or whose sim is out of date, counts as no gain (Kat, 2026-10-18). So `character_sims` gains `fight_length` (seconds) and its key becomes `unique nulls not distinct (player_id, difficulty, class_spec_id, fight_style, target_count, fight_length)`: a raider keeps one sim per setup, and a new sim replaces only the one run the same way. `delete_character_sim()` now takes the sim's id, since difficulty and spec no longer name one.
+
+**A QE Live sim counts as every setup** (Kat, 2026-11-25): healers can't choose a fight style or targets, so their sim has none (all null) and stands in for each setup, unweighted. Nulls count as equal in the key, so it stays one per character, difficulty and spec.
+
+**The settings are `team_settings.config` keys, not a table**: `simGainMode`, `simDifficulties`, `simUpgrade`, `simEquipped`, `simSetups`, `simChecks`, beside #1443's `simStaleDays`, saved by `set_team_setting()` (team leader or site admin) like the other loot settings. The page matches a sim to a setup when it reads it, so changing a setup needs no rewrite: a sim that no longer matches one stops counting until the raider adds one that does. Sims saved before lengths were kept match on fight style and targets alone.
+
+**The checks run on the page.** A team's "every sim must" switches (raid buffs on, no Power Infusion, default rotation, sockets added, the nightly SimulationCraft, high precision), its upgrade level per difficulty (fully upgraded or as it drops, read from the Raidbots report's title, Kat 2026-11-25), whether equipped gear is simmed as it is or fully upgraded (Kat, 2026-11-25), and its setups are all read from the Raidbots report by the page, which turns a sim away with the reason. QE Live reports carry none of these and always pass. The database trusts the page here as it does for the gains (#1443): it can't read the report itself.
+
+[Full discussion -> #1888](https://github.com/katogaming88/WGA-Raid-Hub/issues/1888).

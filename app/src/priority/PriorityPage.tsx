@@ -54,7 +54,8 @@ import {
 } from './usePriority';
 // The Roster's toggle buttons, shared rather than restyled.
 import '../roster/roster.css';
-import { useSimStaleDays, useTeamSims } from '../sims/useSims';
+import { useSimSettings, useTeamSims } from '../sims/useSims';
+import { DEFAULT_SIM_SETTINGS, type SimSettings } from '../sims/simSettings';
 import {
   DIFFICULTY_LABELS,
   simAgeDays,
@@ -167,7 +168,7 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
   // Each raider's sims (#1443 part 2): a gain beside every mark, and who is
   // missing one. A failed read leaves the gains off rather than the page.
   const teamSims = useTeamSims(teamId);
-  const staleDays = useSimStaleDays(teamId);
+  const simSettings = useSimSettings(teamId);
   const reads = bothQueries(
     bothQueries(usePriorityData(teamId, season), useCatalog()),
     bothQueries(bothQueries(useRaidZones(), useRosterPlayers(teamId)), useProgressionSettings(teamId))
@@ -184,9 +185,10 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
         const notes = wishlistNotes(data, catalog, players);
         const noteCount = notes.reduce((n, i) => n + i.notes.length, 0);
         const sims = teamSims.isSuccess ? teamSims.data : [];
-        const days = staleDays.isSuccess ? staleDays.data : null;
-        const gainOf = sims.length ? simLookup(sims, days, data, catalog, players) : null;
-        const missing = teamSims.isSuccess ? missingSims(players, sims, days, track) : [];
+        const settings = simSettings.isSuccess ? simSettings.data : DEFAULT_SIM_SETTINGS;
+        const gainOf = sims.length ? simLookup(sims, settings, data, catalog, players) : null;
+        const needed = settings.difficulties.includes(TRACK_DIFFICULTY[track]);
+        const missing = teamSims.isSuccess && needed ? missingSims(players, sims, settings, track) : [];
         const managed = (id: number) =>
           [...data.order, ...data.empty].some((r) => r.item_id === id && r.track === track);
         const unsaved = new Set(
@@ -249,7 +251,7 @@ function Priority({ teamId, season, seasonName }: { teamId: number; season: stri
               </Link>
             </nav>
             {tab === 'sims' ? (
-              <MissingSimsList missing={missing} track={track} />
+              <MissingSimsList missing={missing} track={track} needed={needed} />
             ) : tab === 'scoring' ? (
               <ScoringTab
                 teamId={teamId}
@@ -1079,14 +1081,14 @@ export type GainOf = (playerId: number, itemId: number, track: Track) => TrackGa
 // their class (Kat: "a token shows the value of what it becomes").
 export function simLookup(
   sims: TeamSim[],
-  staleDays: number | null,
+  settings: SimSettings,
   data: PriorityData,
   catalog: CatalogItem[],
   players: PlayerRow[]
 ): GainOf {
   const wowOf = new Map(catalog.map((i) => [i.id, i.wow_item_id ?? null]));
   const classOf = new Map(players.map((p) => [p.id, p.classes_specs?.class ?? null]));
-  return trackGains(sims, staleDays, rosterSpecOf(players), (playerId, itemId) => {
+  return trackGains(sims, settings, rosterSpecOf(players), (playerId, itemId) => {
     const piece = data.tierPieces.find((t) => t.token_item_id === itemId && t.class === classOf.get(playerId));
     return piece ? (piece.resolved?.wow_item_id ?? null) : (wowOf.get(itemId) ?? null);
   });
@@ -1104,27 +1106,40 @@ function rosterSpecOf(players: PlayerRow[]) {
   return (playerId: number) => specOf.get(playerId) ?? null;
 }
 
-export type MissingSim = { player: PlayerRow; simmedAt: string | null };
+// Why a raider is on Missing sims: no sim at all, every one out of date, or
+// no up-to-date sim for some of the team's setups (#1888).
+export type MissingSim = { player: PlayerRow; reason: string };
 
 // Raiders on the roster with no up-to-date sim for their roster spec at the
-// track's difficulty. Other specs' sims are optional (#1916).
-function missingSims(players: PlayerRow[], sims: TeamSim[], staleDays: number | null, track: Track): MissingSim[] {
-  const gainOf = trackGains(sims, staleDays, rosterSpecOf(players), () => null);
+// track's difficulty, for every one of the team's setups (a QE Live sim covers
+// them all). Other specs' sims are optional (#1916).
+function missingSims(players: PlayerRow[], sims: TeamSim[], settings: SimSettings, track: Track): MissingSim[] {
+  const gainOf = trackGains(sims, settings, rosterSpecOf(players), () => null);
+  const label = DIFFICULTY_LABELS[TRACK_DIFFICULTY[track]];
   return players
-    .map((player) => ({ player, gain: gainOf(player.id, 0, track) }))
-    .filter(({ gain }) => !gain.sim || gain.stale)
-    .map(({ player, gain }) => ({ player, simmedAt: gain.sim ? gain.simmedAt : null }))
+    .flatMap((player) => {
+      const gain = gainOf(player.id, 0, track);
+      if (!gain.sim) return [{ player, reason: `No ${label} sim` }];
+      if (gain.stale) return [{ player, reason: `Out of date, simmed ${simAgeDays(gain.simmedAt)} days ago` }];
+      if (gain.missing.length) {
+        const names = gain.missing.map((s) => s.name);
+        return [{ player, reason: `No ${names.join(' or ')} sim` }];
+      }
+      return [];
+    })
     .sort((a, b) => a.player.name_realm.localeCompare(b.player.name_realm));
 }
 
-function MissingSimsList({ missing, track }: { missing: MissingSim[]; track: Track }) {
+function MissingSimsList({ missing, track, needed }: { missing: MissingSim[]; track: Track; needed: boolean }) {
   const label = DIFFICULTY_LABELS[TRACK_DIFFICULTY[track]];
   return (
     <section className="card priority-missing-sims" aria-labelledby="missing-sims-title">
       <h2 id="missing-sims-title" className="card-title">
         Missing {label} sims
       </h2>
-      {missing.length === 0 ? (
+      {!needed ? (
+        <p className="text-muted">The team doesn’t need {label} sims. Change it on Settings &gt; Loot &gt; Sims.</p>
+      ) : missing.length === 0 ? (
         <p className="text-muted">Everyone on the roster has an up-to-date {label} sim.</p>
       ) : (
         <>
@@ -1132,7 +1147,7 @@ function MissingSimsList({ missing, track }: { missing: MissingSim[]; track: Tra
             Raiders add a Raidbots droptimizer or QE Live upgrade report on their profile’s Wishlist tab.
           </p>
           <ul className="priority-missing-list">
-            {missing.map(({ player, simmedAt }) => (
+            {missing.map(({ player, reason }) => (
               <li key={player.id}>
                 <span
                   className="priority-rank-name"
@@ -1140,9 +1155,7 @@ function MissingSimsList({ missing, track }: { missing: MissingSim[]; track: Tra
                 >
                   {player.nickname?.trim() || player.name_realm.split('-')[0]}
                 </span>
-                <span className="text-muted">
-                  {simmedAt ? `Out of date, simmed ${simAgeDays(simmedAt)} days ago` : `No ${label} sim`}
-                </span>
+                <span className="text-muted">{reason}</span>
               </li>
             ))}
           </ul>

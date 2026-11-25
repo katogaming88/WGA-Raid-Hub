@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     58 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 57 h 7 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 58 h 9 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **231 h 35 m** |             |
+| **All revamp work**                | **232 h 37 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 20 h 40 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 21 h 42 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -890,6 +890,12 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
 | --- | --- | --- | ---: | --- | ---: | --- |
 | 9:06-9:23 AM | #1916: one sim per character, difficulty and spec; migration (the spec on each sim, filled from the roster spec, save and remove take it and refuse another class), database tests; both parsers read the spec (the Raidbots sample regained its spec line); the Priority page sorts by the roster spec's gain with other specs greyed beside it, Missing sims counts the roster spec, the Wishlist tab and sims list name each spec; page and browser tests, Help, generated docs, RLS.md, decision log, backup notes, stamp, changelog, these rows and the two owed from #1443 | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1916) | 17 m | build | 256,800 | Preflight, PR, fresh-agent review and merge not yet counted. |
+| 9:23-9:36 AM | PR #1920 (#1916): preflight (10 of 11, ledger), PR opened, screenshots, status comment on #1916, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1916) | 13 m | build | 30,500 | |
+| 9:36-9:44 AM | PR #1920: Kat's call: spec icons before every gain, the roster spec always shown first; screenshots retaken with Streams collapsed | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1916) | 8 m | build, Kat review | 38,900 | |
+| 9:44-9:59 AM | PR #1920: CodeRabbit's point (a character with no roster spec takes no sims), reply; Kat's call to check the report's character in the database too, realm required; the fresh-agent migration review (approve) and both its points (roster sim matched on class and spec, a site admin test) | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1916) | 15 m | build, Kat review (answer inline) | 173,000 | Tokens include the fresh-agent review (100,500). |
+| 10:06-10:10 AM | PR #1920: Kat's merge; cleanup, #1916 status comment, its row out of #1487, local database restored, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1916) | 4 m | Kat review, build | 8,500 | Kat's review wait 9:59-10:06 AM not counted. |
+| 10:10-10:32 AM | #1888 part 1: a real Raidbots report read for what the checks can use; Kat's four calls (QE Live counts as every setup, Remove hides, Fully upgraded or As it drops, two PRs) and the equipped gear setting; migration (a sim per setup, remove by id), database tests; settings model and checks, weighted gains on the Priority page, Wishlist tab and Missing sims; Settings > Loot > Sims page; page and browser tests, Help, generated docs, RLS.md, decision log, stamp, changelog, these rows and the four owed from #1916 | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1888) | 22 m | build (Kat's answers inline) | 236,900 | Preflight, PR, reviews and merge not yet counted. |
+
 ## Not counted (same sessions, not revamp)
 
 | Date       | Time (ET)         | Item                                                                                                                         | Elapsed |

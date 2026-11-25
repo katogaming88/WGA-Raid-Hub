@@ -1,4 +1,4 @@
-import { formatGain, type TrackGain } from '../sims/sims';
+import { showGain, type TrackGain } from '../sims/sims';
 import { SpecMark } from '../sims/SpecMark';
 
 // A raider's sim gain beside their mark on the Priority page (#1443 part 2):
@@ -17,7 +17,7 @@ export function TrackGainText({ gain }: { gain: TrackGain }) {
       {gain.others.map((o) => (
         <span key={`${o.className}|${o.spec}`} className="priority-gain priority-gain-other num">
           <SpecMark className={o.className} spec={o.spec} />
-          {formatGain(o.pct)}
+          {showGain(o, gain.mode)}
           {o.stale && <span className="visually-hidden"> (sim out of date)</span>}
         </span>
       ))}
@@ -37,7 +37,7 @@ function RosterGain({ gain }: { gain: TrackGain }) {
   }
   return (
     <span className={`num${gain.stale ? ' is-stale' : ''}${gain.pct < 0 ? ' is-down' : ''}`}>
-      {formatGain(gain.pct)}
+      {showGain({ pct: gain.pct, dps: gain.dps }, gain.mode)}
       {gain.stale && <span className="visually-hidden"> (sim out of date)</span>}
     </span>
   );

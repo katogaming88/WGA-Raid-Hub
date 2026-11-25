@@ -2,7 +2,7 @@
 
 ## Description
 
-A raider's latest droptimizer sim per difficulty and spec (#1443, #1916): Raidbots or QE Live, written by save_character_sim().
+A raider's latest droptimizer sim per difficulty, spec and setup (#1443, #1916, #1888): Raidbots or QE Live, written by save_character_sim().
 
 ## Columns
 
@@ -20,12 +20,14 @@ A raider's latest droptimizer sim per difficulty and spec (#1443, #1916): Raidbo
 | added_by | integer |  | true |  | [public.people](public.people.md) |  |
 | added_at | timestamp with time zone | now() | false |  |  |  |
 | class_spec_id | integer |  | false |  | [public.classes_specs](public.classes_specs.md) | The spec the sim was run as (#1916). The character's roster spec's sim is the one the Priority page counts. |
+| fight_length | integer |  | true |  |  | The fight length the sim was run at, in seconds (#1888); null for QE Live, and for sims saved before it was kept. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | character_sims_difficulty_check | CHECK | CHECK ((difficulty = ANY (ARRAY['lfr'::text, 'normal'::text, 'heroic'::text, 'mythic'::text]))) |
+| character_sims_fight_length_check | CHECK | CHECK (((fight_length >= 1) AND (fight_length <= 3600))) |
 | character_sims_fight_style_check | CHECK | CHECK ((char_length(fight_style) <= 40)) |
 | character_sims_report_id_check | CHECK | CHECK ((report_id ~ '^[A-Za-z0-9_-]{1,64}$'::text)) |
 | character_sims_source_check | CHECK | CHECK ((source = ANY (ARRAY['raidbots'::text, 'qe_live'::text]))) |
@@ -35,7 +37,7 @@ A raider's latest droptimizer sim per difficulty and spec (#1443, #1916): Raidbo
 | character_sims_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | character_sims_added_by_fkey | FOREIGN KEY | FOREIGN KEY (added_by) REFERENCES people(id) ON DELETE SET NULL |
 | character_sims_pkey | PRIMARY KEY | PRIMARY KEY (id) |
-| character_sims_player_id_difficulty_spec_key | UNIQUE | UNIQUE (player_id, difficulty, class_spec_id) |
+| character_sims_player_setup_key | UNIQUE | UNIQUE NULLS NOT DISTINCT (player_id, difficulty, class_spec_id, fight_style, target_count, fight_length) |
 
 ## Indexes
 
@@ -43,7 +45,7 @@ A raider's latest droptimizer sim per difficulty and spec (#1443, #1916): Raidbo
 | ---- | ---------- |
 | character_sims_pkey | CREATE UNIQUE INDEX character_sims_pkey ON public.character_sims USING btree (id) |
 | character_sims_team_id_idx | CREATE INDEX character_sims_team_id_idx ON public.character_sims USING btree (team_id) |
-| character_sims_player_id_difficulty_spec_key | CREATE UNIQUE INDEX character_sims_player_id_difficulty_spec_key ON public.character_sims USING btree (player_id, difficulty, class_spec_id) |
+| character_sims_player_setup_key | CREATE UNIQUE INDEX character_sims_player_setup_key ON public.character_sims USING btree (player_id, difficulty, class_spec_id, fight_style, target_count, fight_length) NULLS NOT DISTINCT |
 
 ## Relations
 
@@ -69,6 +71,7 @@ erDiagram
   integer added_by FK
   timestamp_with_time_zone added_at
   integer class_spec_id FK
+  integer fight_length
 }
 "public.character_sim_results" {
   bigint id
