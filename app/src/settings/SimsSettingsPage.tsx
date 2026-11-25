@@ -210,7 +210,7 @@ function SimsForm({ teamId, saved, canEdit }: { teamId: number; saved: SimSettin
           hasn’t added counts as no gain. A QE Live sim counts as every setup. A sim that matches none of these is
           turned away, and one added before a setup changed stops counting.
         </p>
-        <div className="profile-table-wrap">
+        <div className="sims-table-wrap">
           <table className="settings-roster-table sims-setups">
             <thead>
               <tr>

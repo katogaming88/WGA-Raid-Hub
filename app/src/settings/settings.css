@@ -795,7 +795,30 @@
 .sims-check {
   display: flex;
   align-items: baseline;
-  gap: var(--space-2);
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+}
+
+.sims-check strong {
+  white-space: nowrap;
+}
+
+/* A phone keeps the hint under its name, not squeezed beside it. */
+@media (max-width: 600px) {
+  .sims-check .text-muted {
+    flex-basis: 100%;
+    padding-left: calc(1em + var(--space-2));
+  }
+}
+
+.sims-table-wrap {
+  position: relative;
+  overflow-x: auto;
+}
+
+/* Wide enough for every column; on a phone it scrolls in its box. */
+.sims-setups {
+  min-width: 620px;
 }
 
 .sims-setups td {
