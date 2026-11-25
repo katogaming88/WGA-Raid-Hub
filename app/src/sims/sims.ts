@@ -1,5 +1,7 @@
 import {
   setupOf,
+  simIsStale,
+  type StaleShape,
   type GainMode,
   type SetupShape,
   type SimSettings,
@@ -352,17 +354,11 @@ export function bestPerItem(results: SavedResult[], upgrade: UpgradeMode = 'max'
   return [...best.values()].sort((a, b) => Number(b.pct_gain) - Number(a.pct_gain));
 }
 
-// How long a sim stays up to date: the team's setting, 14 days until set.
-export const DEFAULT_SIM_STALE_DAYS = 14;
-export const asStaleDays = (v: unknown): number => {
-  const n = Number(v);
-  return Number.isInteger(n) && n >= 1 && n <= 365 ? n : DEFAULT_SIM_STALE_DAYS;
-};
+// How old a sim is, in whole days. Whether it is out of date is the team's
+// rule, simIsStale() in simSettings.ts (#1888 part 2).
 const DAY = 24 * 60 * 60 * 1000;
 export const simAgeDays = (simmedAt: string, now = Date.now()) =>
   Math.max(0, Math.floor((now - Date.parse(simmedAt)) / DAY));
-export const isStale = (simmedAt: string, staleDays: number, now = Date.now()) =>
-  now - Date.parse(simmedAt) > staleDays * DAY;
 
 // "Raidbots slot names" for the table: finger1 -> Ring 1, main_hand -> Main hand.
 const SLOT_LABELS: Record<string, string> = {
@@ -394,7 +390,7 @@ export const showGain = (g: { pct: number; dps: number | null }, mode: GainMode)
 // -- Gains, weighted by the team's setups (#1888) ---------------------------
 
 // A sim as the gains read it: its setup shape, date and results.
-export type GainSim = SetupShape & { simmed_at: string; character_sim_results: SavedResult[] };
+export type GainSim = SetupShape & StaleShape & { simmed_at: string; character_sim_results: SavedResult[] };
 export type Gain = { pct: number; dps: number | null; stale: boolean };
 
 // One character's sims at one difficulty and spec, read as the team's setups
@@ -404,7 +400,9 @@ export type Gain = { pct: number; dps: number | null; stale: boolean };
 // as no gain: Single target +1.0% at 70 and Several targets +2.0% at 30 is
 // +1.3%, and +0.7% with no Several targets sim. With no up-to-date sim at
 // all, the out-of-date ones give the gain, greyed.
-export function setupGains(sims: GainSim[], settings: SimSettings, difficulty: Difficulty, now = Date.now()) {
+export function setupGains(all: GainSim[], settings: SimSettings, difficulty: Difficulty, now = Date.now()) {
+  // A team that hides out-of-date sims (#1888 part 2) counts them as gone.
+  const sims = settings.staleThen === 'hide' ? all.filter((x) => !simIsStale(x, settings, now)) : all;
   const newest = (xs: GainSim[]) => [...xs].sort((a, b) => b.simmed_at.localeCompare(a.simmed_at))[0];
   const everySetup = newest(sims.filter((x) => setupOf(x, settings.setups) === 'all'));
   const picks = settings.setups.map((setup) => {
@@ -413,7 +411,7 @@ export function setupGains(sims: GainSim[], settings: SimSettings, difficulty: D
     return {
       setup,
       sim,
-      fresh: !isStale(sim.simmed_at, settings.staleDays, now),
+      fresh: !simIsStale(sim, settings, now),
       values: new Map(
         bestPerItem(sim.character_sim_results, settings.upgrade[difficulty]).map((r) => [
           r.wow_item_id,

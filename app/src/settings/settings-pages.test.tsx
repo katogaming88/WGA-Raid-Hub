@@ -737,6 +737,31 @@ describe('Sim settings', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
+  // #1888 part 2: the rest of Out of date.
+  it('saves a set day each week, the gear rise, hiding and one at any difficulty', async () => {
+    const calls: unknown[] = [];
+    renderApp(SIMS, asLeader(calls));
+    await userEvent.click(await screen.findByRole('radio', { name: 'On a set day each week' }));
+    expect(screen.queryByRole('spinbutton', { name: 'A sim goes out of date after' })).not.toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Every week on' }), 'Thursday');
+    expect(screen.getByText(/goes out of date each Thursday/)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Or when gear goes up' })).toHaveValue('3');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Or when gear goes up' }), 'Never');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Then' }), 'Hide it');
+    await userEvent.click(screen.getByRole('checkbox', { name: /Need one per difficulty/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await expect.poll(() => calls.length).toBe(1);
+    expect(calls[0]).toMatchObject({
+      p_updates: {
+        simStaleMode: 'weekday',
+        simStaleWeekday: 4,
+        simGearRise: null,
+        simStaleThen: 'hide',
+        simNeedEach: false
+      }
+    });
+  });
+
   it('lets the team leader set how many days a sim stays up to date (#1443)', async () => {
     const calls: unknown[] = [];
     renderApp(SIMS, asLeader(calls, { simStaleDays: 10 }));

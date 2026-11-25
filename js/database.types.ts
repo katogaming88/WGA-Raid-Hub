@@ -602,6 +602,7 @@ export type Database = {
           difficulty: string
           fight_length: number | null
           fight_style: string | null
+          gear_item_level: number | null
           id: number
           player_id: number
           report_id: string
@@ -617,6 +618,7 @@ export type Database = {
           difficulty: string
           fight_length?: number | null
           fight_style?: string | null
+          gear_item_level?: number | null
           id?: never
           player_id: number
           report_id: string
@@ -632,6 +634,7 @@ export type Database = {
           difficulty?: string
           fight_length?: number | null
           fight_style?: string | null
+          gear_item_level?: number | null
           id?: never
           player_id?: number
           report_id?: string

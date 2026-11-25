@@ -12,6 +12,22 @@ answers to.
 
 ---
 
+## [3.311.0] - 2026-11-25
+
+### Backend
+
+- Each sim keeps the raider's average equipped item level when it was added, read from the daily gear sync by the database itself (#1888 part 2), so a sim can go out of date when their gear goes up. Older sims have none and are never out of date by gear.
+
+### Project
+
+- Settings > Loot > Sims has the rest of **Out of date** (#1888 part 2):
+  - a sim goes out of date **after a number of days** or **on a set day each week** (at the weekly reset's time);
+  - **or when gear goes up** 3 or 6 item levels (3 to start), or never;
+  - **then** it's greyed out (as before, the default) or hidden: a hidden sim's gains disappear and it counts as no sim, but the raider still sees it on their profile, marked not counted, until they add a new one;
+  - **Need one per difficulty**: off, an up-to-date sim at any needed difficulty keeps a raider off Missing sims.
+- The Priority page, Wishlist tab, Missing sims and the profile's sims list all follow these rules.
+- Help's "Add your sim" guide says when a sim goes out of date.
+
 ## [3.310.0] - 2026-11-25
 
 ### Backend

@@ -15576,6 +15576,12 @@
           "type": "integer",
           "nullable": true,
           "comment": "The fight length the sim was run at, in seconds (#1888); null for QE Live, and for sims saved before it was kept."
+        },
+        {
+          "name": "gear_item_level",
+          "type": "numeric(6,2)",
+          "nullable": true,
+          "comment": "The raider's average equipped item level when the sim was saved, from the daily gear read (#1888); null when there was none."
         }
       ],
       "indexes": [
@@ -15638,6 +15644,16 @@
           "referenced_table": "",
           "columns": [
             "fight_style"
+          ]
+        },
+        {
+          "name": "character_sims_gear_item_level_check",
+          "type": "CHECK",
+          "def": "CHECK (((gear_item_level \u003e= (1)::numeric) AND (gear_item_level \u003c= (2000)::numeric)))",
+          "table": "public.character_sims",
+          "referenced_table": "",
+          "columns": [
+            "gear_item_level"
           ]
         },
         {

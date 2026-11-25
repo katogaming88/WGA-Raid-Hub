@@ -9,7 +9,6 @@ import {
   DIFFICULTY_LABELS,
   showGain,
   isCharacter,
-  isStale,
   matchSpec,
   parseSimLink,
   simAgeDays,
@@ -28,7 +27,14 @@ import {
   type KnownItem,
   type SavedSim
 } from './useSims';
-import { DEFAULT_SIM_SETTINGS, fightStyleLabel, setupOf, simProblems, type SimSettings } from './simSettings';
+import {
+  DEFAULT_SIM_SETTINGS,
+  fightStyleLabel,
+  setupOf,
+  simIsStale,
+  simProblems,
+  type SimSettings
+} from './simSettings';
 import './sims.css';
 
 // A raider's sims (#1443): the raider, or an officer who manages loot, pastes
@@ -211,7 +217,7 @@ function SimTable({
   // Which of the team's setups it is (#1888); a QE Live sim is every setup.
   const setup = setupOf(sim, shown.setups);
   const label = `${DIFFICULTY_LABELS[sim.difficulty]} ${sim.spec}${setup && setup !== 'all' && shown.setups.length > 1 ? `, ${setup.name}` : ''}`;
-  const stale = settings !== null && isStale(sim.simmed_at, settings.staleDays);
+  const stale = settings !== null && simIsStale(sim, settings);
   const rows = bestPerItem(sim.character_sim_results, shown.upgrade[sim.difficulty]).filter(
     (r) => Number(r.pct_gain) > 0
   );
@@ -247,7 +253,9 @@ function SimTable({
         {settings !== null && (
           <>
             <span aria-hidden="true"> · </span>
-            <span className={stale ? 'sims-old' : 'sims-fresh'}>{stale ? 'Out of date' : 'Up to date'}</span>
+            <span className={stale ? 'sims-old' : 'sims-fresh'}>
+              {stale ? (settings.staleThen === 'hide' ? 'Out of date, not counted' : 'Out of date') : 'Up to date'}
+            </span>
           </>
         )}
         {canRemove && (

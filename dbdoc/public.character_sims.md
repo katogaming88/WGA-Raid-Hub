@@ -21,6 +21,7 @@ A raider's latest droptimizer sim per difficulty, spec and setup (#1443, #1916, 
 | added_at | timestamp with time zone | now() | false |  |  |  |
 | class_spec_id | integer |  | false |  | [public.classes_specs](public.classes_specs.md) | The spec the sim was run as (#1916). The character's roster spec's sim is the one the Priority page counts. |
 | fight_length | integer |  | true |  |  | The fight length the sim was run at, in seconds (#1888); null for QE Live, and for sims saved before it was kept. |
+| gear_item_level | numeric(6,2) |  | true |  |  | The raider's average equipped item level when the sim was saved, from the daily gear read (#1888); null when there was none. |
 
 ## Constraints
 
@@ -29,6 +30,7 @@ A raider's latest droptimizer sim per difficulty, spec and setup (#1443, #1916, 
 | character_sims_difficulty_check | CHECK | CHECK ((difficulty = ANY (ARRAY['lfr'::text, 'normal'::text, 'heroic'::text, 'mythic'::text]))) |
 | character_sims_fight_length_check | CHECK | CHECK (((fight_length >= 1) AND (fight_length <= 3600))) |
 | character_sims_fight_style_check | CHECK | CHECK ((char_length(fight_style) <= 40)) |
+| character_sims_gear_item_level_check | CHECK | CHECK (((gear_item_level >= (1)::numeric) AND (gear_item_level <= (2000)::numeric))) |
 | character_sims_report_id_check | CHECK | CHECK ((report_id ~ '^[A-Za-z0-9_-]{1,64}$'::text)) |
 | character_sims_source_check | CHECK | CHECK ((source = ANY (ARRAY['raidbots'::text, 'qe_live'::text]))) |
 | character_sims_target_count_check | CHECK | CHECK (((target_count >= 1) AND (target_count <= 100))) |
@@ -72,6 +74,7 @@ erDiagram
   timestamp_with_time_zone added_at
   integer class_spec_id FK
   integer fight_length
+  numeric_6_2_ gear_item_level
 }
 "public.character_sim_results" {
   bigint id

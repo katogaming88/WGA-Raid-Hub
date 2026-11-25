@@ -4029,3 +4029,13 @@ Shipped: `20261125101552_sim_setups.sql`.
 **The checks run on the page.** A team's "every sim must" switches (raid buffs on, no Power Infusion, default rotation, sockets added, the nightly SimulationCraft, high precision), its upgrade level per difficulty (fully upgraded or as it drops, read from the Raidbots report's title, Kat 2026-11-25), whether equipped gear is simmed as it is or fully upgraded (Kat, 2026-11-25), and its setups are all read from the Raidbots report by the page, which turns a sim away with the reason. QE Live reports carry none of these and always pass. A Raidbots report the page can't read is turned away rather than let through: one with no fight style, targets or length, or whose title doesn't name its upgrade level; and only a QE Live sim counts as every setup (the fresh-agent review on PR #1921). The database trusts the page here as it does for the gains (#1443): it can't read the report itself.
 
 [Full discussion -> #1888](https://github.com/katogaming88/WGA-Raid-Hub/issues/1888).
+
+## #1888 -- sims out of date (part 2 of 2)
+
+Shipped: `20261125172814_sim_gear_level.sql`.
+
+**A sim goes out of date when the raider's gear goes up** (Kat, 2026-10-18): N or more item levels (3 or 6, or never; 3 to start, as in the mockup) above their average equipped item level when the sim was added. So `character_sims` keeps `gear_item_level`, which `save_character_sim()` reads itself from the daily gear read (`player_equipped_gear`, shirt and tabard left out), not from the page. The page compares it with the same average today. A sim saved before this, or with no gear read, is never out of date by gear.
+
+**The rest is page-side, in `team_settings.config`**: `simStaleMode` (after `simStaleDays`, or on `simStaleWeekday` each week at the weekly reset's hour, 15:00 UTC), `simGearRise`, `simStaleThen` (grey out, today's behaviour and the default, or hide) and `simNeedEach`. **Hiding keeps the row** (Kat, 2026-11-25): a hidden sim counts as no sim and its gains disappear, but it stays until the raider adds a new one, and switching back to grey brings it back; no scheduled job. With `simNeedEach` off, an up-to-date sim for every setup at any needed difficulty on the Priority page keeps a raider off Missing sims.
+
+[Full discussion -> #1888](https://github.com/katogaming88/WGA-Raid-Hub/issues/1888).

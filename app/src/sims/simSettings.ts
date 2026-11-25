@@ -6,6 +6,8 @@ import type { Difficulty, ParsedReport } from './sims';
 export type GainMode = 'percent' | 'raw';
 export type UpgradeMode = 'max' | 'drop';
 export type EquippedMode = 'asIs' | 'upgraded';
+export type StaleMode = 'days' | 'weekday';
+export type StaleThen = 'grey' | 'hide';
 export type CheckKey = 'buffs' | 'noPowerInfusion' | 'defaultRotation' | 'sockets' | 'latestSimc' | 'highPrecision';
 
 // A named setup (Kat, 2026-10-18): a fight style, number of targets and fight
@@ -30,7 +32,17 @@ export type SimSettings = {
   equipped: EquippedMode;
   setups: SimSetup[];
   checks: Record<CheckKey, boolean>;
+  // When a sim goes out of date (#1443, #1888 part 2): after a number of days
+  // or on a set day each week, and also when the raider's gear has gone up
+  // by gearRise item levels (null: never); then greyed or hidden; and
+  // whether Missing sims wants one at every difficulty or any one.
+  staleMode: StaleMode;
   staleDays: number;
+  // 0 Sunday to 6 Saturday.
+  staleWeekday: number;
+  gearRise: number | null;
+  staleThen: StaleThen;
+  needEach: boolean;
 };
 
 // Raidbots' fight styles, by the value its report keeps.
@@ -85,7 +97,12 @@ export const DEFAULT_SIM_SETTINGS: SimSettings = {
     latestSimc: false,
     highPrecision: false
   },
-  staleDays: 14
+  staleMode: 'days',
+  staleDays: 14,
+  staleWeekday: 2,
+  gearRise: 3,
+  staleThen: 'grey',
+  needEach: true
 };
 
 type Json = Record<string, unknown>;
@@ -132,8 +149,42 @@ export function asSimSettings(config: unknown): SimSettings {
     checks: Object.fromEntries(
       CHECKS.map(({ key }) => [key, typeof checks[key] === 'boolean' ? checks[key] : d.checks[key]])
     ) as Record<CheckKey, boolean>,
-    staleDays: Number.isInteger(days) && days >= 1 && days <= 365 ? days : d.staleDays
+    staleMode: c.simStaleMode === 'weekday' ? 'weekday' : 'days',
+    staleDays: Number.isInteger(days) && days >= 1 && days <= 365 ? days : d.staleDays,
+    staleWeekday:
+      Number.isInteger(c.simStaleWeekday) && Number(c.simStaleWeekday) >= 0 && Number(c.simStaleWeekday) <= 6
+        ? Number(c.simStaleWeekday)
+        : d.staleWeekday,
+    gearRise:
+      c.simGearRise === null ? null : GEAR_RISES.includes(Number(c.simGearRise)) ? Number(c.simGearRise) : d.gearRise,
+    staleThen: c.simStaleThen === 'hide' ? 'hide' : 'grey',
+    needEach: typeof c.simNeedEach === 'boolean' ? c.simNeedEach : d.needEach
   };
+}
+
+// The gear rises a team can pick, in item levels.
+export const GEAR_RISES = [3, 6];
+
+const DAY = 24 * 60 * 60 * 1000;
+// The latest time, at or before `now`, that the weekday began at the weekly
+// reset's hour, 15:00 UTC (10 or 11 AM Eastern).
+export function lastWeekday(weekday: number, now = Date.now()): number {
+  const d = new Date(now);
+  const at =
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 15) - ((d.getUTCDay() - weekday + 7) % 7) * DAY;
+  return at > now ? at - 7 * DAY : at;
+}
+
+// Whether a sim is out of date by the team's rules (#1443, #1888 part 2). The
+// gear rule needs the level saved with the sim and the raider's level today,
+// both from the daily gear read; a sim saved before levels were kept is never
+// out of date by gear.
+export type StaleShape = { simmed_at: string; gear_item_level?: number | string | null; gear_now?: number | null };
+export function simIsStale(sim: StaleShape, s: SimSettings, now = Date.now()): boolean {
+  const at = Date.parse(sim.simmed_at);
+  if (s.staleMode === 'days' ? now - at > s.staleDays * DAY : at < lastWeekday(s.staleWeekday, now)) return true;
+  const then = sim.gear_item_level == null ? null : Number(sim.gear_item_level);
+  return s.gearRise !== null && then !== null && sim.gear_now != null && sim.gear_now - then >= s.gearRise;
 }
 
 // The same settings as the config keys set_team_setting() saves.
@@ -144,7 +195,12 @@ export const simSettingsConfig = (s: SimSettings) => ({
   simEquipped: s.equipped,
   simSetups: s.setups,
   simChecks: s.checks,
-  simStaleDays: s.staleDays
+  simStaleMode: s.staleMode,
+  simStaleDays: s.staleDays,
+  simStaleWeekday: s.staleWeekday,
+  simGearRise: s.gearRise,
+  simStaleThen: s.staleThen,
+  simNeedEach: s.needEach
 });
 
 // The setup a saved sim was run as (Kat, 2026-11-25): a QE Live sim counts
