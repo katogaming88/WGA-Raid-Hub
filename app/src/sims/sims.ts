@@ -1,3 +1,12 @@
+import {
+  setupOf,
+  type GainMode,
+  type SetupShape,
+  type SimSettings,
+  type SimSetup,
+  type UpgradeMode
+} from './simSettings';
+
 // Droptimizer sims (#1443): a raider pastes a Raidbots droptimizer or QE Live
 // upgrade report link, the page reads the report straight from the site
 // (both allow it), and each result is saved by save_character_sim(). Pure
@@ -42,8 +51,40 @@ export type ParsedReport = {
   simmedAt: string;
   fightStyle: string | null;
   targetCount: number | null;
+  // In seconds (#1888); null for QE Live.
+  fightLength: number | null;
+  // The settings a Raidbots report was run with, for the team's checks
+  // (#1888); null for QE Live, which keeps none.
+  raidbots: RaidbotsSettings | null;
   sims: ParsedSim[];
 };
+
+export type RaidbotsSettings = {
+  missingBuffs: string[];
+  powerInfusion: boolean;
+  customRotation: boolean;
+  sockets: boolean;
+  latestSimc: boolean;
+  highPrecision: boolean;
+  // Whether the character's equipped gear was simmed fully upgraded (Kat,
+  // 2026-11-25), rather than as it is.
+  upgradedEquipped: boolean;
+  // The upgrade step from the report's title ("... Myth 6/6"); null if none.
+  upgrade: { step: number; of: number } | null;
+};
+
+// The raid buffs a Raidbots report switches on or off, by its own names.
+const RAID_BUFFS: [string, string][] = [
+  ['bloodlust', 'Bloodlust'],
+  ['arcaneIntellect', 'Arcane Intellect'],
+  ['fortitude', 'Power Word: Fortitude'],
+  ['battleShout', 'Battle Shout'],
+  ['mysticTouch', 'Mystic Touch'],
+  ['chaosBrand', 'Chaos Brand'],
+  ['skyfury', 'Skyfury'],
+  ['markOfTheWild', 'Mark of the Wild'],
+  ['huntersMark', 'Hunter’s Mark']
+];
 
 export type SimLink = { source: SimSource; reportId: string; dataUrl: string };
 
@@ -177,6 +218,28 @@ export function parseRaidbots(data: unknown, reportId: string): ParsedReport | {
   const spec = specLine && classLine ? `${specLine} ${classLine}` : String(player.specialization ?? '');
   if (!spec.trim()) return { error: NO_SPEC };
   const stamp = Number(root.timestamp);
+  const raw = obj(meta.rawFormData);
+  const fightLength = positiveInt(meta.fightLength ?? raw.fightLength);
+  if (typeof meta.fightStyle !== 'string' || !meta.fightStyle || !positiveInt(meta.enemyCount) || !fightLength) {
+    return { error: 'That Raidbots report doesn’t say its fight style, targets and length, so it can’t be checked.' };
+  }
+  const options = obj(sim.options);
+  const title = String(raw.reportName ?? simbot.title ?? '');
+  const step = /(\d+)\/(\d+)\s*$/.exec(title);
+  const targetError = Number(options.target_error);
+  const raidbots: RaidbotsSettings = {
+    missingBuffs: RAID_BUFFS.filter(([key]) => meta[key] === false).map(([, name]) => name),
+    powerInfusion: meta.powerInfusion === true,
+    customRotation: !!meta.customApl || meta.expertMode === true || !!String(raw.apl ?? '').trim(),
+    sockets: obj(raw.droptimizer).gem != null,
+    latestSimc: String(meta.simcVersion ?? raw.simcVersion ?? '') === 'nightly',
+    // Smart high precision stops at 0.05% error; a fixed count of 10,000 or
+    // more iterations is as good.
+    highPrecision:
+      (targetError > 0 && targetError <= 0.05) || (!(targetError > 0) && Number(options.iterations) >= 10000),
+    upgradedEquipped: obj(raw.droptimizer).upgradeEquipped === true,
+    upgrade: step ? { step: Number(step[1]), of: Number(step[2]) } : null
+  };
   return {
     source: 'raidbots',
     reportId,
@@ -185,6 +248,8 @@ export function parseRaidbots(data: unknown, reportId: string): ParsedReport | {
     simmedAt: new Date(Number.isFinite(stamp) && stamp > 0 ? stamp * 1000 : Date.now()).toISOString(),
     fightStyle: typeof meta.fightStyle === 'string' ? meta.fightStyle : null,
     targetCount: positiveInt(meta.enemyCount),
+    fightLength,
+    raidbots,
     sims: grouped(rows)
   };
 }
@@ -239,6 +304,8 @@ export function parseQeLive(data: unknown, reportId: string): ParsedReport | { e
     simmedAt: new Date(Number.isFinite(made) ? made : Date.now()).toISOString(),
     fightStyle: null,
     targetCount: null,
+    fightLength: null,
+    raidbots: null,
     sims: grouped(rows)
   };
 }
@@ -267,18 +334,18 @@ export function matchSpec(text: string, specs: ClassSpec[]): ClassSpec | null {
   return specs.find((s) => squash(s.spec + s.class) === want) ?? null;
 }
 
-// A saved sim's results, one row per item: its fully upgraded level (the
-// highest item level saved, Kat 2026-11-24) and its best slot.
+// A saved sim's results, one row per item at the team's upgrade level for
+// that difficulty (#1888): fully upgraded is the highest item level saved
+// (Kat, 2026-11-24), as it drops the lowest. A Raidbots sim has one level;
+// QE Live keeps both. Then each item's best slot.
 export type SavedResult = SimResult & { id: number };
-export function bestPerItem(results: SavedResult[]): SavedResult[] {
+export function bestPerItem(results: SavedResult[], upgrade: UpgradeMode = 'max'): SavedResult[] {
+  const better = (r: SavedResult, had: SavedResult) =>
+    upgrade === 'max' ? r.item_level > had.item_level : r.item_level < had.item_level;
   const best = new Map<number, SavedResult>();
   for (const r of results) {
     const had = best.get(r.wow_item_id);
-    if (
-      !had ||
-      r.item_level > had.item_level ||
-      (r.item_level === had.item_level && Number(r.pct_gain) > Number(had.pct_gain))
-    ) {
+    if (!had || better(r, had) || (r.item_level === had.item_level && Number(r.pct_gain) > Number(had.pct_gain))) {
       best.set(r.wow_item_id, r);
     }
   }
@@ -318,36 +385,102 @@ const SLOT_LABELS: Record<string, string> = {
 };
 export const slotLabel = (slot: string | null) => (slot ? (SLOT_LABELS[slot] ?? slot) : '');
 export const formatGain = (pct: number) => `${pct > 0 ? '+' : ''}${pct.toFixed(2)}%`;
+export const formatDps = (dps: number) => `${dps > 0 ? '+' : ''}${Math.round(dps).toLocaleString('en-US')} DPS`;
+// A gain as the team shows it (#1888): raw numbers where the sim has them
+// (Raidbots), else the percent (QE Live gives only a percent).
+export const showGain = (g: { pct: number; dps: number | null }, mode: GainMode) =>
+  mode === 'raw' && g.dps !== null ? formatDps(g.dps) : formatGain(g.pct);
+
+// -- Gains, weighted by the team's setups (#1888) ---------------------------
+
+// A sim as the gains read it: its setup shape, date and results.
+export type GainSim = SetupShape & { simmed_at: string; character_sim_results: SavedResult[] };
+export type Gain = { pct: number; dps: number | null; stale: boolean };
+
+// One character's sims at one difficulty and spec, read as the team's setups
+// say (Kat, 2026-10-18 and 2026-11-25). Each setup takes the Raidbots sim run
+// as it, else a QE Live sim, which stands in for every setup. The gain is the
+// weighted average over the setups, a setup with no up-to-date sim counting
+// as no gain: Single target +1.0% at 70 and Several targets +2.0% at 30 is
+// +1.3%, and +0.7% with no Several targets sim. With no up-to-date sim at
+// all, the out-of-date ones give the gain, greyed.
+export function setupGains(sims: GainSim[], settings: SimSettings, difficulty: Difficulty, now = Date.now()) {
+  const newest = (xs: GainSim[]) => [...xs].sort((a, b) => b.simmed_at.localeCompare(a.simmed_at))[0];
+  const everySetup = newest(sims.filter((x) => setupOf(x, settings.setups) === 'all'));
+  const picks = settings.setups.map((setup) => {
+    const sim = newest(sims.filter((x) => setupOf(x, settings.setups) === setup)) ?? everySetup;
+    if (!sim) return { setup, sim: null, fresh: false, values: new Map<number, { pct: number; dps: number | null }>() };
+    return {
+      setup,
+      sim,
+      fresh: !isStale(sim.simmed_at, settings.staleDays, now),
+      values: new Map(
+        bestPerItem(sim.character_sim_results, settings.upgrade[difficulty]).map((r) => [
+          r.wow_item_id,
+          { pct: Number(r.pct_gain), dps: r.dps_gain === null ? null : Number(r.dps_gain) }
+        ])
+      )
+    };
+  });
+  const weights = picks.map((p) => p.setup.weight);
+  const total = weights.reduce((a, b) => a + b, 0);
+  const weight = (i: number) => (total > 0 ? weights[i]! / total : 1 / picks.length);
+  const anyFresh = picks.some((p) => p.fresh);
+  const used = picks.map((p) => (anyFresh ? p.fresh : p.sim !== null));
+  const dated = picks.filter((p) => p.sim).map((p) => p.sim!.simmed_at);
+  return {
+    // Whether there is any sim, whether every one counted is out of date,
+    // and when the newest was run.
+    has: dated.length > 0,
+    stale: !anyFresh,
+    simmedAt: dated.sort().at(-1) ?? null,
+    // The setups with no up-to-date sim, for Missing sims: none at all, or
+    // one that is out of date.
+    missing: picks.filter((p) => !p.fresh).map((p) => ({ setup: p.setup, stale: p.sim !== null })),
+    gainOf(wowId: number): Gain | null {
+      if (!picks.some((p, i) => used[i] && p.values.has(wowId))) return null;
+      let pct = 0;
+      let dps: number | null = 0;
+      picks.forEach((p, i) => {
+        if (!used[i]) return;
+        const v = p.values.get(wowId);
+        pct += weight(i) * (v?.pct ?? 0);
+        dps = dps === null || (v && v.dps === null) ? null : dps + weight(i) * (v?.dps ?? 0);
+      });
+      return { pct: Math.round(pct * 1000) / 1000, dps, stale: !anyFresh };
+    },
+    // Every item any counted sim has.
+    items(): number[] {
+      return [...new Set(picks.flatMap((p, i) => (used[i] ? [...p.values.keys()] : [])))];
+    }
+  };
+}
 
 // The Wishlist tab's gains (Kat, 2026-11-24): for each item, by Wowhead id,
-// its gain in each saved sim, highest difficulty first, each at its fully
-// upgraded level and best slot. A tier token's row asks for the piece it
-// becomes, so it shows that piece's gain.
-// Every spec's gain shows (#1916), the roster spec's first; another spec's
-// shows its spec.
-export type ItemGain = {
-  difficulty: Difficulty;
-  spec: string;
-  className: string;
-  roster: boolean;
-  pct: number;
-  stale: boolean;
-};
+// its gain at each difficulty and spec, highest difficulty first, the roster
+// spec's first (#1916), each weighted over the team's setups (#1888). A tier
+// token's row asks for the piece it becomes, so it shows that piece's gain.
+export type ItemGain = Gain & { difficulty: Difficulty; spec: string; className: string; roster: boolean };
+type CharacterSim = GainSim & SimSpec & { difficulty: Difficulty };
 export function gainsByItem(
-  sims: (SimSpec & { difficulty: Difficulty; simmed_at: string; character_sim_results: SavedResult[] })[],
+  sims: CharacterSim[],
   rosterSpec: RosterSpec | null,
-  staleDays: number | null,
+  settings: SimSettings,
   now = Date.now()
 ): Map<number, ItemGain[]> {
   const gains = new Map<number, ItemGain[]>();
+  const groups = new Map<string, CharacterSim[]>();
   for (const sim of simOrder(sims, rosterSpec)) {
-    const stale = staleDays !== null && isStale(sim.simmed_at, staleDays, now);
-    const roster = isRosterSim(sim, rosterSpec);
-    for (const r of bestPerItem(sim.character_sim_results)) {
-      gains.set(r.wow_item_id, [
-        ...(gains.get(r.wow_item_id) ?? []),
-        { difficulty: sim.difficulty, spec: sim.spec, className: sim.className, roster, pct: Number(r.pct_gain), stale }
-      ]);
+    const key = `${sim.className}|${sim.spec}|${sim.difficulty}`;
+    groups.set(key, [...(groups.get(key) ?? []), sim]);
+  }
+  for (const group of groups.values()) {
+    const { difficulty, spec, className } = group[0]!;
+    const read = setupGains(group, settings, difficulty, now);
+    const roster = isRosterSim(group[0]!, rosterSpec);
+    for (const wow of read.items()) {
+      const gain = read.gainOf(wow);
+      if (gain) gains.set(wow, [...(gains.get(wow) ?? []), { ...gain, difficulty, spec, className, roster }]);
     }
   }
   return gains;
@@ -379,23 +512,25 @@ export const DIFFICULTY_SHORT: Record<Difficulty, string> = { lfr: 'LFR', normal
 // The difficulty each loot track is simmed at.
 export const TRACK_DIFFICULTY: Record<'Hero' | 'Myth', Difficulty> = { Hero: 'heroic', Myth: 'mythic' };
 
-export type TeamSim = {
-  player_id: number;
-  difficulty: Difficulty;
-  spec: string;
-  className: string;
-  simmed_at: string;
-  character_sim_results: SavedResult[];
-};
+export type TeamSim = CharacterSim & { player_id: number };
 
 // A raider's gain for an item on a track: no sim for their roster spec at that
-// difficulty, or the sim's gain (null when the sim didn't include the item)
-// and whether it is out of date. Their other specs' gains (#1916) are only
-// shown, never sorted by: loot follows the roster spec (Kat, 2026-11-24).
-// `roster` is the raider's class and roster spec, for the spec icons.
-export type OtherSpecGain = { spec: string; className: string; pct: number; stale: boolean };
-export type TrackGain = { roster: RosterSpec | null; others: OtherSpecGain[] } & (
-  { sim: false } | { sim: true; pct: number | null; stale: boolean; simmedAt: string }
+// difficulty, or its gain over the team's setups (pct null when no sim had the
+// item), whether it is out of date, and the setups it has no up-to-date sim
+// for. Their other specs' gains (#1916) are only shown, never sorted by: loot
+// follows the roster spec (Kat, 2026-11-24). `roster` is the raider's class
+// and roster spec, for the spec icons.
+export type OtherSpecGain = Gain & { spec: string; className: string };
+export type TrackGain = { roster: RosterSpec | null; others: OtherSpecGain[]; mode: GainMode } & (
+  | { sim: false }
+  | {
+      sim: true;
+      pct: number | null;
+      dps: number | null;
+      stale: boolean;
+      simmedAt: string;
+      missing: { setup: SimSetup; stale: boolean }[];
+    }
 );
 
 // Looks up any raider's gain for any item on a track. `wowIdFor` gives the
@@ -403,49 +538,61 @@ export type TrackGain = { roster: RosterSpec | null; others: OtherSpecGain[] } &
 // for their class, so a token shows the value of what it turns into.
 export function trackGains(
   sims: TeamSim[],
-  staleDays: number | null,
+  settings: SimSettings,
   rosterSpecOf: (playerId: number) => RosterSpec | null,
   wowIdFor: (playerId: number, itemId: number) => number | null,
   now = Date.now()
 ) {
-  type Read = SimSpec & { gains: Map<number, number>; stale: boolean; simmedAt: string };
-  const by = new Map<string, Read[]>();
+  const groups = new Map<string, TeamSim[]>();
   for (const sim of sims) {
     const key = `${sim.player_id}|${sim.difficulty}`;
-    by.set(key, [
-      ...(by.get(key) ?? []),
-      {
-        spec: sim.spec,
-        className: sim.className,
-        gains: new Map(bestPerItem(sim.character_sim_results).map((r) => [r.wow_item_id, Number(r.pct_gain)])),
-        stale: staleDays !== null && isStale(sim.simmed_at, staleDays, now),
-        simmedAt: sim.simmed_at
-      }
-    ]);
+    groups.set(key, [...(groups.get(key) ?? []), sim]);
+  }
+  const reads = new Map<string, (SimSpec & { read: ReturnType<typeof setupGains> })[]>();
+  for (const [key, group] of groups) {
+    const bySpec = new Map<string, TeamSim[]>();
+    for (const sim of group) {
+      const k = `${sim.className}|${sim.spec}`;
+      bySpec.set(k, [...(bySpec.get(k) ?? []), sim]);
+    }
+    reads.set(
+      key,
+      [...bySpec.values()].map((specSims) => ({
+        spec: specSims[0]!.spec,
+        className: specSims[0]!.className,
+        read: setupGains(specSims, settings, specSims[0]!.difficulty, now)
+      }))
+    );
   }
   return (playerId: number, itemId: number, track: 'Hero' | 'Myth'): TrackGain => {
-    const all = by.get(`${playerId}|${TRACK_DIFFICULTY[track]}`) ?? [];
+    const all = reads.get(`${playerId}|${TRACK_DIFFICULTY[track]}`) ?? [];
     const roster = rosterSpecOf(playerId);
     const wow = wowIdFor(playerId, itemId);
     const others = all
       .filter((s) => !isRosterSim(s, roster))
       .flatMap((s) => {
-        const pct = wow === null ? undefined : s.gains.get(wow);
-        return pct === undefined ? [] : [{ spec: s.spec, className: s.className, pct, stale: s.stale }];
+        const gain = wow === null ? null : s.read.gainOf(wow);
+        return gain ? [{ ...gain, spec: s.spec, className: s.className }] : [];
       })
       .sort((a, b) => a.spec.localeCompare(b.spec));
-    const sim = all.find((s) => isRosterSim(s, roster));
-    if (!sim) return { sim: false, roster, others };
+    const mine = all.find((s) => isRosterSim(s, roster));
+    const mode = settings.gainMode;
+    if (!mine || !mine.read.has) return { sim: false, roster, others, mode };
+    const gain = wow === null ? null : mine.read.gainOf(wow);
     return {
       sim: true,
-      pct: wow === null ? null : (sim.gains.get(wow) ?? null),
-      stale: sim.stale,
-      simmedAt: sim.simmedAt,
+      pct: gain?.pct ?? null,
+      dps: gain?.dps ?? null,
+      stale: mine.read.stale,
+      simmedAt: mine.read.simmedAt!,
+      missing: mine.read.missing,
       roster,
-      others
+      others,
+      mode
     };
   };
 }
 
-// For sorting: an up-to-date gain, else below every real gain.
+// For sorting: an up-to-date gain, else below every real gain. Always the
+// percent, which compares raiders fairly whatever the team shows.
 export const sortGain = (g: TrackGain) => (g.sim && !g.stale && g.pct !== null ? g.pct : -Infinity);

@@ -1095,6 +1095,7 @@ describe('Profile > Sims', () => {
     simmed_at: '2026-11-20T12:00:00Z',
     fight_style: 'Patchwerk',
     target_count: 1,
+    fight_length: 300,
     character_sim_results: [
       {
         id: 1,
@@ -1137,7 +1138,7 @@ describe('Profile > Sims', () => {
       classes_specs: () => ({ data: SPECS }),
       items: () => ({ data: [] }),
       team_settings: (read) => ({
-        data: /simStaleDays/.test(read.columns ?? '') ? { days: config.simStaleDays ?? null } : []
+        data: read.columns === 'config' ? { config } : []
       })
     });
 
@@ -1225,7 +1226,10 @@ describe('Profile > Sims', () => {
       p_source: 'raidbots',
       p_report_id: '4fa37C7DkwEgoJQTLTFS9L',
       p_character_name: 'Torbjorn',
-      p_character_realm: 'illidan'
+      p_character_realm: 'illidan',
+      p_fight_style: 'Patchwerk',
+      p_target_count: 1,
+      p_fight_length: 300
     });
     expect((args as { p_results: unknown[] }).p_results).toHaveLength(6);
     expect(await screen.findByText('Added the Mythic Unholy sim from Raidbots.')).toBeInTheDocument();
@@ -1238,6 +1242,20 @@ describe('Profile > Sims', () => {
     await userEvent.type(await screen.findByLabelText(/Raidbots droptimizer or QE Live/), LINK);
     await userEvent.click(screen.getByRole('button', { name: 'Add sim' }));
     expect(await screen.findByText('That report is for Katorrí-stormrage, not Torbjorn-Illidan.')).toBeInTheDocument();
+    expect(client.rpcs.some(([name]) => name === 'save_character_sim')).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  // #1888: the team's sim settings turn away a sim that breaks them, saying why.
+  it('turns away a sim that isn’t one of the team’s setups, saving nothing', async () => {
+    stubFetch(report('Torbjorn', 'illidan'));
+    const setups = [{ id: 'aoe', name: 'Several targets', fightStyle: 'Patchwerk', targets: 3, minutes: 5, weight: 1 }];
+    const { client } = renderApp('/g/wga/t/phoenix/me/sims', withSims([], { simSetups: setups }));
+    await userEvent.type(await screen.findByLabelText(/Raidbots droptimizer or QE Live/), LINK);
+    await userEvent.click(screen.getByRole('button', { name: 'Add sim' }));
+    expect(await screen.findByText(/^The team’s sim settings turn this one away/)).toHaveTextContent(
+      'The team’s sim settings turn this one away. It was run as Patchwerk, 1 target, 5 min, which isn’t one of the team’s setups: Several targets (Patchwerk, 3 targets, 5 min).'
+    );
     expect(client.rpcs.some(([name]) => name === 'save_character_sim')).toBe(false);
     vi.unstubAllGlobals();
   });
@@ -1295,11 +1313,6 @@ describe('Profile > Sims', () => {
     const { client } = renderApp('/g/wga/t/phoenix/me/sims', withSims([SAVED]));
     await screen.findByRole('row', { name: /Band of the Abyss/ });
     await userEvent.click(screen.getByRole('button', { name: 'Remove the Mythic Frost sim' }));
-    await waitFor(() =>
-      expect(client.rpcs).toContainEqual([
-        'delete_character_sim',
-        { p_player_id: 11, p_difficulty: 'mythic', p_class_spec_id: 2 }
-      ])
-    );
+    await waitFor(() => expect(client.rpcs).toContainEqual(['delete_character_sim', { p_sim_id: 7 }]));
   });
 });

@@ -7,7 +7,7 @@ import { errorMessage } from '../lib/errors';
 import {
   bestPerItem,
   DIFFICULTY_LABELS,
-  formatGain,
+  showGain,
   isCharacter,
   isStale,
   matchSpec,
@@ -24,16 +24,18 @@ import {
   useIsLeaderCharacter,
   useRemoveSim,
   useSaveSims,
-  useSimStaleDays,
+  useSimSettings,
   type KnownItem,
   type SavedSim
 } from './useSims';
+import { DEFAULT_SIM_SETTINGS, fightStyleLabel, setupOf, simProblems, type SimSettings } from './simSettings';
 import './sims.css';
 
 // A raider's sims (#1443): the raider, or an officer who manages loot, pastes
 // a Raidbots droptimizer or QE Live upgrade report link. One sim per
-// difficulty and spec (#1916); a new one replaces the old. Out of date after the team's number
-// of days. On a team with wishlists this sits on the Wishlist tab, which shows
+// difficulty, spec (#1916) and setup (#1888); a new one replaces the old. The
+// team's sim settings turn away a sim that breaks them. Out of date after the
+// team's number of days. On a team with wishlists this sits on the Wishlist tab, which shows
 // each item's gain beside its marks (Kat, 2026-11-24), so it lists only the
 // sims; a Loot council team has no Wishlist tab, so its Sims tab shows each
 // sim's upgrades too.
@@ -58,13 +60,14 @@ export function SimsCard({
   const leader = useIsLeaderCharacter(player.id);
   const canAdd = own || (can('manageLoot') && leader.isSuccess && !leader.data);
   const sims = usePlayerSims(player.id);
-  const staleDays = useSimStaleDays(teamId);
+  const simSettings = useSimSettings(teamId);
+  const settings = simSettings.isSuccess ? simSettings.data : DEFAULT_SIM_SETTINGS;
   return (
     <section className="card profile-card" aria-labelledby="sims-title">
       <h2 id="sims-title" className="card-title">
         Sims
       </h2>
-      {canAdd && <AddSim player={player} own={own} />}
+      {canAdd && <AddSim player={player} own={own} settings={settings} />}
       <DataState query={sims} label="sims">
         {({ sims: saved, items }) =>
           saved.length ? (
@@ -74,7 +77,7 @@ export function SimsCard({
                 sim={sim}
                 items={items}
                 upgrades={upgrades}
-                staleDays={staleDays.isSuccess ? staleDays.data : null}
+                settings={simSettings.isSuccess ? simSettings.data : null}
                 playerId={player.id}
                 canRemove={canAdd}
               />
@@ -88,7 +91,7 @@ export function SimsCard({
   );
 }
 
-function AddSim({ player, own }: { player: Character; own: boolean }) {
+function AddSim({ player, own, settings }: { player: Character; own: boolean; settings: SimSettings }) {
   const id = useId();
   const { announce } = useStatus();
   const save = useSaveSims(player.id);
@@ -121,6 +124,9 @@ function AddSim({ player, own }: { player: Character; own: boolean }) {
         `That report was run as ${spec.spec} ${spec.class}, and ${player.name_realm}’s class is ${mine}.`
       );
     }
+    // The team's settings (#1888): its setups, upgrade level and checks.
+    const problems = simProblems(report, settings);
+    if (problems.length) return setProblem(`The team’s sim settings turn this one away. ${problems.join(' ')}`);
     save.mutate(
       { report, classSpecId: spec.id },
       {
@@ -148,8 +154,8 @@ function AddSim({ player, own }: { player: Character; own: boolean }) {
       <p className="text-muted sims-hint" id={`${id}-hint`}>
         DPS and tanks: a Raidbots droptimizer. Healers: QE Live’s Upgrade Finder.{' '}
         {own
-          ? 'A new sim replaces your one at the same difficulty and spec.'
-          : 'A new sim replaces the one at the same difficulty and spec.'}
+          ? 'A new sim replaces your one at the same difficulty, spec and setup.'
+          : 'A new sim replaces the one at the same difficulty, spec and setup.'}
       </p>
       <div className="sims-add-row">
         <input
@@ -187,23 +193,28 @@ function SimTable({
   sim,
   items,
   upgrades,
-  staleDays,
+  settings,
   playerId,
   canRemove
 }: {
   sim: SavedSim;
   items: KnownItem[];
   upgrades: boolean;
-  staleDays: number | null;
+  settings: SimSettings | null;
   playerId: number;
   canRemove: boolean;
 }) {
   const { announce } = useStatus();
   const remove = useRemoveSim(playerId);
   const byWowId = new Map(items.map((i) => [i.wow_item_id, i]));
-  const label = `${DIFFICULTY_LABELS[sim.difficulty]} ${sim.spec}`;
-  const stale = staleDays !== null && isStale(sim.simmed_at, staleDays);
-  const rows = bestPerItem(sim.character_sim_results).filter((r) => Number(r.pct_gain) > 0);
+  const shown = settings ?? DEFAULT_SIM_SETTINGS;
+  // Which of the team's setups it is (#1888); a QE Live sim is every setup.
+  const setup = setupOf(sim, shown.setups);
+  const label = `${DIFFICULTY_LABELS[sim.difficulty]} ${sim.spec}${setup && setup !== 'all' && shown.setups.length > 1 ? `, ${setup.name}` : ''}`;
+  const stale = settings !== null && isStale(sim.simmed_at, settings.staleDays);
+  const rows = bestPerItem(sim.character_sim_results, shown.upgrade[sim.difficulty]).filter(
+    (r) => Number(r.pct_gain) > 0
+  );
   const titleId = `sim-${sim.id}-title`;
 
   return (
@@ -222,12 +233,18 @@ function SimTable({
           <>
             <span aria-hidden="true"> · </span>
             <span>
-              {sim.fight_style}
+              {fightStyleLabel(sim.fight_style)}
               {sim.target_count && sim.target_count > 1 ? `, ${sim.target_count} targets` : ''}
             </span>
           </>
         )}
-        {staleDays !== null && (
+        {settings !== null && setup === null && (
+          <>
+            <span aria-hidden="true"> · </span>
+            <span className="sims-old">Not one of the team’s setups</span>
+          </>
+        )}
+        {settings !== null && (
           <>
             <span aria-hidden="true"> · </span>
             <span className={stale ? 'sims-old' : 'sims-fresh'}>{stale ? 'Out of date' : 'Up to date'}</span>
@@ -240,13 +257,10 @@ function SimTable({
             disabled={remove.isPending}
             aria-label={`Remove the ${label} sim`}
             onClick={() =>
-              remove.mutate(
-                { difficulty: sim.difficulty, classSpecId: sim.class_spec_id },
-                {
-                  onSuccess: () => announce('success', `Removed the ${label} sim.`),
-                  onError: (error) => announce('error', errorMessage(error))
-                }
-              )
+              remove.mutate(sim.id, {
+                onSuccess: () => announce('success', `Removed the ${label} sim.`),
+                onError: (error) => announce('error', errorMessage(error))
+              })
             }
           >
             Remove
@@ -281,7 +295,12 @@ function SimTable({
                     </th>
                     <td className="gear-slot">{slotLabel(r.slot)}</td>
                     <td className="col-num num">{r.item_level}</td>
-                    <td className="col-num num">{formatGain(Number(r.pct_gain))}</td>
+                    <td className="col-num num">
+                      {showGain(
+                        { pct: Number(r.pct_gain), dps: r.dps_gain === null ? null : Number(r.dps_gain) },
+                        shown.gainMode
+                      )}
+                    </td>
                   </tr>
                 );
               })}

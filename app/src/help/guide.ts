@@ -277,7 +277,7 @@ export const GUIDES: Guide[] = [
     menu: 'my-profile',
     steps: [
       'Run a droptimizer on Raidbots for the raid, or the Upgrade Finder on QE Live if you heal. Copy the report’s address when it finishes.',
-      'Open My profile, then the Wishlist tab (the Sims tab on a Loot council team). Paste the link and choose Add sim. A new sim replaces your one at the same difficulty and spec, so you can keep one for each spec you play.',
+      'Open My profile, then the Wishlist tab (the Sims tab on a Loot council team). Paste the link and choose Add sim. A new sim replaces your one at the same difficulty and spec, so you can keep one for each spec you play. If your team uses more than one setup (for example Single target and Several targets), add a Raidbots sim for each; a sim that doesn’t follow your team’s sim settings is turned away with the reason.',
       'Each item shows its gain beside your marks, M for Mythic and H for Heroic. After the number of days your team set, the sim is out of date and greyed: add a new one. Officers go by your sim for the spec you’re on the roster as; another spec’s gain shows greyed with its name.'
     ]
   },

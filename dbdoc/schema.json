@@ -15507,7 +15507,7 @@
     {
       "name": "public.character_sims",
       "type": "BASE TABLE",
-      "comment": "A raider's latest droptimizer sim per difficulty and spec (#1443, #1916): Raidbots or QE Live, written by save_character_sim().",
+      "comment": "A raider's latest droptimizer sim per difficulty, spec and setup (#1443, #1916, #1888): Raidbots or QE Live, written by save_character_sim().",
       "columns": [
         {
           "name": "id",
@@ -15570,6 +15570,12 @@
           "type": "integer",
           "nullable": false,
           "comment": "The spec the sim was run as (#1916). The character's roster spec's sim is the one the Priority page counts."
+        },
+        {
+          "name": "fight_length",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The fight length the sim was run at, in seconds (#1888); null for QE Live, and for sims saved before it was kept."
         }
       ],
       "indexes": [
@@ -15590,13 +15596,16 @@
           ]
         },
         {
-          "name": "character_sims_player_id_difficulty_spec_key",
-          "def": "CREATE UNIQUE INDEX character_sims_player_id_difficulty_spec_key ON public.character_sims USING btree (player_id, difficulty, class_spec_id)",
+          "name": "character_sims_player_setup_key",
+          "def": "CREATE UNIQUE INDEX character_sims_player_setup_key ON public.character_sims USING btree (player_id, difficulty, class_spec_id, fight_style, target_count, fight_length) NULLS NOT DISTINCT",
           "table": "public.character_sims",
           "columns": [
             "player_id",
             "difficulty",
-            "class_spec_id"
+            "class_spec_id",
+            "fight_style",
+            "target_count",
+            "fight_length"
           ]
         }
       ],
@@ -15609,6 +15618,16 @@
           "referenced_table": "",
           "columns": [
             "difficulty"
+          ]
+        },
+        {
+          "name": "character_sims_fight_length_check",
+          "type": "CHECK",
+          "def": "CHECK (((fight_length \u003e= 1) AND (fight_length \u003c= 3600)))",
+          "table": "public.character_sims",
+          "referenced_table": "",
+          "columns": [
+            "fight_length"
           ]
         },
         {
@@ -15714,15 +15733,18 @@
           ]
         },
         {
-          "name": "character_sims_player_id_difficulty_spec_key",
+          "name": "character_sims_player_setup_key",
           "type": "UNIQUE",
-          "def": "UNIQUE (player_id, difficulty, class_spec_id)",
+          "def": "UNIQUE NULLS NOT DISTINCT (player_id, difficulty, class_spec_id, fight_style, target_count, fight_length)",
           "table": "public.character_sims",
           "referenced_table": "",
           "columns": [
             "player_id",
             "difficulty",
-            "class_spec_id"
+            "class_spec_id",
+            "fight_style",
+            "target_count",
+            "fight_length"
           ]
         }
       ]
@@ -20184,15 +20206,21 @@
       "type": "FUNCTION"
     },
     {
+      "name": "public.sim_setup_label",
+      "return_type": "text",
+      "arguments": "p_fight_style text, p_target_count integer, p_fight_length integer",
+      "type": "FUNCTION"
+    },
+    {
       "name": "public.save_character_sim",
       "return_type": "int4",
-      "arguments": "p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_character_name text, p_character_realm text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb",
+      "arguments": "p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_character_name text, p_character_realm text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_fight_length integer, p_results jsonb",
       "type": "FUNCTION"
     },
     {
       "name": "public.delete_character_sim",
       "return_type": "void",
-      "arguments": "p_player_id integer, p_difficulty text, p_class_spec_id integer",
+      "arguments": "p_sim_id bigint",
       "type": "FUNCTION"
     }
   ],

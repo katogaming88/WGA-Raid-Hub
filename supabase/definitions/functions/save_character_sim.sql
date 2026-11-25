@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.save_character_sim(p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_character_name text, p_character_realm text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb)
+CREATE OR REPLACE FUNCTION public.save_character_sim(p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_character_name text, p_character_realm text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_fight_length integer, p_results jsonb)
  RETURNS integer
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -70,12 +70,28 @@ begin
     raise exception 'The sim''s date is in the future.';
   end if;
 
+  -- At most ten sims per character, difficulty and spec, one per setup (the
+  -- settings page allows ten setups): a new setup past that is refused, so
+  -- nobody can fill the team's Priority page with thousands of results
+  -- (the fresh-agent review on PR #1921). Replacing a setup's sim is fine.
+  if not exists (
+       select 1 from public.character_sims
+        where player_id = p_player_id and difficulty = p_difficulty and class_spec_id = p_class_spec_id
+          and fight_style is not distinct from nullif(trim(p_fight_style), '')
+          and target_count is not distinct from p_target_count
+          and fight_length is not distinct from p_fight_length)
+     and (select count(*) from public.character_sims
+           where player_id = p_player_id and difficulty = p_difficulty and class_spec_id = p_class_spec_id) >= 10 then
+    raise exception 'This character already has ten sims at this difficulty and spec; remove one first.';
+  end if;
+
   insert into public.character_sims
-    (team_id, player_id, difficulty, class_spec_id, source, report_id, simmed_at, fight_style, target_count, added_by)
+    (team_id, player_id, difficulty, class_spec_id, source, report_id, simmed_at, fight_style, target_count,
+     fight_length, added_by)
   values
     (v_team_id, p_player_id, p_difficulty, p_class_spec_id, p_source, p_report_id, p_simmed_at,
-     nullif(trim(p_fight_style), ''), p_target_count, public.my_person_id())
-  on conflict (player_id, difficulty, class_spec_id) do update
+     nullif(trim(p_fight_style), ''), p_target_count, p_fight_length, public.my_person_id())
+  on conflict (player_id, difficulty, class_spec_id, fight_style, target_count, fight_length) do update
      set source = excluded.source,
          report_id = excluded.report_id,
          simmed_at = excluded.simmed_at,
@@ -98,6 +114,7 @@ begin
 
   v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' ' || v_spec || ' sim from '
     || case p_source when 'raidbots' then 'Raidbots' else 'QE Live' end
+    || public.sim_setup_label(nullif(trim(p_fight_style), ''), p_target_count, p_fight_length)
     || ', ' || v_count || ' results');
   -- write_audit_log() for everyone it accepts; it raises for a raider with
   -- no officer permission, whose own change is then logged directly.

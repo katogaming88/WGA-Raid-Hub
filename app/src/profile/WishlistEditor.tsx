@@ -23,11 +23,12 @@ import {
 import { sourceTag } from './lootPriority';
 import { WishlistSummaryCard } from './LootPriorityCard';
 import { SimsCard } from '../sims/SimsCard';
-import { usePlayerSims, useSimStaleDays } from '../sims/useSims';
+import { usePlayerSims, useSimSettings } from '../sims/useSims';
+import { DEFAULT_SIM_SETTINGS, type GainMode } from '../sims/simSettings';
 import {
   DIFFICULTY_LABELS,
   DIFFICULTY_SHORT,
-  formatGain,
+  showGain,
   gainsByItem,
   isRosterSim,
   type ItemGain,
@@ -36,7 +37,7 @@ import {
 import { SpecMark } from '../sims/SpecMark';
 
 // Each item's gains, and the raider's class and roster spec for the icons.
-type SimGainData = { byItem: Map<number, ItemGain[]>; roster: RosterSpec | null };
+type SimGainData = { byItem: Map<number, ItemGain[]>; roster: RosterSpec | null; mode: GainMode };
 import {
   editorSeason,
   editorSlots,
@@ -174,12 +175,14 @@ function WishlistEditor({
   // Not on a phone or tablet, where a stray tap marks the wrong item.
   const touch = useTouchScreen();
   const sims = usePlayerSims(player.id);
-  const staleDays = useSimStaleDays(teamId);
+  const simSettings = useSimSettings(teamId);
+  const settings = simSettings.isSuccess ? simSettings.data : DEFAULT_SIM_SETTINGS;
   const cs = player.classes_specs;
   const roster = cs?.class && cs.spec ? { className: cs.class, spec: cs.spec } : null;
   const gains: SimGainData | undefined = sims.isSuccess
     ? {
-        byItem: gainsByItem(sims.data.sims, roster, staleDays.isSuccess ? staleDays.data : null),
+        byItem: gainsByItem(sims.data.sims, roster, settings),
+        mode: settings.gainMode,
         roster
       }
     : undefined;
@@ -472,7 +475,11 @@ function SlotTabs({
                 {sourceTag(item.source) && <span className="source-tag">{sourceTag(item.source)}</span>}
               </span>
               {gains && (
-                <SimGains gains={(item.link && gains.byItem.get(item.link.wowId)) || []} roster={gains.roster} />
+                <SimGains
+                  gains={(item.link && gains.byItem.get(item.link.wowId)) || []}
+                  roster={gains.roster}
+                  mode={gains.mode}
+                />
               )}
               {item.takenBy ? (
                 <span className="wishlist-taken">Your {item.takenBy} BiS</span>
@@ -586,7 +593,7 @@ function NoteField({
 // roster spec's icon always first, then its gains, Mythic first ("M +1.98%
 // H +1.20%"), then each other spec's icon and gains, greyed. An out-of-date
 // sim's gain is greyed; a dash where the spec has no gain for the item.
-function SimGains({ gains, roster }: { gains: ItemGain[]; roster: RosterSpec | null }) {
+function SimGains({ gains, roster, mode }: { gains: ItemGain[]; roster: RosterSpec | null; mode: GainMode }) {
   // Grouped by class and spec: spec names repeat across classes.
   const key = (s: { className: string; spec: string }) => `${s.className}|${s.spec}`;
   const specs = [...new Map([...(roster ? [roster] : []), ...gains].map((s) => [key(s), s])).values()];
@@ -606,7 +613,7 @@ function SimGains({ gains, roster }: { gains: ItemGain[]; roster: RosterSpec | n
                   className={`wishlist-gain${g.stale ? ' is-stale' : ''}${g.pct < 0 ? ' is-down' : ''}${other ? ' is-other' : ''}`}
                 >
                   <abbr title={DIFFICULTY_LABELS[g.difficulty]}>{DIFFICULTY_SHORT[g.difficulty]}</abbr>{' '}
-                  <span className="num">{formatGain(g.pct)}</span>
+                  <span className="num">{showGain(g, mode)}</span>
                   {g.stale && <span className="visually-hidden"> (out of date)</span>}
                 </span>
               ))

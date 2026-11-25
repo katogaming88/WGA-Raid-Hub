@@ -146,6 +146,7 @@ const SIMS = [
   report_id: `report${i}`,
   fight_style: sim.source === 'raidbots' ? 'Patchwerk' : null,
   target_count: sim.source === 'raidbots' ? 1 : null,
+  fight_length: sim.source === 'raidbots' ? 300 : null,
   ...sim,
   character_sim_results: [
     [213008, 'Band of the Hollow Choir', 1.98],
@@ -1077,6 +1078,26 @@ const SETTINGS_LOOT = {
       id,
       response
     }))
+  }
+};
+// Settings > Loot > Sims (#1888): two weighted setups, the team leader's view.
+const SETTINGS_SIMS = {
+  ...SETTINGS_LOOT,
+  path: '/g/wga/t/phoenix/officer/settings/loot/sims',
+  sentinel: 'main .sims-setups',
+  tables: {
+    team_settings: [
+      {
+        team_id: 1,
+        config: {
+          simSetups: [
+            { id: 'st', name: 'Single target', fightStyle: 'Patchwerk', targets: 1, minutes: 5, weight: 70 },
+            { id: 'aoe', name: 'Several targets', fightStyle: 'Patchwerk', targets: 3, minutes: 5, weight: 30 }
+          ],
+          simChecks: { buffs: true, noPowerInfusion: true, defaultRotation: true, highPrecision: true }
+        }
+      }
+    ]
   }
 };
 const SETTINGS_LOOT_LEADER = {
@@ -2264,6 +2285,14 @@ const STATES = [
   { label: 'settings loot, officer, light', ...SETTINGS_LOOT, colorScheme: 'light' },
   { label: 'settings loot, team leader', ...SETTINGS_LOOT_LEADER },
   { label: 'settings loot, team leader, light', ...SETTINGS_LOOT_LEADER, colorScheme: 'light' },
+  { label: 'settings sims, officer', ...SETTINGS_SIMS },
+  { label: 'settings sims, team leader', ...SETTINGS_SIMS, person: SETTINGS_LOOT_LEADER.person },
+  {
+    label: 'settings sims, team leader, light',
+    ...SETTINGS_SIMS,
+    person: SETTINGS_LOOT_LEADER.person,
+    colorScheme: 'light'
+  },
   { label: 'settings signups, team leader', ...SETTINGS_SIGNUPS },
   { label: 'settings signups, close confirm', ...SETTINGS_SIGNUPS_CLOSE },
   { label: 'settings signups, close confirm, light', ...SETTINGS_SIGNUPS_CLOSE, colorScheme: 'light' },

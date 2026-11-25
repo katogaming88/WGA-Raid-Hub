@@ -1,7 +1,7 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import { setTeamSetting } from '../settings/useSettings';
+import { asSimSettings, simSettingsConfig, type SimSettings } from './simSettings';
 import {
-  asStaleDays,
   parseQeLive,
   parseRaidbots,
   type ClassSpec,
@@ -24,6 +24,7 @@ export type SavedSim = {
   simmed_at: string;
   fight_style: string | null;
   target_count: number | null;
+  fight_length: number | null;
   character_sim_results: SavedResult[];
 };
 
@@ -45,7 +46,7 @@ export function usePlayerSims(playerId: number) {
     const sims = await client
       .from('character_sims')
       .select(
-        'id, difficulty, class_spec_id, classes_specs(spec, class), source, report_id, simmed_at, fight_style, target_count, character_sim_results(id, wow_item_id, item_name, slot, item_level, pct_gain, dps_gain, encounter_id, catalyst_from)'
+        'id, difficulty, class_spec_id, classes_specs(spec, class), source, report_id, simmed_at, fight_style, target_count, fight_length, character_sim_results(id, wow_item_id, item_name, slot, item_level, pct_gain, dps_gain, encounter_id, catalyst_from)'
       )
       .eq('player_id', playerId);
     if (sims.error) return { data: null, error: sims.error };
@@ -105,8 +106,8 @@ export function useClassSpecs() {
   );
 }
 
-// Saves each difficulty in the report as its own sim for its spec, replacing
-// the one there.
+// Saves each difficulty in the report as its own sim for its spec and setup
+// (#1888), replacing the one there.
 export function useSaveSims(playerId: number) {
   return useSupabaseMutation<number, { report: ParsedReport; classSpecId: number }>(
     async (client, { report, classSpecId }) => {
@@ -123,6 +124,7 @@ export function useSaveSims(playerId: number) {
           p_simmed_at: report.simmedAt,
           p_fight_style: report.fightStyle ?? '',
           p_target_count: report.targetCount as number,
+          p_fight_length: report.fightLength as number,
           p_results: sim.results
         });
         if (result.error) return { data: null, error: result.error };
@@ -135,41 +137,36 @@ export function useSaveSims(playerId: number) {
 }
 
 export function useRemoveSim(playerId: number) {
-  return useSupabaseMutation<null, { difficulty: Difficulty; classSpecId: number }>(
-    async (client, { difficulty, classSpecId }) => {
-      const result = await client.rpc('delete_character_sim', {
-        p_player_id: playerId,
-        p_difficulty: difficulty,
-        p_class_spec_id: classSpecId
-      });
+  // By the sim's id (#1888): with a sim per setup, difficulty and spec no
+  // longer name one.
+  return useSupabaseMutation<null, number>(
+    async (client, simId) => {
+      const result = await client.rpc('delete_character_sim', { p_sim_id: simId });
       return { data: null, error: result.error };
     },
     { key: ['remove-sim', playerId], refreshes: [simsKey(playerId)] }
   );
 }
 
-// Settings > Loot: how many days a sim stays up to date (#1443).
-const staleKey = (teamId: number) => ['sim-stale-days', teamId];
+// Settings > Loot > Sims (#1443, #1888): the team's sim settings, defaults
+// for anything never set.
+const settingsKey = (teamId: number) => ['sim-settings', teamId];
 
-export function useSimStaleDays(teamId: number) {
-  return useSupabaseQuery<number>(staleKey(teamId), async (client) => {
-    const result = await client
-      .from('team_settings')
-      .select('days:config->>simStaleDays')
-      .eq('team_id', teamId)
-      .maybeSingle();
+export function useSimSettings(teamId: number) {
+  return useSupabaseQuery<SimSettings>(settingsKey(teamId), async (client) => {
+    const result = await client.from('team_settings').select('config').eq('team_id', teamId).maybeSingle();
     if (result.error) return { data: null, error: result.error };
-    return { data: asStaleDays((result.data as { days?: unknown } | null)?.days), error: null };
+    return { data: asSimSettings((result.data as { config?: unknown } | null)?.config), error: null };
   });
 }
 
-export function useSaveSimStaleDays(teamId: number) {
-  return useSupabaseMutation<null, number>(
-    async (client, days) => {
-      const result = await setTeamSetting(client, teamId, { simStaleDays: days });
+export function useSaveSimSettings(teamId: number) {
+  return useSupabaseMutation<null, SimSettings>(
+    async (client, settings) => {
+      const result = await setTeamSetting(client, teamId, simSettingsConfig(settings));
       return { data: null, error: result.error };
     },
-    { key: ['save-sim-stale-days', teamId], refreshes: [staleKey(teamId)] }
+    { key: ['save-sim-settings', teamId], refreshes: [settingsKey(teamId), ['team-sims', teamId]] }
   );
 }
 
@@ -177,14 +174,25 @@ export function useSaveSimStaleDays(teamId: number) {
 // (#1443 part 2). Both reads are paged: a team's results pass 1000 rows.
 export function useTeamSims(teamId: number) {
   return useSupabaseQuery<TeamSim[]>(['team-sims', teamId], async (client) => {
-    const sims = await readAll<WithSpec<{ id: number; player_id: number; difficulty: string; simmed_at: string }>>(
-      (from, to) =>
-        client
-          .from('character_sims')
-          .select('id, player_id, difficulty, classes_specs(spec, class), simmed_at')
-          .eq('team_id', teamId)
-          .order('id')
-          .range(from, to)
+    type Row = WithSpec<{
+      id: number;
+      player_id: number;
+      difficulty: string;
+      source: string;
+      simmed_at: string;
+      fight_style: string | null;
+      target_count: number | null;
+      fight_length: number | null;
+    }>;
+    const sims = await readAll<Row>((from, to) =>
+      client
+        .from('character_sims')
+        .select(
+          'id, player_id, difficulty, source, classes_specs(spec, class), simmed_at, fight_style, target_count, fight_length'
+        )
+        .eq('team_id', teamId)
+        .order('id')
+        .range(from, to)
     );
     if (sims.error) return { data: null, error: sims.error };
     const ids = sims.data.map((s) => s.id);

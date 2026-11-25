@@ -1,4 +1,4 @@
-// save_character_sim() and delete_character_sim() (#1443): a raider, or an
+// save_character_sim() and delete_character_sim() (#1443, #1916, #1888): a raider, or an
 // officer who manages the team's loot, saves a droptimizer sim; one per
 // character per difficulty, a new one replacing the old. Anyone reads them.
 // Each case mints its own team; everything is rolled back.
@@ -30,23 +30,30 @@ const save = (
     reportId = 'abc123',
     // The report's character, as the page read it.
     character = ['Simmer', 'illidan'],
+    // Its setup (#1888): fight style, targets, fight length in seconds.
+    setup = ['Patchwerk', 1, 300],
     results
   } = {}
 ) =>
-  asUser(uid, 'select public.save_character_sim($1, $2, $3, $4, $5, $6, $7, now(), $8, $9, $10::jsonb) as n', [
+  asUser(uid, 'select public.save_character_sim($1, $2, $3, $4, $5, $6, $7, now(), $8, $9, $10, $11::jsonb) as n', [
     playerId,
     difficulty,
     spec,
     source,
     reportId,
     ...character,
-    'Patchwerk',
-    1,
+    ...setup,
     JSON.stringify(results ?? [result(), result({ slot: 'finger2', pct_gain: 1.9 })])
   ]).then((r) => r.rows[0].n);
 
+// Removes by the sim's id (#1888), found by its difficulty and spec.
 const remove = (asUser, uid, playerId, difficulty = 'mythic', spec = 1) =>
-  asUser(uid, 'select public.delete_character_sim($1, $2, $3)', [playerId, difficulty, spec]);
+  asUser(
+    uid,
+    `select public.delete_character_sim(id) from public.character_sims
+      where player_id = $1 and difficulty = $2 and class_spec_id = $3`,
+    [playerId, difficulty, spec]
+  );
 
 async function raiderWithCharacter(q) {
   const team = await seedTeam(q);
@@ -127,9 +134,9 @@ describe('save_character_sim()', () => {
         [playerId]
       );
       expect(audit.rows.map((r) => r.s)).toEqual([
-        'Mythic Frost sim from Raidbots, 2 results',
-        'Mythic Fire sim from Raidbots, 2 results',
-        'Mythic Fire sim from Raidbots, 1 results'
+        'Mythic Frost sim from Raidbots (Patchwerk, 1 target, 5 min), 2 results',
+        'Mythic Fire sim from Raidbots (Patchwerk, 1 target, 5 min), 2 results',
+        'Mythic Fire sim from Raidbots (Patchwerk, 1 target, 5 min), 1 results'
       ]);
     }));
 
@@ -139,6 +146,68 @@ describe('save_character_sim()', () => {
       const havoc = await specId(q, 'Demon Hunter', 'Havoc');
       await expect(save(asUser, team.raider.uid, playerId, { spec: havoc })).rejects.toThrow(/another class|class/i);
       await expect(save(asUser, team.raider.uid, playerId, { spec: 99999 })).rejects.toThrow(/class/i);
+      expect(await simsOf(q, playerId)).toEqual([]);
+    }));
+
+  // #1888: one sim per setup. Another fight style, target count or length
+  // is another sim; the same three replace it. QE Live (no setup) is one.
+  it('keeps a sim per setup, a new one replacing only the same setup’s', () =>
+    withTxn(async ({ q, asUser }) => {
+      const { team, playerId } = await raiderWithCharacter(q);
+      const uid = team.raider.uid;
+      await save(asUser, uid, playerId, { reportId: 'single' });
+      await save(asUser, uid, playerId, { reportId: 'aoe', setup: ['Patchwerk', 3, 300] });
+      await save(asUser, uid, playerId, { reportId: 'long', setup: ['Patchwerk', 1, 420] });
+      await save(asUser, uid, playerId, { reportId: 'single2', results: [result()] });
+      await save(asUser, uid, playerId, { source: 'qe_live', reportId: 'qe1', setup: [null, null, null] });
+      await save(asUser, uid, playerId, { source: 'qe_live', reportId: 'qe2', setup: [null, null, null] });
+      const kept = await q(
+        `select report_id, fight_style, target_count, fight_length from public.character_sims
+          where player_id = $1 order by report_id`,
+        [playerId]
+      );
+      expect(kept.rows).toEqual([
+        { report_id: 'aoe', fight_style: 'Patchwerk', target_count: 3, fight_length: 300 },
+        { report_id: 'long', fight_style: 'Patchwerk', target_count: 1, fight_length: 420 },
+        { report_id: 'qe2', fight_style: null, target_count: null, fight_length: null },
+        { report_id: 'single2', fight_style: 'Patchwerk', target_count: 1, fight_length: 300 }
+      ]);
+    }));
+
+  // The fresh-agent review on PR #1921: at most ten sims per difficulty and
+  // spec, so nobody can flood the team's Priority page. Replacing one is fine.
+  it('refuses an eleventh setup at one difficulty and spec, but replaces one already there', () =>
+    withTxn(async ({ q, asUser }) => {
+      const { team, playerId } = await raiderWithCharacter(q);
+      const uid = team.raider.uid;
+      for (let n = 1; n <= 10; n++)
+        await save(asUser, uid, playerId, { setup: ['Patchwerk', n, 300], results: [result()] });
+      await expect(save(asUser, uid, playerId, { setup: ['Patchwerk', 11, 300] })).rejects.toThrow(/ten sims/i);
+      expect(await save(asUser, uid, playerId, { setup: ['Patchwerk', 5, 300] })).toBe(2);
+      // The audit text says the length as the page does: 4 min 30 s.
+      await save(asUser, uid, playerId, { difficulty: 'normal', setup: ['HecticAddCleave', 3, 270] });
+      const label = await q(
+        "select detail->>'summary' as s from public.audit_log where action = 'Sim Added' and target_id = $1 and detail->>'summary' like 'Normal%'",
+        [playerId]
+      );
+      expect(label.rows[0].s).toBe(
+        'Normal Frost sim from Raidbots (Hectic add cleave, 3 targets, 4 min 30 s), 2 results'
+      );
+      // Another difficulty has its own ten.
+      expect(await save(asUser, uid, playerId, { difficulty: 'heroic', setup: ['Patchwerk', 11, 300] })).toBe(2);
+      const audit = await q(
+        `select detail->>'summary' as s from public.audit_log where action = 'Sim Added' and target_id = $1 order by id desc limit 1`,
+        [playerId]
+      );
+      expect(audit.rows[0].s).toBe('Heroic Frost sim from Raidbots (Patchwerk, 11 targets, 5 min), 2 results');
+    }));
+
+  it('refuses a fight length out of bounds', () =>
+    withTxn(async ({ q, asUser }) => {
+      const { team, playerId } = await raiderWithCharacter(q);
+      await expect(save(asUser, team.raider.uid, playerId, { setup: ['Patchwerk', 1, 0] })).rejects.toThrow(
+        /check constraint/i
+      );
       expect(await simsOf(q, playerId)).toEqual([]);
     }));
 
@@ -225,7 +294,7 @@ describe('save_character_sim()', () => {
       await expect(save(asUser, other.officer.uid, playerId)).rejects.toThrow(/not authorized/i);
       await expect(
         asAnon(
-          "select public.save_character_sim($1, $2, 1, $3, $4, 'Simmer', 'Illidan', now(), null, null, $5::jsonb)",
+          "select public.save_character_sim($1, $2, 1, $3, $4, 'Simmer', 'Illidan', now(), null, null, null, $5::jsonb)",
           [playerId, 'mythic', 'raidbots', 'x', JSON.stringify([result()])]
         )
       ).rejects.toMatchObject({ code: RLS_DENIED });
@@ -322,16 +391,35 @@ describe('delete_character_sim()', () => {
       const { uid: teammate } = await seedMember(q, { teamId: team.teamId });
       await expect(remove(asUser, other.officer.uid, playerId)).rejects.toThrow(/not authorized/i);
       await expect(remove(asUser, teammate, playerId)).rejects.toThrow(/not authorized/i);
-      await expect(asAnon('select public.delete_character_sim($1, $2, 1)', [playerId, 'mythic'])).rejects.toMatchObject(
-        {
-          code: RLS_DENIED
-        }
-      );
+      await expect(asAnon('select public.delete_character_sim(1)')).rejects.toMatchObject({
+        code: RLS_DENIED
+      });
       expect((await simsOf(q, playerId)).map((s) => s.difficulty)).toEqual(['heroic', 'mythic']);
       await remove(asUser, team.raider.uid, playerId);
       expect((await simsOf(q, playerId)).map((s) => s.difficulty)).toEqual(['heroic']);
       await remove(asUser, team.officer.uid, playerId, 'heroic');
       expect(await simsOf(q, playerId)).toEqual([]);
+    }));
+
+  // #1888: by its id, and a second click on an already-removed sim does nothing.
+  it('removes one sim by its id, and does nothing for one already gone', () =>
+    withTxn(async ({ q, asUser }) => {
+      const { team, playerId } = await raiderWithCharacter(q);
+      await save(asUser, team.raider.uid, playerId);
+      // Another setup's sim, same difficulty and spec, that must survive (CodeRabbit on PR #1921).
+      await save(asUser, team.raider.uid, playerId, { reportId: 'aoe', setup: ['Patchwerk', 3, 300] });
+      const id = (await q('select id from public.character_sims where player_id = $1 and target_count = 1', [playerId]))
+        .rows[0].id;
+      await asUser(team.raider.uid, 'select public.delete_character_sim($1)', [id]);
+      await asUser(team.raider.uid, 'select public.delete_character_sim($1)', [id]);
+      expect(await simsOf(q, playerId)).toEqual([
+        { difficulty: 'mythic', spec: 1, source: 'raidbots', report_id: 'aoe', results: 2 }
+      ]);
+      const audit = await q(
+        `select detail->>'summary' as s from public.audit_log where action = 'Sim Removed' and target_id = $1`,
+        [playerId]
+      );
+      expect(audit.rows.map((r) => r.s)).toEqual(['Mythic Frost sim removed (Patchwerk, 1 target, 5 min)']);
     }));
 
   it('removes only the named spec’s sim (#1916)', () =>

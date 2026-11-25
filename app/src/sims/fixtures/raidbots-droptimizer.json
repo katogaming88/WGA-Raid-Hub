@@ -43,6 +43,11 @@
           "mean": 223144.26380577064
         }
       ]
+    },
+    "options": {
+      "max_time": 300,
+      "iterations": 17688,
+      "target_error": 0.05
     }
   },
   "simbot": {
@@ -84,8 +89,37 @@
         }
       ],
       "rawFormData": {
-        "text": "# Katorrí - Affliction - 2026-11-24 12:20 - US/Stormrage\nwarlock=\"Katorrí\"\nlevel=90\nregion=us\nserver=stormrage\nrole=spell\nspec=affliction"
-      }
+        "text": "# Katorrí - Affliction - 2026-11-24 12:20 - US/Stormrage\nwarlock=\"Katorrí\"\nlevel=90\nregion=us\nserver=stormrage\nrole=spell\nspec=affliction",
+        "reportName": "Droptimizer • Season 2 Raids • Mythic Vault • Myth 6/6",
+        "simcVersion": "nightly",
+        "iterations": "smart",
+        "smartHighPrecision": true,
+        "fightLength": 300,
+        "apl": "",
+        "droptimizer": {
+          "difficulty": "raid-vault-mythic",
+          "upgradeLevel": 12854,
+          "gem": null,
+          "upgradeEquipped": false,
+          "upgradeEquippedMode": "max"
+        }
+      },
+      "simcVersion": "nightly",
+      "iterations": "smart",
+      "fightLength": 300,
+      "optimalRaid": true,
+      "bloodlust": true,
+      "arcaneIntellect": true,
+      "fortitude": true,
+      "battleShout": true,
+      "mysticTouch": true,
+      "chaosBrand": true,
+      "skyfury": true,
+      "markOfTheWild": true,
+      "huntersMark": true,
+      "powerInfusion": false,
+      "customApl": false,
+      "expertMode": false
     }
   }
 }

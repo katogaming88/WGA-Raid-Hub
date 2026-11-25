@@ -12,6 +12,24 @@ answers to.
 
 ---
 
+## [3.310.0] - 2026-11-25
+
+### Backend
+
+- A raider keeps one sim per setup (#1888): each sim now records its fight length, and a new sim replaces only the one run with the same fight style, number of targets and length. A QE Live sim, which has none of these, stays one per difficulty and spec. Removing a sim goes by the sim itself (`delete_character_sim()` takes its id). Nothing existing is changed.
+
+### Project
+
+- Settings > Loot has a **Sims** tab (#1888 part 1). The team leader sets, and officers see read-only:
+  - **General:** which difficulties need a sim (Missing sims lists only those), whether items are simmed fully upgraded or as they drop per difficulty, whether equipped gear is simmed as it is or fully upgraded, and whether gains show as a percent or raw numbers (healers always show a percent).
+  - **Setups:** named fight styles, target counts and lengths, each with a weight. The gain officers see is the average by weight; a setup a raider hasn't added, or whose sim is out of date, counts as no gain. A QE Live sim counts as every setup.
+  - **Every sim must:** raid buffs on, no Power Infusion and the default rotation (on to start); sockets added, the nightly SimulationCraft and high precision (off to start).
+  - **Out of date:** the days setting, moved here from the Loot tab.
+- Adding a Raidbots sim checks it against the team's settings and turns it away with the reasons ("It was run as Patchwerk, 1 target, 5 min, which isn't one of the team's setups: ...").
+- The Priority page, the Wishlist tab and Missing sims follow the setups: gains are weighted, Missing sims names a setup a raider still needs ("No Several targets sim"), and a difficulty the team doesn't need says so.
+- The profile's sims list names each sim's setup when the team has more than one, and marks a sim that matches none.
+- Help's "Add your sim" guide mentions setups and the team's checks.
+
 ## [3.309.0] - 2026-11-25
 
 ### Backend
