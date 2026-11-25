@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('classes_specs_id_seq'::regclass) | false | [public.players](public.players.md) [public.season_signups](public.season_signups.md) [public.main_swap_requests](public.main_swap_requests.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_lineups](public.raid_night_lineups.md) [public.team_recruiting_spots](public.team_recruiting_spots.md) |  |  |
+| id | integer | nextval('classes_specs_id_seq'::regclass) | false | [public.players](public.players.md) [public.season_signups](public.season_signups.md) [public.main_swap_requests](public.main_swap_requests.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_lineups](public.raid_night_lineups.md) [public.team_recruiting_spots](public.team_recruiting_spots.md) [public.character_sims](public.character_sims.md) |  |  |
 | class | text |  | false |  |  |  |
 | spec | text |  | false |  |  |  |
 | role | text |  | true |  |  |  |
@@ -38,6 +38,7 @@ erDiagram
 "public.boss_groups" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
 "public.raid_night_lineups" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
 "public.team_recruiting_spots" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
+"public.character_sims" }o--|| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
 
 "public.classes_specs" {
   integer id
@@ -140,6 +141,20 @@ erDiagram
   integer class_spec_id FK
   text priority
   integer sort_order
+}
+"public.character_sims" {
+  bigint id
+  integer team_id FK
+  integer player_id FK
+  text difficulty
+  text source
+  text report_id
+  timestamp_with_time_zone simmed_at
+  text fight_style
+  integer target_count
+  integer added_by FK
+  timestamp_with_time_zone added_at
+  integer class_spec_id FK
 }
 ```
 

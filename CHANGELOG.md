@@ -12,6 +12,19 @@ answers to.
 
 ---
 
+## [3.309.0] - 2026-11-25
+
+### Backend
+
+- A raider keeps one sim per spec (#1916): each sim is saved for the spec it was run as, so a raider who plays three specs keeps three Mythic sims, and a new one replaces only its own spec's. `save_character_sim()` and `delete_character_sim()` take the spec and refuse one of another class than the character's. Sims saved before this are taken as the character's roster spec.
+
+### Project
+
+- Adding a sim reads the spec from the report, Raidbots' SimulationCraft profile or QE Live's report, and turns away a report that names none or one run as another class (#1916).
+- The Priority page's gain, and its sort, is the sim for the spec the raider is on the roster as. Other specs' gains show beside it greyed and named ("+2.50%  Affliction +4.10%"), for information only: a better gain on another spec doesn't move a raider up.
+- The Missing sims tab counts only the roster spec; other specs are optional.
+- The Wishlist tab shows every spec's gain for each item, the roster spec first, and the sims list names each sim's spec, with Remove taking away just that one. Help's "Add your sim" guide says so.
+
 ## [3.308.0] - 2026-11-24
 
 ### Project

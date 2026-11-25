@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     58 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 55 h 39 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 57 h 7 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **230 h 7 m** |             |
+| **All revamp work**                | **231 h 35 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 19 h 12 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 20 h 40 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -882,7 +882,14 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 1:38-1:48 PM | PR #1914 (#1443 part 1): CodeRabbit's two follow-ups (every change tries write_audit_log() first, the direct insert only when it refuses a raider; a test for an officer without manage_loot), replies; Kat's OK on the Saving fix and the design | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1443) | 10 m | build, Kat review | 23,400 | |
 | 1:56-1:58 PM | PR #1914: Kat's merge; cleanup, status comment on #1443, local database restored, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1443) | 2 m | Kat review, build | 3,300 | |
 | 1:58-2:05 PM | #1443 part 2: Kat's call to keep sims out of the pasted RCLootCouncil string (Sync only, noted on #1443 and #1441); the Priority page's gains beside each mark (tier tokens as their piece), the unranked pool sorted by mark and gain, the Missing sims tab; page and browser tests, stamp, changelog, these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1443) | 7 m | build (Kat's answer inline) | 87,300 | Preflight, PR, review and merge not yet counted. |
+| 2:05-3:09 PM | PR #1915 (#1443 part 2): preflight, PR opened, screenshots (Missing sims card padding fixed and retaken), status comment on #1443 | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1443) | 1 h 4 m | build | 17,000 | |
+| 5:43-5:50 PM | PR #1915: screenshots uploaded to the PR body at Kat's ask; Kat's merge; cleanup, #1487 row removed, local database restored, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1443) | 7 m | build, Kat review | 133,400 | Tokens include the context summary. |
 
+### 2026-11-25
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 9:06-9:23 AM | #1916: one sim per character, difficulty and spec; migration (the spec on each sim, filled from the roster spec, save and remove take it and refuse another class), database tests; both parsers read the spec (the Raidbots sample regained its spec line); the Priority page sorts by the roster spec's gain with other specs greyed beside it, Missing sims counts the roster spec, the Wishlist tab and sims list name each spec; page and browser tests, Help, generated docs, RLS.md, decision log, backup notes, stamp, changelog, these rows and the two owed from #1443 | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1916) | 17 m | build | 256,800 | Preflight, PR, fresh-agent review and merge not yet counted. |
 ## Not counted (same sessions, not revamp)
 
 | Date       | Time (ET)         | Item                                                                                                                         | Elapsed |

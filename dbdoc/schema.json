@@ -15507,7 +15507,7 @@
     {
       "name": "public.character_sims",
       "type": "BASE TABLE",
-      "comment": "A raider's latest droptimizer sim per difficulty (#1443): Raidbots or QE Live, written by save_character_sim().",
+      "comment": "A raider's latest droptimizer sim per difficulty and spec (#1443, #1916): Raidbots or QE Live, written by save_character_sim().",
       "columns": [
         {
           "name": "id",
@@ -15564,6 +15564,12 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "class_spec_id",
+          "type": "integer",
+          "nullable": false,
+          "comment": "The spec the sim was run as (#1916). The character's roster spec's sim is the one the Priority page counts."
         }
       ],
       "indexes": [
@@ -15576,20 +15582,21 @@
           ]
         },
         {
-          "name": "character_sims_player_id_difficulty_key",
-          "def": "CREATE UNIQUE INDEX character_sims_player_id_difficulty_key ON public.character_sims USING btree (player_id, difficulty)",
-          "table": "public.character_sims",
-          "columns": [
-            "player_id",
-            "difficulty"
-          ]
-        },
-        {
           "name": "character_sims_team_id_idx",
           "def": "CREATE INDEX character_sims_team_id_idx ON public.character_sims USING btree (team_id)",
           "table": "public.character_sims",
           "columns": [
             "team_id"
+          ]
+        },
+        {
+          "name": "character_sims_player_id_difficulty_spec_key",
+          "def": "CREATE UNIQUE INDEX character_sims_player_id_difficulty_spec_key ON public.character_sims USING btree (player_id, difficulty, class_spec_id)",
+          "table": "public.character_sims",
+          "columns": [
+            "player_id",
+            "difficulty",
+            "class_spec_id"
           ]
         }
       ],
@@ -15645,6 +15652,19 @@
           ]
         },
         {
+          "name": "character_sims_class_spec_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)",
+          "table": "public.character_sims",
+          "referenced_table": "public.classes_specs",
+          "columns": [
+            "class_spec_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
           "name": "character_sims_player_id_fkey",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
@@ -15694,14 +15714,15 @@
           ]
         },
         {
-          "name": "character_sims_player_id_difficulty_key",
+          "name": "character_sims_player_id_difficulty_spec_key",
           "type": "UNIQUE",
-          "def": "UNIQUE (player_id, difficulty)",
+          "def": "UNIQUE (player_id, difficulty, class_spec_id)",
           "table": "public.character_sims",
           "referenced_table": "",
           "columns": [
             "player_id",
-            "difficulty"
+            "difficulty",
+            "class_spec_id"
           ]
         }
       ]
@@ -18334,6 +18355,19 @@
     {
       "table": "public.character_sims",
       "columns": [
+        "class_spec_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.classes_specs",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
+    },
+    {
+      "table": "public.character_sims",
+      "columns": [
         "player_id"
       ],
       "cardinality": "zero_or_more",
@@ -20152,13 +20186,13 @@
     {
       "name": "public.save_character_sim",
       "return_type": "int4",
-      "arguments": "p_player_id integer, p_difficulty text, p_source text, p_report_id text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb",
+      "arguments": "p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_results jsonb",
       "type": "FUNCTION"
     },
     {
       "name": "public.delete_character_sim",
       "return_type": "void",
-      "arguments": "p_player_id integer, p_difficulty text",
+      "arguments": "p_player_id integer, p_difficulty text, p_class_spec_id integer",
       "type": "FUNCTION"
     }
   ],

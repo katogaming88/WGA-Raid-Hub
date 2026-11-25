@@ -2,7 +2,7 @@
 
 ## Description
 
-A raider's latest droptimizer sim per difficulty (#1443): Raidbots or QE Live, written by save_character_sim().
+A raider's latest droptimizer sim per difficulty and spec (#1443, #1916): Raidbots or QE Live, written by save_character_sim().
 
 ## Columns
 
@@ -19,6 +19,7 @@ A raider's latest droptimizer sim per difficulty (#1443): Raidbots or QE Live, w
 | target_count | integer |  | true |  |  |  |
 | added_by | integer |  | true |  | [public.people](public.people.md) |  |
 | added_at | timestamp with time zone | now() | false |  |  |  |
+| class_spec_id | integer |  | false |  | [public.classes_specs](public.classes_specs.md) | The spec the sim was run as (#1916). The character's roster spec's sim is the one the Priority page counts. |
 
 ## Constraints
 
@@ -29,19 +30,20 @@ A raider's latest droptimizer sim per difficulty (#1443): Raidbots or QE Live, w
 | character_sims_report_id_check | CHECK | CHECK ((report_id ~ '^[A-Za-z0-9_-]{1,64}$'::text)) |
 | character_sims_source_check | CHECK | CHECK ((source = ANY (ARRAY['raidbots'::text, 'qe_live'::text]))) |
 | character_sims_target_count_check | CHECK | CHECK (((target_count >= 1) AND (target_count <= 100))) |
+| character_sims_class_spec_id_fkey | FOREIGN KEY | FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) |
 | character_sims_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE |
 | character_sims_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
 | character_sims_added_by_fkey | FOREIGN KEY | FOREIGN KEY (added_by) REFERENCES people(id) ON DELETE SET NULL |
 | character_sims_pkey | PRIMARY KEY | PRIMARY KEY (id) |
-| character_sims_player_id_difficulty_key | UNIQUE | UNIQUE (player_id, difficulty) |
+| character_sims_player_id_difficulty_spec_key | UNIQUE | UNIQUE (player_id, difficulty, class_spec_id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | character_sims_pkey | CREATE UNIQUE INDEX character_sims_pkey ON public.character_sims USING btree (id) |
-| character_sims_player_id_difficulty_key | CREATE UNIQUE INDEX character_sims_player_id_difficulty_key ON public.character_sims USING btree (player_id, difficulty) |
 | character_sims_team_id_idx | CREATE INDEX character_sims_team_id_idx ON public.character_sims USING btree (team_id) |
+| character_sims_player_id_difficulty_spec_key | CREATE UNIQUE INDEX character_sims_player_id_difficulty_spec_key ON public.character_sims USING btree (player_id, difficulty, class_spec_id) |
 
 ## Relations
 
@@ -52,6 +54,7 @@ erDiagram
 "public.character_sims" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.character_sims" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.character_sims" }o--o| "public.people" : "FOREIGN KEY (added_by) REFERENCES people(id) ON DELETE SET NULL"
+"public.character_sims" }o--|| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id)"
 
 "public.character_sims" {
   bigint id
@@ -65,6 +68,7 @@ erDiagram
   integer target_count
   integer added_by FK
   timestamp_with_time_zone added_at
+  integer class_spec_id FK
 }
 "public.character_sim_results" {
   bigint id
@@ -118,6 +122,12 @@ erDiagram
   uuid auth_user_id FK
   text discord_id
   timestamp_with_time_zone created_at
+}
+"public.classes_specs" {
+  integer id
+  text class
+  text spec
+  text role
 }
 ```
 

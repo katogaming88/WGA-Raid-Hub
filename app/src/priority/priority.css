@@ -804,8 +804,10 @@
   white-space: nowrap;
 }
 
+/* Another spec's gain (#1916): information only, so always greyed. */
 .priority-gain.is-stale,
-.priority-gain.is-down {
+.priority-gain.is-down,
+.priority-gain-other {
   color: var(--text-muted);
 }
 

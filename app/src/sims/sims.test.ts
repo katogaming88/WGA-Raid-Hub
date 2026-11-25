@@ -9,6 +9,8 @@ import {
   bestPerItem,
   isCharacter,
   isStale,
+  matchSpec,
+  simOrder,
   parseQeLive,
   parseRaidbots,
   parseSimLink,
@@ -54,6 +56,7 @@ describe('parseRaidbots', () => {
     expect(report).toMatchObject({
       source: 'raidbots',
       character: { name: 'Katorrí', realm: 'stormrage' },
+      spec: 'affliction warlock',
       fightStyle: 'Patchwerk',
       targetCount: 1
     });
@@ -83,7 +86,11 @@ describe('parseRaidbots', () => {
 describe('parseQeLive', () => {
   it('keeps raid results as dropped and fully upgraded, with the percent gain', () => {
     const report = ok(parseQeLive(qeLive, 'ecdqdqpmpfzx'));
-    expect(report).toMatchObject({ source: 'qe_live', character: { name: 'Katorria', realm: 'Stormrage' } });
+    expect(report).toMatchObject({
+      source: 'qe_live',
+      character: { name: 'Katorria', realm: 'Stormrage' },
+      spec: 'Restoration Shaman'
+    });
     expect(report.sims.map((s) => s.difficulty)).toEqual(['normal']);
     const results = report.sims[0]!.results;
     // Two items, each as dropped and fully upgraded; dungeon and bonus rows left out.
@@ -166,25 +173,40 @@ describe('gainsByItem', () => {
     const now = Date.parse('2026-11-24T12:00:00Z');
     const gains = gainsByItem(
       [
-        { difficulty: 'heroic', simmed_at: '2026-11-01T00:00:00Z', character_sim_results: [result({ pct_gain: 1.2 })] },
+        {
+          difficulty: 'heroic',
+          spec: 'Demonology',
+          simmed_at: '2026-11-01T00:00:00Z',
+          character_sim_results: [result({ pct_gain: 1.2 })]
+        },
         {
           difficulty: 'mythic',
+          spec: 'Demonology',
           simmed_at: '2026-11-23T00:00:00Z',
           character_sim_results: [
             result({ pct_gain: 1.5, item_level: 321 }),
             result({ pct_gain: 1.98 }),
             result({ wow_item_id: 2, pct_gain: -1 })
           ]
+        },
+        {
+          difficulty: 'mythic',
+          spec: 'Affliction',
+          simmed_at: '2026-11-23T00:00:00Z',
+          character_sim_results: [result({ pct_gain: 4.1 })]
         }
       ],
+      'Demonology',
       14,
       now
     );
+    // The roster spec's first, then another spec's, named (#1916).
     expect(gains.get(1)).toEqual([
-      { difficulty: 'mythic', pct: 1.98, stale: false },
-      { difficulty: 'heroic', pct: 1.2, stale: true }
+      { difficulty: 'mythic', spec: 'Demonology', roster: true, pct: 1.98, stale: false },
+      { difficulty: 'heroic', spec: 'Demonology', roster: true, pct: 1.2, stale: true },
+      { difficulty: 'mythic', spec: 'Affliction', roster: false, pct: 4.1, stale: false }
     ]);
-    expect(gains.get(2)).toEqual([{ difficulty: 'mythic', pct: -1, stale: false }]);
+    expect(gains.get(2)).toEqual([{ difficulty: 'mythic', spec: 'Demonology', roster: true, pct: -1, stale: false }]);
   });
 });
 
@@ -206,20 +228,53 @@ describe('trackGains', () => {
       {
         player_id: 1,
         difficulty: 'mythic',
+        spec: 'Demonology',
         simmed_at: '2026-11-23T00:00:00Z',
         character_sim_results: [r(500, 2.5), r(900, 1.1)]
       },
-      { player_id: 2, difficulty: 'heroic', simmed_at: '2026-10-01T00:00:00Z', character_sim_results: [r(500, 3)] }
+      // Player 1's off spec: a bigger gain, shown but never sorted by (#1916).
+      {
+        player_id: 1,
+        difficulty: 'mythic',
+        spec: 'Affliction',
+        simmed_at: '2026-11-23T00:00:00Z',
+        character_sim_results: [r(500, 4.1)]
+      },
+      {
+        player_id: 2,
+        difficulty: 'heroic',
+        spec: 'Fire',
+        simmed_at: '2026-10-01T00:00:00Z',
+        character_sim_results: [r(500, 3)]
+      },
+      // Player 3 has only an off-spec sim: it doesn't count as theirs.
+      {
+        player_id: 3,
+        difficulty: 'mythic',
+        spec: 'Frost',
+        simmed_at: '2026-11-23T00:00:00Z',
+        character_sim_results: [r(500, 9)]
+      }
     ],
     14,
+    (playerId) => ({ 1: 'Demonology', 2: 'Fire', 3: 'Arcane' })[playerId] ?? null,
     // Item 10 is a tier token: it becomes piece 900 for player 1.
-    (playerId, itemId) => (itemId === 10 ? (playerId === 1 ? 900 : null) : 500),
+    (playerId: number, itemId: number) => (itemId === 10 ? (playerId === 1 ? 900 : null) : 500),
     now
   );
   it('gives the gain at the track’s difficulty, a token as its piece, and says when there is no sim', () => {
-    expect(gainOf(1, 5, 'Myth')).toEqual({ sim: true, pct: 2.5, stale: false, simmedAt: '2026-11-23T00:00:00Z' });
+    expect(gainOf(1, 5, 'Myth')).toEqual({
+      sim: true,
+      pct: 2.5,
+      stale: false,
+      simmedAt: '2026-11-23T00:00:00Z',
+      others: [{ spec: 'Affliction', pct: 4.1, stale: false }]
+    });
     expect(gainOf(1, 10, 'Myth')).toMatchObject({ pct: 1.1 });
-    expect(gainOf(1, 5, 'Hero')).toEqual({ sim: false });
+    expect(gainOf(1, 5, 'Hero')).toEqual({ sim: false, others: [] });
+    // The off spec's sim didn't include the token's piece: nothing to show.
+    expect(gainOf(1, 10, 'Myth').others).toEqual([]);
+    expect(gainOf(3, 5, 'Myth')).toEqual({ sim: false, others: [{ spec: 'Frost', pct: 9, stale: false }] });
     expect(gainOf(2, 5, 'Hero')).toMatchObject({ pct: 3, stale: true });
     expect(gainOf(2, 10, 'Hero')).toMatchObject({ sim: true, pct: null });
   });
@@ -227,5 +282,54 @@ describe('trackGains', () => {
     expect(sortGain(gainOf(1, 5, 'Myth'))).toBe(2.5);
     expect(sortGain(gainOf(2, 5, 'Hero'))).toBe(-Infinity);
     expect(sortGain(gainOf(1, 5, 'Hero'))).toBe(-Infinity);
+    expect(sortGain(gainOf(3, 5, 'Myth'))).toBe(-Infinity);
+  });
+});
+
+describe('matchSpec', () => {
+  const specs = [
+    { id: 1, class: 'Warlock', spec: 'Affliction' },
+    { id: 2, class: 'Hunter', spec: 'Beast Mastery' },
+    { id: 3, class: 'Shaman', spec: 'Restoration' },
+    { id: 4, class: 'Death Knight', spec: 'Frost' },
+    { id: 5, class: 'Mage', spec: 'Frost' }
+  ];
+  it('reads a Raidbots profile’s spec and class, and QE Live’s name', () => {
+    expect(matchSpec('affliction warlock', specs)?.id).toBe(1);
+    expect(matchSpec('beast_mastery hunter', specs)?.id).toBe(2);
+    expect(matchSpec('Restoration Shaman', specs)?.id).toBe(3);
+    expect(matchSpec('frost deathknight', specs)?.id).toBe(4);
+    expect(matchSpec('frost mage', specs)?.id).toBe(5);
+    expect(matchSpec('frost', specs)).toBeNull();
+  });
+});
+
+describe('a report with no spec', () => {
+  it('is turned away, saying why', () => {
+    const text = raidbots.simbot.meta.rawFormData.text.replace(/\nspec=.*/, '');
+    const noSpec = {
+      ...raidbots,
+      simbot: { ...raidbots.simbot, meta: { ...raidbots.simbot.meta, rawFormData: { text } } }
+    };
+    expect(parseRaidbots(noSpec, 'abc')).toMatchObject({ error: expect.stringMatching(/which spec/) });
+    const qe = { ...JSON.parse(qeLive as unknown as string), spec: '' };
+    expect(parseQeLive(qe, 'x')).toMatchObject({ error: expect.stringMatching(/which spec/) });
+  });
+});
+
+describe('simOrder', () => {
+  it('puts the roster spec first, highest difficulty first, then the others by name', () => {
+    const sims = [
+      { difficulty: 'heroic' as const, spec: 'Destruction' },
+      { difficulty: 'heroic' as const, spec: 'Demonology' },
+      { difficulty: 'mythic' as const, spec: 'Affliction' },
+      { difficulty: 'mythic' as const, spec: 'Demonology' }
+    ];
+    expect(simOrder(sims, 'Demonology').map((s) => `${s.difficulty} ${s.spec}`)).toEqual([
+      'mythic Demonology',
+      'heroic Demonology',
+      'mythic Affliction',
+      'heroic Destruction'
+    ]);
   });
 });

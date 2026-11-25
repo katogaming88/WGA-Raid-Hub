@@ -4,6 +4,7 @@ import {
   asStaleDays,
   parseQeLive,
   parseRaidbots,
+  type ClassSpec,
   type Difficulty,
   type ParsedReport,
   type SavedResult,
@@ -15,6 +16,8 @@ import {
 export type SavedSim = {
   id: number;
   difficulty: Difficulty;
+  class_spec_id: number;
+  spec: string;
   source: SimSource;
   report_id: string;
   simmed_at: string;
@@ -30,16 +33,22 @@ export type PlayerSims = { sims: SavedSim[]; items: KnownItem[] };
 
 const simsKey = (playerId: number) => ['sims', playerId];
 
+// Each sim's spec name rides along with it (#1916).
+type WithSpec<T> = T & { classes_specs: { spec: string } | null };
+function flatSpec<T>({ classes_specs, ...sim }: WithSpec<T>) {
+  return { ...sim, spec: classes_specs?.spec ?? '' };
+}
+
 export function usePlayerSims(playerId: number) {
   return useSupabaseQuery<PlayerSims>(simsKey(playerId), async (client) => {
     const sims = await client
       .from('character_sims')
       .select(
-        'id, difficulty, source, report_id, simmed_at, fight_style, target_count, character_sim_results(id, wow_item_id, item_name, slot, item_level, pct_gain, dps_gain, encounter_id, catalyst_from)'
+        'id, difficulty, class_spec_id, classes_specs(spec), source, report_id, simmed_at, fight_style, target_count, character_sim_results(id, wow_item_id, item_name, slot, item_level, pct_gain, dps_gain, encounter_id, catalyst_from)'
       )
       .eq('player_id', playerId);
     if (sims.error) return { data: null, error: sims.error };
-    const rows = (sims.data ?? []) as unknown as SavedSim[];
+    const rows = ((sims.data ?? []) as unknown as WithSpec<Omit<SavedSim, 'spec'>>[]).map(flatSpec) as SavedSim[];
     const ids = [...new Set(rows.flatMap((s) => s.character_sim_results.map((r) => r.wow_item_id)))];
     if (!ids.length) return { data: { sims: rows, items: [] }, error: null };
     // team-read-guard: one character's sims, a few hundred items at most
@@ -86,15 +95,24 @@ export async function readReport(link: SimLink): Promise<ParsedReport | { error:
   return link.source === 'raidbots' ? parseRaidbots(data, link.reportId) : parseQeLive(data, link.reportId);
 }
 
-// Saves each difficulty in the report as its own sim, replacing the one there.
+// Every spec, to match a report's spec to (#1916).
+export function useClassSpecs() {
+  return useSupabaseQuery<ClassSpec[]>(['class-specs'], (client) =>
+    client.from('classes_specs').select('id, class, spec')
+  );
+}
+
+// Saves each difficulty in the report as its own sim for its spec, replacing
+// the one there.
 export function useSaveSims(playerId: number) {
-  return useSupabaseMutation<number, ParsedReport>(
-    async (client, report) => {
+  return useSupabaseMutation<number, { report: ParsedReport; classSpecId: number }>(
+    async (client, { report, classSpecId }) => {
       let saved = 0;
       for (const sim of report.sims) {
         const result = await client.rpc('save_character_sim', {
           p_player_id: playerId,
           p_difficulty: sim.difficulty,
+          p_class_spec_id: classSpecId,
           p_source: report.source,
           p_report_id: report.reportId,
           p_simmed_at: report.simmedAt,
@@ -112,9 +130,13 @@ export function useSaveSims(playerId: number) {
 }
 
 export function useRemoveSim(playerId: number) {
-  return useSupabaseMutation<null, Difficulty>(
-    async (client, difficulty) => {
-      const result = await client.rpc('delete_character_sim', { p_player_id: playerId, p_difficulty: difficulty });
+  return useSupabaseMutation<null, { difficulty: Difficulty; classSpecId: number }>(
+    async (client, { difficulty, classSpecId }) => {
+      const result = await client.rpc('delete_character_sim', {
+        p_player_id: playerId,
+        p_difficulty: difficulty,
+        p_class_spec_id: classSpecId
+      });
       return { data: null, error: result.error };
     },
     { key: ['remove-sim', playerId], refreshes: [simsKey(playerId)] }
@@ -150,13 +172,14 @@ export function useSaveSimStaleDays(teamId: number) {
 // (#1443 part 2). Both reads are paged: a team's results pass 1000 rows.
 export function useTeamSims(teamId: number) {
   return useSupabaseQuery<TeamSim[]>(['team-sims', teamId], async (client) => {
-    const sims = await readAll<{ id: number; player_id: number; difficulty: string; simmed_at: string }>((from, to) =>
-      client
-        .from('character_sims')
-        .select('id, player_id, difficulty, simmed_at')
-        .eq('team_id', teamId)
-        .order('id')
-        .range(from, to)
+    const sims = await readAll<WithSpec<{ id: number; player_id: number; difficulty: string; simmed_at: string }>>(
+      (from, to) =>
+        client
+          .from('character_sims')
+          .select('id, player_id, difficulty, classes_specs(spec), simmed_at')
+          .eq('team_id', teamId)
+          .order('id')
+          .range(from, to)
     );
     if (sims.error) return { data: null, error: sims.error };
     const ids = sims.data.map((s) => s.id);
@@ -171,7 +194,7 @@ export function useTeamSims(teamId: number) {
     );
     if (results.error) return { data: null, error: results.error };
     return {
-      data: sims.data.map((s) => ({
+      data: sims.data.map(flatSpec).map((s) => ({
         ...s,
         difficulty: s.difficulty as Difficulty,
         character_sim_results: results.data.filter((r) => r.sim_id === s.id)

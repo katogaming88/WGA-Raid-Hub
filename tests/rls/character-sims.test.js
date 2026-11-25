@@ -23,11 +23,12 @@ const save = (
   asUser,
   uid,
   playerId,
-  { difficulty = 'mythic', source = 'raidbots', reportId = 'abc123', results } = {}
+  { difficulty = 'mythic', spec = 1, source = 'raidbots', reportId = 'abc123', results } = {}
 ) =>
-  asUser(uid, 'select public.save_character_sim($1, $2, $3, $4, now(), $5, $6, $7::jsonb) as n', [
+  asUser(uid, 'select public.save_character_sim($1, $2, $3, $4, $5, now(), $6, $7, $8::jsonb) as n', [
     playerId,
     difficulty,
+    spec,
     source,
     reportId,
     'Patchwerk',
@@ -35,8 +36,8 @@ const save = (
     JSON.stringify(results ?? [result(), result({ slot: 'finger2', pct_gain: 1.9 })])
   ]).then((r) => r.rows[0].n);
 
-const remove = (asUser, uid, playerId, difficulty = 'mythic') =>
-  asUser(uid, 'select public.delete_character_sim($1, $2)', [playerId, difficulty]);
+const remove = (asUser, uid, playerId, difficulty = 'mythic', spec = 1) =>
+  asUser(uid, 'select public.delete_character_sim($1, $2, $3)', [playerId, difficulty, spec]);
 
 async function raiderWithCharacter(q) {
   const team = await seedTeam(q);
@@ -48,12 +49,24 @@ async function raiderWithCharacter(q) {
   return { team, playerId };
 }
 
+// A spec for the test, made if the seed lacks it (#1916). The seed's spec 1 is
+// Frost Mage, every seeded character's.
+const specId = async (q, cls, spec) =>
+  (
+    await q(
+      `insert into public.classes_specs (class, spec, role) values ($1, $2, 'Ranged')
+       on conflict do nothing returning id`,
+      [cls, spec]
+    )
+  ).rows[0]?.id ??
+  (await q('select id from public.classes_specs where class = $1 and spec = $2', [cls, spec])).rows[0].id;
+
 const simsOf = async (q, playerId) =>
   (
     await q(
-      `select s.difficulty, s.source, s.report_id, count(r.id)::int as results
+      `select s.difficulty, s.class_spec_id as spec, s.source, s.report_id, count(r.id)::int as results
          from public.character_sims s left join public.character_sim_results r on r.sim_id = s.id
-        where s.player_id = $1 group by s.id order by s.difficulty`,
+        where s.player_id = $1 group by s.id order by s.difficulty, s.class_spec_id`,
       [playerId]
     )
   ).rows;
@@ -64,7 +77,7 @@ describe('save_character_sim()', () => {
       const { team, playerId } = await raiderWithCharacter(q);
       expect(await save(asUser, team.raider.uid, playerId)).toBe(2);
       expect(await simsOf(q, playerId)).toEqual([
-        { difficulty: 'mythic', source: 'raidbots', report_id: 'abc123', results: 2 }
+        { difficulty: 'mythic', spec: 1, source: 'raidbots', report_id: 'abc123', results: 2 }
       ]);
       const audit = await q(`select actor_id from public.audit_log where action = 'Sim Added' and target_id = $1`, [
         playerId
@@ -83,9 +96,41 @@ describe('save_character_sim()', () => {
         results: [result({ slot: null, dps_gain: null })]
       });
       expect(await simsOf(q, playerId)).toEqual([
-        { difficulty: 'heroic', source: 'raidbots', report_id: 'hero', results: 2 },
-        { difficulty: 'mythic', source: 'qe_live', report_id: 'second', results: 1 }
+        { difficulty: 'heroic', spec: 1, source: 'raidbots', report_id: 'hero', results: 2 },
+        { difficulty: 'mythic', spec: 1, source: 'qe_live', report_id: 'second', results: 1 }
       ]);
+    }));
+
+  // #1916: the character is Frost (1); Fire is another Mage spec.
+  it('keeps a sim per spec at the same difficulty, a new one replacing only its own spec’s', () =>
+    withTxn(async ({ q, asUser }) => {
+      const { team, playerId } = await raiderWithCharacter(q);
+      const fire = await specId(q, 'Mage', 'Fire');
+      await save(asUser, team.raider.uid, playerId, { reportId: 'frost' });
+      await save(asUser, team.raider.uid, playerId, { spec: fire, reportId: 'fire' });
+      await save(asUser, team.raider.uid, playerId, { spec: fire, reportId: 'fire2', results: [result()] });
+      expect(await simsOf(q, playerId)).toEqual([
+        { difficulty: 'mythic', spec: 1, source: 'raidbots', report_id: 'frost', results: 2 },
+        { difficulty: 'mythic', spec: fire, source: 'raidbots', report_id: 'fire2', results: 1 }
+      ]);
+      const audit = await q(
+        `select detail->>'summary' as s from public.audit_log where action = 'Sim Added' and target_id = $1 order by id`,
+        [playerId]
+      );
+      expect(audit.rows.map((r) => r.s)).toEqual([
+        'Mythic Frost sim from Raidbots, 2 results',
+        'Mythic Fire sim from Raidbots, 2 results',
+        'Mythic Fire sim from Raidbots, 1 results'
+      ]);
+    }));
+
+  it('refuses a spec of another class, or one that doesn’t exist', () =>
+    withTxn(async ({ q, asUser }) => {
+      const { team, playerId } = await raiderWithCharacter(q);
+      const havoc = await specId(q, 'Demon Hunter', 'Havoc');
+      await expect(save(asUser, team.raider.uid, playerId, { spec: havoc })).rejects.toThrow(/another class|class/i);
+      await expect(save(asUser, team.raider.uid, playerId, { spec: 99999 })).rejects.toThrow(/class/i);
+      expect(await simsOf(q, playerId)).toEqual([]);
     }));
 
   it('lets an officer who manages loot save one for a raider, logged through write_audit_log()', () =>
@@ -117,7 +162,7 @@ describe('save_character_sim()', () => {
       await expect(save(asUser, teammate, playerId)).rejects.toThrow(/not authorized/i);
       await expect(save(asUser, other.officer.uid, playerId)).rejects.toThrow(/not authorized/i);
       await expect(
-        asAnon('select public.save_character_sim($1, $2, $3, $4, now(), null, null, $5::jsonb)', [
+        asAnon('select public.save_character_sim($1, $2, 1, $3, $4, now(), null, null, $5::jsonb)', [
           playerId,
           'mythic',
           'raidbots',
@@ -218,13 +263,25 @@ describe('delete_character_sim()', () => {
       const { uid: teammate } = await seedMember(q, { teamId: team.teamId });
       await expect(remove(asUser, other.officer.uid, playerId)).rejects.toThrow(/not authorized/i);
       await expect(remove(asUser, teammate, playerId)).rejects.toThrow(/not authorized/i);
-      await expect(asAnon('select public.delete_character_sim($1, $2)', [playerId, 'mythic'])).rejects.toMatchObject({
-        code: RLS_DENIED
-      });
+      await expect(asAnon('select public.delete_character_sim($1, $2, 1)', [playerId, 'mythic'])).rejects.toMatchObject(
+        {
+          code: RLS_DENIED
+        }
+      );
       expect((await simsOf(q, playerId)).map((s) => s.difficulty)).toEqual(['heroic', 'mythic']);
       await remove(asUser, team.raider.uid, playerId);
       expect((await simsOf(q, playerId)).map((s) => s.difficulty)).toEqual(['heroic']);
       await remove(asUser, team.officer.uid, playerId, 'heroic');
       expect(await simsOf(q, playerId)).toEqual([]);
+    }));
+
+  it('removes only the named spec’s sim (#1916)', () =>
+    withTxn(async ({ q, asUser }) => {
+      const { team, playerId } = await raiderWithCharacter(q);
+      await save(asUser, team.raider.uid, playerId);
+      const fire = await specId(q, 'Mage', 'Fire');
+      await save(asUser, team.raider.uid, playerId, { spec: fire });
+      await remove(asUser, team.raider.uid, playerId, 'mythic', fire);
+      expect((await simsOf(q, playerId)).map((s) => s.spec)).toEqual([1]);
     }));
 });

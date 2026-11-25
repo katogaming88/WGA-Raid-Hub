@@ -136,8 +136,12 @@ const wishlistEditorState = (label, extra = {}) =>
 // naming the two rings the wishlist editor offers (Finger 1 and 2).
 const SIMS = [
   { difficulty: 'mythic', simmed_at: new Date().toISOString(), source: 'raidbots' },
-  { difficulty: 'heroic', simmed_at: '2026-01-01T00:00:00Z', source: 'qe_live' }
-].map((sim, i) => ({
+  { difficulty: 'heroic', simmed_at: '2026-01-01T00:00:00Z', source: 'qe_live' },
+  // #1916: another spec's sim, its gains greyed and named.
+  { difficulty: 'mythic', simmed_at: new Date().toISOString(), source: 'raidbots', spec: 'Unholy' }
+].map(({ spec = 'Frost', ...sim }, i) => ({
+  class_spec_id: spec === 'Frost' ? 2 : 3,
+  classes_specs: { spec },
   id: i + 1,
   report_id: `report${i}`,
   fight_style: sim.source === 'raidbots' ? 'Patchwerk' : null,
@@ -152,7 +156,7 @@ const SIMS = [
     item_name: name,
     slot: sim.source === 'raidbots' ? 'finger1' : null,
     item_level: 334,
-    pct_gain: pct,
+    pct_gain: spec === 'Frost' ? pct : pct + 1.5,
     dps_gain: null,
     encounter_id: null,
     catalyst_from: null
@@ -902,23 +906,44 @@ const PRIORITY_FLAGGED = {
 
 // #1443 part 2: sims for the first two raiders, one current and one out of
 // date, so the gains show beside the marks and Missing sims lists the rest.
+// The first also has an Arms sim (#1916), shown greyed and never counted.
 const PRIORITY_SIMS = {
   ...PRIORITY,
   tables: {
     ...PRIORITY.tables,
     items: PRIORITY.tables.items.map((i) => ({ ...i, wow_item_id: 9000 + i.id })),
     character_sims: [
-      { id: 1, player_id: PRIORITY_IDS[0], difficulty: 'heroic', simmed_at: new Date().toISOString() },
-      { id: 2, player_id: PRIORITY_IDS[1], difficulty: 'heroic', simmed_at: '2026-01-01T00:00:00Z' }
+      {
+        id: 1,
+        player_id: PRIORITY_IDS[0],
+        difficulty: 'heroic',
+        classes_specs: { spec: 'Protection' },
+        simmed_at: new Date().toISOString()
+      },
+      {
+        id: 2,
+        player_id: PRIORITY_IDS[1],
+        difficulty: 'heroic',
+        classes_specs: { spec: 'Holy' },
+        simmed_at: '2026-01-01T00:00:00Z'
+      },
+      // #1916: the first raider's other spec, shown greyed beside their gain.
+      {
+        id: 3,
+        player_id: PRIORITY_IDS[0],
+        difficulty: 'heroic',
+        classes_specs: { spec: 'Arms' },
+        simmed_at: new Date().toISOString()
+      }
     ],
-    character_sim_results: [1, 2].map((sim_id) => ({
+    character_sim_results: [1, 2, 3].map((sim_id) => ({
       id: sim_id,
       sim_id,
       wow_item_id: 9001,
       item_name: null,
       slot: null,
       item_level: 334,
-      pct_gain: sim_id === 1 ? 2.5 : 1.1,
+      pct_gain: [2.5, 1.1, 4.1][sim_id - 1],
       dps_gain: null,
       encounter_id: null,
       catalyst_from: null

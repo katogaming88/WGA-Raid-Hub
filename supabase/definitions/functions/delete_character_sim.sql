@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): authenticated
 
-CREATE OR REPLACE FUNCTION public.delete_character_sim(p_player_id integer, p_difficulty text)
+CREATE OR REPLACE FUNCTION public.delete_character_sim(p_player_id integer, p_difficulty text, p_class_spec_id integer)
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -12,6 +12,7 @@ declare
   v_team_id integer;
   v_leader boolean;
   v_own boolean;
+  v_spec text;
   v_detail jsonb;
 begin
   if auth.uid() is null then
@@ -30,9 +31,11 @@ begin
     raise exception 'Not authorized';
   end if;
 
-  delete from public.character_sims where player_id = p_player_id and difficulty = p_difficulty;
+  delete from public.character_sims
+   where player_id = p_player_id and difficulty = p_difficulty and class_spec_id = p_class_spec_id;
   if found then
-    v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' sim removed');
+    select cs.spec into v_spec from public.classes_specs cs where cs.id = p_class_spec_id;
+    v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' ' || coalesce(v_spec, '') || ' sim removed');
     begin
       perform public.write_audit_log(v_team_id, 'Sim Removed', 'players', p_player_id, v_detail);
     exception when raise_exception then

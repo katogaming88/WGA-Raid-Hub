@@ -598,6 +598,7 @@ export type Database = {
         Row: {
           added_at: string
           added_by: number | null
+          class_spec_id: number
           difficulty: string
           fight_style: string | null
           id: number
@@ -611,6 +612,7 @@ export type Database = {
         Insert: {
           added_at?: string
           added_by?: number | null
+          class_spec_id: number
           difficulty: string
           fight_style?: string | null
           id?: never
@@ -624,6 +626,7 @@ export type Database = {
         Update: {
           added_at?: string
           added_by?: number | null
+          class_spec_id?: number
           difficulty?: string
           fight_style?: string | null
           id?: never
@@ -640,6 +643,13 @@ export type Database = {
             columns: ["added_by"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "character_sims_class_spec_id_fkey"
+            columns: ["class_spec_id"]
+            isOneToOne: false
+            referencedRelation: "classes_specs"
             referencedColumns: ["id"]
           },
           {
@@ -6374,7 +6384,11 @@ export type Database = {
         Returns: number
       }
       delete_character_sim: {
-        Args: { p_difficulty: string; p_player_id: number }
+        Args: {
+          p_class_spec_id: number
+          p_difficulty: string
+          p_player_id: number
+        }
         Returns: undefined
       }
       delete_self_received_request: {
@@ -6895,6 +6909,7 @@ export type Database = {
       }
       save_character_sim: {
         Args: {
+          p_class_spec_id: number
           p_difficulty: string
           p_fight_style: string
           p_player_id: number

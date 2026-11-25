@@ -163,7 +163,9 @@ function WishlistEditor({
   const touch = useTouchScreen();
   const sims = usePlayerSims(player.id);
   const staleDays = useSimStaleDays(teamId);
-  const gains = sims.isSuccess ? gainsByItem(sims.data.sims, staleDays.isSuccess ? staleDays.data : null) : undefined;
+  const gains = sims.isSuccess
+    ? gainsByItem(sims.data.sims, player.classes_specs?.spec ?? null, staleDays.isSuccess ? staleDays.data : null)
+    : undefined;
 
   return (
     <section className="card profile-card" aria-labelledby="wishlist-editor-title">
@@ -563,6 +565,7 @@ function NoteField({
 
 // An item's gain in each of the raider's sims (#1443), Mythic first: "M +1.98%
 // H +1.20%". An out-of-date sim's gain is greyed; a dash when no sim has it.
+// Another spec's (#1916) follows, greyed and named: "Affliction M +4.10%".
 function SimGains({ gains }: { gains: ItemGain[] }) {
   if (!gains.length) {
     return (
@@ -575,7 +578,11 @@ function SimGains({ gains }: { gains: ItemGain[] }) {
   return (
     <span className="wishlist-gains">
       {gains.map((g) => (
-        <span key={g.difficulty} className={`wishlist-gain${g.stale ? ' is-stale' : ''}${g.pct < 0 ? ' is-down' : ''}`}>
+        <span
+          key={`${g.spec}|${g.difficulty}`}
+          className={`wishlist-gain${g.stale ? ' is-stale' : ''}${g.pct < 0 ? ' is-down' : ''}${g.roster ? '' : ' is-other'}`}
+        >
+          {!g.roster && `${g.spec} `}
           <abbr title={DIFFICULTY_LABELS[g.difficulty]}>{DIFFICULTY_SHORT[g.difficulty]}</abbr>{' '}
           <span className="num">{formatGain(g.pct)}</span>
           {g.stale && <span className="visually-hidden"> (out of date)</span>}

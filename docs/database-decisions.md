@@ -4001,3 +4001,15 @@ Shipped: `20261124123057_character_sims.sql`.
 **Anyone reads sims**, like the rest of a profile and unlike `item_preferences`: a sim is a public link on Raidbots or QE Live already.
 
 [Full discussion -> #1443](https://github.com/katogaming88/WGA-Raid-Hub/issues/1443).
+
+## #1916 -- one sim per spec
+
+Shipped: `20261125090858_character_sims_per_spec.sql`.
+
+**One sim per character, difficulty and spec** (Kat, 2026-11-24): `character_sims.class_spec_id` and `unique (player_id, difficulty, class_spec_id)`, so a raider who plays three specs keeps three Mythic sims, and a new one replaces only its own spec's. `save_character_sim()` and `delete_character_sim()` take the spec. The page reads it from the report (Raidbots' SimulationCraft profile `spec=` line, QE Live's `spec`) and turns away a report that names none. The function refuses a spec of another class than the character's roster spec, so a sim can't be filed under the wrong character's class.
+
+**The roster spec's sim is the one that counts, and the page picks it.** The Priority page's gain and its sort, and the Missing sims tab, use the sim whose spec is `players.class_spec_id`; other specs' gains show greyed and named, never sorted by, since loot follows the spec a raider is on the roster as (Kat, 2026-11-24). Nothing in the database marks a sim as the main one, so when an officer changes a character's spec the new spec's sim counts from then on and the old one stays as an extra.
+
+**Sims saved before this are taken as the roster spec**, filled from `players.class_spec_id` in the migration; a sim whose character has no spec is removed. Production had none when this was written (2026-11-25), a day after #1443 shipped.
+
+[Full discussion -> #1916](https://github.com/katogaming88/WGA-Raid-Hub/issues/1916).
