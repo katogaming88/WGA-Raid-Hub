@@ -12,11 +12,17 @@ answers to.
 
 ---
 
-## [3.311.3] - 2026-11-26
+## [3.311.5] - 2026-11-26
 
 ### Project
 
 - Settings > Season > Wishlist editing offers only seasons whose raid has been added, the same list as Season view (#1928). A team could open wishlists for a season with no raid yet, and the entries saved there showed on no officer page. A season already open without a raid stays listed, marked "no raid yet", so the team leader can turn it off.
+
+## [3.311.4] - 2026-11-26
+
+### Project
+
+- The logo's arrowhead is bigger (#1924), so the Go Again ring reads as "go again" at small sizes: in the browser tab, on a phone's home screen, beside the site's name and on the front page's large ring. The link preview picture is retaken with it.
 
 ## [3.311.2] - 2026-11-26
 

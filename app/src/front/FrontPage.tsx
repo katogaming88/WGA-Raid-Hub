@@ -188,7 +188,7 @@ function Banner() {
       </defs>
       <g mask="url(#front-banner-mask)">
         <path className="front-ring" d="M50 6 A44 44 0 1 1 11.9 28" strokeWidth="7" strokeLinecap="round" />
-        <polygon className="front-arrow" points="15.9,19.9 18.0,33.1 4.8,26.1" />
+        <polygon className="front-arrow" points="20.9,12.5 22.2,35.2 0.6,22.7" />
         <circle className="front-disc" cx="50" cy="50" r="33" />
         <polyline
           className="front-w"

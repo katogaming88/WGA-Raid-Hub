@@ -76,7 +76,7 @@ export function LogoMark({ size = 34 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true" focusable="false">
       <path d="M50 6 A44 44 0 1 1 11.9 28" fill="none" stroke="#f2703f" strokeWidth="7" strokeLinecap="round" />
-      <polygon points="15.9,19.9 18.0,33.1 4.8,26.1" fill="#f2703f" />
+      <polygon points="20.9,12.5 22.2,35.2 0.6,22.7" fill="#f2703f" />
       <circle cx="50" cy="50" r="33" fill="#255fc0" />
       <polyline
         points="32,39 41,63 50,46 59,63 68,39"
