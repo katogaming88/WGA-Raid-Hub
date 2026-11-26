@@ -18,6 +18,12 @@ answers to.
 
 - Settings > Season > Wishlist editing offers only seasons whose raid has been added, the same list as Season view (#1928). A team could open wishlists for a season with no raid yet, and the entries saved there showed on no officer page. A season already open without a raid stays listed, marked "no raid yet", so the team leader can turn it off.
 
+## [3.311.2] - 2026-11-26
+
+### Project
+
+- A QE Live sim is saved at the difficulty it was run at (#1926). A Mythic sim was saved as Normal, so its gains showed with an **N**, didn't count for Mythic on Missing sims and didn't show for Myth-track items on the Priority page. A sim already saved wrong needs removing and adding again.
+
 ## [3.311.0] - 2026-11-25
 
 ### Backend
