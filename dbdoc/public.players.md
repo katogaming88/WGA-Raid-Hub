@@ -485,6 +485,7 @@ erDiagram
   timestamp_with_time_zone added_at
   integer class_spec_id FK
   integer fight_length
+  numeric_6_2_ gear_item_level
 }
 "public.teams" {
   integer id

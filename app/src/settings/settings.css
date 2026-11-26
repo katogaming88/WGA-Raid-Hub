@@ -773,6 +773,11 @@
   min-width: 0;
 }
 
+.sims-group-first {
+  border-top: 0;
+  padding-top: 0;
+}
+
 .sims-group > legend {
   float: left;
   width: 100%;
@@ -784,7 +789,7 @@
 }
 
 .sims-row-label {
-  min-width: 7rem;
+  min-width: 9.5rem;
 }
 
 .sims-hint {

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SIM_SETTINGS } from '../sims/simSettings';
 import { navGroups, reportTabs } from '../layout/nav';
 import { shownLoot } from '../settings/lootResponses';
-import { screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import { simLookup } from './PriorityPage';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from '../test/renderApp';
@@ -1088,6 +1088,23 @@ describe('sims on the Priority page', () => {
     const card = screen.getByRole('heading', { name: 'Missing Heroic sims' }).closest('section')!;
     expect(card).toHaveTextContent(/Bbldrizzy\s*Out of date, simmed \d+ days ago/);
     expect(card).toHaveTextContent('AmazonNo Heroic sim');
+    expect(card).not.toHaveTextContent('Katorrí');
+  });
+
+  // #1888 part 2: with "Need one per difficulty" off, Katorrí's up-to-date
+  // Heroic sim is enough on the Mythic track too; with it on, she needs one.
+  it('counts any one difficulty’s sim when the team doesn’t need one per difficulty', async () => {
+    renderApp(`${PAGE}?tab=sims&track=mythic`, handlers(WITH_SIMS));
+    const each = (await screen.findByRole('heading', { name: 'Missing Mythic sims' })).closest('section')!;
+    await waitFor(() => expect(each).toHaveTextContent('KatorríNo Mythic sim'));
+    cleanup();
+    const anyOne = {
+      ...WITH_SIMS,
+      team_settings: { ...WITH_SIMS.team_settings, config: { simNeedEach: false } }
+    };
+    renderApp(`${PAGE}?tab=sims&track=mythic`, handlers(anyOne));
+    const card = (await screen.findByRole('heading', { name: 'Missing Mythic sims' })).closest('section')!;
+    await waitFor(() => expect(card).toHaveTextContent('AmazonNo Mythic sim'));
     expect(card).not.toHaveTextContent('Katorrí');
   });
 

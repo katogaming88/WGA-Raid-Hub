@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import raidbots from './fixtures/raidbots-droptimizer.json';
 import qeLive from './fixtures/qe-live-upgrade-report.json';
 import {
-  asStaleDays,
   gainsByItem,
   setupGains,
   sortGain,
@@ -10,7 +9,6 @@ import {
   bestPerItem,
   isCharacter,
   isRosterSim,
-  isStale,
   matchSpec,
   simOrder,
   parseQeLive,
@@ -20,7 +18,15 @@ import {
   type SavedResult
 } from './sims';
 
-import { asSimSettings, DEFAULT_SIM_SETTINGS, setupOf, simProblems, type SimSettings } from './simSettings';
+import {
+  asSimSettings,
+  DEFAULT_SIM_SETTINGS,
+  lastWeekday,
+  setupOf,
+  simIsStale,
+  simProblems,
+  type SimSettings
+} from './simSettings';
 
 // The team's defaults: one setup, 14 days.
 const SETTINGS = DEFAULT_SIM_SETTINGS;
@@ -154,14 +160,37 @@ describe('bestPerItem', () => {
   });
 });
 
+// #1443, #1888 part 2: the team's out-of-date rules.
 describe('out of date', () => {
-  it('uses the team’s days, 14 until set', () => {
-    expect(asStaleDays(undefined)).toBe(14);
-    expect(asStaleDays('5')).toBe(5);
-    expect(asStaleDays(0)).toBe(14);
-    const now = Date.parse('2026-11-24T12:00:00Z');
-    expect(isStale('2026-11-19T12:00:00Z', 5, now)).toBe(false);
-    expect(isStale('2026-11-19T11:00:00Z', 5, now)).toBe(true);
+  const now = Date.parse('2026-11-25T12:00:00Z'); // a Wednesday
+  const d = (patch: Partial<SimSettings>): SimSettings => ({ ...DEFAULT_SIM_SETTINGS, ...patch });
+  it('goes by the team’s days, 14 until set', () => {
+    expect(simIsStale({ simmed_at: '2026-11-20T12:00:00Z' }, d({ staleDays: 5 }), now)).toBe(false);
+    expect(simIsStale({ simmed_at: '2026-11-20T11:00:00Z' }, d({ staleDays: 5 }), now)).toBe(true);
+    expect(simIsStale({ simmed_at: '2026-11-12T11:00:00Z' }, DEFAULT_SIM_SETTINGS, now)).toBe(false);
+    expect(simIsStale({ simmed_at: '2026-11-11T11:00:00Z' }, DEFAULT_SIM_SETTINGS, now)).toBe(true);
+  });
+
+  it('or on a set day each week, at the weekly reset’s hour', () => {
+    // Tuesday 2026-11-24 15:00 UTC is the last Tuesday reset before now.
+    expect(lastWeekday(2, now)).toBe(Date.parse('2026-11-24T15:00:00Z'));
+    // Wednesday's hasn't come yet today (12:00 UTC), so it's last week's.
+    expect(lastWeekday(3, now)).toBe(Date.parse('2026-11-18T15:00:00Z'));
+    const tuesdays = d({ staleMode: 'weekday', staleWeekday: 2 });
+    expect(simIsStale({ simmed_at: '2026-11-24T14:59:00Z' }, tuesdays, now)).toBe(true);
+    expect(simIsStale({ simmed_at: '2026-11-24T15:01:00Z' }, tuesdays, now)).toBe(false);
+  });
+
+  it('or when the raider’s gear has gone up by the team’s number, if both levels are known', () => {
+    const sim = { simmed_at: '2026-11-24T12:00:00Z', gear_item_level: '320.50' };
+    expect(simIsStale({ ...sim, gear_now: 323.4 }, DEFAULT_SIM_SETTINGS, now)).toBe(false);
+    expect(simIsStale({ ...sim, gear_now: 323.5 }, DEFAULT_SIM_SETTINGS, now)).toBe(true);
+    expect(simIsStale({ ...sim, gear_now: 330 }, d({ gearRise: null }), now)).toBe(false);
+    expect(simIsStale({ ...sim, gear_now: 326 }, d({ gearRise: 6 }), now)).toBe(false);
+    expect(
+      simIsStale({ simmed_at: sim.simmed_at, gear_item_level: null, gear_now: 340 }, DEFAULT_SIM_SETTINGS, now)
+    ).toBe(false);
+    expect(simIsStale({ ...sim, gear_now: null }, DEFAULT_SIM_SETTINGS, now)).toBe(false);
   });
 });
 
@@ -450,6 +479,15 @@ describe('setupGains', () => {
     });
   });
 
+  // #1888 part 2: a team that hides out-of-date sims counts them as gone.
+  it('hides out-of-date sims when the team says so', () => {
+    const hide = { ...SETUPS, staleThen: 'hide' as const };
+    const read = setupGains([sim(1, 1), sim(3, 2, old)], hide, 'mythic', now);
+    expect(read.gainOf(500)).toMatchObject({ pct: 0.7, stale: false });
+    expect(read.missing).toMatchObject([{ setup: { name: 'Several targets' }, stale: false }]);
+    expect(setupGains([sim(1, 1, old)], hide, 'mythic', now).has).toBe(false);
+  });
+
   it('lets a QE Live sim stand in for every setup, unweighted (Kat, 2026-11-25)', () => {
     const qe = {
       fight_style: null,
@@ -554,6 +592,21 @@ describe('asSimSettings', () => {
     expect(s.setups).toEqual(DEFAULT_SIM_SETTINGS.setups);
     expect(s.checks).toMatchObject({ sockets: true, buffs: true });
     expect(s.staleDays).toBe(14);
+    const p2 = asSimSettings({
+      simStaleMode: 'weekday',
+      simStaleWeekday: 4,
+      simGearRise: null,
+      simStaleThen: 'hide',
+      simNeedEach: false
+    });
+    expect(p2).toMatchObject({
+      staleMode: 'weekday',
+      staleWeekday: 4,
+      gearRise: null,
+      staleThen: 'hide',
+      needEach: false
+    });
+    expect(asSimSettings({ simGearRise: 5, simStaleWeekday: 9 })).toMatchObject({ gearRise: 3, staleWeekday: 2 });
   });
 });
 

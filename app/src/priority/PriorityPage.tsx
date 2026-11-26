@@ -1116,7 +1116,15 @@ export type MissingSim = { player: PlayerRow; reason: string };
 function missingSims(players: PlayerRow[], sims: TeamSim[], settings: SimSettings, track: Track): MissingSim[] {
   const gainOf = trackGains(sims, settings, rosterSpecOf(players), () => null);
   const label = DIFFICULTY_LABELS[TRACK_DIFFICULTY[track]];
+  // With "Need one per difficulty" off (#1888 part 2), an up-to-date sim for
+  // every setup at any needed difficulty on the page is enough.
+  const complete = (id: number, t: Track) => {
+    const g = gainOf(id, 0, t);
+    return g.sim && !g.stale && !g.missing.length;
+  };
+  const tracks = (['Hero', 'Myth'] as Track[]).filter((t) => settings.difficulties.includes(TRACK_DIFFICULTY[t]));
   return players
+    .filter((player) => settings.needEach || !tracks.some((t) => complete(player.id, t)))
     .flatMap((player) => {
       const gain = gainOf(player.id, 0, track);
       if (!gain.sim) return [{ player, reason: `No ${label} sim` }];

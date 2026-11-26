@@ -25,8 +25,26 @@ export type SavedSim = {
   fight_style: string | null;
   target_count: number | null;
   fight_length: number | null;
+  // The raider's gear level when the sim was saved, and today (#1888 part 2).
+  gear_item_level: number | string | null;
+  gear_now: number | null;
   character_sim_results: SavedResult[];
 };
+
+// Each raider's average equipped item level today, from the daily gear read,
+// shirt and tabard left out, a two-hander counted once, as save_character_sim() keeps it
+// (#1888 part 2).
+type GearRow = { player_id: number; equipment_slot: string; item_level: number | null };
+export function gearLevels(rows: GearRow[]): Map<number, number> {
+  const by = new Map<number, number[]>();
+  for (const r of rows) {
+    if (r.item_level === null || r.equipment_slot === 'SHIRT' || r.equipment_slot === 'TABARD') continue;
+    by.set(r.player_id, [...(by.get(r.player_id) ?? []), r.item_level]);
+  }
+  return new Map(
+    [...by].map(([id, levels]) => [id, Math.round((levels.reduce((a, b) => a + b, 0) / levels.length) * 100) / 100])
+  );
+}
 
 // Items the hub knows, by Wowhead id: their names and icons for the table,
 // and their ids for the wishlist marks.
@@ -46,12 +64,19 @@ export function usePlayerSims(playerId: number) {
     const sims = await client
       .from('character_sims')
       .select(
-        'id, difficulty, class_spec_id, classes_specs(spec, class), source, report_id, simmed_at, fight_style, target_count, fight_length, character_sim_results(id, wow_item_id, item_name, slot, item_level, pct_gain, dps_gain, encounter_id, catalyst_from)'
+        'id, difficulty, class_spec_id, classes_specs(spec, class), source, report_id, simmed_at, fight_style, target_count, fight_length, gear_item_level, character_sim_results(id, wow_item_id, item_name, slot, item_level, pct_gain, dps_gain, encounter_id, catalyst_from)'
       )
       .eq('player_id', playerId);
     if (sims.error) return { data: null, error: sims.error };
-    const rows = ((sims.data ?? []) as unknown as WithSpec<Omit<SavedSim, 'spec' | 'className'>>[]).map(
-      flatSpec
+    // Today's gear, for "out of date when gear goes up"; a failed read only
+    // leaves that rule out.
+    const gear = await client
+      .from('player_equipped_gear')
+      .select('player_id, equipment_slot, item_level')
+      .eq('player_id', playerId);
+    const gearNow = gear.error ? null : (gearLevels((gear.data ?? []) as GearRow[]).get(playerId) ?? null);
+    const rows = ((sims.data ?? []) as unknown as WithSpec<Omit<SavedSim, 'spec' | 'className' | 'gear_now'>>[]).map(
+      (s) => ({ ...flatSpec(s), gear_now: gearNow })
     ) as SavedSim[];
     const ids = [...new Set(rows.flatMap((s) => s.character_sim_results.map((r) => r.wow_item_id)))];
     if (!ids.length) return { data: { sims: rows, items: [] }, error: null };
@@ -183,12 +208,13 @@ export function useTeamSims(teamId: number) {
       fight_style: string | null;
       target_count: number | null;
       fight_length: number | null;
+      gear_item_level: number | string | null;
     }>;
     const sims = await readAll<Row>((from, to) =>
       client
         .from('character_sims')
         .select(
-          'id, player_id, difficulty, source, classes_specs(spec, class), simmed_at, fight_style, target_count, fight_length'
+          'id, player_id, difficulty, source, classes_specs(spec, class), simmed_at, fight_style, target_count, fight_length, gear_item_level'
         )
         .eq('team_id', teamId)
         .order('id')
@@ -206,9 +232,21 @@ export function useTeamSims(teamId: number) {
         .range(from, to)
     );
     if (results.error) return { data: null, error: results.error };
+    // Today's gear, for "out of date when gear goes up"; a failed read only
+    // leaves that rule out.
+    const gear = await readAll<GearRow>((from, to) =>
+      client
+        .from('player_equipped_gear')
+        .select('player_id, equipment_slot, item_level')
+        .eq('team_id', teamId)
+        .order('id')
+        .range(from, to)
+    );
+    const gearNow = gear.error ? new Map<number, number>() : gearLevels(gear.data);
     return {
       data: sims.data.map(flatSpec).map((s) => ({
         ...s,
+        gear_now: gearNow.get(s.player_id) ?? null,
         difficulty: s.difficulty as Difficulty,
         character_sim_results: results.data.filter((r) => r.sim_id === s.id)
       })),

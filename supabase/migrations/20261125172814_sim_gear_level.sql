@@ -1,0 +1,169 @@
+-- #1888 (part 2 of 2): a sim goes out of date when the raider's gear goes up
+-- (Kat, 2026-10-18): N or more item levels above their gear when the sim was
+-- added, from the daily gear read (player_equipped_gear), N the team's
+-- choice on Settings > Loot > Sims. So each sim keeps the raider's average
+-- equipped item level when it was saved. The database reads it itself, from
+-- the gear read, not from the page; the page compares it with the same
+-- average today. Shirt and tabard don't count, and a two-hander counts once.
+--
+-- The other out-of-date rules (a set day each week, grey out or hide, one
+-- per difficulty) are team_settings.config keys read by the page; nothing
+-- here.
+--
+-- Sims saved before this have none and are never out of date by gear.
+
+alter table public.character_sims
+  add column gear_item_level numeric(6, 2) check (gear_item_level between 1 and 2000);
+
+comment on column public.character_sims.gear_item_level is
+  'The raider''s average equipped item level when the sim was saved, from the daily gear read (#1888); null when there was none.';
+
+-- As #1888 part 1's, and now keeps the raider's gear level.
+create or replace function public.save_character_sim(
+  p_player_id integer,
+  p_difficulty text,
+  p_class_spec_id integer,
+  p_source text,
+  p_report_id text,
+  p_character_name text,
+  p_character_realm text,
+  p_simmed_at timestamp with time zone,
+  p_fight_style text,
+  p_target_count integer,
+  p_fight_length integer,
+  p_results jsonb
+)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_team_id integer;
+  v_name_realm text;
+  v_class text;
+  v_spec text;
+  v_sim_id bigint;
+  v_count integer;
+  v_leader boolean;
+  v_own boolean;
+  v_detail jsonb;
+begin
+  if auth.uid() is null then
+    raise exception 'Not signed in';
+  end if;
+
+  select p.team_id, coalesce(tm.role = 'team_leader', false), mine.class, p.name_realm
+    into v_team_id, v_leader, v_class, v_name_realm
+    from public.players p
+    left join public.team_members tm on tm.id = p.team_member_id and tm.archived_at is null
+    left join public.classes_specs mine on mine.id = p.class_spec_id
+   where p.id = p_player_id and p.archived_at is null;
+  v_own := coalesce(public.is_own_player(p_player_id), false);
+  if v_team_id is null
+     or not (v_own
+             or (public.has_team_permission(v_team_id, 'manage_loot') and not v_leader)
+             or public.is_site_admin()) then
+    raise exception 'Not authorized';
+  end if;
+
+  -- A character with no roster spec has no class to check against, so it
+  -- takes no sims until an officer sets one (CodeRabbit on PR #1920).
+  if v_class is null then
+    raise exception 'Set the character''s spec on the roster first.';
+  end if;
+  select cs.spec into v_spec
+    from public.classes_specs cs
+   where cs.id = p_class_spec_id and cs.class = v_class;
+  if v_spec is null then
+    raise exception 'The sim isn''t for this character''s class.';
+  end if;
+
+  -- name_realm is "Name-Realm"; the realm may itself hold a dash.
+  if coalesce(regexp_replace(lower(p_character_name), '[[:space:]_''’-]', '', 'g'), '')
+       is distinct from regexp_replace(lower(split_part(v_name_realm, '-', 1)), '[[:space:]_''’-]', '', 'g')
+     or coalesce(regexp_replace(lower(p_character_realm), '[[:space:]_''’-]', '', 'g'), '') = ''
+     or regexp_replace(lower(p_character_realm), '[[:space:]_''’-]', '', 'g')
+       is distinct from regexp_replace(lower(substr(v_name_realm, strpos(v_name_realm, '-') + 1)), '[[:space:]_''’-]', '', 'g')
+  then
+    raise exception 'The sim is for another character.';
+  end if;
+
+  if jsonb_typeof(p_results) is distinct from 'array'
+     or jsonb_array_length(p_results) = 0 then
+    raise exception 'The sim has no results.';
+  end if;
+  if jsonb_array_length(p_results) > 2000 then
+    raise exception 'The sim has too many results.';
+  end if;
+  if p_simmed_at > now() + interval '1 day' then
+    raise exception 'The sim''s date is in the future.';
+  end if;
+
+  -- At most ten sims per character, difficulty and spec, one per setup (the
+  -- settings page allows ten setups): a new setup past that is refused, so
+  -- nobody can fill the team's Priority page with thousands of results
+  -- (the fresh-agent review on PR #1921). Replacing a setup's sim is fine.
+  if not exists (
+       select 1 from public.character_sims
+        where player_id = p_player_id and difficulty = p_difficulty and class_spec_id = p_class_spec_id
+          and fight_style is not distinct from nullif(trim(p_fight_style), '')
+          and target_count is not distinct from p_target_count
+          and fight_length is not distinct from p_fight_length)
+     and (select count(*) from public.character_sims
+           where player_id = p_player_id and difficulty = p_difficulty and class_spec_id = p_class_spec_id) >= 10 then
+    raise exception 'This character already has ten sims at this difficulty and spec; remove one first.';
+  end if;
+
+  insert into public.character_sims
+    (team_id, player_id, difficulty, class_spec_id, source, report_id, simmed_at, fight_style, target_count,
+     fight_length, gear_item_level, added_by)
+  values
+    (v_team_id, p_player_id, p_difficulty, p_class_spec_id, p_source, p_report_id, p_simmed_at,
+     nullif(trim(p_fight_style), ''), p_target_count, p_fight_length,
+     (select round(avg(g.item_level), 2) from public.player_equipped_gear g
+       where g.player_id = p_player_id and g.equipment_slot not in ('SHIRT', 'TABARD')),
+     public.my_person_id())
+  on conflict (player_id, difficulty, class_spec_id, fight_style, target_count, fight_length) do update
+     set source = excluded.source,
+         report_id = excluded.report_id,
+         simmed_at = excluded.simmed_at,
+         fight_style = excluded.fight_style,
+         target_count = excluded.target_count,
+         gear_item_level = excluded.gear_item_level,
+         added_by = excluded.added_by,
+         added_at = now()
+  returning id into v_sim_id;
+
+  delete from public.character_sim_results where sim_id = v_sim_id;
+
+  insert into public.character_sim_results
+    (sim_id, wow_item_id, item_name, slot, item_level, pct_gain, dps_gain, encounter_id, catalyst_from)
+  select v_sim_id, r.wow_item_id, nullif(trim(r.item_name), ''), nullif(trim(r.slot), ''),
+         r.item_level, r.pct_gain, r.dps_gain, r.encounter_id, r.catalyst_from
+    from jsonb_to_recordset(p_results) as r(
+           wow_item_id integer, item_name text, slot text, item_level integer,
+           pct_gain numeric, dps_gain numeric, encounter_id integer, catalyst_from integer);
+  get diagnostics v_count = row_count;
+
+  v_detail := jsonb_build_object('summary', initcap(p_difficulty) || ' ' || v_spec || ' sim from '
+    || case p_source when 'raidbots' then 'Raidbots' else 'QE Live' end
+    || public.sim_setup_label(nullif(trim(p_fight_style), ''), p_target_count, p_fight_length)
+    || ', ' || v_count || ' results');
+  -- write_audit_log() for everyone it accepts; it raises for a raider with
+  -- no officer permission, whose own change is then logged directly.
+  begin
+    perform public.write_audit_log(v_team_id, 'Sim Added', 'players', p_player_id, v_detail);
+  exception when raise_exception then
+    if not v_own then
+      raise;
+    end if;
+    insert into public.audit_log (team_id, actor_id, action, target_type, target_id, detail)
+    values (v_team_id, auth.uid(), 'Sim Added', 'players', p_player_id, v_detail);
+  end;
+  return v_count;
+end;
+$$;
+
+comment on function public.save_character_sim(integer, text, integer, text, text, text, text, timestamp with time zone, text, integer, integer, jsonb) is
+  'Saves a raider''s sim at one difficulty, spec and setup, replacing the one there, with their gear level at the time (#1443, #1916, #1888). The raider, an officer with manage_loot (not on the team leader''s character), or a site admin.';

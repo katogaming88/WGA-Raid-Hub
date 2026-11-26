@@ -202,6 +202,41 @@ describe('save_character_sim()', () => {
       expect(audit.rows[0].s).toBe('Heroic Frost sim from Raidbots (Patchwerk, 11 targets, 5 min), 2 results');
     }));
 
+  // #1888 part 2: a sim keeps the raider's average equipped item level from
+  // the daily gear read, shirt and tabard left out, for "out of date when
+  // gear goes up". Replacing the sim takes today's level.
+  it('keeps the raider’s gear level when the sim was saved', () =>
+    withTxn(async ({ q, asUser }) => {
+      const { team, playerId } = await raiderWithCharacter(q);
+      const gear = (slot, level) =>
+        q(
+          `insert into public.player_equipped_gear (player_id, team_id, equipment_slot, item_level)
+           values ($1, $2, $3, $4)
+           on conflict (player_id, equipment_slot) do update set item_level = excluded.item_level`,
+          [playerId, team.teamId, slot, level]
+        );
+      await gear('HEAD', 320);
+      await gear('CHEST', 330);
+      await gear('SHIRT', 1);
+      await save(asUser, team.raider.uid, playerId);
+      const level = () =>
+        q('select gear_item_level::float as g from public.character_sims where player_id = $1', [playerId]).then(
+          (r) => r.rows[0].g
+        );
+      expect(await level()).toBe(325);
+      await gear('HEAD', 334);
+      await save(asUser, team.raider.uid, playerId);
+      expect(await level()).toBe(332);
+    }));
+
+  it('saves a sim with no gear level when the raider has no gear read', () =>
+    withTxn(async ({ q, asUser }) => {
+      const { team, playerId } = await raiderWithCharacter(q);
+      await save(asUser, team.raider.uid, playerId);
+      const r = await q('select gear_item_level from public.character_sims where player_id = $1', [playerId]);
+      expect(r.rows[0].gear_item_level).toBeNull();
+    }));
+
   it('refuses a fight length out of bounds', () =>
     withTxn(async ({ q, asUser }) => {
       const { team, playerId } = await raiderWithCharacter(q);

@@ -9,6 +9,7 @@ import {
   CHECKS,
   describeSetup,
   FIGHT_STYLES,
+  GEAR_RISES,
   MAX_SETUPS,
   type SimSettings,
   type SimSetup,
@@ -42,6 +43,7 @@ export function SimsSettingsPage() {
 }
 
 const NEEDED: Difficulty[] = ['normal', 'heroic', 'mythic'];
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const NAMES: Record<Difficulty, string> = { lfr: 'Raid Finder', normal: 'Normal', heroic: 'Heroic', mythic: 'Mythic' };
 const share = (setups: SimSetup[], s: SimSetup) => {
   const total = setups.reduce((a, x) => a + x.weight, 0);
@@ -350,21 +352,104 @@ function SimsForm({ teamId, saved, canEdit }: { teamId: number; saved: SimSettin
         <legend className="sims-legend">
           <h2>Out of date</h2>
         </legend>
-        <div className="settings-row">
-          <label htmlFor={`${id}-days`}>A sim goes out of date after</label>
-          <input
-            id={`${id}-days`}
-            className="input settings-number"
-            type="number"
-            min={1}
-            max={365}
-            value={s.staleDays}
-            aria-describedby={`${id}-days-unit`}
-            onChange={(e) => set({ staleDays: Number(e.target.value) })}
-          />
-          <span id={`${id}-days-unit`}>days</span>
-        </div>
-        <p className="text-muted sims-hint">Then it’s greyed out and counts as no sim.</p>
+        <fieldset className="sims-group sims-group-first">
+          <legend className="field-label">A sim goes out of date</legend>
+          <div className="settings-row">
+            {(
+              [
+                ['days', 'After a number of days'],
+                ['weekday', 'On a set day each week']
+              ] as const
+            ).map(([value, label]) => (
+              <label key={value} className="settings-row">
+                <input
+                  type="radio"
+                  name={`${id}-stale`}
+                  checked={s.staleMode === value}
+                  onChange={() => set({ staleMode: value })}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          {s.staleMode === 'days' ? (
+            <div className="settings-row">
+              <label htmlFor={`${id}-days`}>A sim goes out of date after</label>
+              <input
+                id={`${id}-days`}
+                className="input settings-number"
+                type="number"
+                min={1}
+                max={365}
+                value={s.staleDays}
+                aria-describedby={`${id}-days-unit`}
+                onChange={(e) => set({ staleDays: Number(e.target.value) })}
+              />
+              <span id={`${id}-days-unit`}>days</span>
+            </div>
+          ) : (
+            <label className="settings-row">
+              <span className="sims-row-label">Every week on</span>
+              <select
+                className="select"
+                value={s.staleWeekday}
+                onChange={(e) => set({ staleWeekday: Number(e.target.value) })}
+              >
+                {WEEKDAYS.map((name, day) => (
+                  <option key={name} value={day}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <p className="text-muted sims-hint">
+            {s.staleMode === 'days'
+              ? `A sim added on a Tuesday is out of date ${WEEKDAYS[(2 + s.staleDays) % 7]}${s.staleDays >= 7 ? `, ${Math.floor(s.staleDays / 7)} week${s.staleDays >= 14 ? 's' : ''} later` : ''}.`
+              : `Every sim added before then goes out of date each ${WEEKDAYS[s.staleWeekday]} at the weekly reset’s time (10 AM Eastern, 11 AM in summer).`}
+          </p>
+        </fieldset>
+        <label className="settings-row">
+          <span className="sims-row-label">Or when gear goes up</span>
+          <select
+            className="select"
+            value={s.gearRise ?? 'never'}
+            onChange={(e) => set({ gearRise: e.target.value === 'never' ? null : Number(e.target.value) })}
+          >
+            {GEAR_RISES.map((n) => (
+              <option key={n} value={n}>
+                {n}+ item levels
+              </option>
+            ))}
+            <option value="never">Never</option>
+          </select>
+        </label>
+        <p className="text-muted sims-hint">
+          The raider’s average equipped item level, from the daily gear read, against when the sim was added.
+        </p>
+        <label className="settings-row">
+          <span className="sims-row-label">Then</span>
+          <select
+            className="select"
+            value={s.staleThen}
+            onChange={(e) => set({ staleThen: e.target.value === 'hide' ? 'hide' : 'grey' })}
+          >
+            <option value="grey">Grey it out</option>
+            <option value="hide">Hide it</option>
+          </select>
+        </label>
+        <p className="text-muted sims-hint">
+          {s.staleThen === 'grey'
+            ? 'An out-of-date sim stays on the page, greyed, and counts as no sim.'
+            : 'An out-of-date sim’s gains disappear and it counts as no sim. The raider still sees it on their profile, marked not counted, until they add a new one.'}
+        </p>
+        <label className="sims-check">
+          <input type="checkbox" checked={s.needEach} onChange={(e) => set({ needEach: e.target.checked })} />
+          <strong>Need one per difficulty</strong>
+          <span className="text-muted">
+            Off: an up-to-date sim at any one of the difficulties above is enough for Missing sims.
+          </span>
+        </label>
       </fieldset>
 
       {canEdit && (

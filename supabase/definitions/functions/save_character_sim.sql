@@ -87,16 +87,20 @@ begin
 
   insert into public.character_sims
     (team_id, player_id, difficulty, class_spec_id, source, report_id, simmed_at, fight_style, target_count,
-     fight_length, added_by)
+     fight_length, gear_item_level, added_by)
   values
     (v_team_id, p_player_id, p_difficulty, p_class_spec_id, p_source, p_report_id, p_simmed_at,
-     nullif(trim(p_fight_style), ''), p_target_count, p_fight_length, public.my_person_id())
+     nullif(trim(p_fight_style), ''), p_target_count, p_fight_length,
+     (select round(avg(g.item_level), 2) from public.player_equipped_gear g
+       where g.player_id = p_player_id and g.equipment_slot not in ('SHIRT', 'TABARD')),
+     public.my_person_id())
   on conflict (player_id, difficulty, class_spec_id, fight_style, target_count, fight_length) do update
      set source = excluded.source,
          report_id = excluded.report_id,
          simmed_at = excluded.simmed_at,
          fight_style = excluded.fight_style,
          target_count = excluded.target_count,
+         gear_item_level = excluded.gear_item_level,
          added_by = excluded.added_by,
          added_at = now()
   returning id into v_sim_id;
