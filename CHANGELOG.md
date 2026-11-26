@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.311.1] - 2026-11-26
+
+### Project
+
+- The logo's arrowhead is bigger (#1924), so the Go Again ring reads as "go again" at small sizes: in the browser tab, on a phone's home screen, beside the site's name and on the front page's large ring. The link preview picture is retaken with it.
+
 ## [3.311.0] - 2026-11-25
 
 ### Backend
