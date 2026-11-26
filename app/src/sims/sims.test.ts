@@ -104,7 +104,8 @@ describe('parseQeLive', () => {
       character: { name: 'Katorria', realm: 'Stormrage' },
       spec: 'Restoration Shaman'
     });
-    expect(report.sims.map((s) => s.difficulty)).toEqual(['normal']);
+    // Code 3, on the 318 drops and the 334 upgrades alike: MID2's Myth track (#1926).
+    expect(report.sims.map((s) => s.difficulty)).toEqual(['mythic']);
     const results = report.sims[0]!.results;
     // Two items, each as dropped and fully upgraded; dungeon and bonus rows left out.
     expect(results).toHaveLength(4);
@@ -113,6 +114,27 @@ describe('parseQeLive', () => {
       dps_gain: null,
       slot: null
     });
+  });
+
+  it('reads the difficulty code as 0 Raid Finder, 1 Normal, 2 Heroic, 3 Mythic', () => {
+    const row = (code: number, item: number) => ({
+      dropLoc: 'Raid',
+      dropType: 'drop',
+      dropDifficulty: code,
+      item,
+      level: 300,
+      percDiff: 1
+    });
+    const report = ok(
+      parseQeLive({ spec: 'Restoration Shaman', results: [0, 1, 2, 3, 4].map((code) => row(code, 100 + code)) }, 'x')
+    );
+    // Highest first; code 4 isn't a difficulty and is left out.
+    expect(report.sims.map((s) => [s.difficulty, s.results[0]!.wow_item_id])).toEqual([
+      ['mythic', 103],
+      ['heroic', 102],
+      ['normal', 101],
+      ['lfr', 100]
+    ]);
   });
 
   it('says when QE Live has no such report', () => {
