@@ -12,11 +12,17 @@ answers to.
 
 ---
 
-## [3.311.1] - 2026-11-26
+## [3.311.4] - 2026-11-26
 
 ### Project
 
 - The logo's arrowhead is bigger (#1924), so the Go Again ring reads as "go again" at small sizes: in the browser tab, on a phone's home screen, beside the site's name and on the front page's large ring. The link preview picture is retaken with it.
+
+## [3.311.2] - 2026-11-26
+
+### Project
+
+- A QE Live sim is saved at the difficulty it was run at (#1926). A Mythic sim was saved as Normal, so its gains showed with an **N**, didn't count for Mythic on Missing sims and didn't show for Myth-track items on the Priority page. A sim already saved wrong needs removing and adding again.
 
 ## [3.311.0] - 2026-11-25
 

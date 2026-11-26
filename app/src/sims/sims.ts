@@ -257,8 +257,10 @@ export function parseRaidbots(data: unknown, reportId: string): ParsedReport | {
 }
 
 // QE Live's upgrade report. Raid results come as dropped ("drop"), fully
-// upgraded ("max") and bonus roll ("bonus", the same as max); its difficulty
-// code counts Raid Finder, Raid Finder max, Normal, Normal max and so on.
+// upgraded ("max") and bonus roll ("bonus", the same as max), all three with
+// the same difficulty code: 0 Raid Finder, 1 Normal, 2 Heroic, 3 Mythic. Read
+// as Raid Finder, Raid Finder max and so on, a Mythic sim was saved as Normal
+// (#1926).
 const QE_DIFFICULTIES: Difficulty[] = ['lfr', 'normal', 'heroic', 'mythic'];
 export function parseQeLive(data: unknown, reportId: string): ParsedReport | { error: string } {
   let root = data;
@@ -275,7 +277,7 @@ export function parseQeLive(data: unknown, reportId: string): ParsedReport | { e
   for (const entry of Array.isArray(r.results) ? r.results : []) {
     const e = obj(entry);
     if (e.dropLoc !== 'Raid' || (e.dropType !== 'drop' && e.dropType !== 'max')) continue;
-    const difficulty = QE_DIFFICULTIES[Math.floor(Number(e.dropDifficulty) / 2)];
+    const difficulty = QE_DIFFICULTIES[Number(e.dropDifficulty)];
     const itemId = positiveInt(e.item);
     const level = positiveInt(e.level);
     const pct = Number(e.percDiff);
