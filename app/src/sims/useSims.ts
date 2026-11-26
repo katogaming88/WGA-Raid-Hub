@@ -32,7 +32,7 @@ export type SavedSim = {
 };
 
 // Each raider's average equipped item level today, from the daily gear read,
-// shirt and tabard left out as in game and as save_character_sim() keeps it
+// shirt and tabard left out, a two-hander counted once, as save_character_sim() keeps it
 // (#1888 part 2).
 type GearRow = { player_id: number; equipment_slot: string; item_level: number | null };
 export function gearLevels(rows: GearRow[]): Map<number, number> {

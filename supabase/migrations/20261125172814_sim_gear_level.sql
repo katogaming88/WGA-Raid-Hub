@@ -4,7 +4,7 @@
 -- choice on Settings > Loot > Sims. So each sim keeps the raider's average
 -- equipped item level when it was saved. The database reads it itself, from
 -- the gear read, not from the page; the page compares it with the same
--- average today. Shirt and tabard don't count, as in game.
+-- average today. Shirt and tabard don't count, and a two-hander counts once.
 --
 -- The other out-of-date rules (a set day each week, grey out or hide, one
 -- per difficulty) are team_settings.config keys read by the page; nothing
