@@ -131,8 +131,8 @@ function WishlistEditingCard({
       </div>
       {!season.hasRaid && (
         <p className="text-muted">
-          This season&rsquo;s raid hasn&rsquo;t been added yet, so wishlists saved here don&rsquo;t show on the
-          priority page. Turn it off, and open it again once the raid is in.
+          This season&rsquo;s raid hasn&rsquo;t been added yet, so wishlists saved here don&rsquo;t show on the priority
+          page. Turn it off, and open it again once the raid is in.
         </p>
       )}
       {canEdit ? (
