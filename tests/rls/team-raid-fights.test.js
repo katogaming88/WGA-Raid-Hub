@@ -180,26 +180,169 @@ describe('rebuild_team_raid_progress', () => {
     });
   });
 
-  it('leaves out a report Warcraft Logs no longer returns, and counts it again when it comes back', async () => {
+  // #1938: a deleted log never takes a kill off the card (Kat, 2026-11-27).
+  const markMissing = (q, teamId, code) =>
+    q(`update public.team_raid_reports set missing_since = now() where team_id = $1 and report_code = $2`, [
+      teamId,
+      code
+    ]);
+
+  it('keeps counting a report Warcraft Logs no longer returns, its only kill included', async () => {
     await withTxn(async ({ q }) => {
       await seedRaid(q);
       const { teamId } = await seedTeam(q);
       await seedCorpus(q, teamId);
-      const mark = (at) =>
-        q(`update public.team_raid_reports set missing_since = ${at} where team_id = $1 and report_code = 'reportB'`, [
-          teamId
-        ]);
-      await mark('now()');
-      await rebuild(q, teamId);
-      expect(
-        (await q(PROGRESS, [teamId])).rows.map((r) => [r.mythic_pulls, r.heroic_pulls, r.heroic_best_pct])
-      ).toEqual([
-        [2, 0, null],
-        [0, 1, 12]
-      ]);
-      await mark('null');
+      await markMissing(q, teamId, 'reportA');
+      await markMissing(q, teamId, 'reportB');
       await rebuild(q, teamId);
       expect((await q(PROGRESS, [teamId])).rows).toEqual(PINNED);
+    });
+  });
+
+  it('counts a pull logged in two reports once, and keeps it when one copy is deleted', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      await seedCorpus(q, teamId);
+      // A second raider's log of report A's night: the same three pulls.
+      await report(q, teamId, 'reportA2', '2026-09-14');
+      await fight(q, teamId, 'reportA2', 1, BOSS_ONE, 'mythic', false, 42.5);
+      await fight(q, teamId, 'reportA2', 2, BOSS_ONE, 'mythic', true, 0);
+      await fight(q, teamId, 'reportA2', 3, BOSS_TWO, 'heroic', false, 12);
+      await rebuild(q, teamId);
+      expect((await q(PROGRESS, [teamId])).rows).toEqual(PINNED);
+      // The copy that is still on Warcraft Logs is the one the card links to.
+      await markMissing(q, teamId, 'reportA');
+      await rebuild(q, teamId);
+      expect((await q(PROGRESS, [teamId])).rows).toEqual([{ ...PINNED[0], mythic_report_code: 'reportA2' }, PINNED[1]]);
+      // Both copies gone: the kill stays.
+      await markMissing(q, teamId, 'reportA2');
+      await rebuild(q, teamId);
+      expect((await q(PROGRESS, [teamId])).rows).toEqual(PINNED);
+    });
+  });
+
+  // A pull from `from` to `to` seconds after its report's 20:00 start, so two
+  // logs of one pull can start a few seconds apart, as two PCs' clocks do.
+  const pull = (q, teamId, code, id, kill, pct, from, to) =>
+    q(
+      `insert into public.team_raid_fights
+         (team_id, report_code, fight_id, encounter_id, difficulty, kill, boss_percentage, started_at, ended_at)
+       select $1, $2, $3, $4, 'heroic', $5, $6, r.started_at + $7 * interval '1 second', r.started_at + $8 * interval '1 second'
+         from public.team_raid_reports r where r.team_id = $1 and r.report_code = $2`,
+      [teamId, code, id, BOSS_TWO, kill, pct, from, to]
+    );
+  const heroic = async (q, teamId) => {
+    const [row] = (await q(PROGRESS, [teamId])).rows;
+    return [row.heroic_pulls, row.heroic_date, row.heroic_best_pct, row.heroic_report_code, row.heroic_fight_id];
+  };
+
+  it('counts a pull once when one log of it starts late or runs a little off', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      await report(q, teamId, 'full', '2026-09-14');
+      await report(q, teamId, 'late', '2026-09-14');
+      await report(q, teamId, 'skewed', '2026-09-14');
+      await pull(q, teamId, 'full', 1, false, 40, 0, 300);
+      await pull(q, teamId, 'late', 1, false, 40, 50, 150); // joined mid-pull
+      await pull(q, teamId, 'skewed', 1, false, 40, 20, 320); // clock 20 s ahead
+      await rebuild(q, teamId);
+      expect(await heroic(q, teamId)).toEqual([1, null, 40, 'full', 1]);
+    });
+  });
+
+  it('never lets a log a few seconds off swallow the next pull in the other log', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      // Log A's wipe (20-120 s) touches both log B's wipe (0-100 s) and B's
+      // kill right after (110-210 s); only the wipe is the same pull.
+      await report(q, teamId, 'logA', '2026-09-14');
+      await report(q, teamId, 'logB', '2026-09-14');
+      await pull(q, teamId, 'logA', 1, false, 30, 20, 120);
+      await pull(q, teamId, 'logB', 1, false, 30, 0, 100);
+      await pull(q, teamId, 'logB', 2, true, 0, 110, 210);
+      await rebuild(q, teamId);
+      expect(await heroic(q, teamId)).toEqual([2, '2026-09-14', null, 'logB', 2]);
+    });
+  });
+
+  it('never lets a log a few seconds off swallow the next pull, across three logs', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      // CodeRabbit on PR #1940: A's wipe (20-120 s) is B's wipe (0-100 s);
+      // C holds only the next pull, a kill (110-210 s). Two pulls.
+      await report(q, teamId, 'logA', '2026-09-14');
+      await report(q, teamId, 'logB', '2026-09-14');
+      await report(q, teamId, 'logC', '2026-09-14');
+      await pull(q, teamId, 'logA', 1, false, 30, 20, 120);
+      await pull(q, teamId, 'logB', 1, false, 30, 0, 100);
+      await pull(q, teamId, 'logC', 1, true, 0, 110, 210);
+      await rebuild(q, teamId);
+      expect(await heroic(q, teamId)).toEqual([2, '2026-09-14', null, 'logC', 1]);
+    });
+  });
+
+  it('never lets a copy that is itself dropped take a second pull with it', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      // CodeRabbit on PR #1940: A's wipe (30-130 s) is B's wipe (0-100 s), and
+      // also covers most of B's short kill right after (105-145 s). Two pulls.
+      await report(q, teamId, 'logA', '2026-09-14');
+      await report(q, teamId, 'logB', '2026-09-14');
+      await pull(q, teamId, 'logA', 1, false, 30, 30, 130);
+      await pull(q, teamId, 'logB', 1, false, 30, 0, 100);
+      await pull(q, teamId, 'logB', 2, true, 0, 105, 145);
+      await rebuild(q, teamId);
+      expect(await heroic(q, teamId)).toEqual([2, '2026-09-14', null, 'logB', 2]);
+    });
+  });
+
+  it('keeps the kill when one log of the pull stopped before it and recorded a wipe', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      await report(q, teamId, 'early', '2026-09-14');
+      await report(q, teamId, 'whole', '2026-09-14');
+      await pull(q, teamId, 'early', 1, false, 3, 0, 200);
+      await pull(q, teamId, 'whole', 1, true, 0, 5, 210);
+      await rebuild(q, teamId);
+      expect(await heroic(q, teamId)).toEqual([1, '2026-09-14', null, 'whole', 1]);
+    });
+  });
+
+  it('keeps the lowest health a copy of a wipe saw, even when that log is gone', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      // The first log stopped at 40%; the other saw the real 12% (Kat, 2026-11-27).
+      await report(q, teamId, 'early', '2026-09-14');
+      await report(q, teamId, 'whole', '2026-09-14');
+      await pull(q, teamId, 'early', 1, false, 40, 0, 200);
+      await pull(q, teamId, 'whole', 1, false, 12, 5, 210);
+      await rebuild(q, teamId);
+      expect(await heroic(q, teamId)).toEqual([1, null, 12, 'whole', 1]);
+      await markMissing(q, teamId, 'whole');
+      await rebuild(q, teamId);
+      expect(await heroic(q, teamId)).toEqual([1, null, 12, 'whole', 1]);
+    });
+  });
+
+  it('counts two pulls of one boss that do not overlap as two, across reports', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      // Same night, two logs, different pulls (a minute apart).
+      await report(q, teamId, 'first', '2026-09-14');
+      await report(q, teamId, 'second', '2026-09-14');
+      await fight(q, teamId, 'first', 1, BOSS_TWO, 'heroic', false, 30);
+      await fight(q, teamId, 'second', 2, BOSS_TWO, 'heroic', false, 20);
+      await rebuild(q, teamId);
+      const [row] = (await q(PROGRESS, [teamId])).rows;
+      expect(row).toMatchObject({ heroic_pulls: 2, heroic_best_pct: 20, heroic_report_code: 'second' });
     });
   });
 

@@ -4055,3 +4055,15 @@ Shipped: `20261126231830_team_raid_fights.sql`.
 **Read rule: public**, as on `team_raid_progress`, until #1286 sets it at cutover.
 
 [Full discussion -> #1470](https://github.com/katogaming88/WGA-Raid-Hub/issues/1470).
+
+## #1938 -- a deleted report's kill stays, and a pull logged twice counts once
+
+Shipped: `20261127110424_deleted_report_kills_stay.sql`.
+
+**A kill stays on the card after its report is deleted from Warcraft Logs** (Kat, 2026-11-27), reversing #1470's call from earlier the same day. The kill happened; deleting a duplicate, or a log by accident, does not undo it. `rebuild_team_raid_progress()` now counts a report with `missing_since` set like any other. `missing_since` stays as the record of which reports are gone, for #1472 and #1473 to show.
+
+**The same pull in two reports counts once** (Kat, 2026-11-27: "verify that they are the same pulls, and not duplicate them"). Counting deleted reports means a deleted duplicate would double the pull count for good, and two raiders uploading the same night already doubled it. Two fights in two reports are the same pull when they are on the same boss and difficulty and their start-to-end times overlap for at least half of the shorter one: two logs of one pull overlap almost end to end, and a log that joined late sits inside the other. A log whose clock runs a few seconds off only touches the next pull in the other log, well under half, so that next pull is not taken for a copy (CodeRabbit on PR #1940, which also showed that pairing each fight with its best match broke across three logs). Copies are matched best copy first: only a fight being kept takes copies, one from each other report at most, so a fight that is itself a copy never takes a second pull with it (CodeRabbit again). That needs a loop, so `rebuild_team_raid_progress()` is plpgsql now. The copy kept is one that recorded the kill first, since a log that stopped early records the same pull as a wipe; then the one that saw the boss lowest, so the best attempt is the truest even when its log is gone (Kat, 2026-11-27, over a working link; the fresh-agent review on PR #1940 found a 12% wipe showing as 40% without it); then one from a report Warcraft Logs still returns; then the earliest report, so the card links to a log that still opens when the copies agree. Known gap: two loggers whose PC clocks differ by more than half a pull count it twice, and by more than the gap to the next pull can pair the wrong pulls of a night; matching on Warcraft Logs' own fight details is the next step if that turns up.
+
+**Only the card for now.** The killed-boss skip on the lineup already keeps its skip when a report goes missing; #1471 decides which kills count there and for attendance.
+
+[Full discussion -> #1938](https://github.com/katogaming88/WGA-Raid-Hub/issues/1938).
