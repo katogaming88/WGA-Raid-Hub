@@ -577,6 +577,20 @@ Deno.test("marks the team's reports Warcraft Logs no longer returns, from where 
   );
 });
 
+Deno.test('a failed mark is reported, and the fights and progress still sync', async () => {
+  const db = fakeDb({ teams: [TEAM], configs: { 1: ONE_RAID } });
+  db.markMissingReports = () => Promise.reject(new Error('URI too long'));
+  const { fetch } = recordingFetch([
+    tokenResponse(),
+    reportsResponse(REPORTS),
+    zoneResponse('Test Raid Zone', ENCOUNTERS)
+  ]);
+  const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), { fetch, env: fullEnv(), db }));
+  assertEquals(res.body.synced, 1);
+  assertEquals(res.body.errors, [{ teamId: 1, error: 'Missing reports not marked: URI too long' }]);
+  assertEquals(db.calls.map((c) => c.method).slice(-3), ['upsertFights', 'rebuildProgress', 'insertKills']);
+});
+
 Deno.test('a run with no reports marks none missing', async () => {
   const { deps, db } = testDeps({
     state: { teams: [TEAM], configs: { 1: ONE_RAID }, seasonStart: null },

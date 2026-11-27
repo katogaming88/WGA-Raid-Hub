@@ -593,12 +593,19 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
             await deps.db.upsertReports(rows);
             reportsWritten += rows.length;
             // ponytail: an empty read marks nothing, so a team whose every
-            // report was deleted keeps counting its last one.
-            await deps.db.markMissingReports(
-              team.id,
-              readFrom === null ? null : new Date(readFrom).toISOString(),
-              rows.map((r) => r.report_code)
-            );
+            // report was deleted keeps counting its last one. A failed mark
+            // is reported and the fights and progress still sync: a deleted
+            // report only counts one run longer.
+            try {
+              await deps.db.markMissingReports(
+                team.id,
+                readFrom === null ? null : new Date(readFrom).toISOString(),
+                rows.map((r) => r.report_code)
+              );
+            } catch (err) {
+              const message = err instanceof Error ? err.message : 'Unknown error';
+              errors.push({ teamId: team.id, error: `Missing reports not marked: ${message}` });
+            }
           }
           if (zones.length > 0) {
             if (fights.size > 0) await deps.db.upsertFights([...fights.values()]);

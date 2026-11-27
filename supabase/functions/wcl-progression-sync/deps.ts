@@ -78,7 +78,9 @@ export function supabaseDb(): ProgressDb {
     async markMissingReports(teamId, from, seen) {
       // Report codes are Warcraft Logs' own letters and digits, so the list
       // needs no quoting. ponytail: the codes ride in the URL, about 17 bytes
-      // each; a read of thousands of reports would want an rpc instead.
+      // each, and the local gateway refuses one past about 470 codes (414).
+      // Teams read about 40 a tier; a team past a few hundred wants an rpc
+      // taking the codes in the body instead.
       let query = db()
         .from('team_raid_reports')
         .update({ missing_since: new Date().toISOString() })
