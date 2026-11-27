@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.311.5] - 2026-11-26
+
+### Project
+
+- Settings > Season > Wishlist editing offers only seasons whose raid has been added, the same list as Season view (#1928). A team could open wishlists for a season with no raid yet, and the entries saved there showed on no officer page. A season already open without a raid stays listed, marked "no raid yet", so the team leader can turn it off.
+
 ## [3.311.4] - 2026-11-26
 
 ### Project

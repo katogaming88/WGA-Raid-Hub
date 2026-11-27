@@ -14,16 +14,31 @@ import './settings.css';
 // closes wishlist editing per season. Raiders edit their own wishlist only
 // while it is open (My profile > Wishlist). set_team_season() writes the
 // audit row; passing only p_wishlist_open leaves signups as they are.
+type WishlistSeason = SeasonRow & { hasRaid: boolean };
 const useWishlistSeasons = () =>
-  useSupabaseQuery<SeasonRow[]>(['wishlist-season-options'], async (client) => {
-    const result = await client
-      .from('seasons')
-      .select('code, display_name, starts_at, ends_at')
-      .order('starts_at', { nullsFirst: false })
-      .order('position');
-    if (result.error) return { data: null, error: result.error };
-    return { data: visibleSeasons(result.data ?? [], easternToday()), error: null };
+  useSupabaseQuery<WishlistSeason[]>(['wishlist-season-options'], async (client) => {
+    const [result, zones] = await Promise.all([
+      client
+        .from('seasons')
+        .select('code, display_name, starts_at, ends_at')
+        .order('starts_at', { nullsFirst: false })
+        .order('position'),
+      client.from('raid_zones').select('season')
+    ]);
+    const error = result.error ?? zones.error;
+    if (error) return { data: null, error };
+    const raided = new Set(((zones.data ?? []) as { season: string | null }[]).map((z) => z.season));
+    return {
+      data: visibleSeasons(result.data ?? [], easternToday()).map((s) => ({ ...s, hasRaid: raided.has(s.code) })),
+      error: null
+    };
   });
+
+// The seasons a wishlist can be opened for: the ones whose raid has been added,
+// the same list as Season view, so the priority page can always show it
+// (#1928). One already open without a raid stays listed so it can be closed.
+export const wishlistSeasonOptions = (seasons: WishlistSeason[], openSeasons: string[]) =>
+  seasons.filter((s) => s.hasRaid || openSeasons.includes(s.code));
 
 function useSetWishlistOpen(teamId: number) {
   return useSupabaseMutation<null, { season: string; open: boolean }>(
@@ -51,7 +66,7 @@ export function WishlistEditingSection() {
           {(s) => (
             <WishlistEditingCard
               teamId={team.id}
-              seasons={list}
+              seasons={wishlistSeasonOptions(list, s.openSeasons)}
               openSeasons={s.openSeasons}
               canEdit={can('leadTeam')}
             />
@@ -69,7 +84,7 @@ function WishlistEditingCard({
   canEdit
 }: {
   teamId: number;
-  seasons: SeasonRow[];
+  seasons: WishlistSeason[];
   openSeasons: string[];
   canEdit: boolean;
 }) {
@@ -109,11 +124,17 @@ function WishlistEditingCard({
         >
           {seasons.map((s) => (
             <option key={s.code} value={s.code}>
-              {s.display_name}
+              {s.hasRaid ? s.display_name : `${s.display_name} (no raid yet)`}
             </option>
           ))}
         </select>
       </div>
+      {!season.hasRaid && (
+        <p className="text-muted">
+          This season&rsquo;s raid hasn&rsquo;t been added yet, so wishlists saved here don&rsquo;t show on the priority
+          page. Turn it off, and open it again once the raid is in.
+        </p>
+      )}
       {canEdit ? (
         <label>
           <input
