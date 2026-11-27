@@ -4055,3 +4055,15 @@ Shipped: `20261126231830_team_raid_fights.sql`.
 **Read rule: public**, as on `team_raid_progress`, until #1286 sets it at cutover.
 
 [Full discussion -> #1470](https://github.com/katogaming88/WGA-Raid-Hub/issues/1470).
+
+## #1938 -- a deleted report's kill stays, and a pull logged twice counts once
+
+Shipped: `20261127110424_deleted_report_kills_stay.sql`.
+
+**A kill stays on the card after its report is deleted from Warcraft Logs** (Kat, 2026-11-27), reversing #1470's call from earlier the same day. The kill happened; deleting a duplicate, or a log by accident, does not undo it. `rebuild_team_raid_progress()` now counts a report with `missing_since` set like any other. `missing_since` stays as the record of which reports are gone, for #1472 and #1473 to show.
+
+**The same pull in two reports counts once** (Kat, 2026-11-27: "verify that they are the same pulls, and not duplicate them"). Counting deleted reports means a deleted duplicate would double the pull count for good, and two raiders uploading the same night already doubled it. Two fights are the same pull when they are on the same boss and difficulty and their start-to-end times overlap: two different pulls of one boss never overlap, and two logs of one pull overlap almost end to end. The copy kept is from a report Warcraft Logs still returns first, then the earliest report, so the card links to a log that still opens when there is one. Known gap: two loggers whose PC clocks differ by more than a pull's length count it twice; matching on Warcraft Logs' own fight details is the next step if that turns up.
+
+**Only the card for now.** The killed-boss skip on the lineup already keeps its skip when a report goes missing; #1471 decides which kills count there and for attendance.
+
+[Full discussion -> #1938](https://github.com/katogaming88/WGA-Raid-Hub/issues/1938).

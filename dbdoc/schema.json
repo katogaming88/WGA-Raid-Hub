@@ -9565,7 +9565,7 @@
           "name": "missing_since",
           "type": "timestamp with time zone",
           "nullable": true,
-          "comment": "When the sync first read the report's window and Warcraft Logs did not return it (#1470): deleted, or made private. Null while it comes back. Its fights stay, and rebuild_team_raid_progress() leaves them out."
+          "comment": "When the sync first read the report's window and Warcraft Logs did not return it (#1470): deleted, or made private. Null while it comes back. Its fights stay and still count on the progression card (#1938)."
         }
       ],
       "indexes": [

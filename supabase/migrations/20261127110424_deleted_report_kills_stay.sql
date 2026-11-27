@@ -1,0 +1,102 @@
+-- #1938: a kill stays on the progression card after its Warcraft Logs report
+-- is deleted, and the same pull logged in two reports counts once.
+--
+-- #1470 left a report Warcraft Logs no longer returns (missing_since) out of
+-- rebuild_team_raid_progress(), so deleting a duplicate, or deleting a log by
+-- accident, could take a real kill off the card. Kat reversed that on
+-- 2026-11-27: the kill happened, and a deleted log does not undo it. A missing
+-- report now counts like any other.
+--
+-- Counting missing reports would make a deleted duplicate double the pull
+-- count for good, so the rebuild now counts each pull once however many of
+-- the team's main reports hold it. Two fights are the same pull when they are
+-- on the same boss and difficulty and their times overlap: two different
+-- pulls of one boss never overlap, and two raiders' logs of one pull overlap
+-- almost end to end. The copy kept is a report Warcraft Logs still returns
+-- first, then the earliest report, then the lowest report code and fight id,
+-- so the card links to a log that still opens when there is one.
+--
+-- missing_since stays as the record of which reports are gone (#1472 and
+-- #1473 may show it); it no longer changes what counts.
+
+create or replace function public.rebuild_team_raid_progress(p_team_id integer)
+returns void
+language sql
+set search_path = public
+as $$
+  with fights as (
+    select f.encounter_id, f.difficulty, f.kill, f.boss_percentage, f.report_code, f.fight_id,
+           f.started_at, f.ended_at,
+           r.raid_date, r.started_at as report_started_at,
+           (r.missing_since is not null) as missing
+      from team_raid_fights f
+      join team_raid_reports r on r.team_id = f.team_id and r.report_code = f.report_code
+     where f.team_id = p_team_id
+       and r.effective_kind = 'main'
+  ),
+  -- ponytail: overlap in time decides a copy, so two loggers whose PC clocks
+  -- differ by more than a pull's length count it twice; match on WCL's
+  -- fight details if that turns up.
+  main as (
+    select a.*
+      from fights a
+     where not exists (
+       select 1
+         from fights b
+        where b.encounter_id = a.encounter_id
+          and b.difficulty = a.difficulty
+          and b.report_code <> a.report_code
+          and b.started_at <= a.ended_at
+          and a.started_at <= b.ended_at
+          and (b.missing, b.report_started_at, b.report_code, b.fight_id)
+            < (a.missing, a.report_started_at, a.report_code, a.fight_id)
+     )
+  ),
+  agg as (
+    select encounter_id, difficulty,
+           count(*)::integer as pulls,
+           (array_agg(raid_date order by report_started_at, fight_id) filter (where kill))[1] as kill_date,
+           (array_agg(report_code order by report_started_at, fight_id) filter (where kill))[1] as kill_report,
+           (array_agg(fight_id order by report_started_at, fight_id) filter (where kill))[1] as kill_fight,
+           min(boss_percentage) filter (where not kill) as best_pct,
+           (array_agg(report_code order by boss_percentage, report_started_at, fight_id)
+              filter (where not kill and boss_percentage is not null))[1] as best_report,
+           (array_agg(fight_id order by boss_percentage, report_started_at, fight_id)
+              filter (where not kill and boss_percentage is not null))[1] as best_fight
+      from main
+     group by encounter_id, difficulty
+  )
+  insert into team_raid_progress (
+    team_id, encounter_id,
+    mythic_date, mythic_pulls, mythic_best_pct, mythic_report_code, mythic_fight_id,
+    heroic_date, heroic_pulls, heroic_best_pct, heroic_report_code, heroic_fight_id,
+    updated_at
+  )
+  select p_team_id, b.encounter_id,
+         m.kill_date, coalesce(m.pulls, 0), case when m.kill_date is null then m.best_pct end,
+         coalesce(m.kill_report, m.best_report), coalesce(m.kill_fight, m.best_fight),
+         h.kill_date, coalesce(h.pulls, 0), case when h.kill_date is null then h.best_pct end,
+         coalesce(h.kill_report, h.best_report), coalesce(h.kill_fight, h.best_fight),
+         now()
+    from (select distinct encounter_id from team_raid_fights where team_id = p_team_id) b
+    left join agg m on m.encounter_id = b.encounter_id and m.difficulty = 'mythic'
+    left join agg h on h.encounter_id = b.encounter_id and h.difficulty = 'heroic'
+  on conflict (team_id, encounter_id) do update set
+    mythic_date = excluded.mythic_date,
+    mythic_pulls = excluded.mythic_pulls,
+    mythic_best_pct = excluded.mythic_best_pct,
+    mythic_report_code = excluded.mythic_report_code,
+    mythic_fight_id = excluded.mythic_fight_id,
+    heroic_date = excluded.heroic_date,
+    heroic_pulls = excluded.heroic_pulls,
+    heroic_best_pct = excluded.heroic_best_pct,
+    heroic_report_code = excluded.heroic_report_code,
+    heroic_fight_id = excluded.heroic_fight_id,
+    updated_at = excluded.updated_at;
+$$;
+
+comment on function public.rebuild_team_raid_progress(integer) is
+  'Rebuilds a team''s team_raid_progress rows from team_raid_fights, counting the fights of its main reports, a report Warcraft Logs no longer returns included, and each pull once when two reports overlap on it (#1470, #1938). Called by wcl-progression-sync after it writes the fights, and by an officer''s change to a report (#1472).';
+
+comment on column public.team_raid_reports.missing_since is
+  'When the sync first read the report''s window and Warcraft Logs did not return it (#1470): deleted, or made private. Null while it comes back. Its fights stay and still count on the progression card (#1938).';

@@ -7,14 +7,33 @@ CREATE OR REPLACE FUNCTION public.rebuild_team_raid_progress(p_team_id integer)
  LANGUAGE sql
  SET search_path TO 'public'
 AS $function$
-  with main as (
+  with fights as (
     select f.encounter_id, f.difficulty, f.kill, f.boss_percentage, f.report_code, f.fight_id,
-           r.raid_date, r.started_at as report_started_at
+           f.started_at, f.ended_at,
+           r.raid_date, r.started_at as report_started_at,
+           (r.missing_since is not null) as missing
       from team_raid_fights f
       join team_raid_reports r on r.team_id = f.team_id and r.report_code = f.report_code
      where f.team_id = p_team_id
        and r.effective_kind = 'main'
-       and r.missing_since is null
+  ),
+  -- ponytail: overlap in time decides a copy, so two loggers whose PC clocks
+  -- differ by more than a pull's length count it twice; match on WCL's
+  -- fight details if that turns up.
+  main as (
+    select a.*
+      from fights a
+     where not exists (
+       select 1
+         from fights b
+        where b.encounter_id = a.encounter_id
+          and b.difficulty = a.difficulty
+          and b.report_code <> a.report_code
+          and b.started_at <= a.ended_at
+          and a.started_at <= b.ended_at
+          and (b.missing, b.report_started_at, b.report_code, b.fight_id)
+            < (a.missing, a.report_started_at, a.report_code, a.fight_id)
+     )
   ),
   agg as (
     select encounter_id, difficulty,

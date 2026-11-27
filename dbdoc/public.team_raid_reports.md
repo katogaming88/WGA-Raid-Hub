@@ -23,7 +23,7 @@ Every Warcraft Logs report the progression sync reads for a team (#1469), one ro
 | effective_kind | text |  | true | GENERATED ALWAYS AS COALESCE(kind_override, kind) STORED |  |  | kind_override when set, else kind: whether the report counts as the team's raid. |
 | created_at | timestamp with time zone | now() | false |  |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  | The last run that read the report: each run rewrites every report it reads, changed or not. |
-| missing_since | timestamp with time zone |  | true |  |  |  | When the sync first read the report's window and Warcraft Logs did not return it (#1470): deleted, or made private. Null while it comes back. Its fights stay, and rebuild_team_raid_progress() leaves them out. |
+| missing_since | timestamp with time zone |  | true |  |  |  | When the sync first read the report's window and Warcraft Logs did not return it (#1470): deleted, or made private. Null while it comes back. Its fights stay and still count on the progression card (#1938). |
 
 ## Constraints
 

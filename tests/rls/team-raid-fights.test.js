@@ -180,26 +180,60 @@ describe('rebuild_team_raid_progress', () => {
     });
   });
 
-  it('leaves out a report Warcraft Logs no longer returns, and counts it again when it comes back', async () => {
+  // #1938: a deleted log never takes a kill off the card (Kat, 2026-11-27).
+  const markMissing = (q, teamId, code) =>
+    q(`update public.team_raid_reports set missing_since = now() where team_id = $1 and report_code = $2`, [
+      teamId,
+      code
+    ]);
+
+  it('keeps counting a report Warcraft Logs no longer returns, its only kill included', async () => {
     await withTxn(async ({ q }) => {
       await seedRaid(q);
       const { teamId } = await seedTeam(q);
       await seedCorpus(q, teamId);
-      const mark = (at) =>
-        q(`update public.team_raid_reports set missing_since = ${at} where team_id = $1 and report_code = 'reportB'`, [
-          teamId
-        ]);
-      await mark('now()');
-      await rebuild(q, teamId);
-      expect(
-        (await q(PROGRESS, [teamId])).rows.map((r) => [r.mythic_pulls, r.heroic_pulls, r.heroic_best_pct])
-      ).toEqual([
-        [2, 0, null],
-        [0, 1, 12]
-      ]);
-      await mark('null');
+      await markMissing(q, teamId, 'reportA');
+      await markMissing(q, teamId, 'reportB');
       await rebuild(q, teamId);
       expect((await q(PROGRESS, [teamId])).rows).toEqual(PINNED);
+    });
+  });
+
+  it('counts a pull logged in two reports once, and keeps it when one copy is deleted', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      await seedCorpus(q, teamId);
+      // A second raider's log of report A's night: the same three pulls.
+      await report(q, teamId, 'reportA2', '2026-09-14');
+      await fight(q, teamId, 'reportA2', 1, BOSS_ONE, 'mythic', false, 42.5);
+      await fight(q, teamId, 'reportA2', 2, BOSS_ONE, 'mythic', true, 0);
+      await fight(q, teamId, 'reportA2', 3, BOSS_TWO, 'heroic', false, 12);
+      await rebuild(q, teamId);
+      expect((await q(PROGRESS, [teamId])).rows).toEqual(PINNED);
+      // The copy that is still on Warcraft Logs is the one the card links to.
+      await markMissing(q, teamId, 'reportA');
+      await rebuild(q, teamId);
+      expect((await q(PROGRESS, [teamId])).rows).toEqual([{ ...PINNED[0], mythic_report_code: 'reportA2' }, PINNED[1]]);
+      // Both copies gone: the kill stays.
+      await markMissing(q, teamId, 'reportA2');
+      await rebuild(q, teamId);
+      expect((await q(PROGRESS, [teamId])).rows).toEqual(PINNED);
+    });
+  });
+
+  it('counts two pulls of one boss that do not overlap as two, across reports', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      // Same night, two logs, different pulls (a minute apart).
+      await report(q, teamId, 'first', '2026-09-14');
+      await report(q, teamId, 'second', '2026-09-14');
+      await fight(q, teamId, 'first', 1, BOSS_TWO, 'heroic', false, 30);
+      await fight(q, teamId, 'second', 2, BOSS_TWO, 'heroic', false, 20);
+      await rebuild(q, teamId);
+      const [row] = (await q(PROGRESS, [teamId])).rows;
+      expect(row).toMatchObject({ heroic_pulls: 2, heroic_best_pct: 20, heroic_report_code: 'second' });
     });
   });
 
