@@ -17,10 +17,11 @@
 -- pairs them one to one, so a clock a few seconds off, which makes one log's
 -- pull touch the next pull in the other log too, never drops that next pull.
 -- The copy kept is one that recorded the kill first (a log that stopped
--- early records the same pull as a wipe), then one from a report Warcraft
--- Logs still returns, then the earliest report, then the lowest report code
--- and fight id, so the card links to a log that still opens when there is
--- one.
+-- early records the same pull as a wipe), then the one that saw the boss
+-- lowest, so the best attempt is the truest one even if its log is gone (Kat,
+-- 2026-11-27); then one from a report Warcraft Logs still returns, then the
+-- earliest report, then the lowest report code and fight id, so the card
+-- links to a log that still opens when the copies agree.
 --
 -- missing_since stays as the record of which reports are gone (#1472 and
 -- #1473 may show it); it no longer changes what counts.
@@ -45,8 +46,9 @@ as $$
     select a.report_code as a_report, a.fight_id as a_fight,
            b.report_code as b_report, b.fight_id as b_fight,
            least(a.ended_at, b.ended_at) - greatest(a.started_at, b.started_at) as overlap,
-           (not b.kill, b.missing, b.report_started_at, b.report_code, b.fight_id)
-             < (not a.kill, a.missing, a.report_started_at, a.report_code, a.fight_id) as b_first
+           (not b.kill, coalesce(b.boss_percentage, 101), b.missing, b.report_started_at, b.report_code, b.fight_id)
+             < (not a.kill, coalesce(a.boss_percentage, 101), a.missing, a.report_started_at, a.report_code, a.fight_id)
+             as b_first
       from fights a
       join fights b
         on b.encounter_id = a.encounter_id
@@ -65,8 +67,9 @@ as $$
      where n = 1
   ),
   -- ponytail: overlap in time decides a copy, so two loggers whose PC clocks
-  -- differ by more than a pull's length count it twice; match on WCL's
-  -- fight details if that turns up.
+  -- differ by more than about half of a pull plus the gap to the next one
+  -- can pair the wrong pulls and count one twice; match on WCL's fight
+  -- details if that turns up.
   main as (
     select f.*
       from fights f

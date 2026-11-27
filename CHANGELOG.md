@@ -16,7 +16,11 @@ answers to.
 
 ### Backend
 
-- A boss kill stays on the team's progression card after its Warcraft Logs report is deleted, whether it was a duplicate or deleted by accident (#1938). Since 3.312.0 the card dropped a deleted report's kills at its next rebuild. The same pull logged by two raiders now counts once, so a duplicate upload no longer doubles the pull count, and the card links to the copy that is still on Warcraft Logs when there is one.
+- A boss kill stays on the team's progression card after its Warcraft Logs report is deleted, whether it was a duplicate or deleted by accident (#1938). Since 3.312.0 the card dropped a deleted report's kills at its next rebuild. The same pull logged by two raiders now counts once, so a duplicate upload no longer doubles the pull count, and the card keeps the truest best attempt and the kill whichever log recorded them, linking to a copy still on Warcraft Logs when the copies agree.
+
+### Functions
+
+- `wcl-progression-sync`: a comment brought in line with #1938 (a missing report's fights still count); no change in behavior.
 
 ### Project
 

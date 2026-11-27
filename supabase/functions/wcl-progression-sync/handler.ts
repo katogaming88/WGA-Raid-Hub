@@ -592,10 +592,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           if (rows.length > 0) {
             await deps.db.upsertReports(rows);
             reportsWritten += rows.length;
-            // ponytail: an empty read marks nothing, so a team whose every
-            // report was deleted keeps counting its last one. A failed mark
-            // is reported and the fights and progress still sync: a deleted
-            // report only counts one run longer.
+            // An empty read marks nothing, so a glitch never marks every
+            // report gone. A failed mark is reported and the fights and
+            // progress still sync: missing_since is a record only, and a
+            // missing report's fights count either way (#1938).
             try {
               await deps.db.markMissingReports(
                 team.id,

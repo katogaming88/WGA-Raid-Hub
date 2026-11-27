@@ -22,8 +22,9 @@ AS $function$
     select a.report_code as a_report, a.fight_id as a_fight,
            b.report_code as b_report, b.fight_id as b_fight,
            least(a.ended_at, b.ended_at) - greatest(a.started_at, b.started_at) as overlap,
-           (not b.kill, b.missing, b.report_started_at, b.report_code, b.fight_id)
-             < (not a.kill, a.missing, a.report_started_at, a.report_code, a.fight_id) as b_first
+           (not b.kill, coalesce(b.boss_percentage, 101), b.missing, b.report_started_at, b.report_code, b.fight_id)
+             < (not a.kill, coalesce(a.boss_percentage, 101), a.missing, a.report_started_at, a.report_code, a.fight_id)
+             as b_first
       from fights a
       join fights b
         on b.encounter_id = a.encounter_id
@@ -42,8 +43,9 @@ AS $function$
      where n = 1
   ),
   -- ponytail: overlap in time decides a copy, so two loggers whose PC clocks
-  -- differ by more than a pull's length count it twice; match on WCL's
-  -- fight details if that turns up.
+  -- differ by more than about half of a pull plus the gap to the next one
+  -- can pair the wrong pulls and count one twice; match on WCL's fight
+  -- details if that turns up.
   main as (
     select f.*
       from fights f

@@ -281,6 +281,23 @@ describe('rebuild_team_raid_progress', () => {
     });
   });
 
+  it('keeps the lowest health a copy of a wipe saw, even when that log is gone', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      // The first log stopped at 40%; the other saw the real 12% (Kat, 2026-11-27).
+      await report(q, teamId, 'early', '2026-09-14');
+      await report(q, teamId, 'whole', '2026-09-14');
+      await pull(q, teamId, 'early', 1, false, 40, 0, 200);
+      await pull(q, teamId, 'whole', 1, false, 12, 5, 210);
+      await rebuild(q, teamId);
+      expect(await heroic(q, teamId)).toEqual([1, null, 12, 'whole', 1]);
+      await markMissing(q, teamId, 'whole');
+      await rebuild(q, teamId);
+      expect(await heroic(q, teamId)).toEqual([1, null, 12, 'whole', 1]);
+    });
+  });
+
   it('counts two pulls of one boss that do not overlap as two, across reports', async () => {
     await withTxn(async ({ q }) => {
       await seedRaid(q);
