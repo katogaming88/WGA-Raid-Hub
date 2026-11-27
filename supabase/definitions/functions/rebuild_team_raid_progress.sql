@@ -20,7 +20,8 @@ AS $function$
   -- A fight is a copy to drop when another report holds the same pull (they
   -- overlap for at least half of the shorter one) and that copy sorts first.
   -- ponytail: overlap in time decides a copy, so two loggers whose PC clocks
-  -- differ by more than half a pull count it twice; match on WCL's fight
+  -- differ by more than half a pull count it twice, and by more than the gap
+  -- to the next pull can take a short log of that pull for a copy; match on WCL's fight
   -- details if that turns up.
   main as (
     select a.*
