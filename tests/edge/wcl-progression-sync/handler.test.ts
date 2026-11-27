@@ -6,13 +6,19 @@
 // refuse. Each team's reports are fetched once per run from the tier's start,
 // and once more from an earlier tier's start for a raid filed under it, and
 // every one is kept in team_raid_reports with the title rule's verdict
-// (#1469). The progress rows are the ones the pre-split aggregation
-// produced over this corpus, recorded before the split, so the move is
-// measured against what was deployed. The runner grants no permission: a path
+// (#1469). Every Heroic and Mythic pull on a listed boss is kept in
+// team_raid_fights (#1470) and the progress rebuilt from them in SQL; the
+// numbers the old count pinned over this corpus are now checked in
+// tests/rls/team-raid-fights.test.js. The runner grants no permission: a path
 // that reached the platform fetch or Deno.env would throw into the catch-all
 // and fail the body assertion.
 import { assertEquals, assertMatch } from 'jsr:@std/assert@1';
-import { type Deps, handle, type ReportRow } from '../../../supabase/functions/wcl-progression-sync/handler.ts';
+import {
+  type Deps,
+  type FightRow,
+  handle,
+  type ReportRow
+} from '../../../supabase/functions/wcl-progression-sync/handler.ts';
 import { VERSION } from '../../../supabase/functions/wcl-progression-sync/version.ts';
 import { envOf } from '../_support/corpus.ts';
 import { recordingFetch } from '../_support/fetch.ts';
@@ -60,6 +66,13 @@ const TIER_START_MS = Date.UTC(2026, 7, 11, 4);
 
 function reportsWritten(db: FakeDb) {
   return db.calls.filter((c) => c.method === 'upsertReports').map((c) => c.args[0] as ReportRow[]);
+}
+
+// The fights the run wrote, as report#fight and the raid_encounters id.
+function fightsWritten(db: FakeDb) {
+  return db.calls
+    .filter((c) => c.method === 'upsertFights')
+    .map((c) => (c.args[0] as FightRow[]).map((f) => [`${f.report_code}#${f.fight_id}`, f.encounter_id]));
 }
 
 function reportsCalls(calls: Array<{ body?: string | null }>) {
@@ -216,7 +229,8 @@ Deno.test('a team with raids and no seasonName syncs, stamped with the current t
       'upsertRaidZone',
       'upsertEncounters',
       'upsertReports',
-      'upsertProgress',
+      'upsertFights',
+      'rebuildProgress',
       'insertKills'
     ]
   );
@@ -288,26 +302,19 @@ Deno.test("a raid filed under an earlier tier keeps its tier and is read from th
     ['MID2', 'MID3']
   );
 
-  // The outgoing raid keeps its Mythic first kill from the earlier tier and
-  // takes the Heroic kill of this one; the new raid's comes from this tier
-  // alone, so the earlier night's pull on its boss is not counted.
-  const progress = db.calls
-    .filter((c) => c.method === 'upsertProgress')
-    .map((c) =>
-      (c.args[0] as Array<Record<string, unknown>>).map((row) => [
-        row.encounter_id,
-        row.mythic_date,
-        row.mythic_pulls,
-        row.heroic_date,
-        row.heroic_pulls
-      ])
-    );
-  assertEquals(progress, [
+  // The outgoing raid keeps its pulls from the earlier tier and takes this
+  // one's; the new raid's come from this tier alone, so the earlier night's
+  // pull on its boss is not kept.
+  assertEquals(fightsWritten(db), [
     [
-      [500, '2026-09-14', 3, '2026-11-12', 1],
-      [501, null, 0, null, 2]
-    ],
-    [[502, null, 0, '2026-11-12', 1]]
+      ['reportA#1', 500],
+      ['reportA#2', 500],
+      ['reportA#3', 501],
+      ['reportB#1', 500],
+      ['reportB#2', 501],
+      ['reportN#2', 500],
+      ['reportN#1', 502]
+    ]
   ]);
   assertEquals(
     killsWritten(db).map((rows) =>
@@ -317,9 +324,9 @@ Deno.test("a raid filed under an earlier tier keeps its tier and is read from th
       [
         ['reportA', 2],
         ['reportB', 1],
-        ['reportN', 2]
-      ],
-      [['reportN', 1]]
+        ['reportN', 2],
+        ['reportN', 1]
+      ]
     ]
   );
 
@@ -428,9 +435,17 @@ Deno.test("each raid counts the reports since its own tier's start, and a bounda
   });
   const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
   assertEquals(res, { status: 200, body: { success: true, teams: 1, synced: 2, errors: [], reports: 4 } });
-  // Report J is before the mini raid's tier, so the mini raid has no pull
-  // since its start and writes no progress; the raid from the tier before it does.
-  assertEquals(db.calls.filter((c) => c.method === 'upsertProgress').length, 1);
+  // Report J is before the mini raid's tier, so its pull on the mini raid's
+  // boss is not kept; the raid from the tier before it keeps its pulls.
+  assertEquals(fightsWritten(db), [
+    [
+      ['reportA#1', 500],
+      ['reportA#2', 500],
+      ['reportA#3', 501],
+      ['reportB#1', 500],
+      ['reportB#2', 501]
+    ]
+  ]);
   assertEquals(
     reportsWritten(db).map((rows) => rows.map((r) => r.report_code)),
     [['reportJ', 'reportA', 'reportB', 'reportEdge']]
@@ -481,7 +496,7 @@ Deno.test("stamps raid_zones with the current tier's code and writes the pinned 
   assertEquals(calls.length, 4);
   assertMatch(
     calls[1].body ?? '',
-    new RegExp(`reports\\(guildID: 777, limit: 50, page: 1, startTime: ${TIER_START_MS}\\)`)
+    new RegExp(`reports\\(guildID: 777, limit: 25, page: 1, startTime: ${TIER_START_MS}\\)`)
   );
   assertMatch(calls[2].body ?? '', /zone\(id: 44\)/);
   assertMatch(calls[3].body ?? '', /zone\(id: 45\)/);
@@ -497,7 +512,8 @@ Deno.test("stamps raid_zones with the current tier's code and writes the pinned 
       'upsertEncounters',
       'raidZoneSeason',
       'upsertReports',
-      'upsertProgress',
+      'upsertFights',
+      'rebuildProgress',
       'insertKills'
     ]
   );
@@ -511,39 +527,69 @@ Deno.test("stamps raid_zones with the current tier's code and writes the pinned 
     ]
   ]);
 
-  const rows = (db.calls[8].args[0] as Array<Record<string, unknown>>).map((row) => {
-    const { updated_at, ...rest } = row;
-    assertMatch(String(updated_at), /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
-    return rest;
+  // The zone's Heroic and Mythic pulls, the other zone's boss and the Normal
+  // kill left out; the progress the card reads is rebuilt from them in SQL,
+  // and tests/rls/team-raid-fights.test.js holds this corpus's numbers.
+  assertEquals(fightsWritten(db), [
+    [
+      ['reportA#1', 500],
+      ['reportA#2', 500],
+      ['reportA#3', 501],
+      ['reportB#1', 500],
+      ['reportB#2', 501]
+    ]
+  ]);
+  assertEquals(db.calls[9].args, [1]);
+});
+
+Deno.test('a pull keeps how far it got, when it started and ended, and the phase it ended in', async () => {
+  const { deps, calls, db } = testDeps({
+    state: { teams: [TEAM], configs: { 1: { raidProgression: [{ wclZoneId: 44, name: 'Test Raid' }] } } },
+    responses: [
+      tokenResponse(),
+      reportsResponse([
+        {
+          code: 'reportP',
+          title: 'Phoenix Mythic 9/14',
+          startTime: REPORT_A_START,
+          fights: [
+            {
+              id: 7,
+              encounterID: 3001,
+              difficulty: 5,
+              kill: false,
+              bossPercentage: 23.45,
+              fightPercentage: 61.2,
+              startTime: 600000,
+              endTime: 845500,
+              lastPhase: 2,
+              lastPhaseIsIntermission: true
+            }
+          ]
+        }
+      ]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS)
+    ]
   });
-  assertEquals(rows, [
+  await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
+  assertMatch(
+    JSON.parse(reportsCalls(calls)[0].body ?? '{}').query,
+    /fights \{\s*id\s+encounterID\s+difficulty\s+kill\s+bossPercentage\s+fightPercentage\s+startTime\s+endTime\s+lastPhase\s+lastPhaseIsIntermission\s*\}/
+  );
+  assertEquals(db.calls.find((c) => c.method === 'upsertFights')?.args[0], [
     {
       team_id: 1,
+      report_code: 'reportP',
+      fight_id: 7,
       encounter_id: 500,
-      mythic_date: '2026-09-14',
-      mythic_pulls: 3,
-      mythic_best_pct: null,
-      mythic_report_code: 'reportA',
-      mythic_fight_id: 2,
-      heroic_date: null,
-      heroic_pulls: 0,
-      heroic_best_pct: null,
-      heroic_report_code: null,
-      heroic_fight_id: null
-    },
-    {
-      team_id: 1,
-      encounter_id: 501,
-      mythic_date: null,
-      mythic_pulls: 0,
-      mythic_best_pct: null,
-      mythic_report_code: null,
-      mythic_fight_id: null,
-      heroic_date: null,
-      heroic_pulls: 2,
-      heroic_best_pct: 8.25,
-      heroic_report_code: 'reportB',
-      heroic_fight_id: 2
+      difficulty: 'mythic',
+      kill: false,
+      boss_percentage: 23.45,
+      fight_percentage: 61.2,
+      started_at: '2026-09-15T00:10:00.000Z',
+      ended_at: '2026-09-15T00:14:05.500Z',
+      last_phase: 2,
+      last_phase_is_intermission: true
     }
   ]);
 });
@@ -631,7 +677,7 @@ Deno.test('a Heroic and a Mythic kill after midnight are both stored, on the nig
   ]);
 });
 
-Deno.test('a night of wipes writes its progress and no kills', async () => {
+Deno.test('a night of wipes writes its pulls and no kills', async () => {
   const { deps, db } = testDeps({
     state: { teams: [TEAM], configs: { 1: ONE_RAID } },
     responses: [
@@ -650,7 +696,13 @@ Deno.test('a night of wipes writes its progress and no kills', async () => {
     ]
   });
   await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
-  assertEquals(db.calls.at(-1)?.method, 'upsertProgress');
+  assertEquals(db.calls.at(-1)?.method, 'rebuildProgress');
+  assertEquals(fightsWritten(db), [
+    [
+      ['reportD#1', 500],
+      ['reportD#2', 501]
+    ]
+  ]);
   assertEquals(killsWritten(db), []);
 });
 
@@ -686,7 +738,7 @@ Deno.test("a failed kills write is reported and the team's other raids still syn
       reports: 3
     }
   });
-  assertEquals(db.calls.filter((c) => c.method === 'upsertProgress').length, 2);
+  assertEquals(db.calls.filter((c) => c.method === 'rebuildProgress').length, 1);
 });
 
 Deno.test('a zone WarcraftLogs does not know is skipped and counted as not synced', async () => {
@@ -754,10 +806,10 @@ Deno.test('a tier with no start date fetches every report, as before the window'
     responses: [tokenResponse(), reportsResponse(REPORTS), zoneResponse('Test Raid Zone', ENCOUNTERS)]
   });
   await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
-  assertMatch(reportsCalls(calls)[0].body ?? '', /reports\(guildID: 777, limit: 50, page: 1\)/);
+  assertMatch(reportsCalls(calls)[0].body ?? '', /reports\(guildID: 777, limit: 25, page: 1\)/);
 });
 
-Deno.test('writes a row for every report it read, before any progress or kill', async () => {
+Deno.test('writes a row for every report it read, before its fights, the progress and the kills', async () => {
   // A third night, a Heroic wipe and a Heroic kill on boss two.
   const REPORT_H = {
     code: 'reportH',
@@ -776,7 +828,7 @@ Deno.test('writes a row for every report it read, before any progress or kill', 
   const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
   assertEquals(res.body.reports, 3);
   const methods = db.calls.map((c) => c.method);
-  assertEquals(methods.slice(-3), ['upsertReports', 'upsertProgress', 'insertKills']);
+  assertEquals(methods.slice(-4), ['upsertReports', 'upsertFights', 'rebuildProgress', 'insertKills']);
   // Pulls and kills count Heroic and Mythic fights on the raid's own bosses:
   // report B's fight on another zone's boss and its Normal kill are not counted.
   assertEquals(reportsWritten(db), [
@@ -912,7 +964,8 @@ Deno.test(
         'upsertRaidZone',
         'upsertEncounters',
         'upsertReports',
-        'upsertProgress',
+        'upsertFights',
+        'rebuildProgress',
         'insertKills'
       ]
     );
@@ -936,7 +989,7 @@ Deno.test('a raid already filed under the current tier syncs as before', async (
     db.calls.filter((c) => c.method === 'upsertRaidZone').map((c) => (c.args[0] as { season: string }).season),
     [SEASON_CODE]
   );
-  assertEquals(db.calls.filter((c) => c.method === 'upsertProgress').length, 1);
+  assertEquals(db.calls.filter((c) => c.method === 'rebuildProgress').length, 1);
   assertEquals(killsWritten(db).length, 1);
 });
 
@@ -1016,9 +1069,10 @@ Deno.test("a zone query Warcraft Logs does not answer is the team's error, and n
   );
 });
 
-// The reports are the newest write, as the kills were: when they fail, the
-// progress the landing page reads and the kills still sync, and the run says so.
-Deno.test('a failed reports write is reported and the progress and kills still sync', async () => {
+// The fights are a foreign key to their reports, and the progress is rebuilt
+// from the fights: when the reports fail, neither is written, the team's
+// progress stays as it was, and the kills still sync.
+Deno.test('a failed reports write stops the fights and the progress, and the kills still sync', async () => {
   const db = fakeDb({ teams: [TEAM], configs: { 1: ONE_RAID } });
   db.upsertReports = () => Promise.reject(new Error('team_raid_reports is read-only tonight'));
   const { fetch } = recordingFetch([
@@ -1032,18 +1086,18 @@ Deno.test('a failed reports write is reported and the progress and kills still s
     body: {
       success: true,
       teams: 1,
-      synced: 1,
-      errors: [{ teamId: 1, error: 'Reports not saved: team_raid_reports is read-only tonight' }],
+      synced: 0,
+      errors: [{ teamId: 1, error: 'Progress not saved: team_raid_reports is read-only tonight' }],
       reports: 0
     }
   });
-  assertEquals(db.calls.map((c) => c.method).slice(-2), ['upsertProgress', 'insertKills']);
+  assertEquals(db.calls.map((c) => c.method).slice(-1), ['insertKills']);
 });
 
-// A raid counts as synced once its progress is written, not before.
-Deno.test('a raid whose progress write fails is not counted as synced', async () => {
+// A raid counts as synced once its progress is rebuilt, not before.
+Deno.test('a raid whose progress rebuild fails is not counted as synced', async () => {
   const db = fakeDb({ teams: [TEAM], configs: { 1: ONE_RAID } });
-  db.upsertProgress = () => Promise.reject(new Error('team_raid_progress is read-only tonight'));
+  db.rebuildProgress = () => Promise.reject(new Error('team_raid_progress is read-only tonight'));
   const { fetch } = recordingFetch([
     tokenResponse(),
     reportsResponse(REPORTS),
@@ -1056,7 +1110,7 @@ Deno.test('a raid whose progress write fails is not counted as synced', async ()
       success: true,
       teams: 1,
       synced: 0,
-      errors: [{ teamId: 1, error: 'team_raid_progress is read-only tonight' }],
+      errors: [{ teamId: 1, error: 'Progress not saved: team_raid_progress is read-only tonight' }],
       reports: 2
     }
   });
@@ -1080,11 +1134,15 @@ Deno.test('a report repeated across two pages is kept and counted once', async (
     reportsWritten(db).map((rows) => rows.map((r) => r.report_code)),
     [['reportA', 'reportB']]
   );
-  const progress = db.calls.find((c) => c.method === 'upsertProgress')?.args[0] as Array<Record<string, unknown>>;
-  assertEquals(
-    progress.map((row) => row.mythic_pulls),
-    [3, 0]
-  );
+  assertEquals(fightsWritten(db), [
+    [
+      ['reportA#1', 500],
+      ['reportA#2', 500],
+      ['reportA#3', 501],
+      ['reportB#1', 500],
+      ['reportB#2', 501]
+    ]
+  ]);
 });
 
 // An earlier tier's reports are read once per team, however many of its
@@ -1168,7 +1226,7 @@ Deno.test(
       }
     });
     assertEquals(
-      db.calls.filter((c) => ['upsertReports', 'upsertProgress', 'insertKills'].includes(c.method)),
+      db.calls.filter((c) => ['upsertReports', 'upsertFights', 'rebuildProgress', 'insertKills'].includes(c.method)),
       []
     );
   }
@@ -1178,7 +1236,7 @@ Deno.test(
 // list still going at the cap is a partial list, the team's error like a page
 // that fails.
 Deno.test("a list still going at the page cap is the team's error, and nothing is written", async () => {
-  const pages = Array.from({ length: 20 }, (_, i) => reportsPage([{ ...REPORTS[0], code: `page${i + 1}` }], true));
+  const pages = Array.from({ length: 40 }, (_, i) => reportsPage([{ ...REPORTS[0], code: `page${i + 1}` }], true));
   const { deps, calls, db } = testDeps({
     state: { teams: [TEAM], configs: { 1: ONE_RAID } },
     responses: [tokenResponse(), ...pages, zoneResponse('Test Raid Zone', ENCOUNTERS)]
@@ -1190,11 +1248,11 @@ Deno.test("a list still going at the page cap is the team's error, and nothing i
       success: true,
       teams: 1,
       synced: 0,
-      errors: [{ teamId: 1, error: 'Reports past page 20 not read' }],
+      errors: [{ teamId: 1, error: 'Reports past page 40 not read' }],
       reports: 0
     }
   });
-  assertEquals(reportsCalls(calls).length, 20);
+  assertEquals(reportsCalls(calls).length, 40);
   assertEquals(
     db.calls.map((c) => c.method),
     ['teams', 'currentSeason', 'teamConfig']

@@ -3,9 +3,9 @@
 // that nothing was written before a refusal.
 import type {
   EncounterRow,
+  FightRow,
   KillRow,
   ProgressDb,
-  ProgressRow,
   RaidZoneRow,
   ReportRow,
   SavedEncounter,
@@ -73,8 +73,12 @@ export function fakeDb(state: FakeDbState = {}): FakeDb {
       record('upsertReports', rows);
       return Promise.resolve();
     },
-    upsertProgress(rows: ProgressRow[]) {
-      record('upsertProgress', rows);
+    upsertFights(rows: FightRow[]) {
+      record('upsertFights', rows);
+      return Promise.resolve();
+    },
+    rebuildProgress(teamId: number) {
+      record('rebuildProgress', teamId);
       return Promise.resolve();
     },
     insertKills(rows: KillRow[]) {

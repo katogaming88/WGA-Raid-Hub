@@ -8,8 +8,8 @@ Every Warcraft Logs report the progression sync reads for a team (#1469), one ro
 
 | Name | Type | Default | Nullable | Extra Definition | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | ---------------- | -------- | ------- | ------- |
-| team_id | integer |  | false |  |  | [public.teams](public.teams.md) |  |
-| report_code | text |  | false |  |  |  |  |
+| team_id | integer |  | false |  | [public.team_raid_fights](public.team_raid_fights.md) | [public.teams](public.teams.md) |  |
+| report_code | text |  | false |  | [public.team_raid_fights](public.team_raid_fights.md) |  |  |
 | title | text |  | true |  |  |  | The title as Warcraft Logs returns it; null when it has none. A report uploaded with no title gets a default one there, such as the raid's name. |
 | started_at | timestamp with time zone |  | false |  |  |  |  |
 | raid_date | date |  | false |  |  |  | The report's raid night: its start in Eastern time, a start before 6 a.m. counting as the night before, as on team_raid_kills and attendance. |
@@ -54,6 +54,7 @@ Every Warcraft Logs report the progression sync reads for a team (#1469), one ro
 erDiagram
 
 "public.team_raid_reports" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_raid_fights" }o--|| "public.team_raid_reports" : "FOREIGN KEY (team_id, report_code) REFERENCES team_raid_reports(team_id, report_code) ON DELETE CASCADE"
 "public.team_raid_reports" }o--o| "public.people" : "FOREIGN KEY (kind_override_by) REFERENCES people(id) ON DELETE SET NULL"
 
 "public.team_raid_reports" {
@@ -81,6 +82,22 @@ erDiagram
   integer wcl_guild_id
   integer guild_id FK
   boolean unlisted
+}
+"public.team_raid_fights" {
+  integer team_id FK
+  text report_code FK
+  integer fight_id
+  integer encounter_id FK
+  text difficulty
+  boolean kill
+  numeric_5_2_ boss_percentage
+  numeric_5_2_ fight_percentage
+  timestamp_with_time_zone started_at
+  timestamp_with_time_zone ended_at
+  integer last_phase
+  boolean last_phase_is_intermission
+  timestamp_with_time_zone created_at
+  timestamp_with_time_zone updated_at
 }
 "public.people" {
   integer id

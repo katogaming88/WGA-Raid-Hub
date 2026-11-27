@@ -1,0 +1,259 @@
+// team_raid_fights (#1470): every Heroic and Mythic boss pull the progression
+// sync reads, one row per fight, and rebuild_team_raid_progress(), which
+// rebuilds a team's team_raid_progress rows from the fights of its main
+// reports (team_raid_reports.effective_kind, #1469). Anyone reads the fights,
+// as anyone reads the progress; only the sync's service role writes them.
+//
+// Each case mints its own team (seedTeam), so it never writes a seeded row.
+// Each test runs in one rolled-back transaction (helpers.js withTxn).
+import { describe, it, expect, afterAll } from 'vitest';
+import { pool, withTxn, seedTeam } from './helpers.js';
+
+afterAll(() => pool.end());
+
+const BOSS_ONE = 9201;
+const BOSS_TWO = 9202;
+
+async function seedRaid(q) {
+  await q(`insert into public.raid_zones (id, wcl_zone_id, name, season, sort_index)
+           values (9200, 99200, 'Test Raid', 'MID2', 0)`);
+  await q(`insert into public.raid_encounters (id, zone_id, wcl_encounter_id, name, sort_index)
+           values (${BOSS_ONE}, 9200, 3001, 'Boss One', 0), (${BOSS_TWO}, 9200, 3002, 'Boss Two', 1)`);
+}
+
+// A report as the sync writes it, starting at 20:00 Eastern on its raid date.
+const report = (q, teamId, code, raidDate, kind = 'main') =>
+  q(
+    `insert into public.team_raid_reports (team_id, report_code, title, started_at, raid_date, kind)
+     values ($1, $2, $2, ($3::date + time '20:00') at time zone 'America/New_York', $3, $4)`,
+    [teamId, code, raidDate, kind]
+  );
+
+// A pull, a minute per fight id into its report.
+const fight = (q, teamId, code, id, encounter, difficulty, kill, pct) =>
+  q(
+    `insert into public.team_raid_fights
+       (team_id, report_code, fight_id, encounter_id, difficulty, kill, boss_percentage, started_at, ended_at)
+     select $1, $2, $3::integer, $4, $5, $6, $7, r.started_at + $3::integer * interval '1 minute', r.started_at + $3 * interval '1 minute'
+       from public.team_raid_reports r where r.team_id = $1 and r.report_code = $2`,
+    [teamId, code, id, encounter, difficulty, kill, pct]
+  );
+
+const rebuild = (q, teamId) => q('select public.rebuild_team_raid_progress($1)', [teamId]);
+
+const PROGRESS = `select encounter_id,
+         to_char(mythic_date, 'YYYY-MM-DD') as mythic_date, mythic_pulls, mythic_best_pct::float as mythic_best_pct,
+         mythic_report_code, mythic_fight_id,
+         to_char(heroic_date, 'YYYY-MM-DD') as heroic_date, heroic_pulls, heroic_best_pct::float as heroic_best_pct,
+         heroic_report_code, heroic_fight_id
+    from public.team_raid_progress where team_id = $1 order by encounter_id`;
+
+// The corpus tests/edge/wcl-progression-sync/handler.test.ts pinned the old
+// TypeScript count against. Report A: a Mythic wipe at 42.5% then a kill on
+// boss one, a Heroic wipe at 12% on boss two. Report B, later: a second Mythic
+// kill on boss one, a better Heroic wipe at 8.25% on boss two. The sync drops
+// the other fights (a boss of no listed raid, a Normal kill) before writing.
+async function seedCorpus(q, teamId, kindB = 'main') {
+  await report(q, teamId, 'reportA', '2026-09-14');
+  await report(q, teamId, 'reportB', '2026-09-17', kindB);
+  await fight(q, teamId, 'reportA', 1, BOSS_ONE, 'mythic', false, 42.5);
+  await fight(q, teamId, 'reportA', 2, BOSS_ONE, 'mythic', true, 0);
+  await fight(q, teamId, 'reportA', 3, BOSS_TWO, 'heroic', false, 12);
+  await fight(q, teamId, 'reportB', 1, BOSS_ONE, 'mythic', true, 0);
+  await fight(q, teamId, 'reportB', 2, BOSS_TWO, 'heroic', false, 8.25);
+}
+
+// What the TypeScript count wrote for that corpus (handler.test.ts, before #1470).
+const PINNED = [
+  {
+    encounter_id: BOSS_ONE,
+    mythic_date: '2026-09-14',
+    mythic_pulls: 3,
+    mythic_best_pct: null,
+    mythic_report_code: 'reportA',
+    mythic_fight_id: 2,
+    heroic_date: null,
+    heroic_pulls: 0,
+    heroic_best_pct: null,
+    heroic_report_code: null,
+    heroic_fight_id: null
+  },
+  {
+    encounter_id: BOSS_TWO,
+    mythic_date: null,
+    mythic_pulls: 0,
+    mythic_best_pct: null,
+    mythic_report_code: null,
+    mythic_fight_id: null,
+    heroic_date: null,
+    heroic_pulls: 2,
+    heroic_best_pct: 8.25,
+    heroic_report_code: 'reportB',
+    heroic_fight_id: 2
+  }
+];
+
+describe('rebuild_team_raid_progress', () => {
+  it('writes the numbers the sync wrote before, for a team with no alt run', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      await seedCorpus(q, teamId);
+      await rebuild(q, teamId);
+      expect((await q(PROGRESS, [teamId])).rows).toEqual(PINNED);
+    });
+  });
+
+  it('rewrites a row the sync left, and leaves another team alone', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      const other = await seedTeam(q);
+      for (const t of [teamId, other.teamId]) {
+        await q(
+          `insert into public.team_raid_progress (team_id, encounter_id, mythic_pulls, heroic_pulls)
+           values ($1, $2, 99, 99)`,
+          [t, BOSS_ONE]
+        );
+      }
+      await seedCorpus(q, teamId);
+      await rebuild(q, teamId);
+      expect((await q(PROGRESS, [teamId])).rows).toEqual(PINNED);
+      expect((await q(PROGRESS, [other.teamId])).rows.map((r) => r.mythic_pulls)).toEqual([99]);
+    });
+  });
+
+  it('counts none of an alt run: not its pulls, not its kill date, not its best attempt', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      // The alt run kills boss two on Heroic a night before the main night,
+      // which wipes on it twice, at 30% and at 20%.
+      await report(q, teamId, 'altRun', '2026-09-13', 'alt');
+      await report(q, teamId, 'mainNight', '2026-09-14');
+      await fight(q, teamId, 'altRun', 1, BOSS_TWO, 'heroic', false, 5);
+      await fight(q, teamId, 'altRun', 2, BOSS_TWO, 'heroic', true, 0);
+      await fight(q, teamId, 'mainNight', 1, BOSS_TWO, 'heroic', false, 30);
+      await fight(q, teamId, 'mainNight', 2, BOSS_TWO, 'heroic', false, 20);
+      await rebuild(q, teamId);
+      const [row] = (await q(PROGRESS, [teamId])).rows;
+      expect(row).toMatchObject({
+        encounter_id: BOSS_TWO,
+        heroic_date: null,
+        heroic_pulls: 2,
+        heroic_best_pct: 20,
+        heroic_report_code: 'mainNight',
+        heroic_fight_id: 2
+      });
+    });
+  });
+
+  it('counts an alt run an officer marks as the team’s raid, and drops a main night marked alt', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      await seedCorpus(q, teamId, 'alt');
+      await rebuild(q, teamId);
+      // Report B out: one Mythic kill and one Heroic wipe at 12%.
+      expect(
+        (await q(PROGRESS, [teamId])).rows.map((r) => [r.mythic_pulls, r.heroic_pulls, r.heroic_best_pct])
+      ).toEqual([
+        [2, 0, null],
+        [0, 1, 12]
+      ]);
+      await q(
+        `update public.team_raid_reports set kind_override = 'main', kind_override_at = now()
+          where team_id = $1 and report_code = 'reportB'`,
+        [teamId]
+      );
+      await rebuild(q, teamId);
+      expect((await q(PROGRESS, [teamId])).rows).toEqual(PINNED);
+      await q(
+        `update public.team_raid_reports set kind_override = 'alt', kind_override_at = now()
+          where team_id = $1 and report_code = 'reportA'`,
+        [teamId]
+      );
+      await rebuild(q, teamId);
+      // Report A out: boss one's first kill is now report B's.
+      const [one] = (await q(PROGRESS, [teamId])).rows;
+      expect(one).toMatchObject({ mythic_date: '2026-09-17', mythic_pulls: 1, mythic_report_code: 'reportB' });
+    });
+  });
+
+  it('keeps a row with no pulls for a boss whose only pulls are alt runs', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      await report(q, teamId, 'altRun', '2026-09-13', 'alt');
+      await fight(q, teamId, 'altRun', 1, BOSS_ONE, 'mythic', true, 0);
+      await rebuild(q, teamId);
+      expect((await q(PROGRESS, [teamId])).rows).toEqual([
+        {
+          ...PINNED[1],
+          encounter_id: BOSS_ONE,
+          heroic_pulls: 0,
+          heroic_report_code: null,
+          heroic_fight_id: null,
+          heroic_best_pct: null
+        }
+      ]);
+    });
+  });
+
+  it('runs for the sync’s service role only', async () => {
+    await withTxn(async ({ q }) => {
+      const { rows } = await q(
+        `select r.rolname, has_function_privilege(r.rolname, 'public.rebuild_team_raid_progress(integer)', 'execute') as ok
+           from pg_roles r where r.rolname in ('anon', 'authenticated', 'service_role') order by r.rolname`
+      );
+      expect(rows).toEqual([
+        { rolname: 'anon', ok: false },
+        { rolname: 'authenticated', ok: false },
+        { rolname: 'service_role', ok: true }
+      ]);
+    });
+  });
+});
+
+describe('team_raid_fights', () => {
+  it('shows every team’s pulls to anyone, signed in or not, as the progression card is', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      await seedCorpus(q, teamId);
+      const { rows } = await asAnon(
+        'select report_code, fight_id from public.team_raid_fights where team_id = $1 order by 1, 2',
+        [teamId]
+      );
+      expect(rows.length).toBe(5);
+    });
+  });
+
+  it('grants the site roles reading only, the sync inserting and rewriting, and nobody deleting', async () => {
+    await withTxn(async ({ q }) => {
+      const { rows } = await q(
+        `select grantee, string_agg(privilege_type, ',' order by privilege_type) as privileges
+           from information_schema.role_table_grants
+          where table_schema = 'public' and table_name = 'team_raid_fights'
+            and grantee in ('anon', 'authenticated', 'service_role')
+          group by grantee order by grantee`
+      );
+      expect(rows).toEqual([
+        { grantee: 'anon', privileges: 'SELECT' },
+        { grantee: 'authenticated', privileges: 'SELECT' },
+        { grantee: 'service_role', privileges: 'INSERT,SELECT,UPDATE' }
+      ]);
+    });
+  });
+
+  it('goes with its report', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      await seedCorpus(q, teamId);
+      await q(`delete from public.team_raid_reports where team_id = $1 and report_code = 'reportA'`, [teamId]);
+      const { rows } = await q('select count(*)::int as n from public.team_raid_fights where team_id = $1', [teamId]);
+      expect(rows[0].n).toBe(2);
+    });
+  });
+});

@@ -31,7 +31,7 @@
 | [public.notifications](public.notifications.md) | 6 |  | BASE TABLE |
 | [public.raid_zones](public.raid_zones.md) | 6 |  | BASE TABLE |
 | [public.raid_encounters](public.raid_encounters.md) | 6 |  | BASE TABLE |
-| [public.team_raid_progress](public.team_raid_progress.md) | 14 | Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt on each wcl-progression-sync run from the reports since the start of the tier the boss's raid is filed under (#1469). Every kill, by week, is in team_raid_kills. | BASE TABLE |
+| [public.team_raid_progress](public.team_raid_progress.md) | 14 | Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt by rebuild_team_raid_progress() from the fights of the team's main reports in team_raid_fights (#1470). Every kill, by week, is in team_raid_kills. | BASE TABLE |
 | [public.priority_order_live_first_prios](public.priority_order_live_first_prios.md) | 9 |  | VIEW |
 | [public.priority_order_first_prio_counts](public.priority_order_first_prio_counts.md) | 5 |  | VIEW |
 | [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
@@ -123,6 +123,7 @@
 | [public.team_raider_order](public.team_raider_order.md) | 5 | The order a team lists its raiders in within a role section of Boss Lineup (#1683); role is the section the raider was placed in, and position counts from 1 within it. A raider with no row lists after the placed ones, A-Z. Written only by set_lineup_raider_order(). | BASE TABLE |
 | [public.character_sims](public.character_sims.md) | 14 | A raider's latest droptimizer sim per difficulty, spec and setup (#1443, #1916, #1888): Raidbots or QE Live, written by save_character_sim(). | BASE TABLE |
 | [public.character_sim_results](public.character_sim_results.md) | 10 | Each result in a sim (#1443): the item, the slot simmed into (Raidbots only), its item level and the gain in percent (and DPS for Raidbots). | BASE TABLE |
+| [public.team_raid_fights](public.team_raid_fights.md) | 14 | Every Heroic and Mythic pull on a listed raid's boss in a team's Warcraft Logs reports (#1470), one row per fight, counted from the start of the tier the raid is filed under. Rewritten on every run that reads the report, never deleted. Written only by wcl-progression-sync; team_raid_progress is rebuilt from the main reports' rows. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -425,6 +426,7 @@
 | public.sim_setup_label | text | p_fight_style text, p_target_count integer, p_fight_length integer | FUNCTION |
 | public.save_character_sim | int4 | p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_character_name text, p_character_realm text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_fight_length integer, p_results jsonb | FUNCTION |
 | public.delete_character_sim | void | p_sim_id bigint | FUNCTION |
+| public.rebuild_team_raid_progress | void | p_team_id integer | FUNCTION |
 
 ## Enums
 
@@ -641,6 +643,8 @@ erDiagram
 "public.character_sims" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.character_sims" }o--o| "public.people" : "FOREIGN KEY (added_by) REFERENCES people(id) ON DELETE SET NULL"
 "public.character_sim_results" }o--|| "public.character_sims" : "FOREIGN KEY (sim_id) REFERENCES character_sims(id) ON DELETE CASCADE"
+"public.team_raid_fights" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+"public.team_raid_fights" }o--|| "public.team_raid_reports" : "FOREIGN KEY (team_id, report_code) REFERENCES team_raid_reports(team_id, report_code) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -1879,6 +1883,22 @@ erDiagram
   numeric dps_gain
   integer encounter_id
   integer catalyst_from
+}
+"public.team_raid_fights" {
+  integer team_id FK
+  text report_code FK
+  integer fight_id
+  integer encounter_id FK
+  text difficulty
+  boolean kill
+  numeric_5_2_ boss_percentage
+  numeric_5_2_ fight_percentage
+  timestamp_with_time_zone started_at
+  timestamp_with_time_zone ended_at
+  integer last_phase
+  boolean last_phase_is_intermission
+  timestamp_with_time_zone created_at
+  timestamp_with_time_zone updated_at
 }
 ```
 
