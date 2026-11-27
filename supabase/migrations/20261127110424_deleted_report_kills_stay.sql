@@ -46,8 +46,8 @@ declare
 begin
   -- Best copy first, boss by boss. A fight is a copy when it overlaps a fight
   -- already kept from another report for at least half of the shorter one;
-  -- that kept fight takes one copy from each other report at most (its
-  -- longest overlap). Only a kept fight takes copies, so a fight that is
+  -- a copy goes to the kept fight it overlaps longest, and a kept fight
+  -- takes one copy from each other report at most. Only a kept fight takes copies, so a fight that is
   -- itself a copy never takes another pull with it.
   -- ponytail: overlap in time decides a copy, so two loggers whose PC clocks
   -- differ by more than half a pull count it twice, and by more than the gap
