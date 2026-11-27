@@ -249,7 +249,7 @@ export function useNightPlan(teamId: number, date: string, plan: Plan) {
       // team-read-guard: one raid night, one row per boss
       client
         .from('raid_night_bosses')
-        .select('raid_date, encounter_id, position, skipped, confirmed_at')
+        .select('raid_date, encounter_id, position, skipped, skipped_for_kill_id, confirmed_at')
         .eq('team_id', teamId)
         .eq('raid_date', date)
         .eq('plan', plan)
