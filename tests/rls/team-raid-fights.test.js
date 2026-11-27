@@ -268,6 +268,23 @@ describe('rebuild_team_raid_progress', () => {
     });
   });
 
+  it('never lets a log a few seconds off swallow the next pull, across three logs', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      // CodeRabbit on PR #1940: A's wipe (20-120 s) is B's wipe (0-100 s);
+      // C holds only the next pull, a kill (110-210 s). Two pulls.
+      await report(q, teamId, 'logA', '2026-09-14');
+      await report(q, teamId, 'logB', '2026-09-14');
+      await report(q, teamId, 'logC', '2026-09-14');
+      await pull(q, teamId, 'logA', 1, false, 30, 20, 120);
+      await pull(q, teamId, 'logB', 1, false, 30, 0, 100);
+      await pull(q, teamId, 'logC', 1, true, 0, 110, 210);
+      await rebuild(q, teamId);
+      expect(await heroic(q, teamId)).toEqual([2, '2026-09-14', null, 'logC', 1]);
+    });
+  });
+
   it('keeps the kill when one log of the pull stopped before it and recorded a wipe', async () => {
     await withTxn(async ({ q }) => {
       await seedRaid(q);

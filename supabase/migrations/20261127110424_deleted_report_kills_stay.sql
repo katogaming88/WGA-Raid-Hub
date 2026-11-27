@@ -10,12 +10,11 @@
 -- Counting missing reports would make a deleted duplicate double the pull
 -- count for good, so the rebuild now counts each pull once however many of
 -- the team's main reports hold it. Two fights in two reports are the same
--- pull when they are on the same boss and difficulty, their times overlap,
--- and each is the other's best match: the fight in its report that overlaps
--- the other longest. Two different pulls of one boss never overlap, and two
--- raiders' logs of one pull overlap almost end to end; the best-match rule
--- pairs them one to one, so a clock a few seconds off, which makes one log's
--- pull touch the next pull in the other log too, never drops that next pull.
+-- pull when they are on the same boss and difficulty and overlap for at
+-- least half of the shorter one. Two raiders' logs of one pull overlap almost
+-- end to end, and a log that joined late sits inside the other; a clock a few
+-- seconds off only makes one log's pull touch the next pull in the other log,
+-- well under half, so that next pull is never taken for a copy.
 -- The copy kept is one that recorded the kill first (a log that stopped
 -- early records the same pull as a wipe), then the one that saw the boss
 -- lowest, so the best attempt is the truest one even if its log is gone (Kat,
@@ -41,47 +40,26 @@ as $$
      where f.team_id = p_team_id
        and r.effective_kind = 'main'
   ),
-  -- Every overlapping pair across two reports, with how long they overlap.
-  pairs as (
-    select a.report_code as a_report, a.fight_id as a_fight,
-           b.report_code as b_report, b.fight_id as b_fight,
-           least(a.ended_at, b.ended_at) - greatest(a.started_at, b.started_at) as overlap,
-           (not b.kill, coalesce(b.boss_percentage, 101), b.missing, b.report_started_at, b.report_code, b.fight_id)
-             < (not a.kill, coalesce(a.boss_percentage, 101), a.missing, a.report_started_at, a.report_code, a.fight_id)
-             as b_first
-      from fights a
-      join fights b
-        on b.encounter_id = a.encounter_id
-       and b.difficulty = a.difficulty
-       and b.report_code <> a.report_code
-       and b.started_at <= a.ended_at
-       and a.started_at <= b.ended_at
-  ),
-  -- Each fight's best match in each other report.
-  best as (
-    select *
-      from (select p.*,
-                   row_number() over (partition by a_report, a_fight, b_report
-                                      order by overlap desc, b_fight) as n
-              from pairs p) ranked
-     where n = 1
-  ),
+  -- A fight is a copy to drop when another report holds the same pull (they
+  -- overlap for at least half of the shorter one) and that copy sorts first.
   -- ponytail: overlap in time decides a copy, so two loggers whose PC clocks
-  -- differ by more than about half of a pull plus the gap to the next one
-  -- can pair the wrong pulls and count one twice; match on WCL's fight
+  -- differ by more than half a pull count it twice; match on WCL's fight
   -- details if that turns up.
   main as (
-    select f.*
-      from fights f
+    select a.*
+      from fights a
      where not exists (
        select 1
-         from best x
-         join best y
-           on y.a_report = x.b_report and y.a_fight = x.b_fight
-          and y.b_report = x.a_report and y.b_fight = x.a_fight
-        where x.a_report = f.report_code
-          and x.a_fight = f.fight_id
-          and x.b_first
+         from fights b
+        where b.encounter_id = a.encounter_id
+          and b.difficulty = a.difficulty
+          and b.report_code <> a.report_code
+          and b.started_at <= a.ended_at
+          and a.started_at <= b.ended_at
+          and 2 * (least(a.ended_at, b.ended_at) - greatest(a.started_at, b.started_at))
+            >= least(a.ended_at - a.started_at, b.ended_at - b.started_at)
+          and (not b.kill, coalesce(b.boss_percentage, 101), b.missing, b.report_started_at, b.report_code, b.fight_id)
+            < (not a.kill, coalesce(a.boss_percentage, 101), a.missing, a.report_started_at, a.report_code, a.fight_id)
      )
   ),
   agg as (
