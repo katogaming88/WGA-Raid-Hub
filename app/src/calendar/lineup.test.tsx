@@ -30,6 +30,7 @@ import {
   placesOf,
   seasonOn,
   shortBossName,
+  shortBossesLook,
   toggle,
   wholeNight,
   yourBosses,
@@ -129,6 +130,24 @@ const places = (rows: [number, number[]][]): PlaceRow[] =>
   rows.flatMap(([encounter_id, ids]) => ids.map((player_id) => ({ encounter_id, player_id })));
 
 describe('the lineup rules', () => {
+  it('says in one line which bosses are short, or that every boss is (#1886)', () => {
+    expect(shortBossesLook([], 10)).toBeNull();
+    expect(shortBossesLook(['1. A', '2. B'], 2)).toEqual({
+      head: 'Every boss is short',
+      text: 'hover a boss below to see what it needs'
+    });
+    expect(shortBossesLook(['7. Coiled Altar', '8. Ulatek'], 10)).toEqual({
+      head: '2 of 10 bosses are short',
+      text: '7. Coiled Altar, 8. Ulatek · hover one below to see what it needs'
+    });
+    expect(shortBossesLook(['3. C'], 10)?.text).toBe('3. C · hover it below to see what it needs');
+    // The other half of a night is named, and has no grid to hover.
+    expect(shortBossesLook(['1. A', '2. B'], 2, { hover: false, half: 'Mythic' })).toEqual({
+      head: 'Mythic: Every boss is short',
+      text: ''
+    });
+  });
+
   it('shortens boss names for a grid column, and only a one-word name', () => {
     expect(shortBossName("Nek'zali the Soulcoiler")).toBe("Nek'zali");
     expect(shortBossName('The Lost Explorers')).toBe('Lost Explorers');
@@ -717,15 +736,9 @@ describe('the boss lineup tab', () => {
     const look = within(screen.getByRole('region', { name: 'Needs a look' }));
     expect(look.getByText('Ed is out on every boss unless you put them in.')).toBeInTheDocument();
     expect(look.getByText('is in, but said they’re not coming')).toBeInTheDocument();
-    expect(look.getByText('2. Sszorak')).toBeInTheDocument();
-    // Needs a look counts missing buffs; hovering the boss names them.
-    expect(
-      look.getByText(/^18 open spots · 1 tank, wants 2 · 1 healer, wants 4 · \d+ buffs missing$/)
-    ).toBeInTheDocument();
-    // A screen reader hears the buffs by name in Needs a look itself.
-    expect(
-      look.getByText(/^18 open spots; 1 tank, wants 2; 1 healer, wants 4; no Mark of the Wild/)
-    ).toBeInTheDocument();
+    // One line for the bosses that are short; the headings carry the details.
+    expect(look.getByText('Every boss is short')).toBeInTheDocument();
+    expect(look.getByText('hover a boss below to see what it needs')).toBeInTheDocument();
   });
 
   it('lets an officer set what a boss needs, saved at once, never as an unsaved change (#1682)', async () => {
@@ -812,10 +825,6 @@ describe('the boss lineup tab', () => {
     expect(tip.getByText('Mark of the Wild')).toBeInTheDocument();
     await user.unhover(heading);
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
-
-    const look = within(screen.getByRole('region', { name: 'Needs a look' }));
-    await user.hover(look.getByText('2. Sszorak').closest('li')!);
-    expect(within(screen.getByRole('tooltip')).getByText('2. Sszorak')).toBeInTheDocument();
   });
 
   it('saves a change for tonight only', async () => {
@@ -1717,9 +1726,8 @@ describe('a Heroic plan and a Mythic plan (#1688)', () => {
     expect(g.getByRole('button', { name: /^Di, Nek'zali the Soulcoiler: in/ })).toBeInTheDocument();
     // Needs a look lists both halves, each named (Kat, 2026-11-22).
     const look = within(screen.getByRole('region', { name: 'Needs a look' }));
-    expect(look.getByText("Heroic 1. Nek'zali")).toBeInTheDocument();
-    expect(await look.findByText("Mythic 1. Nek'zali")).toBeInTheDocument();
-    expect(look.getByText('Mythic 2. Sszorak')).toBeInTheDocument();
+    expect(look.getByText('Heroic: Every boss is short')).toBeInTheDocument();
+    expect(await look.findByText('Mythic: Every boss is short')).toBeInTheDocument();
     expect(g.queryByText('Sszorak')).not.toBeInTheDocument();
     await user.click(screen.getByRole('radio', { name: 'Mythic' }));
     g = await grid();

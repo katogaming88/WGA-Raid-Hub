@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.312.1] - 2026-11-27
+
+### Project
+
+- On a night's Boss lineup, Needs a look gives one line for the bosses that are short instead of one line each (#1886): "Every boss is short" when they all are, otherwise "4 of 10 bosses are short" with their names in pull order. The boss headings in the grid carry the details, as before, and a screen reader now hears a boss's problems, buffs included, on its heading. The raider lines and the all-clear line are unchanged, and get the room back.
+
 ## [3.312.0] - 2026-11-26
 
 ### Backend

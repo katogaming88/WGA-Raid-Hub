@@ -12,6 +12,7 @@ import { ColumnSizer } from './ColumnSizer';
 import {
   capLabel,
   lineupView,
+  shortBossesLook,
   moveBoss,
   playWords,
   roleOff,
@@ -238,15 +239,15 @@ export function RaidGrid({
   const totals = new Map(view.totals.map((t) => [t.boss.id, t]));
   const gaps = view.totals.filter((t) => t.problems.length);
   const liveCount = view.live.length;
+  const bossLook = shortBossesLook(
+    gaps.map((t) => `${raid.bosses.indexOf(t.boss) + 1}. ${t.boss.short}`),
+    view.totals.length,
+    { half: halfLabel ?? '' }
+  );
   const looks: Look[] = [
-    ...gaps.map((t) => ({
-      key: `boss-${t.boss.id}`,
-      head: `${halfLabel ? `${halfLabel} ` : ''}${raid.bosses.indexOf(t.boss) + 1}. ${t.boss.short}`,
-      text: t.brief.join(' · '),
-      // Read out in full, since the tip is for the pointer only.
-      full: `${t.problems.join('; ')}.`,
-      total: t
-    })),
+    ...(bossLook
+      ? [{ key: 'bosses-short', head: bossLook.head, text: bossLook.text, full: null, total: undefined }]
+      : []),
     ...view.notComing.map((name) => ({
       key: `out-${name}`,
       head: name,
@@ -390,7 +391,7 @@ export function RaidGrid({
                         <span className="visually-hidden">
                           {t.count}/{t.boss.cap}, {t.status.text}, {plural(t.tanks, 'tank')},{' '}
                           {plural(t.healers, 'healer')}, {t.damage} damage
-                          {t.problems.length ? `, ${plural(t.problems.length, 'problem')}` : ''}
+                          {t.problems.length ? `, needs a look: ${t.problems.join('; ')}` : ''}
                         </span>
                       </>
                     ) : (

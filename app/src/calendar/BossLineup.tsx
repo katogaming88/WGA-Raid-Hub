@@ -24,6 +24,7 @@ import {
   isStaleSave,
   lineupRaids,
   lineupView,
+  shortBossesLook,
   moveBoss,
   nightOrder,
   nightPlans,
@@ -371,15 +372,14 @@ function Lineup({
       new Map(),
       raiderOrder
     );
-    return view.totals
-      .filter((t) => t.problems.length)
-      .map((t) => ({
-        key: `other-${t.boss.id}`,
-        head: `${PLAN_LABELS[otherHalf.plan]} ${otherRaid.bosses.indexOf(t.boss) + 1}. ${t.boss.short}`,
-        text: t.brief.join(' · '),
-        full: `${t.problems.join('; ')}.`,
-        total: undefined
-      }));
+    const gone = shortBossesLook(
+      view.totals
+        .filter((t) => t.problems.length)
+        .map((t) => `${otherRaid.bosses.indexOf(t.boss) + 1}. ${t.boss.short}`),
+      view.totals.length,
+      { hover: false, half: PLAN_LABELS[otherHalf.plan] }
+    );
+    return gone ? [{ key: 'other-short', head: gone.head, text: gone.text, full: null, total: undefined }] : [];
   })();
 
   // After a save: saved bosses drop their edits, refused ones keep them so the
