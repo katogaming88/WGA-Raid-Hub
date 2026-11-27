@@ -285,6 +285,22 @@ describe('rebuild_team_raid_progress', () => {
     });
   });
 
+  it('never lets a copy that is itself dropped take a second pull with it', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      // CodeRabbit on PR #1940: A's wipe (30-130 s) is B's wipe (0-100 s), and
+      // also covers most of B's short kill right after (105-145 s). Two pulls.
+      await report(q, teamId, 'logA', '2026-09-14');
+      await report(q, teamId, 'logB', '2026-09-14');
+      await pull(q, teamId, 'logA', 1, false, 30, 30, 130);
+      await pull(q, teamId, 'logB', 1, false, 30, 0, 100);
+      await pull(q, teamId, 'logB', 2, true, 0, 105, 145);
+      await rebuild(q, teamId);
+      expect(await heroic(q, teamId)).toEqual([2, '2026-09-14', null, 'logB', 2]);
+    });
+  });
+
   it('keeps the kill when one log of the pull stopped before it and recorded a wipe', async () => {
     await withTxn(async ({ q }) => {
       await seedRaid(q);
