@@ -942,3 +942,21 @@ export function yourBosses(
         : `${joinNames(done.map((b) => b.short))} ${done.length === 1 ? 'is' : 'are'} final; the rest are from the usual groups and not final yet.`;
   return { tiles, summary, notFinal };
 }
+
+// Needs a look's one line for the bosses that are short (#1886): the box says
+// the plan has gaps, and each boss heading in the grid carries the details.
+// `short` is the bosses with a problem, in pull order, already numbered. The
+// hover hint is left off for the other half of a night, whose grid is not on
+// the page. `half` names that half when a night has two.
+export function shortBossesLook(
+  short: string[],
+  total: number,
+  { hover = true, half = '' }: { hover?: boolean; half?: string } = {}
+): { head: string; text: string } | null {
+  if (!short.length) return null;
+  const all = short.length === total;
+  const head = `${half ? `${half}: ` : ''}${all ? 'Every boss is short' : `${short.length} of ${total} bosses are short`}`;
+  const hint = hover ? (all ? 'hover a boss below' : short.length === 1 ? 'hover it below' : 'hover one below') : '';
+  const text = [all ? '' : short.join(', '), hint && `${hint} to see what it needs`].filter(Boolean).join(' · ');
+  return { head, text };
+}
