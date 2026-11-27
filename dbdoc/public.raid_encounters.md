@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('raid_encounters_id_seq'::regclass) | false | [public.players](public.players.md) [public.team_raid_progress](public.team_raid_progress.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.team_raid_kills](public.team_raid_kills.md) [public.team_boss_order](public.team_boss_order.md) [public.team_boss_role_targets](public.team_boss_role_targets.md) |  |  |
+| id | integer | nextval('raid_encounters_id_seq'::regclass) | false | [public.players](public.players.md) [public.team_raid_progress](public.team_raid_progress.md) [public.boss_groups](public.boss_groups.md) [public.raid_night_bosses](public.raid_night_bosses.md) [public.team_raid_kills](public.team_raid_kills.md) [public.team_boss_order](public.team_boss_order.md) [public.team_boss_role_targets](public.team_boss_role_targets.md) [public.team_raid_fights](public.team_raid_fights.md) |  |  |
 | zone_id | integer |  | false |  | [public.raid_zones](public.raid_zones.md) |  |
 | wcl_encounter_id | integer |  | false |  |  |  |
 | name | text |  | false |  |  |  |
@@ -39,6 +39,7 @@ erDiagram
 "public.team_raid_kills" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.team_boss_order" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.team_boss_role_targets" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+"public.team_raid_fights" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.raid_encounters" }o--|| "public.raid_zones" : "FOREIGN KEY (zone_id) REFERENCES raid_zones(id) ON DELETE CASCADE"
 
 "public.raid_encounters" {
@@ -138,6 +139,22 @@ erDiagram
   integer healers
   integer melee
   integer ranged
+  timestamp_with_time_zone updated_at
+}
+"public.team_raid_fights" {
+  integer team_id FK
+  text report_code FK
+  integer fight_id
+  integer encounter_id FK
+  text difficulty
+  boolean kill
+  numeric_5_2_ boss_percentage
+  numeric_5_2_ fight_percentage
+  timestamp_with_time_zone started_at
+  timestamp_with_time_zone ended_at
+  integer last_phase
+  boolean last_phase_is_intermission
+  timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
 }
 "public.raid_zones" {

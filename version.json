@@ -1,8 +1,8 @@
 {
-  "version": "3.311.5",
+  "version": "3.312.0",
   "pieces": {
     "frontend": "3.288.0",
-    "db": "3.311.0",
+    "db": "3.312.0",
     "bot": "3.225.0",
     "functions": {
       "battlenet-characters": "3.255.0",
@@ -21,7 +21,7 @@
       "recruit-ticket": "3.263.0",
       "twitch-live-check": "3.112.13",
       "upload-bio-photo": "3.112.13",
-      "wcl-progression-sync": "3.227.0",
+      "wcl-progression-sync": "3.312.0",
       "wcl-sync": "3.298.0"
     }
   }

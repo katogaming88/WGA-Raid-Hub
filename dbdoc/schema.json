@@ -3443,7 +3443,7 @@
     {
       "name": "public.team_raid_progress",
       "type": "BASE TABLE",
-      "comment": "Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt on each wcl-progression-sync run from the reports since the start of the tier the boss's raid is filed under (#1469). Every kill, by week, is in team_raid_kills.",
+      "comment": "Per team and boss, the first kill on each difficulty, the pull count and the best attempt so far (#285, #629), rebuilt by rebuild_team_raid_progress() from the fights of the team's main reports in team_raid_fights (#1470). Every kill, by week, is in team_raid_kills.",
       "columns": [
         {
           "name": "id",
@@ -9560,6 +9560,12 @@
           "nullable": false,
           "default": "now()",
           "comment": "The last run that read the report: each run rewrites every report it reads, changed or not."
+        },
+        {
+          "name": "missing_since",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "When the sync first read the report's window and Warcraft Logs did not return it (#1470): deleted, or made private. Null while it comes back. Its fights stay, and rebuild_team_raid_progress() leaves them out."
         }
       ],
       "indexes": [
@@ -15934,6 +15940,172 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.team_raid_fights",
+      "type": "BASE TABLE",
+      "comment": "Every Heroic and Mythic pull on a listed raid's boss in a team's Warcraft Logs reports (#1470), one row per fight, counted from the start of the tier the raid is filed under. Rewritten on every run that reads the report, never deleted. Written only by wcl-progression-sync; team_raid_progress is rebuilt from the main reports' rows.",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "report_code",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "fight_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "encounter_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "difficulty",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "kill",
+          "type": "boolean",
+          "nullable": false,
+          "comment": "Whether the pull killed the boss."
+        },
+        {
+          "name": "boss_percentage",
+          "type": "numeric(5,2)",
+          "nullable": true,
+          "comment": "The boss's health left when the pull ended, in percent (Warcraft Logs' bossPercentage); 0 on a kill."
+        },
+        {
+          "name": "fight_percentage",
+          "type": "numeric(5,2)",
+          "nullable": true,
+          "comment": "The fight's own completion left, in percent (Warcraft Logs' fightPercentage), which differs from boss_percentage on a fight with several bosses or a boss that heals."
+        },
+        {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "comment": "When the pull started: the report's start plus the fight's offset."
+        },
+        {
+          "name": "ended_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "comment": "When the pull ended: the report's start plus the fight's end offset."
+        },
+        {
+          "name": "last_phase",
+          "type": "integer",
+          "nullable": true,
+          "comment": "The phase the pull ended in (Warcraft Logs' lastPhase); null when it has none."
+        },
+        {
+          "name": "last_phase_is_intermission",
+          "type": "boolean",
+          "nullable": true,
+          "comment": "Whether last_phase is an intermission."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_raid_fights_pkey",
+          "def": "CREATE UNIQUE INDEX team_raid_fights_pkey ON public.team_raid_fights USING btree (team_id, report_code, fight_id)",
+          "table": "public.team_raid_fights",
+          "columns": [
+            "team_id",
+            "report_code",
+            "fight_id"
+          ]
+        },
+        {
+          "name": "team_raid_fights_team_encounter_idx",
+          "def": "CREATE INDEX team_raid_fights_team_encounter_idx ON public.team_raid_fights USING btree (team_id, encounter_id, difficulty)",
+          "table": "public.team_raid_fights",
+          "columns": [
+            "team_id",
+            "encounter_id",
+            "difficulty"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_raid_fights_difficulty_check",
+          "type": "CHECK",
+          "def": "CHECK ((difficulty = ANY (ARRAY['heroic'::text, 'mythic'::text])))",
+          "table": "public.team_raid_fights",
+          "referenced_table": "",
+          "columns": [
+            "difficulty"
+          ]
+        },
+        {
+          "name": "team_raid_fights_encounter_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE",
+          "table": "public.team_raid_fights",
+          "referenced_table": "public.raid_encounters",
+          "columns": [
+            "encounter_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_raid_fights_team_id_report_code_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id, report_code) REFERENCES team_raid_reports(team_id, report_code) ON DELETE CASCADE",
+          "table": "public.team_raid_fights",
+          "referenced_table": "public.team_raid_reports",
+          "columns": [
+            "team_id",
+            "report_code"
+          ],
+          "referenced_columns": [
+            "team_id",
+            "report_code"
+          ]
+        },
+        {
+          "name": "team_raid_fights_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id, report_code, fight_id)",
+          "table": "public.team_raid_fights",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "report_code",
+            "fight_id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_team_raid_fights_updated_at",
+          "def": "CREATE TRIGGER trg_team_raid_fights_updated_at BEFORE UPDATE ON public.team_raid_fights FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -18454,6 +18626,34 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (sim_id) REFERENCES character_sims(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_raid_fights",
+      "columns": [
+        "encounter_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.raid_encounters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_raid_fights",
+      "columns": [
+        "team_id",
+        "report_code"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_raid_reports",
+      "parent_columns": [
+        "team_id",
+        "report_code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id, report_code) REFERENCES team_raid_reports(team_id, report_code) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -20237,6 +20437,12 @@
       "name": "public.delete_character_sim",
       "return_type": "void",
       "arguments": "p_sim_id bigint",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.rebuild_team_raid_progress",
+      "return_type": "void",
+      "arguments": "p_team_id integer",
       "type": "FUNCTION"
     }
   ],

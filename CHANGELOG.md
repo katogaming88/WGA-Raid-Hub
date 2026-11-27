@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.312.0] - 2026-11-26
+
+### Backend
+
+- Every Heroic and Mythic boss pull is kept, with how far it got, when it started and ended and the phase it ended in (#1470), so a later chart can show a team's attempts on a boss night by night. The progression card is now rebuilt from the pulls of the team's own raids: a pull, a kill or a best attempt in an alt run no longer counts toward a boss's pull count, its kill date or the AOTC date. A boss whose pulls all come from the team's raids shows the same numbers as before. A log deleted from Warcraft Logs stops counting, as before: the report is marked missing and left out until it comes back.
+
+### Functions
+
+- The progression sync writes each pull and has the database rebuild the card from them, instead of counting the pulls itself (#1470), and marks the reports Warcraft Logs no longer returns. It reads 25 reports a page instead of 50, to fit the extra fields in one query, at no extra Warcraft Logs cost.
+
+### Project
+
+- Tests for the kept pulls and the rebuilt card, with the numbers the old count wrote checked against the new one, and the schema docs, RLS reference and decisions log for them (#1470).
+
 ## [3.311.5] - 2026-11-26
 
 ### Project

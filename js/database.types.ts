@@ -4806,6 +4806,72 @@ export type Database = {
           },
         ]
       }
+      team_raid_fights: {
+        Row: {
+          boss_percentage: number | null
+          created_at: string
+          difficulty: string
+          encounter_id: number
+          ended_at: string
+          fight_id: number
+          fight_percentage: number | null
+          kill: boolean
+          last_phase: number | null
+          last_phase_is_intermission: boolean | null
+          report_code: string
+          started_at: string
+          team_id: number
+          updated_at: string
+        }
+        Insert: {
+          boss_percentage?: number | null
+          created_at?: string
+          difficulty: string
+          encounter_id: number
+          ended_at: string
+          fight_id: number
+          fight_percentage?: number | null
+          kill: boolean
+          last_phase?: number | null
+          last_phase_is_intermission?: boolean | null
+          report_code: string
+          started_at: string
+          team_id: number
+          updated_at?: string
+        }
+        Update: {
+          boss_percentage?: number | null
+          created_at?: string
+          difficulty?: string
+          encounter_id?: number
+          ended_at?: string
+          fight_id?: number
+          fight_percentage?: number | null
+          kill?: boolean
+          last_phase?: number | null
+          last_phase_is_intermission?: boolean | null
+          report_code?: string
+          started_at?: string
+          team_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_raid_fights_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "raid_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_raid_fights_team_id_report_code_fkey"
+            columns: ["team_id", "report_code"]
+            isOneToOne: false
+            referencedRelation: "team_raid_reports"
+            referencedColumns: ["team_id", "report_code"]
+          },
+        ]
+      }
       team_raid_kills: {
         Row: {
           created_at: string
@@ -4933,6 +4999,7 @@ export type Database = {
           kind_override: string | null
           kind_override_at: string | null
           kind_override_by: number | null
+          missing_since: string | null
           raid_date: string
           report_code: string
           started_at: string
@@ -4950,6 +5017,7 @@ export type Database = {
           kind_override?: string | null
           kind_override_at?: string | null
           kind_override_by?: number | null
+          missing_since?: string | null
           raid_date: string
           report_code: string
           started_at: string
@@ -4967,6 +5035,7 @@ export type Database = {
           kind_override?: string | null
           kind_override_at?: string | null
           kind_override_by?: number | null
+          missing_since?: string | null
           raid_date?: string
           report_code?: string
           started_at?: string
@@ -6689,6 +6758,10 @@ export type Database = {
         Returns: string[]
       }
       raid_today: { Args: never; Returns: string }
+      rebuild_team_raid_progress: {
+        Args: { p_team_id: number }
+        Returns: undefined
+      }
       record_raid_night_participation: {
         Args: {
           p_encounter_id: number

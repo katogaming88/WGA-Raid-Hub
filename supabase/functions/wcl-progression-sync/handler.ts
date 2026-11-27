@@ -3,7 +3,10 @@
 // count / best % remaining on the boss they're currently working, plus total
 // pulls and kill date for already-killed bosses -- shown on the public
 // landing page's progression card, and (for Heroic) the source of the
-// automatic AOTC date. It also keeps every Heroic and Mythic kill in
+// automatic AOTC date. Every Heroic and Mythic pull is kept in
+// team_raid_fights (#1470), and the progress rows are rebuilt from the fights
+// of the team's main reports by rebuild_team_raid_progress() in SQL, so an alt
+// run counts for none of them. It also keeps every Heroic and Mythic kill in
 // team_raid_kills (#1246), the only writer of that table; each run re-sends
 // the tier's kills and the insert skips any already kept.
 //
@@ -87,7 +90,21 @@ export type RaidZoneRow = {
 };
 export type EncounterRow = { zone_id: number; wcl_encounter_id: number; name: string; sort_index: number };
 export type SavedEncounter = { id: number; wcl_encounter_id: number };
-export type ProgressRow = Record<string, unknown>;
+// One row of team_raid_fights (#1470): a Heroic or Mythic pull on a listed raid's boss.
+export type FightRow = {
+  team_id: number;
+  report_code: string;
+  fight_id: number;
+  encounter_id: number;
+  difficulty: 'heroic' | 'mythic';
+  kill: boolean;
+  boss_percentage: number | null;
+  fight_percentage: number | null;
+  started_at: string;
+  ended_at: string;
+  last_phase: number | null;
+  last_phase_is_intermission: boolean | null;
+};
 export type KillRow = {
   team_id: number;
   encounter_id: number;
@@ -109,6 +126,8 @@ export type ReportRow = {
   boss_pulls: number;
   boss_kills: number;
   kind: 'main' | 'alt';
+  // Null: a report read this run is on Warcraft Logs (#1470).
+  missing_since: null;
 };
 export type CurrentSeason = { code: string; startsAt: string | null };
 
@@ -132,8 +151,13 @@ export interface ProgressDb {
   upsertEncounters(rows: EncounterRow[]): Promise<SavedEncounter[]>;
   // Upserts on (team_id, report_code).
   upsertReports(rows: ReportRow[]): Promise<void>;
-  // Upserts on (team_id, encounter_id).
-  upsertProgress(rows: ProgressRow[]): Promise<void>;
+  // Sets missing_since on the team's reports starting at or after `from`
+  // (every report when null) that are not in `seen` and not marked already.
+  markMissingReports(teamId: number, from: string | null, seen: string[]): Promise<void>;
+  // Upserts on (team_id, report_code, fight_id).
+  upsertFights(rows: FightRow[]): Promise<void>;
+  // rebuild_team_raid_progress(): the team's progress rows from its main reports' fights.
+  rebuildProgress(teamId: number): Promise<void>;
   // Inserts into team_raid_kills, skipping a (team_id, report_code, fight_id) already stored.
   insertKills(rows: KillRow[]): Promise<void>;
 }
@@ -225,14 +249,14 @@ async function wclQuery(deps: Deps, token: string, query: string): Promise<any |
 // refusal ("50000 but got 50401", every team on every tick, while the loop
 // silently stopped on page 1) was the page size, not a log that grew. A query
 // costs one point per report returned plus one, whatever its fields, so a
-// smaller page costs a point per extra page and nothing else. #1470 asks for
-// ten fields per fight, which fit at 25 a page.
-const REPORT_LIMIT = 50;
-// 20 pages * 50/page = 1000 reports per read: the current tier's, or the
+// smaller page costs a point per extra page and nothing else. The ten fight
+// fields here (#1470) make 25,129 at 25 a page and 50,254 at 50.
+const REPORT_LIMIT = 25;
+// 40 pages * 25/page = 1000 reports per read: the current tier's, or the
 // earlier tiers' back to the oldest listed raid's -- far beyond the tier or
 // two either holds, just a guard against an unexpected has_more_pages loop
 // (e.g. a WCL response that never actually terminates).
-const MAX_REPORT_PAGES = 20;
+const MAX_REPORT_PAGES = 40;
 const MYTHIC_DIFF = 5;
 const HEROIC_DIFF = 4;
 
@@ -254,38 +278,6 @@ type WclReport = {
 // under, and Warcraft Logs' encounter ids for its bosses, mapped to
 // raid_encounters ids.
 type SyncedZone = { season: string; encounterIdByWcl: Map<number, number> };
-
-// One of these per difficulty (Mythic, Heroic) tracked for an encounter.
-type DifficultyAgg = {
-  pulls: number;
-  killed: boolean;
-  killMs: number | null;
-  // Best (lowest) % remaining seen on a non-kill attempt so far.
-  bestPct: number | null;
-  bestReportCode: string | null;
-  bestFightId: number | null;
-  // The kill attempt's report/fight, once one is found.
-  killReportCode: string | null;
-  killFightId: number | null;
-};
-
-type EncounterAgg = {
-  mythic: DifficultyAgg;
-  heroic: DifficultyAgg;
-};
-
-function newDifficultyAgg(): DifficultyAgg {
-  return {
-    pulls: 0,
-    killed: false,
-    killMs: null,
-    bestPct: null,
-    bestReportCode: null,
-    bestFightId: null,
-    killReportCode: null,
-    killFightId: null
-  };
-}
 
 function zoneIdOf(raid: RaidConfigEntry): number | null {
   const zoneId = parseInt(String(raid.wclZoneId || ''), 10);
@@ -345,6 +337,11 @@ async function fetchReports(
                 difficulty
                 kill
                 bossPercentage
+                fightPercentage
+                startTime
+                endTime
+                lastPhase
+                lastPhaseIsIntermission
               }
             }
             has_more_pages
@@ -435,113 +432,58 @@ function reportRows(teamId: number, reports: WclReport[], bossStarts: Map<number
       wcl_zone_id: report.zone?.id ?? null,
       boss_pulls: pulls,
       boss_kills: kills,
-      kind: isAltRun(report.title) ? 'alt' : 'main'
+      kind: isAltRun(report.title) ? 'alt' : 'main',
+      missing_since: null
     };
   });
 }
 
-// One raid's progress rows and kills from the team's reports. Returns the
-// kills write's error, if it failed.
-async function writeZoneProgress(
-  deps: Deps,
+// One raid's Heroic and Mythic pulls on its own bosses, and the kills among
+// them (#1246), from the team's reports. LFR and Normal fights come through
+// the same query and are left out; the guild's reports are read once for
+// every raid on the list (see fetchReports for why), so a fight on another
+// raid's boss is that raid's.
+function zoneFights(
   teamId: number,
   reports: WclReport[],
   encounterIdByWcl: Map<number, number>
-): Promise<string | undefined> {
-  const agg = new Map<number, EncounterAgg>();
-  function entryFor(encId: number): EncounterAgg {
-    if (!agg.has(encId)) agg.set(encId, { mythic: newDifficultyAgg(), heroic: newDifficultyAgg() });
-    return agg.get(encId)!;
-  }
-
-  // The reports() query no longer filters by difficulty -- fetching every
-  // difficulty's fights in one pass and bucketing by fight.difficulty here
-  // covers Heroic without a second report fetch/page loop per zone (avoiding
-  // the API-usage doubling flagged when #629 was filed). LFR/Normal fights
-  // come through too but are simply ignored below.
-  // Every kill is also kept as its own row (#1246), not just the first.
+): { fights: FightRow[]; kills: KillRow[] } {
+  const fights: FightRow[] = [];
   const kills: KillRow[] = [];
   for (const report of reports) {
     for (const fight of report.fights || []) {
-      const encId = fight.encounterID;
-      // Only this zone's own bosses -- the guild's reports are read once for
-      // every raid on the list (see fetchReports for why).
-      if (encId == null || !encounterIdByWcl.has(encId)) continue;
-      let e: DifficultyAgg;
-      if (fight.difficulty === MYTHIC_DIFF) {
-        e = entryFor(encId).mythic;
-      } else if (fight.difficulty === HEROIC_DIFF) {
-        e = entryFor(encId).heroic;
-      } else {
-        continue;
-      }
-      e.pulls++;
+      const encounterId = encounterIdByWcl.get(fight.encounterID);
+      if (encounterId === undefined) continue;
+      if (fight.difficulty !== MYTHIC_DIFF && fight.difficulty !== HEROIC_DIFF) continue;
+      const difficulty = fight.difficulty === MYTHIC_DIFF ? 'mythic' : 'heroic';
+      fights.push({
+        team_id: teamId,
+        report_code: report.code,
+        fight_id: fight.id,
+        encounter_id: encounterId,
+        difficulty,
+        kill: !!fight.kill,
+        boss_percentage: fight.bossPercentage ?? null,
+        fight_percentage: fight.fightPercentage ?? null,
+        started_at: new Date(report.startTime + (fight.startTime ?? 0)).toISOString(),
+        ended_at: new Date(report.startTime + (fight.endTime ?? 0)).toISOString(),
+        last_phase: fight.lastPhase ?? null,
+        last_phase_is_intermission: fight.lastPhaseIsIntermission ?? null
+      });
       if (fight.kill) {
         kills.push({
           team_id: teamId,
-          encounter_id: encounterIdByWcl.get(encId)!,
-          difficulty: fight.difficulty === MYTHIC_DIFF ? 'mythic' : 'heroic',
+          encounter_id: encounterId,
+          difficulty,
           report_code: report.code,
           fight_id: fight.id,
           raid_date: formatReportDate(report.startTime),
           report_started_at: new Date(report.startTime).toISOString()
         });
-        // Track the earliest kill across every report returned, not just
-        // the last one iterated -- a farmed boss has many kill fights, and
-        // the kill date should be the *first* one, matching fetchProgression's
-        // own "min timestamp among kills" logic in wcl-sync.
-        e.killed = true;
-        if (e.killMs === null || report.startTime < e.killMs) {
-          e.killMs = report.startTime;
-          e.killReportCode = report.code;
-          e.killFightId = fight.id;
-        }
-      } else if (fight.bossPercentage != null) {
-        if (e.bestPct === null || fight.bossPercentage < e.bestPct) {
-          e.bestPct = fight.bossPercentage;
-          e.bestReportCode = report.code;
-          e.bestFightId = fight.id;
-        }
       }
     }
   }
-
-  const rows: ProgressRow[] = [];
-  const now = new Date().toISOString();
-  function difficultyColumns(d: DifficultyAgg, prefix: 'mythic' | 'heroic') {
-    return {
-      [`${prefix}_date`]: d.killed ? d.killMs && formatReportDate(d.killMs) : null,
-      [`${prefix}_pulls`]: d.pulls,
-      [`${prefix}_best_pct`]: d.killed ? null : d.bestPct,
-      [`${prefix}_report_code`]: d.killed ? d.killReportCode : d.bestReportCode,
-      [`${prefix}_fight_id`]: d.killed ? d.killFightId : d.bestFightId
-    };
-  }
-
-  for (const [wclEncId, data] of agg) {
-    const encounterId = encounterIdByWcl.get(wclEncId);
-    if (!encounterId) continue;
-    rows.push({
-      team_id: teamId,
-      encounter_id: encounterId,
-      ...difficultyColumns(data.mythic, 'mythic'),
-      ...difficultyColumns(data.heroic, 'heroic'),
-      updated_at: now
-    });
-  }
-  if (rows.length > 0) {
-    await deps.db.upsertProgress(rows);
-  }
-  // A failed kills write is reported, not thrown, so the progress of the
-  // team's other raids still syncs.
-  if (kills.length > 0) {
-    try {
-      await deps.db.insertKills(kills);
-    } catch (err) {
-      return err instanceof Error ? err.message : 'Unknown error';
-    }
-  }
-  return undefined;
+  return { fights, kills };
 }
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -606,9 +548,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         const earlierStarts =
           startMs === null ? [] : [...zoneStarts.values()].filter((start) => start === null || start < startMs);
         let earlier: WclReport[] = [];
+        // Where this run's reads begin: every report on file from here on
+        // that Warcraft Logs did not return is gone from it.
+        let readFrom = startMs;
         if (earlierStarts.length > 0) {
-          const from = earlierStarts.includes(null) ? null : Math.min(...(earlierStarts as number[]));
-          earlier = await fetchReports(deps, token, team.wcl_guild_id, from, startMs);
+          readFrom = earlierStarts.includes(null) ? null : Math.min(...(earlierStarts as number[]));
+          earlier = await fetchReports(deps, token, team.wcl_guild_id, readFrom, startMs);
         }
         // Each report once, the earlier read's first: a report starting on the
         // current tier's start comes back from both reads (see fetchReports).
@@ -620,30 +565,64 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         const since = (start: number | null | undefined) => (report: WclReport) =>
           start == null || report.startTime >= start;
 
-        // The reports are the newest write, as the kills were: a failure is
-        // reported, and the progress the landing page reads still syncs. A
-        // boss counts in a report's row from its raid's tier start, as in the
-        // raid's progress.
+        // A boss counts in a report's row from its raid's tier start, as its
+        // fights do.
         const bossStarts = new Map<number, number | null>();
         for (const zone of zones) {
           for (const wclId of zone.encounterIdByWcl.keys()) bossStarts.set(wclId, zoneStarts.get(zone.season) ?? null);
         }
         const rows = reportRows(team.id, allReports, bossStarts);
-        if (rows.length > 0) {
-          try {
-            await deps.db.upsertReports(rows);
-            reportsWritten += rows.length;
-          } catch (err) {
-            const message = err instanceof Error ? err.message : 'Unknown error';
-            errors.push({ teamId: team.id, error: `Reports not saved: ${message}` });
-          }
-        }
 
+        // Each raid's fights from the reports since its tier's start, each
+        // fight once: a raid listed twice reads the same fights twice, and an
+        // upsert refuses a row it would write twice.
+        const fights = new Map<string, FightRow>();
+        const kills: KillRow[] = [];
         for (const zone of zones) {
           const zoneReports = allReports.filter(since(zoneStarts.get(zone.season)));
-          const killsError = await writeZoneProgress(deps, team.id, zoneReports, zone.encounterIdByWcl);
-          synced++;
-          if (killsError) errors.push({ teamId: team.id, error: `Kills not saved: ${killsError}` });
+          const found = zoneFights(team.id, zoneReports, zone.encounterIdByWcl);
+          for (const fight of found.fights) fights.set(`${fight.report_code}#${fight.fight_id}`, fight);
+          kills.push(...found.kills);
+        }
+
+        // The reports, then their fights (a foreign key to them), then the
+        // progress rebuilt from the fights: a failure stops the chain and is
+        // the team's error, and the kills still sync.
+        try {
+          if (rows.length > 0) {
+            await deps.db.upsertReports(rows);
+            reportsWritten += rows.length;
+            // ponytail: an empty read marks nothing, so a team whose every
+            // report was deleted keeps counting its last one. A failed mark
+            // is reported and the fights and progress still sync: a deleted
+            // report only counts one run longer.
+            try {
+              await deps.db.markMissingReports(
+                team.id,
+                readFrom === null ? null : new Date(readFrom).toISOString(),
+                rows.map((r) => r.report_code)
+              );
+            } catch (err) {
+              const message = err instanceof Error ? err.message : 'Unknown error';
+              errors.push({ teamId: team.id, error: `Missing reports not marked: ${message}` });
+            }
+          }
+          if (zones.length > 0) {
+            if (fights.size > 0) await deps.db.upsertFights([...fights.values()]);
+            await deps.db.rebuildProgress(team.id);
+            synced += zones.length;
+          }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Unknown error';
+          errors.push({ teamId: team.id, error: `Progress not saved: ${message}` });
+        }
+        if (kills.length > 0) {
+          try {
+            await deps.db.insertKills(kills);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Unknown error';
+            errors.push({ teamId: team.id, error: `Kills not saved: ${message}` });
+          }
         }
       } catch (err) {
         errors.push({ teamId: team.id, error: err instanceof Error ? err.message : 'Unknown error' });

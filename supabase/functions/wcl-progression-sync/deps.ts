@@ -75,8 +75,30 @@ export function supabaseDb(): ProgressDb {
       const { error } = await db().from('team_raid_reports').upsert(rows, { onConflict: 'team_id,report_code' });
       if (error) throw new Error(error.message);
     },
-    async upsertProgress(rows) {
-      const { error } = await db().from('team_raid_progress').upsert(rows, { onConflict: 'team_id,encounter_id' });
+    async markMissingReports(teamId, from, seen) {
+      // Report codes are Warcraft Logs' own letters and digits, so the list
+      // needs no quoting. ponytail: the codes ride in the URL, about 17 bytes
+      // each, and the local gateway refuses one past about 470 codes (414).
+      // Teams read about 40 a tier; a team past a few hundred wants an rpc
+      // taking the codes in the body instead.
+      let query = db()
+        .from('team_raid_reports')
+        .update({ missing_since: new Date().toISOString() })
+        .eq('team_id', teamId)
+        .is('missing_since', null)
+        .not('report_code', 'in', `(${seen.join(',')})`);
+      if (from !== null) query = query.gte('started_at', from);
+      const { error } = await query;
+      if (error) throw new Error(error.message);
+    },
+    async upsertFights(rows) {
+      const { error } = await db()
+        .from('team_raid_fights')
+        .upsert(rows, { onConflict: 'team_id,report_code,fight_id' });
+      if (error) throw new Error(error.message);
+    },
+    async rebuildProgress(teamId) {
+      const { error } = await db().rpc('rebuild_team_raid_progress', { p_team_id: teamId });
       if (error) throw new Error(error.message);
     },
     async insertKills(rows) {

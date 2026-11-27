@@ -4039,3 +4039,19 @@ Shipped: `20261125172814_sim_gear_level.sql`.
 **The rest is page-side, in `team_settings.config`**: `simStaleMode` (after `simStaleDays`, or on `simStaleWeekday` each week at the weekly reset's hour, 15:00 UTC), `simGearRise`, `simStaleThen` (grey out, today's behaviour and the default, or hide) and `simNeedEach`. **Hiding keeps the row** (Kat, 2026-11-25): a hidden sim counts as no sim and its gains disappear, but it stays until the raider adds a new one, and switching back to grey brings it back; no scheduled job. With `simNeedEach` off, an up-to-date sim for every setup at any needed difficulty on the Priority page keeps a raider off Missing sims.
 
 [Full discussion -> #1888](https://github.com/katogaming88/WGA-Raid-Hub/issues/1888).
+
+## #1470 -- every boss pull kept, and the progression card rebuilt from them
+
+Shipped: `20261126231830_team_raid_fights.sql`.
+
+**One row per Heroic and Mythic boss pull** in `team_raid_fights`, keyed `(team_id, report_code, fight_id)` with `(team_id, report_code)` a foreign key to `team_raid_reports` (#1469). Each row keeps the boss, the difficulty, the kill, the boss's health left (`bossPercentage`), the fight's own completion (`fightPercentage`), when the pull started and ended, and the phase it ended in. Pulls on Normal and Raid Finder are not kept, as the card has never counted them. The sync writes a raid's pulls from the start of the tier it is filed under, as the card counted them, so the table needs no window of its own. Measured 2026-10-06: about 1,800 pulls for Phoenix's whole report list, and no extra Warcraft Logs points (the ten fields fit at 25 reports a page).
+
+**`team_raid_progress` is rebuilt in SQL** by `rebuild_team_raid_progress(team_id)` from the fights of the team's main reports (`effective_kind`), instead of in the Edge Function. The card reads the same table, so no page changes; an alt run stops setting a boss's kill date, its pull count and the AOTC date. One function, so the sync and an officer's change to a report (#1472) move the card the same way. It touches only bosses the team has a fight on: a boss whose only pulls are alt runs keeps a row with no pulls, and one whose raid left the list goes on being rebuilt from its kept fights, to the same numbers. A boss with a progress row and no fights at all (a raid gone before this shipped) is left as it was.
+
+**A report deleted from Warcraft Logs stops counting** (Kat, 2026-11-27). The old count never saw it again; kept fights would count it for ever. `team_raid_reports.missing_since` marks it: each run the sync sets it on every report on file from where that run's reads begin that Warcraft Logs did not return, and clears it on a report that comes back. The rebuild leaves marked reports out, and their fights and rows stay on record. A run that reads no reports at all marks nothing, so a glitch that returns an empty list does not empty the card.
+
+**`team_raid_kills` stays a table**, filled by the sync as before: a planned night's `skipped_for_kill_id` names its rows (#1246). Whether it becomes a view over the fights is a later question.
+
+**Read rule: public**, as on `team_raid_progress`, until #1286 sets it at cutover.
+
+[Full discussion -> #1470](https://github.com/katogaming88/WGA-Raid-Hub/issues/1470).
