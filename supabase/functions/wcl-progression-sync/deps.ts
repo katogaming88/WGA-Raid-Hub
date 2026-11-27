@@ -75,6 +75,20 @@ export function supabaseDb(): ProgressDb {
       const { error } = await db().from('team_raid_reports').upsert(rows, { onConflict: 'team_id,report_code' });
       if (error) throw new Error(error.message);
     },
+    async markMissingReports(teamId, from, seen) {
+      // Report codes are Warcraft Logs' own letters and digits, so the list
+      // needs no quoting. ponytail: the codes ride in the URL, about 17 bytes
+      // each; a read of thousands of reports would want an rpc instead.
+      let query = db()
+        .from('team_raid_reports')
+        .update({ missing_since: new Date().toISOString() })
+        .eq('team_id', teamId)
+        .is('missing_since', null)
+        .not('report_code', 'in', `(${seen.join(',')})`);
+      if (from !== null) query = query.gte('started_at', from);
+      const { error } = await query;
+      if (error) throw new Error(error.message);
+    },
     async upsertFights(rows) {
       const { error } = await db()
         .from('team_raid_fights')

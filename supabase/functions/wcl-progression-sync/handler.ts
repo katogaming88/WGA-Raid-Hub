@@ -126,6 +126,8 @@ export type ReportRow = {
   boss_pulls: number;
   boss_kills: number;
   kind: 'main' | 'alt';
+  // Null: a report read this run is on Warcraft Logs (#1470).
+  missing_since: null;
 };
 export type CurrentSeason = { code: string; startsAt: string | null };
 
@@ -149,6 +151,9 @@ export interface ProgressDb {
   upsertEncounters(rows: EncounterRow[]): Promise<SavedEncounter[]>;
   // Upserts on (team_id, report_code).
   upsertReports(rows: ReportRow[]): Promise<void>;
+  // Sets missing_since on the team's reports starting at or after `from`
+  // (every report when null) that are not in `seen` and not marked already.
+  markMissingReports(teamId: number, from: string | null, seen: string[]): Promise<void>;
   // Upserts on (team_id, report_code, fight_id).
   upsertFights(rows: FightRow[]): Promise<void>;
   // rebuild_team_raid_progress(): the team's progress rows from its main reports' fights.
@@ -427,7 +432,8 @@ function reportRows(teamId: number, reports: WclReport[], bossStarts: Map<number
       wcl_zone_id: report.zone?.id ?? null,
       boss_pulls: pulls,
       boss_kills: kills,
-      kind: isAltRun(report.title) ? 'alt' : 'main'
+      kind: isAltRun(report.title) ? 'alt' : 'main',
+      missing_since: null
     };
   });
 }
@@ -542,9 +548,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         const earlierStarts =
           startMs === null ? [] : [...zoneStarts.values()].filter((start) => start === null || start < startMs);
         let earlier: WclReport[] = [];
+        // Where this run's reads begin: every report on file from here on
+        // that Warcraft Logs did not return is gone from it.
+        let readFrom = startMs;
         if (earlierStarts.length > 0) {
-          const from = earlierStarts.includes(null) ? null : Math.min(...(earlierStarts as number[]));
-          earlier = await fetchReports(deps, token, team.wcl_guild_id, from, startMs);
+          readFrom = earlierStarts.includes(null) ? null : Math.min(...(earlierStarts as number[]));
+          earlier = await fetchReports(deps, token, team.wcl_guild_id, readFrom, startMs);
         }
         // Each report once, the earlier read's first: a report starting on the
         // current tier's start comes back from both reads (see fetchReports).
@@ -583,6 +592,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           if (rows.length > 0) {
             await deps.db.upsertReports(rows);
             reportsWritten += rows.length;
+            // ponytail: an empty read marks nothing, so a team whose every
+            // report was deleted keeps counting its last one.
+            await deps.db.markMissingReports(
+              team.id,
+              readFrom === null ? null : new Date(readFrom).toISOString(),
+              rows.map((r) => r.report_code)
+            );
           }
           if (zones.length > 0) {
             if (fights.size > 0) await deps.db.upsertFights([...fights.values()]);

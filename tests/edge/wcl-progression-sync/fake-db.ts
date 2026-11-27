@@ -73,6 +73,10 @@ export function fakeDb(state: FakeDbState = {}): FakeDb {
       record('upsertReports', rows);
       return Promise.resolve();
     },
+    markMissingReports(teamId: number, from: string | null, seen: string[]) {
+      record('markMissingReports', teamId, from, seen);
+      return Promise.resolve();
+    },
     upsertFights(rows: FightRow[]) {
       record('upsertFights', rows);
       return Promise.resolve();

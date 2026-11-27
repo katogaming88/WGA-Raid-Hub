@@ -4999,6 +4999,7 @@ export type Database = {
           kind_override: string | null
           kind_override_at: string | null
           kind_override_by: number | null
+          missing_since: string | null
           raid_date: string
           report_code: string
           started_at: string
@@ -5016,6 +5017,7 @@ export type Database = {
           kind_override?: string | null
           kind_override_at?: string | null
           kind_override_by?: number | null
+          missing_since?: string | null
           raid_date: string
           report_code: string
           started_at: string
@@ -5033,6 +5035,7 @@ export type Database = {
           kind_override?: string | null
           kind_override_at?: string | null
           kind_override_by?: number | null
+          missing_since?: string | null
           raid_date?: string
           report_code?: string
           started_at?: string

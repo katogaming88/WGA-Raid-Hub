@@ -229,6 +229,7 @@ Deno.test('a team with raids and no seasonName syncs, stamped with the current t
       'upsertRaidZone',
       'upsertEncounters',
       'upsertReports',
+      'markMissingReports',
       'upsertFights',
       'rebuildProgress',
       'insertKills'
@@ -512,6 +513,7 @@ Deno.test("stamps raid_zones with the current tier's code and writes the pinned 
       'upsertEncounters',
       'raidZoneSeason',
       'upsertReports',
+      'markMissingReports',
       'upsertFights',
       'rebuildProgress',
       'insertKills'
@@ -539,7 +541,52 @@ Deno.test("stamps raid_zones with the current tier's code and writes the pinned 
       ['reportB#2', 501]
     ]
   ]);
-  assertEquals(db.calls[9].args, [1]);
+  assertEquals(db.calls.find((c) => c.method === 'rebuildProgress')?.args, [1]);
+});
+
+// A report deleted from Warcraft Logs stops coming back, and its fights would
+// count for ever: every report on file from where this run's reads begin
+// that was not returned is marked, and the rebuild leaves it out (#1470).
+Deno.test("marks the team's reports Warcraft Logs no longer returns, from where the run's reads begin", async () => {
+  const { deps, db } = testDeps({
+    state: {
+      teams: [TEAM],
+      configs: { 1: { raidProgression: TWO_RAIDS.raidProgression } },
+      currentSeason: 'MID3',
+      seasonStart: '2026-11-10',
+      zones: { 44: 'MID2' },
+      tiers: { MID2: '2026-08-11' }
+    },
+    responses: [
+      tokenResponse(),
+      reportsResponse([REPORT_N]),
+      zoneResponse('Test Raid Zone', ENCOUNTERS),
+      zoneResponse('Mini Raid Zone', [{ id: 3003, name: 'Mini Boss' }]),
+      reportsResponse(REPORTS)
+    ]
+  });
+  await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
+  assertEquals(db.calls.find((c) => c.method === 'markMissingReports')?.args, [
+    1,
+    new Date(TIER_START_MS).toISOString(),
+    ['reportA', 'reportB', 'reportN']
+  ]);
+  assertEquals(
+    reportsWritten(db)[0].map((r) => r.missing_since),
+    [null, null, null]
+  );
+});
+
+Deno.test('a run with no reports marks none missing', async () => {
+  const { deps, db } = testDeps({
+    state: { teams: [TEAM], configs: { 1: ONE_RAID }, seasonStart: null },
+    responses: [tokenResponse(), reportsResponse([]), zoneResponse('Test Raid Zone', ENCOUNTERS)]
+  });
+  await handle(post({ 'x-cron-secret': CRON_SECRET }), deps);
+  assertEquals(
+    db.calls.filter((c) => c.method === 'markMissingReports'),
+    []
+  );
 });
 
 Deno.test('a pull keeps how far it got, when it started and ended, and the phase it ended in', async () => {
@@ -828,7 +875,13 @@ Deno.test('writes a row for every report it read, before its fights, the progres
   const res = await json(await handle(post({ 'x-cron-secret': CRON_SECRET }), deps));
   assertEquals(res.body.reports, 3);
   const methods = db.calls.map((c) => c.method);
-  assertEquals(methods.slice(-4), ['upsertReports', 'upsertFights', 'rebuildProgress', 'insertKills']);
+  assertEquals(methods.slice(-5), [
+    'upsertReports',
+    'markMissingReports',
+    'upsertFights',
+    'rebuildProgress',
+    'insertKills'
+  ]);
   // Pulls and kills count Heroic and Mythic fights on the raid's own bosses:
   // report B's fight on another zone's boss and its Normal kill are not counted.
   assertEquals(reportsWritten(db), [
@@ -842,7 +895,8 @@ Deno.test('writes a row for every report it read, before its fights, the progres
         wcl_zone_id: 44,
         boss_pulls: 3,
         boss_kills: 1,
-        kind: 'main'
+        kind: 'main',
+        missing_since: null
       },
       {
         team_id: 1,
@@ -853,7 +907,8 @@ Deno.test('writes a row for every report it read, before its fights, the progres
         wcl_zone_id: 44,
         boss_pulls: 2,
         boss_kills: 1,
-        kind: 'main'
+        kind: 'main',
+        missing_since: null
       },
       {
         team_id: 1,
@@ -864,7 +919,8 @@ Deno.test('writes a row for every report it read, before its fights, the progres
         wcl_zone_id: 44,
         boss_pulls: 2,
         boss_kills: 1,
-        kind: 'main'
+        kind: 'main',
+        missing_since: null
       }
     ]
   ]);
@@ -964,6 +1020,7 @@ Deno.test(
         'upsertRaidZone',
         'upsertEncounters',
         'upsertReports',
+        'markMissingReports',
         'upsertFights',
         'rebuildProgress',
         'insertKills'

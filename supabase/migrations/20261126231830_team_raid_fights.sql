@@ -15,6 +15,17 @@
 -- date. The sync calls it after writing the fights; #1472 will call it when
 -- an officer changes a report. team_raid_kills stays a table (#1246 names its
 -- rows from raid_schedule), filled by the sync as before.
+--
+-- A report deleted from Warcraft Logs stops coming back, but its fights are
+-- never deleted. team_raid_reports.missing_since marks it: the sync sets it
+-- on a report in the window it read that did not come back, and clears it
+-- when the report does. The rebuild leaves such a report out, as the old
+-- count did by never seeing it (Kat, 2026-11-27).
+
+alter table public.team_raid_reports add column missing_since timestamp with time zone;
+
+comment on column public.team_raid_reports.missing_since is
+  'When the sync first read the report''s window and Warcraft Logs did not return it (#1470): deleted, or made private. Null while it comes back. Its fights stay, and rebuild_team_raid_progress() leaves them out.';
 
 create table public.team_raid_fights (
   team_id integer not null,
@@ -76,8 +87,11 @@ grant select, insert, update on table public.team_raid_fights to service_role;
 -- boss whose only pulls are alt runs keeps a row with no pulls and no kill.
 -- The first kill is the earliest report's, then the lowest fight id, as the
 -- sync's own count was; the best attempt is the lowest health left on a pull
--- that did not kill, the earliest on a tie. A row with no fights left (its
--- raid taken off the list) is not touched.
+-- that did not kill, the earliest on a tie. A report Warcraft Logs no longer
+-- returns (missing_since) counts as no report. A boss with a progress row and
+-- no fights at all (a raid listed before #1470 and gone since) is not touched;
+-- one whose raid left the list after its fights were kept goes on being
+-- rebuilt from them, to the same numbers.
 create function public.rebuild_team_raid_progress(p_team_id integer)
 returns void
 language sql
@@ -90,6 +104,7 @@ as $$
       join team_raid_reports r on r.team_id = f.team_id and r.report_code = f.report_code
      where f.team_id = p_team_id
        and r.effective_kind = 'main'
+       and r.missing_since is null
   ),
   agg as (
     select encounter_id, difficulty,
@@ -135,7 +150,7 @@ as $$
 $$;
 
 comment on function public.rebuild_team_raid_progress(integer) is
-  'Rebuilds a team''s team_raid_progress rows from team_raid_fights, counting only the fights of its main reports (#1470). Called by wcl-progression-sync after it writes the fights, and by an officer''s change to a report (#1472).';
+  'Rebuilds a team''s team_raid_progress rows from team_raid_fights, counting only the fights of its main reports that Warcraft Logs still returns (#1470). Called by wcl-progression-sync after it writes the fights, and by an officer''s change to a report (#1472).';
 
 alter function public.rebuild_team_raid_progress(integer) owner to postgres;
 revoke all on function public.rebuild_team_raid_progress(integer) from public, anon, authenticated;

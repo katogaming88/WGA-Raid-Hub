@@ -180,6 +180,29 @@ describe('rebuild_team_raid_progress', () => {
     });
   });
 
+  it('leaves out a report Warcraft Logs no longer returns, and counts it again when it comes back', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      await seedCorpus(q, teamId);
+      const mark = (at) =>
+        q(`update public.team_raid_reports set missing_since = ${at} where team_id = $1 and report_code = 'reportB'`, [
+          teamId
+        ]);
+      await mark('now()');
+      await rebuild(q, teamId);
+      expect(
+        (await q(PROGRESS, [teamId])).rows.map((r) => [r.mythic_pulls, r.heroic_pulls, r.heroic_best_pct])
+      ).toEqual([
+        [2, 0, null],
+        [0, 1, 12]
+      ]);
+      await mark('null');
+      await rebuild(q, teamId);
+      expect((await q(PROGRESS, [teamId])).rows).toEqual(PINNED);
+    });
+  });
+
   it('keeps a row with no pulls for a boss whose only pulls are alt runs', async () => {
     await withTxn(async ({ q }) => {
       await seedRaid(q);

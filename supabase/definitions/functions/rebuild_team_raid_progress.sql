@@ -14,6 +14,7 @@ AS $function$
       join team_raid_reports r on r.team_id = f.team_id and r.report_code = f.report_code
      where f.team_id = p_team_id
        and r.effective_kind = 'main'
+       and r.missing_since is null
   ),
   agg as (
     select encounter_id, difficulty,

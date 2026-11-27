@@ -85,6 +85,7 @@ erDiagram
   text effective_kind
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+  timestamp_with_time_zone missing_since
 }
 "public.raid_encounters" {
   integer id
