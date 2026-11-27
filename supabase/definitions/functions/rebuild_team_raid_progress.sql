@@ -9,9 +9,9 @@ CREATE OR REPLACE FUNCTION public.rebuild_team_raid_progress(p_team_id integer)
 AS $function$
 declare
   f team_raid_fights;
-  boss_kept team_raid_fights[] := '{}';
-  kept team_raid_fights[] := '{}';
-  absorbed text[] := '{}';
+  boss_kept team_raid_fights[] := '{}'::team_raid_fights[];
+  kept team_raid_fights[] := '{}'::team_raid_fights[];
+  absorbed text[] := '{}'::text[];
   cur_boss integer;
   cur_diff text;
   m_report text;
@@ -38,7 +38,7 @@ begin
   loop
     if cur_boss is distinct from f.encounter_id or cur_diff is distinct from f.difficulty then
       kept := kept || boss_kept;
-      boss_kept := '{}';
+      boss_kept := '{}'::team_raid_fights[];
       cur_boss := f.encounter_id;
       cur_diff := f.difficulty;
     end if;
