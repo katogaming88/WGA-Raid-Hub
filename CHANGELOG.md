@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.312.4] - 2026-11-27
+
+### Project
+
+- The revamp time log gains the rows for 2026-11-25 (the end of #1888 part 2) to 2026-11-27 (Sync window and logo, the tester sim and wishlist fixes, #1470, #1886, #1938, #1939), with the totals re-summed.
+
 ## [3.312.3] - 2026-11-27
 
 ### Project
