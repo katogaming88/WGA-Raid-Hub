@@ -1182,6 +1182,21 @@ describe('the boss lineup tab', () => {
     ]);
   });
 
+  it('says Killed for a boss the site took off for a kill, Skipped tonight for one an officer skipped (#1939)', async () => {
+    renderApp(
+      LINEUP,
+      handlers(who('officer'), {
+        bosses: [
+          nightBoss(101, 1, { skipped: true, skipped_for_kill_id: 7 }),
+          nightBoss(102, 2, { skipped: true, skipped_for_kill_id: null })
+        ]
+      })
+    );
+    await grid();
+    expect(screen.getAllByText('Killed')).toHaveLength(1);
+    expect(screen.getAllByText('Skipped tonight')).toHaveLength(1);
+  });
+
   it('keeps unsaved changes while switching raids, and asks before leaving the night', async () => {
     const user = userEvent.setup();
     renderApp(LINEUP, handlers(who('officer')));

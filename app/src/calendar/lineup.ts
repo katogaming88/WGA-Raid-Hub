@@ -30,6 +30,8 @@ export type NightBossRow = {
   encounter_id: number;
   position: number;
   skipped: boolean;
+  // Set when the site took the boss off for a kill, not an officer (#1939).
+  skipped_for_kill_id?: number | null;
   confirmed_at: string | null;
 };
 // One raider in one boss's group, or in one boss's lineup for the night.
@@ -221,6 +223,8 @@ export type LineupBoss = {
   name: string;
   short: string;
   skipped: boolean;
+  // Skipped because the team already killed it this week, not by an officer.
+  killed?: boolean;
   confirmed: boolean;
   cap: number;
   // The raid's own cap: below `cap` a flex boss can take more but isn't short.
@@ -330,6 +334,7 @@ export function lineupRaids(
       name: e.name,
       short: shortBossName(e.name),
       skipped: boss?.skipped ?? false,
+      ...(boss?.skipped && boss.skipped_for_kill_id != null ? { killed: true } : {}),
       confirmed: !!boss?.confirmed_at,
       // A boss's own cap is a Mythic one; Heroic is 10 to 30 on every boss.
       cap: flex ? FLEX_CAP : (e.cap ?? raid.cap),

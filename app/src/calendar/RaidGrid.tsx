@@ -395,7 +395,7 @@ export function RaidGrid({
                         </span>
                       </>
                     ) : (
-                      <span className="blg-count text-dim">Skipped tonight</span>
+                      <span className="blg-count text-dim">{boss.killed ? 'Killed' : 'Skipped tonight'}</span>
                     )}
                     {wantsText(targets, boss.id) &&
                       (onNeeds ? (
@@ -632,7 +632,9 @@ export function RaidGrid({
                               ? 'in the group'
                               : 'not in the group'
                             : c.boss.skipped
-                              ? 'skipped tonight'
+                              ? c.boss.killed
+                                ? 'killed'
+                                : 'skipped tonight'
                               : c.in
                                 ? 'in'
                                 : 'out';

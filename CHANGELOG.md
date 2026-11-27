@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.312.3] - 2026-11-27
+
+### Project
+
+- On a night's Boss lineup, a boss the site took off because the team already killed it this week reads "Killed" instead of "Skipped tonight" (#1939); "Skipped tonight" is kept for a boss an officer skipped. Put back works the same on both.
+
 ## [3.312.2] - 2026-11-27
 
 ### Backend
