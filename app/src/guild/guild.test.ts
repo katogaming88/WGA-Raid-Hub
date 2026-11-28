@@ -98,6 +98,7 @@ describe('team progress', () => {
     bosses: [{ name: 'Warden of Ash', mythicDate: '2026-04-02' }, { name: 'Choirmaster' }, { name: 'Hollow King' }]
   };
   const heroicKill = {
+    encounter_id: 3,
     mythic_date: null,
     mythic_pulls: null,
     mythic_best_pct: null,

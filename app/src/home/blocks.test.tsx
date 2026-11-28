@@ -13,6 +13,7 @@ import { liveStreams, liveText, type StreamerRow } from '../streams/streams';
 // cheaper to cover here, and the page's own states.
 
 const row = (name: string, id: number, fields: Partial<ProgressRow>): ProgressRow => ({
+  encounter_id: id + 1000,
   mythic_date: null,
   mythic_pulls: null,
   mythic_best_pct: null,
@@ -47,7 +48,7 @@ describe('raid progression', () => {
       [{ name: 'No zone', bosses: [{ name: 'Only Boss', wclEncounterId: 1 }] }],
       [row('Only Boss', 1, { mythic_date: '2026-04-01', mythic_pulls: 4 })]
     );
-    expect(raid!.bosses[0]).toEqual({ number: 1, name: 'Only Boss', mythic: null, heroic: null });
+    expect(raid!.bosses[0]).toEqual({ number: 1, name: 'Only Boss', encounterId: null, mythic: null, heroic: null });
   });
 
   it('shows a Mythic kill with no pulls recorded as just the date', () => {

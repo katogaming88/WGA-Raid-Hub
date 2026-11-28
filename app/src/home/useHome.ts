@@ -40,7 +40,7 @@ export function useRaidProgression(teamId: number) {
         client
           .from('team_raid_progress')
           .select(
-            'mythic_date, mythic_pulls, mythic_best_pct, mythic_report_code, mythic_fight_id, heroic_date, heroic_pulls, heroic_best_pct, heroic_report_code, heroic_fight_id, raid_encounters(name, wcl_encounter_id, raid_zones(wcl_zone_id))'
+            'encounter_id, mythic_date, mythic_pulls, mythic_best_pct, mythic_report_code, mythic_fight_id, heroic_date, heroic_pulls, heroic_best_pct, heroic_report_code, heroic_fight_id, raid_encounters(name, wcl_encounter_id, raid_zones(wcl_zone_id))'
           )
           .eq('team_id', teamId)
       ]);

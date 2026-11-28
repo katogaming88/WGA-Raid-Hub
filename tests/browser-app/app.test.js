@@ -489,6 +489,87 @@ const HOME_TABLES = {
 const HOME_SENTINEL =
   'main:has(.home-loot-table):has(.home-progression .raid):has(.home-calendar a):has(.stream-widget)';
 
+// The boss pull chart (#1474): a boss with seven raid nights of Mythic pulls
+// ending in a kill, and a few Heroic ones.
+const PULL_NIGHTS = [
+  ['2026-10-22', 14, 81],
+  ['2026-10-27', 36, 67.2],
+  ['2026-10-29', 35, 55],
+  ['2026-11-03', 28, 44],
+  ['2026-11-05', 23, 31],
+  ['2026-11-12', 24, 14],
+  ['2026-11-17', 29, 0]
+];
+const PULLS = PULL_NIGHTS.flatMap(([date, count, best], night) =>
+  Array.from({ length: count }, (_, i) => {
+    const kill = best === 0 && i === count - 1;
+    const health = kill
+      ? 0
+      : i === 3
+        ? best
+        : Math.min(100, best + 6 + (((i * 37 + night * 11) % 60) * (100 - best)) / 100);
+    return {
+      report_code: 'Rpt' + night,
+      fight_id: i + 1,
+      difficulty: 'mythic',
+      raid_date: date,
+      started_at: date + 'T20:' + String(i).padStart(2, '0') + ':00Z',
+      boss_percentage: Math.round(health * 10) / 10,
+      kill,
+      last_phase: health > 75 ? 1 : health > 35 ? 2 : 3,
+      last_phase_is_intermission: false
+    };
+  })
+).concat([
+  {
+    report_code: 'RptH',
+    fight_id: 1,
+    difficulty: 'heroic',
+    raid_date: '2026-10-01',
+    started_at: '2026-10-01T20:00:00Z',
+    boss_percentage: 12,
+    kill: false,
+    last_phase: 2,
+    last_phase_is_intermission: false
+  }
+]);
+const PULLS_PAGE = {
+  path: '/g/wga/t/phoenix/progression/7',
+  sentinel: 'main .pulls-table',
+  tables: {
+    team_settings: [
+      {
+        raids: [
+          {
+            name: 'The Venomous Abyss',
+            wclZoneId: 42,
+            bosses: [{ name: 'The Twin Fangs' }, { name: 'The Coiled Altar' }, { name: 'Ula’tek' }]
+          }
+        ]
+      }
+    ],
+    team_raid_progress: [6, 7, 8].map((id, i) => ({
+      encounter_id: id,
+      mythic_date: null,
+      mythic_pulls: 1,
+      mythic_best_pct: null,
+      mythic_report_code: null,
+      mythic_fight_id: null,
+      heroic_date: null,
+      heroic_pulls: null,
+      heroic_best_pct: null,
+      heroic_report_code: null,
+      heroic_fight_id: null,
+      raid_encounters: {
+        name: ['The Twin Fangs', 'The Coiled Altar', 'Ula’tek'][i],
+        wcl_encounter_id: id,
+        raid_zones: { wcl_zone_id: 42 }
+      }
+    }))
+  },
+  rpc: { team_raid_pulls: PULLS }
+};
+
 // The Calendar (tests/behavior/calendar.js): a month with answers, and a
 // night with someone out and someone late, seen by an officer.
 const CAL_TABLES = {
@@ -2394,6 +2475,9 @@ const STATES = [
     tables: HOME_TABLES,
     clock: TODAY
   },
+  { label: 'boss pull chart', ...PULLS_PAGE },
+  { label: 'boss pull chart, light', ...PULLS_PAGE, colorScheme: 'light' },
+  { label: 'boss pull chart, on a phone', ...PULLS_PAGE, viewport: NARROW },
   {
     label: 'home, member, light',
     path: '/g/wga/t/phoenix',
