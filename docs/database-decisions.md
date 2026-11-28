@@ -4153,3 +4153,19 @@ Shipped: `20261128113438_import_loot_own_season.sql`.
 **The result lists what was left out** (`skipped`: item, boss, player, date, reason), beside the counts. `skipped_duplicate` counts both kinds of repeat, so a caller reading the old keys sees the same meaning.
 
 [Full discussion -> #1579](https://github.com/katogaming88/WGA-Raid-Hub/issues/1579).
+
+## #1585 -- one rule for what counts as loot received, in the database too
+
+Shipped: `20261128123627_loot_counts_one_rule.sql`.
+
+**One rule everywhere** (Kat, 2026-11-22, on #1585). `loot_award_counts_as(team_id, response)` is the team's saved button list when it has one (`loot_response_counts_as()`, #1561) and otherwise today's rule, the same as the new app's `todaysCountsAs()`: Xmog and Pet hidden; Bonus Loot, Personal Loot and Disenchant not handed out; an OS or M+ roll off spec; anything else, and an award with no response (older imports), main spec. Before, a team with no saved list (every team today) got the database's older rule, so 33 disenchanted items counted as Katorri already having them and a bonus roll reset a raider's raid nights since last item.
+
+**Suggest order counts main spec only**, as it did with a list. **Raid nights since last item, Loot pace and BiS demand count main and off spec**, the rows the new app shows (`shownLoot()`), so an off-spec win still counts there as before and only the five responses drop out. Phoenix's Season 2 Loot pace goes from 530 items to 268, exactly the 262 Disenchant, Bonus Loot, Personal Loot, Xmog and Pet rows.
+
+**The views ask the rule once per team and response, not once per award.** Every function pins `search_path`, and Postgres never inlines a function with a SET clause, so asking per award took Loot pace from about 4 ms to 380 ms on prod data. Each view takes the distinct (team, response) pairs in a `MATERIALIZED` CTE, asks the rule for those (a few dozen), and joins back: 6 to 13 ms. `MATERIALIZED` keeps the planner from pushing the call back down to the award rows.
+
+**`loot_response_counts_as()` is unchanged but now open to anon**, with the new function: the report views grant anon SELECT and run as their caller, so a signed-out read would otherwise fail. Both only read `team_settings`, which is public.
+
+**Not here:** the RCLootCouncil export (`build_rclc_export()`) keeps its own rule with no list (every award counts), as #1561 left it.
+
+[Full discussion -> #1585](https://github.com/katogaming88/WGA-Raid-Hub/issues/1585).

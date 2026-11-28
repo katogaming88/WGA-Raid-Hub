@@ -6676,6 +6676,10 @@ export type Database = {
         Args: { p_boss_ids: number[] }
         Returns: undefined
       }
+      loot_award_counts_as: {
+        Args: { p_response: string; p_team_id: number }
+        Returns: string
+      }
       loot_history_open: { Args: { p_team_id: number }; Returns: boolean }
       loot_response_counts_as: {
         Args: { p_response: string; p_team_id: number }

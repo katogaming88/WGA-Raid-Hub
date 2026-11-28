@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.319.0] - 2026-11-28
+
+### Backend
+
+- Disenchanted, bonus-roll and personal loot, transmog picks and pets stop counting as loot received in Suggest order and the three loot reports, for a team that hasn't saved a response list on Settings > Loot (#1585). Suggest order no longer treats a disenchanted or bonus-roll item as one the raider already has (33 disenchanted items had counted as Katorrí's). A bonus roll or a disenchant no longer resets a raider's Raid nights since last item. Loot pace and BiS demand count only those awards too: Phoenix's Season 2 Loot pace goes from 530 items to 268. Off-spec wins still count in the reports as before, and awards from older imports with no response still count. It's the same rule the new app already uses, through one shared function, and a team's saved list still decides when there is one.
+
+### Project
+
+- A comment in the new app's loot response rules names the database function that has to match them.
+
 ## [3.318.0] - 2026-11-28
 
 ### Backend

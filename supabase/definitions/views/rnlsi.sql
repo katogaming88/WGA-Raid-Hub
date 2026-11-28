@@ -3,6 +3,16 @@
 -- select (site roles): anon, authenticated
 
 create or replace view public.rnlsi with (security_invoker=on) as
+ WITH responses AS MATERIALIZED (
+         SELECT DISTINCT rclc_loot.team_id,
+            rclc_loot.response
+           FROM rclc_loot
+        ), counted AS MATERIALIZED (
+         SELECT responses.team_id,
+            responses.response
+           FROM responses
+          WHERE loot_award_counts_as(responses.team_id, responses.response) = ANY (ARRAY['main'::text, 'off'::text])
+        )
  SELECT p.id AS player_id,
     p.team_id,
     p.name_realm,
@@ -15,7 +25,9 @@ create or replace view public.rnlsi with (security_invoker=on) as
      LEFT JOIN classes_specs cs ON cs.id = p.class_spec_id
      LEFT JOIN LATERAL ( SELECT max(rl.awarded_at) AS last_award_at
            FROM rclc_loot rl
-          WHERE rl.player_id = p.id) la ON true
+          WHERE rl.player_id = p.id AND (EXISTS ( SELECT 1
+                   FROM counted c
+                  WHERE c.team_id = rl.team_id AND NOT c.response IS DISTINCT FROM rl.response))) la ON true
   WHERE p.archived_at IS NULL
   ORDER BY p.team_id, cs.role, (( SELECT count(DISTINCT a.raid_date) AS count
            FROM attendance a

@@ -7,7 +7,16 @@
 
 ```sql
 CREATE VIEW bis_demand_vs_awards AS (
- WITH demand AS (
+ WITH responses AS MATERIALIZED (
+         SELECT DISTINCT rclc_loot.team_id,
+            rclc_loot.response
+           FROM rclc_loot
+        ), counted AS MATERIALIZED (
+         SELECT responses.team_id,
+            responses.response
+           FROM responses
+          WHERE (loot_award_counts_as(responses.team_id, responses.response) = ANY (ARRAY['main'::text, 'off'::text]))
+        ), demand AS (
          SELECT p.team_id,
             ip.item_id,
             ip.season,
@@ -22,7 +31,8 @@ CREATE VIEW bis_demand_vs_awards AS (
             rclc_loot.item_id,
             rclc_loot.season,
             count(*) AS awarded_count
-           FROM rclc_loot
+           FROM (rclc_loot
+             JOIN counted c ON (((c.team_id = rclc_loot.team_id) AND (NOT (c.response IS DISTINCT FROM rclc_loot.response)))))
           WHERE (rclc_loot.item_id IS NOT NULL)
           GROUP BY rclc_loot.team_id, rclc_loot.item_id, rclc_loot.season
         )
@@ -58,10 +68,13 @@ CREATE VIEW bis_demand_vs_awards AS (
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
+| [public.rclc_loot](public.rclc_loot.md) | 11 |  | BASE TABLE |
 | [public.item_preferences](public.item_preferences.md) | 11 |  | BASE TABLE |
 | [public.players](public.players.md) | 24 |  | BASE TABLE |
 | [public.items](public.items.md) | 15 |  | BASE TABLE |
-| [public.rclc_loot](public.rclc_loot.md) | 11 |  | BASE TABLE |
+| [counted](counted.md) | 0 |  |  |
+| [rclc_loot.response](rclc_loot.response.md) | 0 |  |  |
+| [demand](demand.md) | 0 |  |  |
 | [awards](awards.md) | 0 |  |  |
 
 ## Relations
