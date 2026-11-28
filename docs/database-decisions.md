@@ -4137,3 +4137,19 @@ Shipped: `20261128110238_pulls_to_first_kill.sql`.
 **Every team's card is rebuilt when the migration applies**, not at its next sync, so no card shows the old count in between.
 
 [Full discussion -> #1955](https://github.com/katogaming88/WGA-Raid-Hub/issues/1955).
+
+## #1579 -- a loot import files each award under its own season, and leaves out non-gear and repeats
+
+Shipped: `20261128113438_import_loot_own_season.sql`.
+
+**Each award takes the season of its own date** (the Eastern date, through `current_season()`), not the season the page passes. On 2026-10-18 an export reaching back past this season filed 474 Season 1 awards and 89 from the previous expansion under Season 2. An award dated before the first season is left out. `p_season` stays in the signature, used only for an award whose date can't be read (it took today's season before), so the current site's import tab and `upload_rclc_loot()` keep working unchanged.
+
+**An unknown item is kept only from a boss on the raid boss list** (`raid_encounters`, by name ignoring case; a curly apostrophe reads as a straight one). That keeps a new boss's loot whose items aren't loaded yet, and leaves out toys, decor, recipes and Mythic+ bonus rolls, which never resolve to an item. A known item is kept from any boss, as before.
+
+**The same character with the same item within 5 minutes is the same award**, whatever its RCLootCouncil id. Each officer's client makes its own id for one award, and the first history import's rows have none, so the id check alone let 124 repeats in. One raider winning the same item twice within five minutes would take two copies from one kill, which the loot council does not hand out. Only a resolved item is checked; an unknown raid-boss item still relies on the id.
+
+**A left-out row makes no placeholder character.** The checks for season and boss come before the player lookup, so a last-expansion alt doesn't become an archived stub.
+
+**The result lists what was left out** (`skipped`: item, boss, player, date, reason), beside the counts. `skipped_duplicate` counts both kinds of repeat, so a caller reading the old keys sees the same meaning.
+
+[Full discussion -> #1579](https://github.com/katogaming88/WGA-Raid-Hub/issues/1579).

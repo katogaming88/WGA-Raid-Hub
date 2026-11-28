@@ -89,7 +89,11 @@ const OFFICER_PERSON = {
 
 const SEASONS = [{ code: 'MID1', display_name: 'Midnight Season 1', starts_at: '2026-01-01', ends_at: null }];
 
-function handlers(person: unknown, tables: Record<string, unknown[]> = {}): FakeHandlers {
+function handlers(
+  person: unknown,
+  tables: Record<string, unknown[]> = {},
+  result: unknown = { inserted: 2, skipped_duplicate: 1 }
+): FakeHandlers {
   const base = seededHandlers();
   return seededHandlers({
     session: fakeSession({ battlenet: 'Aur#1', discord: { id: 'd', name: 'Aur' } }),
@@ -97,7 +101,7 @@ function handlers(person: unknown, tables: Record<string, unknown[]> = {}): Fake
       if (name === 'current_discord_id') return { data: 'd' };
       if (name === 'resolve_person') return { data: person };
       if (name === 'resolve_actor_name') return { data: 'Aurelith' };
-      if (name === 'import_rclc_loot') return { data: { inserted: 2, skipped_duplicate: 1 } };
+      if (name === 'import_rclc_loot') return { data: result };
       return base.rpc!(name, args);
     },
     from(read: Read) {
@@ -109,9 +113,9 @@ function handlers(person: unknown, tables: Record<string, unknown[]> = {}): Fake
 }
 
 describe('Import loot page', () => {
-  it('sends the paste under the current season and says what it added', async () => {
+  it('sends the paste, with the current season for an award with no readable date, and says what it added', async () => {
     const { client } = renderApp('/g/wga/t/phoenix/officer/import', handlers(OFFICER_PERSON));
-    expect(await screen.findByText('Midnight Season 1')).toBeInTheDocument();
+    await screen.findByText(/Each award is filed under the season of its date/);
     const paste = [{ id: '1', player: 'Katorri-Stormrage', instance: 'Raid-Heroic' }];
     await userEvent.click(screen.getByLabelText('RCLootCouncil JSON'));
     await userEvent.paste(JSON.stringify(paste));
@@ -123,9 +127,62 @@ describe('Import loot page', () => {
     expect(call?.[1]).toMatchObject({ p_team_id: 1, p_season: 'MID1', p_rows: [{ id: '1' }] });
   });
 
+  it('lists what the import left out, by reason (#1579)', async () => {
+    renderApp(
+      '/g/wga/t/phoenix/officer/import',
+      handlers(
+        OFFICER_PERSON,
+        {},
+        {
+          inserted: 1,
+          skipped_duplicate: 1,
+          skipped_not_raid_gear: 2,
+          skipped_before_seasons: 0,
+          skipped: [
+            {
+              item: 'Cosmic Ritual Stone',
+              boss: 'Scourgelord Tyrannus',
+              player: 'Katorri-Stormrage',
+              date: '2026-09-01',
+              reason: 'not_raid_gear'
+            },
+            {
+              item: 'Echo of Doragosa',
+              boss: 'Doragosa',
+              player: 'Aur-Illidan',
+              date: '2026-09-01',
+              reason: 'not_raid_gear'
+            },
+            {
+              item: 'Seed Staff',
+              boss: 'Ula’tek',
+              player: 'Aur-Illidan',
+              date: '2026-09-02',
+              reason: 'already_on_file'
+            }
+          ]
+        }
+      )
+    );
+    await screen.findByText(/Each award is filed under the season of its date/);
+    await userEvent.click(screen.getByLabelText('RCLootCouncil JSON'));
+    await userEvent.paste(JSON.stringify([{ id: '1', player: 'Katorri-Stormrage', instance: 'Raid-Heroic' }]));
+    await userEvent.click(screen.getByRole('button', { name: 'Import' }));
+    expect(
+      await screen.findAllByText("Imported 1 new award, skipped 1 already on file, left out 2 that aren't raid gear.", {
+        exact: false
+      })
+    ).not.toHaveLength(0);
+    const notGear = screen.getByText('Not raid gear (toys, decor, recipes, dungeon drops)').closest('details')!;
+    expect(notGear).toHaveTextContent('(2)');
+    expect(notGear).toHaveTextContent('Cosmic Ritual Stone – Scourgelord Tyrannus, Katorri, Sep 1');
+    expect(screen.getByText('Already on file').closest('details')).toHaveTextContent('Seed Staff');
+    expect(screen.queryByText('From before the first season')).not.toBeInTheDocument();
+  });
+
   it('shows a paste problem beside the box and sends nothing', async () => {
     const { client } = renderApp('/g/wga/t/phoenix/officer/import', handlers(OFFICER_PERSON));
-    await screen.findByText('Midnight Season 1');
+    await screen.findByText(/Each award is filed under the season of its date/);
     await userEvent.click(screen.getByRole('button', { name: 'Import' }));
     expect(screen.getByText('Paste the RCLootCouncil JSON export first.')).toBeInTheDocument();
     expect(client.rpcs.some(([name]) => name === 'import_rclc_loot')).toBe(false);

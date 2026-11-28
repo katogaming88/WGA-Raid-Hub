@@ -20,6 +20,14 @@ import { pool, withTxn as withSharedTxn, seedPlayer, OFFICER_T1, TEAM_LEADER_T1,
 const SEED_ITEM_WOW_ID = 100001;
 const IMPORT_PLAYER_NAME = 'Fixtureloot-Illidan';
 
+// Each row 6 minutes after the last, so rows of one character and item never
+// read as the same award logged twice (#1579: within 5 minutes is a repeat).
+let seq = 0;
+const nextTime = () => {
+  const t = 6 * seq++;
+  return `${String(10 + (Math.floor(t / 60) % 14)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}:00`;
+};
+
 function row(overrides) {
   return {
     player: IMPORT_PLAYER_NAME,
@@ -29,7 +37,7 @@ function row(overrides) {
     instance: 'The Voidspire-Heroic',
     boss: 'Some Boss',
     date: '2026/06/22',
-    time: '22:00:00',
+    time: nextTime(),
     ...overrides
   };
 }
@@ -43,6 +51,15 @@ async function withTxn(fn) {
     return fn(q, asUser);
   });
 }
+
+// A boss on the raid boss list, for an unknown item that is still raid gear.
+const RAID_BOSS = 'Nek’zali the Soulcoiler';
+const seedBoss = async (q) => {
+  await q(`insert into public.raid_zones (id, wcl_zone_id, name, season, sort_index)
+           values (9300, 99300, 'Import Test Raid', 'MID2', 0)`);
+  await q(`insert into public.raid_encounters (id, zone_id, wcl_encounter_id, name, sort_index)
+           values (9301, 9300, 3901, 'Nek''zali the Soulcoiler', 0)`);
+};
 
 const importAs = (asRole, uid, rows) =>
   asRole(uid, 'select public.import_rclc_loot(1, $1, $2::jsonb) as result', ['MID1', JSON.stringify(rows)]);
@@ -221,10 +238,11 @@ describe('import_rclc_loot general behavior', () => {
     });
   });
 
-  it('counts an unresolvable item without failing the row', async () => {
+  it('counts an unresolvable item from a raid boss without failing the row', async () => {
     await withTxn(async (q, asRole) => {
+      await seedBoss(q);
       const res = await importAs(asRole, OFFICER_T1, [
-        row({ id: 'unresolved-1', itemID: 999999999, itemName: 'Not A Real Item' })
+        row({ id: 'unresolved-1', itemID: 999999999, itemName: 'Not A Real Item', boss: RAID_BOSS })
       ]);
       expect(res.rows[0].result.inserted).toBe(1);
       expect(res.rows[0].result.unresolved_item).toBe(1);
@@ -240,6 +258,96 @@ describe('import_rclc_loot general behavior', () => {
       const res = await importAs(asRole, OFFICER_T1, [row({ id: 'dupe-1' })]);
       expect(res.rows[0].result.inserted).toBe(0);
       expect(res.rows[0].result.skipped_duplicate).toBe(1);
+    });
+  });
+
+  it('files each award under the season of its own date, and leaves out one from before the first season (#1579)', async () => {
+    await withTxn(async (q, asRole) => {
+      const res = await importAs(asRole, OFFICER_T1, [
+        row({ id: 'season-old', date: '2025/12/01', player: 'Lastexpansion-Illidan' }),
+        row({ id: 'season-1', date: '2026/06/22' }),
+        row({ id: 'season-2', date: '2026/09/01' })
+      ]);
+      const result = res.rows[0].result;
+      expect(result).toMatchObject({ inserted: 2, skipped_before_seasons: 1 });
+      expect(result.skipped).toEqual([
+        {
+          item: 'Seed Test Staff',
+          boss: 'Some Boss',
+          player: 'Lastexpansion-Illidan',
+          date: '2025-12-01',
+          reason: 'before_seasons'
+        }
+      ]);
+      const seasons = await q(
+        `select rclc_id, season from public.rclc_loot where rclc_id like 'season-%' order by rclc_id`
+      );
+      expect(seasons.rows).toEqual([
+        { rclc_id: 'season-1', season: 'MID1' },
+        { rclc_id: 'season-2', season: 'MID2' }
+      ]);
+      // A row left out never makes a placeholder character.
+      const stub = await q(`select 1 from public.players where name_realm = 'Lastexpansion-Illidan'`);
+      expect(stub.rows).toHaveLength(0);
+    });
+  });
+
+  it('files an award whose date cannot be read under the season the page passed', async () => {
+    await withTxn(async (q, asRole) => {
+      const res = await importAs(asRole, OFFICER_T1, [row({ id: 'no-date', date: 'yesterday' })]);
+      expect(res.rows[0].result.inserted).toBe(1);
+      const season = await q(`select season from public.rclc_loot where rclc_id = 'no-date'`);
+      expect(season.rows[0].season).toBe('MID1');
+    });
+  });
+
+  it('leaves out an unknown item from a boss off the raid list, and keeps a known item from anywhere (#1579)', async () => {
+    await withTxn(async (q, asRole) => {
+      await seedBoss(q);
+      const res = await importAs(asRole, OFFICER_T1, [
+        row({ id: 'toy', itemID: 999999991, itemName: 'Cosmic Ritual Stone', boss: 'Scourgelord Tyrannus' }),
+        row({ id: 'no-boss', itemID: 999999992, itemName: 'Plans: Blood Knight’s Impetus', boss: '' }),
+        row({ id: 'new-boss-item', itemID: 999999993, itemName: 'Not Loaded Yet', boss: RAID_BOSS }),
+        row({ id: 'known-item', boss: 'Scourgelord Tyrannus' })
+      ]);
+      const result = res.rows[0].result;
+      expect(result).toMatchObject({ inserted: 2, skipped_not_raid_gear: 2, unresolved_item: 1 });
+      expect(result.skipped.map((s) => [s.item, s.reason])).toEqual([
+        ['Cosmic Ritual Stone', 'not_raid_gear'],
+        ['Plans: Blood Knight’s Impetus', 'not_raid_gear']
+      ]);
+      const kept = await q(`select rclc_id from public.rclc_loot where rclc_id in ('new-boss-item', 'known-item')`);
+      expect(kept.rows).toHaveLength(2);
+    });
+  });
+
+  it('leaves out an award already on file under another id or none, by character, item and time (#1579)', async () => {
+    await withTxn(async (q, asRole) => {
+      // The first history import's copy: no RCLootCouncil id.
+      await q(
+        `insert into public.rclc_loot (team_id, player_id, item_id, season, awarded_at)
+         select 1, p.id, i.id, 'MID1', ('2026-06-22 22:00'::timestamp at time zone 'America/New_York')
+           from public.players p, public.items i
+          where p.team_id = 1 and p.name_realm = $1 and i.wow_item_id = $2`,
+        [IMPORT_PLAYER_NAME, SEED_ITEM_WOW_ID]
+      );
+      const res = await importAs(asRole, OFFICER_T1, [
+        row({ id: 'other-client', time: '22:03:00' }),
+        row({ id: 'later-drop', time: '22:10:00' })
+      ]);
+      const result = res.rows[0].result;
+      expect(result).toMatchObject({ inserted: 1, skipped_duplicate: 1 });
+      expect(result.skipped).toEqual([
+        {
+          item: 'Seed Test Staff',
+          boss: 'Some Boss',
+          player: IMPORT_PLAYER_NAME,
+          date: '2026-06-22',
+          reason: 'already_on_file'
+        }
+      ]);
+      const ids = await q(`select rclc_id from public.rclc_loot where rclc_id in ('other-client', 'later-drop')`);
+      expect(ids.rows.map((r) => r.rclc_id)).toEqual(['later-drop']);
     });
   });
 

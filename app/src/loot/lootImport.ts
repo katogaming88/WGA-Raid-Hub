@@ -49,17 +49,38 @@ export function parseRclcPaste(paste: string): { rows: RclcRow[] } | { error: st
   return { rows };
 }
 
-export type ImportCounts = { inserted?: number; skipped_duplicate?: number; unresolved_item?: number };
+export type SkipReason = 'before_seasons' | 'not_raid_gear' | 'already_on_file';
+export type SkippedRow = { item: string | null; boss: string | null; player: string; date: string; reason: SkipReason };
+
+export type ImportCounts = {
+  inserted?: number;
+  skipped_duplicate?: number;
+  skipped_before_seasons?: number;
+  skipped_not_raid_gear?: number;
+  unresolved_item?: number;
+  skipped?: SkippedRow[];
+};
 
 export function importSummary(counts: ImportCounts): string {
   const inserted = counts.inserted ?? 0;
   const skipped = counts.skipped_duplicate ?? 0;
+  const notGear = counts.skipped_not_raid_gear ?? 0;
+  const tooOld = counts.skipped_before_seasons ?? 0;
   const unresolved = counts.unresolved_item ?? 0;
   let msg = `Imported ${inserted} new award${inserted === 1 ? '' : 's'}`;
   if (skipped) msg += `, skipped ${skipped} already on file`;
+  if (notGear) msg += `, left out ${notGear} that ${notGear === 1 ? "isn't" : "aren't"} raid gear`;
+  if (tooOld) msg += `, left out ${tooOld} from before the first season`;
   if (unresolved) msg += `, ${unresolved} with an item the hub doesn't know`;
   return `${msg}.`;
 }
+
+// Why an award was left out, in words, in the order the page lists them.
+export const SKIP_REASONS: Record<SkipReason, string> = {
+  not_raid_gear: 'Not raid gear (toys, decor, recipes, dungeon drops)',
+  before_seasons: 'From before the first season',
+  already_on_file: 'Already on file'
+};
 
 // Rows written before 20260822203445 carry a plain-string detail and no
 // season, so they can't be put in one.
