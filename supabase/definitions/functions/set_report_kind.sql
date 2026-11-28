@@ -16,6 +16,7 @@ declare
   v_retaken integer[];
   v_back integer[];
   v_back_detail jsonb;
+  v_kept_detail jsonb;
 begin
   if auth.uid() is null then
     raise exception 'Not signed in';
@@ -31,11 +32,21 @@ begin
 
   perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
 
+  -- No key update, not for update: a kill insert holds a key share on its
+  -- report row (team_raid_kills_report_fkey) before its trigger waits for the
+  -- lineup lock, and for update would wait on it in turn, a deadlock with the
+  -- progression sync (fresh-agent review on PR #1943's follow-up, #1944).
   select * into v_report from team_raid_reports
    where team_id = p_team_id and report_code = p_report_code
-   for update;
+   for no key update;
   if not found then
     raise exception 'That report is not on file for this team.';
+  end if;
+
+  -- Asking for the override the report already has changes nothing, and
+  -- writes nothing: no new setter, no audit entry, no rebuild.
+  if v_report.kind_override is not distinct from p_kind then
+    return;
   end if;
 
   update team_raid_reports
@@ -81,6 +92,15 @@ begin
     select coalesce(array_agg(id), '{}'::integer[]) into v_back
       from unnest(v_mine) id where not (id = any (v_retaken));
 
+    select jsonb_agg(jsonb_build_object('raid_date', b.raid_date, 'boss', e.name, 'plan', b.plan,
+                                        'report_code', k.report_code)
+                     order by b.raid_date, b.position)
+      into v_kept_detail
+      from raid_night_bosses b
+      join raid_encounters e on e.id = b.encounter_id
+      join team_raid_kills k on k.id = b.skipped_for_kill_id
+     where b.id = any (v_retaken);
+
     -- The groups' picked alts, held without waiting, as Put back holds them.
     begin
       perform 1 from characters
@@ -120,8 +140,10 @@ begin
     'team_raid_reports',
     null,
     jsonb_build_object('report_code', p_report_code, 'title', v_report.title, 'raid_date', v_report.raid_date,
-                       'from', v_report.effective_kind, 'to', v_new, 'override', p_kind)
+                       'from', v_report.effective_kind, 'to', v_new,
+                       'old_override', v_report.kind_override, 'override', p_kind)
     || case when v_back_detail is null then '{}'::jsonb else jsonb_build_object('put_back', v_back_detail) end
+    || case when v_kept_detail is null then '{}'::jsonb else jsonb_build_object('kept_off', v_kept_detail) end
   );
 end;
 $function$;

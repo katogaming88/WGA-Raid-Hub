@@ -4094,9 +4094,17 @@ Shipped: `20261127204302_set_report_kind.sql`.
 
 **A report made alt** reaches only bosses whose `skipped_for_kill_id` names one of its kills, on nights not yet started. A boss an officer put back, saved or skipped since names no kill and is left alone; a night under way keeps its plan, as the skip never touches one. If the team has another main kill of the boss before the night, the boss stays off and names that kill; otherwise it comes back from its group as Put back brings it.
 
+**A report flipped to alt and back to main skips a boss again** that an officer put back in between (Kat, 2026-11-27: kept and documented). Made main, its kills count as just arrived; a new kill never does this, since it arrives once. Flipping twice is rare, and a second Put back undoes it.
+
+**Asking for the override a report already has writes nothing**: no new setter, audit entry or rebuild (fresh-agent review on PR #1944). The audit entry keeps the old override too, so clearing a `main` override on a report whose title says main reads as that, not as main to main, and lists the bosses kept off by another kill.
+
+**No deadlock with the sync.** A kill insert holds a key share on its report row (the #1471 foreign key) before its trigger waits for the lineup lock; `set_report_kind()` takes the lineup lock and then reads the row `for no key update`, which does not wait on a key share (the fresh-agent review reproduced the deadlock with `for update`).
+
 **Progress is rebuilt in the same call** (`rebuild_team_raid_progress()`, #1470), so the card and its AOTC date move at once.
 
 **Attendance follows on its next sync**, which #1473 runs after the change: a night's attendance is built from who was in the log, which the database does not keep. A report made alt keeps the attendance rows it already has; its Exclude toggle stays the attendance lever.
+
+**Known race, self-healing:** the sync's own rebuild of the card does not take the lineup lock, so a sync rebuilding at the moment of a change can leave the card as it was until the sync's next run.
 
 **Not here:** a report renamed on Warcraft Logs with no override changes `kind` on the progression sync's next run. The card follows, since the sync rebuilds it; the lineup does not, since no kill arrives. An officer's override is the way to move the plan.
 

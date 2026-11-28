@@ -20,6 +20,10 @@
 -- * Either way: team_raid_progress is rebuilt (#1470), so the card and its
 --   AOTC date move.
 --
+-- A report flipped to alt and back to main skips again a boss an officer put
+-- back in between: made main, its kills count as just arrived (Kat,
+-- 2026-11-27: kept, and documented).
+--
 -- Attendance cannot follow here: it is built from who was in the log, which
 -- the database does not keep. #1473 runs the attendance sync after the change.
 
@@ -118,6 +122,7 @@ declare
   v_retaken integer[];
   v_back integer[];
   v_back_detail jsonb;
+  v_kept_detail jsonb;
 begin
   if auth.uid() is null then
     raise exception 'Not signed in';
@@ -133,11 +138,21 @@ begin
 
   perform pg_advisory_xact_lock(hashtext('boss_lineup'), p_team_id);
 
+  -- No key update, not for update: a kill insert holds a key share on its
+  -- report row (team_raid_kills_report_fkey) before its trigger waits for the
+  -- lineup lock, and for update would wait on it in turn, a deadlock with the
+  -- progression sync (fresh-agent review on PR #1943's follow-up, #1944).
   select * into v_report from team_raid_reports
    where team_id = p_team_id and report_code = p_report_code
-   for update;
+   for no key update;
   if not found then
     raise exception 'That report is not on file for this team.';
+  end if;
+
+  -- Asking for the override the report already has changes nothing, and
+  -- writes nothing: no new setter, no audit entry, no rebuild.
+  if v_report.kind_override is not distinct from p_kind then
+    return;
   end if;
 
   update team_raid_reports
@@ -183,6 +198,15 @@ begin
     select coalesce(array_agg(id), '{}'::integer[]) into v_back
       from unnest(v_mine) id where not (id = any (v_retaken));
 
+    select jsonb_agg(jsonb_build_object('raid_date', b.raid_date, 'boss', e.name, 'plan', b.plan,
+                                        'report_code', k.report_code)
+                     order by b.raid_date, b.position)
+      into v_kept_detail
+      from raid_night_bosses b
+      join raid_encounters e on e.id = b.encounter_id
+      join team_raid_kills k on k.id = b.skipped_for_kill_id
+     where b.id = any (v_retaken);
+
     -- The groups' picked alts, held without waiting, as Put back holds them.
     begin
       perform 1 from characters
@@ -222,8 +246,10 @@ begin
     'team_raid_reports',
     null,
     jsonb_build_object('report_code', p_report_code, 'title', v_report.title, 'raid_date', v_report.raid_date,
-                       'from', v_report.effective_kind, 'to', v_new, 'override', p_kind)
+                       'from', v_report.effective_kind, 'to', v_new,
+                       'old_override', v_report.kind_override, 'override', p_kind)
     || case when v_back_detail is null then '{}'::jsonb else jsonb_build_object('put_back', v_back_detail) end
+    || case when v_kept_detail is null then '{}'::jsonb else jsonb_build_object('kept_off', v_kept_detail) end
   );
 end;
 $$;
@@ -233,4 +259,7 @@ revoke all on function public.set_report_kind(integer, text, text) from public, 
 grant execute on function public.set_report_kind(integer, text, text) to authenticated;
 
 comment on function public.set_report_kind(integer, text, text) is
-  'Marks a team''s Warcraft Logs report as the team''s raid (main) or an alt run, or null to go back to the title rule''s verdict (#1472), in team_raid_reports.kind_override. For the team''s attendance permission and site admins. Under the team''s lineup lock, a report made main runs its kills through skip_bosses_for_kills(); a report made alt hands each boss its kill took off a night not yet started to the team''s next main kill of it, or puts it back from its group. team_raid_progress is rebuilt either way. Writes a Set Report Kind audit entry with the report, its title, the old and new kind and any bosses put back. Attendance follows on its next sync.';
+  'Marks a team''s Warcraft Logs report as the team''s raid (main) or an alt run, or null to go back to the title rule''s verdict (#1472), in team_raid_reports.kind_override. For the team''s attendance permission and site admins. Under the team''s lineup lock, a report made main runs its kills through skip_bosses_for_kills(); a report made alt hands each boss its kill took off a night not yet started to the team''s next main kill of it, or puts it back from its group. team_raid_progress is rebuilt either way. Asking for the override the report already has writes nothing. Otherwise writes a Set Report Kind audit entry with the report, its title, the old and new kind and override, any bosses put back and any kept off by another kill. Attendance follows on its next sync.';
+
+comment on table public.team_raid_reports is
+  'Every Warcraft Logs report the progression sync reads for a team (#1469), one row per team and report, rewritten on every run and never deleted. kind is the title rule''s verdict, kind_override an officer''s choice, effective_kind the one that counts. Written by wcl-progression-sync, which never writes the override columns; set_report_kind() is the only writer of those (#1472).';
