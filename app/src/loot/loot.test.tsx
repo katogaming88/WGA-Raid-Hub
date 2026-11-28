@@ -71,6 +71,19 @@ describe('groupImports', () => {
     expect(events[1]!.byPlayer.get(5)).toEqual(['Hero - Belt', 'Hero - Ring']);
     expect(importSeasons(events)).toEqual(['MID1', UNKNOWN_SEASON]);
   });
+
+  it('lists a paste that spans two seasons under each, with that season’s items (#1579)', () => {
+    const events = groupImports([
+      row('a', '2026-09-01T02:00:00Z', 5, { summary: 'Hero - Belt', season: 'MID1' }),
+      row('a', '2026-09-01T02:00:00Z', 5, { summary: 'Myth - Ring', season: 'MID2' }),
+      row('a', '2026-09-01T02:00:00Z', 6, { summary: 'Myth - Cloak', season: 'MID2' })
+    ]);
+    expect(events.map((e) => [e.season, e.itemCount])).toEqual([
+      ['MID1', 1],
+      ['MID2', 2]
+    ]);
+    expect(importSeasons(events)).toEqual(['MID2', 'MID1']);
+  });
 });
 
 const OFFICER_PERSON = {

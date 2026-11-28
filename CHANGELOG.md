@@ -16,11 +16,11 @@ answers to.
 
 ### Backend
 
-- A loot import files each award under the season of its own date, not the current one (#1579). Importing an export that reaches back into Season 1 puts those awards in Season 1; awards from before the first season (the previous expansion) are left out. Items that aren't raid gear are left out too: an item the hub doesn't know is only kept when its boss is a raid boss, so a new boss's loot still comes in but toys, decor, recipes and Mythic+ bonus rolls don't. An award already on file is skipped even when it came from another officer's RCLootCouncil or from the first history import: the same character, the same item, within 5 minutes. The import now returns the list of what it left out and why. The current site's import tab and the Sync app's upload keep working as they are.
+- A loot import files each award under the season of its own date, not the current one (#1579). Importing an export that reaches back into Season 1 puts those awards in Season 1; awards from before the first season (the previous expansion) are left out. Items that aren't raid gear are left out too: an item the hub doesn't know is only kept when its boss is a raid boss, so a new boss's loot still comes in but toys, decor, recipes and Mythic+ bonus rolls don't. An award already on file is skipped even when it came from another officer's RCLootCouncil or from the first history import: the same character, the same item, within 5 minutes. Each award on file stands for one copy at most, so two real copies (a disenchanter's two drops from one kill) both come in. The import now returns the list of what it left out and why. The current site's import tab and the Sync app's upload keep working as they are.
 
 ### Project
 
-- New app: Import loot lists what the last import left out, grouped by reason (not raid gear, from before the first season, already on file), with the item, boss, raider and date. The "Awards are filed under" line is replaced by a note that each award goes under the season of its date, and the Import button no longer waits for a current season.
+- New app: Import loot lists what the last import left out, grouped by reason (not raid gear, from before the first season, already on file), with the item, boss, raider and date. Past imports lists a paste that spans two seasons under each season. The "Awards are filed under" line is replaced by a note that each award goes under the season of its date, and the Import button no longer waits for a current season.
 
 ## [3.317.0] - 2026-11-28
 

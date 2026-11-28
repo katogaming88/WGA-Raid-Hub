@@ -14,12 +14,18 @@
 -- 2. An item the hub doesn't know was always kept. That is right for a new
 --    raid boss whose items aren't loaded yet, but it also let in toys, decor,
 --    recipes and Mythic+ bonus rolls. An unknown item is now kept only when
---    its boss is on the raid boss list (raid_encounters, by name ignoring
---    case); otherwise it is left out.
+--    its boss is on the raid boss list (raid_encounters); otherwise it is
+--    left out. Names are compared on their letters and digits alone, since
+--    RCLootCouncil writes "Chimaerus the Undreamt God" where the list has
+--    "Chimaerus, the Undreamt God".
 -- 3. The duplicate check only matched RCLootCouncil's id, and each client
 --    makes its own id for the same award, while the first history import
---    left rows with no id at all. An award is now also left out when the
---    same character already has the same item within 5 minutes of it.
+--    left rows with no id at all. An award is now also left out when an
+--    award already on file before this import has the same character and
+--    item within 5 minutes of it. Each award on file stands for one incoming
+--    row at most, and rows this import adds are never matched, so two real
+--    copies (a disenchanter's two drops from one kill, a bonus roll beside a
+--    transmog pick) both come in (fresh-agent review on PR #1957).
 --
 -- The result keeps its counts (skipped_duplicate now counts both kinds of
 -- repeat) and adds one per new reason, plus `skipped`: each row left out,
@@ -52,6 +58,11 @@ declare
   v_response text;
   v_reason text;
   v_new_id integer;
+  v_match integer;
+  -- Awards on file already matched to an incoming row, and the rows this
+  -- import added: neither is matched again.
+  v_claimed integer[] := '{}'::integer[];
+  v_added integer[] := '{}'::integer[];
   v_inserted integer := 0;
   v_skipped integer := 0;
   v_before_seasons integer := 0;
@@ -86,6 +97,11 @@ begin
     -- Falls back to the import moment if either field is unparseable rather
     -- than failing the whole row.
     begin
+      -- to_date('') reads as year 1 BC rather than failing, so an empty date
+      -- is sent to the fallback by hand.
+      if trim(both from coalesce(v_row->>'date', '')) = '' then
+        raise exception 'no date';
+      end if;
       v_awarded_at := (
         to_date(replace(coalesce(v_row->>'date', ''), '/', '-'), 'YYYY-MM-DD')
         + coalesce(nullif(v_row->>'time', '')::interval, interval '0')
@@ -122,7 +138,9 @@ begin
       -- loaded yet); from anywhere else it isn't raid gear (#1579).
       if v_item_id is null and not exists (
         select 1 from public.raid_encounters e
-         where lower(e.name) = lower(replace(coalesce(v_boss, ''), chr(8217), ''''))
+         where regexp_replace(lower(e.name), '[^[:alnum:]]', '', 'g')
+             = regexp_replace(lower(coalesce(v_boss, '')), '[^[:alnum:]]', '', 'g')
+           and coalesce(v_boss, '') <> ''
       ) then
         v_reason := 'not_raid_gear';
       end if;
@@ -148,14 +166,26 @@ begin
       -- The same award from another officer's client has another id, and the
       -- first history import's rows have none: the same character with the
       -- same item within 5 minutes is the same award (#1579).
-      if v_item_id is not null and exists (
-        select 1 from public.rclc_loot l
+      -- Its own copy on file (same RCLootCouncil id) is taken first, so a
+      -- re-import of one client's file lines each row up with itself.
+      if v_item_id is not null then
+        v_dedupe_key := 't' || p_team_id || ':rclc:' || v_rclc_id;
+        select l.id into v_match
+          from public.rclc_loot l
          where l.team_id = p_team_id
            and l.player_id = v_player_id
            and l.item_id = v_item_id
            and l.awarded_at between v_awarded_at - interval '5 minutes' and v_awarded_at + interval '5 minutes'
-      ) then
-        v_reason := 'already_on_file';
+           and l.id <> all (v_claimed)
+           and l.id <> all (v_added)
+         order by l.dedupe_key is not distinct from v_dedupe_key desc,
+                  abs(extract(epoch from l.awarded_at - v_awarded_at)), l.id
+         limit 1;
+        if v_match is not null then
+          v_claimed := v_claimed || v_match;
+          v_reason := 'already_on_file';
+        end if;
+        v_match := null;
       end if;
     end if;
 
@@ -216,6 +246,7 @@ begin
 
       if v_new_id is not null then
         v_inserted := v_inserted + 1;
+        v_added := v_added || v_new_id;
         v_detail := coalesce(v_track || ' - ', '') || coalesce(v_item_name, 'Unknown item');
         perform public.write_audit_log(
           p_team_id, 'Loot Imported (RCLC)', 'players', v_player_id,
@@ -257,4 +288,4 @@ end;
 $$;
 
 comment on function public.import_rclc_loot(integer, text, jsonb) is
-  'Imports an RCLootCouncil JSON export for a team. Each award is filed under the season its Eastern date falls in; p_season only for a row whose date can''t be read (#1579). Left out, and listed in the result''s `skipped`: awards dated before the first season, unknown items from a boss not on the raid boss list (toys, decor, recipes, dungeon drops), and awards already on file, by RCLootCouncil id or the same character and item within 5 minutes.';
+  'Imports an RCLootCouncil JSON export for a team. Each award is filed under the season its Eastern date falls in; p_season only for a row whose date can''t be read (#1579). Left out, and listed in the result''s `skipped`: awards dated before the first season, unknown items from a boss not on the raid boss list (toys, decor, recipes, dungeon drops), and awards already on file, by RCLootCouncil id or an award on file before the import with the same character and item within 5 minutes, each matching one incoming row at most.';

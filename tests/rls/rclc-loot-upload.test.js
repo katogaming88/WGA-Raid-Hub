@@ -39,9 +39,8 @@ describe('upload_rclc_loot', () => {
     withRoster(async (t) => {
       const res = await upload(t, OFFICER_T1, [
         row({ id: 'up-roster' }),
-        // Matched ignoring case, as the import does. Ten minutes on, so it is
-        // another award, not the same one twice (#1579).
-        row({ id: 'up-roster-case', player: 'fixtureupload-illidan', time: '22:10:00' }),
+        // Matched ignoring case, as the import does.
+        row({ id: 'up-roster-case', player: 'fixtureupload-illidan' }),
         row({ id: 'up-archived', player: ARCHIVED }),
         row({ id: 'up-stranger', player: 'Someoneelse-Stormrage' })
       ]);
@@ -55,7 +54,7 @@ describe('upload_rclc_loot', () => {
 
   it('adds no rows when the same entries are uploaded twice', () =>
     withRoster(async (t) => {
-      const rows = [row({ id: 'up-twice-1' }), row({ id: 'up-twice-2', time: '22:10:00' })];
+      const rows = [row({ id: 'up-twice-1' }), row({ id: 'up-twice-2' })];
       expect(await upload(t, OFFICER_T1, rows)).toMatchObject({ inserted: 2 });
       expect(await upload(t, OFFICER_T1, rows)).toMatchObject({ inserted: 0, skipped_duplicate: 2 });
       const count = await t.q(`select count(*)::int as n from public.rclc_loot where rclc_id like 'up-twice-%'`);

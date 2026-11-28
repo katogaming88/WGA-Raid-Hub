@@ -20,14 +20,6 @@ import { pool, withTxn as withSharedTxn, seedPlayer, OFFICER_T1, TEAM_LEADER_T1,
 const SEED_ITEM_WOW_ID = 100001;
 const IMPORT_PLAYER_NAME = 'Fixtureloot-Illidan';
 
-// Each row 6 minutes after the last, so rows of one character and item never
-// read as the same award logged twice (#1579: within 5 minutes is a repeat).
-let seq = 0;
-const nextTime = () => {
-  const t = 6 * seq++;
-  return `${String(10 + (Math.floor(t / 60) % 14)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}:00`;
-};
-
 function row(overrides) {
   return {
     player: IMPORT_PLAYER_NAME,
@@ -37,7 +29,7 @@ function row(overrides) {
     instance: 'The Voidspire-Heroic',
     boss: 'Some Boss',
     date: '2026/06/22',
-    time: nextTime(),
+    time: '22:00:00',
     ...overrides
   };
 }
@@ -294,10 +286,19 @@ describe('import_rclc_loot general behavior', () => {
 
   it('files an award whose date cannot be read under the season the page passed', async () => {
     await withTxn(async (q, asRole) => {
-      const res = await importAs(asRole, OFFICER_T1, [row({ id: 'no-date', date: 'yesterday' })]);
-      expect(res.rows[0].result.inserted).toBe(1);
-      const season = await q(`select season from public.rclc_loot where rclc_id = 'no-date'`);
-      expect(season.rows[0].season).toBe('MID1');
+      // Unreadable, and empty, which the current site sends for an entry with no date.
+      const res = await importAs(asRole, OFFICER_T1, [
+        row({ id: 'no-date', date: 'yesterday' }),
+        row({ id: 'empty-date', date: '', time: '22:30:00' })
+      ]);
+      expect(res.rows[0].result).toMatchObject({ inserted: 2, skipped_before_seasons: 0 });
+      const season = await q(
+        `select rclc_id, season from public.rclc_loot where rclc_id in ('no-date', 'empty-date') order by rclc_id`
+      );
+      expect(season.rows).toEqual([
+        { rclc_id: 'empty-date', season: 'MID1' },
+        { rclc_id: 'no-date', season: 'MID1' }
+      ]);
     });
   });
 
@@ -318,6 +319,61 @@ describe('import_rclc_loot general behavior', () => {
       ]);
       const kept = await q(`select rclc_id from public.rclc_loot where rclc_id in ('new-boss-item', 'known-item')`);
       expect(kept.rows).toHaveLength(2);
+    });
+  });
+
+  it('keeps two real copies of one item to one raider, and skips both when another client sends them again', async () => {
+    await withTxn(async (q, asRole) => {
+      // The disenchanter's two drops from one kill, a minute apart.
+      const first = await importAs(asRole, OFFICER_T1, [
+        row({ id: 'de-1', time: '22:00:00', response: 'Disenchant' }),
+        row({ id: 'de-2', time: '22:01:00', response: 'Disenchant' })
+      ]);
+      expect(first.rows[0].result).toMatchObject({ inserted: 2, skipped_duplicate: 0 });
+      // The same two from another officer's client: other ids, same awards.
+      const again = await importAs(asRole, OFFICER_T1, [
+        row({ id: 'other-de-1', time: '22:00:00', response: 'Disenchant' }),
+        row({ id: 'other-de-2', time: '22:01:00', response: 'Disenchant' })
+      ]);
+      expect(again.rows[0].result).toMatchObject({ inserted: 0, skipped_duplicate: 2 });
+      // A third copy, which neither award on file stands for, comes in.
+      const third = await importAs(asRole, OFFICER_T1, [
+        row({ id: 'other-de-1', time: '22:00:00' }),
+        row({ id: 'other-de-2', time: '22:01:00' }),
+        row({ id: 'other-de-3', time: '22:02:00' })
+      ]);
+      expect(third.rows[0].result).toMatchObject({ inserted: 1, skipped_duplicate: 2 });
+    });
+  });
+
+  it('matches a boss on its letters and digits, so RCLootCouncil’s spelling finds the list’s', async () => {
+    await withTxn(async (q, asRole) => {
+      await q(`insert into public.raid_zones (id, wcl_zone_id, name, season, sort_index)
+               values (9310, 99310, 'Comma Raid', 'MID1', 0)`);
+      await q(`insert into public.raid_encounters (id, zone_id, wcl_encounter_id, name, sort_index)
+               values (9311, 9310, 3911, 'Chimaerus, the Undreamt God', 0)`);
+      const res = await importAs(asRole, OFFICER_T1, [
+        row({ id: 'comma-boss', itemID: 999999994, itemName: 'Not Loaded Yet', boss: 'Chimaerus the Undreamt God' })
+      ]);
+      expect(res.rows[0].result).toMatchObject({ inserted: 1, skipped_not_raid_gear: 0, unresolved_item: 1 });
+    });
+  });
+
+  it('writes each award’s own season on its audit log entry', async () => {
+    await withTxn(async (q, asRole) => {
+      await importAs(asRole, OFFICER_T1, [
+        row({ id: 'audit-1', date: '2026/06/22', itemName: 'Audit One' }),
+        row({ id: 'audit-2', date: '2026/09/01', itemName: 'Audit Two' })
+      ]);
+      const audit = await q(
+        `select detail->>'summary' as summary, detail->>'season' as season from public.audit_log
+          where team_id = 1 and action = 'Loot Imported (RCLC)' and detail->>'summary' like '%Audit%'
+          order by detail->>'summary'`
+      );
+      expect(audit.rows).toEqual([
+        { summary: 'Hero - Audit One', season: 'MID1' },
+        { summary: 'Hero - Audit Two', season: 'MID2' }
+      ]);
     });
   });
 

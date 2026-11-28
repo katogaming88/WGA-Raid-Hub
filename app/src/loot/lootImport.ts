@@ -117,7 +117,9 @@ const seasonOf = (detail: unknown): string =>
 export function groupImports(rows: ImportAuditRow[]): ImportEvent[] {
   const byKey = new Map<string, ImportEvent>();
   for (const row of rows) {
-    const key = `${row.actor_id ?? 'unknown'}|${row.created_at}`;
+    // Since #1579 one paste can hold several seasons: each season's share is
+    // its own entry, listed under that season.
+    const key = `${row.actor_id ?? 'unknown'}|${row.created_at}|${seasonOf(row.detail)}`;
     let event = byKey.get(key);
     if (!event) {
       event = {
