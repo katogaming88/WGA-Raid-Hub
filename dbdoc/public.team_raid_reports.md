@@ -2,7 +2,7 @@
 
 ## Description
 
-Every Warcraft Logs report the progression sync reads for a team (#1469), one row per team and report, rewritten on every run and never deleted. kind is the title rule's verdict, kind_override an officer's choice, effective_kind the one that counts. Written only by wcl-progression-sync.
+Every Warcraft Logs report the progression sync reads for a team (#1469), one row per team and report, rewritten on every run and never deleted. kind is the title rule's verdict, kind_override an officer's choice, effective_kind the one that counts. Written by wcl-progression-sync, which never writes the override columns; set_report_kind() is the only writer of those (#1472).
 
 ## Columns
 

@@ -44,7 +44,7 @@ CREATE VIEW team_raid_kills_this_week AS (
 | ---- | ------- | ------- | ---- |
 | [public.team_raid_kills](public.team_raid_kills.md) | 9 | Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), alt runs included, one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. Its readers count main reports only (team_raid_reports.effective_kind, #1471). Each insert takes the bosses the team's main reports killed off the team's later nights that lockout (skip_killed_bosses()). | BASE TABLE |
 | [public.raid_encounters](public.raid_encounters.md) | 6 |  | BASE TABLE |
-| [public.team_raid_reports](public.team_raid_reports.md) | 16 | Every Warcraft Logs report the progression sync reads for a team (#1469), one row per team and report, rewritten on every run and never deleted. kind is the title rule's verdict, kind_override an officer's choice, effective_kind the one that counts. Written only by wcl-progression-sync. | BASE TABLE |
+| [public.team_raid_reports](public.team_raid_reports.md) | 16 | Every Warcraft Logs report the progression sync reads for a team (#1469), one row per team and report, rewritten on every run and never deleted. kind is the title rule's verdict, kind_override an officer's choice, effective_kind the one that counts. Written by wcl-progression-sync, which never writes the override columns; set_report_kind() is the only writer of those (#1472). | BASE TABLE |
 
 ## Relations
 

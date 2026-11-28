@@ -9484,7 +9484,7 @@
     {
       "name": "public.team_raid_reports",
       "type": "BASE TABLE",
-      "comment": "Every Warcraft Logs report the progression sync reads for a team (#1469), one row per team and report, rewritten on every run and never deleted. kind is the title rule's verdict, kind_override an officer's choice, effective_kind the one that counts. Written only by wcl-progression-sync.",
+      "comment": "Every Warcraft Logs report the progression sync reads for a team (#1469), one row per team and report, rewritten on every run and never deleted. kind is the title rule's verdict, kind_override an officer's choice, effective_kind the one that counts. Written by wcl-progression-sync, which never writes the override columns; set_report_kind() is the only writer of those (#1472).",
       "columns": [
         {
           "name": "team_id",
@@ -20474,6 +20474,18 @@
       "name": "public.rebuild_team_raid_progress",
       "return_type": "void",
       "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.skip_bosses_for_kills",
+      "return_type": "void",
+      "arguments": "p_kill_ids integer[]",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_report_kind",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_report_code text, p_kind text",
       "type": "FUNCTION"
     }
   ],

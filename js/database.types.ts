@@ -7175,6 +7175,10 @@ export type Database = {
         }
         Returns: number
       }
+      set_report_kind: {
+        Args: { p_kind: string; p_report_code: string; p_team_id: number }
+        Returns: undefined
+      }
       set_team_archived: {
         Args: { p_archived: boolean; p_team_id: number }
         Returns: undefined
@@ -7298,6 +7302,10 @@ export type Database = {
           p_target_count: number
         }
         Returns: string
+      }
+      skip_bosses_for_kills: {
+        Args: { p_kill_ids: number[] }
+        Returns: undefined
       }
       start_recruit_trial: {
         Args: { p_application_id: number }

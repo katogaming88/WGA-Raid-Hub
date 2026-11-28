@@ -79,7 +79,7 @@
 | [public.team_schedule_settings](public.team_schedule_settings.md) | 3 | A team's own schedule settings (#1246): the raid difficulty every weekly or added night follows unless it sets its own. No row, or a null, means not set. Written by the officers who write raid_schedule. | BASE TABLE |
 | [public.removal_reasons](public.removal_reasons.md) | 8 | Every reason a character or a membership was removed for (#1427), never updated or deleted. A character's row comes from a trigger on player_officer_notes, a membership's from archive_team_member(). The notes row still holds the latest reason; this holds all of them. | BASE TABLE |
 | [public.names](public.names.md) | 6 | A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming, assigning and unclaiming update this row; a raider's first claim on a team also creates their membership (claim_name), and nothing merges memberships. A names row outlives its membership being archived. | BASE TABLE |
-| [public.team_raid_reports](public.team_raid_reports.md) | 16 | Every Warcraft Logs report the progression sync reads for a team (#1469), one row per team and report, rewritten on every run and never deleted. kind is the title rule's verdict, kind_override an officer's choice, effective_kind the one that counts. Written only by wcl-progression-sync. | BASE TABLE |
+| [public.team_raid_reports](public.team_raid_reports.md) | 16 | Every Warcraft Logs report the progression sync reads for a team (#1469), one row per team and report, rewritten on every run and never deleted. kind is the title rule's verdict, kind_override an officer's choice, effective_kind the one that counts. Written by wcl-progression-sync, which never writes the override columns; set_report_kind() is the only writer of those (#1472). | BASE TABLE |
 | [public.signup_item_preferences](public.signup_item_preferences.md) | 9 |  | BASE TABLE |
 | [public.rank_permissions](public.rank_permissions.md) | 4 | Every permission on the guild and team grids, with the ranks that have it in a new guild or team (#1517, #1645). Owners hold every permission and are not listed. | BASE TABLE |
 | [public.guild_rank_permissions](public.guild_rank_permissions.md) | 4 | Each guild's grid: a row means that guild rank has that permission there (#1645). Filled from rank_permissions.default_ranks when the guild is made; the Owner changes it later. | BASE TABLE |
@@ -427,6 +427,8 @@
 | public.save_character_sim | int4 | p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_character_name text, p_character_realm text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_fight_length integer, p_results jsonb | FUNCTION |
 | public.delete_character_sim | void | p_sim_id bigint | FUNCTION |
 | public.rebuild_team_raid_progress | void | p_team_id integer | FUNCTION |
+| public.skip_bosses_for_kills | void | p_kill_ids integer[] | FUNCTION |
+| public.set_report_kind | void | p_team_id integer, p_report_code text, p_kind text | FUNCTION |
 
 ## Enums
 

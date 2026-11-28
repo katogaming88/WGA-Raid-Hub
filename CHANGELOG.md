@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.314.0] - 2026-11-27
+
+### Backend
+
+- An officer can mark a Warcraft Logs report as the team's raid or an alt run, or send it back to what its title says, through `set_report_kind()` (#1472), for anyone with the team's Attendance permission and site admins. It takes effect at once: a report made the team's raid takes the bosses it killed off the team's later nights that week; a report made an alt run puts back the bosses it took off (unless another of the team's raids killed them first, or an officer changed them since); the progression card is rebuilt. Each change is in the audit log. The page for it is #1473.
+
+### Project
+
+- Time log rows for the #1942 backfill session, #1471 and #1472.
+
 ## [3.313.0] - 2026-11-27
 
 ### Backend

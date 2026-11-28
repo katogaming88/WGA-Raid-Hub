@@ -1232,6 +1232,236 @@ describe('a boss killed earlier in the lockout (#1246)', () => {
   it('cannot be run from the site', async () => {
     await withTxn(async ({ asUser }) => {
       await expect(asUser(SITE_ADMIN, 'select public.skip_killed_bosses()')).rejects.toThrow(/permission denied/);
+      await expect(asUser(SITE_ADMIN, "select public.skip_bosses_for_kills('{1}')")).rejects.toThrow(
+        /permission denied/
+      );
+    });
+  });
+
+  // #1472: an officer marks a report as the team's raid or an alt run.
+  describe('set_report_kind()', () => {
+    const setKind = (asUser, uid, report, kind, team = 1) =>
+      asUser(uid, 'select public.set_report_kind($1, $2, $3)', [team, report, kind]);
+    const kindOf = async (q, report) =>
+      (
+        await q(
+          'select kind, kind_override, effective_kind, kind_override_by is not null as by from public.team_raid_reports where team_id = 1 and report_code = $1',
+          [report]
+        )
+      ).rows[0];
+    const audits = async (q) =>
+      (
+        await q(
+          "select team_id, actor_id is not null as actor, detail from public.audit_log where action = 'Set Report Kind' order by id"
+        )
+      ).rows;
+
+    it('sets and clears the override for the attendance permission and site admins, and refuses everyone else', async () => {
+      await withTxn(async ({ q, asUser, asAnon }) => {
+        const { tuesday } = await planned(q, asUser);
+        await kill(q, { report: 'r1', date: tuesday });
+        await setKind(asUser, OFFICER_T1, 'r1', 'alt');
+        expect(await kindOf(q, 'r1')).toEqual({ kind: 'main', kind_override: 'alt', effective_kind: 'alt', by: true });
+        await setKind(asUser, TEAM_LEADER_T1, 'r1', null);
+        expect(await kindOf(q, 'r1')).toEqual({ kind: 'main', kind_override: null, effective_kind: 'main', by: false });
+        await setKind(asUser, SITE_ADMIN, 'r1', 'main');
+        expect((await kindOf(q, 'r1')).kind_override).toBe('main');
+
+        for (const uid of [RAIDER_T1, OFFICER_T2, GUILD_OFFICER]) {
+          await q('savepoint refused');
+          await expect(setKind(asUser, uid, 'r1', 'alt')).rejects.toThrow(/Not authorized/);
+          await q('rollback to savepoint refused');
+        }
+        await q('savepoint refused');
+        await expect(asAnon("select public.set_report_kind(1, 'r1', 'alt')")).rejects.toThrow(/permission denied/);
+        await q('rollback to savepoint refused');
+        await expect(setKind(asUser, OFFICER_T1, 'r1', 'raid')).rejects.toThrow(/main or alt/);
+      });
+    });
+
+    // A kill insert holds a key share on its report row before its trigger
+    // waits for the lineup lock; set_report_kind() takes the lineup lock and
+    // then the row, so a FOR UPDATE there deadlocks with the sync (the
+    // fresh-agent review on PR #1944 staged it in two sessions). Two sessions
+    // cannot share this suite's rolled-back rows, so the lock mode is pinned.
+    it('reads the report row in a mode a kill insert does not block', async () => {
+      await withTxn(async ({ q }) => {
+        const src = (await q("select prosrc from pg_proc where proname = 'set_report_kind'")).rows[0].prosrc;
+        expect(src).toMatch(/for no key update/);
+        expect(src).not.toMatch(/for update;/);
+      });
+    });
+
+    it('refuses a report the team does not have on file', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        await planned(q, asUser);
+        await expect(setKind(asUser, OFFICER_T1, 'nope', 'main')).rejects.toThrow(/not on file/);
+      });
+    });
+
+    it('takes the bosses a report made main killed off the nights they reach, logged as the skip logs them', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const { monday, tuesday } = await planned(q, asUser);
+        const id = await kill(q, { report: 'alts', date: tuesday, kind: 'alt' });
+        expect((await skippedOn(q, monday))[0]).toEqual([FIRST, false]);
+        await setKind(asUser, OFFICER_T1, 'alts', 'main');
+        expect((await night(q, monday))[0]).toEqual({
+          encounter_id: FIRST,
+          position: 1,
+          skipped: true,
+          confirmed: false,
+          players: []
+        });
+        expect(await reason(q, monday, FIRST)).toBe(id);
+        expect((await skipLog(q)).map((e) => [e.actor_id, e.detail.report_code])).toEqual([[null, 'alts']]);
+        expect(await audits(q)).toEqual([
+          {
+            team_id: 1,
+            actor: true,
+            detail: {
+              report_code: 'alts',
+              title: null,
+              raid_date: tuesday,
+              from: 'alt',
+              to: 'main',
+              old_override: null,
+              override: 'main'
+            }
+          }
+        ]);
+      });
+    });
+
+    it('puts back the bosses a report made alt took off, from their groups, and logs them', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const { p1, p2, monday, tuesday } = await planned(q, asUser);
+        await kill(q, { report: 'r1', date: tuesday });
+        expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
+        await setKind(asUser, OFFICER_T1, 'r1', 'alt');
+        expect((await night(q, monday))[0]).toEqual({
+          encounter_id: FIRST,
+          position: 1,
+          skipped: false,
+          confirmed: false,
+          players: [p1, p2]
+        });
+        expect(await reason(q, monday, FIRST)).toBe(null);
+        expect((await audits(q))[0].detail.put_back).toEqual([
+          { raid_date: monday, boss: 'First Boss', plan: 'mythic' }
+        ]);
+      });
+    });
+
+    it('leaves a boss an officer put back and skipped by hand since, and a night already played', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const { monday, tuesday } = await planned(q, asUser);
+        const thursday = await day(q, 2);
+        await plan(asUser, OFFICER_T1, thursday);
+        await kill(q, { report: 'r1', date: tuesday });
+        expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
+        // Put back on Monday, then skipped again by hand.
+        await skip(asUser, OFFICER_T1, monday, FIRST, false);
+        await skip(asUser, OFFICER_T1, monday, FIRST, true);
+        // Thursday has been played by the time the report is made alt.
+        await pinToday(q, await day(q, 3));
+        await setKind(asUser, OFFICER_T1, 'r1', 'alt');
+        expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
+        expect((await skippedOn(q, thursday))[0]).toEqual([FIRST, true]);
+        expect((await audits(q))[0].detail.put_back).toBeUndefined();
+      });
+    });
+
+    it('keeps a boss off when another main report killed it before the night, naming that kill', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const { monday, tuesday } = await planned(q, asUser);
+        await kill(q, { report: 'first', date: tuesday, started: `${tuesday} 19:00 America/New_York` });
+        const second = await kill(q, { report: 'second', date: tuesday });
+        await setKind(asUser, OFFICER_T1, 'first', 'alt');
+        expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
+        expect(await reason(q, monday, FIRST)).toBe(second);
+        const detail = (await audits(q))[0].detail;
+        expect(detail.put_back).toBeUndefined();
+        expect(detail.kept_off).toEqual([
+          { raid_date: monday, boss: 'First Boss', plan: 'mythic', report_code: 'second' }
+        ]);
+      });
+    });
+
+    it('leaves bench and archived raiders out of a boss it puts back, as Put back does', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const { p1, p2, monday, tuesday } = await planned(q, asUser);
+        await kill(q, { report: 'r1', date: tuesday });
+        await q('update public.players set is_bench = true where id = $1', [p2]);
+        await setKind(asUser, OFFICER_T1, 'r1', 'alt');
+        expect((await night(q, monday))[0].players).toEqual([p1]);
+      });
+    });
+
+    it('leaves a boss another kill already took off as it is when a report is made main', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const { monday, tuesday } = await planned(q, asUser);
+        const first = await kill(q, { report: 'r1', date: tuesday, started: `${tuesday} 19:00 America/New_York` });
+        await kill(q, { report: 'alts', date: tuesday, kind: 'alt' });
+        await setKind(asUser, OFFICER_T1, 'alts', 'main');
+        expect(await reason(q, monday, FIRST)).toBe(first);
+        expect(await skipLog(q)).toHaveLength(1);
+      });
+    });
+
+    it('writes nothing when asked for the override the report already has', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const { tuesday } = await planned(q, asUser);
+        await kill(q, { report: 'r1', date: tuesday });
+        await setKind(asUser, OFFICER_T1, 'r1', null);
+        await setKind(asUser, OFFICER_T1, 'r1', 'alt');
+        const before = (await q("select kind_override_at from public.team_raid_reports where report_code = 'r1'"))
+          .rows[0];
+        await setKind(asUser, TEAM_LEADER_T1, 'r1', 'alt');
+        expect(
+          (await q("select kind_override_at from public.team_raid_reports where report_code = 'r1'")).rows[0]
+        ).toEqual(before);
+        expect(await audits(q)).toHaveLength(1);
+      });
+    });
+
+    it('records the override it replaced, so clearing one reads as that', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const { tuesday } = await planned(q, asUser);
+        await kill(q, { report: 'r1', date: tuesday });
+        await setKind(asUser, OFFICER_T1, 'r1', 'main');
+        await setKind(asUser, OFFICER_T1, 'r1', null);
+        expect(
+          (await audits(q)).map((a) => [a.detail.from, a.detail.to, a.detail.old_override, a.detail.override])
+        ).toEqual([
+          ['main', 'main', null, 'main'],
+          ['main', 'main', 'main', null]
+        ]);
+      });
+    });
+
+    it('rebuilds the progression card in the same call', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const { tuesday } = await planned(q, asUser);
+        await kill(q, { report: 'alts', date: tuesday, kind: 'alt' });
+        await q(
+          `insert into public.team_raid_fights
+             (team_id, report_code, fight_id, encounter_id, difficulty, kill, boss_percentage, started_at, ended_at)
+           select 1, 'alts', 1, $1, 'mythic', true, 0, r.started_at, r.started_at + interval '5 minutes'
+             from public.team_raid_reports r where r.team_id = 1 and r.report_code = 'alts'`,
+          [FIRST]
+        );
+        const progress = async () =>
+          (
+            await q(
+              "select to_char(mythic_date, 'YYYY-MM-DD') as d, mythic_report_code as r from public.team_raid_progress where team_id = 1 and encounter_id = $1",
+              [FIRST]
+            )
+          ).rows[0] ?? null;
+        await setKind(asUser, OFFICER_T1, 'alts', 'main');
+        expect(await progress()).toEqual({ d: tuesday, r: 'alts' });
+        await setKind(asUser, OFFICER_T1, 'alts', 'alt');
+        expect((await progress())?.d ?? null).toBe(null);
+      });
     });
   });
 });
