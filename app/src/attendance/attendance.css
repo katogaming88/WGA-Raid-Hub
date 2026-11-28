@@ -172,3 +172,77 @@
 .attend-status-select {
   width: 100%;
 }
+
+/* The Reports list (#1473): hairlines between reports, not boxes. */
+.attend-report-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.attend-report {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) 140px 150px 190px auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.attend-report:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+.attend-report-title {
+  overflow-wrap: anywhere;
+}
+
+.attend-report-alt {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.attend-report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  justify-content: flex-end;
+}
+
+.attend-report-error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* At phone width each report stacks: the date and title, what it holds, what
+   it counts as, then the buttons at full width. */
+@media (max-width: 960px) {
+  .attend-report {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-1) var(--space-3);
+  }
+
+  .attend-report-title {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .attend-report-date {
+    grid-row: 2;
+  }
+
+  .attend-report-pulls,
+  .attend-report-synced,
+  .attend-report-kind,
+  .attend-report-actions {
+    grid-column: 1 / -1;
+  }
+
+  .attend-report-actions {
+    justify-content: flex-start;
+  }
+
+  .attend-report-actions .button {
+    min-height: 44px;
+  }
+}

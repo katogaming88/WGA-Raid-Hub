@@ -30,7 +30,34 @@ export type FullAttendanceRow = {
   report_excluded: boolean;
   report_title: string | null;
   source: string | null;
+  // The Warcraft Logs report this row was synced from (#1473).
+  report_id?: string | null;
 };
+
+// One team_raid_reports row (#1469): a report the progression sync has seen,
+// with the title rule's verdict in kind, an officer's choice in kind_override
+// (#1472) and the one that counts in effective_kind.
+export type ReportKind = 'main' | 'alt';
+export type ReportRow = {
+  report_code: string;
+  title: string | null;
+  raid_date: string;
+  boss_pulls: number;
+  boss_kills: number;
+  kind: string;
+  kind_override: string | null;
+  kind_override_by: number | null;
+  kind_override_at: string | null;
+  effective_kind: string | null;
+};
+
+// What the report counts as: the generated column is nullable in the types
+// only, so anything but "alt" reads as the team's raid.
+export const effectiveKind = (r: ReportRow): ReportKind => ((r.effective_kind ?? r.kind) === 'alt' ? 'alt' : 'main');
+
+export const reportUrl = (code: string) => `https://www.warcraftlogs.com/reports/${encodeURIComponent(code)}`;
+export const kindName = (kind: ReportKind) => (kind === 'main' ? 'Team raid' : 'Alt run');
+export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 export type NightPlayer = { playerId: number; name: string; status: string | null; source: string | null };
 export type Night = { date: string; title: string; excluded: boolean; players: NightPlayer[] };

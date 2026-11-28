@@ -9,7 +9,7 @@ import { errorMessage } from '../lib/errors';
 import { formatInstantDate, formatInstantShort, formatInstantTime, localTimeZoneNote } from '../lib/dates';
 import { useCurrentSeason } from '../profile/useProfile';
 import { useRosterPlayers } from '../roster/useRoster';
-import { classColor, type PlayerRow } from '../roster/roster';
+import { classColor, firstName, type PlayerRow } from '../roster/roster';
 import {
   ATTENDANCE_STATUSES,
   buildGrid,
@@ -19,15 +19,24 @@ import {
   type LastRun,
   type LookContext,
   type LookItem,
-  type Night
+  type Night,
+  type ReportKind,
+  type ReportRow,
+  effectiveKind,
+  kindName,
+  plural,
+  reportUrl
 } from './attendance';
 import {
   useAttendanceRows,
   useCommitAttendanceScores,
   useLastRun,
   useLookDetails,
+  useOverriders,
   useRefreshAttendanceFromWcl,
+  useReports,
   useSetAttendanceStatus,
+  useSetReportKind,
   useToggleReportExcluded
 } from './useAttendance';
 import './attendance.css';
@@ -153,6 +162,8 @@ function Manage({
           <NightGrid teamId={teamId} nights={nights} shown={shown} onShow={setShown} readOnly={readOnly} />
         )}
       </section>
+
+      <ReportsList teamId={teamId} rows={rows} readOnly={readOnly} />
     </div>
   );
 }
@@ -278,6 +289,145 @@ function LookList({
         </p>
       ))}
     </section>
+  );
+}
+
+// Every report the progression sync has seen (#1473), with what each counts
+// as and, for an officer, the switch (#1472). Exclude, in the grid above, stays
+// an attendance decision for one night; this says whether the report is the
+// team's raid at all.
+function ReportsList({ teamId, rows, readOnly }: { teamId: number; rows: FullAttendanceRow[]; readOnly: boolean }) {
+  const reports = useReports(teamId);
+  return (
+    <section className="attend-section" aria-labelledby="attend-reports-title">
+      <h2 id="attend-reports-title" className="section-title">
+        Reports
+      </h2>
+      <p className="text-muted">
+        Every Warcraft Logs report the site has read, and whether it counts as the team's raid. A report marked as an
+        alt run is left out of the lineup's killed bosses, the progression card and attendance.
+      </p>
+      <DataState query={reports} label="reports">
+        {(list) => <ReportRows teamId={teamId} reports={list} rows={rows} readOnly={readOnly} />}
+      </DataState>
+    </section>
+  );
+}
+
+function ReportRows({
+  teamId,
+  reports,
+  rows,
+  readOnly
+}: {
+  teamId: number;
+  reports: ReportRow[];
+  rows: FullAttendanceRow[];
+  readOnly: boolean;
+}) {
+  const { announce } = useStatus();
+  const setKind = useSetReportKind(teamId);
+  const refresh = useRefreshAttendanceFromWcl(teamId);
+  const [failed, setFailed] = useState<{ code: string; message: string } | null>(null);
+  const overriderIds = [...new Set(reports.flatMap((r) => (r.kind_override_by === null ? [] : [r.kind_override_by])))];
+  const overriders = useOverriders(teamId, overriderIds);
+  const synced = new Set(rows.map((r) => r.report_id).filter((id): id is string => !!id));
+
+  if (reports.length === 0) {
+    return <p className="text-muted">No reports yet. They show here after the next sync from Warcraft Logs.</p>;
+  }
+
+  // kind null goes back to the title's verdict.
+  const change = (report: ReportRow, kind: ReportKind | null) => {
+    setFailed(null);
+    const label = report.title || report.raid_date;
+    const result: ReportKind = kind ?? (report.kind === 'alt' ? 'alt' : 'main');
+    setKind.mutate(
+      { reportCode: report.report_code, kind },
+      {
+        onSuccess: () => {
+          announce('success', `${label} now counts as ${result === 'main' ? "the team's raid" : 'an alt run'}.`);
+          // A report newly the team's raid has no attendance yet: pull it in now.
+          if (result === 'main' && effectiveKind(report) !== 'main') {
+            refresh.mutate(undefined, {
+              onSuccess: (r) => announce('success', `Attendance refreshed: ${plural(r.mainNights, 'night')} found.`),
+              onError: (error) =>
+                announce(
+                  'error',
+                  `Attendance did not refresh (${errorMessage(error)}). The hourly refresh will pick it up.`
+                )
+            });
+          }
+        },
+        onError: (error) => setFailed({ code: report.report_code, message: errorMessage(error) })
+      }
+    );
+  };
+
+  return (
+    <ul className="attend-report-list">
+      {reports.map((r) => {
+        const label = r.title || r.raid_date;
+        const kind = effectiveKind(r);
+        const saving = setKind.isPending && setKind.variables?.reportCode === r.report_code;
+        const who = r.kind_override_by === null ? null : (overriders.data?.get(r.kind_override_by) ?? null);
+        return (
+          <li className="attend-report" key={r.report_code}>
+            <span className="attend-report-date">{nightLabel(r.raid_date)}</span>
+            <a
+              className="attend-report-title"
+              href={reportUrl(r.report_code)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {label}
+            </a>
+            <span className="text-muted attend-report-pulls">
+              {plural(r.boss_pulls, 'pull')}, {plural(r.boss_kills, 'kill')}
+            </span>
+            <span className="text-muted attend-report-synced">
+              {synced.has(r.report_code) ? 'Attendance from it' : 'No attendance from it'}
+            </span>
+            <span className={`attend-report-kind${kind === 'alt' ? ' attend-report-alt' : ''}`}>
+              {r.kind_override === null
+                ? `${kindName(kind)}, from the title`
+                : `${kindName(kind)}, set by ${who ? firstName(who) : 'an officer'}${
+                    r.kind_override_at ? ` on ${formatInstantShort(r.kind_override_at)}` : ''
+                  }`}
+            </span>
+            {!readOnly && (
+              <span className="attend-report-actions">
+                <button
+                  type="button"
+                  className="button button-quiet"
+                  disabled={setKind.isPending}
+                  onClick={() => change(r, kind === 'main' ? 'alt' : 'main')}
+                >
+                  {saving ? 'Saving…' : kind === 'main' ? 'Mark as alt run' : 'Mark as team raid'}
+                  <span className="visually-hidden"> {label}</span>
+                </button>
+                {r.kind_override !== null && (
+                  <button
+                    type="button"
+                    className="button button-quiet"
+                    disabled={setKind.isPending}
+                    onClick={() => change(r, null)}
+                  >
+                    Back to the title's verdict
+                    <span className="visually-hidden"> for {label}</span>
+                  </button>
+                )}
+              </span>
+            )}
+            {failed?.code === r.report_code && (
+              <p className="form-error attend-report-error" role="alert">
+                Did not save: {failed.message}
+              </p>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

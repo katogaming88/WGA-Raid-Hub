@@ -1,6 +1,13 @@
 import { readAll, useSupabaseMutation, useSupabaseQuery } from '../data/query';
 import type { Client } from '../lib/supabase';
-import { firstLineupBoss, type FullAttendanceRow, type LastRun, type LookContext } from './attendance';
+import {
+  firstLineupBoss,
+  type FullAttendanceRow,
+  type LastRun,
+  type LookContext,
+  type ReportKind,
+  type ReportRow
+} from './attendance';
 
 async function writeAuditLog(
   client: Client,
@@ -147,11 +154,72 @@ export function useAttendanceRows(teamId: number) {
     readAll<FullAttendanceRow>((from, to) =>
       client
         .from('attendance')
-        .select('id, player_id, raid_date, status, report_excluded, report_title, source')
+        .select('id, player_id, raid_date, status, report_excluded, report_title, source, report_id')
         .eq('team_id', teamId)
         .order('id')
         .range(from, to)
     )
+  );
+}
+
+const reportsKey = (teamId: number) => ['team-raid-reports', teamId] as const;
+
+// Every report the progression sync has seen for the team, newest first
+// (#1473). started_at then report_code keeps the paging deterministic.
+export function useReports(teamId: number) {
+  return useSupabaseQuery<ReportRow[]>(reportsKey(teamId), (client) =>
+    readAll<ReportRow>((from, to) =>
+      client
+        .from('team_raid_reports')
+        .select(
+          'report_code, title, raid_date, boss_pulls, boss_kills, kind, kind_override, kind_override_by, kind_override_at, effective_kind'
+        )
+        .eq('team_id', teamId)
+        .order('started_at', { ascending: false })
+        .order('report_code')
+        .range(from, to)
+    )
+  );
+}
+
+// Who set each override, by the name they play under on this team. A person
+// the team has no member row for (a site admin) reads as null.
+export function useOverriders(teamId: number, personIds: number[]) {
+  return useSupabaseQuery<Map<number, string>>(
+    ['report-overriders', teamId, personIds.join(',')],
+    async (client) => {
+      const rows = await readAll<{ person_id: number; name_realm: string | null }>((from, to) =>
+        client
+          .from('team_members')
+          .select('person_id, name_realm')
+          .eq('team_id', teamId)
+          .in('person_id', personIds)
+          .order('id')
+          .range(from, to)
+      );
+      if (rows.error) return { data: null, error: rows.error };
+      const names = new Map<number, string>();
+      for (const r of rows.data ?? []) if (r.name_realm) names.set(r.person_id, r.name_realm);
+      return { data: names, error: null };
+    },
+    { enabled: personIds.length > 0 }
+  );
+}
+
+// set_report_kind() (#1472): main or alt, or null for the title's verdict.
+// The plan, the progression card and the report list follow in the same call.
+export function useSetReportKind(teamId: number) {
+  return useSupabaseMutation<null, { reportCode: string; kind: ReportKind | null }>(
+    async (client, { reportCode, kind }) => {
+      const result = await client.rpc('set_report_kind', {
+        p_team_id: teamId,
+        p_report_code: reportCode,
+        // The generated type has no null; the function reads it as "the title's verdict".
+        p_kind: kind as string
+      });
+      return result.error ? { data: null, error: result.error } : { data: null, error: null };
+    },
+    { key: ['set-report-kind', teamId], refreshes: [reportsKey(teamId), rowsKey(teamId)] }
   );
 }
 

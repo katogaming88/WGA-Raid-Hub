@@ -666,8 +666,53 @@ const BOSS_GROUPS_CAP_EDITOR = { ...BOSS_GROUPS, person: CAP_EDITOR_PERSON };
 
 // Attendance Manage (#1354, #1103 row 1): two raid nights, a WCL late flag
 // with no status yet, so every grid state is on the page axe measures.
+// Reports the progression sync has read (#1473): one the title rule left in,
+// an alt run, and one an officer put back in.
+const ATTENDANCE_REPORTS = [
+  {
+    report_code: 'aBcD1234',
+    title: 'Phoenix Mythic Thursday',
+    raid_date: '2026-05-14',
+    started_at: '2026-05-15T00:30:00Z',
+    boss_pulls: 14,
+    boss_kills: 3,
+    kind: 'main',
+    kind_override: null,
+    kind_override_by: null,
+    kind_override_at: null,
+    effective_kind: 'main'
+  },
+  {
+    report_code: 'eFgH5678',
+    title: 'Alt practice',
+    raid_date: '2026-05-12',
+    started_at: '2026-05-13T00:30:00Z',
+    boss_pulls: 4,
+    boss_kills: 0,
+    kind: 'alt',
+    kind_override: null,
+    kind_override_by: null,
+    kind_override_at: null,
+    effective_kind: 'alt'
+  },
+  {
+    report_code: 'iJkL9012',
+    title: 'Alt-run Tuesday with a long title that has to wrap on a phone without spilling out',
+    raid_date: '2026-05-07',
+    started_at: '2026-05-08T00:30:00Z',
+    boss_pulls: 9,
+    boss_kills: 2,
+    kind: 'alt',
+    kind_override: 'main',
+    kind_override_by: 5,
+    kind_override_at: '2026-05-08T15:00:00Z',
+    effective_kind: 'main'
+  }
+];
 const ATTENDANCE_TABLES = {
   players: SCENARIO.players,
+  team_raid_reports: ATTENDANCE_REPORTS,
+  team_members: [{ id: 5, team_id: 1, person_id: 5, name_realm: 'Katorri-Stormrage' }],
   seasons: [{ code: 'MID2', display_name: 'Midnight Season 2', starts_at: '2026-01-01', ends_at: null }],
   attendance: [
     {
@@ -2260,6 +2305,13 @@ const STATES = [
   },
   { label: 'attendance manage, officer', ...ATTENDANCE_MANAGE },
   { label: 'attendance manage, officer, light', ...ATTENDANCE_MANAGE, colorScheme: 'light' },
+  { label: 'attendance manage, officer, on a phone', ...ATTENDANCE_MANAGE, viewport: NARROW },
+  {
+    label: 'attendance manage, officer, no reports yet',
+    ...ATTENDANCE_MANAGE,
+    sentinel: 'text=No reports yet',
+    tables: { ...ATTENDANCE_TABLES, team_raid_reports: [] }
+  },
   {
     label: 'attendance manage, officer, no nights recorded yet',
     ...ATTENDANCE_MANAGE,
