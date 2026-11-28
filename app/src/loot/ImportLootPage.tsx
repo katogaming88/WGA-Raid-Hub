@@ -4,9 +4,17 @@ import { DataState } from '../components/DataState';
 import { useStatus } from '../components/Status';
 import { usePageCan } from '../auth/access';
 import { errorMessage } from '../lib/errors';
-import { formatInstant, localTimeZoneNote } from '../lib/dates';
+import { formatInstant, isoDateShort, localTimeZoneNote } from '../lib/dates';
 import { useCurrentSeason } from '../profile/useProfile';
-import { importSeasons, importSummary, parseRclcPaste, UNKNOWN_SEASON } from './lootImport';
+import {
+  importSeasons,
+  importSummary,
+  parseRclcPaste,
+  SKIP_REASONS,
+  UNKNOWN_SEASON,
+  type SkippedRow,
+  type SkipReason
+} from './lootImport';
 import { useImportHistory, useImportLoot, type ImportHistory } from './useLootImport';
 import { useLootAccess } from '../settings/useSettings';
 import '../settings/settings.css';
@@ -55,6 +63,8 @@ function ImportCard({ teamId }: { teamId: number }) {
   const importLoot = useImportLoot(teamId);
   const [paste, setPaste] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  // What the last import left out, listed under the box until the next one.
+  const [leftOut, setLeftOut] = useState<SkippedRow[]>([]);
   const pasteId = useId();
   const problemId = useId();
   const code = season.data?.code ?? null;
@@ -67,10 +77,13 @@ function ImportCard({ teamId }: { teamId: number }) {
     }
     setProblem(null);
     importLoot.mutate(
-      { season: code!, rows: parsed.rows },
+      // The season only files an award whose date can't be read; every other
+      // award goes under the season of its own date (#1579).
+      { season: code ?? '', rows: parsed.rows },
       {
         onSuccess: (counts) => {
           setPaste('');
+          setLeftOut(counts.skipped ?? []);
           announce('success', importSummary(counts));
         },
         onError: (error) => announce('error', errorMessage(error))
@@ -81,14 +94,10 @@ function ImportCard({ teamId }: { teamId: number }) {
   return (
     <div className="card settings-card">
       <h2 className="section-title">Paste an export</h2>
-      {season.isSuccess &&
-        (code ? (
-          <p className="text-muted">
-            Awards are filed under <strong>{season.data.name}</strong>.
-          </p>
-        ) : (
-          <p className="form-error">No season has started yet, so there is nothing to file loot under.</p>
-        ))}
+      <p className="text-muted">
+        Each award is filed under the season of its date. Awards from before the first season, and items that aren't
+        raid gear (toys, decor, recipes, dungeon drops), are left out.
+      </p>
       <label className="field-label" htmlFor={pasteId}>
         RCLootCouncil JSON
       </label>
@@ -109,15 +118,43 @@ function ImportCard({ teamId }: { teamId: number }) {
         </p>
       )}
       <div className="settings-row">
-        <button
-          type="button"
-          className="button button-primary"
-          onClick={onImport}
-          disabled={!code || importLoot.isPending}
-        >
+        <button type="button" className="button button-primary" onClick={onImport} disabled={importLoot.isPending}>
           {importLoot.isPending ? 'Importing...' : 'Import'}
         </button>
       </div>
+      {leftOut.length > 0 && <LeftOut rows={leftOut} />}
+    </div>
+  );
+}
+
+// The last import's left-out awards, by reason, so the officer can see what
+// didn't come in and why.
+function LeftOut({ rows }: { rows: SkippedRow[] }) {
+  const reasons = (Object.keys(SKIP_REASONS) as SkipReason[]).filter((r) => rows.some((row) => row.reason === r));
+  return (
+    <div className="loot-import-left-out">
+      <h3 className="field-label">Left out of the last import</h3>
+      {reasons.map((reason) => {
+        const group = rows.filter((r) => r.reason === reason);
+        return (
+          <details key={reason}>
+            <summary>
+              {SKIP_REASONS[reason]} <span className="text-muted">({group.length})</span>
+            </summary>
+            <ul>
+              {group.map((r, i) => (
+                <li key={i}>
+                  {r.item ?? 'Unknown item'}
+                  <span className="text-muted">
+                    {' – '}
+                    {[r.boss, r.player.split('-')[0], isoDateShort(r.date)].filter(Boolean).join(', ')}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        );
+      })}
     </div>
   );
 }

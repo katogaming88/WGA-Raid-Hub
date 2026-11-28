@@ -4137,3 +4137,19 @@ Shipped: `20261128110238_pulls_to_first_kill.sql`.
 **Every team's card is rebuilt when the migration applies**, not at its next sync, so no card shows the old count in between.
 
 [Full discussion -> #1955](https://github.com/katogaming88/WGA-Raid-Hub/issues/1955).
+
+## #1579 -- a loot import files each award under its own season, and leaves out non-gear and repeats
+
+Shipped: `20261128113438_import_loot_own_season.sql`.
+
+**Each award takes the season of its own date** (the Eastern date, through `current_season()`), not the season the page passes. On 2026-10-18 an export reaching back past this season filed 474 Season 1 awards and 89 from the previous expansion under Season 2. An award dated before the first season is left out. `p_season` stays in the signature, used only for an award whose date can't be read (it took today's season before), so the current site's import tab and `upload_rclc_loot()` keep working unchanged. An empty date counts as one that can't be read: `to_date('')` returns year 1 BC rather than failing, which would have filed the row as before the first season (fresh-agent review on PR #1957).
+
+**An unknown item is kept only from a boss on the raid boss list** (`raid_encounters`), comparing the names' letters and digits only: RCLootCouncil logs "Chimaerus the Undreamt God" where the list has "Chimaerus, the Undreamt God" (fresh-agent review on PR #1957). That keeps a new boss's loot whose items aren't loaded yet, and leaves out toys, decor, recipes and Mythic+ bonus rolls, which never resolve to an item. A known item is kept from any boss, as before.
+
+**An award on file before the import, with the same character and item within 5 minutes, is the same award**, whatever its RCLootCouncil id. Each officer's client makes its own id for one award, and the first history import's rows have none, so the id check alone let 124 repeats in. Real second copies exist, though: the fresh-agent review found 9 such pairs on prod (a disenchanter's two drops from one kill, a bonus roll beside a transmog pick, two Track Upgrade awards). So each award on file stands for one incoming row at most, taking its own RCLootCouncil id first, and rows the import itself adds are never matched. Two copies in one file both come in; the same two sent again from another client are both skipped; a third copy comes in. Only a resolved item is checked; an unknown raid-boss item still relies on the id. No index backs the check yet: re-importing about 1,000 rows against 1,100 on file took about 200 ms.
+
+**A left-out row makes no placeholder character.** The checks for season and boss come before the player lookup, so a last-expansion alt doesn't become an archived stub.
+
+**The result lists what was left out** (`skipped`: item, boss, player, date, reason), beside the counts. `skipped_duplicate` counts both kinds of repeat, so a caller reading the old keys sees the same meaning.
+
+[Full discussion -> #1579](https://github.com/katogaming88/WGA-Raid-Hub/issues/1579).

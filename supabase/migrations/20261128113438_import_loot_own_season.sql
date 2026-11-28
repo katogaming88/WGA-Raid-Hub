@@ -1,0 +1,291 @@
+-- #1579: a loot import files each award under its own season, and leaves out
+-- what isn't raid gear and what is already on file.
+--
+-- On 2026-10-18 a Phoenix import of an export reaching back past this season
+-- took hand-written SQL to clean up (248 rows deleted, 351 re-tagged):
+--
+-- 1. Every row took the season the page passed (p_season), so Season 1 and
+--    last expansion's awards were filed as this season's. Each row now takes
+--    the season its award date falls in (Eastern date, current_season()).
+--    A row dated before the first season is left out. p_season, the season
+--    the page or the Sync app passes, is now used only for a row whose date
+--    can't be read (it took today's season before), so the current site's
+--    import tab and upload_rclc_loot() keep working unchanged.
+-- 2. An item the hub doesn't know was always kept. That is right for a new
+--    raid boss whose items aren't loaded yet, but it also let in toys, decor,
+--    recipes and Mythic+ bonus rolls. An unknown item is now kept only when
+--    its boss is on the raid boss list (raid_encounters); otherwise it is
+--    left out. Names are compared on their letters and digits alone, since
+--    RCLootCouncil writes "Chimaerus the Undreamt God" where the list has
+--    "Chimaerus, the Undreamt God".
+-- 3. The duplicate check only matched RCLootCouncil's id, and each client
+--    makes its own id for the same award, while the first history import
+--    left rows with no id at all. An award is now also left out when an
+--    award already on file before this import has the same character and
+--    item within 5 minutes of it. Each award on file stands for one incoming
+--    row at most, and rows this import adds are never matched, so two real
+--    copies (a disenchanter's two drops from one kill, a bonus roll beside a
+--    transmog pick) both come in (fresh-agent review on PR #1957).
+--
+-- The result keeps its counts (skipped_duplicate now counts both kinds of
+-- repeat) and adds one per new reason, plus `skipped`: each row left out,
+-- with its item, boss, player, date and reason, for the import page to list.
+-- A row left out for its season or boss never makes a placeholder player.
+
+create or replace function public.import_rclc_loot(p_team_id integer, p_season text, p_rows jsonb)
+returns jsonb
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_row jsonb;
+  v_name_realm text;
+  v_player_id integer;
+  v_item_id integer;
+  v_track text;
+  v_track_from_bonus text;
+  v_instance text;
+  v_item_string text;
+  v_string_parts text[];
+  v_num_bonus integer;
+  v_bonus_ids integer[];
+  v_awarded_at timestamptz;
+  v_season text;
+  v_rclc_id text;
+  v_dedupe_key text;
+  v_boss text;
+  v_item_name text;
+  v_response text;
+  v_reason text;
+  v_new_id integer;
+  v_match integer;
+  -- Awards on file already matched to an incoming row, and the rows this
+  -- import added: neither is matched again.
+  v_claimed integer[] := '{}'::integer[];
+  v_added integer[] := '{}'::integer[];
+  v_inserted integer := 0;
+  v_skipped integer := 0;
+  v_before_seasons integer := 0;
+  v_not_raid_gear integer := 0;
+  v_unresolved_item integer := 0;
+  v_skipped_rows jsonb := '[]'::jsonb;
+  v_detail text;
+  -- Season MID2 raid gear track bonus IDs -- see 20260829200033's header comment.
+  c_champion_bonus_ids constant integer[] := array[12833,12834,12835,12836,12837,12838];
+  c_hero_bonus_ids constant integer[] := array[12841,12842,12843,12844,12845,12846];
+  c_myth_bonus_ids constant integer[] := array[12849,12850,12851,12852,12853,12854,13848];
+begin
+  if not (public.has_team_permission(p_team_id, 'manage_loot') or public.is_site_admin()) then
+    raise exception 'Not authorized';
+  end if;
+
+  for v_row in select * from jsonb_array_elements(coalesce(p_rows, '[]'::jsonb))
+  loop
+    v_name_realm := trim(both from coalesce(v_row->>'player', ''));
+    v_rclc_id := nullif(trim(both from coalesce(v_row->>'id', '')), '');
+    if v_name_realm = '' or v_rclc_id is null then
+      continue;
+    end if;
+
+    v_item_name := nullif(trim(both from coalesce(v_row->>'itemName', '')), '');
+    v_boss := nullif(trim(both from coalesce(v_row->>'boss', '')), '');
+    v_reason := null;
+
+    -- awarded_at: RCLC's date/time are the raid's local wall-clock time, same
+    -- assumption the rest of the site already makes for this data (see
+    -- mapSupabaseLoot()'s America/New_York formatting in js/common.js).
+    -- Falls back to the import moment if either field is unparseable rather
+    -- than failing the whole row.
+    begin
+      -- to_date('') reads as year 1 BC rather than failing, so an empty date
+      -- is sent to the fallback by hand.
+      if trim(both from coalesce(v_row->>'date', '')) = '' then
+        raise exception 'no date';
+      end if;
+      v_awarded_at := (
+        to_date(replace(coalesce(v_row->>'date', ''), '/', '-'), 'YYYY-MM-DD')
+        + coalesce(nullif(v_row->>'time', '')::interval, interval '0')
+      ) at time zone 'America/New_York';
+      -- The award's own season, by its Eastern date (#1579).
+      v_season := public.current_season((v_awarded_at at time zone 'America/New_York')::date);
+    exception when others then
+      -- No date to go by: the season the page or the Sync app passed.
+      v_awarded_at := now();
+      v_season := nullif(p_season, '');
+    end;
+    if v_season is null then
+      v_reason := 'before_seasons';
+    end if;
+
+    -- Item: wow_item_id first (RCLC provides itemID directly and it's
+    -- unambiguous), item name as fallback. Left null, not auto-created, when
+    -- neither resolves -- a genuinely unresolved item means the season's Item
+    -- Lookup needs updating, not something to paper over with a placeholder
+    -- row (see docs/database-decisions.md).
+    v_item_id := null;
+    if v_reason is null then
+      if (v_row->>'itemID') is not null and (v_row->>'itemID') ~ '^\d+$' then
+        select id into v_item_id from public.items
+         where wow_item_id = (v_row->>'itemID')::integer
+         order by id limit 1;
+      end if;
+      if v_item_id is null and v_item_name is not null then
+        select id into v_item_id from public.items
+         where lower(name) = lower(v_item_name)
+         limit 1;
+      end if;
+      -- An unknown item is kept only from a raid boss (a new boss's loot not
+      -- loaded yet); from anywhere else it isn't raid gear (#1579).
+      if v_item_id is null and not exists (
+        select 1 from public.raid_encounters e
+         where regexp_replace(lower(e.name), '[^[:alnum:]]', '', 'g')
+             = regexp_replace(lower(coalesce(v_boss, '')), '[^[:alnum:]]', '', 'g')
+           and coalesce(v_boss, '') <> ''
+      ) then
+        v_reason := 'not_raid_gear';
+      end if;
+    end if;
+
+    if v_reason is null then
+      -- Player: name_realm match, ignoring case and whitespace. RCLC's
+      -- UnitName()-sourced realm strips spaces from multi-word realms
+      -- ("Wyrmrest Accord" -> "WyrmrestAccord"); the DB's officer-typed
+      -- name_realm keeps them. Comparing with spaces stripped from both sides
+      -- makes either shape resolve to the same row. Unknown names still get
+      -- an archived stub (same shape as the #320 import's stub rows), never
+      -- a null player_id.
+      select id into v_player_id from public.players
+       where team_id = p_team_id
+         and lower(replace(name_realm, ' ', '')) = lower(replace(v_name_realm, ' ', ''));
+      if v_player_id is null then
+        insert into public.players (team_id, name_realm, archived_at)
+        values (p_team_id, v_name_realm, now())
+        returning id into v_player_id;
+      end if;
+
+      -- The same award from another officer's client has another id, and the
+      -- first history import's rows have none: the same character with the
+      -- same item within 5 minutes is the same award (#1579).
+      -- Its own copy on file (same RCLootCouncil id) is taken first, so a
+      -- re-import of one client's file lines each row up with itself.
+      if v_item_id is not null then
+        v_dedupe_key := 't' || p_team_id || ':rclc:' || v_rclc_id;
+        select l.id into v_match
+          from public.rclc_loot l
+         where l.team_id = p_team_id
+           and l.player_id = v_player_id
+           and l.item_id = v_item_id
+           and l.awarded_at between v_awarded_at - interval '5 minutes' and v_awarded_at + interval '5 minutes'
+           and l.id <> all (v_claimed)
+           and l.id <> all (v_added)
+         order by l.dedupe_key is not distinct from v_dedupe_key desc,
+                  abs(extract(epoch from l.awarded_at - v_awarded_at)), l.id
+         limit 1;
+        if v_match is not null then
+          v_claimed := v_claimed || v_match;
+          v_reason := 'already_on_file';
+        end if;
+        v_match := null;
+      end if;
+    end if;
+
+    if v_reason is null then
+      if v_item_id is null then
+        v_unresolved_item := v_unresolved_item + 1;
+      end if;
+
+      -- Track, preferred source: the item's own bonus IDs (see
+      -- 20260829200033's header comment). v_bonus_ids/v_num_bonus reset
+      -- every row -- a plpgsql variable keeps its value across loop
+      -- iterations if not reassigned, and a row with no itemString must not
+      -- inherit the previous row's.
+      v_track_from_bonus := null;
+      v_bonus_ids := null;
+      v_item_string := coalesce(v_row->>'itemString', '');
+      if v_item_string <> '' then
+        v_string_parts := string_to_array(v_item_string, ':');
+        if array_length(v_string_parts, 1) >= 14 then
+          v_num_bonus := nullif(v_string_parts[14], '')::integer;
+          if v_num_bonus is not null and v_num_bonus > 0
+             and array_length(v_string_parts, 1) >= 14 + v_num_bonus then
+            select array_agg(x::integer) into v_bonus_ids
+              from unnest(v_string_parts[15 : 14 + v_num_bonus]) x
+             where x ~ '^\d+$';
+          end if;
+        end if;
+      end if;
+      if v_bonus_ids is not null then
+        v_track_from_bonus := case
+          when v_bonus_ids && c_champion_bonus_ids then 'Champion'
+          when v_bonus_ids && c_hero_bonus_ids then 'Hero'
+          when v_bonus_ids && c_myth_bonus_ids then 'Myth'
+          else null
+        end;
+      end if;
+
+      -- Track, fallback source: a standalone difficulty word anywhere in the
+      -- instance string (20260806214054), used only when the bonus IDs
+      -- above didn't resolve a track.
+      v_instance := coalesce(v_row->>'instance', '');
+      v_track := coalesce(v_track_from_bonus, case
+        when v_instance ~* '\mmythic\M' then 'Myth'
+        when v_instance ~* '\mheroic\M' then 'Hero'
+        when v_instance ~* '\mnormal\M' then 'Champion'
+        else null
+      end);
+
+      v_response := nullif(trim(both from coalesce(v_row->>'response', '')), '');
+      v_dedupe_key := 't' || p_team_id || ':rclc:' || v_rclc_id;
+
+      insert into public.rclc_loot
+        (team_id, player_id, item_id, track, season, awarded_at, rclc_id, dedupe_key, boss, response)
+      values
+        (p_team_id, v_player_id, v_item_id, v_track, v_season, v_awarded_at, v_rclc_id, v_dedupe_key, v_boss, v_response)
+      on conflict (dedupe_key) do nothing
+      returning id into v_new_id;
+
+      if v_new_id is not null then
+        v_inserted := v_inserted + 1;
+        v_added := v_added || v_new_id;
+        v_detail := coalesce(v_track || ' - ', '') || coalesce(v_item_name, 'Unknown item');
+        perform public.write_audit_log(
+          p_team_id, 'Loot Imported (RCLC)', 'players', v_player_id,
+          jsonb_build_object('summary', v_detail, 'season', v_season)
+        );
+      else
+        v_reason := 'already_on_file';
+      end if;
+      v_new_id := null;
+    end if;
+
+    if v_reason is not null then
+      if v_reason = 'before_seasons' then
+        v_before_seasons := v_before_seasons + 1;
+      elsif v_reason = 'not_raid_gear' then
+        v_not_raid_gear := v_not_raid_gear + 1;
+      else
+        v_skipped := v_skipped + 1;
+      end if;
+      v_skipped_rows := v_skipped_rows || jsonb_build_object(
+        'item', v_item_name,
+        'boss', v_boss,
+        'player', v_name_realm,
+        'date', (v_awarded_at at time zone 'America/New_York')::date,
+        'reason', v_reason
+      );
+    end if;
+  end loop;
+
+  return jsonb_build_object(
+    'inserted', v_inserted,
+    'skipped_duplicate', v_skipped,
+    'skipped_before_seasons', v_before_seasons,
+    'skipped_not_raid_gear', v_not_raid_gear,
+    'unresolved_item', v_unresolved_item,
+    'skipped', v_skipped_rows
+  );
+end;
+$$;
+
+comment on function public.import_rclc_loot(integer, text, jsonb) is
+  'Imports an RCLootCouncil JSON export for a team. Each award is filed under the season its Eastern date falls in; p_season only for a row whose date can''t be read (#1579). Left out, and listed in the result''s `skipped`: awards dated before the first season, unknown items from a boss not on the raid boss list (toys, decor, recipes, dungeon drops), and awards already on file, by RCLootCouncil id or an award on file before the import with the same character and item within 5 minutes, each matching one incoming row at most.';

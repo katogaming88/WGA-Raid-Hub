@@ -250,3 +250,20 @@
   background: var(--raised);
   border-color: currentColor;
 }
+
+/* What the last import left out (#1579), one disclosure per reason. */
+.loot-import-left-out {
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.loot-import-left-out h3 {
+  margin: 0;
+}
+
+.loot-import-left-out ul {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
+}
