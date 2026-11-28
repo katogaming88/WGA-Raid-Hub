@@ -141,11 +141,15 @@
 .pulls-dot {
   width: 5px;
   height: 5px;
-  /* A wider hit area for the hover text, without a wider dot. */
-  border: 5px solid transparent;
-  background-clip: padding-box;
   border-radius: 50%;
   opacity: 0.55;
+}
+
+/* A wider hit area for the hover text, without a wider dot. */
+.pulls-dot::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
 }
 
 .pulls-dot.pulls-best {
