@@ -123,7 +123,7 @@
 | [public.team_raider_order](public.team_raider_order.md) | 5 | The order a team lists its raiders in within a role section of Boss Lineup (#1683); role is the section the raider was placed in, and position counts from 1 within it. A raider with no row lists after the placed ones, A-Z. Written only by set_lineup_raider_order(). | BASE TABLE |
 | [public.character_sims](public.character_sims.md) | 14 | A raider's latest droptimizer sim per difficulty, spec and setup (#1443, #1916, #1888): Raidbots or QE Live, written by save_character_sim(). | BASE TABLE |
 | [public.character_sim_results](public.character_sim_results.md) | 10 | Each result in a sim (#1443): the item, the slot simmed into (Raidbots only), its item level and the gain in percent (and DPS for Raidbots). | BASE TABLE |
-| [public.team_raid_fights](public.team_raid_fights.md) | 14 | Every Heroic and Mythic pull on a listed raid's boss in a team's Warcraft Logs reports (#1470), one row per fight, counted from the start of the tier the raid is filed under. Rewritten on every run that reads the report, never deleted. Written only by wcl-progression-sync; team_raid_progress is rebuilt from the main reports' rows. | BASE TABLE |
+| [public.team_raid_fights](public.team_raid_fights.md) | 14 | Every Heroic and Mythic boss pull the progression sync reads for a team (#1470), alt runs included, one row per team, report and fight. Read by the team (its raiders, view_reports and attendance permissions) and site admins; the public reads the team's own raids' pulls through team_raid_pulls() (#1496). Written only by wcl-progression-sync. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -429,6 +429,8 @@
 | public.rebuild_team_raid_progress | void | p_team_id integer | FUNCTION |
 | public.skip_bosses_for_kills | void | p_kill_ids integer[] | FUNCTION |
 | public.set_report_kind | void | p_team_id integer, p_report_code text, p_kind text | FUNCTION |
+| public.team_main_pulls | team_raid_fights | p_team_id integer, p_encounter_id integer DEFAULT NULL::integer | FUNCTION |
+| public.team_raid_pulls | record | p_team_id integer, p_encounter_id integer | FUNCTION |
 
 ## Enums
 

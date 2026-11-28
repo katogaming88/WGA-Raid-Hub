@@ -1,13 +1,14 @@
 // team_raid_fights (#1470): every Heroic and Mythic boss pull the progression
 // sync reads, one row per fight, and rebuild_team_raid_progress(), which
 // rebuilds a team's team_raid_progress rows from the fights of its main
-// reports (team_raid_reports.effective_kind, #1469). Anyone reads the fights,
-// as anyone reads the progress; only the sync's service role writes them.
+// reports (team_raid_reports.effective_kind, #1469). The team reads the
+// fights; the public reads the team's own raids' pulls through
+// team_raid_pulls() (#1496). Only the sync's service role writes them.
 //
 // Each case mints its own team (seedTeam), so it never writes a seeded row.
 // Each test runs in one rolled-back transaction (helpers.js withTxn).
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedTeam } from './helpers.js';
+import { pool, withTxn, seedTeam, seedPlayer, SITE_ADMIN } from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -382,16 +383,30 @@ describe('rebuild_team_raid_progress', () => {
 });
 
 describe('team_raid_fights', () => {
-  it('shows every team’s pulls to anyone, signed in or not, as the progression card is', async () => {
-    await withTxn(async ({ q, asAnon }) => {
+  // #1496: alt runs are in here, so the table is the team's; the public reads
+  // its own raids' pulls through team_raid_pulls().
+  it('shows a team’s pulls to its raiders, officers and site admins, not to another team or the public', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
       await seedRaid(q);
-      const { teamId } = await seedTeam(q);
-      await seedCorpus(q, teamId);
-      const { rows } = await asAnon(
-        'select report_code, fight_id from public.team_raid_fights where team_id = $1 order by 1, 2',
-        [teamId]
-      );
-      expect(rows.length).toBe(5);
+      const a = await seedTeam(q);
+      const b = await seedTeam(q);
+      await seedCorpus(q, a.teamId);
+      const count = async (rows) => (await rows).rows.length;
+      const READ = 'select report_code from public.team_raid_fights where team_id = $1';
+      // A member of the team with no character on its roster yet reads nothing.
+      expect(await count(asUser(a.raider.uid, READ, [a.teamId]))).toBe(0);
+      await seedPlayer(q, { memberId: a.raider.memberId });
+      expect(await count(asUser(a.raider.uid, READ, [a.teamId]))).toBe(5);
+      expect(await count(asUser(a.officer.uid, READ, [a.teamId]))).toBe(5);
+      expect(await count(asUser(SITE_ADMIN, READ, [a.teamId]))).toBe(5);
+      expect(await count(asUser(b.officer.uid, READ, [a.teamId]))).toBe(0);
+      expect(await count(asAnon(READ, [a.teamId]))).toBe(0);
+      // An officer with Attendance but not Reports reads them too, as on team_raid_reports.
+      await asUser(a.leader.uid, 'select public.set_team_rank_permissions($1, $2::jsonb)', [
+        a.teamId,
+        JSON.stringify([{ rank: 'officer', permission: 'view_reports', on: false }])
+      ]);
+      expect(await count(asUser(a.officer.uid, READ, [a.teamId]))).toBe(5);
     });
   });
 
@@ -420,6 +435,118 @@ describe('team_raid_fights', () => {
       await q(`delete from public.team_raid_reports where team_id = $1 and report_code = 'reportA'`, [teamId]);
       const { rows } = await q('select count(*)::int as n from public.team_raid_fights where team_id = $1', [teamId]);
       expect(rows[0].n).toBe(2);
+    });
+  });
+});
+
+describe('team_raid_pulls() (#1496)', () => {
+  const PULLS = `select report_code, fight_id, difficulty, raid_date::text, boss_percentage::float as boss_percentage, kill,
+                        last_phase, last_phase_is_intermission
+                   from public.team_raid_pulls($1, $2)`;
+
+  it('gives anyone, signed in or not, the team’s own raids’ pulls of one boss, alt runs left out', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      await seedRaid(q);
+      const a = await seedTeam(q);
+      const b = await seedTeam(q);
+      await seedCorpus(q, a.teamId, 'alt');
+      await q(
+        `update public.team_raid_fights set last_phase = 2, last_phase_is_intermission = true
+          where team_id = $1 and report_code = 'reportA' and fight_id = 1`,
+        [a.teamId]
+      );
+      const expected = [
+        {
+          report_code: 'reportA',
+          fight_id: 1,
+          difficulty: 'mythic',
+          raid_date: '2026-09-14',
+          boss_percentage: 42.5,
+          kill: false,
+          last_phase: 2,
+          last_phase_is_intermission: true
+        },
+        {
+          report_code: 'reportA',
+          fight_id: 2,
+          difficulty: 'mythic',
+          raid_date: '2026-09-14',
+          boss_percentage: 0,
+          kill: true,
+          last_phase: null,
+          last_phase_is_intermission: null
+        }
+      ];
+      expect((await asAnon(PULLS, [a.teamId, BOSS_ONE])).rows).toEqual(expected);
+      expect((await asUser(b.officer.uid, PULLS, [a.teamId, BOSS_ONE])).rows).toEqual(expected);
+      expect((await asUser(a.officer.uid, PULLS, [a.teamId, BOSS_ONE])).rows).toEqual(expected);
+    });
+  });
+
+  it('follows an officer’s choice each way', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      await seedCorpus(q, teamId, 'alt');
+      await q(
+        `update public.team_raid_reports set kind_override = 'alt', kind_override_at = now()
+          where team_id = $1 and report_code = 'reportA'`,
+        [teamId]
+      );
+      await q(
+        `update public.team_raid_reports set kind_override = 'main', kind_override_at = now()
+          where team_id = $1 and report_code = 'reportB'`,
+        [teamId]
+      );
+      const rows = (await asAnon(PULLS, [teamId, BOSS_ONE])).rows;
+      expect(rows.map((r) => [r.report_code, r.fight_id])).toEqual([['reportB', 1]]);
+    });
+  });
+
+  it('gives a pull two raiders logged once, as the progression card counts it', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      await seedCorpus(q, teamId);
+      // A second log of report A's night: the same two Mythic pulls.
+      await report(q, teamId, 'reportC', '2026-09-14');
+      await fight(q, teamId, 'reportC', 1, BOSS_ONE, 'mythic', false, 42.5);
+      await fight(q, teamId, 'reportC', 2, BOSS_ONE, 'mythic', true, 0);
+      await rebuild(q, teamId);
+      const rows = (await asAnon(PULLS, [teamId, BOSS_ONE])).rows;
+      const card = (await q(PROGRESS, [teamId])).rows.find((r) => r.encounter_id === BOSS_ONE);
+      expect(rows.length).toBe(3);
+      expect(rows.length).toBe(card.mythic_pulls);
+    });
+  });
+
+  // CodeRabbit on PR #1946: the rebuild runs as its caller, the sync's service
+  // role, and reads the shared matching, so that role must be able to run it.
+  it('lets the sync’s service role rebuild the card through the shared matching', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      await seedCorpus(q, teamId);
+      await q('set local role service_role');
+      await q('select public.rebuild_team_raid_progress($1)', [teamId]);
+      await q('reset role');
+      expect((await q(PROGRESS, [teamId])).rows).toEqual(PINNED);
+    });
+  });
+
+  it('is callable by anyone on the site, and the matching it shares with the rebuild only by the sync', async () => {
+    await withTxn(async ({ q }) => {
+      const { rows } = await q(
+        `select r.rolname,
+                has_function_privilege(r.rolname, 'public.team_raid_pulls(integer, integer)', 'execute') as pulls,
+                has_function_privilege(r.rolname, 'public.team_main_pulls(integer, integer)', 'execute') as matching
+           from pg_roles r where r.rolname in ('anon', 'authenticated', 'service_role') order by r.rolname`
+      );
+      expect(rows).toEqual([
+        { rolname: 'anon', pulls: true, matching: false },
+        { rolname: 'authenticated', pulls: true, matching: false },
+        { rolname: 'service_role', pulls: false, matching: true }
+      ]);
     });
   });
 });

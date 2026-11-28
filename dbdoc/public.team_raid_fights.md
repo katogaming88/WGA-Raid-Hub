@@ -2,7 +2,7 @@
 
 ## Description
 
-Every Heroic and Mythic pull on a listed raid's boss in a team's Warcraft Logs reports (#1470), one row per fight, counted from the start of the tier the raid is filed under. Rewritten on every run that reads the report, never deleted. Written only by wcl-progression-sync; team_raid_progress is rebuilt from the main reports' rows.
+Every Heroic and Mythic boss pull the progression sync reads for a team (#1470), alt runs included, one row per team, report and fight. Read by the team (its raiders, view_reports and attendance permissions) and site admins; the public reads the team's own raids' pulls through team_raid_pulls() (#1496). Written only by wcl-progression-sync.
 
 ## Columns
 

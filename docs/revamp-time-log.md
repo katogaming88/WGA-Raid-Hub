@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     58 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 63 h 55 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 64 h 32 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   5 h 48 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **239 h 34 m** |             |
+| **All revamp work**                | **240 h 11 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 26 h 27 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 27 h 4 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -942,6 +942,9 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 9:01-9:12 PM | PR #1944 (#1472): CodeRabbit's review limit reached, so skipped; the fresh-agent migration review (changes needed: a deadlock with the sync's kill insert, a repeat call that wrote anyway, a thinner audit entry) and its fixes, Kat's call to keep the flip-back re-skip, the re-review (approve); local database restored | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1472) | 11 m | build, Kat decision | 274,900 | Tokens include both fresh-agent reviews (242,500). Kat's wait, 9:12-9:22 PM, not counted. |
 | 9:24-9:25 PM | PR #1944 (#1472): Kat's merge; cleanup, #1472's row out of #1487, totals re-summed, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1472) | 1 m | Kat review, build | 4,500 | |
 | 9:26-9:37 PM | #1473: the Reports list on Manage attendance (every report the sync has read, what it counts as, who set it, the switch through set_report_kind() and the attendance refresh after a change to the team's raid); tests first, hooks, page and styles, browser accessibility states (desktop, light, phone, no reports), stamp 3.314.1, changelog, these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1473) | 11 m | build | 310,000 | Preflight, PR, screenshots and review not yet counted. |
+| 9:37-9:48 PM | PR #1945 (#1473): preflight (one browser test needed the new report read in its harness), PR opened, screenshots; the row layout fixed from them (a long title collapsed into one letter a line, columns drifted between rows) | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1473) | 11 m | build | 45,000 | Kat's design review, 9:48-10:02 PM, not counted. |
+| 10:03-10:04 PM | PR #1945 (#1473): Kat's merge; cleanup, #1473's row out of #1487, totals re-summed, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1473) | 1 m | Kat review, build | 4,400 | |
+| 10:05-10:30 PM | #1496: Kat's call to close the pulls table (#1470 shipped it public, alt runs in it); team_raid_pulls() for the public chart and team_main_pulls() (#1938's matching, now shared with the card's rebuild), database tests, generated docs, RLS.md, decision log, stamp 3.315.0, these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1496) | 25 m | build, Kat decision | 370,000 | Preflight, PR, reviews and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 
