@@ -20475,6 +20475,18 @@
       "return_type": "void",
       "arguments": "p_team_id integer",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.skip_bosses_for_kills",
+      "return_type": "void",
+      "arguments": "p_kill_ids integer[]",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_report_kind",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_report_code text, p_kind text",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

@@ -427,6 +427,8 @@
 | public.save_character_sim | int4 | p_player_id integer, p_difficulty text, p_class_spec_id integer, p_source text, p_report_id text, p_character_name text, p_character_realm text, p_simmed_at timestamp with time zone, p_fight_style text, p_target_count integer, p_fight_length integer, p_results jsonb | FUNCTION |
 | public.delete_character_sim | void | p_sim_id bigint | FUNCTION |
 | public.rebuild_team_raid_progress | void | p_team_id integer | FUNCTION |
+| public.skip_bosses_for_kills | void | p_kill_ids integer[] | FUNCTION |
+| public.set_report_kind | void | p_team_id integer, p_report_code text, p_kind text | FUNCTION |
 
 ## Enums
 
