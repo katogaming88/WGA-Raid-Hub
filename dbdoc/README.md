@@ -74,8 +74,8 @@
 | [public.item_seasons](public.item_seasons.md) | 2 | The seasons a dungeon or crafted item is offered in (#1166). A raid item has no row: its season comes from raid_zones. Filled by scripts/dungeon-items-sql.js, never by a client. | BASE TABLE |
 | [public.raid_night_participation](public.raid_night_participation.md) | 7 | Who was actually in for a real pull of one boss on one raid night (#1242), one row per raider present. Written only by record_raid_night_participation(), called from the attendance sync once a night has a lineup (raid_night_bosses). Compare against raid_night_lineups for planned-vs-actual. | BASE TABLE |
 | [public.season_track_floors](public.season_track_floors.md) | 4 | The lowest item level of each gear upgrade track in a tier (#1267). blizzard-gear-sync grades equipped gear that carries no track bonus id against the current tier's floors, highest track first. Added by the migration that adds the tier. | BASE TABLE |
-| [public.team_raid_kills](public.team_raid_kills.md) | 9 | Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), alt runs included as on team_raid_progress, one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. Each insert takes the bosses it killed off the team's later nights that lockout (skip_killed_bosses()). | BASE TABLE |
-| [public.team_raid_kills_this_week](public.team_raid_kills_this_week.md) | 7 | Each boss a team has killed since this week's Tuesday reset, once per difficulty, with its first kill of the week (#1246). | VIEW |
+| [public.team_raid_kills](public.team_raid_kills.md) | 9 | Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), alt runs included, one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. Its readers count main reports only (team_raid_reports.effective_kind, #1471). Each insert takes the bosses the team's main reports killed off the team's later nights that lockout (skip_killed_bosses()). | BASE TABLE |
+| [public.team_raid_kills_this_week](public.team_raid_kills_this_week.md) | 7 | Each boss a team has killed in its main reports (team_raid_reports.effective_kind, #1471) since this week's Tuesday reset, once per difficulty, with its first kill of the week (#1246). | VIEW |
 | [public.team_schedule_settings](public.team_schedule_settings.md) | 3 | A team's own schedule settings (#1246): the raid difficulty every weekly or added night follows unless it sets its own. No row, or a null, means not set. Written by the officers who write raid_schedule. | BASE TABLE |
 | [public.removal_reasons](public.removal_reasons.md) | 8 | Every reason a character or a membership was removed for (#1427), never updated or deleted. A character's row comes from a trigger on player_officer_notes, a membership's from archive_team_member(). The notes row still holds the latest reason; this holds all of them. | BASE TABLE |
 | [public.names](public.names.md) | 6 | A team roster row's display label (#1355), independent of team_members: bare (team_member_id null, officer-created), or claimed once linked to a real membership. Claiming, assigning and unclaiming update this row; a raider's first claim on a team also creates their membership (claim_name), and nothing merges memberships. A names row outlives its membership being archived. | BASE TABLE |
@@ -574,6 +574,7 @@ erDiagram
 "public.season_track_floors" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.team_raid_kills" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_raid_kills" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+"public.team_raid_kills" }o--|| "public.team_raid_reports" : "FOREIGN KEY (team_id, report_code) REFERENCES team_raid_reports(team_id, report_code) ON DELETE CASCADE"
 "public.team_schedule_settings" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.removal_reasons" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id)"
 "public.removal_reasons" }o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id)"
@@ -1390,7 +1391,7 @@ erDiagram
   integer team_id FK
   integer encounter_id FK
   text difficulty
-  text report_code
+  text report_code FK
   integer fight_id
   date raid_date
   timestamp_with_time_zone report_started_at

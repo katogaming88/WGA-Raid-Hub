@@ -587,7 +587,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
         // The reports, then their fights (a foreign key to them), then the
         // progress rebuilt from the fights: a failure stops the chain and is
-        // the team's error, and the kills still sync.
+        // the team's error. The kills are sent either way; they too need
+        // their report's row (#1471), so a kill whose report did not save is
+        // refused and arrives as new on the next run.
         try {
           if (rows.length > 0) {
             await deps.db.upsertReports(rows);

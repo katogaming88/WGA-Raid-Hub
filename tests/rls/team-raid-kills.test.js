@@ -96,6 +96,9 @@ describe('team_raid_kills', () => {
   it('keeps one row per fight when the sync sends it again', async () => {
     await withTxn(async ({ q }) => {
       await seed(q);
+      await q(
+        "insert into public.team_raid_reports (team_id, report_code, started_at, raid_date, kind) values (1, 'r1', now(), '2026-09-29', 'main')"
+      );
       const upsert = `insert into public.team_raid_kills
                         (team_id, encounter_id, difficulty, report_code, fight_id, raid_date, report_started_at)
                       values (1, $1, 'mythic', 'r1', 7, '2026-09-29', '2026-09-30 00:00+00')
@@ -103,6 +106,22 @@ describe('team_raid_kills', () => {
       await q(upsert, [FIRST]);
       await q(upsert, [FIRST]);
       expect((await q(KILLS)).rows).toEqual([{ team_id: 1, report_code: 'r1' }]);
+    });
+  });
+
+  // #1471: the readers count a kill by its report's kind, so a kill needs its
+  // report's row.
+  it('refuses a kill whose report has no row', async () => {
+    await withTxn(async ({ q }) => {
+      await seed(q);
+      await expect(
+        q(
+          `insert into public.team_raid_kills
+             (team_id, encounter_id, difficulty, report_code, fight_id, raid_date, report_started_at)
+           values (1, $1, 'mythic', 'unfiled', 1, '2026-09-29', '2026-09-30 00:00+00')`,
+          [FIRST]
+        )
+      ).rejects.toMatchObject({ constraint: 'team_raid_kills_report_fkey' });
     });
   });
 
@@ -205,6 +224,20 @@ describe('team_raid_kills_this_week', () => {
         { ...first, difficulty: 'mythic', fight_id: 3 }
       ]);
       expect((await asUser(RAIDER_T1, WEEK)).rows).toHaveLength(3);
+    });
+  });
+
+  // #1471: an alt run's kill is not the team's; the week's first kill is the
+  // team's own, even when an alt group got there earlier.
+  it('leaves out kills from alt runs', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seed(q);
+      const { tue, thu } = await days(q);
+      await kill(q, { encounter: FIRST, report: 'alts', fight: 1, date: tue, kind: 'alt' });
+      await kill(q, { encounter: SECOND, report: 'alts', fight: 2, date: tue });
+      await kill(q, { encounter: FIRST, report: 'r2', fight: 5, date: thu });
+      const rows = (await asUser(OFFICER_T1, WEEK)).rows;
+      expect(rows.map((r) => [r.encounter_id, r.report_code])).toEqual([[FIRST, 'r2']]);
     });
   });
 

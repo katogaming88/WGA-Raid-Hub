@@ -12,6 +12,20 @@ answers to.
 
 ---
 
+## [3.313.0] - 2026-11-27
+
+### Backend
+
+- An alt run's boss kill no longer takes that boss off the team's later raid nights, and no longer shows in this week's kills on the lineup board (#1471). Only the team's own raids count: a report's kind on `team_raid_reports`, the officer's choice when there is one, else the title rule. A stored alt-run kill no longer stops the team's own first kill that week from taking the boss off. Every kill already stored on production is from a main report, so nothing changes for nights already planned. A kill is saved only once its report is (a foreign key), so a failed report write no longer leaves a kill that never skips anything. Anyone who can take a team's attendance can now read its report list, which attendance from logs reads on their sign-in.
+
+### Functions
+
+- Attendance (`wcl-sync`) decides which reports are the team's raid from `team_raid_reports` too, so an officer's choice there counts. A report the progression sync has not read yet falls back to the title rule ("Alt" as its own word) (#1471). The comment in `_shared/alt-run.ts` says so, which moves `wcl-progression-sync`'s version; its own comment now says a kill whose report did not save is refused and comes in as new on the next run.
+
+### Project
+
+- RLS tests seed each kill's report row first, as the sync writes it, with new cases for alt-run kills on the skip, a newly planned night and this week's kills; edge tests cover attendance reading the table and its fallback. `docs/RLS.md` and `docs/database-decisions.md` updated.
+
 ## [3.312.4] - 2026-11-27
 
 ### Project

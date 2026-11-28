@@ -99,7 +99,7 @@ function fakeDb(tables: Tables, failWrites: string[] = []) {
 const NIGHT = '2026-09-15';
 const NIGHT_MS = Date.UTC(2026, 8, 16, 0, 30);
 
-type Log = { guildId: number; inLog: string[]; atFirstPull?: string[] };
+type Log = { guildId: number; inLog: string[]; atFirstPull?: string[]; title?: string };
 
 type WclOpts = { tokenFails?: boolean; tokenThrows?: boolean; actorsFail?: boolean };
 
@@ -116,7 +116,7 @@ function wcl(logs: Log[], { tokenFails = false, tokenThrows = false, actorsFail 
     const guild = /reports\(guildID: (\d+)/.exec(query);
     if (guild) {
       const log = logs.find((l) => l.guildId === Number(guild[1]));
-      const data = log ? [{ code: 'R' + log.guildId, title: 'Raid night', startTime: NIGHT_MS }] : [];
+      const data = log ? [{ code: 'R' + log.guildId, title: log.title ?? 'Raid night', startTime: NIGHT_MS }] : [];
       return respond({ data: { reportData: { reports: { data, has_more_pages: false } } } });
     }
     const log = byCode.get(/code: "([^"]+)"/.exec(query)?.[1] ?? '')!;
@@ -419,4 +419,34 @@ Deno.test('an archived team is skipped', async () => {
   const { deps } = setup(tables, [{ guildId: 11, inLog: ['Alpha', 'Bravo'] }]);
   const body = await (await handle(cronRequest(), deps)).json();
   assertEquals(Object.keys(body.teams), ['1']);
+});
+
+// #1471: team_raid_reports decides which reports count; the title rule is
+// only for a report the progression sync has not read yet.
+const kinded = (effective_kind: string) => ({
+  ...team1(ROSTER),
+  team_raid_reports: [{ team_id: 1, report_code: 'R11', effective_kind }]
+});
+
+Deno.test("a report an officer calls the team's raid is counted, though its title says Alt", async () => {
+  const { deps, db } = setup(kinded('main'), [{ guildId: 11, inLog: ['Alpha', 'Bravo'], title: 'Alt night' }]);
+  await handle(cronRequest(), deps);
+  assertEquals(night(db.tables).length, 2);
+});
+
+Deno.test('a report the table calls an alt run is left out, whatever its title', async () => {
+  const { deps, db } = setup(kinded('alt'), [{ guildId: 11, inLog: ['Alpha', 'Bravo'] }]);
+  await handle(cronRequest(), deps);
+  assertEquals(night(db.tables), []);
+  assertEquals(db.tables.team_settings[0].attendance_sync_last_run.main_nights, 0);
+});
+
+Deno.test('a report the table does not hold yet falls back to the title rule', async () => {
+  const alt = setup(team1(ROSTER), [{ guildId: 11, inLog: ['Alpha'], title: 'Alt night' }]);
+  await handle(cronRequest(), alt.deps);
+  assertEquals(night(alt.db.tables), []);
+
+  const main = setup(team1(ROSTER), [{ guildId: 11, inLog: ['Alpha'], title: 'Altar night' }]);
+  await handle(cronRequest(), main.deps);
+  assertEquals(night(main.db.tables).length, 2);
 });

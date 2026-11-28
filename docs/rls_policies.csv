@@ -264,6 +264,7 @@ team_raid_kills,Team raiders read team_raid_kills,public,SELECT,PERMISSIVE,"(tea
 team_raid_progress,Claude readers read team_raid_progress,claude_readers,SELECT,PERMISSIVE,true,
 team_raid_progress,Officers write team_raid_progress,public,ALL,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),((team_id = ANY (( SELECT my_permission_team_ids('manage_loot'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin))
 team_raid_progress,Public read team_raid_progress,public,SELECT,PERMISSIVE,true,
+team_raid_reports,Attendance takers read team_raid_reports,public,SELECT,PERMISSIVE,(team_id = ANY (( SELECT my_permission_team_ids('attendance'::text) AS my_permission_team_ids)::integer[])),
 team_raid_reports,Claude readers read team_raid_reports,claude_readers,SELECT,PERMISSIVE,true,
 team_raid_reports,Officers read team_raid_reports,public,SELECT,PERMISSIVE,((team_id = ANY (( SELECT my_permission_team_ids('view_reports'::text) AS my_permission_team_ids)::integer[])) OR ( SELECT is_site_admin() AS is_site_admin)),
 team_raid_reports,Team raiders read team_raid_reports,public,SELECT,PERMISSIVE,"(team_id IN ( SELECT p.team_id

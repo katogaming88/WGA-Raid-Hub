@@ -4915,6 +4915,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "team_raid_kills_report_fkey"
+            columns: ["team_id", "report_code"]
+            isOneToOne: false
+            referencedRelation: "team_raid_reports"
+            referencedColumns: ["team_id", "report_code"]
+          },
+          {
             foreignKeyName: "team_raid_kills_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -6050,6 +6057,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "raid_encounters"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_raid_kills_report_fkey"
+            columns: ["team_id", "report_code"]
+            isOneToOne: false
+            referencedRelation: "team_raid_reports"
+            referencedColumns: ["team_id", "report_code"]
           },
           {
             foreignKeyName: "team_raid_kills_team_id_fkey"

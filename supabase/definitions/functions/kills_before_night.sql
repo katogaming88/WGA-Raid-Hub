@@ -10,10 +10,12 @@ CREATE OR REPLACE FUNCTION public.kills_before_night(p_team_id integer, p_encoun
 AS $function$
   select k.*
   from team_raid_kills k
+  join team_raid_reports r on r.team_id = k.team_id and r.report_code = k.report_code
   where k.team_id = p_team_id
     and k.encounter_id = p_encounter_id
     and k.difficulty = p_difficulty
     and k.raid_date >= lockout_week_start(p_raid_date)
     and k.raid_date < p_raid_date
     and lockout_start_at(k.report_started_at) = lockout_week_start(p_raid_date)
+    and r.effective_kind = 'main'
 $function$;
