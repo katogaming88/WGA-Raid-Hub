@@ -252,6 +252,8 @@ export async function openApp(browser, port, state) {
     team_seasons: [],
     characters: [],
     team_members: [],
+    // The reports the progression sync has read (#1473): none unless a state lists them.
+    team_raid_reports: [],
     // Main swap requests and the spec list they are asked with (#631): empty
     // unless a state lists them.
     main_swap_requests: [],
