@@ -4120,6 +4120,6 @@ Shipped: `20261127222542_team_raid_pulls.sql`.
 
 **Its columns are the chart's** (Kat, 2026-11-22, on #1474): report and fight, the pull's start, the boss's health left, kill or not, and the last phase with whether it was an intermission; plus the difficulty and the raid night, which the chart is drawn and grouped by.
 
-**The chart counts the pulls the card counts.** #1938's matching (the same pull in two reports counts once) moved unchanged out of `rebuild_team_raid_progress()` into `team_main_pulls(team_id)`, which the rebuild and `team_raid_pulls()` both read. Not callable from the site. The matching runs for the whole team on each call, a few thousand pulls at most in a tier.
+**The chart counts the pulls the card counts.** #1938's matching (the same pull in two reports counts once) moved unchanged out of `rebuild_team_raid_progress()` into `team_main_pulls(team_id)`, which the rebuild and `team_raid_pulls()` both read. Not callable from the site; the sync's service role gets EXECUTE on it, since the rebuild runs as its caller (CodeRabbit on PR #1946: without it the card stopped rebuilding, and a test now runs the rebuild as that role). The matching runs for the whole team on each call, a few thousand pulls at most in a tier.
 
 [Full discussion -> #1496](https://github.com/katogaming88/WGA-Raid-Hub/issues/1496).

@@ -390,10 +390,12 @@ describe('team_raid_fights', () => {
       await seedRaid(q);
       const a = await seedTeam(q);
       const b = await seedTeam(q);
-      await seedPlayer(q, { memberId: a.raider.memberId });
       await seedCorpus(q, a.teamId);
       const count = async (rows) => (await rows).rows.length;
       const READ = 'select report_code from public.team_raid_fights where team_id = $1';
+      // A member of the team with no character on its roster yet reads nothing.
+      expect(await count(asUser(a.raider.uid, READ, [a.teamId]))).toBe(0);
+      await seedPlayer(q, { memberId: a.raider.memberId });
       expect(await count(asUser(a.raider.uid, READ, [a.teamId]))).toBe(5);
       expect(await count(asUser(a.officer.uid, READ, [a.teamId]))).toBe(5);
       expect(await count(asUser(SITE_ADMIN, READ, [a.teamId]))).toBe(5);
@@ -512,17 +514,32 @@ describe('team_raid_pulls() (#1496)', () => {
     });
   });
 
-  it('is callable by anyone, and the matching it shares with the rebuild by nobody on the site', async () => {
+  // CodeRabbit on PR #1946: the rebuild runs as its caller, the sync's service
+  // role, and reads the shared matching, so that role must be able to run it.
+  it('lets the sync’s service role rebuild the card through the shared matching', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      await seedCorpus(q, teamId);
+      await q('set local role service_role');
+      await q('select public.rebuild_team_raid_progress($1)', [teamId]);
+      await q('reset role');
+      expect((await q(PROGRESS, [teamId])).rows).toEqual(PINNED);
+    });
+  });
+
+  it('is callable by anyone on the site, and the matching it shares with the rebuild only by the sync', async () => {
     await withTxn(async ({ q }) => {
       const { rows } = await q(
         `select r.rolname,
                 has_function_privilege(r.rolname, 'public.team_raid_pulls(integer, integer)', 'execute') as pulls,
                 has_function_privilege(r.rolname, 'public.team_main_pulls(integer)', 'execute') as matching
-           from pg_roles r where r.rolname in ('anon', 'authenticated') order by r.rolname`
+           from pg_roles r where r.rolname in ('anon', 'authenticated', 'service_role') order by r.rolname`
       );
       expect(rows).toEqual([
         { rolname: 'anon', pulls: true, matching: false },
-        { rolname: 'authenticated', pulls: true, matching: false }
+        { rolname: 'authenticated', pulls: true, matching: false },
+        { rolname: 'service_role', pulls: false, matching: true }
       ]);
     });
   });

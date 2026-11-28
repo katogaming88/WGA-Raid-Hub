@@ -95,6 +95,9 @@ $$;
 
 alter function public.team_main_pulls(integer) owner to postgres;
 revoke all on function public.team_main_pulls(integer) from public, anon, authenticated;
+-- The progression sync's service role runs rebuild_team_raid_progress(), which
+-- runs as its caller and reads this (CodeRabbit on PR #1946).
+grant execute on function public.team_main_pulls(integer) to service_role;
 
 comment on function public.team_main_pulls(integer) is
   'A team''s pulls from its main reports (team_raid_reports.effective_kind), each pull once: the same pull in two reports (overlapping for at least half of the shorter one) is the best copy, a kill before a wipe, then the lowest boss health, a report still on Warcraft Logs, the earliest report (#1938). Shared by rebuild_team_raid_progress() and team_raid_pulls() (#1496), so the card and the chart count the same pulls. Not callable from the site.';
