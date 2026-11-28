@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.317.0] - 2026-11-28
+
+### Backend
+
+- The progression card counts a killed boss's pulls up to its first kill, not every pull since (#1955). Farm pulls after the kill no longer add to it: Phoenix's Mythic Nek'zali the Soulcoiler read "Killed Sep 15, 2026, 5 pulls" and now reads 3, the pulls it took. A boss not killed yet still counts every pull. The card and a boss's pull chart page now show the same count. Every team's card is rebuilt when this applies, so killed bosses' counts drop at once; none goes up. The kill date and its report link are unchanged.
+
 ## [3.316.0] - 2026-11-28
 
 ### Project

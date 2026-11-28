@@ -4123,3 +4123,17 @@ Shipped: `20261127222542_team_raid_pulls.sql`.
 **The chart counts the pulls the card counts.** #1938's matching (the same pull in two reports counts once) moved unchanged out of `rebuild_team_raid_progress()` into `team_main_pulls(team_id)`, which the rebuild and `team_raid_pulls()` both read. With a boss it matches only that boss's pulls, which `team_raid_pulls()` passes, so a public call does not grow with every season's pulls (fresh-agent review on PR #1946: about 680 ms at 9,000 pulls without it); the answer is the same, since the matching starts over for each boss and difficulty. Not callable from the site; the sync's service role gets EXECUTE on it, since the rebuild runs as its caller (CodeRabbit on PR #1946: without it the card stopped rebuilding, and a test now runs the rebuild as that role).
 
 [Full discussion -> #1496](https://github.com/katogaming88/WGA-Raid-Hub/issues/1496).
+
+## #1955 -- the progression card counts pulls up to the first kill
+
+Shipped: `20261128110238_pulls_to_first_kill.sql`.
+
+**A killed boss counts its pulls up to and including its first kill** (Kat, 2026-11-28). Farm pulls after the kill, wipes and re-kills alike, no longer add to `team_raid_progress.mythic_pulls` / `heroic_pulls`. Phoenix's Mythic Nek'zali read 5 pulls though it died on the third. A boss not killed yet still counts every pull. The pull chart (#1474) stops at the first kill the same way, so the card and the chart agree; `team_raid_pulls()` still returns every pull and the chart does the cut.
+
+**The first kill is the earliest by when the pull started**, the order the chart draws in. It was the earliest by report start then fight id, which differs only when two reports' pulls interleave.
+
+**The cut is in `rebuild_team_raid_progress()`, not `team_main_pulls()`**, so the copy matching (#1938) still sees every pull, and a later re-kill can still be matched as a copy of a pull in another log.
+
+**Every team's card is rebuilt when the migration applies**, not at its next sync, so no card shows the old count in between.
+
+[Full discussion -> #1955](https://github.com/katogaming88/WGA-Raid-Hub/issues/1955).

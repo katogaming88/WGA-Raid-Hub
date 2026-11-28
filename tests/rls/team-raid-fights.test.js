@@ -64,12 +64,14 @@ async function seedCorpus(q, teamId, kindB = 'main') {
   await fight(q, teamId, 'reportB', 2, BOSS_TWO, 'heroic', false, 8.25);
 }
 
-// What the TypeScript count wrote for that corpus (handler.test.ts, before #1470).
+// What the TypeScript count wrote for that corpus (handler.test.ts, before
+// #1470), but for boss one's Mythic pulls: report B's kill is a re-kill, so
+// since #1955 the count stops at report A's kill, 2 pulls, not 3.
 const PINNED = [
   {
     encounter_id: BOSS_ONE,
     mythic_date: '2026-09-14',
-    mythic_pulls: 3,
+    mythic_pulls: 2,
     mythic_best_pct: null,
     mythic_report_code: 'reportA',
     mythic_fight_id: 2,
@@ -347,6 +349,59 @@ describe('rebuild_team_raid_progress', () => {
     });
   });
 
+  it('counts a killed boss only up to its first kill: later wipes and re-kills are farm (#1955)', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      // Nek'zali on Phoenix: two wipes and the kill one night, a wipe and a
+      // re-kill the next week.
+      await report(q, teamId, 'first', '2026-09-15');
+      await report(q, teamId, 'next', '2026-09-22');
+      await fight(q, teamId, 'first', 1, BOSS_ONE, 'mythic', false, 45.66);
+      await fight(q, teamId, 'first', 2, BOSS_ONE, 'mythic', false, 52.1);
+      await fight(q, teamId, 'first', 3, BOSS_ONE, 'mythic', true, 0);
+      await fight(q, teamId, 'next', 1, BOSS_ONE, 'mythic', false, 1.14);
+      await fight(q, teamId, 'next', 2, BOSS_ONE, 'mythic', true, 0);
+      // A wipe after the kill on the same night does not count either.
+      await fight(q, teamId, 'first', 4, BOSS_ONE, 'mythic', false, 30);
+      await rebuild(q, teamId);
+      const [row] = (await q(PROGRESS, [teamId])).rows;
+      expect(row).toMatchObject({
+        mythic_date: '2026-09-15',
+        mythic_pulls: 3,
+        mythic_best_pct: null,
+        mythic_report_code: 'first',
+        mythic_fight_id: 3
+      });
+    });
+  });
+
+  it('counts every pull of a boss not killed yet, and each difficulty on its own', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      await report(q, teamId, 'first', '2026-09-15');
+      await report(q, teamId, 'next', '2026-09-22');
+      // Heroic killed on the first night; Mythic still up after both.
+      await fight(q, teamId, 'first', 1, BOSS_ONE, 'heroic', true, 0);
+      await fight(q, teamId, 'first', 2, BOSS_ONE, 'mythic', false, 60);
+      await fight(q, teamId, 'next', 1, BOSS_ONE, 'heroic', true, 0);
+      await fight(q, teamId, 'next', 2, BOSS_ONE, 'mythic', false, 40);
+      await fight(q, teamId, 'next', 3, BOSS_ONE, 'mythic', false, 45);
+      await rebuild(q, teamId);
+      const [row] = (await q(PROGRESS, [teamId])).rows;
+      expect(row).toMatchObject({
+        heroic_date: '2026-09-15',
+        heroic_pulls: 1,
+        mythic_date: null,
+        mythic_pulls: 3,
+        mythic_best_pct: 40,
+        mythic_report_code: 'next',
+        mythic_fight_id: 2
+      });
+    });
+  });
+
   it('keeps a row with no pulls for a boss whose only pulls are alt runs', async () => {
     await withTxn(async ({ q }) => {
       await seedRaid(q);
@@ -516,7 +571,11 @@ describe('team_raid_pulls() (#1496)', () => {
       const rows = (await asAnon(PULLS, [teamId, BOSS_ONE])).rows;
       const card = (await q(PROGRESS, [teamId])).rows.find((r) => r.encounter_id === BOSS_ONE);
       expect(rows.length).toBe(3);
-      expect(rows.length).toBe(card.mythic_pulls);
+      // The card stops at the first kill (#1955), as the chart does with these
+      // rows: report B's re-kill is the third pull.
+      const firstKill = rows.findIndex((r) => r.kill);
+      expect(firstKill + 1).toBe(card.mythic_pulls);
+      expect(card.mythic_pulls).toBe(2);
     });
   });
 
