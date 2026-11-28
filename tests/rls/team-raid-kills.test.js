@@ -96,6 +96,9 @@ describe('team_raid_kills', () => {
   it('keeps one row per fight when the sync sends it again', async () => {
     await withTxn(async ({ q }) => {
       await seed(q);
+      await q(
+        "insert into public.team_raid_reports (team_id, report_code, started_at, raid_date, kind) values (1, 'r1', now(), '2026-09-29', 'main')"
+      );
       const upsert = `insert into public.team_raid_kills
                         (team_id, encounter_id, difficulty, report_code, fight_id, raid_date, report_started_at)
                       values (1, $1, 'mythic', 'r1', 7, '2026-09-29', '2026-09-30 00:00+00')
@@ -103,6 +106,22 @@ describe('team_raid_kills', () => {
       await q(upsert, [FIRST]);
       await q(upsert, [FIRST]);
       expect((await q(KILLS)).rows).toEqual([{ team_id: 1, report_code: 'r1' }]);
+    });
+  });
+
+  // #1471: the readers count a kill by its report's kind, so a kill needs its
+  // report's row.
+  it('refuses a kill whose report has no row', async () => {
+    await withTxn(async ({ q }) => {
+      await seed(q);
+      await expect(
+        q(
+          `insert into public.team_raid_kills
+             (team_id, encounter_id, difficulty, report_code, fight_id, raid_date, report_started_at)
+           values (1, $1, 'mythic', 'unfiled', 1, '2026-09-29', '2026-09-30 00:00+00')`,
+          [FIRST]
+        )
+      ).rejects.toMatchObject({ constraint: 'team_raid_kills_report_fkey' });
     });
   });
 

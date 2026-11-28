@@ -9001,6 +9001,21 @@
             "report_code",
             "fight_id"
           ]
+        },
+        {
+          "name": "team_raid_kills_report_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id, report_code) REFERENCES team_raid_reports(team_id, report_code) ON DELETE CASCADE",
+          "table": "public.team_raid_kills",
+          "referenced_table": "public.team_raid_reports",
+          "columns": [
+            "team_id",
+            "report_code"
+          ],
+          "referenced_columns": [
+            "team_id",
+            "report_code"
+          ]
         }
       ],
       "triggers": [
@@ -17720,6 +17735,21 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_raid_kills",
+      "columns": [
+        "team_id",
+        "report_code"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_raid_reports",
+      "parent_columns": [
+        "team_id",
+        "report_code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id, report_code) REFERENCES team_raid_reports(team_id, report_code) ON DELETE CASCADE"
     },
     {
       "table": "public.team_schedule_settings",

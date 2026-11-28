@@ -12,8 +12,18 @@
 -- arrived in this insert" check, which reads it, now looks at main kills
 -- only: a stored alt-run kill no longer stops the team's first real kill from
 -- taking its boss off a night, and an alt-run kill in the insert takes nothing
--- off. The sync writes a report's row before its kills, so the trigger always
--- finds it.
+-- off.
+--
+-- A kill now needs its report's row, as a fight does (#1470). The sync writes
+-- the reports first, but a failed report write left the kills saving anyway:
+-- such a kill would count for nothing in the trigger, and the next run, which
+-- sends it again as a duplicate, would not fire it either, so a night already
+-- planned would keep the boss all lockout (fresh-agent review on PR #1943).
+-- With the key the kill's insert fails instead, and the next run brings it as
+-- new. Every kill on production has its report row (2026-11-27).
+alter table public.team_raid_kills
+  add constraint team_raid_kills_report_fkey
+  foreign key (team_id, report_code) references public.team_raid_reports(team_id, report_code) on delete cascade;
 --
 -- A report deleted from Warcraft Logs (missing_since set) still counts, as on
 -- the progression card (#1938): the kill happened. A report whose kind an

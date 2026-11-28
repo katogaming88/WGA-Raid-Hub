@@ -574,6 +574,7 @@ erDiagram
 "public.season_track_floors" }o--|| "public.seasons" : "FOREIGN KEY (season) REFERENCES seasons(code)"
 "public.team_raid_kills" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_raid_kills" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
+"public.team_raid_kills" }o--|| "public.team_raid_reports" : "FOREIGN KEY (team_id, report_code) REFERENCES team_raid_reports(team_id, report_code) ON DELETE CASCADE"
 "public.team_schedule_settings" |o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.removal_reasons" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id)"
 "public.removal_reasons" }o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id)"
@@ -1390,7 +1391,7 @@ erDiagram
   integer team_id FK
   integer encounter_id FK
   text difficulty
-  text report_code
+  text report_code FK
   integer fight_id
   date raid_date
   timestamp_with_time_zone report_started_at

@@ -8,8 +8,8 @@ Every Warcraft Logs report the progression sync reads for a team (#1469), one ro
 
 | Name | Type | Default | Nullable | Extra Definition | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | ---------------- | -------- | ------- | ------- |
-| team_id | integer |  | false |  | [public.team_raid_fights](public.team_raid_fights.md) | [public.teams](public.teams.md) |  |
-| report_code | text |  | false |  | [public.team_raid_fights](public.team_raid_fights.md) |  |  |
+| team_id | integer |  | false |  | [public.team_raid_kills](public.team_raid_kills.md) [public.team_raid_fights](public.team_raid_fights.md) | [public.teams](public.teams.md) |  |
+| report_code | text |  | false |  | [public.team_raid_kills](public.team_raid_kills.md) [public.team_raid_fights](public.team_raid_fights.md) |  |  |
 | title | text |  | true |  |  |  | The title as Warcraft Logs returns it; null when it has none. A report uploaded with no title gets a default one there, such as the raid's name. |
 | started_at | timestamp with time zone |  | false |  |  |  |  |
 | raid_date | date |  | false |  |  |  | The report's raid night: its start in Eastern time, a start before 6 a.m. counting as the night before, as on team_raid_kills and attendance. |
@@ -55,6 +55,7 @@ Every Warcraft Logs report the progression sync reads for a team (#1469), one ro
 erDiagram
 
 "public.team_raid_reports" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_raid_kills" }o--|| "public.team_raid_reports" : "FOREIGN KEY (team_id, report_code) REFERENCES team_raid_reports(team_id, report_code) ON DELETE CASCADE"
 "public.team_raid_fights" }o--|| "public.team_raid_reports" : "FOREIGN KEY (team_id, report_code) REFERENCES team_raid_reports(team_id, report_code) ON DELETE CASCADE"
 "public.team_raid_reports" }o--o| "public.people" : "FOREIGN KEY (kind_override_by) REFERENCES people(id) ON DELETE SET NULL"
 
@@ -84,6 +85,17 @@ erDiagram
   integer wcl_guild_id
   integer guild_id FK
   boolean unlisted
+}
+"public.team_raid_kills" {
+  integer id
+  integer team_id FK
+  integer encounter_id FK
+  text difficulty
+  text report_code FK
+  integer fight_id
+  date raid_date
+  timestamp_with_time_zone report_started_at
+  timestamp_with_time_zone created_at
 }
 "public.team_raid_fights" {
   integer team_id FK

@@ -9,10 +9,10 @@ Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), alt
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | integer |  | false | [public.raid_night_bosses](public.raid_night_bosses.md) |  |  |
-| team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
+| team_id | integer |  | false |  | [public.teams](public.teams.md) [public.team_raid_reports](public.team_raid_reports.md) |  |
 | encounter_id | integer |  | false |  | [public.raid_encounters](public.raid_encounters.md) |  |
 | difficulty | text |  | false |  |  |  |
-| report_code | text |  | false |  |  |  |
+| report_code | text |  | false |  | [public.team_raid_reports](public.team_raid_reports.md) |  |
 | fight_id | integer |  | false |  |  |  |
 | raid_date | date |  | false |  |  |  |
 | report_started_at | timestamp with time zone |  | false |  |  |  |
@@ -27,6 +27,7 @@ Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), alt
 | team_raid_kills_encounter_id_fkey | FOREIGN KEY | FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE |
 | team_raid_kills_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | team_raid_kills_team_id_report_code_fight_id_key | UNIQUE | UNIQUE (team_id, report_code, fight_id) |
+| team_raid_kills_report_fkey | FOREIGN KEY | FOREIGN KEY (team_id, report_code) REFERENCES team_raid_reports(team_id, report_code) ON DELETE CASCADE |
 
 ## Indexes
 
@@ -49,6 +50,7 @@ erDiagram
 
 "public.raid_night_bosses" }o--o| "public.team_raid_kills" : "FOREIGN KEY (skipped_for_kill_id) REFERENCES team_raid_kills(id) ON DELETE SET NULL"
 "public.team_raid_kills" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_raid_kills" }o--|| "public.team_raid_reports" : "FOREIGN KEY (team_id, report_code) REFERENCES team_raid_reports(team_id, report_code) ON DELETE CASCADE"
 "public.team_raid_kills" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 
 "public.team_raid_kills" {
@@ -56,7 +58,7 @@ erDiagram
   integer team_id FK
   integer encounter_id FK
   text difficulty
-  text report_code
+  text report_code FK
   integer fight_id
   date raid_date
   timestamp_with_time_zone report_started_at
@@ -83,6 +85,24 @@ erDiagram
   integer wcl_guild_id
   integer guild_id FK
   boolean unlisted
+}
+"public.team_raid_reports" {
+  integer team_id FK
+  text report_code
+  text title
+  timestamp_with_time_zone started_at
+  date raid_date
+  integer wcl_zone_id
+  integer boss_pulls
+  integer boss_kills
+  text kind
+  text kind_override
+  integer kind_override_by FK
+  timestamp_with_time_zone kind_override_at
+  text effective_kind
+  timestamp_with_time_zone created_at
+  timestamp_with_time_zone updated_at
+  timestamp_with_time_zone missing_since
 }
 "public.raid_encounters" {
   integer id

@@ -120,7 +120,7 @@ erDiagram
   integer team_id FK
   integer encounter_id FK
   text difficulty
-  text report_code
+  text report_code FK
   integer fight_id
   date raid_date
   timestamp_with_time_zone report_started_at
