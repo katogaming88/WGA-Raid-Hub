@@ -4080,4 +4080,6 @@ Shipped: `20261127194940_main_reports_only.sql`.
 
 **Attendance reads the table, with the title rule as the fallback** for a report the progression sync has not read yet (uploaded since its last run). A report attendance has already filed keeps its rows; changing a filed report, and an officer's change taking effect at once, are #1472's.
 
+**Whoever can take a team's attendance reads its reports.** Attendance from logs runs on the caller's own sign-in, and a row hidden by the read rule looks the same as a report not read yet, so a caller with `attendance` but not `view_reports`, and not on the team, would have filed an alt run an officer marked by its title. A new read rule on `team_raid_reports` for the `attendance` permission closes that (CodeRabbit on PR #1943). The rows are what the attendance run already reads from Warcraft Logs: titles, dates and kill counts.
+
 [Full discussion -> #1471](https://github.com/katogaming88/WGA-Raid-Hub/issues/1471).

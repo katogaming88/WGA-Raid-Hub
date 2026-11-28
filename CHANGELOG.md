@@ -16,7 +16,7 @@ answers to.
 
 ### Backend
 
-- An alt run's boss kill no longer takes that boss off the team's later raid nights, and no longer shows in this week's kills on the lineup board (#1471). Only the team's own raids count: a report's kind on `team_raid_reports`, the officer's choice when there is one, else the title rule. A stored alt-run kill no longer stops the team's own first kill that week from taking the boss off. Every kill already stored on production is from a main report, so nothing changes for nights already planned.
+- An alt run's boss kill no longer takes that boss off the team's later raid nights, and no longer shows in this week's kills on the lineup board (#1471). Only the team's own raids count: a report's kind on `team_raid_reports`, the officer's choice when there is one, else the title rule. A stored alt-run kill no longer stops the team's own first kill that week from taking the boss off. Every kill already stored on production is from a main report, so nothing changes for nights already planned. Anyone who can take a team's attendance can now read its report list, which attendance from logs reads on their sign-in.
 
 ### Functions
 

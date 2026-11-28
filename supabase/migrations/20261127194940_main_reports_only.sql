@@ -18,6 +18,15 @@
 -- A report deleted from Warcraft Logs (missing_since set) still counts, as on
 -- the progression card (#1938): the kill happened. A report whose kind an
 -- officer changes after the fact is #1472's.
+--
+-- Attendance from logs (wcl-sync) now reads effective_kind too, on the
+-- caller's own sign-in, and falls back to the title rule for a report it gets
+-- no row for. A caller with the attendance permission but not view_reports,
+-- and not on the team, would see no rows and file an alt run an officer
+-- marked as the team's raid (CodeRabbit on PR #1943). So whoever can take a
+-- team's attendance reads its reports.
+create policy "Attendance takers read team_raid_reports" on public.team_raid_reports for select
+  using (team_id = any ((select my_permission_team_ids('attendance'))::integer[]));
 
 create or replace function public.kills_before_night(p_team_id integer, p_encounter_id integer, p_raid_date date, p_difficulty text)
 returns setof public.team_raid_kills

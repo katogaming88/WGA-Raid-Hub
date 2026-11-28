@@ -8,7 +8,17 @@
 // Each case mints its own team (seedTeam), so it never writes a seeded row.
 // Each test runs in one rolled-back transaction (helpers.js withTxn).
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, withTxn, seedTeam, seedPlayer, GUILD_OFFICER, SITE_ADMIN, RLS_DENIED } from './helpers.js';
+import {
+  pool,
+  withTxn,
+  seedTeam,
+  seedPlayer,
+  GUILD_OFFICER,
+  OFFICER_T1,
+  SITE_ADMIN,
+  TEAM_LEADER_T1,
+  RLS_DENIED
+} from './helpers.js';
 
 afterAll(() => pool.end());
 
@@ -58,6 +68,21 @@ describe('who reads team_raid_reports', () => {
       expect(await seen(asUser, a.leader.uid)).toEqual(mine);
       expect(await seen(asUser, GUILD_OFFICER)).toEqual(both);
       expect(await seen(asUser, SITE_ADMIN)).toEqual(both);
+    });
+  });
+
+  // #1471: attendance from logs runs on the caller's sign-in and reads which
+  // reports are the team's here, so whoever can take attendance reads them.
+  it('shows a team’s reports to whoever can take its attendance, without Reports access', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await report(q, 1, 'r1');
+      await asUser(TEAM_LEADER_T1, 'select public.set_team_rank_permissions(1, $1::jsonb)', [
+        JSON.stringify([{ rank: 'officer', permission: 'view_reports', on: false }])
+      ]);
+      const can = async (permission) =>
+        (await asUser(OFFICER_T1, 'select public.has_team_permission(1, $1) as ok', [permission])).rows[0].ok;
+      expect([await can('view_reports'), await can('attendance')]).toEqual([false, true]);
+      expect(await seen(asUser, OFFICER_T1)).toContainEqual({ team_id: 1, report_code: 'r1' });
     });
   });
 
