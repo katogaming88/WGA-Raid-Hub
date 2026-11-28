@@ -4109,3 +4109,17 @@ Shipped: `20261127204302_set_report_kind.sql`.
 **Not here:** a report renamed on Warcraft Logs with no override changes `kind` on the progression sync's next run. The card follows, since the sync rebuilds it; the lineup does not, since no kill arrives. An officer's override is the way to move the plan.
 
 [Full discussion -> #1472](https://github.com/katogaming88/WGA-Raid-Hub/issues/1472).
+
+## #1496 -- anyone can read the team's own raids' pulls through one function, and the pulls table closes
+
+Shipped: `20261127222542_team_raid_pulls.sql`.
+
+**`team_raid_fights` closes to the team** (Kat, 2026-11-27), reversing #1470's public read. It holds alt runs, so the public read put an alt run's pulls under the team's name. No page read it, so nothing breaks. It is read as `team_raid_reports` is: the team's raiders, the team's `view_reports` and `attendance` permissions, and site admins.
+
+**The public reads pulls through `team_raid_pulls(team_id, encounter_id)`**, `SECURITY DEFINER` like `team_invite_link_resolve()`, on `ANON_DEFINER_ALLOWLIST`. It returns one boss's pulls from the team's main reports only, so an alt run, or a report an officer marked as not the team's (#1472), never leaves through it. A view could not do this without skipping RLS (#503), and a read rule for the public could not tell a main report from an alt run, since the public cannot read `team_raid_reports`.
+
+**Its columns are the chart's** (Kat, 2026-11-22, on #1474): report and fight, the pull's start, the boss's health left, kill or not, and the last phase with whether it was an intermission; plus the difficulty and the raid night, which the chart is drawn and grouped by.
+
+**The chart counts the pulls the card counts.** #1938's matching (the same pull in two reports counts once) moved unchanged out of `rebuild_team_raid_progress()` into `team_main_pulls(team_id)`, which the rebuild and `team_raid_pulls()` both read. Not callable from the site. The matching runs for the whole team on each call, a few thousand pulls at most in a tier.
+
+[Full discussion -> #1496](https://github.com/katogaming88/WGA-Raid-Hub/issues/1496).

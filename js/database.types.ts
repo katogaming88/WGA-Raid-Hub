@@ -7440,6 +7440,31 @@ export type Database = {
           wow_item_id: number
         }[]
       }
+      team_main_pulls: {
+        Args: { p_team_id: number }
+        Returns: {
+          boss_percentage: number | null
+          created_at: string
+          difficulty: string
+          encounter_id: number
+          ended_at: string
+          fight_id: number
+          fight_percentage: number | null
+          kill: boolean
+          last_phase: number | null
+          last_phase_is_intermission: boolean | null
+          report_code: string
+          started_at: string
+          team_id: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "team_raid_fights"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       team_member_accounts: {
         Args: { p_team_id: number }
         Returns: {
@@ -7462,6 +7487,20 @@ export type Database = {
           rank: string
           signed_in: boolean
           team_member_id: number
+        }[]
+      }
+      team_raid_pulls: {
+        Args: { p_encounter_id: number; p_team_id: number }
+        Returns: {
+          boss_percentage: number
+          difficulty: string
+          fight_id: number
+          kill: boolean
+          last_phase: number
+          last_phase_is_intermission: boolean
+          raid_date: string
+          report_code: string
+          started_at: string
         }[]
       }
       team_recruiting_page: {

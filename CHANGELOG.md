@@ -12,6 +12,16 @@ answers to.
 
 ---
 
+## [3.315.0] - 2026-11-27
+
+### Backend
+
+- `team_raid_pulls(team_id, encounter_id)` gives anyone, signed in or not, a team's pulls of one boss from its own raids, for the pull chart coming in #1474 (#1496): each pull once, as the progression card counts them, with when it started, the boss's health left, kill or not and its last phase. An alt run's pulls, and those of a report an officer marked as not the team's, are never returned. The pulls table itself (`team_raid_fights`) is no longer readable by the public: alt runs are in it. It is now read like the report list: the team's raiders and officers, and site admins. The matching that counts a pull two raiders logged once is shared by the card and the new function, unchanged.
+
+### Project
+
+- Time log rows for #1473's PR, screenshots and merge, and #1496.
+
 ## [3.314.1] - 2026-11-27
 
 ### Project

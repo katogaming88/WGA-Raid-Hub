@@ -58,6 +58,7 @@ const ANON_DEFINER_ALLOWLIST = [
   'submit_mplus_exclusion',
   'submit_self_received',
   'team_invite_link_resolve',
+  'team_raid_pulls',
   // #1535: the public apply pages' read, returning only what they show.
   'team_recruiting_page',
   // #1537: an apply link's recruiter and the "Who sent you?" list, names only.
