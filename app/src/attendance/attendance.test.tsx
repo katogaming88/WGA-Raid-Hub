@@ -73,6 +73,11 @@ function handlers(
     run?: unknown;
     person?: typeof OFFICER;
     writes?: Write[];
+    reports?: () => unknown[];
+    members?: unknown[];
+    // What set_report_kind answers, and every call to it and to wcl-sync.
+    setKind?: (args: Record<string, unknown>) => { error?: { message: string } };
+    calls?: [string, unknown][];
   } = {}
 ): FakeHandlers {
   const base = seededHandlers();
@@ -86,6 +91,10 @@ function handlers(
       if (name === 'attendance_items_waiting') {
         return { data: rows().filter((r) => (r as { status: unknown }).status === null).length };
       }
+      if (name === 'set_report_kind') {
+        opts.calls?.push([name, args]);
+        return opts.setKind?.(args) ?? { data: null };
+      }
       if (name === 'attendance_rsvps_before_start') {
         return { data: [{ player_id: 3, raid_date: '2026-11-12', status: 'Tentative' }] };
       }
@@ -94,6 +103,8 @@ function handlers(
     from(read: Read) {
       if (read.table === 'attendance') return { data: rows() };
       if (read.table === 'players') return { data: ROSTER };
+      if (read.table === 'team_raid_reports') return { data: opts.reports?.() ?? [] };
+      if (read.table === 'team_members') return { data: opts.members ?? [] };
       if (read.table === 'seasons')
         return { data: [{ code: 'MID2', display_name: 'Season 2', starts_at: '2026-08-11', ends_at: null }] };
       if (read.table === 'team_settings')
@@ -111,6 +122,10 @@ function handlers(
     write(w) {
       opts.writes?.push(w);
       return { data: null };
+    },
+    invoke(name, body) {
+      opts.calls?.push([name, body]);
+      return { data: { success: true, mainNights: 3, excluded: 1 } };
     }
   });
 }
@@ -185,6 +200,154 @@ describe('Needs a look (#1846)', () => {
     renderApp(PAGE, handlers({ person: admin }));
     await screen.findByRole('heading', { name: 'Every night' });
     expect(screen.queryByRole('heading', { name: /Needs a look/ })).not.toBeInTheDocument();
+  });
+});
+
+// #1473: every report the progression sync has seen, with the officer's switch.
+const report = (code: string, over: Record<string, unknown> = {}) => ({
+  report_code: code,
+  title: `Night ${code}`,
+  raid_date: '2026-11-12',
+  started_at: '2026-11-13T00:30:00Z',
+  boss_pulls: 12,
+  boss_kills: 3,
+  kind: 'main',
+  kind_override: null,
+  kind_override_by: null,
+  kind_override_at: null,
+  effective_kind: 'main',
+  ...over
+});
+
+const REPORTS: Record<string, unknown>[] = [
+  report('aaa', { raid_date: '2026-11-12', title: 'Phoenix Mythic Thursday' }),
+  report('bbb', {
+    raid_date: '2026-11-10',
+    title: 'Alt practice',
+    kind: 'alt',
+    effective_kind: 'alt',
+    boss_pulls: 4,
+    boss_kills: 0
+  }),
+  report('ccc', {
+    raid_date: '2026-11-05',
+    title: 'Alt-run Tuesday',
+    kind: 'alt',
+    kind_override: 'main',
+    kind_override_by: 77,
+    kind_override_at: '2026-11-06T15:00:00Z',
+    effective_kind: 'main'
+  })
+];
+
+const reportRow = async (title: string) => (await screen.findByRole('link', { name: title })).closest('li')!;
+const sent = (calls: [string, unknown][], name: string) => calls.filter(([n]) => n === name).map(([, a]) => a);
+
+describe('Reports (#1473)', () => {
+  it('lists every report, newest first, with its pulls, whether attendance came from it and what it counts as', async () => {
+    const attendance = [{ ...row(4, 1, '2026-11-12', 'Present', 'WCL'), report_id: 'aaa' }];
+    renderApp(
+      PAGE,
+      handlers({
+        rows: () => attendance,
+        reports: () => REPORTS,
+        members: [{ person_id: 77, name_realm: 'Katorrí-Stormrage' }]
+      })
+    );
+    const section = (await screen.findByRole('heading', { name: 'Reports' })).closest('section')!;
+    await within(section).findByText(/set by Katorrí/);
+    const items = await within(section).findAllByRole('listitem');
+    expect(items.map((li) => li.textContent)).toEqual([
+      expect.stringContaining(
+        'Thu Nov 12Phoenix Mythic Thursday12 pulls, 3 killsAttendance from itTeam raid, from the title'
+      ),
+      expect.stringContaining('Tue Nov 10Alt practice4 pulls, 0 killsNo attendance from itAlt run, from the title'),
+      expect.stringContaining('Thu Nov 5Alt-run Tuesday12 pulls, 3 killsNo attendance from itTeam raid, set by Katorrí')
+    ]);
+    expect(within(items[0]!).getByRole('link', { name: 'Phoenix Mythic Thursday' })).toHaveAttribute(
+      'href',
+      'https://www.warcraftlogs.com/reports/aaa'
+    );
+  });
+
+  it('says so when no report has been seen yet', async () => {
+    renderApp(PAGE, handlers({ reports: () => [] }));
+    expect(await screen.findByText(/No reports yet/)).toBeInTheDocument();
+  });
+
+  it('marks a report as the team raid, runs the attendance sync, and the row follows', async () => {
+    let reports = REPORTS;
+    const calls: [string, unknown][] = [];
+    renderApp(
+      PAGE,
+      handlers({
+        reports: () => reports,
+        calls,
+        setKind: () => {
+          reports = reports.map((r) =>
+            r.report_code === 'bbb' ? { ...r, kind_override: 'main', effective_kind: 'main' } : r
+          );
+          return {};
+        }
+      })
+    );
+    await userEvent.click(within(await reportRow('Alt practice')).getByRole('button', { name: /Mark as team raid/ }));
+    await expect
+      .poll(() => sent(calls, 'set_report_kind'))
+      .toEqual([{ p_team_id: 1, p_report_code: 'bbb', p_kind: 'main' }]);
+    await expect.poll(() => sent(calls, 'wcl-sync')).toEqual([{ body: { action: 'refreshAttendance', teamId: 1 } }]);
+    expect(
+      await within(await reportRow('Alt practice')).findByText(/Team raid, set by an officer/)
+    ).toBeInTheDocument();
+  });
+
+  it('marking one as an alt run changes it and leaves attendance alone', async () => {
+    const calls: [string, unknown][] = [];
+    renderApp(PAGE, handlers({ reports: () => REPORTS, calls }));
+    await userEvent.click(
+      within(await reportRow('Phoenix Mythic Thursday')).getByRole('button', { name: /Mark as alt run/ })
+    );
+    await expect
+      .poll(() => sent(calls, 'set_report_kind'))
+      .toEqual([{ p_team_id: 1, p_report_code: 'aaa', p_kind: 'alt' }]);
+    expect(sent(calls, 'wcl-sync')).toEqual([]);
+  });
+
+  it("goes back to the title's verdict with a null, and syncs when that verdict is the team raid", async () => {
+    const calls: [string, unknown][] = [];
+    const reports = [
+      report('ddd', {
+        title: 'Odd title',
+        kind_override: 'alt',
+        kind_override_at: '2026-11-06T15:00:00Z',
+        effective_kind: 'alt'
+      })
+    ];
+    renderApp(PAGE, handlers({ reports: () => reports, calls }));
+    await userEvent.click(within(await reportRow('Odd title')).getByRole('button', { name: /Back to the title/ }));
+    await expect
+      .poll(() => sent(calls, 'set_report_kind'))
+      .toEqual([{ p_team_id: 1, p_report_code: 'ddd', p_kind: null }]);
+    await expect.poll(() => sent(calls, 'wcl-sync').length).toBe(1);
+  });
+
+  it('shows a change that did not take on its own row, and does not sync', async () => {
+    const calls: [string, unknown][] = [];
+    renderApp(
+      PAGE,
+      handlers({ reports: () => REPORTS, calls, setKind: () => ({ error: { message: 'Not authorized' } }) })
+    );
+    await userEvent.click(within(await reportRow('Alt practice')).getByRole('button', { name: /Mark as team raid/ }));
+    expect(
+      await within(await reportRow('Alt practice')).findByText(/Did not save: Not authorized/)
+    ).toBeInTheDocument();
+    expect(sent(calls, 'wcl-sync')).toEqual([]);
+  });
+
+  it('is read only for someone who cannot manage attendance', async () => {
+    const admin = { ...OFFICER, guild_officer: true, teams: [] };
+    renderApp(PAGE, handlers({ person: admin, reports: () => REPORTS }));
+    expect(within(await reportRow('Alt practice')).queryByRole('button')).toBeNull();
   });
 });
 

@@ -12,6 +12,13 @@ answers to.
 
 ---
 
+## [3.314.1] - 2026-11-27
+
+### Project
+
+- New app: Manage attendance gains a Reports list (#1473): every Warcraft Logs report the site has read for the team, newest first, with its date, its title (a link to the report), its pulls and kills, whether attendance came from it, and what it counts as: the title's verdict, or an officer's choice with who made it and when. Officers with the Attendance permission get a button per report to mark it as the team's raid or an alt run (through `set_report_kind()`, #1472) and one to go back to the title's verdict; a change that does not save says so on its row, and a report newly the team's raid runs the attendance refresh. The Exclude toggle stays where it was. Someone who can only read attendance sees the list without the buttons.
+- Time log rows for #1472's review and merge and the start of #1473.
+
 ## [3.314.0] - 2026-11-27
 
 ### Backend
