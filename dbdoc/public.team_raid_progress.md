@@ -13,12 +13,12 @@ Per team and boss, the first kill on each difficulty, the pull count and the bes
 | encounter_id | integer |  | false |  | [public.raid_encounters](public.raid_encounters.md) |  |
 | mythic_date | date |  | true |  |  |  |
 | heroic_date | date |  | true |  |  |  |
-| mythic_pulls | integer |  | true |  |  |  |
+| mythic_pulls | integer |  | true |  |  | Mythic pulls of this boss from the team's main reports, each pull once; once the boss is killed, only the pulls up to the first kill (#1955). |
 | mythic_best_pct | numeric(5,2) |  | true |  |  |  |
 | mythic_report_code | text |  | true |  |  |  |
 | mythic_fight_id | integer |  | true |  |  |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
-| heroic_pulls | integer |  | true |  |  |  |
+| heroic_pulls | integer |  | true |  |  | Heroic pulls of this boss from the team's main reports, each pull once; once the boss is killed, only the pulls up to the first kill (#1955). |
 | heroic_best_pct | numeric(5,2) |  | true |  |  |  |
 | heroic_report_code | text |  | true |  |  |  |
 | heroic_fight_id | integer |  | true |  |  |  |

@@ -3474,7 +3474,8 @@
         {
           "name": "mythic_pulls",
           "type": "integer",
-          "nullable": true
+          "nullable": true,
+          "comment": "Mythic pulls of this boss from the team's main reports, each pull once; once the boss is killed, only the pulls up to the first kill (#1955)."
         },
         {
           "name": "mythic_best_pct",
@@ -3499,7 +3500,8 @@
         {
           "name": "heroic_pulls",
           "type": "integer",
-          "nullable": true
+          "nullable": true,
+          "comment": "Heroic pulls of this boss from the team's main reports, each pull once; once the boss is killed, only the pulls up to the first kill (#1955)."
         },
         {
           "name": "heroic_best_pct",

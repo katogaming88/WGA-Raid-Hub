@@ -12,22 +12,26 @@ declare
 begin
   kept := array(select f from team_main_pulls(p_team_id) f);
 
-  with main as (
+  with pulls as (
     select f2.encounter_id, f2.difficulty, f2.kill, f2.boss_percentage, f2.report_code, f2.fight_id,
-           r.raid_date, r.started_at as report_started_at
+           f2.started_at, r.raid_date,
+           min(f2.started_at) filter (where f2.kill) over (partition by f2.encounter_id, f2.difficulty) as first_kill_at
       from unnest(kept) f2
       join team_raid_reports r on r.team_id = p_team_id and r.report_code = f2.report_code
+  ),
+  main as (
+    select * from pulls where first_kill_at is null or started_at <= first_kill_at
   ),
   agg as (
     select encounter_id, difficulty,
            count(*)::integer as pulls,
-           (array_agg(raid_date order by report_started_at, fight_id) filter (where kill))[1] as kill_date,
-           (array_agg(report_code order by report_started_at, fight_id) filter (where kill))[1] as kill_report,
-           (array_agg(fight_id order by report_started_at, fight_id) filter (where kill))[1] as kill_fight,
+           (array_agg(raid_date order by started_at, report_code, fight_id) filter (where kill))[1] as kill_date,
+           (array_agg(report_code order by started_at, report_code, fight_id) filter (where kill))[1] as kill_report,
+           (array_agg(fight_id order by started_at, report_code, fight_id) filter (where kill))[1] as kill_fight,
            min(boss_percentage) filter (where not kill) as best_pct,
-           (array_agg(report_code order by boss_percentage, report_started_at, fight_id)
+           (array_agg(report_code order by boss_percentage, started_at, fight_id)
               filter (where not kill and boss_percentage is not null))[1] as best_report,
-           (array_agg(fight_id order by boss_percentage, report_started_at, fight_id)
+           (array_agg(fight_id order by boss_percentage, started_at, fight_id)
               filter (where not kill and boss_percentage is not null))[1] as best_fight
       from main
      group by encounter_id, difficulty
