@@ -1000,10 +1000,57 @@ describe('a boss killed earlier in the lockout (#1246)', () => {
     });
   });
 
+  // #1471: only the team's own raids count, by team_raid_reports.effective_kind.
+  it('takes nothing off for an alt run’s kill, nor for a main report an officer calls an alt run', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { monday, tuesday } = await planned(q, asUser);
+      await kill(q, { report: 'alts', date: tuesday, kind: 'alt' });
+      await q(
+        `insert into public.team_raid_reports (team_id, report_code, started_at, raid_date, kind, kind_override, kind_override_at)
+         values (1, 'overruled', now(), $1, 'main', 'alt', now())`,
+        [tuesday]
+      );
+      await kill(q, { encounter: SECOND, report: 'overruled', fight: 2, date: tuesday });
+      expect(await skippedOn(q, monday)).toEqual([
+        [FIRST, false],
+        [SECOND, false]
+      ]);
+      expect(await skipLog(q)).toEqual([]);
+    });
+  });
+
+  it('takes the boss off for the team’s first real kill after an alt run’s kill of it is stored', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { monday, tuesday } = await planned(q, asUser);
+      await kill(q, { report: 'alts', date: tuesday, kind: 'alt', started: `${tuesday} 19:00 America/New_York` });
+      const id = await kill(q, { report: 'main', date: tuesday });
+      expect((await skippedOn(q, monday))[0]).toEqual([FIRST, true]);
+      expect(await reason(q, monday, FIRST)).toBe(id);
+    });
+  });
+
+  it('plans a night with a boss killed that lockout only by an alt run as usual', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const { p1, p2 } = await seed(q);
+      await setTeamDifficulty(q, 'mythic');
+      await setGroup(asUser, OFFICER_T1, FIRST, [p1, p2]);
+      const [tuesday, monday] = [await day(q, 0), await day(q, 6)];
+      await kill(q, { report: 'alts', date: tuesday, kind: 'alt' });
+      await plan(asUser, OFFICER_T1, monday);
+      expect((await skippedOn(q, monday))[0]).toEqual([FIRST, false]);
+    });
+  });
+
   it('skips once for two logs of one kill, and a boss put back stays back when another log arrives', async () => {
     await withTxn(async ({ q, asUser }) => {
       const { p1, p2, monday, tuesday } = await planned(q, asUser);
-      // Two raiders logged the same kill; the sync stores both in one insert.
+      // Two raiders logged the same kill; the sync stores both in one insert,
+      // after both reports' rows.
+      await q(
+        `insert into public.team_raid_reports (team_id, report_code, started_at, raid_date, kind)
+         select 1, code, now(), $1, 'main' from unnest(array['late', 'early']) code`,
+        [tuesday]
+      );
       const both = await q(
         `insert into public.team_raid_kills
            (team_id, encounter_id, difficulty, report_code, fight_id, raid_date, report_started_at)

@@ -208,6 +208,20 @@ describe('team_raid_kills_this_week', () => {
     });
   });
 
+  // #1471: an alt run's kill is not the team's; the week's first kill is the
+  // team's own, even when an alt group got there earlier.
+  it('leaves out kills from alt runs', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seed(q);
+      const { tue, thu } = await days(q);
+      await kill(q, { encounter: FIRST, report: 'alts', fight: 1, date: tue, kind: 'alt' });
+      await kill(q, { encounter: SECOND, report: 'alts', fight: 2, date: tue });
+      await kill(q, { encounter: FIRST, report: 'r2', fight: 5, date: thu });
+      const rows = (await asUser(OFFICER_T1, WEEK)).rows;
+      expect(rows.map((r) => [r.encounter_id, r.report_code])).toEqual([[FIRST, 'r2']]);
+    });
+  });
+
   it('answers a signed-out visitor with no rows, not an error', async () => {
     await withTxn(async ({ q, asAnon }) => {
       await seed(q);

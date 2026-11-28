@@ -475,7 +475,7 @@ Every kill is kept (`team_raid_kills`) and each night says its difficulty, but a
 - **A night planned after the kill arrives skipped,** with the same audit entry.
 - **Logged with no actor,** through `log_killed_boss_skips()`, which the skip and the fill share. One `Skip Killed Boss` entry per boss per night, naming the night, the boss, the kill's date, its difficulty and its report. The audit log readers show a blank author for a null actor, so the action name is what says the sync did it.
 - **The lock comes first.** The skip takes the per-team lineup lock before it reads, so a night filled at the same moment is either seen by the skip or sees the kill, and the hourly fill now takes its team locks in team order, as the skip does. A test wraps the rule to refuse a read made without the team's lock; the race itself cannot be staged in one rolled-back transaction.
-- **Alt runs count, for now.** `team_raid_kills` keeps every kill the sync reads, alt runs included, as `team_raid_progress` always has, so an alt group's kill takes its boss off the team's later nights. Which reports are the team's is the next step (#1469 to #1472): a table of the reports the sync reads, with the title rule attendance uses as its verdict and an officer's override, read by the skip, the kills view and progress. A fix inside the sync was built and dropped in review: it deleted the kills it judged, which loses them if the judgment is overturned.
+- **Only the team's raids count** (#1471, `20261127194940_main_reports_only.sql`). `team_raid_kills` keeps every kill the sync reads, alt runs included; `kills_before_night()` counts only kills from reports whose `team_raid_reports.effective_kind` is `main`, so an alt group's kill takes nothing off. The first build counted every kill; a fix inside the sync was built and dropped in review then, since it deleted the kills it judged, which loses them if the judgment is overturned.
 - **No catch-up at deploy:** production held no lineup rows when this was built, so there was nothing planned for kills already stored to reach.
 - **Accepted, from the review:** a report that runs on into the next raid night dates its kills to the night it started, so a boss killed in the later night is taken off that night; a night whose difficulty an officer changes after the skip keeps the skip, or misses one, by the order things happened; a delete and re-fetch of `team_raid_kills` treats every kill as new, re-skipping bosses an officer put back; and the night's difficulty and start are read once per boss row, a few dozen lookups on the sync's three evenings a week.
 - **Not here:** re-checking filled nights when a night's difficulty changes, and the grid's greying.
@@ -4067,3 +4067,17 @@ Shipped: `20261127110424_deleted_report_kills_stay.sql`.
 **Only the card for now.** The killed-boss skip on the lineup already keeps its skip when a report goes missing; #1471 decides which kills count there and for attendance.
 
 [Full discussion -> #1938](https://github.com/katogaming88/WGA-Raid-Hub/issues/1938).
+
+## #1471 -- the killed-boss skip, this week's kills and attendance count only the team's raids
+
+Shipped: `20261127194940_main_reports_only.sql`.
+
+**One rule for which reports are the team's:** `team_raid_reports.effective_kind` (#1469), the officer's override, else the title rule's verdict. Three readers had their own answer: the skip and `team_raid_kills_this_week` counted every report in the team's Warcraft Logs guild, and attendance (`wcl-sync`) applied its own copy of the title rule.
+
+**`kills_before_night()` and the kills view count main reports only.** The skip and a newly planned night both read `kills_before_night()`, so both follow, and so does the skip's "every kill before the night arrived in this insert" check: a stored alt-run kill no longer stops the team's first real kill from taking its boss off a night. A kill whose report has no row is not counted; the sync writes a report's row before its kills, and every kill on production had a `main` row when this shipped (100 of 100, 2026-11-27), so nothing already skipped changes.
+
+**A deleted report still counts.** `missing_since` is not read: the kill happened, as on the progression card (#1938, Kat 2026-11-27).
+
+**Attendance reads the table, with the title rule as the fallback** for a report the progression sync has not read yet (uploaded since its last run). A report attendance has already filed keeps its rows; changing a filed report, and an officer's change taking effect at once, are #1472's.
+
+[Full discussion -> #1471](https://github.com/katogaming88/WGA-Raid-Hub/issues/1471).

@@ -2,7 +2,7 @@
 
 ## Description
 
-Each boss a team has killed since this week's Tuesday reset, once per difficulty, with its first kill of the week (#1246).
+Each boss a team has killed in its main reports (team_raid_reports.effective_kind, #1471) since this week's Tuesday reset, once per difficulty, with its first kill of the week (#1246).
 
 <details>
 <summary><strong>Table Definition</strong></summary>
@@ -16,9 +16,10 @@ CREATE VIEW team_raid_kills_this_week AS (
     k.raid_date,
     k.report_code,
     k.fight_id
-   FROM (team_raid_kills k
+   FROM ((team_raid_kills k
      JOIN raid_encounters e ON ((e.id = k.encounter_id)))
-  WHERE ((k.raid_date >= lockout_start_at(now())) AND (k.raid_date < (lockout_start_at(now()) + 7)))
+     JOIN team_raid_reports r ON (((r.team_id = k.team_id) AND (r.report_code = k.report_code))))
+  WHERE ((k.raid_date >= lockout_start_at(now())) AND (k.raid_date < (lockout_start_at(now()) + 7)) AND (r.effective_kind = 'main'::text))
   ORDER BY k.team_id, k.encounter_id, k.difficulty, k.report_started_at, k.fight_id
 )
 ```
@@ -41,8 +42,9 @@ CREATE VIEW team_raid_kills_this_week AS (
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
-| [public.team_raid_kills](public.team_raid_kills.md) | 9 | Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), alt runs included as on team_raid_progress, one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. Each insert takes the bosses it killed off the team's later nights that lockout (skip_killed_bosses()). | BASE TABLE |
+| [public.team_raid_kills](public.team_raid_kills.md) | 9 | Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), alt runs included, one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. Its readers count main reports only (team_raid_reports.effective_kind, #1471). Each insert takes the bosses the team's main reports killed off the team's later nights that lockout (skip_killed_bosses()). | BASE TABLE |
 | [public.raid_encounters](public.raid_encounters.md) | 6 |  | BASE TABLE |
+| [public.team_raid_reports](public.team_raid_reports.md) | 16 | Every Warcraft Logs report the progression sync reads for a team (#1469), one row per team and report, rewritten on every run and never deleted. kind is the title rule's verdict, kind_override an officer's choice, effective_kind the one that counts. Written only by wcl-progression-sync. | BASE TABLE |
 
 ## Relations
 

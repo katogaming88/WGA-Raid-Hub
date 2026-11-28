@@ -876,6 +876,20 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
   );
   const cachedReportIds = new Set(existingReportRows.map((r: any) => r.report_id));
 
+  // #1471: whether a report is the team's raid is team_raid_reports' call
+  // (the officer's override, else the title rule's verdict), kept by
+  // wcl-progression-sync. A report it has not read yet, uploaded since its
+  // last run, falls back to the title rule here.
+  const kindRows = await readAllRows((from, to) =>
+    supabase
+      .from('team_raid_reports')
+      .select('report_code, effective_kind')
+      .eq('team_id', teamId)
+      .order('report_code')
+      .range(from, to)
+  );
+  const reportKinds = new Map<string, string>(kindRows.map((r: any) => [r.report_code, r.effective_kind]));
+
   const { data: players, error: playersError } = await supabase
     .from('players')
     .select('id, name_realm, is_bench, join_date')
@@ -1027,7 +1041,8 @@ async function refreshAttendance(token: Wcl, guildId: number, teamId: number, su
       continue;
     }
 
-    if (isAltRun(report.title)) {
+    const kind = reportKinds.get(report.code);
+    if (kind ? kind === 'alt' : isAltRun(report.title)) {
       excluded++;
       continue;
     }

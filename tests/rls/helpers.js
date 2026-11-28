@@ -263,11 +263,19 @@ export async function seedSignup(
 
 // A boss kill as wcl-progression-sync stores it (#1246), from a report that
 // starts at 20:00 Eastern on its raid date unless `started` says otherwise.
-// Returns its id.
+// The report's team_raid_reports row comes first, as the sync writes it,
+// judged `kind` (#1471); a report already on file keeps its row. Returns the
+// kill's id.
 export async function seedKill(
   q,
-  { team = 1, encounter, difficulty = 'mythic', report, fight = 1, date, started = null } = {}
+  { team = 1, encounter, difficulty = 'mythic', report, fight = 1, date, started = null, kind = 'main' } = {}
 ) {
+  await q(
+    `insert into public.team_raid_reports (team_id, report_code, started_at, raid_date, kind)
+     values ($1, $2, coalesce($3::timestamptz, ($4::date + time '20:00') at time zone 'America/New_York'), $4, $5)
+     on conflict (team_id, report_code) do nothing`,
+    [team, report, started, date, kind]
+  );
   const { rows } = await q(
     `insert into public.team_raid_kills
        (team_id, encounter_id, difficulty, report_code, fight_id, raid_date, report_started_at)

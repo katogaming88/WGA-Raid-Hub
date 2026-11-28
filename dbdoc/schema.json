@@ -8864,7 +8864,7 @@
     {
       "name": "public.team_raid_kills",
       "type": "BASE TABLE",
-      "comment": "Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), alt runs included as on team_raid_progress, one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. team_raid_progress holds the first kill per boss; this holds them all. Each insert takes the bosses it killed off the team's later nights that lockout (skip_killed_bosses()).",
+      "comment": "Every Heroic and Mythic boss kill in a team's Warcraft Logs reports (#1246), alt runs included, one row per fight, dated by the report's raid night. Written only by wcl-progression-sync. Its readers count main reports only (team_raid_reports.effective_kind, #1471). Each insert takes the bosses the team's main reports killed off the team's later nights that lockout (skip_killed_bosses()).",
       "columns": [
         {
           "name": "id",
@@ -9013,7 +9013,7 @@
     {
       "name": "public.team_raid_kills_this_week",
       "type": "VIEW",
-      "comment": "Each boss a team has killed since this week's Tuesday reset, once per difficulty, with its first kill of the week (#1246).",
+      "comment": "Each boss a team has killed in its main reports (team_raid_reports.effective_kind, #1471) since this week's Tuesday reset, once per difficulty, with its first kill of the week (#1246).",
       "columns": [
         {
           "name": "team_id",
@@ -9051,10 +9051,11 @@
           "nullable": true
         }
       ],
-      "def": "CREATE VIEW team_raid_kills_this_week AS (\n SELECT DISTINCT ON (k.team_id, k.encounter_id, k.difficulty) k.team_id,\n    k.encounter_id,\n    e.name AS encounter_name,\n    k.difficulty,\n    k.raid_date,\n    k.report_code,\n    k.fight_id\n   FROM (team_raid_kills k\n     JOIN raid_encounters e ON ((e.id = k.encounter_id)))\n  WHERE ((k.raid_date \u003e= lockout_start_at(now())) AND (k.raid_date \u003c (lockout_start_at(now()) + 7)))\n  ORDER BY k.team_id, k.encounter_id, k.difficulty, k.report_started_at, k.fight_id\n)",
+      "def": "CREATE VIEW team_raid_kills_this_week AS (\n SELECT DISTINCT ON (k.team_id, k.encounter_id, k.difficulty) k.team_id,\n    k.encounter_id,\n    e.name AS encounter_name,\n    k.difficulty,\n    k.raid_date,\n    k.report_code,\n    k.fight_id\n   FROM ((team_raid_kills k\n     JOIN raid_encounters e ON ((e.id = k.encounter_id)))\n     JOIN team_raid_reports r ON (((r.team_id = k.team_id) AND (r.report_code = k.report_code))))\n  WHERE ((k.raid_date \u003e= lockout_start_at(now())) AND (k.raid_date \u003c (lockout_start_at(now()) + 7)) AND (r.effective_kind = 'main'::text))\n  ORDER BY k.team_id, k.encounter_id, k.difficulty, k.report_started_at, k.fight_id\n)",
       "referenced_tables": [
         "public.team_raid_kills",
-        "public.raid_encounters"
+        "public.raid_encounters",
+        "public.team_raid_reports"
       ]
     },
     {

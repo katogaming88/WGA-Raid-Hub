@@ -12,5 +12,6 @@ create or replace view public.team_raid_kills_this_week with (security_invoker=o
     k.fight_id
    FROM team_raid_kills k
      JOIN raid_encounters e ON e.id = k.encounter_id
-  WHERE k.raid_date >= lockout_start_at(now()) AND k.raid_date < (lockout_start_at(now()) + 7)
+     JOIN team_raid_reports r ON r.team_id = k.team_id AND r.report_code = k.report_code
+  WHERE k.raid_date >= lockout_start_at(now()) AND k.raid_date < (lockout_start_at(now()) + 7) AND r.effective_kind = 'main'::text
   ORDER BY k.team_id, k.encounter_id, k.difficulty, k.report_started_at, k.fight_id;
