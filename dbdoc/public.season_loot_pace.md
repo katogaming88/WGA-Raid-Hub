@@ -25,11 +25,11 @@ CREATE VIEW season_loot_pace AS (
            FROM (rclc_loot rl_1
              JOIN counted c ON (((c.team_id = rl_1.team_id) AND (NOT (c.response IS DISTINCT FROM rl_1.response)))))
         ), season_bounds AS (
-         SELECT awards.team_id,
-            awards.season,
-            min(awards.awarded_at) AS season_start
-           FROM awards
-          GROUP BY awards.team_id, awards.season
+         SELECT rclc_loot.team_id,
+            rclc_loot.season,
+            min(rclc_loot.awarded_at) AS season_start
+           FROM rclc_loot
+          GROUP BY rclc_loot.team_id, rclc_loot.season
         )
  SELECT rl.team_id,
     rl.season,
@@ -65,8 +65,8 @@ CREATE VIEW season_loot_pace AS (
 | [public.rclc_loot](public.rclc_loot.md) | 11 |  | BASE TABLE |
 | [counted](counted.md) | 0 |  |  |
 | [rl_1.response](rl_1.response.md) | 0 |  |  |
-| [awards](awards.md) | 0 |  |  |
 | [rl.awarded_at](rl.awarded_at.md) | 0 |  |  |
+| [awards](awards.md) | 0 |  |  |
 | [season_bounds](season_bounds.md) | 0 |  |  |
 | [public.items](public.items.md) | 15 |  | BASE TABLE |
 

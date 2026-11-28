@@ -21,11 +21,11 @@ create or replace view public.season_loot_pace with (security_invoker=on) as
            FROM rclc_loot rl_1
              JOIN counted c ON c.team_id = rl_1.team_id AND NOT c.response IS DISTINCT FROM rl_1.response
         ), season_bounds AS (
-         SELECT awards.team_id,
-            awards.season,
-            min(awards.awarded_at) AS season_start
-           FROM awards
-          GROUP BY awards.team_id, awards.season
+         SELECT rclc_loot.team_id,
+            rclc_loot.season,
+            min(rclc_loot.awarded_at) AS season_start
+           FROM rclc_loot
+          GROUP BY rclc_loot.team_id, rclc_loot.season
         )
  SELECT rl.team_id,
     rl.season,
