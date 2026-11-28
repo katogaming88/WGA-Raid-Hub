@@ -1,5 +1,6 @@
 import { Link, useParams, useSearchParams } from 'react-router';
 import { DataState } from '../components/DataState';
+import { TipArea } from '../components/Tooltip';
 import { useAddress, useTeam } from '../data/address';
 import { isoDateShort } from '../lib/dates';
 import { bossPlace, killDate, raidCards } from '../home/progression';
@@ -155,7 +156,7 @@ function Chart({ chart, difficulty }: { chart: PullChart; difficulty: Difficulty
       aria-label="Pull chart; the Night by night table has the same facts"
     >
       <div className={`pulls-chart difficulty-${difficulty}`} aria-hidden="true">
-        <div className="pulls-plot">
+        <TipArea className="pulls-plot">
           {[100, 75, 50, 25, 0].map((v) => (
             <span key={v} className="pulls-tick" style={{ bottom: `${v}%` }}>
               {v}%
@@ -189,12 +190,12 @@ function Chart({ chart, difficulty }: { chart: PullChart; difficulty: Difficulty
                     key={p.number}
                     className={`${p.kill ? 'pulls-kill' : 'pulls-dot'}${isBest ? ' pulls-best' : ''}`}
                     style={{ left: `${xPct(p.number - 1, total)}%`, bottom: `${p.health}%` }}
-                    title={p.kill ? `Pull ${p.number}: kill` : `Pull ${p.number}: ${p.health}% left`}
+                    data-tip={p.kill ? `Pull ${p.number}: kill` : `Pull ${p.number}: ${p.health}% left`}
                   />
                 );
               })
           )}
-        </div>
+        </TipArea>
         <div className="pulls-nights">
           {chart.nights.map((n) => (
             <span

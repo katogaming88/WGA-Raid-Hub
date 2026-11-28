@@ -107,6 +107,17 @@ describe('the boss pull chart page', () => {
     expect(table.getAllByRole('link')[0]).toHaveAttribute('href', 'https://www.warcraftlogs.com/reports/ABC#fight=2');
   });
 
+  it('shows a dot’s health the moment it is hovered, in our own tip, not a title', async () => {
+    renderApp('/g/wga/t/phoenix/progression/8', handlers());
+    await screen.findByRole('table', { name: 'Night by night' });
+    const dot = document.querySelector<HTMLElement>('[data-tip="Pull 2: 55% left"]')!;
+    expect(dot).not.toHaveAttribute('title');
+    await userEvent.hover(dot);
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Pull 2: 55% left');
+    await userEvent.unhover(dot);
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
   it('switches to Heroic', async () => {
     renderApp('/g/wga/t/phoenix/progression/8', handlers());
     await screen.findByRole('table', { name: 'Night by night' });
