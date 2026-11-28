@@ -285,6 +285,15 @@ describe('the loot reports leave out what is not loot received (#1585)', () => {
     });
   });
 
+  it('can be read signed out, as before: the views grant anon and call the rule as their caller', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      await award(q, 'Disenchant');
+      for (const view of ['rnlsi', 'season_loot_pace', 'bis_demand_vs_awards']) {
+        await expect(asAnon(`select count(*) from public.${view}`), view).resolves.toBeDefined();
+      }
+    });
+  });
+
   it('follows the saved list when there is one', async () => {
     await withTxn(async ({ q, asUser }) => {
       await saveList(q, LIST);
