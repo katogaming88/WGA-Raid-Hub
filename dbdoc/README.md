@@ -431,6 +431,7 @@
 | public.set_report_kind | void | p_team_id integer, p_report_code text, p_kind text | FUNCTION |
 | public.team_main_pulls | team_raid_fights | p_team_id integer, p_encounter_id integer DEFAULT NULL::integer | FUNCTION |
 | public.team_raid_pulls | record | p_team_id integer, p_encounter_id integer | FUNCTION |
+| public.loot_award_counts_as | text | p_team_id integer, p_response text | FUNCTION |
 
 ## Enums
 

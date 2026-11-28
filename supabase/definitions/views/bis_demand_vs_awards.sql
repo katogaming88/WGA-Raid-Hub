@@ -3,7 +3,16 @@
 -- select (site roles): anon, authenticated
 
 create or replace view public.bis_demand_vs_awards with (security_invoker=on) as
- WITH demand AS (
+ WITH responses AS MATERIALIZED (
+         SELECT DISTINCT rclc_loot.team_id,
+            rclc_loot.response
+           FROM rclc_loot
+        ), counted AS MATERIALIZED (
+         SELECT responses.team_id,
+            responses.response
+           FROM responses
+          WHERE loot_award_counts_as(responses.team_id, responses.response) = ANY (ARRAY['main'::text, 'off'::text])
+        ), demand AS (
          SELECT p.team_id,
             ip.item_id,
             ip.season,
@@ -19,6 +28,7 @@ create or replace view public.bis_demand_vs_awards with (security_invoker=on) as
             rclc_loot.season,
             count(*) AS awarded_count
            FROM rclc_loot
+             JOIN counted c ON c.team_id = rclc_loot.team_id AND NOT c.response IS DISTINCT FROM rclc_loot.response
           WHERE rclc_loot.item_id IS NOT NULL
           GROUP BY rclc_loot.team_id, rclc_loot.item_id, rclc_loot.season
         )

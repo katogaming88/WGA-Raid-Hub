@@ -32,7 +32,9 @@ export const responseKey = (text: string) => text.trim().toLowerCase();
 const isFixed = (text: string) => FIXED_RESPONSES.some((f) => responseKey(f) === responseKey(text));
 
 // What a response counts as with no list saved: today's rules (#1584 and
-// isOffSpec()), so nothing moves until an officer saves a list.
+// isOffSpec()), so nothing moves until an officer saves a list. The database
+// asks the same through loot_award_counts_as() (#1585), for Suggest order and
+// the loot reports: keep the two in step.
 export function todaysCountsAs(text: string): CountsAs {
   const key = responseKey(text);
   if (key === 'xmog' || key === 'pet') return 'hidden';

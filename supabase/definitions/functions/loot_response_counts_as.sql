@@ -1,6 +1,6 @@
 -- Function public.loot_response_counts_as: current definition, generated from the database.
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
--- execute (site roles): authenticated
+-- execute (site roles): anon, authenticated
 
 CREATE OR REPLACE FUNCTION public.loot_response_counts_as(p_team_id integer, p_response text)
  RETURNS text
