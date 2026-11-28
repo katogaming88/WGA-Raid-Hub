@@ -7441,7 +7441,7 @@ export type Database = {
         }[]
       }
       team_main_pulls: {
-        Args: { p_team_id: number }
+        Args: { p_encounter_id?: number; p_team_id: number }
         Returns: {
           boss_percentage: number | null
           created_at: string

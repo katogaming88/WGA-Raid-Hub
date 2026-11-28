@@ -401,6 +401,12 @@ describe('team_raid_fights', () => {
       expect(await count(asUser(SITE_ADMIN, READ, [a.teamId]))).toBe(5);
       expect(await count(asUser(b.officer.uid, READ, [a.teamId]))).toBe(0);
       expect(await count(asAnon(READ, [a.teamId]))).toBe(0);
+      // An officer with Attendance but not Reports reads them too, as on team_raid_reports.
+      await asUser(a.leader.uid, 'select public.set_team_rank_permissions($1, $2::jsonb)', [
+        a.teamId,
+        JSON.stringify([{ rank: 'officer', permission: 'view_reports', on: false }])
+      ]);
+      expect(await count(asUser(a.officer.uid, READ, [a.teamId]))).toBe(5);
     });
   });
 
@@ -533,7 +539,7 @@ describe('team_raid_pulls() (#1496)', () => {
       const { rows } = await q(
         `select r.rolname,
                 has_function_privilege(r.rolname, 'public.team_raid_pulls(integer, integer)', 'execute') as pulls,
-                has_function_privilege(r.rolname, 'public.team_main_pulls(integer)', 'execute') as matching
+                has_function_privilege(r.rolname, 'public.team_main_pulls(integer, integer)', 'execute') as matching
            from pg_roles r where r.rolname in ('anon', 'authenticated', 'service_role') order by r.rolname`
       );
       expect(rows).toEqual([

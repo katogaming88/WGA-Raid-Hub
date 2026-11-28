@@ -34,7 +34,10 @@ comment on table public.team_raid_fights is
 -- kept fight it overlaps longest, and a kept fight takes one copy from each
 -- other report at most. Only a kept fight takes copies, so a fight that is
 -- itself a copy never takes another pull with it.
-create function public.team_main_pulls(p_team_id integer)
+-- With a boss, only that boss's pulls: the matching starts over for each boss
+-- and difficulty anyway, so the answer is the same, and the public chart's
+-- call does not grow with every season's pulls (fresh-agent review on PR #1946).
+create function public.team_main_pulls(p_team_id integer, p_encounter_id integer default null)
 returns setof public.team_raid_fights
 language plpgsql
 stable
@@ -59,6 +62,7 @@ begin
       from team_raid_fights fi
       join team_raid_reports r on r.team_id = fi.team_id and r.report_code = fi.report_code
      where fi.team_id = p_team_id
+       and (p_encounter_id is null or fi.encounter_id = p_encounter_id)
        and r.effective_kind = 'main'
      order by fi.encounter_id, fi.difficulty,
               not fi.kill, coalesce(fi.boss_percentage, 101), r.missing_since is not null,
@@ -93,14 +97,14 @@ begin
 end;
 $$;
 
-alter function public.team_main_pulls(integer) owner to postgres;
-revoke all on function public.team_main_pulls(integer) from public, anon, authenticated;
+alter function public.team_main_pulls(integer, integer) owner to postgres;
+revoke all on function public.team_main_pulls(integer, integer) from public, anon, authenticated;
 -- The progression sync's service role runs rebuild_team_raid_progress(), which
 -- runs as its caller and reads this (CodeRabbit on PR #1946).
-grant execute on function public.team_main_pulls(integer) to service_role;
+grant execute on function public.team_main_pulls(integer, integer) to service_role;
 
-comment on function public.team_main_pulls(integer) is
-  'A team''s pulls from its main reports (team_raid_reports.effective_kind), each pull once: the same pull in two reports (overlapping for at least half of the shorter one) is the best copy, a kill before a wipe, then the lowest boss health, a report still on Warcraft Logs, the earliest report (#1938). Shared by rebuild_team_raid_progress() and team_raid_pulls() (#1496), so the card and the chart count the same pulls. Not callable from the site.';
+comment on function public.team_main_pulls(integer, integer) is
+  'A team''s pulls from its main reports (team_raid_reports.effective_kind), of one boss when given, each pull once: the same pull in two reports (overlapping for at least half of the shorter one) is the best copy, a kill before a wipe, then the lowest boss health, a report still on Warcraft Logs, the earliest report (#1938). Shared by rebuild_team_raid_progress() and team_raid_pulls() (#1496), so the card and the chart count the same pulls. Not callable from the site.';
 
 create or replace function public.rebuild_team_raid_progress(p_team_id integer)
 returns void
@@ -185,9 +189,8 @@ set search_path = public
 as $$
   select f.report_code, f.fight_id, f.difficulty, r.raid_date, f.started_at, f.boss_percentage, f.kill,
          f.last_phase, f.last_phase_is_intermission
-    from team_main_pulls(p_team_id) f
+    from team_main_pulls(p_team_id, p_encounter_id) f
     join team_raid_reports r on r.team_id = f.team_id and r.report_code = f.report_code
-   where f.encounter_id = p_encounter_id
    order by f.started_at, f.report_code, f.fight_id
 $$;
 

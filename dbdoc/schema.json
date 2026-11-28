@@ -20491,7 +20491,7 @@
     {
       "name": "public.team_main_pulls",
       "return_type": "team_raid_fights",
-      "arguments": "p_team_id integer",
+      "arguments": "p_team_id integer, p_encounter_id integer DEFAULT NULL::integer",
       "type": "FUNCTION"
     },
     {

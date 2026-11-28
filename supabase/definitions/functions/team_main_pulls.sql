@@ -2,7 +2,7 @@
 -- Do not edit: change it with a migration, then run `npm run db:definitions` (#1107).
 -- execute (site roles): none
 
-CREATE OR REPLACE FUNCTION public.team_main_pulls(p_team_id integer)
+CREATE OR REPLACE FUNCTION public.team_main_pulls(p_team_id integer, p_encounter_id integer DEFAULT NULL::integer)
  RETURNS SETOF team_raid_fights
  LANGUAGE plpgsql
  STABLE
@@ -27,6 +27,7 @@ begin
       from team_raid_fights fi
       join team_raid_reports r on r.team_id = fi.team_id and r.report_code = fi.report_code
      where fi.team_id = p_team_id
+       and (p_encounter_id is null or fi.encounter_id = p_encounter_id)
        and r.effective_kind = 'main'
      order by fi.encounter_id, fi.difficulty,
               not fi.kill, coalesce(fi.boss_percentage, 101), r.missing_since is not null,
