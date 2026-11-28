@@ -1,0 +1,230 @@
+/* The boss pull chart (#1474): no box, hairline rules, Mythic purple and
+   Heroic teal from the tokens. */
+
+.pulls-page {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.pulls-crumbs {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.pulls-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.pulls-siblings {
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.pulls-tabs {
+  display: flex;
+  gap: var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.pulls-tab {
+  margin-bottom: -1px;
+  padding: 0 0 var(--space-2);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.pulls-tab[aria-pressed='true'] {
+  border-bottom-color: currentColor;
+  font-weight: 600;
+}
+
+.pulls-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+}
+
+.pulls-figures > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.pulls-figure-value {
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+
+.pulls-figure-note {
+  font-size: var(--text-xs);
+}
+
+.pulls-good {
+  color: var(--good);
+}
+
+.pulls-scroll {
+  position: relative;
+  overflow-x: auto;
+}
+
+.pulls-chart {
+  --pull-color: var(--mythic);
+  position: relative;
+  min-width: 680px;
+  padding: 8px 16px 52px 48px;
+}
+
+.pulls-chart.difficulty-heroic {
+  --pull-color: var(--heroic);
+}
+
+.pulls-plot {
+  position: relative;
+  height: 340px;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.pulls-tick {
+  position: absolute;
+  left: -48px;
+  width: 40px;
+  transform: translateY(50%);
+  color: var(--text-dim);
+  font-size: 11px;
+  text-align: right;
+}
+
+.pulls-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--border);
+}
+
+.pulls-band-odd {
+  background: var(--hover);
+}
+
+.pulls-line {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.pulls-line polyline {
+  fill: none;
+  stroke: var(--pull-color);
+  stroke-width: 1.5;
+  stroke-opacity: 0.7;
+}
+
+.pulls-dot,
+.pulls-kill {
+  position: absolute;
+  background: var(--pull-color);
+  transform: translate(-50%, 50%);
+}
+
+.pulls-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  opacity: 0.55;
+}
+
+.pulls-dot.pulls-best {
+  width: 9px;
+  height: 9px;
+  opacity: 1;
+  box-shadow: 0 0 0 2px var(--page);
+}
+
+.pulls-kill {
+  width: 12px;
+  height: 12px;
+  background: var(--good);
+  transform: translate(-50%, 50%) rotate(45deg);
+}
+
+.pulls-nights {
+  position: absolute;
+  right: 16px;
+  bottom: 8px;
+  left: 48px;
+  height: 36px;
+}
+
+.pulls-night {
+  position: absolute;
+  transform: translateX(-50%);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pulls-legend {
+  margin: 0;
+  font-size: var(--text-xs);
+}
+
+.pulls-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.pulls-table caption {
+  padding-bottom: var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  text-align: left;
+}
+
+.pulls-table th,
+.pulls-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.pulls-table thead th {
+  border-bottom-color: var(--border-strong);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.pulls-table .pulls-num {
+  text-align: right;
+}
+
+.pulls-table th:first-child,
+.pulls-table td:first-child {
+  padding-left: 0;
+}
+
+.pulls-kill-label {
+  position: absolute;
+  bottom: 14px;
+  padding-right: 12px;
+  transform: translateX(-100%);
+  color: var(--good);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}

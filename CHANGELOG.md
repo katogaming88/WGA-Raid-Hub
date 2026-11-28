@@ -12,6 +12,12 @@ answers to.
 
 ---
 
+## [3.316.0] - 2026-11-28
+
+### Project
+
+- New app: each boss on the team Home page's progression card opens its own page with a pull chart (#1474). Mythic and Heroic are tabs. Four figures sit on top: when it was killed and on which pull, how many pulls, how many nights, and the furthest phase with the night it was first reached. The chart is one dot per pull in order, as high as the boss's health left when the pull ended, with raid nights shaded and labelled with their date and pull count; the best pull of each night is a brighter dot joined to the next night's, and a kill is a green diamond at 0. A Night by night table under it (night, pulls, best pull, the phase it got to, a Warcraft Logs link) is the chart's text alternative. Anyone who can see the progression card can see it, and it counts the team's main reports only. Links to the previous and next boss sit at the top. Phase start lines are left off: the sync keeps each pull's last phase, not where a phase starts.
+
 ## [3.315.0] - 2026-11-27
 
 ### Backend

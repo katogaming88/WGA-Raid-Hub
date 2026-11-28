@@ -14,6 +14,7 @@ export type SettingsRaid = {
 
 // One boss's synced progress (team_raid_progress), with its encounter and zone.
 export type ProgressRow = {
+  encounter_id: number;
   mythic_date: string | null;
   mythic_pulls: number | null;
   mythic_best_pct: number | null;
@@ -35,7 +36,14 @@ export type ProgressRow = {
 // boss is still up.
 export type DifficultyLine = { date: string | null; pulls: number | null; best: number | null; link: string | null };
 
-export type BossCard = { number: number; name: string; mythic: DifficultyLine | null; heroic: DifficultyLine | null };
+// `encounterId` is the boss's own page (#1474); null when the sync has not seen it.
+export type BossCard = {
+  number: number;
+  name: string;
+  encounterId: number | null;
+  mythic: DifficultyLine | null;
+  heroic: DifficultyLine | null;
+};
 
 export type RaidCard = {
   name: string;
@@ -114,6 +122,7 @@ export function raidCards(raids: SettingsRaid[], rows: ProgressRow[]): RaidCard[
       bosses: bosses.map(({ number, name, p, mythicDate, heroicDate }) => ({
         number,
         name,
+        encounterId: p?.encounter_id ?? null,
         mythic: mythicLine(p, mythicDate),
         heroic: heroicLine(p, heroicDate)
       })),
@@ -157,3 +166,22 @@ export function killDate(value: string): string {
 
 export const pullsText = (line: DifficultyLine): string =>
   line.pulls === null ? '' : `${line.pulls} ${line.pulls === 1 ? 'pull' : 'pulls'}`;
+
+// Where one boss sits on the card: its raid, its place, and the bosses either
+// side of it in that raid that have a page of their own.
+export function bossPlace(cards: RaidCard[], encounterId: number) {
+  for (const raid of cards) {
+    const i = raid.bosses.findIndex((b) => b.encounterId === encounterId);
+    if (i < 0) continue;
+    const linked = raid.bosses.filter((b) => b.encounterId !== null);
+    const at = linked.findIndex((b) => b.encounterId === encounterId);
+    return {
+      raid: raid.name,
+      boss: raid.bosses[i]!,
+      of: raid.bosses.length,
+      prev: linked[at - 1] ?? null,
+      next: linked[at + 1] ?? null
+    };
+  }
+  return null;
+}

@@ -29,6 +29,7 @@ import { NewsPostPage } from './news/NewsPostPage';
 import { StreamsPage } from './streams/StreamsPage';
 import { HelpPage } from './help/HelpPage';
 import { AboutPage } from './about/AboutPage';
+import { BossPullsPage } from './progression/BossPullsPage';
 import { HistoryPage } from './history/HistoryPage';
 import { LootHistoryPage } from './loot/LootHistoryPage';
 import { SignUpPage } from './signup/SignUpPage';
@@ -282,6 +283,12 @@ export const routes: RouteObject[] = [
                 ),
                 handle: { title } satisfies RouteHandle
               })),
+              // One boss's pull chart, opened from the progression card (#1474).
+              {
+                path: 'progression/:encounterId',
+                element: <BossPullsPage />,
+                handle: { title: 'Raid progression' } satisfies RouteHandle
+              },
               ...Object.entries(MOVED_TEAM_PAGES).map(([path, to]) => ({ path, element: <ToTeamPage to={to} /> })),
               // A player's profile by its address code (#1100), for the raider and officers.
               {

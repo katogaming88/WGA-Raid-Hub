@@ -141,7 +141,13 @@ function Raid({ raid }: { raid: RaidCard }) {
                 {boss.number}
               </span>
               <div className="boss-body">
-                <span className="boss-name">{boss.name}</span>
+                {boss.encounterId !== null ? (
+                  <Link className="boss-name" to={`progression/${boss.encounterId}`}>
+                    {boss.name}
+                  </Link>
+                ) : (
+                  <span className="boss-name">{boss.name}</span>
+                )}
                 {boss.mythic && <BossLine difficulty="Mythic" line={boss.mythic} />}
                 {boss.heroic && <BossLine difficulty="Heroic" line={boss.heroic} />}
               </div>
