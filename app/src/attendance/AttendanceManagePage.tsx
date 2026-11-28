@@ -374,19 +374,21 @@ function ReportRows({
         return (
           <li className="attend-report" key={r.report_code}>
             <span className="attend-report-date">{nightLabel(r.raid_date)}</span>
-            <a
-              className="attend-report-title"
-              href={reportUrl(r.report_code)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {label}
-            </a>
-            <span className="text-muted attend-report-pulls">
-              {plural(r.boss_pulls, 'pull')}, {plural(r.boss_kills, 'kill')}
-            </span>
-            <span className="text-muted attend-report-synced">
-              {synced.has(r.report_code) ? 'Attendance from it' : 'No attendance from it'}
+            <span className="attend-report-main">
+              <a
+                className="attend-report-title"
+                href={reportUrl(r.report_code)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {label}
+              </a>
+              <span className="text-muted attend-report-pulls">
+                {plural(r.boss_pulls, 'pull')}, {plural(r.boss_kills, 'kill')}
+              </span>
+              <span className="text-muted attend-report-synced">
+                {synced.has(r.report_code) ? 'Attendance from it' : 'No attendance from it'}
+              </span>
             </span>
             <span className={`attend-report-kind${kind === 'alt' ? ' attend-report-alt' : ''}`}>
               {r.kind_override === null

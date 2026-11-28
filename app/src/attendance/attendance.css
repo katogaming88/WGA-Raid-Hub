@@ -182,8 +182,8 @@
 
 .attend-report {
   display: grid;
-  grid-template-columns: 90px minmax(0, 1fr) 140px 150px 190px auto;
-  align-items: center;
+  grid-template-columns: 90px minmax(0, 1fr) 210px 290px;
+  align-items: start;
   gap: var(--space-3);
   padding: 10px 0;
   border-top: 1px solid var(--border);
@@ -193,8 +193,20 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* The title, with how much it holds and whether attendance came from it. */
+.attend-report-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .attend-report-title {
   overflow-wrap: anywhere;
+}
+
+.attend-report-main .text-muted {
+  font-size: var(--text-sm);
 }
 
 .attend-report-alt {
@@ -214,28 +226,12 @@
   margin: 0;
 }
 
-/* At phone width each report stacks: the date and title, what it holds, what
-   it counts as, then the buttons at full width. */
+/* At phone width each report stacks: the date, the title and what it holds,
+   what it counts as, then the buttons. */
 @media (max-width: 960px) {
   .attend-report {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-1) var(--space-3);
-  }
-
-  .attend-report-title {
-    grid-column: 1 / -1;
-    grid-row: 1;
-  }
-
-  .attend-report-date {
-    grid-row: 2;
-  }
-
-  .attend-report-pulls,
-  .attend-report-synced,
-  .attend-report-kind,
-  .attend-report-actions {
-    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
   }
 
   .attend-report-actions {
