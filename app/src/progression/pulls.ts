@@ -74,6 +74,8 @@ export function pullChart(rows: PullRow[], difficulty: Difficulty): PullChart {
     );
 
   for (const row of ordered) {
+    // The story ends at the first kill; later kills are farm, not progress.
+    if (kill) break;
     total += 1;
     const pull: Pull = { number: total, health: row.kill ? 0 : row.boss_percentage, kill: row.kill, row };
     let night = nights.at(-1);

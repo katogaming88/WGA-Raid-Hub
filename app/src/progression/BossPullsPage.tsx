@@ -189,6 +189,7 @@ function Chart({ chart, difficulty }: { chart: PullChart; difficulty: Difficulty
                     key={p.number}
                     className={`${p.kill ? 'pulls-kill' : 'pulls-dot'}${isBest ? ' pulls-best' : ''}`}
                     style={{ left: `${xPct(p.number - 1, total)}%`, bottom: `${p.health}%` }}
+                    title={p.kill ? `Pull ${p.number}: kill` : `Pull ${p.number}: ${p.health}% left`}
                   />
                 );
               })

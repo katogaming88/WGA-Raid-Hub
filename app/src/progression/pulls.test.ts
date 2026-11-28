@@ -46,6 +46,21 @@ describe('pullChart', () => {
     expect(bestText(chart.nights[0]!)).toBe('Kill');
   });
 
+  it('stops at the first kill: later kills are farm, not progress', () => {
+    const chart = pullChart(
+      [
+        pull('2026-08-24', 1, 30),
+        pull('2026-08-24', 2, 0, { kill: true }),
+        pull('2026-08-24', 3, 0, { kill: true }),
+        pull('2026-09-01', 1, 0, { kill: true })
+      ],
+      'mythic'
+    );
+    expect(chart.total).toBe(2);
+    expect(chart.nights.map((n) => n.date)).toEqual(['2026-08-24']);
+    expect(chart.kill).toEqual({ date: '2026-08-24', pull: 2 });
+  });
+
   it('keeps a pull with no health in the counts but never as a best', () => {
     const [night] = pullChart([pull('2026-10-22', 1, null), pull('2026-10-22', 2, 70)], 'mythic').nights;
     expect(night!.pulls).toHaveLength(2);
