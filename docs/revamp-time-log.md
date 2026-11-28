@@ -18,11 +18,11 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     58 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 62 h 46 m |  ~105 h 50 m |
+| Phase 2: Before the new site goes live | 63 h 32 m |  ~105 h 50 m |
 | Phase 3: After the new site goes live  |   5 h 48 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **238 h 25 m** |             |
+| **All revamp work**                | **239 h 11 m** |             |
 
 ### By area
 
@@ -32,7 +32,7 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 25 h 18 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 26 h 4 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
@@ -933,6 +933,12 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 2:04-2:06 PM | PR #1940 (#1938): Kat's merge; cleanup, #1938 closed with a status comment, its row out of #1487, local database restored, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1938) | 2 m | Kat review, build | 9,800 | |
 | 2:08-2:19 PM | #1939: a boss taken off a night for a kill reads Killed, one an officer skipped still reads Skipped tonight; the night's rows carry the kill marker, the grid label, a test for both, stamp 3.312.3, changelog, preflight, PR #1941 opened, screenshots (the phone one retaken scrolled to the grid) | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1939) | 11 m | build | 193,200 | Kat's design review, 2:19-6:06 PM, not counted. |
 | 6:06-6:09 PM | PR #1941 (#1939): Kat's merge; cleanup, #1939 status comment, its row out of #1487, local database restored, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1939) | 2 m | Kat review, build | 49,800 | Tokens include the context summary. |
+| 6:08-6:15 PM | Time-log backfill: the rows for 2026-11-25 to 11-27 read from the session transcripts, totals re-summed, stamp 3.312.4, PR #1942 opened | Phase 2: Before the new site goes live / Roster, loot and the team's raids (time log) | 7 m | build | 100,800 | Kat's review, 6:15-7:46 PM, not counted. |
+| 7:46-7:47 PM | PR #1942: Kat's merge; cleanup, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (time log) | 1 m | Kat review, build | 115,500 | |
+| 7:47-7:56 PM | #1471: the killed-boss skip and this week's kills count only the team's own reports (effective_kind), attendance reads the table with the title rule as the fallback; prod checked (all 100 kills on main reports), migration, database and edge tests, generated docs, decision log, stamp 3.313.0, preflight, PR #1943 opened | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1471) | 9 m | build | 129,400 | Kat's wait for CodeRabbit, 7:56-8:19 PM, not counted. |
+| 8:19-8:30 PM | PR #1943: CodeRabbit's finding (an officer with Attendance but not Reports got the title rule) fixed with a read rule; the fresh-agent migration review (changes needed: a kill saved before its report never took its boss off) fixed with a foreign key; the re-review (approve); local database restored | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1471) | 11 m | build | 282,200 | Tokens include both fresh-agent reviews (239,000). Kat's wait, 8:30-8:38 PM, not counted. |
+| 8:38-8:39 PM | PR #1943 (#1471): Kat's merge; cleanup, #1471's row out of #1487, totals re-summed, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1471) | 1 m | Kat review, build | 9,600 | |
+| 8:41-8:58 PM | #1472: Kat's call that the Attendance permission sets it; the issue explained in plain words; set_report_kind() and skip_bosses_for_kills() (the skip shared with the trigger), database tests, generated docs, RLS.md, decision log, stamp 3.314.0, preflight, these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1472) | 17 m | build, Kat decision | 75,400 | PR, reviews and merge not yet counted. |
 
 ## Not counted (same sessions, not revamp)
 
