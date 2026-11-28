@@ -376,6 +376,29 @@ describe('rebuild_team_raid_progress', () => {
     });
   });
 
+  it('takes the kill that happened first, not the one in the earlier log, and counts up to it (#1955)', async () => {
+    await withTxn(async ({ q }) => {
+      await seedRaid(q);
+      const { teamId } = await seedTeam(q);
+      // Two logs of one night: early starts at 20:00, late at 21:00. Late's
+      // kill at 21:30 came before early's at 22:00, so it is the first kill,
+      // though early's log started first.
+      await report(q, teamId, 'early', '2026-09-15');
+      await report(q, teamId, 'late', '2026-09-15');
+      await q(
+        `update public.team_raid_reports set started_at = started_at + interval '1 hour'
+          where team_id = $1 and report_code = 'late'`,
+        [teamId]
+      );
+      await fight(q, teamId, 'early', 10, BOSS_ONE, 'mythic', false, 40);
+      await fight(q, teamId, 'late', 30, BOSS_ONE, 'mythic', true, 0);
+      await fight(q, teamId, 'early', 120, BOSS_ONE, 'mythic', true, 0);
+      await rebuild(q, teamId);
+      const [row] = (await q(PROGRESS, [teamId])).rows;
+      expect(row).toMatchObject({ mythic_pulls: 2, mythic_report_code: 'late', mythic_fight_id: 30 });
+    });
+  });
+
   it('counts every pull of a boss not killed yet, and each difficulty on its own', async () => {
     await withTxn(async ({ q }) => {
       await seedRaid(q);
