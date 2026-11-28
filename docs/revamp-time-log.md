@@ -18,29 +18,29 @@ Work that happened in the same sessions but isn't part of the revamp (bug fixes,
 | Revamp 3: officer dashboard        |     58 h 21 m |             |
 | Revamp 4: cutover                  |      14 h 5 m |             |
 | Phase 1: For the guild test        |     37 h 25 m |       ~29 h |
-| Phase 2: Before the new site goes live | 58 h 53 m |  ~105 h 50 m |
-| Phase 3: After the new site goes live  |   4 h 37 m |   ~56 h 40 m |
+| Phase 2: Before the new site goes live | 62 h 46 m |  ~105 h 50 m |
+| Phase 3: After the new site goes live  |   5 h 48 m |   ~56 h 40 m |
 | Phase 4: Anytime, alongside        |           0 m |  ~31 h 20 m |
 | Phase 5: Back burner               |           0 m |       ~13 h |
-| **All revamp work**                | **233 h 21 m** |             |
+| **All revamp work**                | **238 h 25 m** |             |
 
 ### By area
 
 | Area | Phase | Time so far | Goal |
 | --- | --- | ---: | ---: |
-| Tester fixes | Phase 2 | 4 h 10 m | ~2 h |
+| Tester fixes | Phase 2 | 5 h 11 m | ~2 h |
 | Recruiting | Phase 2 | 14 h 56 m | ~9 h 50 m |
 | The roster audit and reports | Phase 2 | 11 h 31 m | ~9 h 50 m |
 | Attendance on its own | Phase 2 | 5 h 50 m | ~3 h 10 m |
-| Roster, loot and the team's raids | Phase 2 | 22 h 26 m | ~42 h |
+| Roster, loot and the team's raids | Phase 2 | 25 h 18 m | ~42 h |
 | The guild test | Phase 2 | 0 m | ~12 h 40 m |
 | What going live changes | Phase 2 | 0 m | ~24 h |
 | Going live | Phase 2 | 0 m | ~7 h 30 m |
 | Revamp 3 extras | Phase 3 | 0 m | ~21 h 30 m |
 | Revamp 4 | Phase 3 | 2 h 17 m | ~4 h 50 m |
 | Discord notifications | Phase 3 | 0 m | ~2 h 30 m |
-| Addon and Sync | Phase 3 | 2 h 20 m | ~22 h 50 m |
-| The look across the site | Phase 3 | 0 m | ~5 h |
+| Addon and Sync | Phase 3 | 3 h 18 m | ~22 h 50 m |
+| The look across the site | Phase 3 | 13 m | ~5 h |
 | App delivery and CI | Phase 4 | 0 m | ~2 h 50 m |
 | CI and deploy | Phase 4 | 0 m | ~10 h 50 m |
 | BoE sales | Phase 4 | 0 m | ~1 h 20 m |
@@ -899,6 +899,40 @@ Totals are the sum of the rows below. They were kept by hand until 2026-09-18, w
 | 11:15-11:31 AM | PR #1921: CodeRabbit's review (an audit row only when a sim is deleted, a removal test that keeps another setup's sim; the stale-tab point answered), reply; the fresh-agent migration review (changes needed) and its six fixes (ten sims per difficulty and spec, unreadable reports turned away, Missing sims wording, setup in the audit text, backup notes, the real length); the re-review (approve) and its two leftovers; these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1888) | 16 m | build | 357,500 | Tokens include both fresh-agent reviews (289,800). Kat's design review and merge not yet counted. |
 | 11:38-11:41 AM | PR #1921 (#1888 part 1): Kat's merge; cleanup, the #1487 row and a #1888 status comment, local database restored, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1888) | 3 m | Kat review, build | 6,900 | Kat's design review, 11:31-11:38 AM, not counted. |
 | 5:27-5:37 PM | #1888 part 2: the rest of Out of date; migration (each sim keeps the raider's gear level from the daily gear read), database tests; one out-of-date rule for the whole page (days or a set weekday, gear going up, grey or hide), Missing sims with one at any difficulty, the Out of date card; page and browser tests, Help, generated docs, decision log, stamp, changelog, these rows | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1888) | 10 m | build | 600,700 | Preflight, PR, reviews and merge not yet counted. |
+| 5:37-5:49 PM | PR #1923 (#1888 part 2): preflight (two database test files that deadlock in parallel pass alone), PR opened, screenshots (the "Or when gear goes up" label widened so the three menus line up) | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1888) | 12 m | build | 15,800 | Kat's wait for CodeRabbit, 5:49-7:04 PM, not counted. |
+| 7:04-7:09 PM | PR #1923: CodeRabbit had nothing to fix; the fresh-agent migration review (approve) and its one comment-accuracy note; Kat's two defaults kept (3 item levels, Grey it out) | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1888) | 5 m | build, Kat review | 146,200 | Tokens include the fresh-agent review (95,200). |
+| 7:17-7:19 PM | PR #1923 (#1888 part 2): Kat's merge; cleanup, #1888 closed, #1487 updated, local database restored, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1888) | 2 m | Kat review, build | 14,200 | Kat's design review, 7:09-7:17 PM, not counted. |
+
+### 2026-11-26
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 11:03-11:15 AM | Sync #8: the Sync window in the sidebar layout Kat picked (colours from the site's tokens, light and dark, the tray app slimmed to Open Sync, status and Quit), checked in screenshots, PR sync #9 opened; the site's Onest font added at Kat's question | Phase 3: After the new site goes live / Addon and Sync (sync #8) | 12 m | build | 109,800 | |
+| 11:15-11:32 AM | PR sync #9: the Go Again ring as the Windows icon (exe, tray, window, beside the name; the logo's dark box cropped so the ring fills it), CodeRabbit's two keyboard points fixed; Kat's calls: the window opens by default and Start minimized is the opt-in, Settings a sidebar page with a version line, an icon on every sidebar item | Phase 3: After the new site goes live / Addon and Sync (sync #8) | 17 m | build, Kat decision | 143,700 | |
+| 11:32-11:49 AM | Kat's call for a bigger arrowhead on the logo: the master files in her logo folder changed, 29 PNGs and the favicon pack re-rendered, Sync's icon retaken; release-please set up for Sync as its own issue and PR (sync #11); merge order answered, sync #9 merged and sync #8 closed, #1487's sync #8 row out and the roster total fixed; a fresh agent started on sync #11 | Phase 3: After the new site goes live / Addon and Sync (sync #8) | 17 m | build, Kat decision | 156,000 | Tokens include the subagent (52,300). |
+| 11:49 AM-12:01 PM | #1924: the same bigger arrowhead across the new site (favicon, banner, hero logo, faded ring), stamp 3.311.1, preflight, PR #1925 opened | Phase 3: After the new site goes live / The look across the site (#1924) | 12 m | build | 78,800 | |
+| 12:05-12:16 PM | Kat's boss-lineup question: #1886 found and put on #1487 under Tester fixes (first); sync #11 fixed so the first release is 0.1.0 and merged, release-please opened its release PR (sync #12); why the merge asks for approval | Phase 3: After the new site goes live / Addon and Sync (sync #8) | 12 m | build, Kat review | 12,100 | Kat's wait, 12:01-12:05 PM, not counted. |
+| 12:37-12:52 PM | #1926: a tester's QE Live sim shows N (Normal) though it was run at Mythic; confirmed from the guild's season data, QE's item-level codes mapped to difficulties, a test on the real report, stamp 3.311.3, preflight, PR #1927 opened | Phase 2: Before the new site goes live / Tester fixes (#1926) | 15 m | build | 41,700 | |
+| 12:52 PM-1:07 PM | #1928: a wishlist entry missing on the Priority page; the cause was two Settings > Season lists built differently (Wishlist editing offered a season with no raid), so it now offers only seasons with a raid; PR #1927 merged and cleaned up, the conflicts re-stamped, a screenshot, PR #1929 opened; Sync's v0.1.0 release merged | Phase 2: Before the new site goes live / Tester fixes (#1928) | 15 m | build, Kat review | 61,000 | |
+| 2:11-2:12 PM | PR #1925 (#1924): Kat's merge; cleanup, #1929 re-stamped to 3.311.5 | Phase 3: After the new site goes live / The look across the site (#1924) | 1 m | Kat review, build | 50,000 | Tokens include the context summary. |
+| 11:02-11:15 PM | Kat's tester findings (a screenshot and a boss-group note): the code traced and prod read, six issues filed (#1930-#1935), #1933 re-explained and reworded Kat's way, the rows and model labels added to #1487, the estimate redone | Phase 2: Before the new site goes live / Tester fixes (#1930-#1935) | 13 m | build, Kat decision | 122,900 | |
+| 11:17-11:38 PM | #1470: migration (team_raid_fights and rebuild_team_raid_progress), types, the sync's write order, database and edge tests, generated docs, RLS.md, decision log, stamp 3.312.0, changelog, PR #1936 opened, local database restored | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1470) | 21 m | build | 191,800 | |
+| 11:38 PM-12:19 AM | PR #1936 (#1470): CodeRabbit had nothing to fix; the fresh-agent migration review (changes needed) and its fixes (a report deleted from Warcraft Logs stops counting, a missing_since column); the re-review (approve) and its one risk (a failed mark no longer stops the card's rebuild); a failing check rerun (the runner's port was taken) | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1470) | 42 m | build | 347,800 | Tokens include both fresh-agent reviews (275,200). |
+| 12:25-12:26 AM | PR #1936: Kat's merge; cleanup, #1470's row out of #1487, totals re-summed | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1470) | 2 m | Kat review, build | 12,300 | |
+| 12:26-12:43 AM | #1886: Needs a look gives one line for the short bosses, not one each; code, page tests, screenshots (desktop dark and light, phone), PR #1937 opened | Phase 2: Before the new site goes live / Tester fixes (#1886) | 17 m | build | 235,800 | Kat's design review, 12:43-12:56 AM, not counted. |
+| 12:56-12:57 AM | PR #1937 (#1886): Kat's merge; cleanup, #1886's row out of #1487, handoff | Phase 2: Before the new site goes live / Tester fixes (#1886) | 1 m | Kat review, build | 7,800 | |
+
+### 2026-11-27
+
+| Time (ET) | Item | Phase | Elapsed | Build / Kat | Tokens | Notes |
+| --- | --- | --- | ---: | --- | ---: | --- |
+| 10:48-11:02 AM | Kat's pick to do the Roster section before the Tester fixes; the missing-report skip re-explained in plain words; Kat's calls: a kill is never undone by a deleted Warcraft Logs report, and a boss taken off for a kill reads Killed, not Skipped; #1938 and #1939 filed and put at the top of the section | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1938, #1939) | 14 m | build, Kat decision | 105,300 | |
+| 11:02-11:10 AM | #1938: the progression rebuild as plpgsql so a deleted report's kills stay, database tests (five known parallel deadlocks passed alone), docs, stamp, changelog, PR #1940 opened | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1938) | 8 m | build | 57,100 | Kat's wait for CodeRabbit, 11:10-11:38 AM, not counted. |
+| 11:38-11:55 AM | PR #1940: CodeRabbit's first review; Kat's call: copies of a pull are verified as the same pull (overlap of half the shorter one) and counted once, a copy with the kill kept; test for the best attempt, the changelog line the sync's comment edit needs, replies | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1938) | 16 m | build, Kat decision | 240,900 | Tokens include the fresh-agent review and its subagents (199,300). |
+| 1:16-1:51 PM | PR #1940: CodeRabbit's next three rounds (copies matched best first, the short-log case named in the known gap), Kat's call: the best attempt shows the lowest % over a working link; the changelog check (the sync's per-function version re-stamped) and the Schema docs lint (typed empty arrays) fixed; decision log and generated files | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1938) | 35 m | build, Kat decision | 450,400 | Tokens include the fresh-agent reviews (259,300). Kat's wait, 11:55 AM-1:16 PM, not counted. |
+| 2:04-2:06 PM | PR #1940 (#1938): Kat's merge; cleanup, #1938 closed with a status comment, its row out of #1487, local database restored, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1938) | 2 m | Kat review, build | 9,800 | |
+| 2:08-2:19 PM | #1939: a boss taken off a night for a kill reads Killed, one an officer skipped still reads Skipped tonight; the night's rows carry the kill marker, the grid label, a test for both, stamp 3.312.3, changelog, preflight, PR #1941 opened, screenshots (the phone one retaken scrolled to the grid) | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1939) | 11 m | build | 193,200 | Kat's design review, 2:19-6:06 PM, not counted. |
+| 6:06-6:09 PM | PR #1941 (#1939): Kat's merge; cleanup, #1939 status comment, its row out of #1487, local database restored, handoff | Phase 2: Before the new site goes live / Roster, loot and the team's raids (#1939) | 2 m | Kat review, build | 49,800 | Tokens include the context summary. |
 
 ## Not counted (same sessions, not revamp)
 
